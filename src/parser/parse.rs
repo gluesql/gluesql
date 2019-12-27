@@ -1,16 +1,19 @@
-use rand::seq::IteratorRandom;
-
 use crate::parser;
-use parser::QueryType::{SELECT, INSERT, CREATE};
-use parser::QueryNode;
+use parser::{QueryNode, Token};
+
+use super::tokenize::tokenize;
 
 pub fn parse(raw_sql: String) -> QueryNode {
-    println!("raw sql is {}", raw_sql);
+    println!("raw sql: {}", raw_sql);
 
-    let mut rng = rand::thread_rng();
-    let query_types = [SELECT, INSERT, CREATE];
-    let query_type = *query_types.iter().choose(&mut rng).unwrap();
-    let query_node = QueryNode::new(query_type);
+    let tokens = tokenize(raw_sql);
 
-    query_node
+    println!("tokenized: \n\t{:?}\n", tokens);
+
+    let query_type = match tokens[0] {
+        Token::Query(query_type) => query_type,
+        _ => panic!("Error handler is not implemented yet. :D"),
+    };
+
+    QueryNode::new(query_type)
 }

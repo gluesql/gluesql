@@ -1,7 +1,12 @@
-mod query_type;
+mod types;
 mod query_node;
 mod parse;
+mod tokenize;
 
-pub use query_type::QueryType;
+pub use types::{
+    Token,
+    QueryType,
+    ColumnType,
+};
 pub use query_node::QueryNode;
 pub use parse::parse;
