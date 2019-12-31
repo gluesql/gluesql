@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 regex = "1"
 sled = "0.29.2"
+nom-sql = "0.0.10"
