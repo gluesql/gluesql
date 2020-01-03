@@ -1,6 +1,9 @@
 use crate::translator::{
     CommandQueue,
-    CommandType::{GET, SET},
+    CommandType::{
+        GetSchema,
+        SetSchema,
+    },
 };
 use crate::storage::Store;
 
@@ -9,8 +12,14 @@ pub fn execute(storage: &dyn Store, queue: CommandQueue) -> bool {
 
     for command_type in queue.items {
         match command_type {
-            GET => storage.get(),
-            SET => storage.set(),
+            GetSchema(table_name) => {
+                let statement = storage.get_schema(table_name).unwrap();
+
+                println!("get schema result is this {:#?}", statement);
+            },
+            SetSchema(statement) => {
+                storage.set_schema(statement).unwrap();
+            },
         }
     }
 

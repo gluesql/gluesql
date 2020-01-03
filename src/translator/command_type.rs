@@ -1,5 +1,6 @@
-#[derive(Clone, Copy)]
+use nom_sql::CreateTableStatement;
+
 pub enum CommandType {
-    GET,
-    SET,
+    GetSchema(String),
+    SetSchema(CreateTableStatement),
 }

@@ -1,5 +1,6 @@
+use bincode;
 use sled::Db;
-use sled::IVec;
+use nom_sql::CreateTableStatement;
 
 use crate::storage::Store;
 
@@ -16,29 +17,36 @@ impl SledStorage {
 }
 
 impl Store for SledStorage {
-    fn get(&self) {
-        println!("SledStorage get!");
-
-        let k = b"asdf";
-        let v1 = IVec::from(b"1928");
-
+    fn set_schema(&self, statement: CreateTableStatement) -> Result<(), ()> {
         let tree = &self.tree;
 
-        assert_eq!(tree.get(&k), Ok(Some(v1)));
-        assert_eq!(tree.get(&k).unwrap().unwrap(), b"1928");
-    }
+        println!("\nSledStorage setSchema! {:#?}", statement);
+        println!("table name is {}", statement.table.name);
 
-    fn set(&self) {
-        println!("SledStorage set!");
+        let k = format!("schema/{}", &statement.table.name);
+        println!("key name is {}", k);
+        let k = k.as_bytes();
+        let v: Vec<u8> = bincode::serialize(&statement).unwrap();
 
-        let k = b"asdf";
-        let v1 = b"1928";
-
-        let tree = &self.tree;
-
-        match tree.insert(k, v1) {
-            Ok(_) => { println!("insert succeeded"); },
+        match tree.insert(k, v) {
+            Ok(_) => { println!("insert table succeeded"); },
             Err(_) => { println!("insert failed"); },
         }
+
+        Ok(())
+    }
+
+    fn get_schema(&self, table_name: String) -> Result<CreateTableStatement, &str> {
+        let tree = &self.tree;
+
+        println!("\nSledStorage getSchema! {}", table_name);
+
+        let k = format!("schema/{}", table_name);
+        println!("key name is {}", k);
+        let k = k.as_bytes();
+        let v: &[u8] = &tree.get(&k).unwrap().unwrap();
+        let statement = bincode::deserialize(v).unwrap();
+
+        Ok(statement)
     }
 }
