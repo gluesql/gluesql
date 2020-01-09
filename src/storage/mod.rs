@@ -1,5 +1,5 @@
-mod store;
 mod sled_storage;
+mod store;
 
-pub use store::Store;
 pub use sled_storage::SledStorage;
+pub use store::Store;

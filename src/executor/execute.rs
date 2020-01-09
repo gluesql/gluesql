@@ -1,27 +1,39 @@
+use crate::storage::Store;
 use crate::translator::{
     CommandQueue,
-    CommandType::{
-        GetSchema,
-        SetSchema,
-    },
+    CommandType::{GetData, GetSchema, SetData, SetSchema},
 };
-use crate::storage::Store;
 
-pub fn execute(storage: &dyn Store, queue: CommandQueue) -> bool {
-    println!("execute! {}", queue.items.len());
+use crate::executor::Row;
 
+pub fn execute(storage: &dyn Store, queue: CommandQueue) -> Result<(), ()> {
     for command_type in queue.items {
         match command_type {
             GetSchema(table_name) => {
-                let statement = storage.get_schema(table_name).unwrap();
+                let statement = storage.get_schema(&table_name).unwrap();
 
-                println!("get schema result is this {:#?}", statement);
-            },
+                println!("GetSchema result -> \n{:#?}", statement);
+            }
             SetSchema(statement) => {
                 storage.set_schema(statement).unwrap();
-            },
+            }
+            GetData(select_statement) => {
+                let table_name = select_statement.tables[0].name.clone();
+                let result_set = storage.get_data(&table_name).unwrap();
+
+                let rows = result_set.collect::<Vec<Row>>();
+                println!("GetData result-> \n{:#?}", rows);
+            }
+            SetData(insert_statement) => {
+                let table_name = insert_statement.table.name.clone();
+                let create_statement = storage.get_schema(&table_name).unwrap();
+
+                let row = Row::from((create_statement, insert_statement));
+
+                storage.set_data(&table_name, row).unwrap();
+            }
         }
     }
 
-    true
+    Ok(())
 }
