@@ -10,6 +10,6 @@ edition = "2018"
 bincode = "1.2.1"
 regex = "1"
 serde = { version = "1.0.104", features = ["derive"] }
-sled = "0.29.2"
+sled = "0.30.3"
 uuid = { version = "0.8", features = ["v4"] }
 nom-sql = "0.0.10"

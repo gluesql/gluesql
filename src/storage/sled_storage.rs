@@ -1,6 +1,6 @@
 use bincode;
 use nom_sql::CreateTableStatement;
-use sled::{Db, Iter};
+use sled::{self, Db, Iter};
 
 use crate::executor::Row;
 use crate::storage::Store;
@@ -31,7 +31,7 @@ pub struct SledStorage {
 
 impl SledStorage {
     pub fn new(filename: String) -> SledStorage {
-        let tree = Db::open(filename).unwrap();
+        let tree = sled::open(filename).unwrap();
 
         SledStorage { tree }
     }
