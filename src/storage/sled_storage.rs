@@ -13,15 +13,10 @@ impl Iterator for ResultSet {
     type Item = Row;
 
     fn next(&mut self) -> Option<Row> {
-        match self.iter.next() {
-            Some(Ok((_, value))) => match bincode::deserialize(&value) {
-                Ok(v) => Some(v),
-                Err(_) => {
-                    panic!("Stop iterate");
-                }
-            },
-            _ => None,
-        }
+        self.iter
+            .next()
+            .and_then(|result| result.ok())
+            .map(|(_, value)| bincode::deserialize(&value).expect("Stop iterate"))
     }
 }
 
