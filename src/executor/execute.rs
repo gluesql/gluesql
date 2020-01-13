@@ -17,8 +17,7 @@ pub fn execute(storage: &dyn Store, queue: CommandQueue) -> Result<(), ()> {
             SetSchema(statement) => {
                 storage.set_schema(statement).unwrap();
             }
-            GetData(select_statement) => {
-                let table_name = select_statement.tables[0].name.clone();
+            GetData(table_name) => {
                 let result_set = storage.get_data(&table_name).unwrap();
 
                 let rows = result_set.collect::<Vec<Row>>();

@@ -6,8 +6,9 @@ pub fn translate(sql_query: SqlQuery) -> CommandQueue {
     let items = match sql_query {
         Select(statement) => {
             println!("query type is SELECT");
+            let table_name = statement.tables[0].name.clone();
 
-            vec![CommandType::GetData(statement)]
+            vec![CommandType::GetData(table_name)]
         }
         Insert(statement) => {
             println!("query type is INSERT");
