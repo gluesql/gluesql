@@ -1,24 +1,9 @@
 use bincode;
 use nom_sql::CreateTableStatement;
-use sled::{self, Db, Iter};
+use sled::{self, Db};
 
 use crate::executor::Row;
 use crate::storage::Store;
-
-struct ResultSet {
-    iter: Iter,
-}
-
-impl Iterator for ResultSet {
-    type Item = Row;
-
-    fn next(&mut self) -> Option<Row> {
-        self.iter
-            .next()
-            .and_then(|result| result.ok())
-            .map(|(_, value)| bincode::deserialize(&value).expect("Stop iterate"))
-    }
-}
 
 pub struct SledStorage {
     tree: Db,
@@ -66,8 +51,11 @@ impl Store for SledStorage {
         let k = format!("data/{}/", table_name);
         let k = k.as_bytes();
 
-        let iter = self.tree.scan_prefix(k);
-        let result_set = ResultSet { iter };
+        let result_set = self
+            .tree
+            .scan_prefix(k)
+            .map(|result| result.expect("should be unwrapped"))
+            .map(|(_, value)| bincode::deserialize(&value).expect("Stop iterate"));
 
         Ok(Box::new(result_set))
     }
