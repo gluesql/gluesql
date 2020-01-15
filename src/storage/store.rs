@@ -1,4 +1,4 @@
-use crate::executor::Row;
+use crate::translator::Row;
 use nom_sql::CreateTableStatement;
 
 pub trait Store {

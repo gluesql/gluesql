@@ -2,8 +2,8 @@ use bincode;
 use nom_sql::CreateTableStatement;
 use sled::{self, Db};
 
-use crate::executor::Row;
 use crate::storage::Store;
+use crate::translator::Row;
 
 pub struct SledStorage {
     tree: Db,

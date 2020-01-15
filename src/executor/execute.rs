@@ -2,9 +2,8 @@ use crate::storage::Store;
 use crate::translator::{
     CommandQueue,
     CommandType::{GetData, GetSchema, SetData, SetSchema},
+    Row,
 };
-
-use crate::executor::Row;
 
 pub fn execute(storage: &dyn Store, queue: CommandQueue) -> Result<(), ()> {
     for command_type in queue.items {
