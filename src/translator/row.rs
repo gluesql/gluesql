@@ -9,6 +9,16 @@ pub struct Row {
     items: Vec<(Column, Literal)>,
 }
 
+impl Row {
+    pub fn get_literal(&self, column_name: &str) -> Option<&Literal> {
+        self.items
+            .iter()
+            .filter(|(column, _)| column.name == column_name)
+            .map(|(_, literal)| literal)
+            .nth(0)
+    }
+}
+
 impl From<(CreateTableStatement, InsertStatement)> for Row {
     fn from((create_statement, insert_statement): (CreateTableStatement, InsertStatement)) -> Self {
         let create_fields = create_statement

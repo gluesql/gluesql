@@ -16,10 +16,13 @@ pub fn execute(storage: &dyn Store, queue: CommandQueue) -> Result<(), ()> {
             SetSchema(statement) => {
                 storage.set_schema(statement).unwrap();
             }
-            GetData(table_name) => {
-                let result_set = storage.get_data(&table_name).unwrap();
+            GetData(table_name, filter) => {
+                let rows = storage
+                    .get_data(&table_name)
+                    .unwrap()
+                    .filter(|row| filter.check(row))
+                    .collect::<Vec<Row>>();
 
-                let rows = result_set.collect::<Vec<Row>>();
                 println!("GetData result-> \n{:#?}", rows);
             }
             SetData(insert_statement) => {
