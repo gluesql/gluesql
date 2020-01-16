@@ -1,11 +1,9 @@
 use crate::translator::Row;
-use nom_sql::{
-    ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, SelectStatement,
-};
+use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Literal, Operator};
 use std::convert::From;
 
 pub struct Filter {
-    select_statement: SelectStatement,
+    where_clause: Option<ConditionExpression>,
 }
 
 impl Filter {
@@ -42,15 +40,14 @@ impl Filter {
     }
 
     pub fn check(&self, row: &Row) -> bool {
-        self.select_statement
-            .where_clause
+        self.where_clause
             .as_ref()
             .map_or(false, |expr| self.check_expr(row, &expr))
     }
 }
 
-impl From<SelectStatement> for Filter {
-    fn from(select_statement: SelectStatement) -> Self {
-        Filter { select_statement }
+impl From<Option<ConditionExpression>> for Filter {
+    fn from(where_clause: Option<ConditionExpression>) -> Self {
+        Filter { where_clause }
     }
 }

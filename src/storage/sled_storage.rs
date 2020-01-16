@@ -59,4 +59,13 @@ impl Store for SledStorage {
 
         Ok(Box::new(result_set))
     }
+
+    fn del_data(&self, table_name: &str, key: &str) -> Result<(), ()> {
+        let k = format!("data/{}/{}", table_name, key);
+        let k = k.as_bytes();
+
+        self.tree.remove(k).unwrap();
+
+        Ok(())
+    }
 }

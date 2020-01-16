@@ -28,11 +28,17 @@ fn main() {
     );
     run_sql(create_sql);
 
-    let insert_sql = String::from("INSERT INTO TableA (id, test) VALUES (191, 12938);");
+    let insert_sql = String::from("INSERT INTO TableA (id, test) VALUES (1, 100);");
     run_sql(insert_sql);
 
-    let select_sql = String::from("SELECT * FROM TableA;");
+    let insert_sql = String::from("INSERT INTO TableA (id, test) VALUES (2, 100);");
+    run_sql(insert_sql);
+
+    let select_sql = String::from("SELECT * FROM TableA WHERE id = 2;");
     run_sql(select_sql);
+
+    let delete_sql = String::from("DELETE FROM TableA WHERE test = 100;");
+    run_sql(delete_sql);
 
     println!("\n\n");
 }

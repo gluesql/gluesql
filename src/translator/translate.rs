@@ -1,13 +1,13 @@
 use crate::translator::{CommandQueue, CommandType, Filter};
 use nom_sql::SqlQuery;
-use nom_sql::SqlQuery::{CreateTable, Insert, Select};
+use nom_sql::SqlQuery::{CreateTable, Delete, Insert, Select};
 
 pub fn translate(sql_query: SqlQuery) -> CommandQueue {
     let items = match sql_query {
         Select(statement) => {
             println!("query type is SELECT");
             let table_name = statement.tables[0].name.clone();
-            let filter = Filter::from(statement);
+            let filter = Filter::from(statement.where_clause);
 
             vec![CommandType::GetData(table_name, filter)]
         }
@@ -15,6 +15,13 @@ pub fn translate(sql_query: SqlQuery) -> CommandQueue {
             println!("query type is INSERT");
 
             vec![CommandType::SetData(statement)]
+        }
+        Delete(statement) => {
+            println!("query type is DELETE");
+            let table_name = statement.table.name.clone();
+            let filter = Filter::from(statement.where_clause);
+
+            vec![CommandType::DelData(table_name, filter)]
         }
         CreateTable(statement) => {
             println!("query type is CREATE!!");

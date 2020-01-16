@@ -9,4 +9,6 @@ pub trait Store {
     fn set_data(&self, table_name: &str, row: Row) -> Result<(), ()>;
 
     fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Row>>, ()>;
+
+    fn del_data(&self, table_name: &str, key: &str) -> Result<(), ()>;
 }
