@@ -1,5 +1,5 @@
-use std::convert::From;
 use crate::translator;
+use std::convert::From;
 use translator::CommandType;
 
 pub struct CommandQueue {

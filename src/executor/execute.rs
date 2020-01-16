@@ -17,11 +17,6 @@ fn execute_get_data(
 pub fn execute(storage: &dyn Store, queue: CommandQueue) -> Result<(), ()> {
     for command_type in queue.items {
         match command_type {
-            CommandType::GetSchema(table_name) => {
-                let statement = storage.get_schema(&table_name).unwrap();
-
-                println!("GetSchema result -> \n{:#?}", statement);
-            }
             CommandType::SetSchema(statement) => {
                 storage.set_schema(statement).unwrap();
             }

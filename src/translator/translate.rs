@@ -41,12 +41,7 @@ pub fn translate(sql_query: SqlQuery) -> CommandQueue {
         CreateTable(statement) => {
             println!("query type is CREATE!!");
 
-            let table_name = statement.table.name.clone();
-
-            vec![
-                CommandType::SetSchema(statement),
-                CommandType::GetSchema(table_name), // test
-            ]
+            vec![CommandType::SetSchema(statement)]
         }
         _ => {
             println!("not supported yet!");
