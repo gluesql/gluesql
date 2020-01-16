@@ -1,4 +1,4 @@
-use nom_sql::{Column, CreateTableStatement, InsertStatement, Literal};
+use nom_sql::{Column, ColumnSpecification, Literal};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
 use uuid::Uuid;
@@ -19,21 +19,31 @@ impl Row {
     }
 }
 
-impl From<(CreateTableStatement, InsertStatement)> for Row {
-    fn from((create_statement, insert_statement): (CreateTableStatement, InsertStatement)) -> Self {
-        let create_fields = create_statement
-            .fields
+impl
+    From<(
+        Vec<ColumnSpecification>,
+        Option<Vec<Column>>,
+        Vec<Vec<Literal>>,
+    )> for Row
+{
+    fn from(
+        (create_fields, insert_fields, insert_data): (
+            Vec<ColumnSpecification>,
+            Option<Vec<Column>>,
+            Vec<Vec<Literal>>,
+        ),
+    ) -> Self {
+        let create_fields = create_fields
             .into_iter()
             .map(|c| c.column)
             .collect::<Vec<Column>>();
 
-        let insert_fields = match insert_statement.fields {
+        let insert_fields = match insert_fields {
             Some(fields) => fields.into_iter(),
             None => create_fields.into_iter(),
         };
 
-        let insert_literals = insert_statement
-            .data
+        let insert_literals = insert_data
             .into_iter()
             .nth(0)
             .expect("data in insert_statement should have something")

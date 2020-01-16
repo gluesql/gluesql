@@ -1,5 +1,6 @@
 use crate::storage::Store;
 use crate::translator::{CommandQueue, CommandType, Filter, Row};
+use nom_sql::InsertStatement;
 
 fn execute_get_data(
     storage: &dyn Store,
@@ -26,10 +27,16 @@ pub fn execute(storage: &dyn Store, queue: CommandQueue) -> Result<(), ()> {
                 println!("GetData result-> \n{:#?}", rows);
             }
             CommandType::SetData(insert_statement) => {
-                let table_name = insert_statement.table.name.clone();
-                let create_statement = storage.get_schema(&table_name).unwrap();
-
-                let row = Row::from((create_statement, insert_statement));
+                let (table_name, insert_fields, insert_data) = match insert_statement {
+                    InsertStatement {
+                        table,
+                        fields,
+                        data,
+                        ..
+                    } => (table.name, fields, data),
+                };
+                let create_fields = storage.get_schema(&table_name).unwrap().fields;
+                let row = Row::from((create_fields, insert_fields, insert_data));
 
                 storage.set_data(&table_name, row).unwrap();
             }
