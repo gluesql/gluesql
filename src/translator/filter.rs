@@ -1,5 +1,5 @@
 use crate::translator::Row;
-use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Literal, Operator};
+use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Operator};
 use std::convert::From;
 use std::fmt::Debug;
 
@@ -8,50 +8,34 @@ pub struct Filter {
 }
 
 impl Filter {
-    fn parse_base<'a, T: Debug>(
-        &self,
-        row: &'a Row<T>,
-        base: &'a ConditionBase,
-    ) -> Option<&'a Literal> {
-        match base {
+    pub fn check<'a, T: Debug>(&'a self, row: &'a Row<T>) -> bool {
+        let parse_base = |base: &'a ConditionBase| match base {
             ConditionBase::Field(v) => row.get_literal(&v.name),
             ConditionBase::Literal(literal) => Some(literal),
             _ => None,
-        }
-    }
+        };
 
-    fn parse_expr<'a, T: Debug>(
-        &self,
-        row: &'a Row<T>,
-        expr: &'a ConditionExpression,
-    ) -> Option<&'a Literal> {
-        match expr {
-            ConditionExpression::Base(base) => self.parse_base(row, &base),
+        let parse_expr = |expr: &'a ConditionExpression| match expr {
+            ConditionExpression::Base(base) => parse_base(&base),
             _ => None,
-        }
-    }
+        };
 
-    fn check_tree<T: Debug>(&self, row: &Row<T>, tree: &ConditionTree) -> bool {
-        let left = self.parse_expr(row, &tree.left);
-        let right = self.parse_expr(row, &tree.right);
+        let check_tree = |tree: &'a ConditionTree| {
+            let left = parse_expr(&tree.left);
+            let right = parse_expr(&tree.right);
 
-        match tree.operator {
-            Operator::Equal => left.is_some() && right.is_some() && left == right,
-            _ => true,
-        }
-    }
+            match tree.operator {
+                Operator::Equal => left.is_some() && right.is_some() && left == right,
+                _ => true,
+            }
+        };
 
-    fn check_expr<T: Debug>(&self, row: &Row<T>, expr: &ConditionExpression) -> bool {
-        match expr {
-            ConditionExpression::ComparisonOp(tree) => self.check_tree(row, &tree),
+        let check_expr = |expr: &'a ConditionExpression| match expr {
+            ConditionExpression::ComparisonOp(tree) => check_tree(&tree),
             _ => false,
-        }
-    }
+        };
 
-    pub fn check<T: Debug>(&self, row: &Row<T>) -> bool {
-        self.where_clause
-            .as_ref()
-            .map_or(false, |expr| self.check_expr(row, &expr))
+        self.where_clause.as_ref().map_or(false, check_expr)
     }
 }
 
