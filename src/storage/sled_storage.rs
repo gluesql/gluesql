@@ -17,7 +17,13 @@ impl SledStorage {
     }
 }
 
-impl Store for SledStorage {
+impl Store<u64> for SledStorage {
+    fn gen_id(&self) -> Result<u64, ()> {
+        let id = self.tree.generate_id().unwrap();
+
+        Ok(id)
+    }
+
     fn set_schema(&self, statement: CreateTableStatement) -> Result<(), ()> {
         let k = format!("schema/{}", &statement.table.name);
         let k = k.as_bytes();
@@ -37,7 +43,7 @@ impl Store for SledStorage {
         Ok(statement)
     }
 
-    fn set_data(&self, table_name: &str, row: Row) -> Result<(), ()> {
+    fn set_data(&self, table_name: &str, row: Row<u64>) -> Result<(), ()> {
         let k = format!("data/{}/{}", table_name, row.key);
         let k = k.as_bytes();
         let v: Vec<u8> = bincode::serialize(&row).unwrap();
@@ -47,7 +53,7 @@ impl Store for SledStorage {
         Ok(())
     }
 
-    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Row>>, ()> {
+    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Row<u64>>>, ()> {
         let k = format!("data/{}/", table_name);
         let k = k.as_bytes();
 
@@ -60,7 +66,7 @@ impl Store for SledStorage {
         Ok(Box::new(result_set))
     }
 
-    fn del_data(&self, table_name: &str, key: &str) -> Result<(), ()> {
+    fn del_data(&self, table_name: &str, key: &u64) -> Result<(), ()> {
         let k = format!("data/{}/{}", table_name, key);
         let k = k.as_bytes();
 

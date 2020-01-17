@@ -1,15 +1,15 @@
 use nom_sql::{Column, ColumnSpecification, Literal};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
-use uuid::Uuid;
+use std::fmt::Debug;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Row {
-    pub key: String,
+pub struct Row<T: Debug> {
+    pub key: T,
     items: Vec<(Column, Literal)>,
 }
 
-impl Row {
+impl<T: Debug> Row<T> {
     pub fn get_literal(&self, column_name: &str) -> Option<&Literal> {
         self.items
             .iter()
@@ -19,15 +19,17 @@ impl Row {
     }
 }
 
-impl
+impl<T: Debug>
     From<(
+        T,
         Vec<ColumnSpecification>,
         Option<Vec<Column>>,
         Vec<Vec<Literal>>,
-    )> for Row
+    )> for Row<T>
 {
     fn from(
-        (create_fields, insert_fields, insert_data): (
+        (key, create_fields, insert_fields, insert_data): (
+            T,
             Vec<ColumnSpecification>,
             Option<Vec<Column>>,
             Vec<Vec<Literal>>,
@@ -50,7 +52,6 @@ impl
             .into_iter();
 
         let items = insert_fields.zip(insert_literals).collect();
-        let key = Uuid::new_v4().to_hyphenated().to_string();
 
         Row { key, items }
     }
