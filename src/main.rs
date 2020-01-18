@@ -34,11 +34,11 @@ fn main() {
     let insert_sql = String::from("INSERT INTO TableA (id, test) VALUES (2, 100);");
     run_sql(insert_sql);
 
+    let select_sql = String::from("SELECT * FROM TableA;");
+    run_sql(select_sql);
+
     let update_sql = String::from("UPDATE TableA SET test = 200 WHERE test = 100;");
     run_sql(update_sql);
-
-    let select_sql = String::from("SELECT * FROM TableA WHERE test = 100;");
-    run_sql(select_sql);
 
     let select_sql = String::from("SELECT * FROM TableA WHERE test = 200;");
     run_sql(select_sql);

@@ -35,7 +35,7 @@ impl Filter {
             _ => false,
         };
 
-        self.where_clause.as_ref().map_or(false, check_expr)
+        self.where_clause.as_ref().map_or(true, check_expr)
     }
 }
 
