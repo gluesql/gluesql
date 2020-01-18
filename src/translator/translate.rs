@@ -1,11 +1,12 @@
-use crate::translator::{CommandQueue, CommandType, Filter, Update};
+use crate::translator::{CommandType, Filter, Update};
 use nom_sql::{DeleteStatement, SelectStatement, SqlQuery, UpdateStatement};
 
-pub fn translate(sql_query: SqlQuery) -> CommandQueue {
+pub fn translate(sql_query: SqlQuery) -> CommandType {
     println!("[Run] {}", sql_query);
-let items = match sql_query {
-        SqlQuery::CreateTable(statement) => vec![CommandType::Create(statement)],
-        SqlQuery::Insert(statement) => vec![CommandType::Insert(statement)],
+
+    match sql_query {
+        SqlQuery::CreateTable(statement) => CommandType::Create(statement),
+        SqlQuery::Insert(statement) => CommandType::Insert(statement),
         SqlQuery::Select(SelectStatement {
             tables,
             where_clause,
@@ -18,7 +19,7 @@ let items = match sql_query {
                 .name;
             let filter = Filter::from(where_clause);
 
-            vec![CommandType::Select(table_name, filter)]
+            CommandType::Select(table_name, filter)
         }
         SqlQuery::Delete(DeleteStatement {
             table,
@@ -27,7 +28,7 @@ let items = match sql_query {
             let table_name = table.name;
             let filter = Filter::from(where_clause);
 
-            vec![CommandType::Delete(table_name, filter)]
+            CommandType::Delete(table_name, filter)
         }
         SqlQuery::Update(UpdateStatement {
             table,
@@ -38,14 +39,10 @@ let items = match sql_query {
             let update = Update::from(fields);
             let filter = Filter::from(where_clause);
 
-            vec![CommandType::Update(table_name, update, filter)]
+            CommandType::Update(table_name, update, filter)
         }
         _ => {
-            println!("not supported yet!");
-
-            vec![]
+            panic!("[translate.rs] query not supported");
         }
-    };
-
-    CommandQueue::from(items)
+    }
 }
