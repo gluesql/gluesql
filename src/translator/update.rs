@@ -2,16 +2,21 @@ use crate::translator::Row;
 use nom_sql::{Column, FieldValueExpression, Literal, LiteralExpression};
 use std::fmt::Debug;
 
-fn copy(literal: Literal, literal_expr: &FieldValueExpression) -> Literal {
+fn copy(
+    (column, literal): (Column, Literal),
+    (_, literal_expr): &(Column, FieldValueExpression),
+) -> (Column, Literal) {
     let field_literal = match literal_expr {
         FieldValueExpression::Literal(LiteralExpression { value, .. }) => value,
         _ => panic!("[Update->copy_literal] Err on parsing LiteralExpression"),
     };
 
-    match (literal, field_literal) {
+    let literal = match (literal, field_literal) {
         (Literal::Integer(_), &Literal::Integer(v)) => Literal::Integer(v),
         _ => panic!("[Update->copy_literal] Err on parsing literal"),
-    }
+    };
+
+    (column, literal)
 }
 
 pub struct Update {
@@ -31,7 +36,7 @@ impl Update {
         let items = items
             .into_iter()
             .map(|item| match self.find(&item.0) {
-                Some((_, literal_expr)) => (item.0, copy(item.1, literal_expr)),
+                Some(field_item) => copy(item, field_item),
                 None => item,
             })
             .collect::<Vec<(Column, Literal)>>();
