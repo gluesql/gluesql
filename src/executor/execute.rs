@@ -55,6 +55,14 @@ where
                     storage.del_data(&table_name, &row.key).unwrap();
                 }
             }
+            CommandType::UpdateData(table_name, update, filter) => {
+                let rows =
+                    execute_get_data(storage, &table_name, filter).map(|row| update.apply(row));
+
+                for row in rows {
+                    storage.set_data(&table_name, row).unwrap();
+                }
+            }
         }
     }
 

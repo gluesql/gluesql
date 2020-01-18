@@ -6,7 +6,7 @@ use std::fmt::Debug;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Row<T: Debug> {
     pub key: T,
-    items: Vec<(Column, Literal)>,
+    pub items: Vec<(Column, Literal)>,
 }
 
 impl<T: Debug> Row<T> {

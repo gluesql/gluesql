@@ -1,18 +1,15 @@
-use crate::translator::{CommandQueue, CommandType, Filter};
-use nom_sql::{
-    DeleteStatement, SelectStatement,
-    SqlQuery::{self, CreateTable, Delete, Insert, Select},
-};
+use crate::translator::{CommandQueue, CommandType, Filter, Update};
+use nom_sql::{DeleteStatement, SelectStatement, SqlQuery, UpdateStatement};
 
 pub fn translate(sql_query: SqlQuery) -> CommandQueue {
+    println!("[Run] {}", sql_query);
+
     let items = match sql_query {
-        Select(SelectStatement {
+        SqlQuery::Select(SelectStatement {
             tables,
             where_clause,
             ..
         }) => {
-            println!("query type is SELECT");
-
             let table_name = tables
                 .into_iter()
                 .nth(0)
@@ -22,25 +19,30 @@ pub fn translate(sql_query: SqlQuery) -> CommandQueue {
 
             vec![CommandType::GetData(table_name, filter)]
         }
-        Insert(statement) => {
-            println!("query type is INSERT");
-
+        SqlQuery::Insert(statement) => {
             vec![CommandType::SetData(statement)]
         }
-        Delete(DeleteStatement {
+        SqlQuery::Delete(DeleteStatement {
             table,
             where_clause,
         }) => {
-            println!("query type is DELETE");
-
             let table_name = table.name;
             let filter = Filter::from(where_clause);
 
             vec![CommandType::DelData(table_name, filter)]
         }
-        CreateTable(statement) => {
-            println!("query type is CREATE!!");
+        SqlQuery::Update(UpdateStatement {
+            table,
+            fields,
+            where_clause,
+        }) => {
+            let table_name = table.name;
+            let update = Update::from(fields);
+            let filter = Filter::from(where_clause);
 
+            vec![CommandType::UpdateData(table_name, update, filter)]
+        }
+        SqlQuery::CreateTable(statement) => {
             vec![CommandType::SetSchema(statement)]
         }
         _ => {
