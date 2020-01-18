@@ -3,8 +3,9 @@ use nom_sql::{DeleteStatement, SelectStatement, SqlQuery, UpdateStatement};
 
 pub fn translate(sql_query: SqlQuery) -> CommandQueue {
     println!("[Run] {}", sql_query);
-
-    let items = match sql_query {
+let items = match sql_query {
+        SqlQuery::CreateTable(statement) => vec![CommandType::Create(statement)],
+        SqlQuery::Insert(statement) => vec![CommandType::Insert(statement)],
         SqlQuery::Select(SelectStatement {
             tables,
             where_clause,
@@ -17,10 +18,7 @@ pub fn translate(sql_query: SqlQuery) -> CommandQueue {
                 .name;
             let filter = Filter::from(where_clause);
 
-            vec![CommandType::GetData(table_name, filter)]
-        }
-        SqlQuery::Insert(statement) => {
-            vec![CommandType::SetData(statement)]
+            vec![CommandType::Select(table_name, filter)]
         }
         SqlQuery::Delete(DeleteStatement {
             table,
@@ -29,7 +27,7 @@ pub fn translate(sql_query: SqlQuery) -> CommandQueue {
             let table_name = table.name;
             let filter = Filter::from(where_clause);
 
-            vec![CommandType::DelData(table_name, filter)]
+            vec![CommandType::Delete(table_name, filter)]
         }
         SqlQuery::Update(UpdateStatement {
             table,
@@ -40,10 +38,7 @@ pub fn translate(sql_query: SqlQuery) -> CommandQueue {
             let update = Update::from(fields);
             let filter = Filter::from(where_clause);
 
-            vec![CommandType::UpdateData(table_name, update, filter)]
-        }
-        SqlQuery::CreateTable(statement) => {
-            vec![CommandType::SetSchema(statement)]
+            vec![CommandType::Update(table_name, update, filter)]
         }
         _ => {
             println!("not supported yet!");

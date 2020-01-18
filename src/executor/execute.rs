@@ -25,15 +25,15 @@ where
 {
     for command_type in queue.items {
         match command_type {
-            CommandType::SetSchema(statement) => {
+            CommandType::Create(statement) => {
                 storage.set_schema(statement).unwrap();
             }
-            CommandType::GetData(table_name, filter) => {
+            CommandType::Select(table_name, filter) => {
                 let rows = execute_get_data(storage, &table_name, filter).collect::<Vec<Row<T>>>();
 
-                println!("GetData result-> \n{:#?}", rows);
+                println!("SELECT result-> \n{:#?}", rows);
             }
-            CommandType::SetData(insert_statement) => {
+            CommandType::Insert(insert_statement) => {
                 let (table_name, insert_fields, insert_data) = match insert_statement {
                     InsertStatement {
                         table,
@@ -48,14 +48,14 @@ where
 
                 storage.set_data(&table_name, row).unwrap();
             }
-            CommandType::DelData(table_name, filter) => {
+            CommandType::Delete(table_name, filter) => {
                 let rows = execute_get_data(storage, &table_name, filter);
 
                 for row in rows {
                     storage.del_data(&table_name, &row.key).unwrap();
                 }
             }
-            CommandType::UpdateData(table_name, update, filter) => {
+            CommandType::Update(table_name, update, filter) => {
                 let rows =
                     execute_get_data(storage, &table_name, filter).map(|row| update.apply(row));
 
