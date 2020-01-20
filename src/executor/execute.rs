@@ -1,3 +1,4 @@
+use crate::executor::Payload;
 use crate::storage::Store;
 use crate::translator::{CommandType, Filter, Row};
 use nom_sql::InsertStatement;
@@ -19,18 +20,23 @@ where
     Box::new(rows)
 }
 
-pub fn execute<T: 'static>(storage: &dyn Store<T>, command_type: CommandType) -> Result<(), ()>
+pub fn execute<T: 'static>(
+    storage: &dyn Store<T>,
+    command_type: CommandType,
+) -> Result<Payload<T>, ()>
 where
     T: Debug,
 {
-    match command_type {
+    let payload = match command_type {
         CommandType::Create(statement) => {
             storage.set_schema(statement).unwrap();
+
+            Payload::Create
         }
         CommandType::Select(table_name, filter) => {
-            let rows = execute_get_data(storage, &table_name, filter).collect::<Vec<Row<T>>>();
+            let rows = execute_get_data(storage, &table_name, filter);
 
-            println!("SELECT result-> \n{:#?}", rows);
+            Payload::Select(rows)
         }
         CommandType::Insert(insert_statement) => {
             let (table_name, insert_fields, insert_data) = match insert_statement {
@@ -45,23 +51,31 @@ where
             let key = storage.gen_id().unwrap();
             let row = Row::from((key, create_fields, insert_fields, insert_data));
 
-            storage.set_data(&table_name, row).unwrap();
+            let row = storage.set_data(&table_name, row).unwrap();
+
+            Payload::Insert(row)
         }
         CommandType::Delete(table_name, filter) => {
-            let rows = execute_get_data(storage, &table_name, filter);
-
-            for row in rows {
+            let num_rows = execute_get_data(storage, &table_name, filter).fold(0, |num, row| {
                 storage.del_data(&table_name, &row.key).unwrap();
-            }
+
+                num + 1
+            });
+
+            Payload::Delete(num_rows)
         }
         CommandType::Update(table_name, update, filter) => {
-            let rows = execute_get_data(storage, &table_name, filter).map(|row| update.apply(row));
+            let num_rows = execute_get_data(storage, &table_name, filter)
+                .map(|row| update.apply(row))
+                .fold(0, |num, row| {
+                    storage.set_data(&table_name, row).unwrap();
 
-            for row in rows {
-                storage.set_data(&table_name, row).unwrap();
-            }
+                    num + 1
+                });
+
+            Payload::Update(num_rows)
         }
-    }
+    };
 
-    Ok(())
+    Ok(payload)
 }

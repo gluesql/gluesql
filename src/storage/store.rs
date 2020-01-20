@@ -8,7 +8,7 @@ pub trait Store<T: std::fmt::Debug> {
 
     fn get_schema(&self, table_name: &str) -> Result<CreateTableStatement, &str>;
 
-    fn set_data(&self, table_name: &str, row: Row<T>) -> Result<(), ()>;
+    fn set_data(&self, table_name: &str, row: Row<T>) -> Result<Row<T>, ()>;
 
     fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Row<T>>>, ()>;
 

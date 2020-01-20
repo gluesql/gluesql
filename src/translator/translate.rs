@@ -2,8 +2,6 @@ use crate::translator::{CommandType, Filter, Update};
 use nom_sql::{DeleteStatement, SelectStatement, SqlQuery, UpdateStatement};
 
 pub fn translate(sql_query: SqlQuery) -> CommandType {
-    println!("[Run] {}", sql_query);
-
     match sql_query {
         SqlQuery::CreateTable(statement) => CommandType::Create(statement),
         SqlQuery::Insert(statement) => CommandType::Insert(statement),

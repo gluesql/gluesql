@@ -43,14 +43,14 @@ impl Store<u64> for SledStorage {
         Ok(statement)
     }
 
-    fn set_data(&self, table_name: &str, row: Row<u64>) -> Result<(), ()> {
+    fn set_data(&self, table_name: &str, row: Row<u64>) -> Result<Row<u64>, ()> {
         let k = format!("data/{}/{}", table_name, row.key);
         let k = k.as_bytes();
         let v: Vec<u8> = bincode::serialize(&row).unwrap();
 
         self.tree.insert(k, v).unwrap();
 
-        Ok(())
+        Ok(row)
     }
 
     fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Row<u64>>>, ()> {

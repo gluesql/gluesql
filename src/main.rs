@@ -2,21 +2,35 @@ mod executor;
 mod storage;
 mod translator;
 
-use executor::execute;
+use executor::{execute, Payload};
 use nom_sql::parse_query;
 use storage::SledStorage;
-use translator::translate;
+use translator::{translate, Row};
 
-fn run_sql(sql: String) {
+fn run(storage: &SledStorage, sql: String) {
     let parsed = parse_query(&sql).unwrap();
-    let command_queue = translate(parsed);
-    let storage = SledStorage::new(String::from("data.db"));
+    println!("[Run] {}", parsed);
 
-    execute(&storage, command_queue).unwrap();
+    let command_queue = translate(parsed);
+
+    match execute(storage, command_queue).unwrap() {
+        Payload::Select(rows) => {
+            let rows = rows.collect::<Vec<Row<u64>>>();
+
+            println!("[Ok ]\n{:#?}\n", rows);
+        }
+        Payload::Insert(row) => println!("[Ok ]\n{:#?}\n", row),
+        Payload::Delete(num) => println!("[Ok ] {} rows deleted.\n", num),
+        Payload::Update(num) => println!("[Ok ] {} rows updated.\n", num),
+        Payload::Create => println!("[Ok ] :)\n"),
+    };
 }
 
 fn main() {
     println!("\n\n");
+
+    let storage = SledStorage::new(String::from("data.db"));
+    let run_sql = |sql| run(&storage, sql);
 
     let create_sql = String::from(
         "
