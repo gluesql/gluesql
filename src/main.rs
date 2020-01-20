@@ -4,10 +4,11 @@ mod translator;
 
 use executor::{execute, Payload};
 use nom_sql::parse_query;
-use storage::SledStorage;
+use std::fmt::Debug;
+use storage::{SledStorage, Store};
 use translator::{translate, Row};
 
-fn run(storage: &SledStorage, sql: String) {
+fn run<T: 'static + Debug>(storage: &dyn Store<T>, sql: String) {
     let parsed = parse_query(&sql).unwrap();
     println!("[Run] {}", parsed);
 
@@ -15,7 +16,7 @@ fn run(storage: &SledStorage, sql: String) {
 
     match execute(storage, command_queue).unwrap() {
         Payload::Select(rows) => {
-            let rows = rows.collect::<Vec<Row<u64>>>();
+            let rows = rows.collect::<Vec<Row<T>>>();
 
             println!("[Ok ]\n{:#?}\n", rows);
         }
