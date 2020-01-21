@@ -17,14 +17,19 @@ fn parse_expr<'a, T: Debug>(row: &'a Row<T>, expr: &'a ConditionExpression) -> O
 }
 
 fn check_expr<'a, T: Debug>(row: &'a Row<T>, expr: &'a ConditionExpression) -> bool {
-    let check_tree = |tree: &'a ConditionTree| match tree.operator {
-        Operator::Equal => {
-            let left = parse_expr(row, &tree.left);
-            let right = parse_expr(row, &tree.right);
+    let check_tree = |tree: &'a ConditionTree| {
+        let check = || Ok((check_expr(row, &tree.left), check_expr(row, &tree.right)));
+        let parse = || Ok((parse_expr(row, &tree.left), parse_expr(row, &tree.right)));
 
-            left.is_some() && right.is_some() && left == right
-        }
-        _ => true,
+        let result: Result<bool, ()> = match tree.operator {
+            Operator::Equal => parse().map(|(l, r)| l.is_some() && r.is_some() && l == r),
+            Operator::NotEqual => parse().map(|(l, r)| l.is_some() && r.is_some() && l != r),
+            Operator::And => check().map(|(l, r)| l && r),
+            Operator::Or => check().map(|(l, r)| l || r),
+            _ => Ok(false),
+        };
+
+        result.unwrap()
     };
 
     match expr {
