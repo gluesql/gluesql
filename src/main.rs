@@ -8,8 +8,8 @@ use std::fmt::Debug;
 use storage::{SledStorage, Store};
 use translator::{translate, Row};
 
-fn run<T: 'static + Debug>(storage: &dyn Store<T>, sql: String) -> Result<Payload<T>, ()> {
-    let parsed = parse_query(&sql).unwrap();
+fn run<T: 'static + Debug>(storage: &dyn Store<T>, sql: &str) -> Result<Payload<T>, ()> {
+    let parsed = parse_query(sql).unwrap();
     println!("[Run] {}", parsed);
 
     let command_queue = translate(parsed);
@@ -46,20 +46,19 @@ fn main() {
     let storage = SledStorage::new(String::from("data.db"));
     let run_sql = |sql| run(&storage, sql);
 
-    let create_sql = String::from(
-        "
+    let create_sql = "
         CREATE TABLE TableA (
             id INTEGER,
             test INTEGER,
         );
-    ",
-    );
+    ";
+
     print(run_sql(create_sql));
 
-    let delete_sql = String::from("DELETE FROM TableA");
+    let delete_sql = "DELETE FROM TableA";
     print(run_sql(delete_sql));
 
-    let insert_sqls = vec![
+    let insert_sqls: [&str; 6] = [
         "INSERT INTO TableA (id, test) VALUES (1, 100);",
         "INSERT INTO TableA (id, test) VALUES (2, 100);",
         "INSERT INTO TableA (id, test) VALUES (3, 300);",
@@ -68,37 +67,35 @@ fn main() {
         "INSERT INTO TableA (id, test) VALUES (3, 500);",
     ];
 
-    for insert_sql in insert_sqls {
-        let insert_sql = String::from(insert_sql);
-
+    for insert_sql in insert_sqls.into_iter() {
         run_sql(insert_sql).unwrap();
     }
 
-    let select_sql = String::from("SELECT * FROM TableA;");
+    let select_sql = "SELECT * FROM TableA;";
     compare(run_sql(select_sql), 6);
 
-    let select_sql = String::from("SELECT * FROM TableA WHERE id = 3;");
+    let select_sql = "SELECT * FROM TableA WHERE id = 3;";
     compare(run_sql(select_sql), 4);
 
-    let select_sql = String::from("SELECT * FROM TableA WHERE id = 3 AND test = 500;");
+    let select_sql = "SELECT * FROM TableA WHERE id = 3 AND test = 500;";
     compare(run_sql(select_sql), 2);
 
-    let select_sql = String::from("SELECT * FROM TableA WHERE id = 3 OR test = 100;");
+    let select_sql = "SELECT * FROM TableA WHERE id = 3 OR test = 100;";
     compare(run_sql(select_sql), 6);
 
-    let select_sql = String::from("SELECT * FROM TableA WHERE id != 3 AND test != 100;");
+    let select_sql = "SELECT * FROM TableA WHERE id != 3 AND test != 100;";
     compare(run_sql(select_sql), 0);
 
-    let update_sql = String::from("UPDATE TableA SET test = 200 WHERE test = 100;");
+    let update_sql = "UPDATE TableA SET test = 200 WHERE test = 100;";
     compare(run_sql(update_sql), 2);
 
-    let select_sql = String::from("SELECT * FROM TableA WHERE test = 100;");
+    let select_sql = "SELECT * FROM TableA WHERE test = 100;";
     compare(run_sql(select_sql), 0);
 
-    let select_sql = String::from("SELECT * FROM TableA WHERE test = 200;");
+    let select_sql = "SELECT * FROM TableA WHERE test = 200;";
     compare(run_sql(select_sql), 2);
 
-    let delete_sql = String::from("DELETE FROM TableA;");
+    let delete_sql = "DELETE FROM TableA;";
     compare(run_sql(delete_sql), 6);
 
     println!("\n\n");
