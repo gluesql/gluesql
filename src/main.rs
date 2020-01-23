@@ -71,38 +71,25 @@ fn main() {
         run_sql(insert_sql).unwrap();
     }
 
-    let select_sql = "SELECT * FROM TableA;";
-    compare(run_sql(select_sql), 6);
+    let test_cases = vec![
+        (6, "SELECT * FROM TableA;"),
+        (4, "SELECT * FROM TableA WHERE id = 3;"),
+        (2, "SELECT * FROM TableA WHERE id = 3 AND test = 500;"),
+        (6, "SELECT * FROM TableA WHERE id = 3 OR test = 100;"),
+        (0, "SELECT * FROM TableA WHERE id != 3 AND test != 100;"),
+        (2, "SELECT * FROM TableA WHERE id = 3 LIMIT 2;"),
+        (4, "SELECT * FROM TableA LIMIT 10 OFFSET 2;"),
+        (2, "UPDATE TableA SET test = 200 WHERE test = 100;"),
+        (0, "SELECT * FROM TableA WHERE test = 100;"),
+        (2, "SELECT * FROM TableA WHERE test = 200;"),
+        (2, "DELETE FROM TableA WHERE id != 3;"),
+        (4, "SELECT * FROM TableA;"),
+        (4, "DELETE FROM TableA;"),
+    ];
 
-    let select_sql = "SELECT * FROM TableA WHERE id = 3;";
-    compare(run_sql(select_sql), 4);
-
-    let select_sql = "SELECT * FROM TableA WHERE id = 3 AND test = 500;";
-    compare(run_sql(select_sql), 2);
-
-    let select_sql = "SELECT * FROM TableA WHERE id = 3 OR test = 100;";
-    compare(run_sql(select_sql), 6);
-
-    let select_sql = "SELECT * FROM TableA WHERE id != 3 AND test != 100;";
-    compare(run_sql(select_sql), 0);
-
-    let select_sql = "SELECT * FROM TableA WHERE id = 3 LIMIT 2;";
-    compare(run_sql(select_sql), 2);
-
-    let select_sql = "SELECT * FROM TableA LIMIT 10 OFFSET 2;";
-    compare(run_sql(select_sql), 4);
-
-    let update_sql = "UPDATE TableA SET test = 200 WHERE test = 100;";
-    compare(run_sql(update_sql), 2);
-
-    let select_sql = "SELECT * FROM TableA WHERE test = 100;";
-    compare(run_sql(select_sql), 0);
-
-    let select_sql = "SELECT * FROM TableA WHERE test = 200;";
-    compare(run_sql(select_sql), 2);
-
-    let delete_sql = "DELETE FROM TableA;";
-    compare(run_sql(delete_sql), 6);
+    for (num, sql) in test_cases {
+        compare(run_sql(sql), num);
+    }
 
     println!("\n\n");
 }
