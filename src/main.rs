@@ -86,6 +86,12 @@ fn main() {
     let select_sql = "SELECT * FROM TableA WHERE id != 3 AND test != 100;";
     compare(run_sql(select_sql), 0);
 
+    let select_sql = "SELECT * FROM TableA WHERE id = 3 LIMIT 2;";
+    compare(run_sql(select_sql), 2);
+
+    let select_sql = "SELECT * FROM TableA LIMIT 10 OFFSET 2;";
+    compare(run_sql(select_sql), 4);
+
     let update_sql = "UPDATE TableA SET test = 200 WHERE test = 100;";
     compare(run_sql(update_sql), 2);
 

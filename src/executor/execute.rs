@@ -33,10 +33,13 @@ where
 
             Payload::Create
         }
-        CommandType::Select(table_name, filter) => {
-            let rows = execute_get_data(storage, &table_name, filter);
+        CommandType::Select(table_name, filter, limit) => {
+            let rows = execute_get_data(storage, &table_name, filter)
+                .enumerate()
+                .filter(move |(i, _)| limit.check(i))
+                .map(|(_, row)| row);
 
-            Payload::Select(rows)
+            Payload::Select(Box::new(rows))
         }
         CommandType::Insert(insert_statement) => {
             let (table_name, insert_fields, insert_data) = match insert_statement {
