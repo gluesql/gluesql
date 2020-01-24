@@ -83,6 +83,7 @@ fn main() {
             1,
             "SELECT * FROM TableA WHERE (id = 3 OR test = 100) AND test = 300;",
         ),
+        (2, "SELECT * FROM TableA WHERE NOT (id = 3);"),
         (2, "UPDATE TableA SET test = 200 WHERE test = 100;"),
         (0, "SELECT * FROM TableA WHERE test = 100;"),
         (2, "SELECT * FROM TableA WHERE (test = 200);"),
