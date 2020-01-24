@@ -35,6 +35,7 @@ fn check_expr<'a, T: Debug>(row: &'a Row<T>, expr: &'a ConditionExpression) -> b
     match expr {
         ConditionExpression::ComparisonOp(tree) => check_tree(&tree),
         ConditionExpression::LogicalOp(tree) => check_tree(&tree),
+        ConditionExpression::Bracketed(expr) => check_expr(row, expr),
         _ => false,
     }
 }
