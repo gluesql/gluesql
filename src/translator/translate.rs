@@ -21,7 +21,12 @@ pub fn translate(sql_query: SqlQuery) -> CommandType {
             let filter = Filter::from(where_clause);
             let limit = Limit::from(limit);
 
-            CommandType::Select(table_name, blend, filter, limit)
+            CommandType::Select {
+                table_name,
+                blend,
+                filter,
+                limit,
+            }
         }
         SqlQuery::Delete(DeleteStatement {
             table,
@@ -30,7 +35,7 @@ pub fn translate(sql_query: SqlQuery) -> CommandType {
             let table_name = table.name;
             let filter = Filter::from(where_clause);
 
-            CommandType::Delete(table_name, filter)
+            CommandType::Delete { table_name, filter }
         }
         SqlQuery::Update(UpdateStatement {
             table,
@@ -41,7 +46,11 @@ pub fn translate(sql_query: SqlQuery) -> CommandType {
             let update = Update::from(fields);
             let filter = Filter::from(where_clause);
 
-            CommandType::Update(table_name, update, filter)
+            CommandType::Update {
+                table_name,
+                update,
+                filter,
+            }
         }
         _ => {
             panic!("[translate.rs] query not supported");

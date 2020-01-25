@@ -33,7 +33,12 @@ where
 
             Payload::Create
         }
-        CommandType::Select(table_name, blend, filter, limit) => {
+        CommandType::Select {
+            table_name,
+            blend,
+            filter,
+            limit,
+        } => {
             let rows = execute_get_data(storage, &table_name, filter)
                 .enumerate()
                 .filter(move |(i, _)| limit.check(i))
@@ -64,7 +69,7 @@ where
 
             Payload::Insert(row)
         }
-        CommandType::Delete(table_name, filter) => {
+        CommandType::Delete { table_name, filter } => {
             let num_rows = execute_get_data(storage, &table_name, filter).fold(0, |num, row| {
                 storage.del_data(&table_name, &row.key).unwrap();
 
@@ -73,7 +78,11 @@ where
 
             Payload::Delete(num_rows)
         }
-        CommandType::Update(table_name, update, filter) => {
+        CommandType::Update {
+            table_name,
+            update,
+            filter,
+        } => {
             let num_rows = execute_get_data(storage, &table_name, filter)
                 .map(|row| update.apply(row))
                 .fold(0, |num, row| {

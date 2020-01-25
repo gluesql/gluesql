@@ -4,7 +4,19 @@ use nom_sql::{CreateTableStatement, InsertStatement};
 pub enum CommandType {
     Create(CreateTableStatement),
     Insert(InsertStatement),
-    Select(String, Blend, Filter, Limit),
-    Delete(String, Filter),
-    Update(String, Update, Filter),
+    Select {
+        table_name: String,
+        blend: Blend,
+        filter: Filter,
+        limit: Limit,
+    },
+    Delete {
+        table_name: String,
+        filter: Filter,
+    },
+    Update {
+        table_name: String,
+        update: Update,
+        filter: Filter,
+    },
 }
