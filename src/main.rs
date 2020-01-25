@@ -96,5 +96,25 @@ fn main() {
         compare(run_sql(sql), num);
     }
 
+    for insert_sql in insert_sqls.into_iter() {
+        run_sql(insert_sql).unwrap();
+    }
+
+    let test_select = |sql, num| {
+        match run_sql(sql).unwrap() {
+            Payload::Select(rows) => assert_eq!(rows.into_iter().nth(0).unwrap().items.len(), num),
+            _ => assert!(false),
+        };
+    };
+
+    let select_sql = "SELECT id, test FROM TableA;";
+    test_select(select_sql, 2);
+
+    let select_sql = "SELECT id FROM TableA;";
+    test_select(select_sql, 1);
+
+    let select_sql = "SELECT * FROM TableA;";
+    test_select(select_sql, 2);
+
     println!("\n\n");
 }

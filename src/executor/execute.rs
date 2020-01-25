@@ -33,11 +33,17 @@ where
 
             Payload::Create
         }
-        CommandType::Select(table_name, filter, limit) => {
+        CommandType::Select(table_name, blend, filter, limit) => {
             let rows = execute_get_data(storage, &table_name, filter)
                 .enumerate()
                 .filter(move |(i, _)| limit.check(i))
-                .map(|(_, row)| row);
+                .map(|(_, row)| row)
+                .map(move |row| {
+                    let Row { key, items } = row;
+                    let items = items.into_iter().filter(|item| blend.check(item)).collect();
+
+                    Row { key, items }
+                });
 
             Payload::Select(Box::new(rows))
         }

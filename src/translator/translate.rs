@@ -1,4 +1,4 @@
-use crate::translator::{CommandType, Filter, Limit, Update};
+use crate::translator::{Blend, CommandType, Filter, Limit, Update};
 use nom_sql::{DeleteStatement, SelectStatement, SqlQuery, UpdateStatement};
 
 pub fn translate(sql_query: SqlQuery) -> CommandType {
@@ -9,6 +9,7 @@ pub fn translate(sql_query: SqlQuery) -> CommandType {
             tables,
             where_clause,
             limit,
+            fields,
             ..
         }) => {
             let table_name = tables
@@ -16,10 +17,11 @@ pub fn translate(sql_query: SqlQuery) -> CommandType {
                 .nth(0)
                 .expect("SelectStatement->tables should have something")
                 .name;
+            let blend = Blend::from(fields);
             let filter = Filter::from(where_clause);
             let limit = Limit::from(limit);
 
-            CommandType::Select(table_name, filter, limit)
+            CommandType::Select(table_name, blend, filter, limit)
         }
         SqlQuery::Delete(DeleteStatement {
             table,
