@@ -1,8 +1,15 @@
-use crate::executor::Payload;
 use crate::storage::Store;
 use crate::translator::{CommandType, Filter, Row};
 use nom_sql::InsertStatement;
 use std::fmt::Debug;
+
+pub enum Payload<T: Debug> {
+    Create,
+    Insert(Row<T>),
+    Select(Box<dyn Iterator<Item = Row<T>>>),
+    Delete(usize),
+    Update(usize),
+}
 
 fn execute_get_data<T: 'static>(
     storage: &dyn Store<T>,
