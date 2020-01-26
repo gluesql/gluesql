@@ -1,33 +1,37 @@
-use crate::translator::{Blend, CommandType, Filter, Limit, Update};
+use crate::translator::{Blend, CommandType, Filter, Limit, SelectTranslation, Update};
 use nom_sql::{DeleteStatement, SelectStatement, SqlQuery, UpdateStatement};
+
+pub fn translate_select(statement: SelectStatement) -> SelectTranslation {
+    let SelectStatement {
+        tables,
+        where_clause,
+        limit,
+        fields,
+        ..
+    } = statement;
+
+    let table_name = tables
+        .into_iter()
+        .nth(0)
+        .expect("SelectStatement->tables should have something")
+        .name;
+    let blend = Blend::from(fields);
+    let filter = Filter::from(where_clause);
+    let limit = Limit::from(limit);
+
+    SelectTranslation {
+        table_name,
+        blend,
+        filter,
+        limit,
+    }
+}
 
 pub fn translate(sql_query: SqlQuery) -> CommandType {
     match sql_query {
         SqlQuery::CreateTable(statement) => CommandType::Create(statement),
         SqlQuery::Insert(statement) => CommandType::Insert(statement),
-        SqlQuery::Select(SelectStatement {
-            tables,
-            where_clause,
-            limit,
-            fields,
-            ..
-        }) => {
-            let table_name = tables
-                .into_iter()
-                .nth(0)
-                .expect("SelectStatement->tables should have something")
-                .name;
-            let blend = Blend::from(fields);
-            let filter = Filter::from(where_clause);
-            let limit = Limit::from(limit);
-
-            CommandType::Select {
-                table_name,
-                blend,
-                filter,
-                limit,
-            }
-        }
+        SqlQuery::Select(statement) => CommandType::Select(translate_select(statement)),
         SqlQuery::Delete(DeleteStatement {
             table,
             where_clause,

@@ -7,7 +7,7 @@ mod translate;
 mod update;
 
 pub use blend::Blend;
-pub use command_type::CommandType;
+pub use command_type::{CommandType, SelectTranslation};
 pub use filter::Filter;
 pub use limit::Limit;
 pub use row::Row;

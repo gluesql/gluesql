@@ -1,5 +1,5 @@
 use crate::storage::Store;
-use crate::translator::{CommandType, Filter, Row};
+use crate::translator::{CommandType, Filter, Row, SelectTranslation};
 use nom_sql::InsertStatement;
 use std::fmt::Debug;
 
@@ -27,6 +27,34 @@ where
     Box::new(rows)
 }
 
+pub fn execute_select<T: 'static>(
+    storage: &dyn Store<T>,
+    translation: SelectTranslation,
+) -> Box<dyn Iterator<Item = Row<T>>>
+where
+    T: Debug,
+{
+    let SelectTranslation {
+        table_name,
+        blend,
+        filter,
+        limit,
+    } = translation;
+
+    let rows = execute_get_data(storage, &table_name, filter)
+        .enumerate()
+        .filter(move |(i, _)| limit.check(i))
+        .map(|(_, row)| row)
+        .map(move |row| {
+            let Row { key, items } = row;
+            let items = items.into_iter().filter(|item| blend.check(item)).collect();
+
+            Row { key, items }
+        });
+
+    Box::new(rows)
+}
+
 pub fn execute<T: 'static>(
     storage: &dyn Store<T>,
     command_type: CommandType,
@@ -40,22 +68,8 @@ where
 
             Payload::Create
         }
-        CommandType::Select {
-            table_name,
-            blend,
-            filter,
-            limit,
-        } => {
-            let rows = execute_get_data(storage, &table_name, filter)
-                .enumerate()
-                .filter(move |(i, _)| limit.check(i))
-                .map(|(_, row)| row)
-                .map(move |row| {
-                    let Row { key, items } = row;
-                    let items = items.into_iter().filter(|item| blend.check(item)).collect();
-
-                    Row { key, items }
-                });
+        CommandType::Select(translation) => {
+            let rows = execute_select(storage, translation);
 
             Payload::Select(Box::new(rows))
         }
