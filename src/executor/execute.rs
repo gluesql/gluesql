@@ -6,7 +6,7 @@ use std::fmt::Debug;
 pub enum Payload<T: Debug> {
     Create,
     Insert(Row<T>),
-    Select(Box<dyn Iterator<Item = Row<T>>>),
+    Select(Vec<Row<T>>),
     Delete(usize),
     Update(usize),
 }
@@ -30,7 +30,7 @@ where
 pub fn execute_select<T: 'static>(
     storage: &dyn Store<T>,
     translation: SelectTranslation,
-) -> Box<dyn Iterator<Item = Row<T>>>
+) -> Vec<Row<T>>
 where
     T: Debug,
 {
@@ -50,9 +50,10 @@ where
             let items = items.into_iter().filter(|item| blend.check(item)).collect();
 
             Row { key, items }
-        });
+        })
+        .collect::<Vec<Row<T>>>();
 
-    Box::new(rows)
+    rows
 }
 
 pub fn execute<T: 'static>(
@@ -71,7 +72,7 @@ where
         CommandType::Select(translation) => {
             let rows = execute_select(storage, translation);
 
-            Payload::Select(Box::new(rows))
+            Payload::Select(rows)
         }
         CommandType::Insert(insert_statement) => {
             let (table_name, insert_fields, insert_data) = match insert_statement {

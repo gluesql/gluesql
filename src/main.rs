@@ -6,7 +6,7 @@ use executor::{execute, Payload};
 use nom_sql::parse_query;
 use std::fmt::Debug;
 use storage::{SledStorage, Store};
-use translator::{translate, Row};
+use translator::translate;
 
 fn run<T: 'static + Debug>(storage: &dyn Store<T>, sql: &str) -> Result<Payload<T>, ()> {
     let parsed = parse_query(sql).unwrap();
@@ -19,11 +19,7 @@ fn run<T: 'static + Debug>(storage: &dyn Store<T>, sql: &str) -> Result<Payload<
 
 fn print<T: 'static + Debug>(result: Result<Payload<T>, ()>) {
     match result.unwrap() {
-        Payload::Select(rows) => {
-            let rows = rows.collect::<Vec<Row<T>>>();
-
-            println!("[Ok ]\n{:#?}\n", rows);
-        }
+        Payload::Select(rows) => println!("[Ok ]\n{:#?}\n", rows),
         Payload::Insert(row) => println!("[Ok ]\n{:#?}\n", row),
         Payload::Delete(num) => println!("[Ok ] {} rows deleted.\n", num),
         Payload::Update(num) => println!("[Ok ] {} rows updated.\n", num),
@@ -33,7 +29,7 @@ fn print<T: 'static + Debug>(result: Result<Payload<T>, ()>) {
 
 fn compare<T: 'static + Debug>(result: Result<Payload<T>, ()>, count: usize) {
     match result.unwrap() {
-        Payload::Select(rows) => assert_eq!(rows.count(), count),
+        Payload::Select(rows) => assert_eq!(rows.len(), count),
         Payload::Delete(num) => assert_eq!(num, count),
         Payload::Update(num) => assert_eq!(num, count),
         _ => panic!("compare is only for Select, Delete and Update"),
