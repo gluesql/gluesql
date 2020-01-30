@@ -24,8 +24,8 @@ impl Store<u64> for SledStorage {
         Ok(id)
     }
 
-    fn set_schema(&self, statement: CreateTableStatement) -> Result<(), ()> {
-        let k = format!("schema/{}", &statement.table.name);
+    fn set_schema(&self, statement: &CreateTableStatement) -> Result<(), ()> {
+        let k = format!("schema/{}", statement.table.name);
         let k = k.as_bytes();
         let v: Vec<u8> = bincode::serialize(&statement).unwrap();
 

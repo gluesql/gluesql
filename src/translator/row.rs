@@ -19,20 +19,20 @@ impl<T: Debug> Row<T> {
     }
 }
 
-impl<T: Debug>
+impl<'a, T: Debug>
     From<(
         T,
         Vec<ColumnSpecification>,
-        Option<Vec<Column>>,
-        Vec<Vec<Literal>>,
+        &'a Option<Vec<Column>>,
+        &'a Vec<Vec<Literal>>,
     )> for Row<T>
 {
     fn from(
         (key, create_fields, insert_fields, insert_data): (
             T,
             Vec<ColumnSpecification>,
-            Option<Vec<Column>>,
-            Vec<Vec<Literal>>,
+            &'a Option<Vec<Column>>,
+            &'a Vec<Vec<Literal>>,
         ),
     ) -> Self {
         let create_fields = create_fields
@@ -41,11 +41,12 @@ impl<T: Debug>
             .collect::<Vec<Column>>();
 
         let insert_fields = match insert_fields {
-            Some(fields) => fields.into_iter(),
+            Some(fields) => fields.clone().into_iter(),
             None => create_fields.into_iter(),
         };
 
         let insert_literals = insert_data
+            .clone()
             .into_iter()
             .nth(0)
             .expect("data in insert_statement should have something")

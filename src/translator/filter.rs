@@ -41,11 +41,11 @@ fn check_expr<'a, T: Debug>(row: &'a Row<T>, expr: &'a ConditionExpression) -> b
     }
 }
 
-pub struct Filter {
-    where_clause: Option<ConditionExpression>,
+pub struct Filter<'a> {
+    where_clause: &'a Option<ConditionExpression>,
 }
 
-impl Filter {
+impl Filter<'_> {
     pub fn check<'a, T: Debug>(&'a self, row: &'a Row<T>) -> bool {
         self.where_clause
             .as_ref()
@@ -53,8 +53,8 @@ impl Filter {
     }
 }
 
-impl From<Option<ConditionExpression>> for Filter {
-    fn from(where_clause: Option<ConditionExpression>) -> Self {
+impl<'a> From<&'a Option<ConditionExpression>> for Filter<'a> {
+    fn from(where_clause: &'a Option<ConditionExpression>) -> Self {
         Filter { where_clause }
     }
 }

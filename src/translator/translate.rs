@@ -1,7 +1,7 @@
 use crate::translator::{Blend, CommandType, Filter, Limit, SelectTranslation, Update};
 use nom_sql::{DeleteStatement, SelectStatement, SqlQuery, UpdateStatement};
 
-pub fn translate_select(statement: SelectStatement) -> SelectTranslation {
+pub fn translate_select<'a>(statement: &'a SelectStatement) -> SelectTranslation<'a> {
     let SelectStatement {
         tables,
         where_clause,
@@ -10,8 +10,8 @@ pub fn translate_select(statement: SelectStatement) -> SelectTranslation {
         ..
     } = statement;
 
-    let table_name = tables
-        .into_iter()
+    let table_name = &tables
+        .iter()
         .nth(0)
         .expect("SelectStatement->tables should have something")
         .name;
@@ -27,7 +27,7 @@ pub fn translate_select(statement: SelectStatement) -> SelectTranslation {
     }
 }
 
-pub fn translate(sql_query: SqlQuery) -> CommandType {
+pub fn translate(sql_query: &SqlQuery) -> CommandType {
     match sql_query {
         SqlQuery::CreateTable(statement) => CommandType::Create(statement),
         SqlQuery::Insert(statement) => CommandType::Insert(statement),
@@ -36,7 +36,7 @@ pub fn translate(sql_query: SqlQuery) -> CommandType {
             table,
             where_clause,
         }) => {
-            let table_name = table.name;
+            let table_name = &table.name;
             let filter = Filter::from(where_clause);
 
             CommandType::Delete { table_name, filter }
@@ -46,7 +46,7 @@ pub fn translate(sql_query: SqlQuery) -> CommandType {
             fields,
             where_clause,
         }) => {
-            let table_name = table.name;
+            let table_name = &table.name;
             let update = Update::from(fields);
             let filter = Filter::from(where_clause);
 

@@ -11,14 +11,11 @@ pub enum Payload<T: Debug> {
     Update(usize),
 }
 
-fn execute_get_data<T: 'static>(
+fn execute_get_data<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &str,
-    filter: Filter,
-) -> Box<dyn Iterator<Item = Row<T>>>
-where
-    T: Debug,
-{
+    filter: Filter<'a>,
+) -> Box<dyn Iterator<Item = Row<T>> + 'a> {
     let rows = storage
         .get_data(&table_name)
         .unwrap()
@@ -27,13 +24,10 @@ where
     Box::new(rows)
 }
 
-pub fn execute_select<T: 'static>(
+pub fn execute_select<T: 'static + Debug>(
     storage: &dyn Store<T>,
     translation: SelectTranslation,
-) -> Vec<Row<T>>
-where
-    T: Debug,
-{
+) -> Vec<Row<T>> {
     let SelectTranslation {
         table_name,
         blend,
@@ -56,13 +50,10 @@ where
     rows
 }
 
-pub fn execute<T: 'static>(
+pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
     command_type: CommandType,
-) -> Result<Payload<T>, ()>
-where
-    T: Debug,
-{
+) -> Result<Payload<T>, ()> {
     let payload = match command_type {
         CommandType::Create(statement) => {
             storage.set_schema(statement).unwrap();
@@ -81,19 +72,19 @@ where
                     fields,
                     data,
                     ..
-                } => (table.name, fields, data),
+                } => (&table.name, fields, data),
             };
-            let create_fields = storage.get_schema(&table_name).unwrap().fields;
+            let create_fields = storage.get_schema(table_name).unwrap().fields;
             let key = storage.gen_id().unwrap();
             let row = Row::from((key, create_fields, insert_fields, insert_data));
 
-            let row = storage.set_data(&table_name, row).unwrap();
+            let row = storage.set_data(table_name, row).unwrap();
 
             Payload::Insert(row)
         }
         CommandType::Delete { table_name, filter } => {
-            let num_rows = execute_get_data(storage, &table_name, filter).fold(0, |num, row| {
-                storage.del_data(&table_name, &row.key).unwrap();
+            let num_rows = execute_get_data(storage, table_name, filter).fold(0, |num, row| {
+                storage.del_data(table_name, &row.key).unwrap();
 
                 num + 1
             });
@@ -105,10 +96,10 @@ where
             update,
             filter,
         } => {
-            let num_rows = execute_get_data(storage, &table_name, filter)
+            let num_rows = execute_get_data(storage, table_name, filter)
                 .map(|row| update.apply(row))
                 .fold(0, |num, row| {
-                    storage.set_data(&table_name, row).unwrap();
+                    storage.set_data(table_name, row).unwrap();
 
                     num + 1
                 });

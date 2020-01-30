@@ -1,24 +1,24 @@
 use crate::translator::{Blend, Filter, Limit, Update};
 use nom_sql::{CreateTableStatement, InsertStatement};
 
-pub struct SelectTranslation {
-    pub table_name: String,
-    pub blend: Blend,
-    pub filter: Filter,
-    pub limit: Limit,
+pub struct SelectTranslation<'a> {
+    pub table_name: &'a str,
+    pub blend: Blend<'a>,
+    pub filter: Filter<'a>,
+    pub limit: Limit<'a>,
 }
 
-pub enum CommandType {
-    Create(CreateTableStatement),
-    Insert(InsertStatement),
-    Select(SelectTranslation),
+pub enum CommandType<'a> {
+    Create(&'a CreateTableStatement),
+    Insert(&'a InsertStatement),
+    Select(SelectTranslation<'a>),
     Delete {
-        table_name: String,
-        filter: Filter,
+        table_name: &'a str,
+        filter: Filter<'a>,
     },
     Update {
-        table_name: String,
-        update: Update,
-        filter: Filter,
+        table_name: &'a str,
+        update: Update<'a>,
+        filter: Filter<'a>,
     },
 }

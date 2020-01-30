@@ -19,11 +19,11 @@ fn copy(
     (column, literal)
 }
 
-pub struct Update {
-    fields: Vec<(Column, FieldValueExpression)>,
+pub struct Update<'a> {
+    fields: &'a Vec<(Column, FieldValueExpression)>,
 }
 
-impl Update {
+impl Update<'_> {
     fn find(&self, column: &Column) -> Option<&(Column, FieldValueExpression)> {
         self.fields
             .iter()
@@ -45,8 +45,8 @@ impl Update {
     }
 }
 
-impl From<Vec<(Column, FieldValueExpression)>> for Update {
-    fn from(fields: Vec<(Column, FieldValueExpression)>) -> Self {
+impl<'a> From<&'a Vec<(Column, FieldValueExpression)>> for Update<'a> {
+    fn from(fields: &'a Vec<(Column, FieldValueExpression)>) -> Self {
         Update { fields }
     }
 }

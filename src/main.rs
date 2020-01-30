@@ -12,7 +12,7 @@ fn run<T: 'static + Debug>(storage: &dyn Store<T>, sql: &str) -> Result<Payload<
     let parsed = parse_query(sql).unwrap();
     println!("[Run] {}", parsed);
 
-    let command_queue = translate(parsed);
+    let command_queue = translate(&parsed);
 
     execute(storage, command_queue)
 }
