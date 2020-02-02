@@ -63,7 +63,7 @@ fn main() {
         "INSERT INTO TableA (id, test) VALUES (3, 500);",
     ];
 
-    for insert_sql in insert_sqls.into_iter() {
+    for insert_sql in insert_sqls.iter() {
         run_sql(insert_sql).unwrap();
     }
 
@@ -92,7 +92,7 @@ fn main() {
         compare(run_sql(sql), num);
     }
 
-    for insert_sql in insert_sqls.into_iter() {
+    for insert_sql in insert_sqls.iter() {
         run_sql(insert_sql).unwrap();
     }
 
