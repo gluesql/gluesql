@@ -1,6 +1,6 @@
 use crate::storage::Store;
-use crate::translator::{CommandType, Filter, Row, SelectTranslation};
-use nom_sql::InsertStatement;
+use crate::translator::{CommandType, Filter, Update, Row, Blend, Limit};
+use nom_sql::{DeleteStatement, InsertStatement, SelectStatement, UpdateStatement, Table};
 use std::fmt::Debug;
 
 pub enum Payload<T: Debug> {
@@ -24,32 +24,6 @@ fn execute_get_data<'a, T: 'static + Debug>(
     Box::new(rows)
 }
 
-pub fn execute_select<T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    translation: SelectTranslation,
-) -> Vec<Row<T>> {
-    let SelectTranslation {
-        table_name,
-        blend,
-        filter,
-        limit,
-    } = translation;
-
-    let rows = execute_get_data(storage, &table_name, filter)
-        .enumerate()
-        .filter(move |(i, _)| limit.check(i))
-        .map(|(_, row)| row)
-        .map(move |row| {
-            let Row { key, items } = row;
-            let items = items.into_iter().filter(|item| blend.check(item)).collect();
-
-            Row { key, items }
-        })
-        .collect::<Vec<Row<T>>>();
-
-    rows
-}
-
 pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
     command_type: CommandType,
@@ -60,8 +34,34 @@ pub fn execute<T: 'static + Debug>(
 
             Payload::Create
         }
-        CommandType::Select(translation) => {
-            let rows = execute_select(storage, translation);
+        CommandType::Select(select_statement) => {
+            let SelectStatement {
+                tables,
+                where_clause,
+                limit,
+                fields,
+                ..
+            } = select_statement;
+            let table_name = &tables
+                .iter()
+                .nth(0)
+                .expect("SelectStatement->tables should have something")
+                .name;
+            let blend = Blend::from(fields);
+            let filter = Filter::from(where_clause);
+            let limit = Limit::from(limit);
+
+            let rows = execute_get_data(storage, &table_name, filter)
+                .enumerate()
+                .filter(move |(i, _)| limit.check(i))
+                .map(|(_, row)| row)
+                .map(move |row| {
+                    let Row { key, items } = row;
+                    let items = items.into_iter().filter(|item| blend.check(item)).collect();
+
+                    Row { key, items }
+                })
+                .collect::<Vec<Row<T>>>();
 
             Payload::Select(rows)
         }
@@ -82,7 +82,16 @@ pub fn execute<T: 'static + Debug>(
 
             Payload::Insert(row)
         }
-        CommandType::Delete { table_name, filter } => {
+        CommandType::Delete(delete_statement) => {
+            let DeleteStatement {
+                table: Table {
+                    name: table_name,
+                    ..
+                },
+                where_clause,
+            } = delete_statement;
+            let filter = Filter::from(where_clause);
+
             let num_rows = execute_get_data(storage, table_name, filter).fold(0, |num, row| {
                 storage.del_data(table_name, &row.key).unwrap();
 
@@ -91,11 +100,18 @@ pub fn execute<T: 'static + Debug>(
 
             Payload::Delete(num_rows)
         }
-        CommandType::Update {
-            table_name,
-            update,
-            filter,
-        } => {
+        CommandType::Update(update_statement) => {
+            let UpdateStatement {
+                table: Table {
+                    name: table_name,
+                    ..
+                },
+                fields,
+                where_clause,
+            } = update_statement;
+            let update = Update::from(fields);
+            let filter = Filter::from(where_clause);
+
             let num_rows = execute_get_data(storage, table_name, filter)
                 .map(|row| update.apply(row))
                 .fold(0, |num, row| {
