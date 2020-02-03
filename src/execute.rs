@@ -1,5 +1,6 @@
+use crate::row::Row;
 use crate::storage::Store;
-use crate::translator::{Blend, Filter, Limit, Row, Update};
+use crate::translator::{Blend, Filter, Limit, Update};
 use nom_sql::{
     DeleteStatement, InsertStatement, SelectStatement, SqlQuery, Table, UpdateStatement,
 };

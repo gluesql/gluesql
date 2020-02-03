@@ -1,4 +1,4 @@
-use crate::translator::Row;
+use crate::row::Row;
 use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Literal, Operator};
 use std::convert::From;
 use std::fmt::Debug;
