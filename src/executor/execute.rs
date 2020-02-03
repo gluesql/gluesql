@@ -1,6 +1,8 @@
 use crate::storage::Store;
-use crate::translator::{CommandType, Filter, Update, Row, Blend, Limit};
-use nom_sql::{DeleteStatement, InsertStatement, SelectStatement, UpdateStatement, Table};
+use crate::translator::{Blend, Filter, Limit, Row, Update};
+use nom_sql::{
+    DeleteStatement, InsertStatement, SelectStatement, SqlQuery, Table, UpdateStatement,
+};
 use std::fmt::Debug;
 
 pub enum Payload<T: Debug> {
@@ -26,22 +28,22 @@ fn execute_get_data<'a, T: 'static + Debug>(
 
 pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
-    command_type: CommandType,
+    sql_query: &SqlQuery,
 ) -> Result<Payload<T>, ()> {
-    let payload = match command_type {
-        CommandType::Create(statement) => {
+    let payload = match sql_query {
+        SqlQuery::CreateTable(statement) => {
             storage.set_schema(statement).unwrap();
 
             Payload::Create
         }
-        CommandType::Select(select_statement) => {
+        SqlQuery::Select(statement) => {
             let SelectStatement {
                 tables,
                 where_clause,
                 limit,
                 fields,
                 ..
-            } = select_statement;
+            } = statement;
             let table_name = &tables
                 .iter()
                 .nth(0)
@@ -65,8 +67,8 @@ pub fn execute<T: 'static + Debug>(
 
             Payload::Select(rows)
         }
-        CommandType::Insert(insert_statement) => {
-            let (table_name, insert_fields, insert_data) = match insert_statement {
+        SqlQuery::Insert(statement) => {
+            let (table_name, insert_fields, insert_data) = match statement {
                 InsertStatement {
                     table,
                     fields,
@@ -82,14 +84,13 @@ pub fn execute<T: 'static + Debug>(
 
             Payload::Insert(row)
         }
-        CommandType::Delete(delete_statement) => {
+        SqlQuery::Delete(statement) => {
             let DeleteStatement {
                 table: Table {
-                    name: table_name,
-                    ..
+                    name: table_name, ..
                 },
                 where_clause,
-            } = delete_statement;
+            } = statement;
             let filter = Filter::from(where_clause);
 
             let num_rows = execute_get_data(storage, table_name, filter).fold(0, |num, row| {
@@ -100,15 +101,14 @@ pub fn execute<T: 'static + Debug>(
 
             Payload::Delete(num_rows)
         }
-        CommandType::Update(update_statement) => {
+        SqlQuery::Update(statement) => {
             let UpdateStatement {
                 table: Table {
-                    name: table_name,
-                    ..
+                    name: table_name, ..
                 },
                 fields,
                 where_clause,
-            } = update_statement;
+            } = statement;
             let update = Update::from(fields);
             let filter = Filter::from(where_clause);
 
@@ -122,6 +122,7 @@ pub fn execute<T: 'static + Debug>(
 
             Payload::Update(num_rows)
         }
+        _ => unimplemented!(),
     };
 
     Ok(payload)

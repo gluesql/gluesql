@@ -6,15 +6,12 @@ use executor::{execute, Payload};
 use nom_sql::parse_query;
 use std::fmt::Debug;
 use storage::{SledStorage, Store};
-use translator::translate;
 
 fn run<T: 'static + Debug>(storage: &dyn Store<T>, sql: &str) -> Result<Payload<T>, ()> {
     let parsed = parse_query(sql).unwrap();
     println!("[Run] {}", parsed);
 
-    let command_queue = translate(&parsed);
-
-    execute(storage, command_queue)
+    execute(storage, &parsed)
 }
 
 fn print<T: 'static + Debug>(result: Result<Payload<T>, ()>) {
