@@ -1,8 +1,8 @@
-mod executor;
+mod execute;
 mod storage;
 mod translator;
 
-use executor::{execute, Payload};
+use execute::{execute, Payload};
 use nom_sql::parse_query;
 use std::fmt::Debug;
 use storage::{SledStorage, Store};
