@@ -1,6 +1,5 @@
 use crate::row::Row;
 use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Literal, Operator};
-use std::convert::From;
 use std::fmt::Debug;
 
 fn parse_expr<'a, T: Debug>(row: &'a Row<T>, expr: &'a ConditionExpression) -> Option<&'a Literal> {
@@ -42,7 +41,7 @@ fn check_expr<'a, T: Debug>(row: &'a Row<T>, expr: &'a ConditionExpression) -> b
 }
 
 pub struct Filter<'a> {
-    where_clause: &'a Option<ConditionExpression>,
+    pub where_clause: &'a Option<ConditionExpression>,
 }
 
 impl Filter<'_> {
@@ -50,11 +49,5 @@ impl Filter<'_> {
         self.where_clause
             .as_ref()
             .map_or(true, |expr| check_expr(row, expr))
-    }
-}
-
-impl<'a> From<&'a Option<ConditionExpression>> for Filter<'a> {
-    fn from(where_clause: &'a Option<ConditionExpression>) -> Self {
-        Filter { where_clause }
     }
 }

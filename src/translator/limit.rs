@@ -1,8 +1,7 @@
 use nom_sql::LimitClause;
-use std::convert::From;
 
 pub struct Limit<'a> {
-    limit_clause: &'a Option<LimitClause>,
+    pub limit_clause: &'a Option<LimitClause>,
 }
 
 impl Limit<'_> {
@@ -14,11 +13,5 @@ impl Limit<'_> {
             .map_or(true, |LimitClause { limit, offset }| {
                 i >= *offset && i < *offset + *limit
             })
-    }
-}
-
-impl<'a> From<&'a Option<LimitClause>> for Limit<'a> {
-    fn from(limit_clause: &'a Option<LimitClause>) -> Self {
-        Limit { limit_clause }
     }
 }

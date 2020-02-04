@@ -41,7 +41,7 @@ pub fn execute<T: 'static + Debug>(
             let SelectStatement {
                 tables,
                 where_clause,
-                limit,
+                limit: limit_clause,
                 fields,
                 ..
             } = statement;
@@ -50,9 +50,9 @@ pub fn execute<T: 'static + Debug>(
                 .nth(0)
                 .expect("SelectStatement->tables should have something")
                 .name;
-            let blend = Blend::from(fields);
-            let filter = Filter::from(where_clause);
-            let limit = Limit::from(limit);
+            let blend = Blend { fields };
+            let filter = Filter { where_clause };
+            let limit = Limit { limit_clause };
 
             let rows = execute_get_data(storage, &table_name, filter)
                 .enumerate()
@@ -92,7 +92,7 @@ pub fn execute<T: 'static + Debug>(
                 },
                 where_clause,
             } = statement;
-            let filter = Filter::from(where_clause);
+            let filter = Filter { where_clause };
 
             let num_rows = execute_get_data(storage, table_name, filter).fold(0, |num, row| {
                 storage.del_data(table_name, &row.key).unwrap();
@@ -110,8 +110,8 @@ pub fn execute<T: 'static + Debug>(
                 fields,
                 where_clause,
             } = statement;
-            let update = Update::from(fields);
-            let filter = Filter::from(where_clause);
+            let update = Update { fields };
+            let filter = Filter { where_clause };
 
             let num_rows = execute_get_data(storage, table_name, filter)
                 .map(|row| update.apply(row))

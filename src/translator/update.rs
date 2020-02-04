@@ -20,7 +20,7 @@ fn copy(
 }
 
 pub struct Update<'a> {
-    fields: &'a Vec<(Column, FieldValueExpression)>,
+    pub fields: &'a Vec<(Column, FieldValueExpression)>,
 }
 
 impl Update<'_> {
@@ -42,11 +42,5 @@ impl Update<'_> {
             .collect::<Vec<(Column, Literal)>>();
 
         Row { key, items }
-    }
-}
-
-impl<'a> From<&'a Vec<(Column, FieldValueExpression)>> for Update<'a> {
-    fn from(fields: &'a Vec<(Column, FieldValueExpression)>) -> Self {
-        Update { fields }
     }
 }

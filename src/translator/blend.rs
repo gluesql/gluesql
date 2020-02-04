@@ -1,8 +1,7 @@
 use nom_sql::{Column, FieldDefinitionExpression, Literal};
-use std::convert::From;
 
 pub struct Blend<'a> {
-    fields: &'a Vec<FieldDefinitionExpression>,
+    pub fields: &'a Vec<FieldDefinitionExpression>,
 }
 
 impl Blend<'_> {
@@ -13,11 +12,5 @@ impl Blend<'_> {
             FieldDefinitionExpression::Col(column) => column.name == item.0.name,
             FieldDefinitionExpression::Value(_) => unimplemented!(),
         })
-    }
-}
-
-impl<'a> From<&'a Vec<FieldDefinitionExpression>> for Blend<'a> {
-    fn from(fields: &'a Vec<FieldDefinitionExpression>) -> Self {
-        Blend { fields }
     }
 }
