@@ -10,5 +10,5 @@ edition = "2018"
 bincode = "1.2.1"
 regex = "1"
 serde = { version = "1.0.104", features = ["derive"] }
-sled = "0.30.3"
-nom-sql = "0.0.10"
+sled = "0.31.0"
+nom-sql = "0.0.11"
