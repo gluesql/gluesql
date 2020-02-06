@@ -17,7 +17,7 @@ pub enum Payload<T: Debug> {
 fn execute_get_data<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &str,
-    filter: Filter<'a>,
+    filter: Filter<'a, T>,
 ) -> Box<dyn Iterator<Item = Row<T>> + 'a> {
     let rows = storage
         .get_data(&table_name)
@@ -51,7 +51,10 @@ pub fn execute<T: 'static + Debug>(
                 .expect("SelectStatement->tables should have something")
                 .name;
             let blend = Blend { fields };
-            let filter = Filter { where_clause };
+            let filter = Filter {
+                storage,
+                where_clause,
+            };
             let limit = Limit { limit_clause };
 
             let rows = execute_get_data(storage, &table_name, filter)
@@ -92,7 +95,10 @@ pub fn execute<T: 'static + Debug>(
                 },
                 where_clause,
             } = statement;
-            let filter = Filter { where_clause };
+            let filter = Filter {
+                storage,
+                where_clause,
+            };
 
             let num_rows = execute_get_data(storage, table_name, filter).fold(0, |num, row| {
                 storage.del_data(table_name, &row.key).unwrap();
@@ -111,7 +117,10 @@ pub fn execute<T: 'static + Debug>(
                 where_clause,
             } = statement;
             let update = Update { fields };
-            let filter = Filter { where_clause };
+            let filter = Filter {
+                storage,
+                where_clause,
+            };
 
             let num_rows = execute_get_data(storage, table_name, filter)
                 .map(|row| update.apply(row))

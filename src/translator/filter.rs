@@ -1,4 +1,5 @@
 use crate::row::Row;
+use crate::storage::Store;
 use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Literal, Operator};
 use std::fmt::Debug;
 
@@ -40,12 +41,13 @@ fn check_expr<'a, T: Debug>(row: &'a Row<T>, expr: &'a ConditionExpression) -> b
     }
 }
 
-pub struct Filter<'a> {
+pub struct Filter<'a, T: Debug> {
     pub where_clause: &'a Option<ConditionExpression>,
+    pub storage: &'a dyn Store<T>,
 }
 
-impl Filter<'_> {
-    pub fn check<'a, T: Debug>(&'a self, row: &'a Row<T>) -> bool {
+impl<T: Debug> Filter<'_, T> {
+    pub fn check<'a>(&'a self, row: &'a Row<T>) -> bool {
         self.where_clause
             .as_ref()
             .map_or(true, |expr| check_expr(row, expr))
