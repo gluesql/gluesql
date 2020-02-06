@@ -68,6 +68,10 @@ fn main() {
     let test_cases = vec![
         (6, "SELECT * FROM TableA;"),
         (4, "SELECT * FROM TableA WHERE id = 3;"),
+        (
+            4,
+            "SELECT * FROM TableA WHERE id = (SELECT id FROM TableA WHERE id = 3 LIMIT 1)",
+        ),
         (2, "SELECT * FROM TableA WHERE id = 3 AND test = 500;"),
         (6, "SELECT * FROM TableA WHERE id = 3 OR test = 100;"),
         (0, "SELECT * FROM TableA WHERE id != 3 AND test != 100;"),
