@@ -1,7 +1,7 @@
 mod execute;
+mod executor;
 mod row;
 mod storage;
-mod executor;
 
 use execute::{execute, Payload};
 use nom_sql::parse_query;

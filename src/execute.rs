@@ -1,9 +1,7 @@
+use crate::executor::{fetch, select, Filter, Update};
 use crate::row::Row;
 use crate::storage::Store;
-use crate::executor::{Blend, Filter, Limit, Update};
-use nom_sql::{
-    DeleteStatement, InsertStatement, SelectStatement, SqlQuery, Table, UpdateStatement,
-};
+use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, Table, UpdateStatement};
 use std::fmt::Debug;
 
 pub enum Payload<T: Debug> {
@@ -12,19 +10,6 @@ pub enum Payload<T: Debug> {
     Select(Vec<Row<T>>),
     Delete(usize),
     Update(usize),
-}
-
-fn execute_get_data<'a, T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    table_name: &str,
-    filter: Filter<'a, T>,
-) -> Box<dyn Iterator<Item = Row<T>> + 'a> {
-    let rows = storage
-        .get_data(&table_name)
-        .unwrap()
-        .filter(move |row| filter.check(row));
-
-    Box::new(rows)
 }
 
 pub fn execute<T: 'static + Debug>(
@@ -38,36 +23,7 @@ pub fn execute<T: 'static + Debug>(
             Payload::Create
         }
         SqlQuery::Select(statement) => {
-            let SelectStatement {
-                tables,
-                where_clause,
-                limit: limit_clause,
-                fields,
-                ..
-            } = statement;
-            let table_name = &tables
-                .iter()
-                .nth(0)
-                .expect("SelectStatement->tables should have something")
-                .name;
-            let blend = Blend { fields };
-            let filter = Filter {
-                storage,
-                where_clause,
-            };
-            let limit = Limit { limit_clause };
-
-            let rows = execute_get_data(storage, &table_name, filter)
-                .enumerate()
-                .filter(move |(i, _)| limit.check(i))
-                .map(|(_, row)| row)
-                .map(move |row| {
-                    let Row { key, items } = row;
-                    let items = items.into_iter().filter(|item| blend.check(item)).collect();
-
-                    Row { key, items }
-                })
-                .collect::<Vec<Row<T>>>();
+            let rows = select(storage, statement);
 
             Payload::Select(rows)
         }
@@ -100,7 +56,7 @@ pub fn execute<T: 'static + Debug>(
                 where_clause,
             };
 
-            let num_rows = execute_get_data(storage, table_name, filter).fold(0, |num, row| {
+            let num_rows = fetch(storage, table_name, filter).fold(0, |num, row| {
                 storage.del_data(table_name, &row.key).unwrap();
 
                 num + 1
@@ -122,7 +78,7 @@ pub fn execute<T: 'static + Debug>(
                 where_clause,
             };
 
-            let num_rows = execute_get_data(storage, table_name, filter)
+            let num_rows = fetch(storage, table_name, filter)
                 .map(|row| update.apply(row))
                 .fold(0, |num, row| {
                     storage.set_data(table_name, row).unwrap();
