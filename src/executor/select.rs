@@ -1,4 +1,4 @@
-use crate::executor::{fetch, Blend, Filter, Limit};
+use crate::executor::{fetch, Blend, Context, Filter, Limit};
 use crate::row::Row;
 use crate::storage::Store;
 use nom_sql::SelectStatement;
@@ -7,6 +7,7 @@ use std::fmt::Debug;
 pub fn select<T: 'static + Debug>(
     storage: &dyn Store<T>,
     statement: &SelectStatement,
+    context: Option<&Context<T>>,
 ) -> Vec<Row<T>> {
     let SelectStatement {
         tables,
@@ -15,19 +16,19 @@ pub fn select<T: 'static + Debug>(
         fields,
         ..
     } = statement;
-    let table_name = &tables
+    let table = &tables
         .iter()
         .nth(0)
-        .expect("SelectStatement->tables should have something")
-        .name;
+        .expect("SelectStatement->tables should have something");
     let blend = Blend { fields };
     let filter = Filter {
         storage,
         where_clause,
+        context,
     };
     let limit = Limit { limit_clause };
 
-    fetch(storage, &table_name, filter)
+    fetch(storage, table, filter)
         .enumerate()
         .filter(move |(i, _)| limit.check(i))
         .map(|(_, row)| row)

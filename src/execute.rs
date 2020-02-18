@@ -1,7 +1,7 @@
 use crate::executor::{fetch, select, Filter, Update};
 use crate::row::Row;
 use crate::storage::Store;
-use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, Table, UpdateStatement};
+use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
 use std::fmt::Debug;
 
 pub enum Payload<T: Debug> {
@@ -23,7 +23,7 @@ pub fn execute<T: 'static + Debug>(
             Payload::Create
         }
         SqlQuery::Select(statement) => {
-            let rows = select(storage, statement);
+            let rows = select(storage, statement, None);
 
             Payload::Select(rows)
         }
@@ -46,18 +46,17 @@ pub fn execute<T: 'static + Debug>(
         }
         SqlQuery::Delete(statement) => {
             let DeleteStatement {
-                table: Table {
-                    name: table_name, ..
-                },
+                table,
                 where_clause,
             } = statement;
             let filter = Filter {
                 storage,
                 where_clause,
+                context: None,
             };
 
-            let num_rows = fetch(storage, table_name, filter).fold(0, |num, row| {
-                storage.del_data(table_name, &row.key).unwrap();
+            let num_rows = fetch(storage, table, filter).fold(0, |num, row| {
+                storage.del_data(&table.name, &row.key).unwrap();
 
                 num + 1
             });
@@ -66,9 +65,7 @@ pub fn execute<T: 'static + Debug>(
         }
         SqlQuery::Update(statement) => {
             let UpdateStatement {
-                table: Table {
-                    name: table_name, ..
-                },
+                table,
                 fields,
                 where_clause,
             } = statement;
@@ -76,12 +73,13 @@ pub fn execute<T: 'static + Debug>(
             let filter = Filter {
                 storage,
                 where_clause,
+                context: None,
             };
 
-            let num_rows = fetch(storage, table_name, filter)
+            let num_rows = fetch(storage, table, filter)
                 .map(|row| update.apply(row))
                 .fold(0, |num, row| {
-                    storage.set_data(table_name, row).unwrap();
+                    storage.set_data(&table.name, row).unwrap();
 
                     num + 1
                 });

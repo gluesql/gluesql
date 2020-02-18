@@ -10,10 +10,12 @@ pub struct Row<T: Debug> {
 }
 
 impl<T: Debug> Row<T> {
-    pub fn get_literal(&self, column_name: &str) -> Option<&Literal> {
+    pub fn get_literal(&self, target: &Column) -> Option<&Literal> {
+        let column_name = &target.name;
+
         self.items
             .iter()
-            .filter(|(column, _)| column.name == column_name)
+            .filter(|(column, _)| &column.name == column_name)
             .map(|(_, literal)| literal)
             .nth(0)
     }
