@@ -1,40 +1,10 @@
-mod execute;
-mod executor;
-mod row;
-mod storage;
+mod helper;
 
-use execute::{execute, Payload};
-use nom_sql::parse_query;
-use std::fmt::Debug;
-use storage::{SledStorage, Store};
+use gluesql::{Payload, SledStorage};
+use helper::{compare, print, run};
 
-fn run<T: 'static + Debug>(storage: &dyn Store<T>, sql: &str) -> Result<Payload<T>, ()> {
-    let parsed = parse_query(sql).unwrap();
-    println!("[Run] {}", parsed);
-
-    execute(storage, &parsed)
-}
-
-fn print<T: 'static + Debug>(result: Result<Payload<T>, ()>) {
-    match result.unwrap() {
-        Payload::Select(rows) => println!("[Ok ]\n{:#?}\n", rows),
-        Payload::Insert(row) => println!("[Ok ]\n{:#?}\n", row),
-        Payload::Delete(num) => println!("[Ok ] {} rows deleted.\n", num),
-        Payload::Update(num) => println!("[Ok ] {} rows updated.\n", num),
-        Payload::Create => println!("[Ok ] :)\n"),
-    };
-}
-
-fn compare<T: 'static + Debug>(result: Result<Payload<T>, ()>, count: usize) {
-    match result.unwrap() {
-        Payload::Select(rows) => assert_eq!(rows.len(), count),
-        Payload::Delete(num) => assert_eq!(num, count),
-        Payload::Update(num) => assert_eq!(num, count),
-        _ => panic!("compare is only for Select, Delete and Update"),
-    };
-}
-
-fn main() {
+#[test]
+fn synthesize() {
     println!("\n\n");
 
     let storage = SledStorage::new(String::from("data.db"));
