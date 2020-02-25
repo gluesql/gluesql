@@ -1,14 +1,12 @@
 mod helper;
 
-use gluesql::{Payload, SledStorage};
-use helper::{compare, print, run};
+use helper::Helper;
 
 #[test]
 fn synthesize() {
     println!("\n\n");
 
-    let storage = SledStorage::new(String::from("data.db"));
-    let run_sql = |sql| run(&storage, sql);
+    let helper = Helper::new("data.db");
 
     let create_sql = "
         CREATE TABLE TableA (
@@ -18,10 +16,10 @@ fn synthesize() {
         );
     ";
 
-    print(run_sql(create_sql));
+    helper.run_and_print::<u64>(create_sql);
 
     let delete_sql = "DELETE FROM TableA";
-    print(run_sql(delete_sql));
+    helper.run_and_print::<u64>(delete_sql);
 
     let insert_sqls: [&str; 6] = [
         "INSERT INTO TableA (id, test, target_id) VALUES (1, 100, 2);",
@@ -33,7 +31,7 @@ fn synthesize() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        run_sql(insert_sql).unwrap();
+        helper.run::<u64>(insert_sql).unwrap();
     }
 
     let test_cases = vec![
@@ -64,28 +62,26 @@ fn synthesize() {
     ];
 
     for (num, sql) in test_cases {
-        compare(run_sql(sql), num);
+        helper.test_rows::<u64>(sql, num);
     }
 
     for insert_sql in insert_sqls.iter() {
-        run_sql(insert_sql).unwrap();
+        helper.run::<u64>(insert_sql).unwrap();
     }
 
     let test_select = |sql, num| {
-        match run_sql(sql).unwrap() {
-            Payload::Select(rows) => assert_eq!(rows.into_iter().nth(0).unwrap().items.len(), num),
-            _ => assert!(false),
-        };
+        helper.test_columns::<u64>(sql, num);
     };
 
-    let select_sql = "SELECT id, test FROM TableA;";
-    test_select(select_sql, 2);
+    let test_cases = vec![
+        (2, "SELECT id, test FROM TableA;"),
+        (1, "SELECT id FROM TableA;"),
+        (3, "SELECT * FROM TableA;"),
+    ];
 
-    let select_sql = "SELECT id FROM TableA;";
-    test_select(select_sql, 1);
-
-    let select_sql = "SELECT * FROM TableA;";
-    test_select(select_sql, 3);
+    for (num, sql) in test_cases {
+        test_select(sql, num);
+    }
 
     println!("\n\n");
 }
