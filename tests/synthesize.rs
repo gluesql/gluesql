@@ -1,12 +1,12 @@
 mod helper;
 
-use helper::Helper;
+use helper::{Helper, SledHelper};
 
 #[test]
 fn synthesize() {
     println!("\n\n");
 
-    let helper = Helper::new("data.db");
+    let helper = SledHelper::new("data.db");
 
     let create_sql = "
         CREATE TABLE TableA (
@@ -16,10 +16,10 @@ fn synthesize() {
         );
     ";
 
-    helper.run_and_print::<u64>(create_sql);
+    helper.run_and_print(create_sql);
 
     let delete_sql = "DELETE FROM TableA";
-    helper.run_and_print::<u64>(delete_sql);
+    helper.run_and_print(delete_sql);
 
     let insert_sqls: [&str; 6] = [
         "INSERT INTO TableA (id, test, target_id) VALUES (1, 100, 2);",
@@ -31,7 +31,7 @@ fn synthesize() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        helper.run::<u64>(insert_sql).unwrap();
+        helper.run(insert_sql).unwrap();
     }
 
     let test_cases = vec![
@@ -62,15 +62,15 @@ fn synthesize() {
     ];
 
     for (num, sql) in test_cases {
-        helper.test_rows::<u64>(sql, num);
+        helper.test_rows(sql, num);
     }
 
     for insert_sql in insert_sqls.iter() {
-        helper.run::<u64>(insert_sql).unwrap();
+        helper.run(insert_sql).unwrap();
     }
 
     let test_select = |sql, num| {
-        helper.test_columns::<u64>(sql, num);
+        helper.test_columns(sql, num);
     };
 
     let test_cases = vec![

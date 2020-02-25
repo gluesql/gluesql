@@ -1,26 +1,20 @@
 use gluesql::{execute, Payload, SledStorage, Store};
 use nom_sql::parse_query;
+use std::fmt::Debug;
 
-pub struct Helper<T> {
-    storage: Box<dyn Store<T>>,
-}
+pub trait Helper<T: 'static + Debug> {
+    fn get_storage(&self) -> &dyn Store<T>;
 
-impl Helper<u64> {
-    pub fn new(path: &str) -> Self {
-        let storage = Box::new(SledStorage::new(path.to_string()));
-
-        Helper { storage }
-    }
-
-    pub fn run<U64>(&self, sql: &str) -> Result<Payload<u64>, ()> {
+    fn run(&self, sql: &str) -> Result<Payload<T>, ()> {
         let parsed = parse_query(sql).unwrap();
-        println!("[Run] {}", parsed);
+        let storage = self.get_storage();
 
-        execute(self.storage.as_ref(), &parsed)
+        println!("[Run] {}", parsed);
+        execute(storage, &parsed)
     }
 
-    pub fn run_and_print<U64>(&self, sql: &str) {
-        let result = self.run::<u64>(sql);
+    fn run_and_print(&self, sql: &str) {
+        let result = self.run(sql);
 
         match result.unwrap() {
             Payload::Select(rows) => println!("[Ok ]\n{:#?}\n", rows),
@@ -31,8 +25,8 @@ impl Helper<u64> {
         };
     }
 
-    pub fn test_rows<U64>(&self, sql: &str, count: usize) {
-        let result = self.run::<u64>(sql);
+    fn test_rows(&self, sql: &str, count: usize) {
+        let result = self.run(sql);
 
         match result.unwrap() {
             Payload::Select(rows) => assert_eq!(rows.len(), count),
@@ -42,8 +36,8 @@ impl Helper<u64> {
         };
     }
 
-    pub fn test_columns<U64>(&self, sql: &str, count: usize) {
-        let result = self.run::<u64>(sql);
+    fn test_columns(&self, sql: &str, count: usize) {
+        let result = self.run(sql);
 
         match result.unwrap() {
             Payload::Select(rows) => {
@@ -51,5 +45,23 @@ impl Helper<u64> {
             }
             _ => assert!(false),
         };
+    }
+}
+
+pub struct SledHelper {
+    storage: Box<SledStorage>,
+}
+
+impl SledHelper {
+    pub fn new(path: &str) -> Self {
+        let storage = Box::new(SledStorage::new(path.to_string()));
+
+        SledHelper { storage }
+    }
+}
+
+impl Helper<u64> for SledHelper {
+    fn get_storage(&self) -> &dyn Store<u64> {
+        self.storage.as_ref()
     }
 }
