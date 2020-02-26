@@ -119,17 +119,21 @@ fn check_expr<'a, T: 'static + Debug>(
 
     let check_tree = |tree: &'a ConditionTree| {
         let zip_check = || Ok((check(&tree.left), check(&tree.right)));
-        let zip_parse = || Ok((parse(&tree.left), parse(&tree.right)));
-        let zip_in = || Ok((parse(&tree.left), parse_in(&tree.right)));
+        let zip_parse = || match (parse(&tree.left), parse(&tree.right)) {
+            (Some(l), Some(r)) => Ok((l, r)),
+            _ => Err(()),
+        };
+        let zip_in = || match (parse(&tree.left), parse_in(&tree.right)) {
+            (Some(l), Some(r)) => Ok((l, r)),
+            _ => Err(()),
+        };
 
         let result: Result<bool, ()> = match tree.operator {
-            Operator::Equal => zip_parse().map(|(l, r)| l.is_some() && r.is_some() && l == r),
-            Operator::NotEqual => zip_parse().map(|(l, r)| l.is_some() && r.is_some() && l != r),
+            Operator::Equal => zip_parse().map(|(l, r)| l == r),
+            Operator::NotEqual => zip_parse().map(|(l, r)| l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
-            Operator::In => zip_in().map(|(l, r)| {
-                l.is_some() && r.is_some() && ParsedList::contains(r.unwrap(), &l.unwrap())
-            }),
+            Operator::In => zip_in().map(|(l, r)| ParsedList::contains(r, &l)),
             _ => Ok(false),
         };
 
