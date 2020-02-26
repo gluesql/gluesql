@@ -70,13 +70,8 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionBase::Field(v) => context.get_literal(&v).map(|literal| Parsed::Ref(literal)),
         ConditionBase::Literal(literal) => Some(Parsed::Ref(literal)),
         ConditionBase::NestedSelect(statement) => {
-            let (_, literal) = select(storage, statement, Some(context))
-                .nth(0)
-                .unwrap()
-                .items
-                .into_iter()
-                .nth(0)
-                .unwrap();
+            let first_row = select(storage, statement, Some(context)).nth(0).unwrap();
+            let literal = Row::take_first_literal(first_row).unwrap();
 
             Some(Parsed::Val(literal))
         }
@@ -98,7 +93,8 @@ fn parse_in_expr<'a, T: 'static + Debug>(
         ConditionBase::LiteralList(literals) => Some(ParsedList::Ref(literals)),
         ConditionBase::NestedSelect(statement) => {
             let literals = select(storage, statement, Some(context))
-                .map(|row| row.items.into_iter().nth(0).unwrap().1);
+                .map(Row::take_first_literal)
+                .map(|literal| literal.unwrap());
             let literals = Box::new(literals);
 
             Some(ParsedList::Val(literals))

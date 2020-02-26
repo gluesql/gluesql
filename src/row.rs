@@ -21,6 +21,12 @@ impl<T: Debug> Row<T> {
     }
 }
 
+impl<T: Debug> Row<T> {
+    pub fn take_first_literal(row: Row<T>) -> Option<Literal> {
+        row.items.into_iter().nth(0).map(|(_, literal)| literal)
+    }
+}
+
 impl<'a, T: Debug>
     From<(
         T,
