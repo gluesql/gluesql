@@ -73,7 +73,6 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionBase::Literal(literal) => Some(Parsed::Ref(literal)),
         ConditionBase::NestedSelect(statement) => {
             let (_, literal) = select(storage, statement, Some(context))
-                .into_iter()
                 .nth(0)
                 .unwrap()
                 .items
@@ -101,7 +100,6 @@ fn parse_in_expr<'a, T: 'static + Debug>(
         ConditionBase::LiteralList(literals) => Some(ParsedList::Ref(literals)),
         ConditionBase::NestedSelect(statement) => {
             let literals = select(storage, statement, Some(context))
-                .into_iter()
                 .map(|row| row.items.into_iter().nth(0).unwrap().1)
                 .collect();
 

@@ -4,11 +4,11 @@ use crate::storage::Store;
 use nom_sql::SelectStatement;
 use std::fmt::Debug;
 
-pub fn select<T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    statement: &SelectStatement,
-    context: Option<&Context<T>>,
-) -> Vec<Row<T>> {
+pub fn select<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    statement: &'a SelectStatement,
+    context: Option<&'a Context<'a, T>>,
+) -> Box<dyn Iterator<Item = Row<T>> + 'a> {
     let SelectStatement {
         tables,
         where_clause,
@@ -28,7 +28,7 @@ pub fn select<T: 'static + Debug>(
     };
     let limit = Limit { limit_clause };
 
-    fetch(storage, table, filter)
+    let rows = fetch(storage, table, filter)
         .enumerate()
         .filter(move |(i, _)| limit.check(i))
         .map(|(_, row)| row)
@@ -37,6 +37,7 @@ pub fn select<T: 'static + Debug>(
             let items = items.into_iter().filter(|item| blend.check(item)).collect();
 
             Row { key, items }
-        })
-        .collect()
+        });
+
+    Box::new(rows)
 }

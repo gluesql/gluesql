@@ -23,7 +23,7 @@ pub fn execute<T: 'static + Debug>(
             Payload::Create
         }
         SqlQuery::Select(statement) => {
-            let rows = select(storage, statement, None);
+            let rows = select(storage, statement, None).collect();
 
             Payload::Select(rows)
         }
