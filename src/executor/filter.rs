@@ -44,22 +44,20 @@ impl<'a> PartialEq for Parsed<'a> {
 
 enum ParsedList<'a> {
     Ref(&'a Vec<Literal>),
-    Val(Vec<Literal>),
+    Val(Box<dyn Iterator<Item = Literal> + 'a>),
 }
 
-impl<'a> ParsedList<'a> {
-    fn contains(&self, target: &Parsed<'a>) -> bool {
+impl ParsedList<'_> {
+    fn contains(list: ParsedList<'_>, target: &Parsed<'_>) -> bool {
         let target: &Literal = match target {
             Parsed::Ref(literal) => literal,
             Parsed::Val(literal) => &literal,
         };
 
-        let literals: &Vec<Literal> = match &self {
-            ParsedList::Ref(literals) => literals,
-            ParsedList::Val(literals) => &literals,
-        };
-
-        literals.iter().any(|literal| literal == target)
+        match list {
+            ParsedList::Ref(literals) => literals.iter().any(|literal| literal == target),
+            ParsedList::Val(literals) => literals.into_iter().any(|literal| &literal == target),
+        }
     }
 }
 
@@ -100,8 +98,8 @@ fn parse_in_expr<'a, T: 'static + Debug>(
         ConditionBase::LiteralList(literals) => Some(ParsedList::Ref(literals)),
         ConditionBase::NestedSelect(statement) => {
             let literals = select(storage, statement, Some(context))
-                .map(|row| row.items.into_iter().nth(0).unwrap().1)
-                .collect();
+                .map(|row| row.items.into_iter().nth(0).unwrap().1);
+            let literals = Box::new(literals);
 
             Some(ParsedList::Val(literals))
         }
@@ -133,8 +131,9 @@ fn check_expr<'a, T: 'static + Debug>(
             Operator::NotEqual => zip_parse().map(|(l, r)| l.is_some() && r.is_some() && l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
-            Operator::In => zip_in()
-                .map(|(l, r)| l.is_some() && r.is_some() && r.unwrap().contains(&l.unwrap())),
+            Operator::In => zip_in().map(|(l, r)| {
+                l.is_some() && r.is_some() && ParsedList::contains(r.unwrap(), &l.unwrap())
+            }),
             _ => Ok(false),
         };
 
