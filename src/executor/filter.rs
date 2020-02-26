@@ -42,14 +42,9 @@ impl<'a> PartialEq for Parsed<'a> {
     }
 }
 
-enum ParsedList<'a> {
-    Ref(&'a Vec<Literal>),
-    Val(Box<dyn Iterator<Item = Literal> + 'a>),
-}
-
-impl ParsedList<'_> {
-    fn contains(list: ParsedList<'_>, target: &Parsed<'_>) -> bool {
-        let target: &Literal = match target {
+impl Parsed<'_> {
+    fn exists_in(&self, list: ParsedList<'_>) -> bool {
+        let target: &Literal = match self {
             Parsed::Ref(literal) => literal,
             Parsed::Val(literal) => &literal,
         };
@@ -59,6 +54,11 @@ impl ParsedList<'_> {
             ParsedList::Val(literals) => literals.into_iter().any(|literal| &literal == target),
         }
     }
+}
+
+enum ParsedList<'a> {
+    Ref(&'a Vec<Literal>),
+    Val(Box<dyn Iterator<Item = Literal> + 'a>),
 }
 
 fn parse_expr<'a, T: 'static + Debug>(
@@ -133,7 +133,7 @@ fn check_expr<'a, T: 'static + Debug>(
             Operator::NotEqual => zip_parse().map(|(l, r)| l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
-            Operator::In => zip_in().map(|(l, r)| ParsedList::contains(r, &l)),
+            Operator::In => zip_in().map(|(l, r)| l.exists_in(r)),
             _ => Ok(false),
         };
 
