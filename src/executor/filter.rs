@@ -42,6 +42,27 @@ impl<'a> PartialEq for Parsed<'a> {
     }
 }
 
+enum ParsedList<'a> {
+    Ref(&'a Vec<Literal>),
+    Val(Vec<Literal>),
+}
+
+impl<'a> ParsedList<'a> {
+    fn contains(&self, target: &Parsed<'a>) -> bool {
+        let target: &Literal = match target {
+            Parsed::Ref(literal) => literal,
+            Parsed::Val(literal) => &literal,
+        };
+
+        let literals: &Vec<Literal> = match &self {
+            ParsedList::Ref(literals) => literals,
+            ParsedList::Val(literals) => &literals,
+        };
+
+        literals.iter().any(|literal| literal == target)
+    }
+}
+
 fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     context: &'a Context<'a, T>,
@@ -71,6 +92,30 @@ fn parse_expr<'a, T: 'static + Debug>(
     }
 }
 
+fn parse_in_expr<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    context: &'a Context<'a, T>,
+    expr: &'a ConditionExpression,
+) -> Option<ParsedList<'a>> {
+    let parse_base = |base: &'a ConditionBase| match base {
+        ConditionBase::LiteralList(literals) => Some(ParsedList::Ref(literals)),
+        ConditionBase::NestedSelect(statement) => {
+            let literals = select(storage, statement, Some(context))
+                .into_iter()
+                .map(|row| row.items.into_iter().nth(0).unwrap().1)
+                .collect();
+
+            Some(ParsedList::Val(literals))
+        }
+        _ => None,
+    };
+
+    match expr {
+        ConditionExpression::Base(base) => parse_base(&base),
+        _ => None,
+    }
+}
+
 fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     context: &'a Context<'a, T>,
@@ -78,16 +123,20 @@ fn check_expr<'a, T: 'static + Debug>(
 ) -> bool {
     let check = |expr| check_expr(storage, context, expr);
     let parse = |expr| parse_expr(storage, context, expr);
+    let parse_in = |expr| parse_in_expr(storage, context, expr);
 
     let check_tree = |tree: &'a ConditionTree| {
         let zip_check = || Ok((check(&tree.left), check(&tree.right)));
         let zip_parse = || Ok((parse(&tree.left), parse(&tree.right)));
+        let zip_in = || Ok((parse(&tree.left), parse_in(&tree.right)));
 
         let result: Result<bool, ()> = match tree.operator {
             Operator::Equal => zip_parse().map(|(l, r)| l.is_some() && r.is_some() && l == r),
             Operator::NotEqual => zip_parse().map(|(l, r)| l.is_some() && r.is_some() && l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
+            Operator::In => zip_in()
+                .map(|(l, r)| l.is_some() && r.is_some() && r.unwrap().contains(&l.unwrap())),
             _ => Ok(false),
         };
 
