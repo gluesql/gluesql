@@ -29,9 +29,9 @@ pub trait Helper<T: 'static + Debug> {
         let result = self.run(sql);
 
         match result.unwrap() {
-            Payload::Select(rows) => assert_eq!(rows.len(), count),
-            Payload::Delete(num) => assert_eq!(num, count),
-            Payload::Update(num) => assert_eq!(num, count),
+            Payload::Select(rows) => assert_eq!(count, rows.len()),
+            Payload::Delete(num) => assert_eq!(count, num),
+            Payload::Update(num) => assert_eq!(count, num),
             _ => panic!("compare is only for Select, Delete and Update"),
         };
     }
@@ -41,7 +41,7 @@ pub trait Helper<T: 'static + Debug> {
 
         match result.unwrap() {
             Payload::Select(rows) => {
-                assert_eq!(rows.into_iter().nth(0).unwrap().items.len(), count)
+                assert_eq!(count, rows.into_iter().nth(0).unwrap().items.len())
             }
             _ => assert!(false),
         };
