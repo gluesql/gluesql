@@ -1,5 +1,5 @@
-use crate::data::Row;
-use nom_sql::{Column, Literal, Table};
+use crate::data::{Row, Value};
+use nom_sql::{Column, Table};
 use std::fmt::Debug;
 
 #[derive(Debug)]
@@ -10,16 +10,16 @@ pub struct Context<'a, T: Debug> {
 }
 
 impl<'a, T: Debug> Context<'a, T> {
-    pub fn get_literal(&self, column: &'a Column) -> Option<&'a Literal> {
+    pub fn get_value(&self, column: &'a Column) -> Option<&'a Value> {
         let Table { alias, name } = self.table;
 
         match column.table {
-            None => self.row.get_literal(column),
+            None => self.row.get_value(column),
             Some(ref table) => {
                 if &column.table == alias || table == name {
-                    self.row.get_literal(column)
+                    self.row.get_value(column)
                 } else {
-                    self.next.unwrap().get_literal(column)
+                    self.next.unwrap().get_value(column)
                 }
             }
         }

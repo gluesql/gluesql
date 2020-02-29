@@ -1,5 +1,5 @@
-use crate::executor::{fetch, Blend, Context, Filter, Limit};
 use crate::data::Row;
+use crate::executor::{fetch, Blend, Context, Filter, Limit};
 use crate::storage::Store;
 use nom_sql::SelectStatement;
 use std::fmt::Debug;

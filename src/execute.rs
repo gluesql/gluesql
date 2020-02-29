@@ -1,5 +1,5 @@
-use crate::executor::{fetch, select, Filter, Update};
 use crate::data::Row;
+use crate::executor::{fetch, select, Filter, Update};
 use crate::storage::Store;
 use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
 use std::fmt::Debug;

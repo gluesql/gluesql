@@ -1,5 +1,5 @@
-use crate::executor::Filter;
 use crate::data::Row;
+use crate::executor::Filter;
 use crate::storage::Store;
 use nom_sql::Table;
 use std::fmt::Debug;

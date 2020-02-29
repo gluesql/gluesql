@@ -1,5 +1,5 @@
+use crate::data::{Row, Value};
 use crate::executor::{select, Context};
-use crate::data::Row;
 use crate::storage::Store;
 use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, Table};
 use std::fmt::Debug;
@@ -25,40 +25,45 @@ impl<T: 'static + Debug> Filter<'_, T> {
 }
 
 enum Parsed<'a> {
-    Ref(&'a Literal),
-    Val(Literal),
+    LiteralRef(&'a Literal),
+    ValueRef(&'a Value),
+    Value(Value),
 }
 
 impl<'a> PartialEq for Parsed<'a> {
     fn eq(&self, other: &Parsed<'a>) -> bool {
-        fn get<'a>(p: &'a Parsed<'a>) -> &'a Literal {
-            match p {
-                Parsed::Ref(p) => p,
-                Parsed::Val(p) => &p,
-            }
-        }
+        use Parsed::*;
 
-        get(self) == get(other)
+        match (self, other) {
+            (LiteralRef(lr), LiteralRef(lr2)) => lr == lr2,
+            (LiteralRef(lr), ValueRef(vr)) => vr == lr,
+            (LiteralRef(lr), Value(v)) => &v == lr,
+            (Value(v), LiteralRef(lr)) => &v == lr,
+            (Value(v), ValueRef(vr)) => &v == vr,
+            (Value(v), Value(v2)) => v == v2,
+            (ValueRef(vr), LiteralRef(lr)) => vr == lr,
+            (ValueRef(vr), ValueRef(vr2)) => vr == vr2,
+            (ValueRef(vr), Value(v)) => &v == vr,
+        }
     }
 }
 
 impl Parsed<'_> {
     fn exists_in(&self, list: ParsedList<'_>) -> bool {
-        let target: &Literal = match self {
-            Parsed::Ref(literal) => literal,
-            Parsed::Val(literal) => &literal,
-        };
-
         match list {
-            ParsedList::Ref(literals) => literals.iter().any(|literal| literal == target),
-            ParsedList::Val(literals) => literals.into_iter().any(|literal| &literal == target),
+            ParsedList::LiteralRef(literals) => literals
+                .iter()
+                .any(|literal| &Parsed::LiteralRef(&literal) == self),
+            ParsedList::Value(values) => values
+                .into_iter()
+                .any(|value| &Parsed::Value(value) == self),
         }
     }
 }
 
 enum ParsedList<'a> {
-    Ref(&'a Vec<Literal>),
-    Val(Box<dyn Iterator<Item = Literal> + 'a>),
+    LiteralRef(&'a Vec<Literal>),
+    Value(Box<dyn Iterator<Item = Value> + 'a>),
 }
 
 fn parse_expr<'a, T: 'static + Debug>(
@@ -67,13 +72,15 @@ fn parse_expr<'a, T: 'static + Debug>(
     expr: &'a ConditionExpression,
 ) -> Option<Parsed<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
-        ConditionBase::Field(v) => context.get_literal(&v).map(|literal| Parsed::Ref(literal)),
-        ConditionBase::Literal(literal) => Some(Parsed::Ref(literal)),
+        ConditionBase::Field(column) => context
+            .get_value(&column)
+            .map(|value| Parsed::ValueRef(value)),
+        ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
             let first_row = select(storage, statement, Some(context)).nth(0).unwrap();
-            let literal = Row::take_first_literal(first_row).unwrap();
+            let value = Row::take_first_value(first_row).unwrap();
 
-            Some(Parsed::Val(literal))
+            Some(Parsed::Value(value))
         }
         _ => None,
     };
@@ -90,14 +97,14 @@ fn parse_in_expr<'a, T: 'static + Debug>(
     expr: &'a ConditionExpression,
 ) -> Option<ParsedList<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
-        ConditionBase::LiteralList(literals) => Some(ParsedList::Ref(literals)),
+        ConditionBase::LiteralList(literals) => Some(ParsedList::LiteralRef(literals)),
         ConditionBase::NestedSelect(statement) => {
-            let literals = select(storage, statement, Some(context))
-                .map(Row::take_first_literal)
-                .map(|literal| literal.unwrap());
-            let literals = Box::new(literals);
+            let values = select(storage, statement, Some(context))
+                .map(Row::take_first_value)
+                .map(|value| value.unwrap());
+            let values = Box::new(values);
 
-            Some(ParsedList::Val(literals))
+            Some(ParsedList::Value(values))
         }
         _ => None,
     };
