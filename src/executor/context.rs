@@ -1,4 +1,4 @@
-use crate::row::Row;
+use crate::data::Row;
 use nom_sql::{Column, Literal, Table};
 use std::fmt::Debug;
 

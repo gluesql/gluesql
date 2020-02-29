@@ -1,4 +1,4 @@
-use crate::row::Row;
+use crate::data::Row;
 use nom_sql::CreateTableStatement;
 
 pub trait Store<T: std::fmt::Debug> {
