@@ -27,10 +27,13 @@ fn sql_types() {
     for insert_sql in insert_sqls.iter() {
         helper.run(insert_sql).unwrap();
     }
- 
+
     let test_sqls = vec![
         (2, "SELECT * FROM Item;"),
-        (1, "UPDATE Item SET content=\"Foo\" WHERE content=\"World\";"),
+        (
+            1,
+            "UPDATE Item SET content=\"Foo\" WHERE content=\"World\";",
+        ),
         (0, "SELECT * FROM Item WHERE content=\"World\";"),
         (1, "SELECT * FROM Item WHERE content=\"Foo\";"),
         (1, "UPDATE Item SET id = 11 WHERE content=\"Foo\";"),

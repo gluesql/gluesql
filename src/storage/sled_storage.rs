@@ -58,9 +58,7 @@ impl Store<IVec> for SledStorage {
             .tree
             .scan_prefix(prefix.as_bytes())
             .map(|result| result.expect("should be unwrapped"))
-            .map(move |(key, value)| {
-                (key, bincode::deserialize(&value).expect("Stop iterate"))
-            });
+            .map(move |(key, value)| (key, bincode::deserialize(&value).expect("Stop iterate")));
 
         Ok(Box::new(result_set))
     }

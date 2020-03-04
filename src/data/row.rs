@@ -13,9 +13,7 @@ impl Row {
     pub fn get_value(&self, index: usize) -> Option<&Value> {
         self.items.iter().nth(index)
     }
-}
 
-impl Row {
     pub fn take_first_value(row: Row) -> Option<Value> {
         row.items.into_iter().nth(0)
     }

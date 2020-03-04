@@ -5,7 +5,7 @@ use nom_sql::{Column, ColumnSpecification, Table};
 use std::fmt::Debug;
 use std::rc::Rc;
 
-pub fn get_columns<T: 'static + Debug>(storage: &dyn Store<T>, table: &Table) -> Vec<Column> {
+fn get_columns<T: 'static + Debug>(storage: &dyn Store<T>, table: &Table) -> Vec<Column> {
     storage
         .get_schema(&table.name)
         .unwrap()
