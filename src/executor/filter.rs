@@ -1,7 +1,9 @@
 use crate::data::{Row, Value};
 use crate::executor::{select, Context};
 use crate::storage::Store;
-use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, Table};
+use nom_sql::{
+    Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, Table,
+};
 use std::fmt::Debug;
 
 pub struct Filter<'a, T: 'static + Debug> {
@@ -11,10 +13,16 @@ pub struct Filter<'a, T: 'static + Debug> {
 }
 
 impl<T: 'static + Debug> Filter<'_, T> {
-    pub fn check<'a>(&'a self, table: &'a Table, row: &'a Row<T>) -> bool {
+    pub fn check<'a>(
+        &'a self,
+        table: &'a Table,
+        columns: &'a Vec<Column>,
+        row: &'a Row<T>,
+    ) -> bool {
         let context = Context {
             table,
             row,
+            columns,
             next: self.context,
         };
 

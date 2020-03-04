@@ -8,17 +8,12 @@ use std::fmt::Debug;
 pub struct Row<T: Debug> {
     pub key: T,
     pub items: Vec<(Column, Value)>,
+    // TODO: Change items type to Vec<Value>
 }
 
 impl<T: Debug> Row<T> {
-    pub fn get_value(&self, target: &Column) -> Option<&Value> {
-        let column_name = &target.name;
-
-        self.items
-            .iter()
-            .filter(|(column, _)| &column.name == column_name)
-            .map(|(_, value)| value)
-            .nth(0)
+    pub fn get_value(&self, index: usize) -> Option<&Value> {
+        self.items.iter().map(|(_, value)| value).nth(index)
     }
 }
 

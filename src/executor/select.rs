@@ -31,10 +31,14 @@ pub fn select<'a, T: 'static + Debug>(
     let rows = fetch(storage, table, filter)
         .enumerate()
         .filter(move |(i, _)| limit.check(i))
-        .map(|(_, row)| row)
-        .map(move |row| {
+        .map(move |(_, (columns, row))| {
             let Row { key, items } = row;
-            let items = items.into_iter().filter(|item| blend.check(item)).collect();
+            let items = items
+                .into_iter()
+                .enumerate()
+                .filter(|(i, _)| blend.check(&columns, *i))
+                .map(|(_, item)| item)
+                .collect();
 
             Row { key, items }
         });

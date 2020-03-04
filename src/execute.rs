@@ -55,7 +55,7 @@ pub fn execute<T: 'static + Debug>(
                 context: None,
             };
 
-            let num_rows = fetch(storage, table, filter).fold(0, |num, row| {
+            let num_rows = fetch(storage, table, filter).fold(0, |num, (_, row)| {
                 storage.del_data(&table.name, &row.key).unwrap();
 
                 num + 1
@@ -77,7 +77,7 @@ pub fn execute<T: 'static + Debug>(
             };
 
             let num_rows = fetch(storage, table, filter)
-                .map(|row| update.apply(row))
+                .map(|(columns, row)| update.apply(&columns, row))
                 .fold(0, |num, row| {
                     storage.set_data(&table.name, row).unwrap();
 

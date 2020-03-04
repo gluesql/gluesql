@@ -1,18 +1,32 @@
 use crate::data::Row;
 use crate::executor::Filter;
 use crate::storage::Store;
-use nom_sql::Table;
+use nom_sql::{Column, ColumnSpecification, Table};
 use std::fmt::Debug;
+use std::rc::Rc;
+
+pub fn get_columns<T: 'static + Debug>(storage: &dyn Store<T>, table: &Table) -> Vec<Column> {
+    storage
+        .get_schema(&table.name)
+        .unwrap()
+        .fields
+        .into_iter()
+        .map(|ColumnSpecification { column, .. }| column)
+        .collect::<Vec<Column>>()
+}
 
 pub fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
     filter: Filter<'a, T>,
-) -> Box<dyn Iterator<Item = Row<T>> + 'a> {
+) -> Box<dyn Iterator<Item = (Rc<Vec<Column>>, Row<T>)> + 'a> {
+    let columns = Rc::new(get_columns(storage, table));
+
     let rows = storage
         .get_data(&table.name)
         .unwrap()
-        .filter(move |row| filter.check(table, row));
+        .map(move |row| (Rc::clone(&columns), row))
+        .filter(move |(columns, row)| filter.check(table, columns, row));
 
     Box::new(rows)
 }

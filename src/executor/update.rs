@@ -28,11 +28,12 @@ impl Update<'_> {
             .nth(0)
     }
 
-    pub fn apply<T: Debug>(&self, row: Row<T>) -> Row<T> {
+    pub fn apply<T: Debug>(&self, columns: &Vec<Column>, row: Row<T>) -> Row<T> {
         let Row { key, items } = row;
         let items = items
             .into_iter()
-            .map(|item| match self.find(&item.0) {
+            .enumerate()
+            .map(|(i, item)| match self.find(&columns[i]) {
                 Some(field_item) => copy(item, field_item),
                 None => item,
             })
