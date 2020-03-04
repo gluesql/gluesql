@@ -7,8 +7,8 @@ use std::fmt::Debug;
 pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
-    context: Option<&'a Context<'a, T>>,
-) -> Box<dyn Iterator<Item = Row<T>> + 'a> {
+    context: Option<&'a Context<'a>>,
+) -> Box<dyn Iterator<Item = Row> + 'a> {
     let SelectStatement {
         tables,
         where_clause,
@@ -31,8 +31,8 @@ pub fn select<'a, T: 'static + Debug>(
     let rows = fetch(storage, table, filter)
         .enumerate()
         .filter(move |(i, _)| limit.check(i))
-        .map(move |(_, (columns, row))| {
-            let Row { key, items } = row;
+        .map(move |(_, (columns, _, row))| {
+            let Row { items, .. } = row;
             let items = items
                 .into_iter()
                 .enumerate()
@@ -40,7 +40,7 @@ pub fn select<'a, T: 'static + Debug>(
                 .map(|(_, item)| item)
                 .collect();
 
-            Row { key, items }
+            Row { items }
         });
 
     Box::new(rows)

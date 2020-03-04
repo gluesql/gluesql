@@ -5,35 +5,31 @@ use std::convert::From;
 use std::fmt::Debug;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Row<T: Debug> {
-    pub key: T,
+pub struct Row {
     pub items: Vec<Value>,
-    // TODO: Change items type to Vec<Value>
 }
 
-impl<T: Debug> Row<T> {
+impl Row {
     pub fn get_value(&self, index: usize) -> Option<&Value> {
         self.items.iter().nth(index)
     }
 }
 
-impl<T: Debug> Row<T> {
-    pub fn take_first_value(row: Row<T>) -> Option<Value> {
+impl Row {
+    pub fn take_first_value(row: Row) -> Option<Value> {
         row.items.into_iter().nth(0)
     }
 }
 
-impl<'a, T: Debug>
+impl<'a>
     From<(
-        T,
         Vec<ColumnSpecification>,
         &'a Option<Vec<Column>>,
         &'a Vec<Vec<Literal>>,
-    )> for Row<T>
+    )> for Row
 {
     fn from(
-        (key, create_fields, insert_fields, insert_data): (
-            T,
+        (create_fields, insert_fields, insert_data): (
             Vec<ColumnSpecification>,
             &'a Option<Vec<Column>>,
             &'a Vec<Vec<Literal>>,
@@ -71,6 +67,6 @@ impl<'a, T: Debug>
             .map(|((sql_type, _), literal)| Value::from((sql_type, literal)))
             .collect();
 
-        Row { key, items }
+        Row { items }
     }
 }

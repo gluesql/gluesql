@@ -9,16 +9,11 @@ use std::fmt::Debug;
 pub struct Filter<'a, T: 'static + Debug> {
     pub where_clause: &'a Option<ConditionExpression>,
     pub storage: &'a dyn Store<T>,
-    pub context: Option<&'a Context<'a, T>>,
+    pub context: Option<&'a Context<'a>>,
 }
 
 impl<T: 'static + Debug> Filter<'_, T> {
-    pub fn check<'a>(
-        &'a self,
-        table: &'a Table,
-        columns: &'a Vec<Column>,
-        row: &'a Row<T>,
-    ) -> bool {
+    pub fn check<'a>(&'a self, table: &'a Table, columns: &'a Vec<Column>, row: &'a Row) -> bool {
         let context = Context {
             table,
             row,
@@ -76,7 +71,7 @@ enum ParsedList<'a> {
 
 fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a Context<'a, T>,
+    context: &'a Context<'a>,
     expr: &'a ConditionExpression,
 ) -> Option<Parsed<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
@@ -101,7 +96,7 @@ fn parse_expr<'a, T: 'static + Debug>(
 
 fn parse_in_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a Context<'a, T>,
+    context: &'a Context<'a>,
     expr: &'a ConditionExpression,
 ) -> Option<ParsedList<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
@@ -125,7 +120,7 @@ fn parse_in_expr<'a, T: 'static + Debug>(
 
 fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a Context<'a, T>,
+    context: &'a Context<'a>,
     expr: &'a ConditionExpression,
 ) -> bool {
     let check = |expr| check_expr(storage, context, expr);

@@ -1,11 +1,7 @@
 use crate::data::{Row, Value};
 use nom_sql::{Column, FieldValueExpression, LiteralExpression};
-use std::fmt::Debug;
 
-fn copy(
-    value: Value,
-    (_, literal_expr): &(Column, FieldValueExpression),
-) -> Value {
+fn copy(value: Value, (_, literal_expr): &(Column, FieldValueExpression)) -> Value {
     let field_literal = match literal_expr {
         FieldValueExpression::Literal(LiteralExpression { value, .. }) => value,
         _ => panic!("[Update->copy_literal] Err on parsing LiteralExpression"),
@@ -26,8 +22,8 @@ impl Update<'_> {
             .nth(0)
     }
 
-    pub fn apply<T: Debug>(&self, columns: &Vec<Column>, row: Row<T>) -> Row<T> {
-        let Row { key, items } = row;
+    pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Row {
+        let Row { items } = row;
         let items = items
             .into_iter()
             .enumerate()
@@ -37,6 +33,6 @@ impl Update<'_> {
             })
             .collect::<Vec<Value>>();
 
-        Row { key, items }
+        Row { items }
     }
 }

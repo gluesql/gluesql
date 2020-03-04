@@ -1,11 +1,12 @@
 use gluesql::{execute, Payload, SledStorage, Store};
 use nom_sql::parse_query;
+use sled::IVec;
 use std::fmt::Debug;
 
 pub trait Helper<T: 'static + Debug> {
     fn get_storage(&self) -> &dyn Store<T>;
 
-    fn run(&self, sql: &str) -> Result<Payload<T>, ()> {
+    fn run(&self, sql: &str) -> Result<Payload, ()> {
         let parsed = parse_query(sql).unwrap();
         let storage = self.get_storage();
 
@@ -60,8 +61,8 @@ impl SledHelper {
     }
 }
 
-impl Helper<u64> for SledHelper {
-    fn get_storage(&self) -> &dyn Store<u64> {
+impl Helper<IVec> for SledHelper {
+    fn get_storage(&self) -> &dyn Store<IVec> {
         self.storage.as_ref()
     }
 }

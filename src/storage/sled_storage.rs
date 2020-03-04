@@ -1,6 +1,6 @@
 use bincode;
 use nom_sql::CreateTableStatement;
-use sled::{self, Db};
+use sled::{self, Db, IVec};
 
 use crate::data::Row;
 use crate::storage::Store;
@@ -17,11 +17,11 @@ impl SledStorage {
     }
 }
 
-impl Store<u64> for SledStorage {
-    fn gen_id(&self) -> Result<u64, ()> {
-        let id = self.tree.generate_id().unwrap();
+impl Store<IVec> for SledStorage {
+    fn gen_id(&self, table_name: &str) -> Result<IVec, ()> {
+        let id = format!("data/{}/{}", table_name, self.tree.generate_id().unwrap());
 
-        Ok(id)
+        Ok(IVec::from(id.as_bytes()))
     }
 
     fn set_schema(&self, statement: &CreateTableStatement) -> Result<(), ()> {
@@ -43,34 +43,30 @@ impl Store<u64> for SledStorage {
         Ok(statement)
     }
 
-    fn set_data(&self, table_name: &str, row: Row<u64>) -> Result<Row<u64>, ()> {
-        let k = format!("data/{}/{}", table_name, row.key);
-        let k = k.as_bytes();
+    fn set_data(&self, key: &IVec, row: Row) -> Result<Row, ()> {
         let v: Vec<u8> = bincode::serialize(&row).unwrap();
 
-        self.tree.insert(k, v).unwrap();
+        self.tree.insert(key, v).unwrap();
 
         Ok(row)
     }
 
-    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Row<u64>>>, ()> {
-        let k = format!("data/{}/", table_name);
-        let k = k.as_bytes();
+    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = (IVec, Row)>>, ()> {
+        let prefix = format!("data/{}/", table_name);
 
         let result_set = self
             .tree
-            .scan_prefix(k)
+            .scan_prefix(prefix.as_bytes())
             .map(|result| result.expect("should be unwrapped"))
-            .map(|(_, value)| bincode::deserialize(&value).expect("Stop iterate"));
+            .map(move |(key, value)| {
+                (key, bincode::deserialize(&value).expect("Stop iterate"))
+            });
 
         Ok(Box::new(result_set))
     }
 
-    fn del_data(&self, table_name: &str, key: &u64) -> Result<(), ()> {
-        let k = format!("data/{}/{}", table_name, key);
-        let k = k.as_bytes();
-
-        self.tree.remove(k).unwrap();
+    fn del_data(&self, key: &IVec) -> Result<(), ()> {
+        self.tree.remove(key).unwrap();
 
         Ok(())
     }

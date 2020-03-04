@@ -4,10 +4,10 @@ use crate::storage::Store;
 use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
 use std::fmt::Debug;
 
-pub enum Payload<T: Debug> {
+pub enum Payload {
     Create,
-    Insert(Row<T>),
-    Select(Vec<Row<T>>),
+    Insert(Row),
+    Select(Vec<Row>),
     Delete(usize),
     Update(usize),
 }
@@ -15,7 +15,7 @@ pub enum Payload<T: Debug> {
 pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
     sql_query: &SqlQuery,
-) -> Result<Payload<T>, ()> {
+) -> Result<Payload, ()> {
     let payload = match sql_query {
         SqlQuery::CreateTable(statement) => {
             storage.set_schema(statement).unwrap();
@@ -37,10 +37,10 @@ pub fn execute<T: 'static + Debug>(
                 } => (&table.name, fields, data),
             };
             let create_fields = storage.get_schema(table_name).unwrap().fields;
-            let key = storage.gen_id().unwrap();
-            let row = Row::from((key, create_fields, insert_fields, insert_data));
+            let key = storage.gen_id(table_name).unwrap();
+            let row = Row::from((create_fields, insert_fields, insert_data));
 
-            let row = storage.set_data(table_name, row).unwrap();
+            let row = storage.set_data(&key, row).unwrap();
 
             Payload::Insert(row)
         }
@@ -55,8 +55,8 @@ pub fn execute<T: 'static + Debug>(
                 context: None,
             };
 
-            let num_rows = fetch(storage, table, filter).fold(0, |num, (_, row)| {
-                storage.del_data(&table.name, &row.key).unwrap();
+            let num_rows = fetch(storage, table, filter).fold(0, |num, (_, key, _)| {
+                storage.del_data(&key).unwrap();
 
                 num + 1
             });
@@ -77,9 +77,9 @@ pub fn execute<T: 'static + Debug>(
             };
 
             let num_rows = fetch(storage, table, filter)
-                .map(|(columns, row)| update.apply(&columns, row))
-                .fold(0, |num, row| {
-                    storage.set_data(&table.name, row).unwrap();
+                .map(|(columns, key, row)| (key, update.apply(&columns, row)))
+                .fold(0, |num, (key, row)| {
+                    storage.set_data(&key, row).unwrap();
 
                     num + 1
                 });
