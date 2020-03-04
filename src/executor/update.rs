@@ -3,17 +3,15 @@ use nom_sql::{Column, FieldValueExpression, LiteralExpression};
 use std::fmt::Debug;
 
 fn copy(
-    (column, value): (Column, Value),
+    value: Value,
     (_, literal_expr): &(Column, FieldValueExpression),
-) -> (Column, Value) {
+) -> Value {
     let field_literal = match literal_expr {
         FieldValueExpression::Literal(LiteralExpression { value, .. }) => value,
         _ => panic!("[Update->copy_literal] Err on parsing LiteralExpression"),
     };
 
-    let value = Value::from((value, field_literal));
-
-    (column, value)
+    Value::from((value, field_literal))
 }
 
 pub struct Update<'a> {
@@ -37,7 +35,7 @@ impl Update<'_> {
                 Some(field_item) => copy(item, field_item),
                 None => item,
             })
-            .collect::<Vec<(Column, Value)>>();
+            .collect::<Vec<Value>>();
 
         Row { key, items }
     }

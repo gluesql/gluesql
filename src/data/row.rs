@@ -7,19 +7,19 @@ use std::fmt::Debug;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Row<T: Debug> {
     pub key: T,
-    pub items: Vec<(Column, Value)>,
+    pub items: Vec<Value>,
     // TODO: Change items type to Vec<Value>
 }
 
 impl<T: Debug> Row<T> {
     pub fn get_value(&self, index: usize) -> Option<&Value> {
-        self.items.iter().map(|(_, value)| value).nth(index)
+        self.items.iter().nth(index)
     }
 }
 
 impl<T: Debug> Row<T> {
     pub fn take_first_value(row: Row<T>) -> Option<Value> {
-        row.items.into_iter().nth(0).map(|(_, value)| value)
+        row.items.into_iter().nth(0)
     }
 }
 
@@ -68,7 +68,7 @@ impl<'a, T: Debug>
         let items = create_fields
             .into_iter()
             .zip(insert_literals)
-            .map(|((sql_type, column), literal)| (column, Value::from((sql_type, literal))))
+            .map(|((sql_type, _), literal)| Value::from((sql_type, literal)))
             .collect();
 
         Row { key, items }
