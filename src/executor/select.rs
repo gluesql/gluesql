@@ -26,8 +26,10 @@ pub fn select<'a, T: 'static + Debug>(
 
     let rows = fetch(storage, table, filter)
         .enumerate()
-        .filter(move |(i, _)| limit.check(i))
-        .map(|(_, item)| item)
+        .filter_map(move |(i, item)| match limit.check(i) {
+            true => Some(item),
+            false => None,
+        })
         .map(move |(columns, _, row)| blend.apply(&columns, row));
 
     Box::new(rows)

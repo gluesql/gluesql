@@ -12,8 +12,8 @@ impl<'a> From<&'a Option<LimitClause>> for Limit<'a> {
 }
 
 impl Limit<'_> {
-    pub fn check(&self, i: &usize) -> bool {
-        let i = *i as u64;
+    pub fn check(&self, i: usize) -> bool {
+        let i = i as u64;
 
         self.limit_clause
             .as_ref()
