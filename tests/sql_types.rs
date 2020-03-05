@@ -19,7 +19,7 @@ fn sql_types() {
 
     helper.run_and_print(delete_sql);
 
-    let insert_sqls: [&str; 2] = [
+    let insert_sqls = [
         "INSERT INTO Item (id, content) VALUES (1, \"Hello\");",
         "INSERT INTO Item (id, content) VALUES (1, \"World\");",
     ];
@@ -28,7 +28,7 @@ fn sql_types() {
         helper.run(insert_sql).unwrap();
     }
 
-    let test_sqls = vec![
+    let test_sqls = [
         (2, "SELECT * FROM Item;"),
         (
             1,
@@ -40,8 +40,8 @@ fn sql_types() {
         (2, "SELECT * FROM Item;"),
     ];
 
-    for (num, sql) in test_sqls.into_iter() {
-        helper.test_rows(sql, num);
+    for (num, sql) in test_sqls.iter() {
+        helper.test_rows(sql, *num);
     }
 
     helper.run_and_print(delete_sql);

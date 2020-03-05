@@ -24,11 +24,11 @@ fn nested_select() {
 
     create_sqls.iter().for_each(|sql| helper.run_and_print(sql));
 
-    let delete_sqls: [&str; 2] = ["DELETE FROM User", "DELETE FROM Request"];
+    let delete_sqls = ["DELETE FROM User", "DELETE FROM Request"];
 
     delete_sqls.iter().for_each(|sql| helper.run_and_print(sql));
 
-    let insert_sqls: [&str; 20] = [
+    let insert_sqls = [
         "INSERT INTO User (id, name) VALUES (1, \"Taehoon\")",
         "INSERT INTO User (id, name) VALUES (2, \"Mike\")",
         "INSERT INTO User (id, name) VALUES (3, \"Jorno\")",
@@ -55,7 +55,7 @@ fn nested_select() {
         helper.run(insert_sql).unwrap();
     }
 
-    let select_sqls = vec![
+    let select_sqls = [
         (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request);"),
         (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id = User.id);"),
         (2, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE quantity IN (6, 7, 8, 9));"),
@@ -63,8 +63,8 @@ fn nested_select() {
     ];
 
     select_sqls
-        .into_iter()
-        .for_each(|(num, sql)| helper.test_rows(sql, num));
+        .iter()
+        .for_each(|(num, sql)| helper.test_rows(sql, *num));
 
     delete_sqls.iter().for_each(|sql| helper.run_and_print(sql));
 }

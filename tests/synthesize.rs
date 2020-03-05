@@ -21,7 +21,7 @@ fn synthesize() {
     let delete_sql = "DELETE FROM TableA";
     helper.run_and_print(delete_sql);
 
-    let insert_sqls: [&str; 6] = [
+    let insert_sqls = [
         "INSERT INTO TableA (id, test, target_id) VALUES (1, 100, 2);",
         "INSERT INTO TableA (id, test, target_id) VALUES (2, 100, 1);",
         "INSERT INTO TableA (id, test, target_id) VALUES (3, 300, 5);",
@@ -34,7 +34,7 @@ fn synthesize() {
         helper.run(insert_sql).unwrap();
     }
 
-    let test_cases = vec![
+    let test_cases = [
         (6, "SELECT * FROM TableA;"),
         (3, "SELECT * FROM TableA WHERE id = 3;"),
         (
@@ -64,8 +64,8 @@ fn synthesize() {
         (3, "DELETE FROM TableA;"),
     ];
 
-    for (num, sql) in test_cases {
-        helper.test_rows(sql, num);
+    for (num, sql) in test_cases.iter() {
+        helper.test_rows(sql, *num);
     }
 
     for insert_sql in insert_sqls.iter() {
@@ -76,14 +76,14 @@ fn synthesize() {
         helper.test_columns(sql, num);
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (2, "SELECT id, test FROM TableA;"),
         (1, "SELECT id FROM TableA;"),
         (3, "SELECT * FROM TableA;"),
     ];
 
-    for (num, sql) in test_cases {
-        test_select(sql, num);
+    for (num, sql) in test_cases.iter() {
+        test_select(sql, *num);
     }
 
     println!("\n\n");
