@@ -1,4 +1,4 @@
-use gluesql::{execute, Payload, SledStorage, Store};
+use gluesql::{execute, Payload, Row, SledStorage, Store};
 use nom_sql::parse_query;
 use sled::IVec;
 use std::fmt::Debug;
@@ -42,7 +42,9 @@ pub trait Helper<T: 'static + Debug> {
 
         match result.unwrap() {
             Payload::Select(rows) => {
-                assert_eq!(count, rows.into_iter().nth(0).unwrap().0.len())
+                let Row(items) = rows.into_iter().nth(0).unwrap();
+
+                assert_eq!(count, items.len())
             }
             _ => assert!(false),
         };
