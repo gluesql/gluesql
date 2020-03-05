@@ -1,5 +1,6 @@
 use crate::data::{Row, Value};
 use nom_sql::{Column, FieldValueExpression, LiteralExpression};
+use std::convert::From;
 
 fn copy(value: Value, (_, literal_expr): &(Column, FieldValueExpression)) -> Value {
     let field_literal = match literal_expr {
@@ -11,7 +12,13 @@ fn copy(value: Value, (_, literal_expr): &(Column, FieldValueExpression)) -> Val
 }
 
 pub struct Update<'a> {
-    pub fields: &'a Vec<(Column, FieldValueExpression)>,
+    fields: &'a Vec<(Column, FieldValueExpression)>,
+}
+
+impl<'a> From<&'a Vec<(Column, FieldValueExpression)>> for Update<'a> {
+    fn from(fields: &'a Vec<(Column, FieldValueExpression)>) -> Self {
+        Update { fields }
+    }
 }
 
 impl Update<'_> {

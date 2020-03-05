@@ -1,7 +1,14 @@
 use nom_sql::LimitClause;
+use std::convert::From;
 
 pub struct Limit<'a> {
-    pub limit_clause: &'a Option<LimitClause>,
+    limit_clause: &'a Option<LimitClause>,
+}
+
+impl<'a> From<&'a Option<LimitClause>> for Limit<'a> {
+    fn from(limit_clause: &'a Option<LimitClause>) -> Self {
+        Limit { limit_clause }
+    }
 }
 
 impl Limit<'_> {

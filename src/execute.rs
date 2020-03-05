@@ -49,11 +49,7 @@ pub fn execute<T: 'static + Debug>(
                 table,
                 where_clause,
             } = statement;
-            let filter = Filter {
-                storage,
-                where_clause,
-                context: None,
-            };
+            let filter = Filter::from((storage, where_clause, None));
 
             let num_rows = fetch(storage, table, filter).fold(0, |num, (_, key, _)| {
                 storage.del_data(&key).unwrap();
@@ -69,12 +65,8 @@ pub fn execute<T: 'static + Debug>(
                 fields,
                 where_clause,
             } = statement;
-            let update = Update { fields };
-            let filter = Filter {
-                storage,
-                where_clause,
-                context: None,
-            };
+            let update = Update::from(fields);
+            let filter = Filter::from((storage, where_clause, None));
 
             let num_rows = fetch(storage, table, filter)
                 .map(|(columns, key, row)| (key, update.apply(&columns, row)))

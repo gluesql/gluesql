@@ -4,22 +4,40 @@ use crate::storage::Store;
 use nom_sql::{
     Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, Table,
 };
+use std::convert::From;
 use std::fmt::Debug;
 
 pub struct Filter<'a, T: 'static + Debug> {
-    pub where_clause: &'a Option<ConditionExpression>,
-    pub storage: &'a dyn Store<T>,
-    pub context: Option<&'a Context<'a>>,
+    storage: &'a dyn Store<T>,
+    where_clause: &'a Option<ConditionExpression>,
+    context: Option<&'a Context<'a>>,
+}
+
+impl<'a, T: 'static + Debug>
+    From<(
+        &'a dyn Store<T>,
+        &'a Option<ConditionExpression>,
+        Option<&'a Context<'a>>,
+    )> for Filter<'a, T>
+{
+    fn from(
+        (storage, where_clause, context): (
+            &'a dyn Store<T>,
+            &'a Option<ConditionExpression>,
+            Option<&'a Context<'a>>,
+        ),
+    ) -> Self {
+        Filter {
+            where_clause,
+            storage,
+            context,
+        }
+    }
 }
 
 impl<T: 'static + Debug> Filter<'_, T> {
     pub fn check<'a>(&'a self, table: &'a Table, columns: &'a Vec<Column>, row: &'a Row) -> bool {
-        let context = Context {
-            table,
-            row,
-            columns,
-            next: self.context,
-        };
+        let context = Context::from((table, columns, row, self.context));
 
         self.where_clause
             .as_ref()

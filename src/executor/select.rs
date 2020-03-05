@@ -20,13 +20,9 @@ pub fn select<'a, T: 'static + Debug>(
         .iter()
         .nth(0)
         .expect("SelectStatement->tables should have something");
-    let blend = Blend { fields };
-    let filter = Filter {
-        storage,
-        where_clause,
-        context,
-    };
-    let limit = Limit { limit_clause };
+    let blend = Blend::from(fields);
+    let filter = Filter::from((storage, where_clause, context));
+    let limit = Limit::from(limit_clause);
 
     let rows = fetch(storage, table, filter)
         .enumerate()

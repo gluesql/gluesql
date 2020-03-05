@@ -1,13 +1,27 @@
 use crate::data::{Row, Value};
 use nom_sql::{Column, Table};
+use std::convert::From;
 use std::fmt::Debug;
 
 #[derive(Debug)]
 pub struct Context<'a> {
-    pub table: &'a Table,
-    pub columns: &'a Vec<Column>,
-    pub row: &'a Row,
-    pub next: Option<&'a Context<'a>>,
+    table: &'a Table,
+    columns: &'a Vec<Column>,
+    row: &'a Row,
+    next: Option<&'a Context<'a>>,
+}
+
+impl<'a> From<(&'a Table, &'a Vec<Column>, &'a Row, Option<&'a Context<'a>>)> for Context<'a> {
+    fn from(
+        (table, columns, row, next): (&'a Table, &'a Vec<Column>, &'a Row, Option<&'a Context<'a>>),
+    ) -> Self {
+        Context {
+            table,
+            columns,
+            row,
+            next,
+        }
+    }
 }
 
 impl<'a> Context<'a> {
