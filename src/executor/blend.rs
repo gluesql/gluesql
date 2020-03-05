@@ -1,3 +1,4 @@
+use crate::Row;
 use nom_sql::{Column, FieldDefinitionExpression};
 use std::convert::From;
 
@@ -12,6 +13,18 @@ impl<'a> From<&'a Vec<FieldDefinitionExpression>> for Blend<'a> {
 }
 
 impl Blend<'_> {
+    pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Row {
+        let Row(items) = row;
+        let items = items
+            .into_iter()
+            .enumerate()
+            .filter(|(i, _)| self.check(&columns, *i))
+            .map(|(_, item)| item)
+            .collect();
+
+        Row(items)
+    }
+
     pub fn check(&self, columns: &Vec<Column>, index: usize) -> bool {
         self.fields.iter().any(|expr| match expr {
             FieldDefinitionExpression::All => true,
