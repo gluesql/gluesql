@@ -42,7 +42,7 @@ pub trait Helper<T: 'static + Debug> {
 
         match result.unwrap() {
             Payload::Select(rows) => {
-                assert_eq!(count, rows.into_iter().nth(0).unwrap().items.len())
+                assert_eq!(count, rows.into_iter().nth(0).unwrap().0.len())
             }
             _ => assert!(false),
         };

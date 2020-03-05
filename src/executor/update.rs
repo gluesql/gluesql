@@ -30,7 +30,7 @@ impl Update<'_> {
     }
 
     pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Row {
-        let Row { items } = row;
+        let Row(items) = row;
         let items = items
             .into_iter()
             .enumerate()
@@ -40,6 +40,6 @@ impl Update<'_> {
             })
             .collect::<Vec<Value>>();
 
-        Row { items }
+        Row(items)
     }
 }

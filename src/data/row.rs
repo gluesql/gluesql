@@ -5,17 +5,15 @@ use std::convert::From;
 use std::fmt::Debug;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Row {
-    pub items: Vec<Value>,
-}
+pub struct Row(pub Vec<Value>);
 
 impl Row {
     pub fn get_value(&self, index: usize) -> Option<&Value> {
-        self.items.iter().nth(index)
+        self.0.iter().nth(index)
     }
 
     pub fn take_first_value(row: Row) -> Option<Value> {
-        row.items.into_iter().nth(0)
+        row.0.into_iter().nth(0)
     }
 }
 
@@ -65,6 +63,6 @@ impl<'a>
             .map(|((sql_type, _), literal)| Value::from((sql_type, literal)))
             .collect();
 
-        Row { items }
+        Row(items)
     }
 }

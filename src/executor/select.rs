@@ -28,7 +28,7 @@ pub fn select<'a, T: 'static + Debug>(
         .enumerate()
         .filter(move |(i, _)| limit.check(i))
         .map(move |(_, (columns, _, row))| {
-            let Row { items, .. } = row;
+            let Row(items) = row;
             let items = items
                 .into_iter()
                 .enumerate()
@@ -36,7 +36,7 @@ pub fn select<'a, T: 'static + Debug>(
                 .map(|(_, item)| item)
                 .collect();
 
-            Row { items }
+            Row(items)
         });
 
     Box::new(rows)
