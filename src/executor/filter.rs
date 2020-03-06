@@ -1,5 +1,5 @@
 use crate::data::{Row, Value};
-use crate::executor::{select, Context};
+use crate::executor::{select, FilterContext};
 use crate::storage::Store;
 use nom_sql::{
     Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, Table,
@@ -10,21 +10,21 @@ use std::fmt::Debug;
 pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     where_clause: &'a Option<ConditionExpression>,
-    context: Option<&'a Context<'a>>,
+    context: Option<&'a FilterContext<'a>>,
 }
 
 impl<'a, T: 'static + Debug>
     From<(
         &'a dyn Store<T>,
         &'a Option<ConditionExpression>,
-        Option<&'a Context<'a>>,
+        Option<&'a FilterContext<'a>>,
     )> for Filter<'a, T>
 {
     fn from(
         (storage, where_clause, context): (
             &'a dyn Store<T>,
             &'a Option<ConditionExpression>,
-            Option<&'a Context<'a>>,
+            Option<&'a FilterContext<'a>>,
         ),
     ) -> Self {
         Filter {
@@ -37,7 +37,7 @@ impl<'a, T: 'static + Debug>
 
 impl<T: 'static + Debug> Filter<'_, T> {
     pub fn check<'a>(&'a self, table: &'a Table, columns: &'a Vec<Column>, row: &'a Row) -> bool {
-        let context = Context::from((table, columns, row, self.context));
+        let context = FilterContext::from((table, columns, row, self.context));
 
         self.where_clause
             .as_ref()
@@ -89,7 +89,7 @@ enum ParsedList<'a> {
 
 fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a Context<'a>,
+    context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
 ) -> Option<Parsed<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
@@ -114,7 +114,7 @@ fn parse_expr<'a, T: 'static + Debug>(
 
 fn parse_in_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a Context<'a>,
+    context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
 ) -> Option<ParsedList<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
@@ -138,7 +138,7 @@ fn parse_in_expr<'a, T: 'static + Debug>(
 
 fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a Context<'a>,
+    context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
 ) -> bool {
     let check = |expr| check_expr(storage, context, expr);

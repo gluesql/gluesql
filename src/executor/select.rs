@@ -1,5 +1,5 @@
 use crate::data::Row;
-use crate::executor::{fetch, Blend, Context, Filter, Limit};
+use crate::executor::{fetch, Blend, Filter, FilterContext, Limit};
 use crate::storage::Store;
 use nom_sql::SelectStatement;
 use std::fmt::Debug;
@@ -7,7 +7,7 @@ use std::fmt::Debug;
 pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
-    context: Option<&'a Context<'a>>,
+    filter_context: Option<&'a FilterContext<'a>>,
 ) -> Box<dyn Iterator<Item = Row> + 'a> {
     let SelectStatement {
         tables,
@@ -21,7 +21,7 @@ pub fn select<'a, T: 'static + Debug>(
         .nth(0)
         .expect("SelectStatement->tables should have something");
     let blend = Blend::from(fields);
-    let filter = Filter::from((storage, where_clause, context));
+    let filter = Filter::from((storage, where_clause, filter_context));
     let limit = Limit::from(limit_clause);
 
     let rows = fetch(storage, table, filter)

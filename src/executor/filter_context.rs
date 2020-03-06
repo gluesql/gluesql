@@ -4,18 +4,30 @@ use std::convert::From;
 use std::fmt::Debug;
 
 #[derive(Debug)]
-pub struct Context<'a> {
+pub struct FilterContext<'a> {
     table: &'a Table,
     columns: &'a Vec<Column>,
     row: &'a Row,
-    next: Option<&'a Context<'a>>,
+    next: Option<&'a FilterContext<'a>>,
 }
 
-impl<'a> From<(&'a Table, &'a Vec<Column>, &'a Row, Option<&'a Context<'a>>)> for Context<'a> {
+impl<'a>
+    From<(
+        &'a Table,
+        &'a Vec<Column>,
+        &'a Row,
+        Option<&'a FilterContext<'a>>,
+    )> for FilterContext<'a>
+{
     fn from(
-        (table, columns, row, next): (&'a Table, &'a Vec<Column>, &'a Row, Option<&'a Context<'a>>),
+        (table, columns, row, next): (
+            &'a Table,
+            &'a Vec<Column>,
+            &'a Row,
+            Option<&'a FilterContext<'a>>,
+        ),
     ) -> Self {
-        Context {
+        FilterContext {
             table,
             columns,
             row,
@@ -24,7 +36,7 @@ impl<'a> From<(&'a Table, &'a Vec<Column>, &'a Row, Option<&'a Context<'a>>)> fo
     }
 }
 
-impl<'a> Context<'a> {
+impl<'a> FilterContext<'a> {
     pub fn get_value(&self, target: &'a Column) -> Option<&'a Value> {
         let Table { alias, name } = self.table;
 
