@@ -1,5 +1,5 @@
 use crate::data::Row;
-use crate::executor::{fetch, select, Filter, Update};
+use crate::executor::{fetch, get_columns, select, Filter, Update};
 use crate::storage::Store;
 use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
 use std::fmt::Debug;
@@ -50,8 +50,9 @@ pub fn execute<T: 'static + Debug>(
                 where_clause,
             } = statement;
             let filter = Filter::from((storage, where_clause, None));
+            let columns = get_columns(storage, table);
 
-            let num_rows = fetch(storage, table, filter).fold(0, |num, (_, key, _)| {
+            let num_rows = fetch(storage, table, &columns, filter).fold(0, |num, (_, key, _)| {
                 storage.del_data(&key).unwrap();
 
                 num + 1
@@ -67,9 +68,10 @@ pub fn execute<T: 'static + Debug>(
             } = statement;
             let update = Update::from(fields);
             let filter = Filter::from((storage, where_clause, None));
+            let columns = get_columns(storage, table);
 
-            let num_rows = fetch(storage, table, filter)
-                .map(|(columns, key, row)| (key, update.apply(&columns, row)))
+            let num_rows = fetch(storage, table, &columns, filter)
+                .map(|(columns, key, row)| (key, update.apply(columns, row)))
                 .fold(0, |num, (key, row)| {
                     storage.set_data(&key, row).unwrap();
 
