@@ -32,10 +32,7 @@ impl<'a, T: 'static + Debug> BlendContext<'a, T> {
                 if &target.table == alias || table == name {
                     get_value()
                 } else {
-                    match self.next.as_ref() {
-                        Some(c) => c.get_value(target),
-                        None => None,
-                    }
+                    self.next.as_ref().and_then(|c| c.get_value(target))
                 }
             }
         }
