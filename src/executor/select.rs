@@ -92,9 +92,9 @@ pub fn select<'a, T: 'static + Debug>(
         .iter()
         .nth(0)
         .expect("SelectStatement->tables should have something");
-    let blend = Blend::from(fields);
+    let blend = Blend::new(fields);
     let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
-    let limit = Limit::from(limit_clause);
+    let limit = Limit::new(limit_clause);
 
     let rows = fetch_blended(storage, table, filter)
         .map(move |init_context| {

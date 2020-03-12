@@ -1,17 +1,14 @@
 use nom_sql::LimitClause;
-use std::convert::From;
 
 pub struct Limit<'a> {
     limit_clause: &'a Option<LimitClause>,
 }
 
-impl<'a> From<&'a Option<LimitClause>> for Limit<'a> {
-    fn from(limit_clause: &'a Option<LimitClause>) -> Self {
+impl<'a> Limit<'a> {
+    pub fn new(limit_clause: &'a Option<LimitClause>) -> Self {
         Limit { limit_clause }
     }
-}
 
-impl Limit<'_> {
     pub fn check(&self, i: usize) -> bool {
         let i = i as u64;
 

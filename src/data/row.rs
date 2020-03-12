@@ -15,21 +15,11 @@ impl Row {
     pub fn take_first_value(row: Row) -> Option<Value> {
         row.0.into_iter().nth(0)
     }
-}
 
-impl<'a>
-    From<(
-        Vec<ColumnSpecification>,
-        &'a Option<Vec<Column>>,
-        &'a Vec<Vec<Literal>>,
-    )> for Row
-{
-    fn from(
-        (create_fields, insert_fields, insert_data): (
-            Vec<ColumnSpecification>,
-            &'a Option<Vec<Column>>,
-            &'a Vec<Vec<Literal>>,
-        ),
+    pub fn new(
+        create_fields: Vec<ColumnSpecification>,
+        insert_fields: &Option<Vec<Column>>,
+        insert_data: &Vec<Vec<Literal>>,
     ) -> Self {
         let create_fields = create_fields
             .into_iter()

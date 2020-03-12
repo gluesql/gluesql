@@ -38,7 +38,7 @@ pub fn execute<T: 'static + Debug>(
             };
             let create_fields = storage.get_schema(table_name).unwrap().fields;
             let key = storage.gen_id(table_name).unwrap();
-            let row = Row::from((create_fields, insert_fields, insert_data));
+            let row = Row::new(create_fields, insert_fields, insert_data);
 
             let row = storage.set_data(&key, row).unwrap();
 
@@ -66,7 +66,7 @@ pub fn execute<T: 'static + Debug>(
                 fields,
                 where_clause,
             } = statement;
-            let update = Update::from(fields);
+            let update = Update::new(fields);
             let filter = Filter::new(storage, where_clause.as_ref(), None);
             let columns = get_columns(storage, table);
 

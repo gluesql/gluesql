@@ -1,18 +1,15 @@
 use crate::Row;
 use nom_sql::{Column, FieldDefinitionExpression};
-use std::convert::From;
 
 pub struct Blend<'a> {
     fields: &'a Vec<FieldDefinitionExpression>,
 }
 
-impl<'a> From<&'a Vec<FieldDefinitionExpression>> for Blend<'a> {
-    fn from(fields: &'a Vec<FieldDefinitionExpression>) -> Self {
+impl<'a> Blend<'a> {
+    pub fn new(fields: &'a Vec<FieldDefinitionExpression>) -> Self {
         Blend { fields }
     }
-}
 
-impl Blend<'_> {
     pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Row {
         let Row(items) = row;
         let items = items
