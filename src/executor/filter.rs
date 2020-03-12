@@ -96,18 +96,20 @@ enum ParsedList<'a> {
 
 fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a FilterContext<'a>,
+    filter_context: &'a FilterContext<'a>,
     blend_context: Option<&'a BlendContext<'a, T>>,
     expr: &'a ConditionExpression,
 ) -> Option<Parsed<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
-        ConditionBase::Field(column) => context
+        ConditionBase::Field(column) => filter_context
             .get_value(&column)
             .or(blend_context.and_then(|c| c.get_value(&column)))
             .map(|value| Parsed::ValueRef(value)),
         ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
-            let first_row = select(storage, statement, Some(context)).nth(0).unwrap();
+            let first_row = select(storage, statement, Some(filter_context))
+                .nth(0)
+                .unwrap();
             let value = Row::take_first_value(first_row).unwrap();
 
             Some(Parsed::Value(value))
@@ -123,13 +125,13 @@ fn parse_expr<'a, T: 'static + Debug>(
 
 fn parse_in_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a FilterContext<'a>,
+    filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
 ) -> Option<ParsedList<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
         ConditionBase::LiteralList(literals) => Some(ParsedList::LiteralRef(literals)),
         ConditionBase::NestedSelect(statement) => {
-            let values = select(storage, statement, Some(context))
+            let values = select(storage, statement, Some(filter_context))
                 .map(Row::take_first_value)
                 .map(|value| value.unwrap());
             let values = Box::new(values);
@@ -147,13 +149,13 @@ fn parse_in_expr<'a, T: 'static + Debug>(
 
 fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    context: &'a FilterContext<'a>,
+    filter_context: &'a FilterContext<'a>,
     blend_context: Option<&'a BlendContext<'a, T>>,
     expr: &'a ConditionExpression,
 ) -> bool {
-    let check = |expr| check_expr(storage, context, blend_context, expr);
-    let parse = |expr| parse_expr(storage, context, blend_context, expr);
-    let parse_in = |expr| parse_in_expr(storage, context, expr);
+    let check = |expr| check_expr(storage, filter_context, blend_context, expr);
+    let parse = |expr| parse_expr(storage, filter_context, blend_context, expr);
+    let parse_in = |expr| parse_in_expr(storage, filter_context, expr);
 
     let check_tree = |tree: &'a ConditionTree| {
         let zip_check = || Ok((check(&tree.left), check(&tree.right)));
