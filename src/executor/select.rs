@@ -55,7 +55,7 @@ pub fn join<'a, T: 'static + Debug>(
         JoinConstraint::On(where_clause) => Some(where_clause),
         _ => unimplemented!(),
     };
-    let filter = Filter::from((storage, where_clause, filter_context));
+    let filter = Filter::new(storage, where_clause, filter_context);
     let blended_filter = BlendedFilter::new(&filter, &blend_context);
     let columns = Rc::new(get_columns(storage, table));
 
@@ -93,7 +93,7 @@ pub fn select<'a, T: 'static + Debug>(
         .nth(0)
         .expect("SelectStatement->tables should have something");
     let blend = Blend::from(fields);
-    let filter = Filter::from((storage, where_clause.as_ref(), filter_context));
+    let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
     let limit = Limit::from(limit_clause);
 
     let rows = fetch_blended(storage, table, filter)
