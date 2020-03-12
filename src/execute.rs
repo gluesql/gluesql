@@ -49,7 +49,7 @@ pub fn execute<T: 'static + Debug>(
                 table,
                 where_clause,
             } = statement;
-            let filter = Filter::from((storage, where_clause, None));
+            let filter = Filter::from((storage, where_clause.as_ref(), None));
             let columns = get_columns(storage, table);
 
             let num_rows = fetch(storage, table, &columns, filter).fold(0, |num, (_, key, _)| {
@@ -67,7 +67,7 @@ pub fn execute<T: 'static + Debug>(
                 where_clause,
             } = statement;
             let update = Update::from(fields);
-            let filter = Filter::from((storage, where_clause, None));
+            let filter = Filter::from((storage, where_clause.as_ref(), None));
             let columns = get_columns(storage, table);
 
             let num_rows = fetch(storage, table, &columns, filter)

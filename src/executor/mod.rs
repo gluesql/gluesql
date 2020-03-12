@@ -10,7 +10,7 @@ mod update;
 pub use blend::Blend;
 pub use blend_context::BlendContext;
 pub use fetch::{fetch, get_columns};
-pub use filter::Filter;
+pub use filter::{BlendedFilter, Filter};
 pub use filter_context::FilterContext;
 pub use limit::Limit;
 pub use select::select;
