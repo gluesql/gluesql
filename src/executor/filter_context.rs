@@ -56,7 +56,10 @@ impl<'a> FilterContext<'a> {
                 if &target.table == alias || table == name {
                     get_value()
                 } else {
-                    self.next.unwrap().get_value(target)
+                    match self.next {
+                        Some(c) => c.get_value(target),
+                        None => None,
+                    }
                 }
             }
         }
