@@ -26,7 +26,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
     }
 
     pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> bool {
-        let context = FilterContext::from((table, columns, row, self.context));
+        let context = FilterContext::new(table, columns, row, self.context);
 
         self.where_clause
             .map_or(true, |expr| check_expr(self.storage, &context, None, expr))
@@ -44,7 +44,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
     }
 
     pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> bool {
-        let context = FilterContext::from((table, columns, row, self.filter.context));
+        let context = FilterContext::new(table, columns, row, self.filter.context);
 
         self.filter.where_clause.map_or(true, |expr| {
             check_expr(self.filter.storage, &context, Some(self.context), expr)
