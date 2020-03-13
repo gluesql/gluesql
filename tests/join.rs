@@ -63,6 +63,10 @@ fn join() {
         (15, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (15, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND i.quantity = 1;"),
         (15, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id AND Item.quantity = 1;"),
+        (4, "SELECT * FROM Player INNER JOIN Item ON Player.id = Item.player_id;"),
+        (7, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
+        (7, "SELECT * FROM Item i INNER JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
+        (5, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND Item.quantity = 1;"),
     ];
 
     select_sqls

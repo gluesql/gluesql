@@ -35,17 +35,12 @@ pub fn join<'a, T: 'static + Debug>(
     join_clause: &'a JoinClause,
     filter_context: Option<&'a FilterContext<'a>>,
     blend_context: BlendContext<'a, T>,
-) -> BlendContext<'a, T> {
+) -> Option<BlendContext<'a, T>> {
     let JoinClause {
         operator,
         right,
         constraint,
     } = join_clause;
-
-    match operator {
-        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => (),
-        _ => unimplemented!(),
-    };
 
     let table = match right {
         JoinRightSide::Table(table) => table,
@@ -67,14 +62,18 @@ pub fn join<'a, T: 'static + Debug>(
         .nth(0);
 
     match row {
-        Some((columns, key, row)) => BlendContext {
+        Some((columns, key, row)) => Some(BlendContext {
             table,
             columns,
             key,
             row,
             next: Some(Box::new(blend_context)),
+        }),
+        None => match operator {
+            JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => Some(blend_context),
+            JoinOperator::Join | JoinOperator::InnerJoin => None,
+            _ => unimplemented!(),
         },
-        None => blend_context,
     }
 }
 
@@ -100,11 +99,13 @@ pub fn select<'a, T: 'static + Debug>(
     let limit = Limit::new(limit_clause);
 
     let rows = fetch_blended(storage, table, filter)
-        .map(move |init_context| {
+        .filter_map(move |init_context| {
             join_clauses
                 .iter()
-                .fold(init_context, |blend_context, join_clause| {
-                    join(storage, join_clause, filter_context, blend_context)
+                .fold(Some(init_context), |blend_context, join_clause| {
+                    blend_context.and_then(|blend_context| {
+                        join(storage, join_clause, filter_context, blend_context)
+                    })
                 })
         })
         .enumerate()
