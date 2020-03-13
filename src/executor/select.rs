@@ -59,20 +59,23 @@ pub fn join<'a, T: 'static + Debug>(
     let blended_filter = BlendedFilter::new(&filter, &blend_context);
     let columns = Rc::new(get_columns(storage, table));
 
-    storage
+    let row = storage
         .get_data(&table.name)
         .unwrap()
         .map(move |(key, row)| (Rc::clone(&columns), key, row))
         .filter(move |(columns, _, row)| blended_filter.check(table, columns, row))
-        .nth(0)
-        .map(move |(columns, key, row)| BlendContext {
+        .nth(0);
+
+    match row {
+        Some((columns, key, row)) => BlendContext {
             table,
             columns,
             key,
             row,
             next: Some(Box::new(blend_context)),
-        })
-        .unwrap()
+        },
+        None => blend_context,
+    }
 }
 
 pub fn select<'a, T: 'static + Debug>(
