@@ -4,7 +4,7 @@ use crate::storage::Store;
 use nom_sql::{Column, ColumnSpecification, Table};
 use std::fmt::Debug;
 
-pub fn get_columns<T: 'static + Debug>(storage: &dyn Store<T>, table: &Table) -> Vec<Column> {
+pub fn fetch_columns<T: 'static + Debug>(storage: &dyn Store<T>, table: &Table) -> Vec<Column> {
     storage
         .get_schema(&table.name)
         .unwrap()

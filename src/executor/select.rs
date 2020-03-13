@@ -1,6 +1,6 @@
 use crate::data::Row;
 use crate::executor::{
-    get_columns, Blend, BlendContext, BlendedFilter, Filter, FilterContext, Limit,
+    fetch_columns, Blend, BlendContext, BlendedFilter, Filter, FilterContext, Limit,
 };
 use crate::storage::Store;
 use nom_sql::{JoinClause, JoinConstraint, JoinOperator, JoinRightSide, SelectStatement, Table};
@@ -12,7 +12,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
     table: &'a Table,
     filter: Filter<'a, T>,
 ) -> Box<dyn Iterator<Item = BlendContext<'a, T>> + 'a> {
-    let columns = Rc::new(get_columns(storage, table));
+    let columns = Rc::new(fetch_columns(storage, table));
 
     let rows = storage
         .get_data(&table.name)
@@ -57,7 +57,7 @@ pub fn join<'a, T: 'static + Debug>(
     };
     let filter = Filter::new(storage, where_clause, filter_context);
     let blended_filter = BlendedFilter::new(&filter, &blend_context);
-    let columns = Rc::new(get_columns(storage, table));
+    let columns = Rc::new(fetch_columns(storage, table));
 
     let row = storage
         .get_data(&table.name)
