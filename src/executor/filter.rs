@@ -43,6 +43,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         BlendedFilter { filter, context }
     }
 
+    #[rustfmt::skip]
     pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> bool {
         let get = |blend_context: &'a BlendContext<'a, T>, filter_context| {
             let BlendContext {
@@ -55,38 +56,51 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
             Some(FilterContext::new(table, &columns, &row, filter_context))
         };
 
-        let c1;
-        let c2;
+        let c = self.filter.context;
+        let b0 = self.context;
+
+        // TODO: Ready to use macro
+        let c5;
+        let c4;
         let c3;
+        let c2;
+        let c1;
+        let c0;
 
-        let filter_context = {
-            let b0 = self.context;
+        c0 = match &b0.next {
+        Some(b1) => {
+        c1 = match &b1.next {
+        Some(b2) => {
+        c2 = match &b2.next {
+        Some(b3) => {
+        c3 = match &b3.next {
+        Some(b4) => {
+        c4 = match &b4.next {
+        Some(b5) => {
+        c5 = get(&b5, c);
 
-            match &b0.next {
-                Some(b1) => {
-                    c1 = match &b1.next {
-                        Some(b2) => {
-                            c2 = match &b2.next {
-                                Some(b3) => {
-                                    c3 = get(&b3, self.filter.context);
-
-                                    get(&b2, c3.as_ref())
-                                }
-                                None => get(&b2, self.filter.context),
-                            };
-
-                            get(&b1, c2.as_ref())
-                        }
-                        None => get(&b1, self.filter.context),
-                    };
-
-                    get(&b0, c1.as_ref())
-                }
-                None => get(&b0, self.filter.context),
-            }
+        get(&b4, c5.as_ref())
+        }
+        None => get(&b4, c),
+        };
+        get(&b3, c4.as_ref())
+        }
+        None => get(&b3, c),
+        };
+        get(&b2, c3.as_ref())
+        }
+        None => get(&b2, c),
+        };
+        get(&b1, c2.as_ref())
+        }
+        None => get(&b1, c),
+        };
+        get(&b0, c1.as_ref())
+        }
+        None => get(&b0, c),
         };
 
-        let context = FilterContext::new(table, columns, row, filter_context.as_ref());
+        let context = FilterContext::new(table, columns, row, c0.as_ref());
 
         self.filter
             .where_clause
