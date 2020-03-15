@@ -29,7 +29,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         let context = FilterContext::new(table, columns, row, self.context);
 
         self.where_clause
-            .map_or(true, |expr| check_expr(self.storage, &context, None, expr))
+            .map_or(true, |expr| check_expr(self.storage, &context, expr))
     }
 }
 
@@ -44,11 +44,53 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
     }
 
     pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> bool {
-        let context = FilterContext::new(table, columns, row, self.filter.context);
+        let get = |blend_context: &'a BlendContext<'a, T>, filter_context| {
+            let BlendContext {
+                table,
+                columns,
+                row,
+                ..
+            } = blend_context;
 
-        self.filter.where_clause.map_or(true, |expr| {
-            check_expr(self.filter.storage, &context, Some(self.context), expr)
-        })
+            Some(FilterContext::new(table, &columns, &row, filter_context))
+        };
+
+        let c1;
+        let c2;
+        let c3;
+
+        let filter_context = {
+            let b0 = self.context;
+
+            match &b0.next {
+                Some(b1) => {
+                    c1 = match &b1.next {
+                        Some(b2) => {
+                            c2 = match &b2.next {
+                                Some(b3) => {
+                                    c3 = get(&b3, self.filter.context);
+
+                                    get(&b2, c3.as_ref())
+                                }
+                                None => get(&b2, self.filter.context),
+                            };
+
+                            get(&b1, c2.as_ref())
+                        }
+                        None => get(&b1, self.filter.context),
+                    };
+
+                    get(&b0, c1.as_ref())
+                }
+                None => get(&b0, self.filter.context),
+            }
+        };
+
+        let context = FilterContext::new(table, columns, row, filter_context.as_ref());
+
+        self.filter
+            .where_clause
+            .map_or(true, |expr| check_expr(self.filter.storage, &context, expr))
     }
 }
 
@@ -97,13 +139,11 @@ enum ParsedList<'a> {
 fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
-    blend_context: Option<&'a BlendContext<'a, T>>,
     expr: &'a ConditionExpression,
 ) -> Option<Parsed<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
         ConditionBase::Field(column) => filter_context
             .get_value(&column)
-            .or(blend_context.and_then(|c| c.get_value(&column)))
             .map(|value| Parsed::ValueRef(value)),
         ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
@@ -150,11 +190,10 @@ fn parse_in_expr<'a, T: 'static + Debug>(
 fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
-    blend_context: Option<&'a BlendContext<'a, T>>,
     expr: &'a ConditionExpression,
 ) -> bool {
-    let check = |expr| check_expr(storage, filter_context, blend_context, expr);
-    let parse = |expr| parse_expr(storage, filter_context, blend_context, expr);
+    let check = |expr| check_expr(storage, filter_context, expr);
+    let parse = |expr| parse_expr(storage, filter_context, expr);
     let parse_in = |expr| parse_in_expr(storage, filter_context, expr);
 
     let check_tree = |tree: &'a ConditionTree| {
