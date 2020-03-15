@@ -56,7 +56,7 @@ pub fn join<'a, T: 'static + Debug>(
         .get_data(&table.name)
         .unwrap()
         .map(move |(key, row)| (Rc::clone(&columns), key, row))
-        .filter(move |(columns, _, row)| blended_filter.check(table, columns, row))
+        .filter(move |(columns, _, row)| blended_filter.check(Some((table, columns, row))))
         .nth(0);
 
     match row {
@@ -106,18 +106,7 @@ pub fn select<'a, T: 'static + Debug>(
                     })
                 })
         })
-        .filter(move |blend_context| {
-            let BlendContext {
-                table,
-                columns,
-                row,
-                ..
-            } = blend_context;
-            let blended_filter = BlendedFilter::new(&filter, &blend_context);
-
-            // TODO: It's certainly redundant!
-            blended_filter.check(&table, &columns, &row)
-        })
+        .filter(move |blend_context| BlendedFilter::new(&filter, &blend_context).check(None))
         .enumerate()
         .filter_map(move |(i, item)| match limit.check(i) {
             true => Some(item),

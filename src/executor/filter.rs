@@ -44,7 +44,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
     }
 
     #[rustfmt::skip]
-    pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> bool {
+    pub fn check(&self, item: Option<(&Table, &Vec<Column>, &Row)>) -> bool {
         let get = |blend_context: &'a BlendContext<'a, T>, filter_context| {
             let BlendContext {
                 table,
@@ -100,7 +100,10 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         None => get(&b0, c),
         };
 
-        let context = FilterContext::new(table, columns, row, c0.as_ref());
+        let context = match item {
+            Some((table, columns, row)) => FilterContext::new(table, columns, row, c0.as_ref()),
+            None => c0.unwrap(),
+        };
 
         self.filter
             .where_clause
