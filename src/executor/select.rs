@@ -10,7 +10,6 @@ use std::rc::Rc;
 fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
-    filter: Filter<'a, T>,
 ) -> Box<dyn Iterator<Item = BlendContext<'a, T>> + 'a> {
     let columns = Rc::new(fetch_columns(storage, table));
 
@@ -18,7 +17,6 @@ fn fetch_blended<'a, T: 'static + Debug>(
         .get_data(&table.name)
         .unwrap()
         .map(move |(key, row)| (Rc::clone(&columns), key, row))
-        .filter(move |(columns, _, row)| filter.check(table, columns, row))
         .map(move |(columns, key, row)| BlendContext {
             table,
             columns,
@@ -98,7 +96,7 @@ pub fn select<'a, T: 'static + Debug>(
     let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
     let limit = Limit::new(limit_clause);
 
-    let rows = fetch_blended(storage, table, filter)
+    let rows = fetch_blended(storage, table)
         .filter_map(move |init_context| {
             join_clauses
                 .iter()
@@ -107,6 +105,18 @@ pub fn select<'a, T: 'static + Debug>(
                         join(storage, join_clause, filter_context, blend_context)
                     })
                 })
+        })
+        .filter(move |blend_context| {
+            let BlendContext {
+                table,
+                columns,
+                row,
+                ..
+            } = blend_context;
+            let blended_filter = BlendedFilter::new(&filter, &blend_context);
+
+            // TODO: It's certainly redundant!
+            blended_filter.check(&table, &columns, &row)
         })
         .enumerate()
         .filter_map(move |(i, item)| match limit.check(i) {
