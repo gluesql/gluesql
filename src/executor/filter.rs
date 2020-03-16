@@ -59,46 +59,37 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         let c = self.filter.context;
         let b0 = self.context;
 
-        // TODO: Ready to use macro
-        let c5;
-        let c4;
-        let c3;
-        let c2;
-        let c1;
+        // TODO: Ready to use macro, seriously?
         let c0;
+        let c1;
+        let c2;
+        let c3;
+        let c4;
+        let c5;
+        let c6;
+        let c7;
+        let c8;
+        let c9;
 
-        c0 = match &b0.next {
-        Some(b1) => {
-        c1 = match &b1.next {
-        Some(b2) => {
-        c2 = match &b2.next {
-        Some(b3) => {
-        c3 = match &b3.next {
-        Some(b4) => {
-        c4 = match &b4.next {
-        Some(b5) => {
-        c5 = get(&b5, c);
-
-        get(&b4, c5.as_ref())
-        }
-        None => get(&b4, c),
-        };
-        get(&b3, c4.as_ref())
-        }
-        None => get(&b3, c),
-        };
-        get(&b2, c3.as_ref())
-        }
-        None => get(&b2, c),
-        };
-        get(&b1, c2.as_ref())
-        }
-        None => get(&b1, c),
-        };
-        get(&b0, c1.as_ref())
-        }
-        None => get(&b0, c),
-        };
+        c0 = match &b0.next { Some(b1) => {
+        c1 = match &b1.next { Some(b2) => {
+        c2 = match &b2.next { Some(b3) => {
+        c3 = match &b3.next { Some(b4) => {
+        c4 = match &b4.next { Some(b5) => {
+        c5 = match &b5.next { Some(b6) => {
+        c6 = match &b6.next { Some(b7) => {
+        c7 = match &b7.next { Some(b8) => {
+        c8 = match &b8.next { Some(b9) => {
+        c9 = get(&b9, c);
+        get(&b8, c9.as_ref()) } None => get(&b8, c), };
+        get(&b7, c8.as_ref()) } None => get(&b7, c), };
+        get(&b6, c7.as_ref()) } None => get(&b6, c), };
+        get(&b5, c6.as_ref()) } None => get(&b5, c), };
+        get(&b4, c5.as_ref()) } None => get(&b4, c), };
+        get(&b3, c4.as_ref()) } None => get(&b3, c), };
+        get(&b2, c3.as_ref()) } None => get(&b2, c), };
+        get(&b1, c2.as_ref()) } None => get(&b1, c), };
+        get(&b0, c1.as_ref()) } None => get(&b0, c), };
 
         let context = match item {
             Some((table, columns, row)) => FilterContext::new(table, columns, row, c0.as_ref()),
