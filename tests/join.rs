@@ -80,6 +80,27 @@ fn join() {
         (7, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (7, "SELECT * FROM Item i INNER JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (5, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND Item.quantity = 1;"),
+        (7, "SELECT * FROM Item
+            LEFT JOIN Player ON Player.id = Item.player_id
+            WHERE Player.id = (SELECT id FROM Player LIMIT 1 OFFSET 0);"),
+        (0, "SELECT * FROM Item i1
+            LEFT JOIN Player ON Player.id = i1.player_id
+            WHERE Player.id = (SELECT id FROM Item i2 WHERE i2.id = i1.id)"),
+        (0, "SELECT * FROM Item i1
+            LEFT JOIN Player ON Player.id = i1.player_id
+            WHERE Player.id =
+                (SELECT i2.id FROM Item i2
+                 JOIN Item i3 ON i3.id = i2.id
+                 WHERE
+                     i2.id = i1.id AND
+                     i3.id = i2.id AND
+                     i1.id = i3.id);"),
+        (4, "SELECT * FROM Item i1
+            LEFT JOIN Player ON Player.id = i1.player_id
+            WHERE Player.id IN
+                (SELECT i2.player_id FROM Item i2
+                 JOIN Item i3 ON i3.id = i2.id
+                 WHERE Player.name = \"Jorno\");"),
     ];
 
     select_sqls
