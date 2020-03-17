@@ -59,17 +59,13 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         let c = self.filter.context;
         let b0 = self.context;
 
-        // TODO: Ready to use macro, seriously?
-        let c0;
-        let c1;
-        let c2;
-        let c3;
-        let c4;
-        let c5;
-        let c6;
-        let c7;
-        let c8;
-        let c9;
+        /* TODO:
+         * Borrow BlendContext and convert it into FilterContext.
+         * This is the best I can do for now...
+         * Max number of tables can be joined in a single depth is 10.
+         */
+        let c0; let c1; let c2; let c3; let c4;
+        let c5; let c6; let c7; let c8; let c9;
 
         c0 = match &b0.next { Some(b1) => {
         c1 = match &b1.next { Some(b2) => {
