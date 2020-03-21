@@ -172,7 +172,7 @@ fn parse_expr<'a, T: 'static + Debug>(
                 &join_columns,
                 Some(filter_context),
             )
-            .nth(0)
+            .next()
             .unwrap();
             let value = Row::take_first_value(first_row).unwrap();
 
