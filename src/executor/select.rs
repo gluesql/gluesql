@@ -8,9 +8,9 @@ use nom_sql::{
 };
 use std::fmt::Debug;
 
-pub fn fetch_join_columns<'a, T: 'static + Debug>(
+pub fn fetch_join_columns<T: 'static + Debug>(
     storage: &dyn Store<T>,
-    statement: &'a SelectStatement,
+    statement: &SelectStatement,
 ) -> (Vec<Column>, Vec<Vec<Column>>) {
     let SelectStatement {
         tables,
