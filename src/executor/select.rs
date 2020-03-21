@@ -17,10 +17,7 @@ pub fn fetch_join_columns<'a, T: 'static + Debug>(
         join: join_clauses,
         ..
     } = statement;
-    let table = &tables
-        .iter()
-        .nth(0)
-        .expect("SelectStatement->tables should have something");
+    let table = get_first_table(&tables);
 
     let columns = fetch_columns(storage, table);
     let join_columns = join_clauses
@@ -36,6 +33,13 @@ pub fn fetch_join_columns<'a, T: 'static + Debug>(
         .collect();
 
     (columns, join_columns)
+}
+
+fn get_first_table(tables: &Vec<Table>) -> &Table {
+    tables
+        .iter()
+        .next()
+        .expect("SelectStatement->tables should have something")
 }
 
 fn fetch_blended<'a, T: 'static + Debug>(
@@ -120,10 +124,8 @@ pub fn select<'a, T: 'static + Debug>(
         fields,
         ..
     } = statement;
-    let table = &tables
-        .iter()
-        .next()
-        .expect("SelectStatement->tables should have something");
+    let table = get_first_table(&tables);
+
     let blend = Blend::new(fields);
     let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
     let limit = Limit::new(limit_clause);
