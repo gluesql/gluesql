@@ -13,7 +13,7 @@ impl Row {
     }
 
     pub fn take_first_value(self) -> Option<Value> {
-        self.0.into_iter().nth(0)
+        self.0.into_iter().next()
     }
 
     pub fn new(
