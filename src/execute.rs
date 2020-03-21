@@ -1,8 +1,10 @@
+use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
+use std::fmt::Debug;
+
 use crate::data::Row;
 use crate::executor::{fetch, fetch_columns, select, Filter, Update};
 use crate::storage::Store;
-use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
-use std::fmt::Debug;
+use crate::*;
 
 pub enum Payload {
     Create,
@@ -15,11 +17,10 @@ pub enum Payload {
 pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
     sql_query: &SqlQuery,
-) -> Result<Payload, ()> {
+) -> Result<Payload> {
     let payload = match sql_query {
         SqlQuery::CreateTable(statement) => {
-            storage.set_schema(statement).unwrap();
-
+            storage.set_schema(statement)?;
             Payload::Create
         }
         SqlQuery::Select(statement) => {
@@ -36,11 +37,11 @@ pub fn execute<T: 'static + Debug>(
                     ..
                 } => (&table.name, fields, data),
             };
-            let create_fields = storage.get_schema(table_name).unwrap().fields;
-            let key = storage.gen_id(table_name).unwrap();
-            let row = Row::new(create_fields, insert_fields, insert_data).unwrap();
+            let create_fields = storage.get_schema(table_name)?.fields;
+            let key = storage.gen_id(table_name)?;
+            let row = Row::new(create_fields, insert_fields, insert_data)?;
 
-            let row = storage.set_data(&key, row).unwrap();
+            let row = storage.set_data(&key, row)?;
 
             Payload::Insert(row)
         }
@@ -74,7 +75,6 @@ pub fn execute<T: 'static + Debug>(
                 .map(|(columns, key, row)| (key, update.apply(columns, row)))
                 .fold(0, |num, (key, row)| {
                     storage.set_data(&key, row).unwrap();
-
                     num + 1
                 });
 
