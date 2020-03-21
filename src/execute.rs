@@ -38,7 +38,7 @@ pub fn execute<T: 'static + Debug>(
             };
             let create_fields = storage.get_schema(table_name).unwrap().fields;
             let key = storage.gen_id(table_name).unwrap();
-            let row = Row::new(create_fields, insert_fields, insert_data);
+            let row = Row::new(create_fields, insert_fields, insert_data).unwrap();
 
             let row = storage.set_data(&key, row).unwrap();
 
