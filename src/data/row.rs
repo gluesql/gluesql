@@ -1,5 +1,5 @@
 use crate::data::Value;
-use nom_sql::{Column, ColumnSpecification, Literal, SqlType};
+use nom_sql::{Column, ColumnSpecification, Literal};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
 use std::fmt::Debug;
@@ -24,28 +24,24 @@ impl Row {
         let create_fields = create_fields
             .into_iter()
             .map(|c| (c.sql_type, c.column))
-            .collect::<Vec<(SqlType, Column)>>();
+            .collect::<Vec<_>>();
 
         // TODO: Should not depend on the "order" of insert_fields, but currently it is.
         assert_eq!(
             create_fields
                 .iter()
                 .map(|(_, column)| &column.name)
-                .collect::<Vec<&String>>(),
+                .collect::<Vec<_>>(),
             insert_fields
                 .as_ref()
                 .unwrap()
                 .iter()
                 .map(|column| &column.name)
-                .collect::<Vec<&String>>(),
+                .collect::<Vec<_>>(),
         );
 
-        let insert_literals = insert_data
-            .clone()
-            .into_iter()
-            .nth(0)
-            .expect("data in insert_statement should have something")
-            .into_iter();
+        assert!(!insert_data.is_empty());
+        let insert_literals = insert_data[0].clone().into_iter();
 
         let items = create_fields
             .into_iter()
@@ -53,6 +49,6 @@ impl Row {
             .map(|((sql_type, _), literal)| Value::from((sql_type, literal)))
             .collect();
 
-        Row(items)
+        Self(items)
     }
 }
