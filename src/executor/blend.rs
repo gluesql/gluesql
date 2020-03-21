@@ -7,7 +7,7 @@ pub struct Blend<'a> {
 
 impl<'a> Blend<'a> {
     pub fn new(fields: &'a Vec<FieldDefinitionExpression>) -> Self {
-        Blend { fields }
+        Self { fields }
     }
 
     pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Row {

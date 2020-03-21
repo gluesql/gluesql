@@ -17,7 +17,7 @@ impl<'a> FilterContext<'a> {
         row: &'a Row,
         next: Option<&'a FilterContext<'a>>,
     ) -> Self {
-        FilterContext {
+        Self {
             table,
             columns,
             row,

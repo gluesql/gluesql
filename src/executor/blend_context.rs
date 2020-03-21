@@ -1,12 +1,11 @@
 use crate::data::{Row, Value};
 use nom_sql::{Column, Table};
 use std::fmt::Debug;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct BlendContext<'a, T: 'static + Debug> {
     pub table: &'a Table,
-    pub columns: Rc<Vec<Column>>,
+    pub columns: &'a Vec<Column>,
     pub key: T,
     pub row: Row,
     pub next: Option<Box<BlendContext<'a, T>>>,
