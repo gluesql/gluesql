@@ -6,7 +6,7 @@ pub struct Limit<'a> {
 
 impl<'a> Limit<'a> {
     pub fn new(limit_clause: &'a Option<LimitClause>) -> Self {
-        Limit { limit_clause }
+        Self { limit_clause }
     }
 
     pub fn check(&self, i: usize) -> bool {

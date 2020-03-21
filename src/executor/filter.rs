@@ -18,7 +18,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         where_clause: Option<&'a ConditionExpression>,
         context: Option<&'a FilterContext<'a>>,
     ) -> Self {
-        Filter {
+        Self {
             storage,
             where_clause,
             context,

@@ -16,7 +16,7 @@ pub struct Update<'a> {
 
 impl<'a> Update<'a> {
     pub fn new(fields: &'a Vec<(Column, FieldValueExpression)>) -> Self {
-        Update { fields }
+        Self { fields }
     }
 
     fn find(&self, column: &Column) -> Option<&(Column, FieldValueExpression)> {
