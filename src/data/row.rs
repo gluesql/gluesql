@@ -12,8 +12,8 @@ impl Row {
         self.0.iter().nth(index)
     }
 
-    pub fn take_first_value(row: Row) -> Option<Value> {
-        row.0.into_iter().nth(0)
+    pub fn take_first_value(self) -> Option<Value> {
+        self.0.into_iter().nth(0)
     }
 
     pub fn new(
