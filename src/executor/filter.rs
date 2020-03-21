@@ -152,7 +152,7 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
             let first_row = select(storage, statement, Some(filter_context))
-                .nth(0)
+                .next()
                 .unwrap();
             let value = Row::take_first_value(first_row).unwrap();
 

@@ -23,7 +23,7 @@ impl<'a> Update<'a> {
         self.fields
             .iter()
             .filter(|(field_column, _)| column.name == field_column.name)
-            .nth(0)
+            .next()
     }
 
     pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Row {

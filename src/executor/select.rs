@@ -57,7 +57,7 @@ pub fn join<'a, T: 'static + Debug>(
         .unwrap()
         .map(move |(key, row)| (Rc::clone(&columns), key, row))
         .filter(move |(columns, _, row)| blended_filter.check(Some((table, columns, row))))
-        .nth(0);
+        .next();
 
     match row {
         Some((columns, key, row)) => Some(BlendContext {
@@ -90,7 +90,7 @@ pub fn select<'a, T: 'static + Debug>(
     } = statement;
     let table = &tables
         .iter()
-        .nth(0)
+        .next()
         .expect("SelectStatement->tables should have something");
     let blend = Blend::new(fields);
     let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
