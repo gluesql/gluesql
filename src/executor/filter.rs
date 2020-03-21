@@ -1,8 +1,9 @@
 use crate::data::{Row, Value};
-use crate::executor::{select, BlendContext, FilterContext};
+use crate::executor::{fetch_join_columns, select, BlendContext, FilterContext};
 use crate::storage::Store;
 use nom_sql::{
-    Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, Table,
+    Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, SelectStatement,
+    Table,
 };
 use std::fmt::Debug;
 
@@ -123,21 +124,33 @@ impl<'a> PartialEq for Parsed<'a> {
 }
 
 impl Parsed<'_> {
-    fn exists_in(&self, list: ParsedList<'_>) -> bool {
+    fn exists_in<T: 'static + Debug>(&self, list: ParsedList<'_, T>) -> bool {
         match list {
             ParsedList::LiteralRef(literals) => literals
                 .iter()
                 .any(|literal| &Parsed::LiteralRef(&literal) == self),
-            ParsedList::Value(values) => values
-                .into_iter()
-                .any(|value| &Parsed::Value(value) == self),
+            ParsedList::Value(storage, statement, filter_context) => {
+                let (columns, join_columns) = fetch_join_columns(storage, statement);
+                let v = select(
+                    storage,
+                    statement,
+                    &columns,
+                    &join_columns,
+                    Some(filter_context),
+                )
+                .map(Row::take_first_value)
+                .map(|value| value.unwrap())
+                .any(|value| &Parsed::Value(value) == self);
+
+                v
+            }
         }
     }
 }
 
-enum ParsedList<'a> {
+enum ParsedList<'a, T: 'static + Debug> {
     LiteralRef(&'a Vec<Literal>),
-    Value(Box<dyn Iterator<Item = Value> + 'a>),
+    Value(&'a dyn Store<T>, &'a SelectStatement, &'a FilterContext<'a>),
 }
 
 fn parse_expr<'a, T: 'static + Debug>(
@@ -151,9 +164,16 @@ fn parse_expr<'a, T: 'static + Debug>(
             .map(|value| Parsed::ValueRef(value)),
         ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
-            let first_row = select(storage, statement, Some(filter_context))
-                .nth(0)
-                .unwrap();
+            let (columns, join_columns) = fetch_join_columns(storage, statement);
+            let first_row = select(
+                storage,
+                statement,
+                &columns,
+                &join_columns,
+                Some(filter_context),
+            )
+            .nth(0)
+            .unwrap();
             let value = Row::take_first_value(first_row).unwrap();
 
             Some(Parsed::Value(value))
@@ -171,16 +191,11 @@ fn parse_in_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
-) -> Option<ParsedList<'a>> {
+) -> Option<ParsedList<'a, T>> {
     let parse_base = |base: &'a ConditionBase| match base {
         ConditionBase::LiteralList(literals) => Some(ParsedList::LiteralRef(literals)),
         ConditionBase::NestedSelect(statement) => {
-            let values = select(storage, statement, Some(filter_context))
-                .map(Row::take_first_value)
-                .map(|value| value.unwrap());
-            let values = Box::new(values);
-
-            Some(ParsedList::Value(values))
+            Some(ParsedList::Value(storage, statement, filter_context))
         }
         _ => None,
     };

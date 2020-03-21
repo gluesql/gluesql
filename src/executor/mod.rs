@@ -13,5 +13,5 @@ pub use fetch::{fetch, fetch_columns};
 pub use filter::{BlendedFilter, Filter};
 pub use filter_context::FilterContext;
 pub use limit::Limit;
-pub use select::select;
+pub use select::{fetch_join_columns, select};
 pub use update::Update;

@@ -1,5 +1,5 @@
 use crate::data::Row;
-use crate::executor::{fetch, fetch_columns, select, Filter, Update};
+use crate::executor::{fetch, fetch_columns, fetch_join_columns, select, Filter, Update};
 use crate::storage::Store;
 use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
 use std::fmt::Debug;
@@ -23,7 +23,8 @@ pub fn execute<T: 'static + Debug>(
             Payload::Create
         }
         SqlQuery::Select(statement) => {
-            let rows = select(storage, statement, None).collect();
+            let (columns, join_columns) = fetch_join_columns(storage, statement);
+            let rows = select(storage, statement, &columns, &join_columns, None).collect();
 
             Payload::Select(rows)
         }
