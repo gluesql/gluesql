@@ -6,6 +6,7 @@ use crate::executor::{fetch, fetch_columns, fetch_join_columns, select, Filter, 
 use crate::storage::Store;
 use crate::*;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum Payload {
     Create,
     Insert(Row),

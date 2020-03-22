@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::From;
 use std::fmt::Debug;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Value {
     I64(i64),
     String(String),
