@@ -6,7 +6,7 @@ use std::fmt::Debug;
 use crate::data::Value;
 use crate::*;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Row(pub Vec<Value>);
 
 impl Row {
