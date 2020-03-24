@@ -3,7 +3,7 @@ use nom_sql::CreateTableStatement;
 use sled::{self, Db, IVec};
 
 use crate::data::Row;
-use crate::error::*;
+use crate::result::{Error, Result};
 use crate::storage::Store;
 
 pub struct SledStorage {

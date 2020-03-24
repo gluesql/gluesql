@@ -1,5 +1,5 @@
 use crate::data::Row;
-use crate::error::Result;
+use crate::result::Result;
 use nom_sql::CreateTableStatement;
 
 pub trait Store<T: std::fmt::Debug> {

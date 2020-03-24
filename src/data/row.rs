@@ -4,7 +4,8 @@ use std::convert::From;
 use std::fmt::Debug;
 
 use crate::data::Value;
-use crate::*;
+use crate::ensure;
+use crate::result::{Error, Result};
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Row(pub Vec<Value>);

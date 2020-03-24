@@ -3,8 +3,9 @@ use std::fmt::Debug;
 
 use crate::data::Row;
 use crate::executor::{fetch, fetch_columns, fetch_select_params, select, Filter, Update};
+use crate::bail;
+use crate::result::{Result, Error};
 use crate::storage::Store;
-use crate::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Payload {
@@ -19,16 +20,17 @@ pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
     sql_query: &SqlQuery,
 ) -> Result<Payload> {
-    let payload = match sql_query {
+    match sql_query {
         SqlQuery::CreateTable(statement) => {
             storage.set_schema(statement)?;
-            Payload::Create
+
+            Ok(Payload::Create)
         }
         SqlQuery::Select(statement) => {
             let params = fetch_select_params(storage, statement);
             let rows = select(storage, statement, &params, None).collect();
 
-            Payload::Select(rows)
+            Ok(Payload::Select(rows))
         }
         SqlQuery::Insert(statement) => {
             let (table_name, insert_fields, insert_data) = match statement {
@@ -45,7 +47,7 @@ pub fn execute<T: 'static + Debug>(
 
             let row = storage.set_data(&key, row)?;
 
-            Payload::Insert(row)
+            Ok(Payload::Insert(row))
         }
         SqlQuery::Delete(statement) => {
             let DeleteStatement {
@@ -61,7 +63,7 @@ pub fn execute<T: 'static + Debug>(
                 num + 1
             });
 
-            Payload::Delete(num_rows)
+            Ok(Payload::Delete(num_rows))
         }
         SqlQuery::Update(statement) => {
             let UpdateStatement {
@@ -80,10 +82,8 @@ pub fn execute<T: 'static + Debug>(
                     num + 1
                 });
 
-            Payload::Update(num_rows)
+            Ok(Payload::Update(num_rows))
         }
-        _ => unimplemented!(),
-    };
-
-    Ok(payload)
+        _ => bail!("query not supported"),
+    }
 }
