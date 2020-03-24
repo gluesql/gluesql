@@ -159,10 +159,11 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
             let params = fetch_select_params(storage, statement);
-            let first_row = select(storage, statement, &params, Some(filter_context))
+            let value = select(storage, statement, &params, Some(filter_context))
+                .map(Row::take_first_value)
                 .next()
-                .unwrap();
-            let value = Row::take_first_value(first_row).unwrap();
+                .expect("Row does not exist")
+                .expect("Failed to take first value");
 
             Some(Parsed::Value(value))
         }
