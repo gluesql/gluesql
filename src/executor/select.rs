@@ -8,16 +8,25 @@ use nom_sql::{
 };
 use std::fmt::Debug;
 
-pub fn fetch_join_columns<T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    statement: &SelectStatement,
-) -> (Vec<Column>, Vec<Vec<Column>>) {
+pub struct SelectParams<'a> {
+    pub table: &'a Table,
+    pub columns: Vec<Column>,
+    pub join_columns: Vec<(&'a Table, Vec<Column>)>,
+}
+
+pub fn fetch_select_params<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    statement: &'a SelectStatement,
+) -> SelectParams<'a> {
     let SelectStatement {
         tables,
         join: join_clauses,
         ..
     } = statement;
-    let table = get_first_table(&tables);
+    let table = tables
+        .iter()
+        .next()
+        .expect("SelectStatement->tables should have something");
 
     let columns = fetch_columns(storage, table);
     let join_columns = join_clauses
@@ -28,18 +37,15 @@ pub fn fetch_join_columns<T: 'static + Debug>(
                 _ => unimplemented!(),
             };
 
-            fetch_columns(storage, table)
+            (table, fetch_columns(storage, table))
         })
         .collect();
 
-    (columns, join_columns)
-}
-
-fn get_first_table(tables: &Vec<Table>) -> &Table {
-    tables
-        .iter()
-        .next()
-        .expect("SelectStatement->tables should have something")
+    SelectParams {
+        table,
+        columns,
+        join_columns,
+    }
 }
 
 fn fetch_blended<'a, T: 'static + Debug>(
@@ -65,20 +71,16 @@ fn fetch_blended<'a, T: 'static + Debug>(
 fn join<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     join_clause: &'a JoinClause,
+    table: &'a Table,
     columns: &'a Vec<Column>,
     filter_context: Option<&'a FilterContext<'a>>,
     blend_context: BlendContext<'a, T>,
 ) -> Option<BlendContext<'a, T>> {
     let JoinClause {
         operator,
-        right,
         constraint,
+        ..
     } = join_clause;
-
-    let table = match right {
-        JoinRightSide::Table(table) => table,
-        _ => unimplemented!(),
-    };
     let where_clause = match constraint {
         JoinConstraint::On(where_clause) => Some(where_clause),
         _ => unimplemented!(),
@@ -112,19 +114,21 @@ fn join<'a, T: 'static + Debug>(
 pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
-    columns: &'a Vec<Column>,
-    join_columns: &'a Vec<Vec<Column>>,
+    params: &'a SelectParams<'a>,
     filter_context: Option<&'a FilterContext<'a>>,
 ) -> Box<dyn Iterator<Item = Row> + 'a> {
     let SelectStatement {
-        tables,
         where_clause,
         limit: limit_clause,
         join: join_clauses,
         fields,
         ..
     } = statement;
-    let table = get_first_table(&tables);
+    let SelectParams {
+        table,
+        columns,
+        join_columns,
+    } = params;
 
     let blend = Blend::new(fields);
     let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
@@ -134,12 +138,13 @@ pub fn select<'a, T: 'static + Debug>(
         .filter_map(move |init_context| {
             join_clauses.iter().zip(join_columns.iter()).fold(
                 Some(init_context),
-                |blend_context, (join_clause, join_columns)| {
+                |blend_context, (join_clause, (table, columns))| {
                     blend_context.and_then(|blend_context| {
                         join(
                             storage,
                             join_clause,
-                            join_columns,
+                            table,
+                            columns,
                             filter_context,
                             blend_context,
                         )

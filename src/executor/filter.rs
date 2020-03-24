@@ -1,5 +1,5 @@
 use crate::data::{Row, Value};
-use crate::executor::{fetch_join_columns, select, BlendContext, FilterContext};
+use crate::executor::{fetch_select_params, select, BlendContext, FilterContext};
 use crate::storage::Store;
 use nom_sql::{
     Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, SelectStatement,
@@ -130,17 +130,11 @@ impl Parsed<'_> {
                 .iter()
                 .any(|literal| &Parsed::LiteralRef(&literal) == self),
             ParsedList::Value(storage, statement, filter_context) => {
-                let (columns, join_columns) = fetch_join_columns(storage, statement);
-                let v = select(
-                    storage,
-                    statement,
-                    &columns,
-                    &join_columns,
-                    Some(filter_context),
-                )
-                .map(Row::take_first_value)
-                .map(|value| value.unwrap())
-                .any(|value| &Parsed::Value(value) == self);
+                let params = fetch_select_params(storage, statement);
+                let v = select(storage, statement, &params, Some(filter_context))
+                    .map(Row::take_first_value)
+                    .map(|value| value.unwrap())
+                    .any(|value| &Parsed::Value(value) == self);
 
                 v
             }
@@ -164,16 +158,10 @@ fn parse_expr<'a, T: 'static + Debug>(
             .map(|value| Parsed::ValueRef(value)),
         ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
-            let (columns, join_columns) = fetch_join_columns(storage, statement);
-            let first_row = select(
-                storage,
-                statement,
-                &columns,
-                &join_columns,
-                Some(filter_context),
-            )
-            .next()
-            .unwrap();
+            let params = fetch_select_params(storage, statement);
+            let first_row = select(storage, statement, &params, Some(filter_context))
+                .next()
+                .unwrap();
             let value = Row::take_first_value(first_row).unwrap();
 
             Some(Parsed::Value(value))
