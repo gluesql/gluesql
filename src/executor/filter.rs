@@ -44,58 +44,54 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         BlendedFilter { filter, context }
     }
 
-    #[rustfmt::skip]
+    fn check_expr(
+        storage: &dyn Store<T>,
+        filter_context: Option<&FilterContext<'_>>,
+        blend_context: &BlendContext<'_, T>,
+        expr: &ConditionExpression,
+    ) -> bool {
+        let BlendContext {
+            table,
+            columns,
+            row,
+            next,
+            ..
+        } = blend_context;
+
+        let filter_context = FilterContext::new(table, &columns, &row, filter_context);
+
+        match next {
+            Some(blend_context) => {
+                Self::check_expr(storage, Some(&filter_context), blend_context, expr)
+            }
+            None => check_expr(storage, &filter_context, expr),
+        }
+    }
+
     pub fn check(&self, item: Option<(&Table, &Vec<Column>, &Row)>) -> bool {
-        let get = |blend_context: &'a BlendContext<'a, T>, filter_context| {
-            let BlendContext {
-                table,
-                columns,
-                row,
-                ..
-            } = blend_context;
+        let BlendedFilter {
+            filter:
+                Filter {
+                    storage,
+                    where_clause,
+                    context: next,
+                },
+            context: blend_context,
+        } = self;
 
-            Some(FilterContext::new(table, &columns, &row, filter_context))
+        let c;
+        let filter_context = match item {
+            Some((table, columns, row)) => {
+                c = FilterContext::new(table, columns, row, *next);
+
+                Some(&c)
+            }
+            None => *next,
         };
 
-        let c = self.filter.context;
-        let b0 = self.context;
-
-        /* TODO:
-         * Borrow BlendContext and convert it into FilterContext.
-         * This is the best I can do for now...
-         * Max number of tables can be joined in a single depth is 10.
-         */
-        let c0; let c1; let c2; let c3; let c4;
-        let c5; let c6; let c7; let c8; let c9;
-
-        c0 = match &b0.next { Some(b1) => {
-        c1 = match &b1.next { Some(b2) => {
-        c2 = match &b2.next { Some(b3) => {
-        c3 = match &b3.next { Some(b4) => {
-        c4 = match &b4.next { Some(b5) => {
-        c5 = match &b5.next { Some(b6) => {
-        c6 = match &b6.next { Some(b7) => {
-        c7 = match &b7.next { Some(b8) => {
-        c8 = match &b8.next { Some(b9) => {
-        c9 = get(&b9, c);
-        get(&b8, c9.as_ref()) } None => get(&b8, c), };
-        get(&b7, c8.as_ref()) } None => get(&b7, c), };
-        get(&b6, c7.as_ref()) } None => get(&b6, c), };
-        get(&b5, c6.as_ref()) } None => get(&b5, c), };
-        get(&b4, c5.as_ref()) } None => get(&b4, c), };
-        get(&b3, c4.as_ref()) } None => get(&b3, c), };
-        get(&b2, c3.as_ref()) } None => get(&b2, c), };
-        get(&b1, c2.as_ref()) } None => get(&b1, c), };
-        get(&b0, c1.as_ref()) } None => get(&b0, c), };
-
-        let context = match item {
-            Some((table, columns, row)) => FilterContext::new(table, columns, row, c0.as_ref()),
-            None => c0.unwrap(),
-        };
-
-        self.filter
-            .where_clause
-            .map_or(true, |expr| check_expr(self.filter.storage, &context, expr))
+        where_clause.map_or(true, |expr| {
+            Self::check_expr(*storage, filter_context, blend_context, expr)
+        })
     }
 }
 
