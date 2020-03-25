@@ -41,7 +41,7 @@ pub struct BlendedFilter<'a, T: 'static + Debug> {
 
 impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
     pub fn new(filter: &'a Filter<'a, T>, context: &'a BlendContext<'a, T>) -> Self {
-        BlendedFilter { filter, context }
+        Self { filter, context }
     }
 
     fn check_expr(
