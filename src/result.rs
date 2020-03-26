@@ -1,3 +1,4 @@
+use crate::ExecuteError;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
@@ -10,6 +11,9 @@ pub enum Error {
     // storage
     #[error("not found")]
     NotFound,
+
+    #[error(transparent)]
+    Execute(#[from] ExecuteError),
 
     // all other errors
     #[error(transparent)]

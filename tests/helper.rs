@@ -1,4 +1,4 @@
-use gluesql::{execute, Payload, Row, SledStorage, Store, *};
+use gluesql::{bail, execute, Error, Payload, Result, Row, SledStorage, Store};
 use nom_sql::parse_query;
 use sled::IVec;
 use std::fmt::Debug;
@@ -52,6 +52,18 @@ pub trait Helper<T: 'static + Debug> {
             }
             _ => assert!(false),
         };
+    }
+
+    fn test_error(&self, sql: &str, expected: Error) {
+        let result = self.run(sql);
+
+        match (result.unwrap_err(), expected) {
+            (Error::Execute(found), Error::Execute(expected)) => assert_eq!(found, expected),
+            (found, expected) => panic!(
+                "\n\n    test: {}\nexpected: {:?}\n   found: {:?}\n\n",
+                sql, expected, found
+            ),
+        }
     }
 }
 

@@ -1,11 +1,17 @@
 use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
 use std::fmt::Debug;
+use thiserror::Error;
 
 use crate::data::Row;
 use crate::executor::{fetch, fetch_columns, fetch_select_params, select, Filter, Update};
-use crate::bail;
-use crate::result::{Result, Error};
+use crate::result::Result;
 use crate::storage::Store;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum ExecuteError {
+    #[error("query not supported")]
+    QueryNotSupported,
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Payload {
@@ -84,6 +90,6 @@ pub fn execute<T: 'static + Debug>(
 
             Ok(Payload::Update(num_rows))
         }
-        _ => bail!("query not supported"),
+        _ => Err(ExecuteError::QueryNotSupported.into()),
     }
 }
