@@ -58,8 +58,8 @@ pub trait Helper<T: 'static + Debug> {
         let result = self.run(sql);
 
         match (result.unwrap_err(), expected) {
-            (Error::Execute(found), Error::Execute(expected)) => assert_eq!(found, expected),
-            (Error::Select(found), Error::Select(expected)) => assert_eq!(found, expected),
+            (Error::Execute(found), Error::Execute(expected)) => assert_eq!(expected, found),
+            (Error::Select(found), Error::Select(expected)) => assert_eq!(expected, found),
             (found, expected) => panic!(
                 "\n\n    test: {}\nexpected: {:?}\n   found: {:?}\n\n",
                 sql, expected, found
