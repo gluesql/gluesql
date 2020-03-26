@@ -128,6 +128,8 @@ impl Parsed<'_> {
             ParsedList::Value(storage, statement, filter_context) => {
                 let params = fetch_select_params(storage, statement).unwrap();
                 let v = select(storage, statement, &params, Some(filter_context))
+                    .unwrap()
+                    .map(|c| c.unwrap())
                     .map(Row::take_first_value)
                     .map(|value| value.unwrap())
                     .any(|value| &Parsed::Value(value) == self);
@@ -156,6 +158,8 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionBase::NestedSelect(statement) => {
             let params = fetch_select_params(storage, statement).unwrap();
             let value = select(storage, statement, &params, Some(filter_context))
+                .unwrap()
+                .map(|c| c.unwrap())
                 .map(Row::take_first_value)
                 .next()
                 .expect("Row does not exist")

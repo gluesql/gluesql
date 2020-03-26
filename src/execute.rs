@@ -34,7 +34,7 @@ pub fn execute<T: 'static + Debug>(
         }
         SqlQuery::Select(statement) => {
             let params = fetch_select_params(storage, statement)?;
-            let rows = select(storage, statement, &params, None).collect();
+            let rows = select(storage, statement, &params, None)?.collect::<Result<_>>()?;
 
             Ok(Payload::Select(rows))
         }

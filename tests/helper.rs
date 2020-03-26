@@ -59,6 +59,7 @@ pub trait Helper<T: 'static + Debug> {
 
         match (result.unwrap_err(), expected) {
             (Error::Execute(found), Error::Execute(expected)) => assert_eq!(found, expected),
+            (Error::Select(found), Error::Select(expected)) => assert_eq!(found, expected),
             (found, expected) => panic!(
                 "\n\n    test: {}\nexpected: {:?}\n   found: {:?}\n\n",
                 sql, expected, found

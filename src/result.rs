@@ -1,5 +1,7 @@
-use crate::ExecuteError;
 use thiserror::Error as ThisError;
+
+use crate::executor::SelectError;
+use crate::ExecuteError;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
@@ -14,6 +16,8 @@ pub enum Error {
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
+    #[error(transparent)]
+    Select(#[from] SelectError),
 
     // all other errors
     #[error(transparent)]
