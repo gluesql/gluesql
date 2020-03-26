@@ -126,7 +126,7 @@ impl Parsed<'_> {
                 .iter()
                 .any(|literal| &Parsed::LiteralRef(&literal) == self),
             ParsedList::Value(storage, statement, filter_context) => {
-                let params = fetch_select_params(storage, statement);
+                let params = fetch_select_params(storage, statement).unwrap();
                 let v = select(storage, statement, &params, Some(filter_context))
                     .map(Row::take_first_value)
                     .map(|value| value.unwrap())
@@ -154,7 +154,7 @@ fn parse_expr<'a, T: 'static + Debug>(
             .map(|value| Parsed::ValueRef(value)),
         ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
-            let params = fetch_select_params(storage, statement);
+            let params = fetch_select_params(storage, statement).unwrap();
             let value = select(storage, statement, &params, Some(filter_context))
                 .map(Row::take_first_value)
                 .next()

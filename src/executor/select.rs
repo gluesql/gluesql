@@ -1,12 +1,14 @@
+use nom_sql::{
+    Column, JoinClause, JoinConstraint, JoinOperator, JoinRightSide, SelectStatement, Table,
+};
+use std::fmt::Debug;
+
 use crate::data::Row;
 use crate::executor::{
     fetch_columns, Blend, BlendContext, BlendedFilter, Filter, FilterContext, Limit,
 };
 use crate::storage::Store;
-use nom_sql::{
-    Column, JoinClause, JoinConstraint, JoinOperator, JoinRightSide, SelectStatement, Table,
-};
-use std::fmt::Debug;
+use crate::Result;
 
 pub struct SelectParams<'a> {
     pub table: &'a Table,
@@ -17,7 +19,7 @@ pub struct SelectParams<'a> {
 pub fn fetch_select_params<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
-) -> SelectParams<'a> {
+) -> Result<SelectParams<'a>> {
     let SelectStatement {
         tables,
         join: join_clauses,
@@ -28,7 +30,7 @@ pub fn fetch_select_params<'a, T: 'static + Debug>(
         .next()
         .expect("SelectStatement->tables should have something");
 
-    let columns = fetch_columns(storage, table);
+    let columns = fetch_columns(storage, table)?;
     let join_columns = join_clauses
         .iter()
         .map(|JoinClause { right, .. }| {
@@ -37,15 +39,15 @@ pub fn fetch_select_params<'a, T: 'static + Debug>(
                 _ => unimplemented!(),
             };
 
-            (table, fetch_columns(storage, table))
+            (table, fetch_columns(storage, table).unwrap())
         })
         .collect();
 
-    SelectParams {
+    Ok(SelectParams {
         table,
         columns,
         join_columns,
-    }
+    })
 }
 
 fn fetch_blended<'a, T: 'static + Debug>(

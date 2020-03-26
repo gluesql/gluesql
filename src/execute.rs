@@ -33,7 +33,7 @@ pub fn execute<T: 'static + Debug>(
             Ok(Payload::Create)
         }
         SqlQuery::Select(statement) => {
-            let params = fetch_select_params(storage, statement);
+            let params = fetch_select_params(storage, statement)?;
             let rows = select(storage, statement, &params, None).collect();
 
             Ok(Payload::Select(rows))
@@ -61,9 +61,9 @@ pub fn execute<T: 'static + Debug>(
                 where_clause,
             } = statement;
             let filter = Filter::new(storage, where_clause.as_ref(), None);
-            let columns = fetch_columns(storage, table);
+            let columns = fetch_columns(storage, table)?;
 
-            let num_rows = fetch(storage, table, &columns, filter).fold(0, |num, (_, key, _)| {
+            let num_rows = fetch(storage, table, &columns, filter)?.fold(0, |num, (_, key, _)| {
                 storage.del_data(&key).unwrap();
 
                 num + 1
@@ -79,9 +79,9 @@ pub fn execute<T: 'static + Debug>(
             } = statement;
             let update = Update::new(fields);
             let filter = Filter::new(storage, where_clause.as_ref(), None);
-            let columns = fetch_columns(storage, table);
+            let columns = fetch_columns(storage, table)?;
 
-            let num_rows = fetch(storage, table, &columns, filter)
+            let num_rows = fetch(storage, table, &columns, filter)?
                 .map(|(columns, key, row)| (key, update.apply(columns, row)))
                 .fold(0, |num, (key, row)| {
                     storage.set_data(&key, row).unwrap();
