@@ -30,24 +30,24 @@ impl<'a> Blend<'a> {
     }
 
     fn blend(&self, columns: &Vec<Column>, row: Row) -> Result<Row> {
-        let Row(items) = row;
-        let items = items
+        let Row(values) = row;
+        let values = values
             .into_iter()
-            .enumerate()
-            .filter_map(|(i, v)| self.check(&columns, v, i))
+            .zip(columns.iter())
+            .filter_map(|(value, column)| self.find(value, column))
             .collect::<Result<_>>()?;
 
-        Ok(Row(items))
+        Ok(Row(values))
     }
 
-    fn check(&self, columns: &Vec<Column>, value: Value, index: usize) -> Option<Result<Value>> {
+    fn find(&self, value: Value, target: &Column) -> Option<Result<Value>> {
         for expr in self.fields {
             match expr {
                 FieldDefinitionExpression::All => {
                     return Some(Ok(value));
                 }
                 FieldDefinitionExpression::Col(column) => {
-                    if column.name == columns[index].name {
+                    if column.name == target.name {
                         return Some(Ok(value));
                     }
                 }
