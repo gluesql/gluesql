@@ -1,6 +1,6 @@
 mod helper;
 
-use gluesql::{ExecuteError, SelectError};
+use gluesql::{BlendError, ExecuteError, SelectError};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -37,4 +37,9 @@ fn error() {
     for (error, sql) in test_cases.into_iter() {
         helper.test_error(sql, error.into());
     }
+
+    helper.test_error(
+        "SELECT TableA.* FROM TableA;",
+        BlendError::FieldDefinitionNotSupported.into(),
+    );
 }

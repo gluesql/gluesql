@@ -199,12 +199,7 @@ pub fn select<'a, T: 'static + Debug>(
             true => Some(item),
             false => None,
         })
-        .map(move |blend_context| {
-            // TODO: Blend should accept context as Result type
-            let blend = &blend;
-
-            blend_context.map(move |BlendContext { columns, row, .. }| blend.apply(&columns, row))
-        });
+        .map(move |blend_context| blend.apply(blend_context));
 
     Ok(Box::new(rows))
 }
