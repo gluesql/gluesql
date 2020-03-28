@@ -196,17 +196,15 @@ pub fn select<'a, T: 'static + Debug>(
             )
         })
         .filter_map(move |blend_context| {
-            let blend_context = match blend_context {
-                Ok(c) => c,
-                Err(_) => {
-                    return Some(blend_context);
-                }
-            };
-
-            BlendedFilter::new(&filter, &blend_context)
-                .check(None)
-                .map(|pass| pass.as_some(blend_context))
-                .transpose()
+            blend_context.map_or_else(
+                |error| Some(Err(error)),
+                |blend_context| {
+                    BlendedFilter::new(&filter, &blend_context)
+                        .check(None)
+                        .map(|pass| pass.as_some(blend_context))
+                        .transpose()
+                },
+            )
         })
         .enumerate()
         .filter_map(move |(i, item)| limit.check(i).as_some(item))
