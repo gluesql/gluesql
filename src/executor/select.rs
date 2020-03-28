@@ -121,8 +121,19 @@ fn join<'a, T: 'static + Debug>(
     let row = storage
         .get_data(&table.name)?
         .map(move |(key, row)| (columns, key, row))
-        .filter(move |(columns, _, row)| blended_filter.check(Some((table, columns, row))))
-        .next();
+        .filter_map(move |item| {
+            let (columns, _, row) = &item;
+
+            blended_filter
+                .check(Some((table, columns, row)))
+                .map(|pass| match pass {
+                    true => Some(item),
+                    false => None,
+                })
+                .transpose()
+        })
+        .next()
+        .transpose()?;
 
     Ok(match row {
         Some((columns, key, row)) => Some(BlendContext {
@@ -186,13 +197,21 @@ pub fn select<'a, T: 'static + Debug>(
                 },
             )
         })
-        .filter(move |blend_context| {
-            // TODO: BlendedFilter should accept context as Result type
-            let filter = &filter;
+        .filter_map(move |blend_context| {
+            let blend_context = match blend_context {
+                Ok(c) => c,
+                Err(_) => {
+                    return Some(blend_context);
+                }
+            };
 
-            blend_context.as_ref().map_or(true, move |blend_context| {
-                BlendedFilter::new(&filter, &blend_context).check(None)
-            })
+            BlendedFilter::new(&filter, &blend_context)
+                .check(None)
+                .map(|pass| match pass {
+                    true => Some(blend_context),
+                    false => None,
+                })
+                .transpose()
         })
         .enumerate()
         .filter_map(move |(i, item)| match limit.check(i) {

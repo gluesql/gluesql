@@ -1,11 +1,13 @@
-use crate::data::{Row, Value};
-use crate::executor::{fetch_select_params, select, BlendContext, FilterContext};
-use crate::storage::Store;
 use nom_sql::{
     Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, SelectStatement,
     Table,
 };
 use std::fmt::Debug;
+
+use crate::data::{Row, Value};
+use crate::executor::{fetch_select_params, select, BlendContext, FilterContext};
+use crate::storage::Store;
+use crate::Result;
 
 pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
@@ -68,7 +70,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         }
     }
 
-    pub fn check(&self, item: Option<(&Table, &Vec<Column>, &Row)>) -> bool {
+    pub fn check(&self, item: Option<(&Table, &Vec<Column>, &Row)>) -> Result<bool> {
         let BlendedFilter {
             filter:
                 Filter {
@@ -89,9 +91,9 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
             None => *next,
         };
 
-        where_clause.map_or(true, |expr| {
+        Ok(where_clause.map_or(true, |expr| {
             Self::check_expr(*storage, filter_context, blend_context, expr)
-        })
+        }))
     }
 }
 
@@ -215,7 +217,7 @@ fn check_expr<'a, T: 'static + Debug>(
             _ => Err(()),
         };
 
-        let result: Result<bool, ()> = match tree.operator {
+        let result: std::result::Result<bool, ()> = match tree.operator {
             Operator::Equal => zip_parse().map(|(l, r)| l == r),
             Operator::NotEqual => zip_parse().map(|(l, r)| l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
