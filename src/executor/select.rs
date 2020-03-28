@@ -155,7 +155,7 @@ fn join<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: Option<&'a FilterContext<'a>>,
     init_context: Box<BlendContext<'a, T>>,
-    join_zipped: Box<dyn Iterator<Item=(&'a JoinClause, &'a (&Table, Vec<Column>))> + 'a>,
+    join_zipped: Box<dyn Iterator<Item = (&'a JoinClause, &'a (&Table, Vec<Column>))> + 'a>,
 ) -> Option<Result<BlendContext<'a, T>>> {
     let init_context = Some(Ok(*init_context));
 

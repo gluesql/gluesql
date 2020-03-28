@@ -28,11 +28,12 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         }
     }
 
-    pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> bool {
+    pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> Result<bool> {
         let context = FilterContext::new(table, columns, row, self.context);
 
-        self.where_clause
-            .map_or(true, |expr| check_expr(self.storage, &context, expr))
+        Ok(self
+            .where_clause
+            .map_or(true, |expr| check_expr(self.storage, &context, expr)))
     }
 }
 
@@ -51,7 +52,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         filter_context: Option<&FilterContext<'_>>,
         blend_context: &BlendContext<'_, T>,
         expr: &ConditionExpression,
-    ) -> bool {
+    ) -> Result<bool> {
         let BlendContext {
             table,
             columns,
@@ -66,7 +67,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
             Some(blend_context) => {
                 Self::check_expr(storage, Some(&filter_context), blend_context, expr)
             }
-            None => check_expr(storage, &filter_context, expr),
+            None => Ok(check_expr(storage, &filter_context, expr)),
         }
     }
 
@@ -91,9 +92,9 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
             None => *next,
         };
 
-        Ok(where_clause.map_or(true, |expr| {
+        where_clause.map_or(Ok(true), |expr| {
             Self::check_expr(*storage, filter_context, blend_context, expr)
-        }))
+        })
     }
 }
 

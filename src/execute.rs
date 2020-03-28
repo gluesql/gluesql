@@ -1,4 +1,4 @@
-use nom_sql::{DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
+use nom_sql::{Column, DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -61,13 +61,17 @@ pub fn execute<T: 'static + Debug>(
                 where_clause,
             } = statement;
             let filter = Filter::new(storage, where_clause.as_ref(), None);
+
             let columns = fetch_columns(storage, table)?;
+            let num_rows = fetch(storage, table, &columns, filter)?.try_fold::<_, _, Result<_>>(
+                0,
+                |num: usize, item: Result<(&Vec<Column>, T, Row)>| {
+                    let (_, key, _) = item?;
+                    storage.del_data(&key)?;
 
-            let num_rows = fetch(storage, table, &columns, filter)?.fold(0, |num, (_, key, _)| {
-                storage.del_data(&key).unwrap();
-
-                num + 1
-            });
+                    Ok(num + 1)
+                },
+            )?;
 
             Ok(Payload::Delete(num_rows))
         }
@@ -82,11 +86,17 @@ pub fn execute<T: 'static + Debug>(
             let columns = fetch_columns(storage, table)?;
 
             let num_rows = fetch(storage, table, &columns, filter)?
-                .map(|(columns, key, row)| (key, update.apply(columns, row)))
-                .fold(0, |num, (key, row)| {
-                    storage.set_data(&key, row).unwrap();
-                    num + 1
-                });
+                .map(|item| {
+                    let (columns, key, row) = item?;
+
+                    Ok((key, update.apply(columns, row)))
+                })
+                .try_fold::<_, _, Result<_>>(0, |num, item: Result<(T, Row)>| {
+                    let (key, row) = item?;
+                    storage.set_data(&key, row)?;
+
+                    Ok(num + 1)
+                })?;
 
             Ok(Payload::Update(num_rows))
         }
