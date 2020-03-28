@@ -1,3 +1,4 @@
+use boolinator::Boolinator;
 use nom_sql::{
     Column, JoinClause, JoinConstraint, JoinOperator, JoinRightSide, SelectStatement, Table,
 };
@@ -126,10 +127,7 @@ fn join<'a, T: 'static + Debug>(
 
             blended_filter
                 .check(Some((table, columns, row)))
-                .map(|pass| match pass {
-                    true => Some(item),
-                    false => None,
-                })
+                .map(|pass| pass.as_some(item))
                 .transpose()
         })
         .next()
@@ -207,17 +205,11 @@ pub fn select<'a, T: 'static + Debug>(
 
             BlendedFilter::new(&filter, &blend_context)
                 .check(None)
-                .map(|pass| match pass {
-                    true => Some(blend_context),
-                    false => None,
-                })
+                .map(|pass| pass.as_some(blend_context))
                 .transpose()
         })
         .enumerate()
-        .filter_map(move |(i, item)| match limit.check(i) {
-            true => Some(item),
-            false => None,
-        })
+        .filter_map(move |(i, item)| limit.check(i).as_some(item))
         .map(move |blend_context| blend.apply(blend_context));
 
     Ok(Box::new(rows))
