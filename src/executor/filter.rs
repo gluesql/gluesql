@@ -3,11 +3,24 @@ use nom_sql::{
     Table,
 };
 use std::fmt::Debug;
+use thiserror::Error;
 
 use crate::data::{Row, Value};
 use crate::executor::{fetch_select_params, select, BlendContext, FilterContext};
 use crate::storage::Store;
 use crate::Result;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum FilterError {
+    #[error("row not found")]
+    RowNotFound,
+
+    #[error("row is empty")]
+    RowIsEmpty,
+
+    #[error("unimplemented")]
+    Unimplemented,
+}
 
 pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
@@ -31,9 +44,10 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
     pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> Result<bool> {
         let context = FilterContext::new(table, columns, row, self.context);
 
-        Ok(self
-            .where_clause
-            .map_or(true, |expr| check_expr(self.storage, &context, expr)))
+        match self.where_clause {
+            Some(expr) => check_expr(self.storage, &context, expr),
+            None => Ok(true),
+        }
     }
 }
 
@@ -67,7 +81,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
             Some(blend_context) => {
                 Self::check_expr(storage, Some(&filter_context), blend_context, expr)
             }
-            None => Ok(check_expr(storage, &filter_context, expr)),
+            None => check_expr(storage, &filter_context, expr),
         }
     }
 
@@ -152,30 +166,28 @@ fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
-) -> Option<Parsed<'a>> {
+) -> Result<Option<Parsed<'a>>> {
     let parse_base = |base: &'a ConditionBase| match base {
-        ConditionBase::Field(column) => filter_context
+        ConditionBase::Field(column) => Ok(filter_context
             .get_value(&column)
-            .map(|value| Parsed::ValueRef(value)),
-        ConditionBase::Literal(literal) => Some(Parsed::LiteralRef(literal)),
+            .map(|value| Parsed::ValueRef(value))),
+        ConditionBase::Literal(literal) => Ok(Some(Parsed::LiteralRef(literal))),
         ConditionBase::NestedSelect(statement) => {
-            let params = fetch_select_params(storage, statement).unwrap();
-            let value = select(storage, statement, &params, Some(filter_context))
-                .unwrap()
-                .map(|c| c.unwrap())
-                .map(Row::take_first_value)
+            let params = fetch_select_params(storage, statement)?;
+            let value = select(storage, statement, &params, Some(filter_context))?
+                .map(|c| Row::take_first_value(c.unwrap()))
                 .next()
-                .expect("Row does not exist")
-                .expect("Failed to take first value");
+                .ok_or(FilterError::RowNotFound)?
+                .ok_or(FilterError::RowIsEmpty)?;
 
-            Some(Parsed::Value(value))
+            Ok(Some(Parsed::Value(value)))
         }
-        _ => None,
+        _ => Ok(None),
     };
 
     match expr {
         ConditionExpression::Base(base) => parse_base(&base),
-        _ => None,
+        _ => Ok(None),
     }
 }
 
@@ -183,7 +195,7 @@ fn parse_in_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
-) -> Option<ParsedList<'a, T>> {
+) -> Result<Option<ParsedList<'a, T>>> {
     let parse_base = |base: &'a ConditionBase| match base {
         ConditionBase::LiteralList(literals) => Some(ParsedList::LiteralRef(literals)),
         ConditionBase::NestedSelect(statement) => {
@@ -192,49 +204,47 @@ fn parse_in_expr<'a, T: 'static + Debug>(
         _ => None,
     };
 
-    match expr {
+    Ok(match expr {
         ConditionExpression::Base(base) => parse_base(&base),
         _ => None,
-    }
+    })
 }
 
 fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
-) -> bool {
+) -> Result<bool> {
     let check = |expr| check_expr(storage, filter_context, expr);
     let parse = |expr| parse_expr(storage, filter_context, expr);
     let parse_in = |expr| parse_in_expr(storage, filter_context, expr);
 
     let check_tree = |tree: &'a ConditionTree| {
-        let zip_check = || Ok((check(&tree.left), check(&tree.right)));
-        let zip_parse = || match (parse(&tree.left), parse(&tree.right)) {
+        let zip_check = || Ok((check(&tree.left)?, check(&tree.right)?));
+        let zip_parse = || match (parse(&tree.left)?, parse(&tree.right)?) {
             (Some(l), Some(r)) => Ok((l, r)),
-            _ => Err(()),
+            _ => Err(FilterError::Unimplemented.into()),
         };
-        let zip_in = || match (parse(&tree.left), parse_in(&tree.right)) {
+        let zip_in = || match (parse(&tree.left)?, parse_in(&tree.right)?) {
             (Some(l), Some(r)) => Ok((l, r)),
-            _ => Err(()),
+            _ => Err(FilterError::Unimplemented.into()),
         };
 
-        let result: std::result::Result<bool, ()> = match tree.operator {
+        match tree.operator {
             Operator::Equal => zip_parse().map(|(l, r)| l == r),
             Operator::NotEqual => zip_parse().map(|(l, r)| l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
             Operator::In => zip_in().map(|(l, r)| l.exists_in(r)),
             _ => Ok(false),
-        };
-
-        result.unwrap()
+        }
     };
 
     match expr {
         ConditionExpression::ComparisonOp(tree) => check_tree(&tree),
         ConditionExpression::LogicalOp(tree) => check_tree(&tree),
-        ConditionExpression::NegationOp(expr) => !check(expr),
+        ConditionExpression::NegationOp(expr) => check(expr).map(|b| !b),
         ConditionExpression::Bracketed(expr) => check(expr),
-        _ => false,
+        _ => Ok(false),
     }
 }

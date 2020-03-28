@@ -1,6 +1,6 @@
 use thiserror::Error as ThisError;
 
-use crate::executor::{BlendError, SelectError};
+use crate::executor::{BlendError, FilterError, SelectError};
 use crate::ExecuteError;
 
 #[derive(ThisError, Debug)]
@@ -20,6 +20,8 @@ pub enum Error {
     Select(#[from] SelectError),
     #[error(transparent)]
     Blend(#[from] BlendError),
+    #[error(transparent)]
+    Filter(#[from] FilterError),
 
     // all other errors
     #[error(transparent)]
