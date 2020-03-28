@@ -96,7 +96,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
     Ok(Box::new(rows))
 }
 
-fn join<'a, T: 'static + Debug>(
+fn join_row<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     join_clause: &'a JoinClause,
     table: &'a Table,
@@ -151,6 +151,31 @@ fn join<'a, T: 'static + Debug>(
     })
 }
 
+fn join<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    filter_context: Option<&'a FilterContext<'a>>,
+    init_context: Box<BlendContext<'a, T>>,
+    join_zipped: Box<dyn Iterator<Item=(&'a JoinClause, &'a (&Table, Vec<Column>))> + 'a>,
+) -> Option<Result<BlendContext<'a, T>>> {
+    let init_context = Some(Ok(*init_context));
+
+    join_zipped.fold(
+        init_context,
+        |blend_context, (join_clause, (table, columns))| match blend_context {
+            Some(Ok(blend_context)) => join_row(
+                storage,
+                join_clause,
+                table,
+                columns,
+                filter_context,
+                blend_context,
+            )
+            .transpose(),
+            _ => blend_context,
+        },
+    )
+}
+
 pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
@@ -177,22 +202,12 @@ pub fn select<'a, T: 'static + Debug>(
     let rows = fetch_blended(storage, table, columns)?
         .filter_map(move |init_context| {
             let join_zipped = join_clauses.iter().zip(join_columns.iter());
-            let init_context = Some(Ok(init_context));
 
-            join_zipped.fold(
-                init_context,
-                |blend_context, (join_clause, (table, columns))| match blend_context {
-                    Some(Ok(blend_context)) => join(
-                        storage,
-                        join_clause,
-                        table,
-                        columns,
-                        filter_context,
-                        blend_context,
-                    )
-                    .transpose(),
-                    _ => blend_context,
-                },
+            join(
+                storage,
+                filter_context,
+                Box::new(init_context),
+                Box::new(join_zipped),
             )
         })
         .filter_map(move |blend_context| {
