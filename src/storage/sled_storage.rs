@@ -30,7 +30,16 @@ impl Into<Error> for StorageError {
     }
 }
 
-type SledResult<T> = std::result::Result<T, StorageError>;
+macro_rules! try_into {
+    ($expr: expr) => {
+        $expr.map_err(|e| {
+            let e: StorageError = e.into();
+            let e: Error = e.into();
+
+            e
+        })?
+    };
+}
 
 pub struct SledStorage {
     tree: Db,
@@ -38,97 +47,64 @@ pub struct SledStorage {
 
 impl SledStorage {
     pub fn new(filename: String) -> Result<Self> {
-        let tree = sled::open(filename).map_err(|e| {
-            let e: StorageError = e.into();
-            let e: Error = e.into();
-
-            e
-        })?;
+        let tree = try_into!(sled::open(filename));
 
         Ok(Self { tree })
-    }
-
-    fn impl_gen_id(&self, table_name: &str) -> SledResult<IVec> {
-        let id = format!("data/{}/{}", table_name, self.tree.generate_id()?);
-
-        Ok(IVec::from(id.as_bytes()))
-    }
-
-    fn impl_set_schema(&self, statement: &CreateTableStatement) -> SledResult<()> {
-        let k = format!("schema/{}", statement.table.name);
-        let k = k.as_bytes();
-        let v: Vec<u8> = bincode::serialize(&statement)?;
-
-        self.tree.insert(k, v)?;
-
-        Ok(())
-    }
-
-    fn impl_get_schema(&self, table_name: &str) -> SledResult<CreateTableStatement> {
-        let k = format!("schema/{}", table_name);
-        let k = k.as_bytes();
-        let v: &[u8] = &self.tree.get(&k)?.ok_or(StoreError::SchemaNotFound)?;
-        let statement = bincode::deserialize(v)?;
-
-        Ok(statement)
-    }
-
-    fn impl_set_data(&self, key: &IVec, row: Row) -> SledResult<Row> {
-        let v: Vec<u8> = bincode::serialize(&row)?;
-
-        self.tree.insert(key, v)?;
-
-        Ok(row)
-    }
-
-    fn impl_get_data(
-        &self,
-        table_name: &str,
-    ) -> SledResult<Box<dyn Iterator<Item = Result<(IVec, Row)>>>> {
-        let prefix = format!("data/{}/", table_name);
-
-        let result_set = self
-            .tree
-            .scan_prefix(prefix.as_bytes())
-            .map(move |item| {
-                let (key, value) = item?;
-
-                Ok((key, bincode::deserialize(&value)?))
-            })
-            .map(|result: SledResult<(IVec, Row)>| result.map_err(|e| e.into()));
-
-        Ok(Box::new(result_set))
-    }
-
-    fn impl_del_data(&self, key: &IVec) -> SledResult<()> {
-        self.tree.remove(key)?;
-
-        Ok(())
     }
 }
 
 impl Store<IVec> for SledStorage {
     fn gen_id(&self, table_name: &str) -> Result<IVec> {
-        self.impl_gen_id(table_name).map_err(|e| e.into())
+        let id = try_into!(self.tree.generate_id());
+        let id = format!("data/{}/{}", table_name, id);
+
+        Ok(IVec::from(id.as_bytes()))
     }
 
     fn set_schema(&self, statement: &CreateTableStatement) -> Result<()> {
-        self.impl_set_schema(statement).map_err(|e| e.into())
+        let key = format!("schema/{}", statement.table.name);
+        let key = key.as_bytes();
+        let value = try_into!(bincode::serialize(&statement));
+
+        try_into!(self.tree.insert(key, value));
+
+        Ok(())
     }
 
     fn get_schema(&self, table_name: &str) -> Result<CreateTableStatement> {
-        self.impl_get_schema(table_name).map_err(|e| e.into())
+        let key = format!("schema/{}", table_name);
+        let key = key.as_bytes();
+        let value = try_into!(self.tree.get(&key));
+        let value = value.ok_or(StoreError::SchemaNotFound)?;
+        let statement = try_into!(bincode::deserialize(&value));
+
+        Ok(statement)
     }
 
     fn set_data(&self, key: &IVec, row: Row) -> Result<Row> {
-        self.impl_set_data(key, row).map_err(|e| e.into())
+        let value = try_into!(bincode::serialize(&row));
+
+        try_into!(self.tree.insert(key, value));
+
+        Ok(row)
     }
 
     fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Result<(IVec, Row)>>>> {
-        self.impl_get_data(table_name).map_err(|e| e.into())
+        let prefix = format!("data/{}/", table_name);
+
+        let result_set = self.tree.scan_prefix(prefix.as_bytes()).map(move |item| {
+            let (key, value) = try_into!(item);
+            let value = try_into!(bincode::deserialize(&value));
+
+            Ok((key, value))
+        });
+
+        Ok(Box::new(result_set))
     }
 
     fn del_data(&self, key: &IVec) -> Result<()> {
-        self.impl_del_data(key).map_err(|e| e.into())
+        try_into!(self.tree.remove(key));
+
+        Ok(())
     }
 }
