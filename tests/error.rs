@@ -1,6 +1,6 @@
 mod helper;
 
-use gluesql::{BlendError, ExecuteError, JoinError, SelectError};
+use gluesql::{BlendError, ExecuteError, JoinError, SelectError, StoreError};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -15,6 +15,7 @@ fn error() {
 
     let test_cases = {
         vec![
+            (StoreError::SchemaNotFound.into(), "SELECT * FROM Nothing;"),
             (SelectError::TableNotFound.into(), "SELECT * FROM;"),
             (
                 SelectError::TooManyTables.into(),

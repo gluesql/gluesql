@@ -3,8 +3,8 @@ use nom_sql::CreateTableStatement;
 use sled::{self, Db, IVec};
 
 use crate::data::Row;
-use crate::result::{Error, Result};
-use crate::storage::Store;
+use crate::result::Result;
+use crate::storage::{Store, StoreError};
 
 pub struct SledStorage {
     tree: Db,
@@ -38,7 +38,7 @@ impl Store<IVec> for SledStorage {
     fn get_schema(&self, table_name: &str) -> Result<CreateTableStatement> {
         let k = format!("schema/{}", table_name);
         let k = k.as_bytes();
-        let v: &[u8] = &self.tree.get(&k)?.ok_or(Error::NotFound)?;
+        let v: &[u8] = &self.tree.get(&k)?.ok_or(StoreError::SchemaNotFound)?;
         let statement = bincode::deserialize(v)?;
 
         Ok(statement)

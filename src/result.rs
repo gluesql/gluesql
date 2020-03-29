@@ -1,6 +1,7 @@
 use thiserror::Error as ThisError;
 
 use crate::executor::{BlendError, FilterError, JoinError, SelectError};
+use crate::storage::StoreError;
 use crate::ExecuteError;
 
 #[derive(ThisError, Debug)]
@@ -10,9 +11,8 @@ pub enum Error {
     #[error(transparent)]
     Bincode(#[from] bincode::Error),
 
-    // storage
-    #[error("not found")]
-    NotFound,
+    #[error(transparent)]
+    Store(#[from] StoreError),
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),

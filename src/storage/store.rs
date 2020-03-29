@@ -1,6 +1,15 @@
+use nom_sql::CreateTableStatement;
+use std::fmt::Debug;
+use thiserror::Error;
+
 use crate::data::Row;
 use crate::result::Result;
-use nom_sql::CreateTableStatement;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum StoreError {
+    #[error("Schema not found")]
+    SchemaNotFound,
+}
 
 pub trait Store<T: std::fmt::Debug> {
     fn gen_id(&self, table_name: &str) -> Result<T>;
