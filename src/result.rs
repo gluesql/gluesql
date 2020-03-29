@@ -7,12 +7,9 @@ use crate::ExecuteError;
 #[derive(ThisError, Debug)]
 pub enum Error {
     #[error(transparent)]
-    Sled(#[from] sled::Error),
-    #[error(transparent)]
-    Bincode(#[from] bincode::Error),
-
-    #[error(transparent)]
     Store(#[from] StoreError),
+    #[error(transparent)]
+    Storage(#[from] Box<dyn std::error::Error>),
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
