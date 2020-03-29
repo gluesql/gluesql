@@ -7,8 +7,8 @@ use thiserror::Error;
 
 use crate::data::{Row, Value};
 use crate::executor::{fetch_select_params, select, BlendContext, FilterContext};
+use crate::result::Result;
 use crate::storage::Store;
-use crate::Result;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum FilterError {

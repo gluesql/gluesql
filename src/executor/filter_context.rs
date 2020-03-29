@@ -1,6 +1,7 @@
-use crate::data::{Row, Value};
 use nom_sql::{Column, Table};
 use std::fmt::Debug;
+
+use crate::data::{Row, Value};
 
 #[derive(Debug)]
 pub struct FilterContext<'a> {

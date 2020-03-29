@@ -1,5 +1,6 @@
-use crate::data::{Row, Value};
 use nom_sql::{Column, FieldValueExpression, LiteralExpression};
+
+use crate::data::{Row, Value};
 
 fn copy(value: Value, (_, literal_expr): &(Column, FieldValueExpression)) -> Value {
     let field_literal = match literal_expr {

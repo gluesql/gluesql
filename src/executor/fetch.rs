@@ -4,8 +4,8 @@ use std::fmt::Debug;
 
 use crate::data::Row;
 use crate::executor::Filter;
+use crate::result::Result;
 use crate::storage::Store;
-use crate::Result;
 
 pub fn fetch_columns<T: 'static + Debug>(
     storage: &dyn Store<T>,

@@ -2,7 +2,9 @@ use nom_sql::{Column, FieldDefinitionExpression};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::{BlendContext, Result, Row, Value};
+use crate::data::{Row, Value};
+use crate::executor::BlendContext;
+use crate::result::Result;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum BlendError {
