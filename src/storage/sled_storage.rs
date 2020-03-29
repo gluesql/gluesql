@@ -81,14 +81,21 @@ impl SledStorage {
         Ok(row)
     }
 
-    fn impl_get_data(&self, table_name: &str) -> SledResult<Box<dyn Iterator<Item = (IVec, Row)>>> {
+    fn impl_get_data(
+        &self,
+        table_name: &str,
+    ) -> SledResult<Box<dyn Iterator<Item = Result<(IVec, Row)>>>> {
         let prefix = format!("data/{}/", table_name);
 
         let result_set = self
             .tree
             .scan_prefix(prefix.as_bytes())
-            .map(|result| result.expect("should be unwrapped"))
-            .map(move |(key, value)| (key, bincode::deserialize(&value).expect("Stop iterate")));
+            .map(move |item| {
+                let (key, value) = item?;
+
+                Ok((key, bincode::deserialize(&value)?))
+            })
+            .map(|result: SledResult<(IVec, Row)>| result.map_err(|e| e.into()));
 
         Ok(Box::new(result_set))
     }
@@ -117,7 +124,7 @@ impl Store<IVec> for SledStorage {
         self.impl_set_data(key, row).map_err(|e| e.into())
     }
 
-    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = (IVec, Row)>>> {
+    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Result<(IVec, Row)>>>> {
         self.impl_get_data(table_name).map_err(|e| e.into())
     }
 

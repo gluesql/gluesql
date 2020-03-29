@@ -20,7 +20,7 @@ pub trait Store<T: std::fmt::Debug> {
 
     fn set_data(&self, key: &T, row: Row) -> Result<Row>;
 
-    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = (T, Row)>>>;
+    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Result<(T, Row)>>>>;
 
     fn del_data(&self, key: &T) -> Result<()>;
 }

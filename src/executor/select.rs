@@ -73,17 +73,18 @@ fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
     columns: &'a Vec<Column>,
-) -> Result<Box<dyn Iterator<Item = BlendContext<'a, T>> + 'a>> {
-    let rows = storage
-        .get_data(&table.name)?
-        .map(move |(key, row)| (columns, key, row))
-        .map(move |(columns, key, row)| BlendContext {
+) -> Result<Box<dyn Iterator<Item = Result<BlendContext<'a, T>>> + 'a>> {
+    let rows = storage.get_data(&table.name)?.map(move |data| {
+        let (key, row) = data?;
+
+        Ok(BlendContext {
             table,
             columns,
             key,
             row,
             next: None,
-        });
+        })
+    });
 
     Ok(Box::new(rows))
 }
@@ -113,7 +114,7 @@ pub fn select<'a, T: 'static + Debug>(
     let limit = Limit::new(limit_clause);
 
     let rows = fetch_blended(storage, table, columns)?
-        .filter_map(move |init_context| join.apply(Box::new(init_context)))
+        .filter_map(move |blend_context| join.apply(Box::new(blend_context)))
         .filter_map(move |blend_context| {
             blend_context.map_or_else(
                 |error| Some(Err(error)),

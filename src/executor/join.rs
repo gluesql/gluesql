@@ -40,9 +40,9 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
 
     pub fn apply(
         &self,
-        init_context: Box<BlendContext<'a, T>>,
+        init_context: Box<Result<BlendContext<'a, T>>>,
     ) -> Option<Result<BlendContext<'a, T>>> {
-        let init_context = Some(Ok(*init_context));
+        let init_context = Some(*init_context);
         let join_zipped = self.join_clauses.iter().zip(self.join_columns.iter());
 
         join_zipped.fold(
@@ -81,14 +81,16 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
         let row = self
             .storage
             .get_data(&table.name)?
-            .map(move |(key, row)| (columns, key, row))
             .filter_map(move |item| {
-                let (columns, _, row) = &item;
-
-                blended_filter
-                    .check(Some((table, columns, row)))
-                    .map(|pass| pass.as_some(item))
-                    .transpose()
+                item.map_or_else(
+                    |error| Some(Err(error)),
+                    |(key, row)| {
+                        blended_filter
+                            .check(Some((table, columns, &row)))
+                            .map(|pass| pass.as_some((columns, key, row)))
+                            .transpose()
+                    },
+                )
             })
             .next()
             .transpose()?;
@@ -96,7 +98,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
         Ok(match row {
             Some((columns, key, row)) => Some(BlendContext {
                 table,
-                columns,
+                columns: &columns,
                 key,
                 row,
                 next: Some(Box::new(blend_context)),

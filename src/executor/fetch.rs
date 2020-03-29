@@ -25,17 +25,17 @@ pub fn fetch<'a, T: 'static + Debug>(
     columns: &'a Vec<Column>,
     filter: Filter<'a, T>,
 ) -> Result<Box<dyn Iterator<Item = Result<(&'a Vec<Column>, T, Row)>> + 'a>> {
-    let rows = storage
-        .get_data(&table.name)?
-        .map(move |(key, row)| (columns, key, row))
-        .filter_map(move |item| {
-            let (columns, _, row) = &item;
-
-            filter
-                .check(table, columns, row)
-                .map(|pass| pass.as_some(item))
-                .transpose()
-        });
+    let rows = storage.get_data(&table.name)?.filter_map(move |item| {
+        item.map_or_else(
+            |error| Some(Err(error)),
+            |(key, row)| {
+                filter
+                    .check(table, columns, &row)
+                    .map(|pass| pass.as_some((columns, key, row)))
+                    .transpose()
+            },
+        )
+    });
 
     Ok(Box::new(rows))
 }
