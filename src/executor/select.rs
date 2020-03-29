@@ -1,13 +1,11 @@
 use boolinator::Boolinator;
-use nom_sql::{
-    Column, JoinClause, JoinConstraint, JoinOperator, JoinRightSide, SelectStatement, Table,
-};
+use nom_sql::{Column, JoinClause, JoinRightSide, SelectStatement, Table};
 use std::fmt::Debug;
 use thiserror::Error;
 
 use crate::data::Row;
 use crate::executor::{
-    fetch_columns, Blend, BlendContext, BlendedFilter, Filter, FilterContext, Limit,
+    fetch_columns, Blend, BlendContext, BlendedFilter, Filter, FilterContext, Join, Limit,
 };
 use crate::result::Result;
 use crate::storage::Store;
@@ -22,12 +20,6 @@ pub enum SelectError {
 
     #[error("unimplemented! join right side not supported")]
     JoinRightSideNotSupported,
-
-    #[error("unimplemented! join not supported")]
-    JoinTypeNotSupported,
-
-    #[error("unimplemented! using on join not supported")]
-    UsingOnJoinNotSupported,
 }
 
 pub struct SelectParams<'a> {
@@ -96,86 +88,6 @@ fn fetch_blended<'a, T: 'static + Debug>(
     Ok(Box::new(rows))
 }
 
-fn join_row<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
-    join_clause: &'a JoinClause,
-    table: &'a Table,
-    columns: &'a Vec<Column>,
-    filter_context: Option<&'a FilterContext<'a>>,
-    blend_context: BlendContext<'a, T>,
-) -> Result<Option<BlendContext<'a, T>>> {
-    let JoinClause {
-        operator,
-        constraint,
-        ..
-    } = join_clause;
-
-    let where_clause = match constraint {
-        JoinConstraint::On(where_clause) => Some(where_clause),
-        JoinConstraint::Using(_) => {
-            return Err(SelectError::UsingOnJoinNotSupported.into());
-        }
-    };
-    let filter = Filter::new(storage, where_clause, filter_context);
-    let blended_filter = BlendedFilter::new(&filter, &blend_context);
-
-    let row = storage
-        .get_data(&table.name)?
-        .map(move |(key, row)| (columns, key, row))
-        .filter_map(move |item| {
-            let (columns, _, row) = &item;
-
-            blended_filter
-                .check(Some((table, columns, row)))
-                .map(|pass| pass.as_some(item))
-                .transpose()
-        })
-        .next()
-        .transpose()?;
-
-    Ok(match row {
-        Some((columns, key, row)) => Some(BlendContext {
-            table,
-            columns,
-            key,
-            row,
-            next: Some(Box::new(blend_context)),
-        }),
-        None => match operator {
-            JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => Some(blend_context),
-            JoinOperator::Join | JoinOperator::InnerJoin => None,
-            _ => {
-                return Err(SelectError::JoinTypeNotSupported.into());
-            }
-        },
-    })
-}
-
-fn join<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
-    filter_context: Option<&'a FilterContext<'a>>,
-    init_context: Box<BlendContext<'a, T>>,
-    join_zipped: Box<dyn Iterator<Item = (&'a JoinClause, &'a (&Table, Vec<Column>))> + 'a>,
-) -> Option<Result<BlendContext<'a, T>>> {
-    let init_context = Some(Ok(*init_context));
-
-    join_zipped.fold(
-        init_context,
-        |blend_context, (join_clause, (table, columns))| match blend_context {
-            Some(Ok(blend_context)) => join_row(
-                storage,
-                join_clause,
-                table,
-                columns,
-                filter_context,
-                blend_context,
-            )
-            .transpose(),
-            _ => blend_context,
-        },
-    )
-}
-
 pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
@@ -197,19 +109,11 @@ pub fn select<'a, T: 'static + Debug>(
 
     let blend = Blend::new(fields);
     let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
+    let join = Join::new(storage, join_clauses, join_columns, filter_context);
     let limit = Limit::new(limit_clause);
 
     let rows = fetch_blended(storage, table, columns)?
-        .filter_map(move |init_context| {
-            let join_zipped = join_clauses.iter().zip(join_columns.iter());
-
-            join(
-                storage,
-                filter_context,
-                Box::new(init_context),
-                Box::new(join_zipped),
-            )
-        })
+        .filter_map(move |init_context| join.apply(Box::new(init_context)))
         .filter_map(move |blend_context| {
             blend_context.map_or_else(
                 |error| Some(Err(error)),

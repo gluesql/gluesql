@@ -1,6 +1,6 @@
 mod helper;
 
-use gluesql::{BlendError, ExecuteError, SelectError};
+use gluesql::{BlendError, ExecuteError, JoinError, SelectError};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -14,28 +14,29 @@ fn error() {
     helper.run_and_print("INSERT INTO TableA (id) VALUES (1);");
 
     let test_cases = {
-        use SelectError::*;
-
         vec![
-            (TableNotFound, "SELECT * FROM;"),
-            (TooManyTables, "SELECT * FROM TableA, TableB"),
+            (SelectError::TableNotFound.into(), "SELECT * FROM;"),
             (
-                JoinRightSideNotSupported,
+                SelectError::TooManyTables.into(),
+                "SELECT * FROM TableA, TableB",
+            ),
+            (
+                SelectError::JoinRightSideNotSupported.into(),
                 "SELECT * FROM TableA JOIN (SELECT * FROM TableB) as TableC ON 1 = 1",
             ),
             (
-                UsingOnJoinNotSupported,
+                JoinError::UsingOnJoinNotSupported.into(),
                 "SELECT * FROM TableA JOIN TableA USING (id)",
             ),
             (
-                JoinTypeNotSupported,
+                JoinError::JoinTypeNotSupported.into(),
                 "SELECT * FROM TableA CROSS JOIN TableA as A ON 1 = 2;",
             ),
         ]
     };
 
     for (error, sql) in test_cases.into_iter() {
-        helper.test_error(sql, error.into());
+        helper.test_error(sql, error);
     }
 
     helper.test_error(
