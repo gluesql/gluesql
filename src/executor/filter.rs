@@ -120,7 +120,11 @@ impl Parsed<'_> {
             ParsedList::LiteralRef(literals) => literals
                 .iter()
                 .any(|literal| &Parsed::LiteralRef(&literal) == self),
-            ParsedList::Value(storage, statement, filter_context) => {
+            ParsedList::Value {
+                storage,
+                statement,
+                filter_context,
+            } => {
                 let params = fetch_select_params(storage, statement).unwrap();
                 let v = select(storage, statement, &params, Some(filter_context))
                     .unwrap()
@@ -137,7 +141,11 @@ impl Parsed<'_> {
 
 enum ParsedList<'a, T: 'static + Debug> {
     LiteralRef(&'a Vec<Literal>),
-    Value(&'a dyn Store<T>, &'a SelectStatement, &'a FilterContext<'a>),
+    Value {
+        storage: &'a dyn Store<T>,
+        statement: &'a SelectStatement,
+        filter_context: &'a FilterContext<'a>,
+    },
 }
 
 fn parse_expr<'a, T: 'static + Debug>(
@@ -176,9 +184,11 @@ fn parse_in_expr<'a, T: 'static + Debug>(
 ) -> Result<Option<ParsedList<'a, T>>> {
     let parse_base = |base: &'a ConditionBase| match base {
         ConditionBase::LiteralList(literals) => Some(ParsedList::LiteralRef(literals)),
-        ConditionBase::NestedSelect(statement) => {
-            Some(ParsedList::Value(storage, statement, filter_context))
-        }
+        ConditionBase::NestedSelect(statement) => Some(ParsedList::Value {
+            storage,
+            statement,
+            filter_context,
+        }),
         _ => None,
     };
 
