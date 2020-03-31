@@ -100,10 +100,10 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
             .next()
             .transpose()?;
 
-        Ok(match row {
+        let row = match row {
             Some((columns, key, row)) => Some(BlendContext {
                 table,
-                columns: &columns,
+                columns,
                 key,
                 row,
                 next: blend_context.map(|c| Box::new(c)),
@@ -115,6 +115,8 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
                     return Err(JoinError::JoinTypeNotSupported.into());
                 }
             },
-        })
+        };
+
+        Ok(row)
     }
 }
