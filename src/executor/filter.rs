@@ -49,43 +49,26 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
             None => Ok(true),
         }
     }
+
+    pub fn check_blended(&self, blend_context: &BlendContext<'_, T>) -> Result<bool> {
+        match self.where_clause {
+            Some(expr) => check_blended_expr(self.storage, self.context, blend_context, expr),
+            None => Ok(true),
+        }
+    }
 }
 
 pub struct BlendedFilter<'a, T: 'static + Debug> {
     filter: &'a Filter<'a, T>,
-    context: &'a BlendContext<'a, T>,
+    context: Option<&'a BlendContext<'a, T>>,
 }
 
 impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
-    pub fn new(filter: &'a Filter<'a, T>, context: &'a BlendContext<'a, T>) -> Self {
+    pub fn new(filter: &'a Filter<'a, T>, context: Option<&'a BlendContext<'a, T>>) -> Self {
         Self { filter, context }
     }
 
-    fn check_expr(
-        storage: &dyn Store<T>,
-        filter_context: Option<&FilterContext<'_>>,
-        blend_context: &BlendContext<'_, T>,
-        expr: &ConditionExpression,
-    ) -> Result<bool> {
-        let BlendContext {
-            table,
-            columns,
-            row,
-            next,
-            ..
-        } = blend_context;
-
-        let filter_context = FilterContext::new(table, &columns, &row, filter_context);
-
-        match next {
-            Some(blend_context) => {
-                Self::check_expr(storage, Some(&filter_context), blend_context, expr)
-            }
-            None => check_expr(storage, &filter_context, expr),
-        }
-    }
-
-    pub fn check(&self, item: Option<(&Table, &Vec<Column>, &Row)>) -> Result<bool> {
+    pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> Result<bool> {
         let BlendedFilter {
             filter:
                 Filter {
@@ -96,18 +79,13 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
             context: blend_context,
         } = self;
 
-        let c;
-        let filter_context = match item {
-            Some((table, columns, row)) => {
-                c = FilterContext::new(table, columns, row, *next);
+        let filter_context = FilterContext::new(table, columns, row, *next);
 
-                Some(&c)
+        where_clause.map_or(Ok(true), |expr| match blend_context {
+            Some(blend_context) => {
+                check_blended_expr(*storage, Some(&filter_context), blend_context, expr)
             }
-            None => *next,
-        };
-
-        where_clause.map_or(Ok(true), |expr| {
-            Self::check_expr(*storage, filter_context, blend_context, expr)
+            None => check_expr(*storage, &filter_context, expr),
         })
     }
 }
@@ -246,5 +224,29 @@ fn check_expr<'a, T: 'static + Debug>(
         ConditionExpression::NegationOp(expr) => check(expr).map(|b| !b),
         ConditionExpression::Bracketed(expr) => check(expr),
         _ => Ok(false),
+    }
+}
+
+fn check_blended_expr<T: 'static + Debug>(
+    storage: &dyn Store<T>,
+    filter_context: Option<&FilterContext<'_>>,
+    blend_context: &BlendContext<'_, T>,
+    expr: &ConditionExpression,
+) -> Result<bool> {
+    let BlendContext {
+        table,
+        columns,
+        row,
+        next,
+        ..
+    } = blend_context;
+
+    let filter_context = FilterContext::new(table, &columns, &row, filter_context);
+
+    match next {
+        Some(blend_context) => {
+            check_blended_expr(storage, Some(&filter_context), blend_context, expr)
+        }
+        None => check_expr(storage, &filter_context, expr),
     }
 }

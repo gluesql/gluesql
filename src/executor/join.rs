@@ -40,20 +40,25 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
 
     pub fn apply(
         &self,
-        init_context: Box<Result<BlendContext<'a, T>>>,
+        init_context: Result<BlendContext<'a, T>>,
     ) -> Option<Result<BlendContext<'a, T>>> {
-        let init_context = Some(*init_context);
-        let join_zipped = self.join_clauses.iter().zip(self.join_columns.iter());
+        let init_context = match init_context {
+            Ok(c) => Some(c),
+            Err(e) => {
+                return Some(Err(e));
+            }
+        };
 
-        join_zipped.fold(
-            init_context,
-            |blend_context, (join_clause, (table, columns))| match blend_context {
-                Some(Ok(blend_context)) => self
-                    .join(join_clause, table, columns, blend_context)
-                    .transpose(),
-                _ => blend_context,
-            },
-        )
+        self.join_clauses
+            .iter()
+            .zip(self.join_columns.iter())
+            .try_fold(
+                init_context,
+                |blend_context, (join_clause, (table, columns))| {
+                    self.join(join_clause, table, columns, blend_context)
+                },
+            )
+            .transpose()
     }
 
     fn join(
@@ -61,7 +66,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
         join_clause: &'a JoinClause,
         table: &'a Table,
         columns: &'a Vec<Column>,
-        blend_context: BlendContext<'a, T>,
+        blend_context: Option<BlendContext<'a, T>>,
     ) -> Result<Option<BlendContext<'a, T>>> {
         let JoinClause {
             operator,
@@ -76,7 +81,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
             }
         };
         let filter = Filter::new(self.storage, where_clause, self.filter_context);
-        let blended_filter = BlendedFilter::new(&filter, &blend_context);
+        let blended_filter = BlendedFilter::new(&filter, blend_context.as_ref());
 
         let row = self
             .storage
@@ -86,7 +91,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
                     |error| Some(Err(error)),
                     |(key, row)| {
                         blended_filter
-                            .check(Some((table, columns, &row)))
+                            .check(table, columns, &row)
                             .map(|pass| pass.as_some((columns, key, row)))
                             .transpose()
                     },
@@ -101,10 +106,10 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
                 columns: &columns,
                 key,
                 row,
-                next: Some(Box::new(blend_context)),
+                next: blend_context.map(|c| Box::new(c)),
             }),
             None => match operator {
-                JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => Some(blend_context),
+                JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => blend_context,
                 JoinOperator::Join | JoinOperator::InnerJoin => None,
                 _ => {
                     return Err(JoinError::JoinTypeNotSupported.into());

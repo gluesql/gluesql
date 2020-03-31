@@ -80,6 +80,10 @@ fn join() {
         (7, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (7, "SELECT * FROM Item i INNER JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (5, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND Item.quantity = 1;"),
+        (0, "SELECT * FROM Player
+            INNER JOIN Item ON 1 = 2
+            INNER JOIN Item i2 ON 1 = 2
+        "),
         (7, "SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
             WHERE Player.id = (SELECT id FROM Player LIMIT 1 OFFSET 0);"),

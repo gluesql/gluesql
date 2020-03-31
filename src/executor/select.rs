@@ -4,9 +4,7 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 use crate::data::Row;
-use crate::executor::{
-    fetch_columns, Blend, BlendContext, BlendedFilter, Filter, FilterContext, Join, Limit,
-};
+use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -114,13 +112,13 @@ pub fn select<'a, T: 'static + Debug>(
     let limit = Limit::new(limit_clause);
 
     let rows = fetch_blended(storage, table, columns)?
-        .filter_map(move |blend_context| join.apply(Box::new(blend_context)))
+        .filter_map(move |blend_context| join.apply(blend_context))
         .filter_map(move |blend_context| {
             blend_context.map_or_else(
                 |error| Some(Err(error)),
                 |blend_context| {
-                    BlendedFilter::new(&filter, &blend_context)
-                        .check(None)
+                    filter
+                        .check_blended(&blend_context)
                         .map(|pass| pass.as_some(blend_context))
                         .transpose()
                 },
