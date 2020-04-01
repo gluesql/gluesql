@@ -1,3 +1,4 @@
+use boolinator::Boolinator;
 use nom_sql::{
     Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, SelectStatement,
     Table,
@@ -115,8 +116,8 @@ impl<'a> PartialEq for Parsed<'a> {
 }
 
 impl Parsed<'_> {
-    fn exists_in<T: 'static + Debug>(&self, list: ParsedList<'_, T>) -> bool {
-        match list {
+    fn exists_in<T: 'static + Debug>(&self, list: ParsedList<'_, T>) -> Result<bool> {
+        Ok(match list {
             ParsedList::LiteralRef(literals) => literals
                 .iter()
                 .any(|literal| &Parsed::LiteralRef(&literal) == self),
@@ -125,17 +126,23 @@ impl Parsed<'_> {
                 statement,
                 filter_context,
             } => {
-                let params = fetch_select_params(storage, statement).unwrap();
-                let v = select(storage, statement, &params, Some(filter_context))
-                    .unwrap()
-                    .map(|c| c.unwrap())
-                    .map(Row::take_first_value)
-                    .map(|value| value.unwrap())
-                    .any(|value| &Parsed::Value(value) == self);
+                let params = fetch_select_params(storage, statement)?;
+                let v = select(storage, statement, &params, Some(filter_context))?
+                    .map(|row| -> Result<_> {
+                        row?.take_first_value()
+                            .ok_or(FilterError::RowIsEmpty.into())
+                    })
+                    .filter_map(|value| match value {
+                        Ok(value) => (&Parsed::Value(value) == self).as_some(Ok(())),
+                        Err(e) => Some(Err(e)),
+                    })
+                    .next()
+                    .transpose()?
+                    .is_some();
 
                 v
             }
-        }
+        })
     }
 }
 
@@ -215,9 +222,11 @@ fn check_expr<'a, T: 'static + Debug>(
             (Some(l), Some(r)) => Ok((l, r)),
             _ => Err(FilterError::Unimplemented.into()),
         };
-        let zip_in = || match (parse(&tree.left)?, parse_in(&tree.right)?) {
-            (Some(l), Some(r)) => Ok((l, r)),
-            _ => Err(FilterError::Unimplemented.into()),
+        let zip_in = || -> Result<_> {
+            match (parse(&tree.left)?, parse_in(&tree.right)?) {
+                (Some(l), Some(r)) => Ok((l, r)),
+                _ => Err(FilterError::Unimplemented.into()),
+            }
         };
 
         match tree.operator {
@@ -225,7 +234,7 @@ fn check_expr<'a, T: 'static + Debug>(
             Operator::NotEqual => zip_parse().map(|(l, r)| l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
-            Operator::In => zip_in().map(|(l, r)| l.exists_in(r)),
+            Operator::In => zip_in().map(|(l, r)| l.exists_in(r))?,
             _ => Ok(false),
         }
     };
