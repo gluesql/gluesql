@@ -91,6 +91,15 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
     }
 }
 
+enum ParsedList<'a, T: 'static + Debug> {
+    LiteralRef(&'a Vec<Literal>),
+    Value {
+        storage: &'a dyn Store<T>,
+        statement: &'a SelectStatement,
+        filter_context: &'a FilterContext<'a>,
+    },
+}
+
 enum Parsed<'a> {
     LiteralRef(&'a Literal),
     ValueRef(&'a Value),
@@ -146,15 +155,6 @@ impl Parsed<'_> {
             }
         })
     }
-}
-
-enum ParsedList<'a, T: 'static + Debug> {
-    LiteralRef(&'a Vec<Literal>),
-    Value {
-        storage: &'a dyn Store<T>,
-        statement: &'a SelectStatement,
-        filter_context: &'a FilterContext<'a>,
-    },
 }
 
 fn parse_expr<'a, T: 'static + Debug>(
