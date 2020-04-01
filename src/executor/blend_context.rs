@@ -12,18 +12,16 @@ pub struct BlendContext<'a, T: 'static + Debug> {
     pub next: Option<Box<BlendContext<'a, T>>>,
 }
 
+// TODO: use this when you implement JOIN + blend
 impl<'a, T: 'static + Debug> BlendContext<'a, T> {
     pub fn get_value(&'a self, target: &'a Column) -> Option<&'a Value> {
         let Table { alias, name } = self.table;
 
         let get_value = || {
-            let index = self
-                .columns
+            self.columns
                 .iter()
                 .position(|column| column.name == target.name)
-                .unwrap();
-
-            self.row.get_value(index)
+                .and_then(|index| self.row.get_value(index))
         };
 
         match target.table {

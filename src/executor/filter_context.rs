@@ -30,13 +30,10 @@ impl<'a> FilterContext<'a> {
         let Table { alias, name } = self.table;
 
         let get_value = || {
-            let index = self
-                .columns
+            self.columns
                 .iter()
                 .position(|column| column.name == target.name)
-                .unwrap();
-
-            self.row.get_value(index)
+                .and_then(|index| self.row.get_value(index))
         };
 
         match target.table {
