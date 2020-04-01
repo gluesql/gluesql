@@ -132,9 +132,11 @@ impl Parsed<'_> {
                         row?.take_first_value()
                             .ok_or(FilterError::RowIsEmpty.into())
                     })
-                    .filter_map(|value| match value {
-                        Ok(value) => (&Parsed::Value(value) == self).as_some(Ok(())),
-                        Err(e) => Some(Err(e)),
+                    .filter_map(|value| {
+                        value.map_or_else(
+                            |error| Some(Err(error)),
+                            |value| (&Parsed::Value(value) == self).as_some(Ok(())),
+                        )
                     })
                     .next()
                     .transpose()?
