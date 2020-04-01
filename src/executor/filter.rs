@@ -161,10 +161,12 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionBase::NestedSelect(statement) => {
             let params = fetch_select_params(storage, statement)?;
             let value = select(storage, statement, &params, Some(filter_context))?
-                .map(|c| Row::take_first_value(c.unwrap()))
+                .map(|row| -> Result<_> {
+                    row?.take_first_value()
+                        .ok_or(FilterError::RowIsEmpty.into())
+                })
                 .next()
-                .ok_or(FilterError::RowNotFound)?
-                .ok_or(FilterError::RowIsEmpty)?;
+                .ok_or(FilterError::RowNotFound)??;
 
             Ok(Some(Parsed::Value(value)))
         }
