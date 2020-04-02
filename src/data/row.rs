@@ -4,8 +4,7 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 use crate::data::Value;
-use crate::ensure;
-use crate::result::{Error, Result};
+use crate::result::Result;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum RowError {
@@ -39,21 +38,24 @@ impl Row {
             .collect::<Vec<_>>();
 
         // TODO: Should not depend on the "order" of insert_fields, but currently it is.
-        ensure!(
+        // "create_fields do not match with insert_fields"
+        assert_eq!(
             create_fields
                 .iter()
                 .map(|(_, column)| &column.name)
+                .collect::<Vec<_>>(),
+            insert_fields
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|column| &column.name)
                 .collect::<Vec<_>>()
-                == insert_fields
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .map(|column| &column.name)
-                    .collect::<Vec<_>>(),
-            "create_fields do not match with insert_fields"
         );
 
-        ensure!(!insert_data.is_empty(), "insert_data is empty");
+        if insert_data.is_empty() {
+            panic!("insert_data is empty");
+        }
+
         let insert_literals = insert_data[0].clone().into_iter();
 
         let items = create_fields

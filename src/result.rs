@@ -32,10 +32,6 @@ pub enum Error {
     Row(#[from] RowError),
     #[error(transparent)]
     Value(#[from] ValueError),
-
-    // all other errors
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -58,27 +54,4 @@ impl PartialEq for Error {
             _ => false,
         }
     }
-}
-
-#[macro_export]
-macro_rules! bail {
-    ($($arg:tt)*) => {
-        return Err($crate::err!($($arg)*));
-    };
-}
-
-#[macro_export]
-macro_rules! err {
-    ($($arg:tt)*) => {
-        Error::Other(anyhow::anyhow!($($arg)*))
-    };
-}
-
-#[macro_export]
-macro_rules! ensure {
-    ($cond:expr, $($arg:tt)*) => {
-        if !$cond {
-            $crate::bail!($($arg)*);
-        }
-    };
 }

@@ -1,4 +1,4 @@
-use gluesql::{bail, execute, Error, Payload, Result, Row, SledStorage, Store};
+use gluesql::{execute, Error, Payload, Result, Row, SledStorage, Store};
 use nom_sql::parse_query;
 use sled::IVec;
 use std::fmt::Debug;
@@ -9,7 +9,9 @@ pub trait Helper<T: 'static + Debug> {
     fn run(&self, sql: &str) -> Result<Payload> {
         let parsed = match parse_query(sql) {
             Ok(parsed) => parsed,
-            Err(e) => bail!("failed to parse query: {:?}", e),
+            Err(e) => {
+                panic!("nom_sql parse_query: {:?}", e);
+            }
         };
 
         let storage = self.get_storage();
