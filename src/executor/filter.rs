@@ -227,10 +227,7 @@ fn check_expr<'a, T: 'static + Debug>(
             Operator::NotEqual => zip_parse().map(|(l, r)| l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
-            Operator::In => match zip_in() {
-                Ok((l, r)) => l.exists_in(r),
-                Err(e) => Err(e),
-            },
+            Operator::In => zip_in().and_then(|(l, r)| l.exists_in(r)),
             _ => Err(FilterError::Unimplemented.into()),
         }
     };
