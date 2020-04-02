@@ -16,6 +16,9 @@ pub enum FilterError {
     #[error("nested select row not found")]
     NestedSelectRowNotFound,
 
+    #[error("UnreachableConditionBase")]
+    UnreachableConditionBase,
+
     #[error("unimplemented")]
     Unimplemented,
 }
@@ -88,6 +91,12 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
     }
 }
 
+enum Parsed<'a> {
+    LiteralRef(&'a Literal),
+    ValueRef(&'a Value),
+    Value(Value),
+}
+
 enum ParsedList<'a, T: 'static + Debug> {
     LiteralRef(&'a Vec<Literal>),
     Value {
@@ -95,12 +104,7 @@ enum ParsedList<'a, T: 'static + Debug> {
         statement: &'a SelectStatement,
         filter_context: &'a FilterContext<'a>,
     },
-}
-
-enum Parsed<'a> {
-    LiteralRef(&'a Literal),
-    ValueRef(&'a Value),
-    Value(Value),
+    Parsed(Parsed<'a>),
 }
 
 impl<'a> PartialEq for Parsed<'a> {
@@ -124,6 +128,7 @@ impl<'a> PartialEq for Parsed<'a> {
 impl Parsed<'_> {
     fn exists_in<T: 'static + Debug>(&self, list: ParsedList<'_, T>) -> Result<bool> {
         Ok(match list {
+            ParsedList::Parsed(parsed) => &parsed == self,
             ParsedList::LiteralRef(literals) => literals
                 .iter()
                 .any(|literal| &Parsed::LiteralRef(&literal) == self),
@@ -170,7 +175,7 @@ fn parse_expr<'a, T: 'static + Debug>(
 
             Ok(Some(Parsed::Value(value)))
         }
-        _ => Ok(None),
+        ConditionBase::LiteralList(_) => Err(FilterError::UnreachableConditionBase.into()),
     };
 
     match expr {
@@ -185,13 +190,16 @@ fn parse_in_expr<'a, T: 'static + Debug>(
     expr: &'a ConditionExpression,
 ) -> Result<Option<ParsedList<'a, T>>> {
     let parse_base = |base: &'a ConditionBase| match base {
+        ConditionBase::Field(column) => filter_context
+            .get_value(&column)
+            .map(|value| ParsedList::Parsed(Parsed::ValueRef(value))),
+        ConditionBase::Literal(literal) => Some(ParsedList::Parsed(Parsed::LiteralRef(literal))),
         ConditionBase::LiteralList(literals) => Some(ParsedList::LiteralRef(literals)),
         ConditionBase::NestedSelect(statement) => Some(ParsedList::Value {
             storage,
             statement,
             filter_context,
         }),
-        _ => None,
     };
 
     Ok(match expr {
