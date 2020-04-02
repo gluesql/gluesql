@@ -69,7 +69,13 @@ pub struct SledHelper {
 
 impl SledHelper {
     pub fn new(path: &str) -> Self {
-        std::fs::remove_dir_all(path).expect("fs::remove_file");
+        match std::fs::remove_dir_all(path) {
+            Ok(()) => (),
+            Err(e) => {
+                println!("fs::remove_file {:?}", e);
+            }
+        }
+
         let storage = Box::new(SledStorage::new(path.to_string()).expect("SledStorage::new"));
 
         SledHelper { storage }
