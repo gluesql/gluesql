@@ -2,7 +2,7 @@ mod helper;
 
 use gluesql::{
     BlendError, ExecuteError, FilterContextError, FilterError, JoinError, RowError, SelectError,
-    StoreError, UpdateError,
+    StoreError, UpdateError, ValueError,
 };
 use helper::{Helper, SledHelper};
 
@@ -51,11 +51,21 @@ fn error() {
             UpdateError::ExpressionNotSupported.into(),
             "UPDATE TableA SET id = id + 1",
         ),
+        (
+            ValueError::LiteralNotSupported.into(),
+            "UPDATE TableA SET id = 0.11",
+        ),
     ];
 
     test_cases
         .into_iter()
         .for_each(|(error, sql)| helper.test_error(sql, error));
+
+    helper.run_and_print("CREATE TABLE TableB (id BOOL);");
+    helper.test_error(
+        "INSERT INTO TableB (id) VALUES (0);",
+        ValueError::SqlTypeNotSupported.into(),
+    );
 
     helper.test_error(
         "SELECT TableA.* FROM TableA;",

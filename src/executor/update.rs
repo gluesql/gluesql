@@ -15,7 +15,7 @@ fn copy(value: Value, (_, literal_expr): &(Column, FieldValueExpression)) -> Res
         FieldValueExpression::Literal(LiteralExpression {
             value: field_literal,
             ..
-        }) => Ok(value.clone_by(field_literal)),
+        }) => value.clone_by(field_literal),
         _ => Err(UpdateError::ExpressionNotSupported.into()),
     }
 }

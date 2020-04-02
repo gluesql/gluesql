@@ -60,7 +60,7 @@ impl Row {
             .into_iter()
             .zip(insert_literals)
             .map(|((sql_type, _), literal)| Value::new(sql_type, literal))
-            .collect();
+            .collect::<Result<_>>()?;
 
         Ok(Self(items))
     }
