@@ -34,6 +34,24 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+impl PartialEq for Error {
+    fn eq(&self, other: &Error) -> bool {
+        use Error::*;
+
+        match (self, other) {
+            (Store(e), Store(e2)) => e == e2,
+            (Execute(e), Execute(e2)) => e == e2,
+            (Select(e), Select(e2)) => e == e2,
+            (Join(e), Join(e2)) => e == e2,
+            (Blend(e), Blend(e2)) => e == e2,
+            (Filter(e), Filter(e2)) => e == e2,
+            (FilterContext(e), FilterContext(e2)) => e == e2,
+            (Row(e), Row(e2)) => e == e2,
+            _ => false,
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! bail {
     ($($arg:tt)*) => {
