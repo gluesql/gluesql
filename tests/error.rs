@@ -1,6 +1,8 @@
 mod helper;
 
-use gluesql::{BlendError, ExecuteError, JoinError, SelectError, StoreError};
+use gluesql::{
+    BlendError, ExecuteError, FilterError, JoinError, RowError, SelectError, StoreError,
+};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -31,6 +33,14 @@ fn error() {
         (
             JoinError::JoinTypeNotSupported.into(),
             "SELECT * FROM TableA CROSS JOIN TableA as A ON 1 = 2;",
+        ),
+        (
+            FilterError::NestedSelectRowNotFound.into(),
+            "SELECT * FROM TableA WHERE id = (SELECT id FROM TableA WHERE id = 2);",
+        ),
+        (
+            RowError::ValueNotFound.into(),
+            "SELECT * FROM TableA WHERE id = (SELECT a FROM TableA WHERE id = 1 LIMIT 1);",
         ),
     ];
 

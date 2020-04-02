@@ -2,10 +2,17 @@ use nom_sql::{Column, ColumnSpecification, Literal};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
 use std::fmt::Debug;
+use thiserror::Error;
 
 use crate::data::Value;
 use crate::ensure;
 use crate::result::{Error, Result};
+
+#[derive(Error, Debug, PartialEq)]
+pub enum RowError {
+    #[error("value not found")]
+    ValueNotFound,
+}
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Row(pub Vec<Value>);
@@ -15,8 +22,11 @@ impl Row {
         self.0.get(index)
     }
 
-    pub fn take_first_value(self) -> Option<Value> {
-        self.0.into_iter().next()
+    pub fn take_first_value(self) -> Result<Value> {
+        self.0
+            .into_iter()
+            .next()
+            .ok_or(RowError::ValueNotFound.into())
     }
 
     pub fn new(

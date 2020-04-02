@@ -63,6 +63,8 @@ pub trait Helper<T: 'static + Debug> {
             (Error::Select(found), Error::Select(expected)) => assert_eq!(expected, found),
             (Error::Join(found), Error::Join(expected)) => assert_eq!(expected, found),
             (Error::Blend(found), Error::Blend(expected)) => assert_eq!(expected, found),
+            (Error::Filter(found), Error::Filter(expected)) => assert_eq!(expected, found),
+            (Error::Row(found), Error::Row(expected)) => assert_eq!(expected, found),
             (found, expected) => panic!(
                 "\n\n    test: {}\nexpected: {:?}\n   found: {:?}\n\n",
                 sql, expected, found

@@ -13,11 +13,8 @@ use crate::storage::Store;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum FilterError {
-    #[error("row not found")]
-    RowNotFound,
-
-    #[error("row is empty")]
-    RowIsEmpty,
+    #[error("nested select row not found")]
+    NestedSelectRowNotFound,
 
     #[error("unimplemented")]
     Unimplemented,
@@ -137,10 +134,7 @@ impl Parsed<'_> {
             } => {
                 let params = fetch_select_params(storage, statement)?;
                 let v = select(storage, statement, &params, Some(filter_context))?
-                    .map(|row| -> Result<_> {
-                        row?.take_first_value()
-                            .ok_or(FilterError::RowIsEmpty.into())
-                    })
+                    .map(|row| row?.take_first_value())
                     .filter_map(|value| {
                         value.map_or_else(
                             |error| Some(Err(error)),
@@ -170,12 +164,9 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionBase::NestedSelect(statement) => {
             let params = fetch_select_params(storage, statement)?;
             let value = select(storage, statement, &params, Some(filter_context))?
-                .map(|row| -> Result<_> {
-                    row?.take_first_value()
-                        .ok_or(FilterError::RowIsEmpty.into())
-                })
+                .map(|row| row?.take_first_value())
                 .next()
-                .ok_or(FilterError::RowNotFound)??;
+                .ok_or(FilterError::NestedSelectRowNotFound)??;
 
             Ok(Some(Parsed::Value(value)))
         }
