@@ -1,7 +1,15 @@
 use nom_sql::{Column, Table};
 use std::fmt::Debug;
+use thiserror::Error;
 
 use crate::data::{Row, Value};
+use crate::result::Result;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum FilterContextError {
+    #[error("value not found")]
+    ValueNotFound,
+}
 
 #[derive(Debug)]
 pub struct FilterContext<'a> {
@@ -26,7 +34,7 @@ impl<'a> FilterContext<'a> {
         }
     }
 
-    pub fn get_value(&self, target: &'a Column) -> Option<&'a Value> {
+    pub fn get_value(&self, target: &'a Column) -> Result<&'a Value> {
         let Table { alias, name } = self.table;
 
         let get_value = || {
@@ -34,6 +42,7 @@ impl<'a> FilterContext<'a> {
                 .iter()
                 .position(|column| column.name == target.name)
                 .and_then(|index| self.row.get_value(index))
+                .ok_or(FilterContextError::ValueNotFound.into())
         };
 
         match target.table {
@@ -42,7 +51,10 @@ impl<'a> FilterContext<'a> {
                 if &target.table == alias || table == name {
                     get_value()
                 } else {
-                    self.next.and_then(|c| c.get_value(target))
+                    self.next
+                        .map(|c| c.get_value(target))
+                        .transpose()?
+                        .ok_or(FilterContextError::ValueNotFound.into())
                 }
             }
         }

@@ -1,7 +1,7 @@
 use thiserror::Error as ThisError;
 
 use crate::data::RowError;
-use crate::executor::{BlendError, FilterError, JoinError, SelectError};
+use crate::executor::{BlendError, FilterContextError, FilterError, JoinError, SelectError};
 use crate::storage::StoreError;
 use crate::ExecuteError;
 
@@ -22,6 +22,8 @@ pub enum Error {
     Blend(#[from] BlendError),
     #[error(transparent)]
     Filter(#[from] FilterError),
+    #[error(transparent)]
+    FilterContext(#[from] FilterContextError),
     #[error(transparent)]
     Row(#[from] RowError),
 

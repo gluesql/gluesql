@@ -57,7 +57,6 @@ fn nested_select() {
 
     let select_sqls = [
         (1, "SELECT * FROM User WHERE id IN 1;"),
-        (1, "SELECT * FROM User WHERE id = 1, 2;"),
         (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request);"),
         (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id = User.id);"),
         (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id IN User.id);"),

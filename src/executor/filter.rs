@@ -160,12 +160,12 @@ fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
-) -> Result<Option<Parsed<'a>>> {
+) -> Result<Parsed<'a>> {
     let parse_base = |base: &'a ConditionBase| match base {
-        ConditionBase::Field(column) => Ok(filter_context
+        ConditionBase::Field(column) => filter_context
             .get_value(&column)
-            .map(|value| Parsed::ValueRef(value))),
-        ConditionBase::Literal(literal) => Ok(Some(Parsed::LiteralRef(literal))),
+            .map(|value| Parsed::ValueRef(value)),
+        ConditionBase::Literal(literal) => Ok(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
             let params = fetch_select_params(storage, statement)?;
             let value = select(storage, statement, &params, Some(filter_context))?
@@ -173,14 +173,14 @@ fn parse_expr<'a, T: 'static + Debug>(
                 .next()
                 .ok_or(FilterError::NestedSelectRowNotFound)??;
 
-            Ok(Some(Parsed::Value(value)))
+            Ok(Parsed::Value(value))
         }
         ConditionBase::LiteralList(_) => Err(FilterError::UnreachableConditionBase.into()),
     };
 
     match expr {
         ConditionExpression::Base(base) => parse_base(&base),
-        _ => Ok(None),
+        _ => Err(FilterError::Unimplemented.into()),
     }
 }
 
@@ -188,24 +188,24 @@ fn parse_in_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
-) -> Result<Option<ParsedList<'a, T>>> {
+) -> Result<ParsedList<'a, T>> {
     let parse_base = |base: &'a ConditionBase| match base {
         ConditionBase::Field(column) => filter_context
             .get_value(&column)
             .map(|value| ParsedList::Parsed(Parsed::ValueRef(value))),
-        ConditionBase::Literal(literal) => Some(ParsedList::Parsed(Parsed::LiteralRef(literal))),
-        ConditionBase::LiteralList(literals) => Some(ParsedList::LiteralRef(literals)),
-        ConditionBase::NestedSelect(statement) => Some(ParsedList::Value {
+        ConditionBase::Literal(literal) => Ok(ParsedList::Parsed(Parsed::LiteralRef(literal))),
+        ConditionBase::LiteralList(literals) => Ok(ParsedList::LiteralRef(literals)),
+        ConditionBase::NestedSelect(statement) => Ok(ParsedList::Value {
             storage,
             statement,
             filter_context,
         }),
     };
 
-    Ok(match expr {
+    match expr {
         ConditionExpression::Base(base) => parse_base(&base),
-        _ => None,
-    })
+        _ => Err(FilterError::Unimplemented.into()),
+    }
 }
 
 fn check_expr<'a, T: 'static + Debug>(
@@ -219,24 +219,19 @@ fn check_expr<'a, T: 'static + Debug>(
 
     let check_tree = |tree: &'a ConditionTree| {
         let zip_check = || Ok((check(&tree.left)?, check(&tree.right)?));
-        let zip_parse = || match (parse(&tree.left)?, parse(&tree.right)?) {
-            (Some(l), Some(r)) => Ok((l, r)),
-            _ => Err(FilterError::Unimplemented.into()),
-        };
-        let zip_in = || -> Result<_> {
-            match (parse(&tree.left)?, parse_in(&tree.right)?) {
-                (Some(l), Some(r)) => Ok((l, r)),
-                _ => Err(FilterError::Unimplemented.into()),
-            }
-        };
+        let zip_parse = || Ok((parse(&tree.left)?, parse(&tree.right)?));
+        let zip_in = || Ok((parse(&tree.left)?, parse_in(&tree.right)?));
 
         match tree.operator {
             Operator::Equal => zip_parse().map(|(l, r)| l == r),
             Operator::NotEqual => zip_parse().map(|(l, r)| l != r),
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
-            Operator::In => zip_in().map(|(l, r)| l.exists_in(r))?,
-            _ => Ok(false),
+            Operator::In => match zip_in() {
+                Ok((l, r)) => l.exists_in(r),
+                Err(e) => Err(e),
+            },
+            _ => Err(FilterError::Unimplemented.into()),
         }
     };
 
@@ -245,7 +240,9 @@ fn check_expr<'a, T: 'static + Debug>(
         ConditionExpression::LogicalOp(tree) => check_tree(&tree),
         ConditionExpression::NegationOp(expr) => check(expr).map(|b| !b),
         ConditionExpression::Bracketed(expr) => check(expr),
-        _ => Ok(false),
+        ConditionExpression::Arithmetic(_) | ConditionExpression::Base(_) => {
+            Err(FilterError::Unimplemented.into())
+        }
     }
 }
 
