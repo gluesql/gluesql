@@ -1,7 +1,8 @@
 mod helper;
 
 use gluesql::{
-    BlendError, ExecuteError, FilterError, JoinError, RowError, SelectError, StoreError,
+    BlendError, ExecuteError, FilterContextError, FilterError, JoinError, RowError, SelectError,
+    StoreError,
 };
 use helper::{Helper, SledHelper};
 
@@ -37,6 +38,10 @@ fn error() {
         (
             FilterError::NestedSelectRowNotFound.into(),
             "SELECT * FROM TableA WHERE id = (SELECT id FROM TableA WHERE id = 2);",
+        ),
+        (
+            FilterContextError::ValueNotFound.into(),
+            "SELECT * FROM TableA WHERE noname = 1;",
         ),
         (
             RowError::ValueNotFound.into(),
