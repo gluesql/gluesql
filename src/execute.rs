@@ -89,7 +89,7 @@ pub fn execute<T: 'static + Debug>(
                 .map(|item| {
                     let (columns, key, row) = item?;
 
-                    Ok((key, update.apply(columns, row)))
+                    Ok((key, update.apply(columns, row)?))
                 })
                 .try_fold::<_, _, Result<_>>(0, |num, item: Result<(T, Row)>| {
                     let (key, row) = item?;

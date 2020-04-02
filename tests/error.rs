@@ -2,7 +2,7 @@ mod helper;
 
 use gluesql::{
     BlendError, ExecuteError, FilterContextError, FilterError, JoinError, RowError, SelectError,
-    StoreError,
+    StoreError, UpdateError,
 };
 use helper::{Helper, SledHelper};
 
@@ -46,6 +46,10 @@ fn error() {
         (
             RowError::ValueNotFound.into(),
             "SELECT * FROM TableA WHERE id = (SELECT a FROM TableA WHERE id = 1 LIMIT 1);",
+        ),
+        (
+            UpdateError::ExpressionNotSupported.into(),
+            "UPDATE TableA SET id = id + 1",
         ),
     ];
 

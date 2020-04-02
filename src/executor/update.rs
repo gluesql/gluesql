@@ -1,14 +1,24 @@
 use nom_sql::{Column, FieldValueExpression, LiteralExpression};
+use thiserror::Error;
 
 use crate::data::{Row, Value};
+use crate::result::Result;
 
-fn copy(value: Value, (_, literal_expr): &(Column, FieldValueExpression)) -> Value {
+#[derive(Error, Debug, PartialEq)]
+pub enum UpdateError {
+    #[error("field value expression not supported yet")]
+    ExpressionNotSupported,
+}
+
+fn copy(value: Value, (_, literal_expr): &(Column, FieldValueExpression)) -> Result<Value> {
     let field_literal = match literal_expr {
         FieldValueExpression::Literal(LiteralExpression { value, .. }) => value,
-        _ => panic!("[Update->copy_literal] Err on parsing LiteralExpression"),
+        _ => {
+            return Err(UpdateError::ExpressionNotSupported.into());
+        }
     };
 
-    Value::from((value, field_literal))
+    Ok(Value::from((value, field_literal)))
 }
 
 pub struct Update<'a> {
@@ -23,21 +33,20 @@ impl<'a> Update<'a> {
     fn find(&self, column: &Column) -> Option<&(Column, FieldValueExpression)> {
         self.fields
             .iter()
-            .filter(|(field_column, _)| column.name == field_column.name)
-            .next()
+            .find(|(field_column, _)| column.name == field_column.name)
     }
 
-    pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Row {
+    pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Result<Row> {
         let Row(items) = row;
         let items = items
             .into_iter()
             .enumerate()
             .map(|(i, item)| match self.find(&columns[i]) {
                 Some(field_item) => copy(item, field_item),
-                None => item,
+                None => Ok(item),
             })
-            .collect::<Vec<Value>>();
+            .collect::<Result<_>>()?;
 
-        Row(items)
+        Ok(Row(items))
     }
 }
