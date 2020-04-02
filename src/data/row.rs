@@ -1,6 +1,5 @@
 use nom_sql::{Column, ColumnSpecification, Literal};
 use serde::{Deserialize, Serialize};
-use std::convert::From;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -60,7 +59,7 @@ impl Row {
         let items = create_fields
             .into_iter()
             .zip(insert_literals)
-            .map(|((sql_type, _), literal)| Value::from((sql_type, literal)))
+            .map(|((sql_type, _), literal)| Value::new(sql_type, literal))
             .collect();
 
         Ok(Self(items))

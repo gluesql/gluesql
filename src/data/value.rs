@@ -1,6 +1,5 @@
 use nom_sql::{Literal, SqlType};
 use serde::{Deserialize, Serialize};
-use std::convert::From;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,19 +18,17 @@ impl PartialEq<Literal> for Value {
     }
 }
 
-impl From<(SqlType, Literal)> for Value {
-    fn from((sql_type, literal): (SqlType, Literal)) -> Self {
+impl Value {
+    pub fn new(sql_type: SqlType, literal: Literal) -> Self {
         match (sql_type, literal) {
             (SqlType::Int(_), Literal::Integer(v)) => Value::I64(v),
             (SqlType::Text, Literal::String(v)) => Value::String(v),
             _ => unimplemented!(),
         }
     }
-}
 
-impl From<(Value, &Literal)> for Value {
-    fn from((value, literal): (Value, &Literal)) -> Self {
-        match (value, literal) {
+    pub fn clone_by(&self, literal: &Literal) -> Self {
+        match (self, literal) {
             (Value::I64(_), &Literal::Integer(v)) => Value::I64(v),
             (Value::String(_), &Literal::String(ref v)) => Value::String(v.clone()),
             _ => unimplemented!(),

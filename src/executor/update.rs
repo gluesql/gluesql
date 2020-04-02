@@ -11,14 +11,13 @@ pub enum UpdateError {
 }
 
 fn copy(value: Value, (_, literal_expr): &(Column, FieldValueExpression)) -> Result<Value> {
-    let field_literal = match literal_expr {
-        FieldValueExpression::Literal(LiteralExpression { value, .. }) => value,
-        _ => {
-            return Err(UpdateError::ExpressionNotSupported.into());
-        }
-    };
-
-    Ok(Value::from((value, field_literal)))
+    match literal_expr {
+        FieldValueExpression::Literal(LiteralExpression {
+            value: field_literal,
+            ..
+        }) => Ok(value.clone_by(field_literal)),
+        _ => Err(UpdateError::ExpressionNotSupported.into()),
+    }
 }
 
 pub struct Update<'a> {
