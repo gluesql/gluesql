@@ -10,6 +10,15 @@ use crate::result::Result;
 pub enum RowError {
     #[error("value not found")]
     ValueNotFound,
+
+    #[error("lack of required column: {0}")]
+    LackOfRequiredColumn(String),
+
+    #[error("literals does not fit to columns")]
+    LackOfRequiredValue(String),
+
+    #[error("Unreachable")]
+    Unreachable,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -32,38 +41,28 @@ impl Row {
         insert_fields: &Option<Vec<Column>>,
         insert_data: &Vec<Vec<Literal>>,
     ) -> Result<Self> {
-        let create_fields = create_fields
+        let insert_data = insert_data.first().ok_or(RowError::Unreachable)?;
+
+        create_fields
             .into_iter()
             .map(|c| (c.sql_type, c.column))
-            .collect::<Vec<_>>();
+            .enumerate()
+            .map(|(i, (sql_type, column))| {
+                let i = insert_fields.as_ref().map_or(Ok(i), |columns| {
+                    columns
+                        .iter()
+                        .position(|target| target.name == column.name)
+                        .ok_or(RowError::LackOfRequiredColumn(column.name.clone()))
+                })?;
 
-        // TODO: Should not depend on the "order" of insert_fields, but currently it is.
-        // "create_fields do not match with insert_fields"
-        assert_eq!(
-            create_fields
-                .iter()
-                .map(|(_, column)| &column.name)
-                .collect::<Vec<_>>(),
-            insert_fields
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|column| &column.name)
-                .collect::<Vec<_>>()
-        );
+                let literal = insert_data
+                    .get(i)
+                    .ok_or(RowError::LackOfRequiredValue(column.name))?
+                    .clone();
 
-        if insert_data.is_empty() {
-            panic!("insert_data is empty");
-        }
-
-        let insert_literals = insert_data[0].clone().into_iter();
-
-        let items = create_fields
-            .into_iter()
-            .zip(insert_literals)
-            .map(|((sql_type, _), literal)| Value::new(sql_type, literal))
-            .collect::<Result<_>>()?;
-
-        Ok(Self(items))
+                Value::new(sql_type, literal)
+            })
+            .collect::<Result<_>>()
+            .map(|items| Self(items))
     }
 }

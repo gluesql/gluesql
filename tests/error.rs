@@ -55,6 +55,14 @@ fn error() {
             ValueError::LiteralNotSupported.into(),
             "UPDATE TableA SET id = 0.11",
         ),
+        (
+            RowError::LackOfRequiredColumn("id".to_string()).into(),
+            "INSERT INTO TableA () VALUES ();",
+        ),
+        (
+            RowError::LackOfRequiredValue("id".to_string()).into(),
+            "INSERT INTO TableA VALUES ();",
+        ),
     ];
 
     test_cases

@@ -25,9 +25,9 @@ fn synthesize() {
         "INSERT INTO TableA (id, test, target_id) VALUES (1, 100, 2);",
         "INSERT INTO TableA (id, test, target_id) VALUES (2, 100, 1);",
         "INSERT INTO TableA (id, test, target_id) VALUES (3, 300, 5);",
-        "INSERT INTO TableA (id, test, target_id) VALUES (3, 400, 5);",
-        "INSERT INTO TableA (id, test, target_id) VALUES (3, 500, 4);",
-        "INSERT INTO TableA (id, test, target_id) VALUES (4, 500, 3);",
+        "INSERT INTO TableA (target_id, id, test) VALUES (5, 3, 400);",
+        "INSERT INTO TableA (test, id, target_id) VALUES (500, 3, 4);",
+        "INSERT INTO TableA VALUES (4, 500, 3);",
     ];
 
     for insert_sql in insert_sqls.iter() {
