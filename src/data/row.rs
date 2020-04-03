@@ -45,9 +45,12 @@ impl Row {
 
         create_fields
             .into_iter()
-            .map(|c| (c.sql_type, c.column))
             .enumerate()
-            .map(|(i, (sql_type, column))| {
+            .map(|(i, create_field)| {
+                let ColumnSpecification {
+                    sql_type, column, ..
+                } = create_field;
+
                 let i = insert_fields.as_ref().map_or(Ok(i), |columns| {
                     columns
                         .iter()
