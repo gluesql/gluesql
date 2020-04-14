@@ -7,7 +7,7 @@ use crate::executor::Filter;
 use crate::result::Result;
 use crate::storage::Store;
 
-pub fn fetch_columns<T: 'static + Debug>(
+pub fn fetch_columns<T: 'static + Clone + Debug>(
     storage: &dyn Store<T>,
     table: &Table,
 ) -> Result<Vec<Column>> {
@@ -19,7 +19,7 @@ pub fn fetch_columns<T: 'static + Debug>(
         .collect::<Vec<Column>>())
 }
 
-pub fn fetch<'a, T: 'static + Debug>(
+pub fn fetch<'a, T: 'static + Clone + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
     columns: &'a Vec<Column>,

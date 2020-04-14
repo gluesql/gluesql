@@ -26,7 +26,7 @@ pub struct SelectParams<'a> {
     pub join_columns: Vec<(&'a Table, Vec<Column>)>,
 }
 
-pub fn fetch_select_params<'a, T: 'static + Debug>(
+pub fn fetch_select_params<'a, T: 'static + Clone + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
 ) -> Result<SelectParams<'a>> {
@@ -67,7 +67,7 @@ pub fn fetch_select_params<'a, T: 'static + Debug>(
     })
 }
 
-fn fetch_blended<'a, T: 'static + Debug>(
+fn fetch_blended<'a, T: 'static + Clone + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
     columns: &'a Vec<Column>,
@@ -87,7 +87,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
     Ok(Box::new(rows))
 }
 
-pub fn select<'a, T: 'static + Debug>(
+pub fn select<'a, T: 'static + Clone + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
     params: &'a SelectParams<'a>,
@@ -112,7 +112,7 @@ pub fn select<'a, T: 'static + Debug>(
     let limit = Limit::new(limit_clause);
 
     let rows = fetch_blended(storage, table, columns)?
-        .filter_map(move |blend_context| join.apply(blend_context))
+        .flat_map(move |blend_context| join.apply(blend_context))
         .filter_map(move |blend_context| {
             blend_context.map_or_else(
                 |error| Some(Err(error)),

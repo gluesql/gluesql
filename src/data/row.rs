@@ -21,7 +21,7 @@ pub enum RowError {
     Unreachable,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Row(pub Vec<Value>);
 
 impl Row {

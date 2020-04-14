@@ -3,8 +3,8 @@ use std::fmt::Debug;
 
 use crate::data::{Row, Value};
 
-#[derive(Debug)]
-pub struct BlendContext<'a, T: 'static + Debug> {
+#[derive(Clone, Debug)]
+pub struct BlendContext<'a, T: 'static + Clone + Debug> {
     pub table: &'a Table,
     pub columns: &'a Vec<Column>,
     pub key: T,
@@ -13,7 +13,7 @@ pub struct BlendContext<'a, T: 'static + Debug> {
 }
 
 // TODO: use this when you implement JOIN + blend
-impl<'a, T: 'static + Debug> BlendContext<'a, T> {
+impl<'a, T: 'static + Clone + Debug> BlendContext<'a, T> {
     pub fn get_value(&'a self, target: &'a Column) -> Option<&'a Value> {
         let Table { alias, name } = self.table;
 

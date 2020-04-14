@@ -22,7 +22,7 @@ pub enum Payload {
     Update(usize),
 }
 
-pub fn execute<T: 'static + Debug>(
+pub fn execute<T: 'static + Clone + Debug>(
     storage: &dyn Store<T>,
     sql_query: &SqlQuery,
 ) -> Result<Payload> {

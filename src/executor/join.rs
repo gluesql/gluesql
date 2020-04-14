@@ -1,13 +1,13 @@
 use boolinator::Boolinator;
 use nom_sql::{Column, JoinClause, JoinConstraint, JoinOperator, Table};
 use std::fmt::Debug;
-use thiserror::Error;
+use thiserror::Error as ThisError;
 
 use crate::executor::{BlendContext, BlendedFilter, Filter, FilterContext};
-use crate::result::Result;
+use crate::result::{Error, Result};
 use crate::storage::Store;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(ThisError, Debug, PartialEq)]
 pub enum JoinError {
     #[error("unimplemented! join not supported")]
     JoinTypeNotSupported,
@@ -16,14 +16,42 @@ pub enum JoinError {
     UsingOnJoinNotSupported,
 }
 
-pub struct Join<'a, T: 'static + Debug> {
+pub struct Join<'a, T: 'static + Clone + Debug> {
     storage: &'a dyn Store<T>,
     join_clauses: &'a Vec<JoinClause>,
     join_columns: &'a Vec<(&'a Table, Vec<Column>)>,
     filter_context: Option<&'a FilterContext<'a>>,
 }
 
-impl<'a, T: 'static + Debug> Join<'a, T> {
+type JoinResult<'a, T> = Box<dyn Iterator<Item = Result<BlendContext<'a, T>>> + 'a>;
+
+macro_rules! try_iter {
+    ($expr: expr) => {
+        match $expr {
+            Ok(v) => v,
+            Err(e) => {
+                return Join::err(e);
+            }
+        }
+    };
+}
+
+macro_rules! try_some {
+    ($expr: expr) => {
+        match $expr {
+            Ok(v) => v,
+            Err(e) => {
+                return Some(Err(e));
+            }
+        }
+    };
+}
+
+impl<'a, T: 'static + Clone + Debug> Join<'a, T> {
+    fn err(e: Error) -> JoinResult<'a, T> {
+        Box::new(Some(Err(e)).into_iter())
+    }
+
     pub fn new(
         storage: &'a dyn Store<T>,
         join_clauses: &'a Vec<JoinClause>,
@@ -38,85 +66,100 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
         }
     }
 
-    pub fn apply(
-        &self,
-        init_context: Result<BlendContext<'a, T>>,
-    ) -> Option<Result<BlendContext<'a, T>>> {
-        let init_context = match init_context {
-            Ok(c) => Some(c),
-            Err(e) => {
-                return Some(Err(e));
-            }
-        };
+    pub fn apply(&self, init_context: Result<BlendContext<'a, T>>) -> JoinResult<'a, T> {
+        let init_rows = Box::new(Some(init_context).into_iter());
 
-        self.join_clauses
-            .iter()
-            .zip(self.join_columns.iter())
-            .try_fold(
-                init_context,
-                |blend_context, (join_clause, (table, columns))| {
-                    self.join(join_clause, table, columns, blend_context)
-                },
-            )
-            .transpose()
-    }
+        self.join_clauses.iter().zip(self.join_columns.iter()).fold(
+            init_rows,
+            |rows, (join_clause, (table, columns))| {
+                let storage = self.storage;
+                let filter_context = self.filter_context;
 
-    fn join(
-        &self,
-        join_clause: &'a JoinClause,
-        table: &'a Table,
-        columns: &'a Vec<Column>,
-        blend_context: Option<BlendContext<'a, T>>,
-    ) -> Result<Option<BlendContext<'a, T>>> {
-        let JoinClause {
-            operator,
-            constraint,
-            ..
-        } = join_clause;
+                Box::new(rows.flat_map(move |blend_context| {
+                    let blend_context = try_iter!(blend_context);
 
-        let where_clause = match constraint {
-            JoinConstraint::On(where_clause) => Some(where_clause),
-            JoinConstraint::Using(_) => {
-                return Err(JoinError::UsingOnJoinNotSupported.into());
-            }
-        };
-        let filter = Filter::new(self.storage, where_clause, self.filter_context);
-        let blended_filter = BlendedFilter::new(&filter, blend_context.as_ref());
-
-        let row = self
-            .storage
-            .get_data(&table.name)?
-            .filter_map(move |item| {
-                item.map_or_else(
-                    |error| Some(Err(error)),
-                    |(key, row)| {
-                        blended_filter
-                            .check(table, columns, &row)
-                            .map(|pass| pass.as_some((columns, key, row)))
-                            .transpose()
-                    },
-                )
-            })
-            .next()
-            .transpose()?;
-
-        let row = match row {
-            Some((columns, key, row)) => Some(BlendContext {
-                table,
-                columns,
-                key,
-                row,
-                next: blend_context.map(|c| Box::new(c)),
-            }),
-            None => match operator {
-                JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => blend_context,
-                JoinOperator::Join | JoinOperator::InnerJoin => None,
-                _ => {
-                    return Err(JoinError::JoinTypeNotSupported.into());
-                }
+                    join(
+                        storage,
+                        filter_context,
+                        join_clause,
+                        table,
+                        columns,
+                        blend_context,
+                    )
+                }))
             },
-        };
+        )
+    }
+}
 
-        Ok(row)
+fn join<'a, T: 'static + Clone + Debug>(
+    storage: &'a dyn Store<T>,
+    filter_context: Option<&'a FilterContext<'a>>,
+    join_clause: &'a JoinClause,
+    table: &'a Table,
+    columns: &'a Vec<Column>,
+    blend_context: BlendContext<'a, T>,
+) -> JoinResult<'a, T> {
+    let JoinClause {
+        operator,
+        constraint,
+        ..
+    } = join_clause;
+
+    let where_clause = match constraint {
+        JoinConstraint::On(where_clause) => Some(where_clause),
+        JoinConstraint::Using(_) => {
+            return Join::err(JoinError::UsingOnJoinNotSupported.into());
+        }
+    };
+
+    /*
+     * TODO: Consider to use Rc::clone.
+     * It looks possible to remove Clone trait in Row & BlendContext.
+     */
+    let cloned = blend_context.clone();
+
+    let rows = try_iter!(storage.get_data(&table.name));
+    let rows = rows.filter_map(move |item| {
+        let blend_context = &cloned;
+        let (key, row) = try_some!(item);
+
+        let filter = Filter::new(storage, where_clause, filter_context);
+        let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
+
+        blended_filter
+            .check(table, columns, &row)
+            .map(|pass| {
+                pass.as_some(BlendContext {
+                    table,
+                    columns,
+                    key,
+                    row,
+                    next: Some(Box::new(blend_context.clone())),
+                })
+            })
+            .transpose()
+    });
+
+    match operator {
+        JoinOperator::Join | JoinOperator::InnerJoin => Box::new(rows),
+        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => Box::new(
+            rows.map(|row| row.map(|blend_context| (false, blend_context)))
+                .chain(Some(Ok((true, blend_context))).into_iter())
+                .scan(true, move |is_empty, item| {
+                    let (is_last, blend_context) = try_some!(item);
+
+                    match (is_last, &is_empty) {
+                        (false, true) => {
+                            *is_empty = false;
+
+                            Some(Ok(blend_context))
+                        }
+                        (true, true) | (false, false) => Some(Ok(blend_context)),
+                        (true, false) => None,
+                    }
+                }),
+        ),
+        _ => Join::err(JoinError::JoinTypeNotSupported.into()),
     }
 }

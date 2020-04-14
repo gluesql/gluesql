@@ -21,7 +21,7 @@ impl<'a> Blend<'a> {
         Self { fields }
     }
 
-    pub fn apply<T: 'static + Debug>(
+    pub fn apply<T: 'static + Clone + Debug>(
         &self,
         blend_context: Result<BlendContext<'a, T>>,
     ) -> Result<Row> {

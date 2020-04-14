@@ -76,7 +76,6 @@ fn join() {
         (15, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (15, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND i.quantity = 1;"),
         (15, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id AND Item.quantity = 1;"),
-        (4, "SELECT * FROM Player INNER JOIN Item ON Player.id = Item.player_id;"),
         (7, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (7, "SELECT * FROM Item i INNER JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (5, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND Item.quantity = 1;"),
@@ -105,6 +104,10 @@ fn join() {
                 (SELECT i2.player_id FROM Item i2
                  JOIN Item i3 ON i3.id = i2.id
                  WHERE Player.name = \"Jorno\");"),
+        // cartesian product tests
+        (15, "SELECT * FROM Player INNER JOIN Item ON Player.id = Item.player_id;"),
+        (25, "SELECT * FROM Player p1 LEFT JOIN Player p2 ON 1 = 1"),
+        (30, "SELECT * FROM Item INNER JOIN Item i2 ON i2.id IN (101, 103);"),
     ];
 
     select_sqls
