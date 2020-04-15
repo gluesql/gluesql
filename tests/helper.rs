@@ -3,7 +3,7 @@ use nom_sql::parse_query;
 use sled::IVec;
 use std::fmt::Debug;
 
-pub trait Helper<T: 'static + Clone + Debug> {
+pub trait Helper<T: 'static + Debug> {
     fn get_storage(&self) -> &dyn Store<T>;
 
     fn run(&self, sql: &str) -> Result<Payload> {

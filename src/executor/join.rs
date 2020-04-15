@@ -17,7 +17,7 @@ pub enum JoinError {
     UsingOnJoinNotSupported,
 }
 
-pub struct Join<'a, T: 'static + Clone + Debug> {
+pub struct Join<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     join_clauses: &'a Vec<JoinClause>,
     join_columns: &'a Vec<(&'a Table, Vec<Column>)>,
@@ -48,7 +48,7 @@ macro_rules! try_some {
     };
 }
 
-impl<'a, T: 'static + Clone + Debug> Join<'a, T> {
+impl<'a, T: 'static + Debug> Join<'a, T> {
     fn err(e: Error) -> JoinResult<'a, T> {
         Box::new(Some(Err(e)).into_iter())
     }
@@ -94,7 +94,7 @@ impl<'a, T: 'static + Clone + Debug> Join<'a, T> {
     }
 }
 
-fn join<'a, T: 'static + Clone + Debug>(
+fn join<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: Option<&'a FilterContext<'a>>,
     join_clause: &'a JoinClause,

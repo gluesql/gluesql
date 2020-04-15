@@ -26,7 +26,7 @@ pub struct SelectParams<'a> {
     pub join_columns: Vec<(&'a Table, Vec<Column>)>,
 }
 
-pub fn fetch_select_params<'a, T: 'static + Clone + Debug>(
+pub fn fetch_select_params<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
 ) -> Result<SelectParams<'a>> {
@@ -67,7 +67,7 @@ pub fn fetch_select_params<'a, T: 'static + Clone + Debug>(
     })
 }
 
-fn fetch_blended<'a, T: 'static + Clone + Debug>(
+fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
     columns: &'a Vec<Column>,
@@ -87,7 +87,7 @@ fn fetch_blended<'a, T: 'static + Clone + Debug>(
     Ok(Box::new(rows))
 }
 
-pub fn select<'a, T: 'static + Clone + Debug>(
+pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
     params: &'a SelectParams<'a>,

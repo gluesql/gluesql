@@ -23,13 +23,13 @@ pub enum FilterError {
     Unimplemented,
 }
 
-pub struct Filter<'a, T: 'static + Clone + Debug> {
+pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     where_clause: Option<&'a ConditionExpression>,
     context: Option<&'a FilterContext<'a>>,
 }
 
-impl<'a, T: 'static + Clone + Debug> Filter<'a, T> {
+impl<'a, T: 'static + Debug> Filter<'a, T> {
     pub fn new(
         storage: &'a dyn Store<T>,
         where_clause: Option<&'a ConditionExpression>,
@@ -59,12 +59,12 @@ impl<'a, T: 'static + Clone + Debug> Filter<'a, T> {
     }
 }
 
-pub struct BlendedFilter<'a, T: 'static + Clone + Debug> {
+pub struct BlendedFilter<'a, T: 'static + Debug> {
     filter: &'a Filter<'a, T>,
     context: Option<&'a BlendContext<'a, T>>,
 }
 
-impl<'a, T: 'static + Clone + Debug> BlendedFilter<'a, T> {
+impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
     pub fn new(filter: &'a Filter<'a, T>, context: Option<&'a BlendContext<'a, T>>) -> Self {
         Self { filter, context }
     }
@@ -126,7 +126,7 @@ impl<'a> PartialEq for Parsed<'a> {
 }
 
 impl Parsed<'_> {
-    fn exists_in<T: 'static + Clone + Debug>(&self, list: ParsedList<'_, T>) -> Result<bool> {
+    fn exists_in<T: 'static + Debug>(&self, list: ParsedList<'_, T>) -> Result<bool> {
         Ok(match list {
             ParsedList::Parsed(parsed) => &parsed == self,
             ParsedList::LiteralRef(literals) => literals
@@ -156,7 +156,7 @@ impl Parsed<'_> {
     }
 }
 
-fn parse_expr<'a, T: 'static + Clone + Debug>(
+fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
@@ -184,7 +184,7 @@ fn parse_expr<'a, T: 'static + Clone + Debug>(
     }
 }
 
-fn parse_in_expr<'a, T: 'static + Clone + Debug>(
+fn parse_in_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
@@ -208,7 +208,7 @@ fn parse_in_expr<'a, T: 'static + Clone + Debug>(
     }
 }
 
-fn check_expr<'a, T: 'static + Clone + Debug>(
+fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a ConditionExpression,
@@ -243,7 +243,7 @@ fn check_expr<'a, T: 'static + Clone + Debug>(
     }
 }
 
-fn check_blended_expr<T: 'static + Clone + Debug>(
+fn check_blended_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,
     filter_context: Option<&FilterContext<'_>>,
     blend_context: &BlendContext<'_, T>,
