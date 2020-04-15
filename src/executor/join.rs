@@ -24,7 +24,8 @@ pub struct Join<'a, T: 'static + Debug> {
     filter_context: Option<&'a FilterContext<'a>>,
 }
 
-type JoinResult<'a, T> = Box<dyn Iterator<Item = Result<Rc<BlendContext<'a, T>>>> + 'a>;
+type JoinItem<'a, T> = Result<Rc<BlendContext<'a, T>>>;
+type JoinResult<'a, T> = Box<dyn Iterator<Item = JoinItem<'a, T>> + 'a>;
 
 macro_rules! try_iter {
     ($expr: expr) => {
