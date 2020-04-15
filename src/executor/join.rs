@@ -141,46 +141,29 @@ fn join<'a, T: 'static + Debug>(
 
     match operator {
         JoinOperator::Join | JoinOperator::InnerJoin => Box::new(rows),
-        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => {
-            struct Item<'a, T: 'static + Debug> {
-                is_last: bool,
-                blend_context: Rc<BlendContext<'a, T>>,
-            }
+        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => Box::new(
+            rows.map(|row| {
+                let is_last = false;
+                let item = (is_last, row?);
 
-            let rows = rows
-                .map(|row| {
-                    row.map(|blend_context| Item {
-                        is_last: false,
-                        blend_context,
-                    })
-                })
-                .chain({
-                    let item = Item {
-                        is_last: true,
-                        blend_context: init_context,
-                    };
+                Ok(item)
+            })
+            .chain({
+                let is_last = true;
+                let item = (is_last, init_context);
 
-                    Some(Ok(item)).into_iter()
-                })
-                .scan(true, move |is_empty, item| {
-                    let Item {
-                        is_last,
-                        blend_context,
-                    } = try_some!(item);
+                Some(Ok(item)).into_iter()
+            })
+            .enumerate()
+            .filter_map(move |(i, item)| {
+                let (is_last, blend_context) = try_some!(item);
 
-                    match (is_last, &is_empty) {
-                        (false, true) => {
-                            *is_empty = false;
-
-                            Some(Ok(blend_context))
-                        }
-                        (true, true) | (false, false) => Some(Ok(blend_context)),
-                        (true, false) => None,
-                    }
-                });
-
-            Box::new(rows)
-        }
+                match !is_last || i == 0 {
+                    true => Some(Ok(blend_context)),
+                    false => None,
+                }
+            }),
+        ),
         _ => Join::err(JoinError::JoinTypeNotSupported.into()),
     }
 }
