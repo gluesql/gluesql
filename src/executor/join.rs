@@ -1,6 +1,7 @@
 use boolinator::Boolinator;
 use nom_sql::{Column, JoinClause, JoinConstraint, JoinOperator, Table};
 use std::fmt::Debug;
+use std::rc::Rc;
 use thiserror::Error as ThisError;
 
 use crate::executor::{BlendContext, BlendedFilter, Filter, FilterContext};
@@ -23,7 +24,7 @@ pub struct Join<'a, T: 'static + Clone + Debug> {
     filter_context: Option<&'a FilterContext<'a>>,
 }
 
-type JoinResult<'a, T> = Box<dyn Iterator<Item = Result<BlendContext<'a, T>>> + 'a>;
+type JoinResult<'a, T> = Box<dyn Iterator<Item = Result<Rc<BlendContext<'a, T>>>> + 'a>;
 
 macro_rules! try_iter {
     ($expr: expr) => {
@@ -67,6 +68,7 @@ impl<'a, T: 'static + Clone + Debug> Join<'a, T> {
     }
 
     pub fn apply(&self, init_context: Result<BlendContext<'a, T>>) -> JoinResult<'a, T> {
+        let init_context = init_context.map(|c| Rc::new(c));
         let init_rows = Box::new(Some(init_context).into_iter());
 
         self.join_clauses.iter().zip(self.join_columns.iter()).fold(
@@ -98,7 +100,7 @@ fn join<'a, T: 'static + Clone + Debug>(
     join_clause: &'a JoinClause,
     table: &'a Table,
     columns: &'a Vec<Column>,
-    blend_context: BlendContext<'a, T>,
+    blend_context: Rc<BlendContext<'a, T>>,
 ) -> JoinResult<'a, T> {
     let JoinClause {
         operator,
@@ -113,15 +115,10 @@ fn join<'a, T: 'static + Clone + Debug>(
         }
     };
 
-    /*
-     * TODO: Consider to use Rc::clone.
-     * It looks possible to remove Clone trait in Row & BlendContext.
-     */
-    let cloned = blend_context.clone();
+    let init_context = Rc::clone(&blend_context);
 
     let rows = try_iter!(storage.get_data(&table.name));
     let rows = rows.filter_map(move |item| {
-        let blend_context = &cloned;
         let (key, row) = try_some!(item);
 
         let filter = Filter::new(storage, where_clause, filter_context);
@@ -130,13 +127,13 @@ fn join<'a, T: 'static + Clone + Debug>(
         blended_filter
             .check(table, columns, &row)
             .map(|pass| {
-                pass.as_some(BlendContext {
+                pass.as_some(Rc::new(BlendContext {
                     table,
                     columns,
                     key,
                     row,
-                    next: Some(Box::new(blend_context.clone())),
-                })
+                    next: Some(Rc::clone(&blend_context)),
+                }))
             })
             .transpose()
     });
@@ -145,7 +142,7 @@ fn join<'a, T: 'static + Clone + Debug>(
         JoinOperator::Join | JoinOperator::InnerJoin => Box::new(rows),
         JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => Box::new(
             rows.map(|row| row.map(|blend_context| (false, blend_context)))
-                .chain(Some(Ok((true, blend_context))).into_iter())
+                .chain(Some(Ok((true, init_context))).into_iter())
                 .scan(true, move |is_empty, item| {
                     let (is_last, blend_context) = try_some!(item);
 

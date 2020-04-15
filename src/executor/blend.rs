@@ -1,5 +1,6 @@
 use nom_sql::{Column, FieldDefinitionExpression};
 use std::fmt::Debug;
+use std::rc::Rc;
 use thiserror::Error;
 
 use crate::data::{Row, Value};
@@ -23,18 +24,20 @@ impl<'a> Blend<'a> {
 
     pub fn apply<T: 'static + Clone + Debug>(
         &self,
-        blend_context: Result<BlendContext<'a, T>>,
+        blend_context: Result<Rc<BlendContext<'a, T>>>,
     ) -> Result<Row> {
-        let BlendContext { columns, row, .. } = blend_context?;
+        let &BlendContext {
+            columns, ref row, ..
+        } = &(*blend_context?);
 
         // TODO: Should support JOIN
-        self.blend(&columns, row)
+        self.blend(columns, row)
     }
 
-    fn blend(&self, columns: &Vec<Column>, row: Row) -> Result<Row> {
+    fn blend(&self, columns: &Vec<Column>, row: &Row) -> Result<Row> {
         let Row(values) = row;
         let values = values
-            .into_iter()
+            .iter()
             .zip(columns.iter())
             .filter_map(|(value, column)| self.find(value, column))
             .collect::<Result<_>>()?;
@@ -42,15 +45,15 @@ impl<'a> Blend<'a> {
         Ok(Row(values))
     }
 
-    fn find(&self, value: Value, target: &Column) -> Option<Result<Value>> {
+    fn find(&self, value: &Value, target: &Column) -> Option<Result<Value>> {
         for expr in self.fields {
             match expr {
                 FieldDefinitionExpression::All => {
-                    return Some(Ok(value));
+                    return Some(Ok(value.clone()));
                 }
                 FieldDefinitionExpression::Col(column) => {
                     if column.name == target.name {
-                        return Some(Ok(value));
+                        return Some(Ok(value.clone()));
                     }
                 }
                 FieldDefinitionExpression::AllInTable(_) | FieldDefinitionExpression::Value(_) => {

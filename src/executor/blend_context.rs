@@ -1,5 +1,6 @@
 use nom_sql::{Column, Table};
 use std::fmt::Debug;
+use std::rc::Rc;
 
 use crate::data::{Row, Value};
 
@@ -9,7 +10,7 @@ pub struct BlendContext<'a, T: 'static + Clone + Debug> {
     pub columns: &'a Vec<Column>,
     pub key: T,
     pub row: Row,
-    pub next: Option<Box<BlendContext<'a, T>>>,
+    pub next: Option<Rc<BlendContext<'a, T>>>,
 }
 
 // TODO: use this when you implement JOIN + blend
