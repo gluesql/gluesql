@@ -1,5 +1,6 @@
 use nom_sql::{Literal, SqlType};
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -27,6 +28,34 @@ impl PartialEq<Literal> for Value {
             (Value::String(l), Literal::String(r)) => l == r,
             _ => false,
         }
+    }
+}
+
+impl PartialOrd<Value> for Value {
+    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+        match (self, other) {
+            (Value::I64(l), Value::I64(r)) => Some(l.cmp(r)),
+            (Value::String(l), Value::String(r)) => Some(l.cmp(r)),
+            _ => None,
+        }
+    }
+}
+
+impl PartialOrd<Literal> for Value {
+    fn partial_cmp(&self, other: &Literal) -> Option<Ordering> {
+        match (self, other) {
+            (Value::I64(l), Literal::Integer(r)) => Some(l.cmp(r)),
+            (Value::String(l), Literal::String(r)) => Some(l.cmp(r)),
+            _ => None,
+        }
+    }
+}
+
+pub fn literal_partial_cmp(a: &Literal, b: &Literal) -> Option<Ordering> {
+    match (a, b) {
+        (Literal::String(a), Literal::String(b)) => Some(a.cmp(b)),
+        (Literal::Integer(a), Literal::Integer(b)) => Some(a.cmp(b)),
+        _ => None,
     }
 }
 

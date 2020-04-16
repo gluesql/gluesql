@@ -3,10 +3,11 @@ use nom_sql::{
     Column, ConditionBase, ConditionExpression, ConditionTree, Literal, Operator, SelectStatement,
     Table,
 };
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::data::{Row, Value};
+use crate::data::{literal_partial_cmp, Row, Value};
 use crate::executor::{fetch_select_params, select, BlendContext, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
@@ -125,6 +126,24 @@ impl<'a> PartialEq for Parsed<'a> {
     }
 }
 
+impl<'a> PartialOrd for Parsed<'a> {
+    fn partial_cmp(&self, other: &Parsed<'a>) -> Option<Ordering> {
+        use Parsed::*;
+
+        match (self, other) {
+            (LiteralRef(lr), ValueRef(vr)) => vr.partial_cmp(lr).map(|o| o.reverse()),
+            (ValueRef(vr), LiteralRef(lr)) => vr.partial_cmp(lr),
+            (LiteralRef(lr), Value(v)) => v.partial_cmp(*lr).map(|o| o.reverse()),
+            (Value(v), LiteralRef(lr)) => v.partial_cmp(*lr),
+            (Value(v), ValueRef(vr)) => v.partial_cmp(*vr),
+            (ValueRef(vr), Value(v)) => v.partial_cmp(*vr).map(|o| o.reverse()),
+            (Value(v), Value(v2)) => v.partial_cmp(v2),
+            (ValueRef(vr), ValueRef(vr2)) => vr.partial_cmp(vr2),
+            (LiteralRef(lr), LiteralRef(lr2)) => literal_partial_cmp(lr, lr2),
+        }
+    }
+}
+
 impl Parsed<'_> {
     fn exists_in<T: 'static + Debug>(&self, list: ParsedList<'_, T>) -> Result<bool> {
         Ok(match list {
@@ -228,7 +247,13 @@ fn check_expr<'a, T: 'static + Debug>(
             Operator::And => zip_check().map(|(l, r)| l && r),
             Operator::Or => zip_check().map(|(l, r)| l || r),
             Operator::In => zip_in().and_then(|(l, r)| l.exists_in(r)),
-            _ => Err(FilterError::Unimplemented.into()),
+            Operator::Less => zip_parse().map(|(l, r)| l < r),
+            Operator::LessOrEqual => zip_parse().map(|(l, r)| l <= r),
+            Operator::Greater => zip_parse().map(|(l, r)| l > r),
+            Operator::GreaterOrEqual => zip_parse().map(|(l, r)| l >= r),
+            Operator::Not | Operator::Like | Operator::NotLike | Operator::Is => {
+                Err(FilterError::Unimplemented.into())
+            }
         }
     };
 
