@@ -1,8 +1,6 @@
 use boolinator::Boolinator;
 use nom_sql::{Column, JoinClause, JoinConstraint, JoinOperator, Table};
-use peepable::Peepable;
 use std::fmt::Debug;
-use std::iter::Iterator;
 use std::rc::Rc;
 use thiserror::Error as ThisError;
 
@@ -143,14 +141,29 @@ fn join<'a, T: 'static + Debug>(
 
     match operator {
         JoinOperator::Join | JoinOperator::InnerJoin => Box::new(rows),
-        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => {
-            let rows = Peepable::new(rows);
+        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => Box::new(
+            rows.map(|row| {
+                let is_last = false;
+                let item = (is_last, row?);
 
-            match rows.peep() {
-                Some(_) => Box::new(rows),
-                None => Box::new(Some(Ok(init_context)).into_iter()),
-            }
-        }
+                Ok(item)
+            })
+            .chain({
+                let is_last = true;
+                let item = (is_last, init_context);
+
+                Some(Ok(item)).into_iter()
+            })
+            .enumerate()
+            .filter_map(|(i, item)| {
+                let (is_last, blend_context) = try_some!(item);
+
+                match !is_last || i == 0 {
+                    true => Some(Ok(blend_context)),
+                    false => None,
+                }
+            }),
+        ),
         _ => Join::err(JoinError::JoinTypeNotSupported.into()),
     }
 }
