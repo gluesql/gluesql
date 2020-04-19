@@ -155,7 +155,7 @@ fn join<'a, T: 'static + Debug>(
                 Some(Ok(item)).into_iter()
             })
             .enumerate()
-            .filter_map(move |(i, item)| {
+            .filter_map(|(i, item)| {
                 let (is_last, blend_context) = try_some!(item);
 
                 match !is_last || i == 0 {
