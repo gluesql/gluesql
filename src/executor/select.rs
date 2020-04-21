@@ -71,7 +71,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
     columns: &'a Vec<Column>,
-) -> Result<Box<dyn Iterator<Item = Result<BlendContext<'a, T>>> + 'a>> {
+) -> Result<impl Iterator<Item = Result<BlendContext<'a, T>>> + 'a> {
     let rows = storage.get_data(&table.name)?.map(move |data| {
         let (key, row) = data?;
 
@@ -84,7 +84,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
         })
     });
 
-    Ok(Box::new(rows))
+    Ok(rows)
 }
 
 pub fn select<'a, T: 'static + Debug>(
@@ -92,7 +92,7 @@ pub fn select<'a, T: 'static + Debug>(
     statement: &'a SelectStatement,
     params: &'a SelectParams<'a>,
     filter_context: Option<&'a FilterContext<'a>>,
-) -> Result<Box<dyn Iterator<Item = Result<Row>> + 'a>> {
+) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
     let SelectStatement {
         where_clause,
         limit: limit_clause,
@@ -128,5 +128,5 @@ pub fn select<'a, T: 'static + Debug>(
         .filter_map(move |(i, item)| limit.check(i).as_some(item))
         .map(move |blend_context| blend.apply(blend_context));
 
-    Ok(Box::new(rows))
+    Ok(rows)
 }

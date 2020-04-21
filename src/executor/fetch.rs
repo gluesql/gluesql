@@ -24,7 +24,7 @@ pub fn fetch<'a, T: 'static + Debug>(
     table: &'a Table,
     columns: &'a Vec<Column>,
     filter: Filter<'a, T>,
-) -> Result<Box<dyn Iterator<Item = Result<(&'a Vec<Column>, T, Row)>> + 'a>> {
+) -> Result<impl Iterator<Item = Result<(&'a Vec<Column>, T, Row)>> + 'a> {
     let rows = storage.get_data(&table.name)?.filter_map(move |item| {
         item.map_or_else(
             |error| Some(Err(error)),
@@ -37,5 +37,5 @@ pub fn fetch<'a, T: 'static + Debug>(
         )
     });
 
-    Ok(Box::new(rows))
+    Ok(rows)
 }
