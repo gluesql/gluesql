@@ -1,6 +1,7 @@
 use boolinator::Boolinator;
 use nom_sql::{Column, JoinClause, JoinConstraint, JoinOperator, Table};
 use std::fmt::Debug;
+use std::iter::once;
 use std::rc::Rc;
 use thiserror::Error as ThisError;
 
@@ -51,7 +52,7 @@ macro_rules! try_some {
 
 impl<'a, T: 'static + Debug> Join<'a, T> {
     fn err(e: Error) -> JoinResult<'a, T> {
-        Box::new(Some(Err(e)).into_iter())
+        Box::new(once(Err(e)))
     }
 
     pub fn new(
@@ -70,7 +71,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
 
     pub fn apply(&self, init_context: Result<BlendContext<'a, T>>) -> JoinResult<'a, T> {
         let init_context = init_context.map(|c| Rc::new(c));
-        let init_rows = Box::new(Some(init_context).into_iter());
+        let init_rows = Box::new(once(init_context));
 
         self.join_clauses.iter().zip(self.join_columns.iter()).fold(
             init_rows,
@@ -152,7 +153,7 @@ fn join<'a, T: 'static + Debug>(
                 let is_last = true;
                 let item = (is_last, init_context);
 
-                Some(Ok(item)).into_iter()
+                once(Ok(item))
             })
             .enumerate()
             .filter_map(|(i, item)| {
