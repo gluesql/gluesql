@@ -28,17 +28,6 @@ pub struct Join<'a, T: 'static + Debug> {
 
 type JoinItem<'a, T> = Result<Rc<BlendContext<'a, T>>>;
 
-macro_rules! try_some {
-    ($expr: expr) => {
-        match $expr {
-            Ok(v) => v,
-            Err(e) => {
-                return Some(Err(e));
-            }
-        }
-    };
-}
-
 impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn Store<T>,
@@ -90,18 +79,29 @@ fn join<'a, T: 'static + Debug>(
     columns: &'a Vec<Column>,
     blend_context: Result<Rc<BlendContext<'a, T>>>,
 ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
+    let err = |e| L(once(Err(e)));
+
     macro_rules! try_iter {
         ($expr: expr) => {
             match $expr {
                 Ok(v) => v,
                 Err(e) => {
-                    return L(once(Err(e)));
+                    return err(e);
                 }
             }
         };
     }
 
-    let blend_context = try_iter!(blend_context);
+    macro_rules! try_some {
+        ($expr: expr) => {
+            match $expr {
+                Ok(v) => v,
+                Err(e) => {
+                    return Some(Err(e));
+                }
+            }
+        };
+    }
 
     let JoinClause {
         operator,
@@ -112,10 +112,11 @@ fn join<'a, T: 'static + Debug>(
     let where_clause = match constraint {
         JoinConstraint::On(where_clause) => Some(where_clause),
         JoinConstraint::Using(_) => {
-            return L(once(Err(JoinError::UsingOnJoinNotSupported.into())));
+            return err(JoinError::UsingOnJoinNotSupported.into());
         }
     };
 
+    let blend_context = try_iter!(blend_context);
     let init_context = Rc::clone(&blend_context);
     let rows = try_iter!(storage.get_data(&table.name));
     let rows = rows.filter_map(move |item| {
@@ -140,28 +141,32 @@ fn join<'a, T: 'static + Debug>(
 
     match operator {
         JoinOperator::Join | JoinOperator::InnerJoin => R(L(rows)),
-        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => R(R(rows
-            .map(|row| {
-                let is_last = false;
-                let item = (is_last, row?);
+        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => {
+            let rows = rows
+                .map(|row| {
+                    let is_last = false;
+                    let item = (is_last, row?);
 
-                Ok(item)
-            })
-            .chain({
-                let is_last = true;
-                let item = (is_last, init_context);
+                    Ok(item)
+                })
+                .chain({
+                    let is_last = true;
+                    let item = (is_last, init_context);
 
-                once(Ok(item))
-            })
-            .enumerate()
-            .filter_map(|(i, item)| {
-                let (is_last, blend_context) = try_some!(item);
+                    once(Ok(item))
+                })
+                .enumerate()
+                .filter_map(|(i, item)| {
+                    let (is_last, blend_context) = try_some!(item);
 
-                match !is_last || i == 0 {
-                    true => Some(Ok(blend_context)),
-                    false => None,
-                }
-            }))),
-        _ => L(once(Err(JoinError::JoinTypeNotSupported.into()))),
+                    match !is_last || i == 0 {
+                        true => Some(Ok(blend_context)),
+                        false => None,
+                    }
+                });
+
+            R(R(rows))
+        }
+        _ => err(JoinError::JoinTypeNotSupported.into()),
     }
 }
