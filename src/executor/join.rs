@@ -1,4 +1,5 @@
 use boolinator::Boolinator;
+use either::Either::{Left as L, Right as R};
 use nom_sql::{Column, JoinClause, JoinConstraint, JoinOperator, Table};
 use std::fmt::Debug;
 use std::iter::once;
@@ -6,7 +7,7 @@ use std::rc::Rc;
 use thiserror::Error as ThisError;
 
 use crate::executor::{BlendContext, BlendedFilter, Filter, FilterContext};
-use crate::result::{Error, Result};
+use crate::result::Result;
 use crate::storage::Store;
 
 #[derive(ThisError, Debug, PartialEq)]
@@ -26,18 +27,6 @@ pub struct Join<'a, T: 'static + Debug> {
 }
 
 type JoinItem<'a, T> = Result<Rc<BlendContext<'a, T>>>;
-type JoinResult<'a, T> = Box<dyn Iterator<Item = JoinItem<'a, T>> + 'a>;
-
-macro_rules! try_iter {
-    ($expr: expr) => {
-        match $expr {
-            Ok(v) => v,
-            Err(e) => {
-                return Join::err(e);
-            }
-        }
-    };
-}
 
 macro_rules! try_some {
     ($expr: expr) => {
@@ -51,10 +40,6 @@ macro_rules! try_some {
 }
 
 impl<'a, T: 'static + Debug> Join<'a, T> {
-    fn err(e: Error) -> JoinResult<'a, T> {
-        Box::new(once(Err(e)))
-    }
-
     pub fn new(
         storage: &'a dyn Store<T>,
         join_clauses: &'a Vec<JoinClause>,
@@ -69,19 +54,20 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
         }
     }
 
-    pub fn apply(&self, init_context: Result<BlendContext<'a, T>>) -> JoinResult<'a, T> {
+    pub fn apply(
+        &self,
+        init_context: Result<BlendContext<'a, T>>,
+    ) -> Box<dyn Iterator<Item = JoinItem<'a, T>> + 'a> {
         let init_context = init_context.map(|c| Rc::new(c));
-        let init_rows = Box::new(once(init_context));
+        let init_rows = once(init_context);
 
         self.join_clauses.iter().zip(self.join_columns.iter()).fold(
-            init_rows,
+            Box::new(init_rows),
             |rows, (join_clause, (table, columns))| {
                 let storage = self.storage;
                 let filter_context = self.filter_context;
 
                 Box::new(rows.flat_map(move |blend_context| {
-                    let blend_context = try_iter!(blend_context);
-
                     join(
                         storage,
                         filter_context,
@@ -102,8 +88,21 @@ fn join<'a, T: 'static + Debug>(
     join_clause: &'a JoinClause,
     table: &'a Table,
     columns: &'a Vec<Column>,
-    blend_context: Rc<BlendContext<'a, T>>,
-) -> JoinResult<'a, T> {
+    blend_context: Result<Rc<BlendContext<'a, T>>>,
+) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
+    macro_rules! try_iter {
+        ($expr: expr) => {
+            match $expr {
+                Ok(v) => v,
+                Err(e) => {
+                    return L(once(Err(e)));
+                }
+            }
+        };
+    }
+
+    let blend_context = try_iter!(blend_context);
+
     let JoinClause {
         operator,
         constraint,
@@ -113,12 +112,11 @@ fn join<'a, T: 'static + Debug>(
     let where_clause = match constraint {
         JoinConstraint::On(where_clause) => Some(where_clause),
         JoinConstraint::Using(_) => {
-            return Join::err(JoinError::UsingOnJoinNotSupported.into());
+            return L(once(Err(JoinError::UsingOnJoinNotSupported.into())));
         }
     };
 
     let init_context = Rc::clone(&blend_context);
-
     let rows = try_iter!(storage.get_data(&table.name));
     let rows = rows.filter_map(move |item| {
         let (key, row) = try_some!(item);
@@ -141,9 +139,9 @@ fn join<'a, T: 'static + Debug>(
     });
 
     match operator {
-        JoinOperator::Join | JoinOperator::InnerJoin => Box::new(rows),
-        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => Box::new(
-            rows.map(|row| {
+        JoinOperator::Join | JoinOperator::InnerJoin => R(L(rows)),
+        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => R(R(rows
+            .map(|row| {
                 let is_last = false;
                 let item = (is_last, row?);
 
@@ -163,8 +161,7 @@ fn join<'a, T: 'static + Debug>(
                     true => Some(Ok(blend_context)),
                     false => None,
                 }
-            }),
-        ),
-        _ => Join::err(JoinError::JoinTypeNotSupported.into()),
+            }))),
+        _ => L(once(Err(JoinError::JoinTypeNotSupported.into()))),
     }
 }

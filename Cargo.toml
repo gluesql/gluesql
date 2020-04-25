@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 bincode = "1.2.1"
 boolinator = "2.4.0"
+either = "1.5.3"
 nom-sql = "0.0.11"
 serde = { version = "1.0.104", features = ["derive"] }
 sled = "0.31.0"
