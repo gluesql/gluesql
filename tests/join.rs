@@ -71,6 +71,18 @@ fn join() {
             LEFT JOIN Player p8 ON p8.id = Item.player_id
             LEFT JOIN Player p9 ON p9.id = Item.player_id
             WHERE Player.id = 1;"),
+        (6, "SELECT * FROM Item
+            LEFT JOIN Player ON Player.id = Item.player_id
+            LEFT JOIN Player p1 ON p1.id = Item.player_id
+            LEFT JOIN Player p2 ON p2.id = Item.player_id
+            LEFT JOIN Player p3 ON p3.id = Item.player_id
+            LEFT JOIN Player p4 ON p4.id = Item.player_id
+            LEFT JOIN Player p5 ON p5.id = Item.player_id
+            LEFT JOIN Player p6 ON p6.id = Item.player_id
+            LEFT JOIN Player p7 ON p7.id = Item.player_id
+            LEFT JOIN Player p8 ON p8.id = Item.player_id
+            INNER JOIN Player p9 ON p9.id = Item.player_id AND Item.id > 101
+            WHERE Player.id = 1;"),
         (5, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE Item.quantity = 1;"),
         (5, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id WHERE i.quantity = 1;"),
         (15, "SELECT * FROM Item i LEFT JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
