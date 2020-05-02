@@ -93,17 +93,6 @@ fn join<'a, T: 'static + Debug>(
         };
     }
 
-    macro_rules! try_some {
-        ($expr: expr) => {
-            match $expr {
-                Ok(v) => v,
-                Err(e) => {
-                    return Some(Err(e));
-                }
-            }
-        };
-    }
-
     let JoinClause {
         operator,
         constraint,
@@ -121,7 +110,12 @@ fn join<'a, T: 'static + Debug>(
     let init_context = Rc::clone(&blend_context);
     let rows = try_iter!(storage.get_data(&table.name));
     let rows = rows.filter_map(move |item| {
-        let (key, row) = try_some!(item);
+        let (key, row) = match item {
+            Ok(v) => v,
+            Err(e) => {
+                return Some(Err(e));
+            }
+        };
 
         let filter = Filter::new(storage, where_clause, filter_context);
         let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
