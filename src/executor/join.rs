@@ -1,6 +1,7 @@
 use boolinator::Boolinator;
 use either::Either::{Left as L, Right as R};
 use nom_sql::{Column, JoinClause, JoinConstraint, JoinOperator, Table};
+use or_iterator::OrIterator;
 use std::fmt::Debug;
 use std::iter::once;
 use std::rc::Rc;
@@ -142,28 +143,7 @@ fn join<'a, T: 'static + Debug>(
     match operator {
         JoinOperator::Join | JoinOperator::InnerJoin => R(L(rows)),
         JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => {
-            let rows = rows
-                .map(|row| {
-                    let is_last = false;
-                    let item = (is_last, row?);
-
-                    Ok(item)
-                })
-                .chain({
-                    let is_last = true;
-                    let item = (is_last, init_context);
-
-                    once(Ok(item))
-                })
-                .enumerate()
-                .filter_map(|(i, item)| {
-                    let (is_last, blend_context) = try_some!(item);
-
-                    match !is_last || i == 0 {
-                        true => Some(Ok(blend_context)),
-                        false => None,
-                    }
-                });
+            let rows = rows.or(once(Ok(init_context)));
 
             R(R(rows))
         }

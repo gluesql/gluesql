@@ -14,3 +14,4 @@ nom-sql = "0.0.11"
 serde = { version = "1.0.104", features = ["derive"] }
 sled = "0.31.0"
 thiserror = "1.0.12"
+or-iterator = "0.1.1"
