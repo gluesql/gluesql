@@ -1,5 +1,5 @@
 use boolinator::Boolinator;
-use either::Either::{Left as L, Right as R};
+use iter_enum::Iterator;
 use nom_sql::{Column, JoinClause, JoinConstraint, JoinOperator, Table};
 use or_iterator::OrIterator;
 use std::fmt::Debug;
@@ -29,6 +29,14 @@ pub struct Join<'a, T: 'static + Debug> {
 
 type JoinItem<'a, T> = Result<Rc<BlendContext<'a, T>>>;
 
+#[derive(Iterator)]
+enum Applied<I1, I2, I3, I4> {
+    Init(I1),
+    Once(I2),
+    Boxed(I3),
+    Mapped(I4),
+}
+
 impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn Store<T>,
@@ -47,17 +55,17 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn apply(
         &self,
         init_context: Result<BlendContext<'a, T>>,
-    ) -> Box<dyn Iterator<Item = JoinItem<'a, T>> + 'a> {
+    ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
         let init_context = init_context.map(|c| Rc::new(c));
-        let init_rows = once(init_context);
+        let init_rows = Applied::Init(once(init_context));
 
         self.join_clauses.iter().zip(self.join_columns.iter()).fold(
-            Box::new(init_rows),
+            init_rows,
             |rows, (join_clause, (table, columns))| {
                 let storage = self.storage;
                 let filter_context = self.filter_context;
 
-                Box::new(rows.flat_map(move |blend_context| {
+                let map = move |blend_context| {
                     join(
                         storage,
                         filter_context,
@@ -66,10 +74,28 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
                         columns,
                         blend_context,
                     )
-                }))
+                };
+
+                match rows {
+                    Applied::Init(rows) => Applied::Once(rows.flat_map(map)),
+                    Applied::Once(rows) => {
+                        let rows: Box<dyn Iterator<Item = _>> = Box::new(rows.flat_map(map));
+
+                        Applied::Boxed(rows)
+                    }
+                    Applied::Boxed(rows) => Applied::Mapped(rows.flat_map(map)),
+                    Applied::Mapped(rows) => Applied::Boxed(Box::new(rows.flat_map(map))),
+                }
             },
         )
     }
+}
+
+#[derive(Iterator)]
+enum Joined<I1, I2, I3> {
+    Err(I1),
+    Inner(I2),
+    LeftOuter(I3),
 }
 
 fn join<'a, T: 'static + Debug>(
@@ -80,7 +106,7 @@ fn join<'a, T: 'static + Debug>(
     columns: &'a Vec<Column>,
     blend_context: Result<Rc<BlendContext<'a, T>>>,
 ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
-    let err = |e| L(once(Err(e)));
+    let err = |e| Joined::Err(once(Err(e)));
 
     macro_rules! try_iter {
         ($expr: expr) => {
@@ -135,11 +161,11 @@ fn join<'a, T: 'static + Debug>(
     });
 
     match operator {
-        JoinOperator::Join | JoinOperator::InnerJoin => R(L(rows)),
+        JoinOperator::Join | JoinOperator::InnerJoin => Joined::Inner(rows),
         JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => {
             let rows = rows.or(once(Ok(init_context)));
 
-            R(R(rows))
+            Joined::LeftOuter(rows)
         }
         _ => err(JoinError::JoinTypeNotSupported.into()),
     }
