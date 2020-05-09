@@ -64,17 +64,26 @@ impl<'a> PartialOrd for Parsed<'a> {
     fn partial_cmp(&self, other: &Parsed<'a>) -> Option<Ordering> {
         use Parsed::*;
 
-        match (self, other) {
-            (LiteralRef(lr), ValueRef(vr)) => vr.partial_cmp(lr).map(|o| o.reverse()),
-            (ValueRef(vr), LiteralRef(lr)) => vr.partial_cmp(lr),
-            (LiteralRef(lr), Value(v)) => v.partial_cmp(*lr).map(|o| o.reverse()),
-            (Value(v), LiteralRef(lr)) => v.partial_cmp(*lr),
-            (Value(v), ValueRef(vr)) => v.partial_cmp(*vr),
-            (ValueRef(vr), Value(v)) => v.partial_cmp(*vr).map(|o| o.reverse()),
-            (Value(v), Value(v2)) => v.partial_cmp(v2),
-            (ValueRef(vr), ValueRef(vr2)) => vr.partial_cmp(vr2),
-            (LiteralRef(lr), LiteralRef(lr2)) => literal_partial_cmp(lr, lr2),
-            (Literal(_), _) | (_, Literal(_)) => None,
+        match self {
+            LiteralRef(l) => match other {
+                LiteralRef(r) => literal_partial_cmp(l, r),
+                ValueRef(r) => r.partial_cmp(l).map(|o| o.reverse()),
+                Value(r) => r.partial_cmp(*l).map(|o| o.reverse()),
+                Literal(_) => None,
+            },
+            ValueRef(l) => match other {
+                LiteralRef(r) => l.partial_cmp(r),
+                ValueRef(r) => l.partial_cmp(r),
+                Value(r) => l.partial_cmp(&r),
+                Literal(_) => None,
+            },
+            Value(l) => match other {
+                LiteralRef(r) => l.partial_cmp(*r),
+                ValueRef(r) => l.partial_cmp(*r),
+                Value(r) => l.partial_cmp(r),
+                Literal(_) => None,
+            },
+            Literal(_) => None,
         }
     }
 }
