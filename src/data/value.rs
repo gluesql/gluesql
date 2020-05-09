@@ -54,14 +54,6 @@ impl PartialOrd<Literal> for Value {
     }
 }
 
-pub fn literal_partial_cmp(a: &Literal, b: &Literal) -> Option<Ordering> {
-    match (a, b) {
-        (Literal::String(a), Literal::String(b)) => Some(a.cmp(b)),
-        (Literal::Integer(a), Literal::Integer(b)) => Some(a.cmp(b)),
-        _ => None,
-    }
-}
-
 impl Value {
     pub fn new(sql_type: SqlType, literal: Literal) -> Result<Self> {
         match (sql_type, literal) {

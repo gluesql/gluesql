@@ -3,7 +3,7 @@ use nom_sql::{Literal, SelectStatement};
 use std::cmp::Ordering;
 use std::fmt::Debug;
 
-use crate::data::{literal_partial_cmp, Value};
+use crate::data::Value;
 use crate::executor::{fetch_select_params, select, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
@@ -127,6 +127,14 @@ impl<'a> Parsed<'a> {
             },
             Literal(_) | Value(_) => unreachable,
         }
+    }
+}
+
+fn literal_partial_cmp(a: &Literal, b: &Literal) -> Option<Ordering> {
+    match (a, b) {
+        (Literal::String(a), Literal::String(b)) => Some(a.cmp(b)),
+        (Literal::Integer(a), Literal::Integer(b)) => Some(a.cmp(b)),
+        _ => None,
     }
 }
 
