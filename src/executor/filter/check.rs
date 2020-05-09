@@ -1,4 +1,7 @@
-use nom_sql::{ConditionBase, ConditionExpression, ConditionTree, Operator};
+use nom_sql::{
+    ArithmeticBase, ArithmeticExpression, ArithmeticOperator, ConditionBase, ConditionExpression,
+    ConditionTree, Operator,
+};
 use std::fmt::Debug;
 
 use crate::executor::{fetch_select_params, select, BlendContext, FilterContext};
@@ -7,6 +10,32 @@ use crate::storage::Store;
 
 use super::error::FilterError;
 use super::parsed::{Parsed, ParsedList};
+
+fn parse_arithmetic<'a>(
+    filter_context: &'a FilterContext<'a>,
+    expr: &'a ArithmeticExpression,
+) -> Result<Parsed<'a>> {
+    let parse_base = |base: &'a ArithmeticBase| -> Result<Parsed<'a>> {
+        match base {
+            ArithmeticBase::Column(column) => {
+                let value = filter_context.get_value(&column)?;
+
+                Ok(Parsed::ValueRef(value))
+            }
+            ArithmeticBase::Scalar(literal) => Ok(Parsed::LiteralRef(&literal)),
+        }
+    };
+
+    let l = parse_base(&expr.left)?;
+    let r = parse_base(&expr.right)?;
+
+    match expr.op {
+        ArithmeticOperator::Add => Ok(l.add(&r)?),
+        ArithmeticOperator::Subtract
+        | ArithmeticOperator::Multiply
+        | ArithmeticOperator::Divide => Err(FilterError::Unimplemented.into()),
+    }
+}
 
 fn parse_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
@@ -30,8 +59,11 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionBase::LiteralList(_) => Err(FilterError::UnreachableConditionBase.into()),
     };
 
+    let parse_arithmetic = |expr| parse_arithmetic(filter_context, expr);
+
     match expr {
         ConditionExpression::Base(base) => parse_base(&base),
+        ConditionExpression::Arithmetic(expr) => parse_arithmetic(&expr),
         _ => Err(FilterError::Unimplemented.into()),
     }
 }

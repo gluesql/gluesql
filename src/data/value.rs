@@ -13,6 +13,9 @@ pub enum ValueError {
 
     #[error("literal not supported yet")]
     LiteralNotSupported,
+
+    #[error("cannot run {0:?} {1:?}")]
+    AddOnNonNumeric(Value, Value),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,6 +76,13 @@ impl Value {
             (Value::I64(_), &Literal::Integer(v)) => Ok(Value::I64(v)),
             (Value::String(_), &Literal::String(ref v)) => Ok(Value::String(v.clone())),
             _ => Err(ValueError::LiteralNotSupported.into()),
+        }
+    }
+
+    pub fn add(&self, other: &Value) -> Result<Value> {
+        match (self, other) {
+            (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a + b)),
+            _ => Err(ValueError::AddOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
 }

@@ -6,8 +6,17 @@ pub enum FilterError {
     #[error("nested select row not found")]
     NestedSelectRowNotFound,
 
-    #[error("UnreachableConditionBase")]
+    #[error("literal add on non-numeric")]
+    LiteralAddOnNonNumeric,
+
+    #[error("unreachable condition base")]
     UnreachableConditionBase,
+
+    #[error("unreachable parsed arithmetic")]
+    UnreachableParsedArithmetic,
+
+    #[error("unreachable literal arithmetic")]
+    UnreachableLiteralArithmetic,
 
     #[error("unimplemented")]
     Unimplemented,
