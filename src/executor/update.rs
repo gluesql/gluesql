@@ -9,9 +9,6 @@ use crate::result::Result;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum UpdateError {
-    #[error("field value expression not supported yet")]
-    ExpressionNotSupported,
-
     #[error("column not found {0}")]
     ColumnNotFound(String),
 
@@ -117,9 +114,9 @@ impl<'a> Update<'a> {
 
                 match expr.op {
                     ArithmeticOperator::Add => Ok(l.add(&r)?),
-                    ArithmeticOperator::Subtract
-                    | ArithmeticOperator::Multiply
-                    | ArithmeticOperator::Divide => Err(UpdateError::ExpressionNotSupported.into()),
+                    ArithmeticOperator::Subtract => Ok(l.subtract(&r)?),
+                    ArithmeticOperator::Multiply => Ok(l.multiply(&r)?),
+                    ArithmeticOperator::Divide => Ok(l.divide(&r)?),
                 }
             }
         }

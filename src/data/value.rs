@@ -14,8 +14,17 @@ pub enum ValueError {
     #[error("literal not supported yet")]
     LiteralNotSupported,
 
-    #[error("cannot run {0:?} {1:?}")]
-    AddOnNonNumeric(Value, Value),
+    #[error("add on non numeric value")]
+    AddOnNonNumeric,
+
+    #[error("subtract on non numeric value")]
+    SubtractOnNonNumeric,
+
+    #[error("multiply on non numeric value")]
+    MultiplyOnNonNumeric,
+
+    #[error("divide on non numeric value")]
+    DivideOnNonNumeric,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,7 +83,28 @@ impl Value {
     pub fn add(&self, other: &Value) -> Result<Value> {
         match (self, other) {
             (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a + b)),
-            _ => Err(ValueError::AddOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::AddOnNonNumeric.into()),
+        }
+    }
+
+    pub fn subtract(&self, other: &Value) -> Result<Value> {
+        match (self, other) {
+            (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a - b)),
+            _ => Err(ValueError::SubtractOnNonNumeric.into()),
+        }
+    }
+
+    pub fn multiply(&self, other: &Value) -> Result<Value> {
+        match (self, other) {
+            (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a * b)),
+            _ => Err(ValueError::MultiplyOnNonNumeric.into()),
+        }
+    }
+
+    pub fn divide(&self, other: &Value) -> Result<Value> {
+        match (self, other) {
+            (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a / b)),
+            _ => Err(ValueError::DivideOnNonNumeric.into()),
         }
     }
 }
