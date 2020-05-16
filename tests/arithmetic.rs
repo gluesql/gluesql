@@ -1,6 +1,6 @@
 mod helper;
 
-use gluesql::{Value, ValueError};
+use gluesql::{UpdateError, Value, ValueError};
 
 use helper::{Helper, SledHelper};
 
@@ -38,6 +38,8 @@ fn arithmetic() {
         (5, "SELECT * FROM Arith WHERE id < id + 1;"),
         (3, "SELECT * FROM Arith WHERE id + 1 < 5;"),
         (2, "SELECT * FROM Arith WHERE id >= num;"),
+        (5, "UPDATE Arith SET id = id + 1;"),
+        (0, "SELECT * FROM Arith WHERE id = 1;"),
     ];
 
     for (num, sql) in test_cases.iter() {
@@ -46,6 +48,21 @@ fn arithmetic() {
 
     helper.test_error(
         "SELECT * FROM Arith WHERE name + id < 1",
-        ValueError::AddOnNonNumeric(Value::String("A".to_string()), Value::I64(1)).into(),
+        ValueError::AddOnNonNumeric(Value::String("A".to_string()), Value::I64(2)).into(),
+    );
+
+    helper.test_error(
+        "UPDATE Arith SET num = aaa +  1",
+        UpdateError::ColumnNotFound(String::from("aaa")).into(),
+    );
+
+    helper.test_error(
+        "UPDATE Arith SET aaa = 1",
+        UpdateError::ColumnNotFound(String::from("aaa")).into(),
+    );
+
+    helper.test_error(
+        "UPDATE Arith SET id = num - 1;",
+        UpdateError::ExpressionNotSupported.into(),
     );
 }

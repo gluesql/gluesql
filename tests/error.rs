@@ -49,7 +49,7 @@ fn error() {
         ),
         (
             UpdateError::ExpressionNotSupported.into(),
-            "UPDATE TableA SET id = id + 1",
+            "UPDATE TableA SET id = id - 1",
         ),
         (
             ValueError::LiteralNotSupported.into(),
