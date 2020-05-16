@@ -31,9 +31,9 @@ fn parse_arithmetic<'a>(
 
     match expr.op {
         ArithmeticOperator::Add => Ok(l.add(&r)?),
-        ArithmeticOperator::Subtract
-        | ArithmeticOperator::Multiply
-        | ArithmeticOperator::Divide => Err(FilterError::Unimplemented.into()),
+        ArithmeticOperator::Subtract => Ok(l.subtract(&r)?),
+        ArithmeticOperator::Multiply => Ok(l.multiply(&r)?),
+        ArithmeticOperator::Divide => Ok(l.divide(&r)?),
     }
 }
 

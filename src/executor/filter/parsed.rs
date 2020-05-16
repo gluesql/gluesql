@@ -137,6 +137,66 @@ impl<'a> Parsed<'a> {
             Literal(_) | Value(_) => unreachable,
         }
     }
+
+    pub fn subtract(&self, other: &Parsed<'a>) -> Result<Parsed<'a>> {
+        use Parsed::*;
+
+        let unreachable = Err(FilterError::UnreachableParsedArithmetic.into());
+
+        match self {
+            LiteralRef(l) => match other {
+                LiteralRef(r) => literal_subtract(l, r).map(|v| Parsed::Literal(v)),
+                ValueRef(r) => r.rsubtract(&r.clone_by(l)?).map(|v| Parsed::Value(v)),
+                Value(_) | Literal(_) => unreachable,
+            },
+            ValueRef(l) => match other {
+                LiteralRef(r) => l.subtract(&l.clone_by(r)?).map(|v| Parsed::Value(v)),
+                ValueRef(r) => l.subtract(r).map(|v| Parsed::Value(v)),
+                Value(_) | Literal(_) => unreachable,
+            },
+            Literal(_) | Value(_) => unreachable,
+        }
+    }
+
+    pub fn multiply(&self, other: &Parsed<'a>) -> Result<Parsed<'a>> {
+        use Parsed::*;
+
+        let unreachable = Err(FilterError::UnreachableParsedArithmetic.into());
+
+        match self {
+            LiteralRef(l) => match other {
+                LiteralRef(r) => literal_multiply(l, r).map(|v| Parsed::Literal(v)),
+                ValueRef(r) => r.multiply(&r.clone_by(l)?).map(|v| Parsed::Value(v)),
+                Value(_) | Literal(_) => unreachable,
+            },
+            ValueRef(l) => match other {
+                LiteralRef(r) => l.multiply(&l.clone_by(r)?).map(|v| Parsed::Value(v)),
+                ValueRef(r) => l.multiply(r).map(|v| Parsed::Value(v)),
+                Value(_) | Literal(_) => unreachable,
+            },
+            Literal(_) | Value(_) => unreachable,
+        }
+    }
+
+    pub fn divide(&self, other: &Parsed<'a>) -> Result<Parsed<'a>> {
+        use Parsed::*;
+
+        let unreachable = Err(FilterError::UnreachableParsedArithmetic.into());
+
+        match self {
+            LiteralRef(l) => match other {
+                LiteralRef(r) => literal_divide(l, r).map(|v| Parsed::Literal(v)),
+                ValueRef(r) => r.rdivide(&r.clone_by(l)?).map(|v| Parsed::Value(v)),
+                Value(_) | Literal(_) => unreachable,
+            },
+            ValueRef(l) => match other {
+                LiteralRef(r) => l.divide(&l.clone_by(r)?).map(|v| Parsed::Value(v)),
+                ValueRef(r) => l.divide(r).map(|v| Parsed::Value(v)),
+                Value(_) | Literal(_) => unreachable,
+            },
+            Literal(_) | Value(_) => unreachable,
+        }
+    }
 }
 
 fn literal_partial_cmp(a: &Literal, b: &Literal) -> Option<Ordering> {
@@ -150,6 +210,27 @@ fn literal_partial_cmp(a: &Literal, b: &Literal) -> Option<Ordering> {
 fn literal_add(a: &Literal, b: &Literal) -> Result<Literal> {
     match (a, b) {
         (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a + b)),
+        _ => Err(FilterError::UnreachableLiteralArithmetic.into()),
+    }
+}
+
+fn literal_subtract(a: &Literal, b: &Literal) -> Result<Literal> {
+    match (a, b) {
+        (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a - b)),
+        _ => Err(FilterError::UnreachableLiteralArithmetic.into()),
+    }
+}
+
+fn literal_multiply(a: &Literal, b: &Literal) -> Result<Literal> {
+    match (a, b) {
+        (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a * b)),
+        _ => Err(FilterError::UnreachableLiteralArithmetic.into()),
+    }
+}
+
+fn literal_divide(a: &Literal, b: &Literal) -> Result<Literal> {
+    match (a, b) {
+        (Literal::Integer(a), Literal::Integer(b)) => Ok(Literal::Integer(a / b)),
         _ => Err(FilterError::UnreachableLiteralArithmetic.into()),
     }
 }

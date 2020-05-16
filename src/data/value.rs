@@ -94,6 +94,13 @@ impl Value {
         }
     }
 
+    pub fn rsubtract(&self, other: &Value) -> Result<Value> {
+        match (self, other) {
+            (Value::I64(a), Value::I64(b)) => Ok(Value::I64(b - a)),
+            _ => Err(ValueError::SubtractOnNonNumeric.into()),
+        }
+    }
+
     pub fn multiply(&self, other: &Value) -> Result<Value> {
         match (self, other) {
             (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a * b)),
@@ -104,6 +111,13 @@ impl Value {
     pub fn divide(&self, other: &Value) -> Result<Value> {
         match (self, other) {
             (Value::I64(a), Value::I64(b)) => Ok(Value::I64(a / b)),
+            _ => Err(ValueError::DivideOnNonNumeric.into()),
+        }
+    }
+
+    pub fn rdivide(&self, other: &Value) -> Result<Value> {
+        match (self, other) {
+            (Value::I64(a), Value::I64(b)) => Ok(Value::I64(b / a)),
             _ => Err(ValueError::DivideOnNonNumeric.into()),
         }
     }
