@@ -1,4 +1,4 @@
-use nom_sql::{Column, DeleteStatement, InsertStatement, SqlQuery, UpdateStatement};
+use nom_sql::{Column, DeleteStatement, InsertStatement, SqlQuery, Table, UpdateStatement};
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -39,14 +39,14 @@ pub fn execute<T: 'static + Debug>(
             Ok(Payload::Select(rows))
         }
         SqlQuery::Insert(statement) => {
-            let (table_name, insert_fields, insert_data) = match statement {
-                InsertStatement {
-                    table,
-                    fields,
-                    data,
-                    ..
-                } => (&table.name, fields, data),
-            };
+            let InsertStatement {
+                table: Table {
+                    name: table_name, ..
+                },
+                fields: insert_fields,
+                data: insert_data,
+                ..
+            } = statement;
             let create_fields = storage.get_schema(table_name)?.fields;
             let key = storage.gen_id(table_name)?;
             let row = Row::new(create_fields, insert_fields, insert_data)?;

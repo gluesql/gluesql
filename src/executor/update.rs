@@ -36,9 +36,10 @@ impl<'a> Update<'a> {
         self.fields.iter().try_for_each(|(column, _)| {
             let name = &column.name;
 
-            match values_map.contains_key(name) {
-                true => Ok(()),
-                false => Err(UpdateError::ColumnNotFound(name.clone())),
+            if values_map.contains_key(name) {
+                Ok(())
+            } else {
+                Err(UpdateError::ColumnNotFound(name.clone()))
             }
         })?;
 
@@ -96,7 +97,7 @@ impl<'a> Update<'a> {
                                 .get(name)
                                 .ok_or_else(|| UpdateError::ColumnNotFound(name.clone()))?;
 
-                            Ok(value.clone().to_owned())
+                            Ok((*value).clone())
                         }
                         ArithmeticBase::Scalar(literal) => {
                             let name = &column.name;

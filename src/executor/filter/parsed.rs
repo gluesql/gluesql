@@ -42,7 +42,7 @@ impl<'a> PartialEq for Parsed<'a> {
                 LiteralRef(r) => &l == r,
                 Literal(r) => l == r,
                 ValueRef(r) => r == &l,
-                Value(r) => &r == &l,
+                Value(r) => r == l,
             },
             ValueRef(l) => match other {
                 LiteralRef(r) => l == r,
@@ -101,7 +101,7 @@ impl<'a> Parsed<'a> {
                 filter_context,
             } => {
                 let params = fetch_select_params(storage, statement)?;
-                let v = select(storage, statement, &params, Some(filter_context))?
+                let value = select(storage, statement, &params, Some(filter_context))?
                     .map(|row| row?.take_first_value())
                     .filter_map(|value| {
                         value.map_or_else(
@@ -109,11 +109,9 @@ impl<'a> Parsed<'a> {
                             |value| (&Parsed::Value(value) == self).as_some(Ok(())),
                         )
                     })
-                    .next()
-                    .transpose()?
-                    .is_some();
+                    .next();
 
-                v
+                value.transpose()?.is_some()
             }
         })
     }
