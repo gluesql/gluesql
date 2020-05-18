@@ -1,4 +1,3 @@
-use bincode;
 use nom_sql::CreateTableStatement;
 use sled::{self, Db, IVec};
 use thiserror::Error as ThisError;
