@@ -11,7 +11,9 @@ pub enum StoreError {
     SchemaNotFound,
 }
 
-pub trait Store<T: std::fmt::Debug> {
+pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
+
+pub trait Store<T: Debug> {
     fn gen_id(&self, table_name: &str) -> Result<T>;
 
     fn set_schema(&self, statement: &CreateTableStatement) -> Result<()>;
@@ -20,7 +22,7 @@ pub trait Store<T: std::fmt::Debug> {
 
     fn set_data(&self, key: &T, row: Row) -> Result<Row>;
 
-    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Result<(T, Row)>>>>;
+    fn get_data(&self, table_name: &str) -> Result<RowIter<T>>;
 
     fn del_data(&self, key: &T) -> Result<()>;
 }

@@ -4,7 +4,7 @@ use thiserror::Error as ThisError;
 
 use crate::data::Row;
 use crate::result::{Error, Result};
-use crate::storage::{Store, StoreError};
+use crate::storage::{RowIter, Store, StoreError};
 
 #[derive(ThisError, Debug)]
 enum StorageError {
@@ -88,7 +88,7 @@ impl Store<IVec> for SledStorage {
         Ok(row)
     }
 
-    fn get_data(&self, table_name: &str) -> Result<Box<dyn Iterator<Item = Result<(IVec, Row)>>>> {
+    fn get_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
         let prefix = format!("data/{}/", table_name);
 
         let result_set = self.tree.scan_prefix(prefix.as_bytes()).map(move |item| {
