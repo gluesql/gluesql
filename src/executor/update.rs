@@ -83,7 +83,7 @@ impl<'a> Update<'a> {
                 let name = &column.name;
                 let value = values_map
                     .get(name)
-                    .ok_or(UpdateError::ConflictOnSchema(name.clone()))?;
+                    .ok_or_else(|| UpdateError::ConflictOnSchema(name.clone()))?;
 
                 value.clone_by(field_literal)
             }
@@ -94,7 +94,7 @@ impl<'a> Update<'a> {
                             let name = &field_column.name;
                             let value = values_map
                                 .get(name)
-                                .ok_or(UpdateError::ColumnNotFound(name.clone()))?;
+                                .ok_or_else(|| UpdateError::ColumnNotFound(name.clone()))?;
 
                             Ok(value.clone().to_owned())
                         }
@@ -102,7 +102,7 @@ impl<'a> Update<'a> {
                             let name = &column.name;
                             let value = values_map
                                 .get(name)
-                                .ok_or(UpdateError::ConflictOnSchema(name.clone()))?;
+                                .ok_or_else(|| UpdateError::ConflictOnSchema(name.clone()))?;
 
                             value.clone_by(&literal)
                         }

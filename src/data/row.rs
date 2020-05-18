@@ -33,7 +33,7 @@ impl Row {
         self.0
             .into_iter()
             .next()
-            .ok_or(RowError::ValueNotFound.into())
+            .ok_or_else(|| RowError::ValueNotFound.into())
     }
 
     pub fn new(
@@ -55,7 +55,7 @@ impl Row {
                     columns
                         .iter()
                         .position(|target| target.name == column.name)
-                        .ok_or(RowError::LackOfRequiredColumn(column.name.clone()))
+                        .ok_or_else(|| RowError::LackOfRequiredColumn(column.name.clone()))
                 })?;
 
                 let literal = insert_data

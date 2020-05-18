@@ -42,7 +42,7 @@ impl<'a> FilterContext<'a> {
                 .iter()
                 .position(|column| column.name == target.name)
                 .and_then(|index| self.row.get_value(index))
-                .ok_or(FilterContextError::ValueNotFound.into())
+                .ok_or_else(|| FilterContextError::ValueNotFound.into())
         };
 
         match target.table {
@@ -54,7 +54,7 @@ impl<'a> FilterContext<'a> {
                     self.next
                         .map(|c| c.get_value(target))
                         .transpose()?
-                        .ok_or(FilterContextError::ValueNotFound.into())
+                        .ok_or_else(|| FilterContextError::ValueNotFound.into())
                 }
             }
         }
