@@ -27,7 +27,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         }
     }
 
-    pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> Result<bool> {
+    pub fn check(&self, table: &Table, columns: &[Column], row: &Row) -> Result<bool> {
         let context = FilterContext::new(table, columns, row, self.context);
 
         match self.where_clause {
@@ -54,7 +54,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         Self { filter, context }
     }
 
-    pub fn check(&self, table: &Table, columns: &Vec<Column>, row: &Row) -> Result<bool> {
+    pub fn check(&self, table: &Table, columns: &[Column], row: &Row) -> Result<bool> {
         let BlendedFilter {
             filter:
                 Filter {

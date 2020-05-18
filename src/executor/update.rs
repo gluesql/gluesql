@@ -17,15 +17,15 @@ pub enum UpdateError {
 }
 
 pub struct Update<'a> {
-    fields: &'a Vec<(Column, FieldValueExpression)>,
+    fields: &'a [(Column, FieldValueExpression)],
 }
 
 impl<'a> Update<'a> {
-    pub fn new(fields: &'a Vec<(Column, FieldValueExpression)>) -> Self {
+    pub fn new(fields: &'a [(Column, FieldValueExpression)]) -> Self {
         Self { fields }
     }
 
-    pub fn apply(&self, columns: &Vec<Column>, row: Row) -> Result<Row> {
+    pub fn apply(&self, columns: &[Column], row: Row) -> Result<Row> {
         let Row(values) = row;
         let values_map = columns
             .iter()

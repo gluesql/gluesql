@@ -70,7 +70,7 @@ pub fn fetch_select_params<'a, T: 'static + Debug>(
 fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
-    columns: &'a Vec<Column>,
+    columns: &'a [Column],
 ) -> Result<impl Iterator<Item = Result<BlendContext<'a, T>>> + 'a> {
     let rows = storage.get_data(&table.name)?.map(move |data| {
         let (key, row) = data?;

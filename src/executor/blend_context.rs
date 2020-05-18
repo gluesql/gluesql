@@ -7,7 +7,7 @@ use crate::data::{Row, Value};
 #[derive(Debug)]
 pub struct BlendContext<'a, T: 'static + Debug> {
     pub table: &'a Table,
-    pub columns: &'a Vec<Column>,
+    pub columns: &'a [Column],
     pub key: T,
     pub row: Row,
     pub next: Option<Rc<BlendContext<'a, T>>>,

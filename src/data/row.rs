@@ -39,7 +39,7 @@ impl Row {
     pub fn new(
         create_fields: Vec<ColumnSpecification>,
         insert_fields: &Option<Vec<Column>>,
-        insert_data: &Vec<Vec<Literal>>,
+        insert_data: &[Vec<Literal>],
     ) -> Result<Self> {
         let insert_data = insert_data.first().ok_or(RowError::Unreachable)?;
 

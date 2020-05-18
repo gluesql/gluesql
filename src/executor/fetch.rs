@@ -22,9 +22,9 @@ pub fn fetch_columns<T: 'static + Debug>(
 pub fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
-    columns: &'a Vec<Column>,
+    columns: &'a [Column],
     filter: Filter<'a, T>,
-) -> Result<impl Iterator<Item = Result<(&'a Vec<Column>, T, Row)>> + 'a> {
+) -> Result<impl Iterator<Item = Result<(&'a [Column], T, Row)>> + 'a> {
     let rows = storage.get_data(&table.name)?.filter_map(move |item| {
         item.map_or_else(
             |error| Some(Err(error)),

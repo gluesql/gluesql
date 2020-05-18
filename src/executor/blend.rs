@@ -14,11 +14,11 @@ pub enum BlendError {
 }
 
 pub struct Blend<'a> {
-    fields: &'a Vec<FieldDefinitionExpression>,
+    fields: &'a [FieldDefinitionExpression],
 }
 
 impl<'a> Blend<'a> {
-    pub fn new(fields: &'a Vec<FieldDefinitionExpression>) -> Self {
+    pub fn new(fields: &'a [FieldDefinitionExpression]) -> Self {
         Self { fields }
     }
 
@@ -34,7 +34,7 @@ impl<'a> Blend<'a> {
         self.blend(columns, row)
     }
 
-    fn blend(&self, columns: &Vec<Column>, row: &Row) -> Result<Row> {
+    fn blend(&self, columns: &[Column], row: &Row) -> Result<Row> {
         let Row(values) = row;
         let values = values
             .iter()

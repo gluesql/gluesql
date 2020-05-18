@@ -22,8 +22,8 @@ pub enum JoinError {
 
 pub struct Join<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
-    join_clauses: &'a Vec<JoinClause>,
-    join_columns: &'a Vec<(&'a Table, Vec<Column>)>,
+    join_clauses: &'a [JoinClause],
+    join_columns: &'a [(&'a Table, Vec<Column>)],
     filter_context: Option<&'a FilterContext<'a>>,
 }
 
@@ -40,8 +40,8 @@ enum Applied<I1, I2, I3, I4> {
 impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn Store<T>,
-        join_clauses: &'a Vec<JoinClause>,
-        join_columns: &'a Vec<(&'a Table, Vec<Column>)>,
+        join_clauses: &'a [JoinClause],
+        join_columns: &'a [(&'a Table, Vec<Column>)],
         filter_context: Option<&'a FilterContext<'a>>,
     ) -> Self {
         Self {
@@ -103,7 +103,7 @@ fn join<'a, T: 'static + Debug>(
     filter_context: Option<&'a FilterContext<'a>>,
     join_clause: &'a JoinClause,
     table: &'a Table,
-    columns: &'a Vec<Column>,
+    columns: &'a [Column],
     blend_context: Result<Rc<BlendContext<'a, T>>>,
 ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
     let err = |e| Joined::Err(once(Err(e)));

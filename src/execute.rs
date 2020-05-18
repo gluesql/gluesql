@@ -65,7 +65,7 @@ pub fn execute<T: 'static + Debug>(
             let columns = fetch_columns(storage, table)?;
             let num_rows = fetch(storage, table, &columns, filter)?.try_fold::<_, _, Result<_>>(
                 0,
-                |num: usize, item: Result<(&Vec<Column>, T, Row)>| {
+                |num: usize, item: Result<(&[Column], T, Row)>| {
                     let (_, key, _) = item?;
                     storage.del_data(&key)?;
 
