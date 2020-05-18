@@ -125,13 +125,13 @@ impl<'a> Parsed<'a> {
 
         match self {
             LiteralRef(l) => match other {
-                LiteralRef(r) => literal_add(l, r).map(|v| Parsed::Literal(v)),
-                ValueRef(r) => r.add(&r.clone_by(l)?).map(|v| Parsed::Value(v)),
+                LiteralRef(r) => literal_add(l, r).map(Parsed::Literal),
+                ValueRef(r) => r.add(&r.clone_by(l)?).map(Parsed::Value),
                 Value(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
-                LiteralRef(r) => l.add(&l.clone_by(r)?).map(|v| Parsed::Value(v)),
-                ValueRef(r) => l.add(r).map(|v| Parsed::Value(v)),
+                LiteralRef(r) => l.add(&l.clone_by(r)?).map(Parsed::Value),
+                ValueRef(r) => l.add(r).map(Parsed::Value),
                 Value(_) | Literal(_) => unreachable,
             },
             Literal(_) | Value(_) => unreachable,
@@ -145,13 +145,13 @@ impl<'a> Parsed<'a> {
 
         match self {
             LiteralRef(l) => match other {
-                LiteralRef(r) => literal_subtract(l, r).map(|v| Parsed::Literal(v)),
-                ValueRef(r) => r.rsubtract(&r.clone_by(l)?).map(|v| Parsed::Value(v)),
+                LiteralRef(r) => literal_subtract(l, r).map(Parsed::Literal),
+                ValueRef(r) => r.rsubtract(&r.clone_by(l)?).map(Parsed::Value),
                 Value(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
-                LiteralRef(r) => l.subtract(&l.clone_by(r)?).map(|v| Parsed::Value(v)),
-                ValueRef(r) => l.subtract(r).map(|v| Parsed::Value(v)),
+                LiteralRef(r) => l.subtract(&l.clone_by(r)?).map(Parsed::Value),
+                ValueRef(r) => l.subtract(r).map(Parsed::Value),
                 Value(_) | Literal(_) => unreachable,
             },
             Literal(_) | Value(_) => unreachable,
@@ -165,13 +165,13 @@ impl<'a> Parsed<'a> {
 
         match self {
             LiteralRef(l) => match other {
-                LiteralRef(r) => literal_multiply(l, r).map(|v| Parsed::Literal(v)),
-                ValueRef(r) => r.multiply(&r.clone_by(l)?).map(|v| Parsed::Value(v)),
+                LiteralRef(r) => literal_multiply(l, r).map(Parsed::Literal),
+                ValueRef(r) => r.multiply(&r.clone_by(l)?).map(Parsed::Value),
                 Value(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
-                LiteralRef(r) => l.multiply(&l.clone_by(r)?).map(|v| Parsed::Value(v)),
-                ValueRef(r) => l.multiply(r).map(|v| Parsed::Value(v)),
+                LiteralRef(r) => l.multiply(&l.clone_by(r)?).map(Parsed::Value),
+                ValueRef(r) => l.multiply(r).map(Parsed::Value),
                 Value(_) | Literal(_) => unreachable,
             },
             Literal(_) | Value(_) => unreachable,
@@ -185,13 +185,13 @@ impl<'a> Parsed<'a> {
 
         match self {
             LiteralRef(l) => match other {
-                LiteralRef(r) => literal_divide(l, r).map(|v| Parsed::Literal(v)),
-                ValueRef(r) => r.rdivide(&r.clone_by(l)?).map(|v| Parsed::Value(v)),
+                LiteralRef(r) => literal_divide(l, r).map(Parsed::Literal),
+                ValueRef(r) => r.rdivide(&r.clone_by(l)?).map(Parsed::Value),
                 Value(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
-                LiteralRef(r) => l.divide(&l.clone_by(r)?).map(|v| Parsed::Value(v)),
-                ValueRef(r) => l.divide(r).map(|v| Parsed::Value(v)),
+                LiteralRef(r) => l.divide(&l.clone_by(r)?).map(Parsed::Value),
+                ValueRef(r) => l.divide(r).map(Parsed::Value),
                 Value(_) | Literal(_) => unreachable,
             },
             Literal(_) | Value(_) => unreachable,

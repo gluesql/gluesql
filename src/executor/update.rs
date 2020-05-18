@@ -45,7 +45,7 @@ impl<'a> Update<'a> {
         let field_values = columns
             .iter()
             .map(|column| match self.find(column) {
-                Some(expr) => self.evaluate(column, expr, &values_map).map(|v| Some(v)),
+                Some(expr) => self.evaluate(column, expr, &values_map).map(Some),
                 None => Ok(None),
             })
             .collect::<Result<Vec<_>>>()?;

@@ -56,7 +56,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
         &self,
         init_context: Result<BlendContext<'a, T>>,
     ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
-        let init_context = init_context.map(|c| Rc::new(c));
+        let init_context = init_context.map(Rc::new);
         let init_rows = Applied::Init(once(init_context));
 
         self.join_clauses.iter().zip(self.join_columns.iter()).fold(

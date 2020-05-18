@@ -66,6 +66,6 @@ impl Row {
                 Value::new(sql_type, literal)
             })
             .collect::<Result<_>>()
-            .map(|values| Self(values))
+            .map(Self)
     }
 }
