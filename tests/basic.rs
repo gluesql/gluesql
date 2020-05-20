@@ -5,23 +5,40 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn insert_select() {
-    println!("\n\n");
-
     let helper = SledHelper::new("data.db");
 
     helper.run_and_print(
         r#"
-CREATE TABLE test (
+CREATE TABLE Test (
     id INTEGER,
+    num INTEGER,
+    name TEXT
 )"#,
     );
-    helper.run_and_print("insert into test (id) values (1)");
+    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
+    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
+    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
 
-    let res = helper.run("select id from test").expect("select");
-    assert_eq!(res, Payload::Select(vec![Row(vec![Value::I64(1)])]));
+    use Value::*;
 
-    helper.run_and_print("update test set id = 2");
+    let expected = helper
+        .run("SELECT id, num, name FROM Test")
+        .expect("select");
+    let found = select!(
+        I64 I64 String;
+        1   2   "Hello".to_string();
+        1   9   "World".to_string();
+        3   4   "Great".to_string()
+    );
+    assert_eq!(expected, found);
 
-    let res = helper.run("select id from test").expect("select");
-    assert_eq!(res, Payload::Select(vec![Row(vec![Value::I64(2)])]));
+    helper.run_and_print("UPDATE Test SET id = 2");
+
+    let expected = helper.run("SELECT id FROM Test").expect("select");
+    let found = select!(I64; 2; 2; 2);
+    assert_eq!(expected, found);
+
+    let expected = helper.run("SELECT id, num FROM Test").expect("select");
+    let found = select!(I64 I64; 2 2; 2 9; 2 4);
+    assert_eq!(expected, found);
 }

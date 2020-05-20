@@ -87,3 +87,42 @@ impl Helper<IVec> for SledHelper {
         self.storage.as_ref()
     }
 }
+
+#[macro_export]
+macro_rules! row {
+    ( $( $p:path )* ; $( $v:expr )* ) => (
+        Row(vec![$( $p($v) ),*])
+    )
+}
+
+#[macro_export]
+macro_rules! select {
+    ( $( $t:path )* ; $( $v: expr )* ) => (
+        Payload::Select(vec![
+            row!($( $t )* ; $( $v )* )
+        ])
+    );
+    ( $( $t:path )* ; $( $v: expr )* ; $( $( $v2: expr )* );*) => ({
+        let mut rows = vec![
+            row!($( $t )* ; $( $v )*),
+        ];
+
+        Payload::Select(
+            concat!(rows ; $( $t )* ; $( $( $v2 )* );*)
+        )
+    });
+}
+
+#[macro_export]
+macro_rules! concat {
+    ( $rows:ident ; $( $t:path )* ; $( $v: expr )* ) => ({
+        $rows.push(row!($( $t )* ; $( $v )*));
+
+        $rows
+    });
+    ( $rows:ident ; $( $t:path )* ; $( $v: expr )* ; $( $( $v2: expr )* );* ) => ({
+        $rows.push(row!($( $t )* ; $( $v )*));
+
+        concat!($rows ; $( $t )* ; $( $( $v2 )* );* )
+    });
+}
