@@ -1,3 +1,4 @@
+use boolinator::Boolinator;
 use nom_sql::{Column, FieldDefinitionExpression};
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -57,7 +58,6 @@ impl<'a> Blend<'a> {
         match Rc::try_unwrap(context) {
             Ok(context) => {
                 let BlendContext { columns, row, .. } = context;
-
                 let Row(values) = row;
                 let values = values.into_iter().map(Param::Val);
 
@@ -67,7 +67,6 @@ impl<'a> Blend<'a> {
                 let &BlendContext {
                     columns, ref row, ..
                 } = &(*context);
-
                 let Row(values) = row;
                 let values = values.iter().map(|v| Param::Ref(&v));
 
@@ -77,22 +76,17 @@ impl<'a> Blend<'a> {
     }
 
     fn find(&self, target: &Column, value: Param) -> Option<Result<Value>> {
-        for expr in self.fields {
-            match expr {
-                FieldDefinitionExpression::All => {
-                    return Some(Ok(value.into()));
-                }
+        self.fields
+            .iter()
+            .find_map(|expr| match expr {
+                FieldDefinitionExpression::All => Some(Ok(())),
                 FieldDefinitionExpression::Col(column) => {
-                    if column.name == target.name {
-                        return Some(Ok(value.into()));
-                    }
+                    (column.name == target.name).as_some(Ok(()))
                 }
                 FieldDefinitionExpression::AllInTable(_) | FieldDefinitionExpression::Value(_) => {
-                    return Some(Err(BlendError::FieldDefinitionNotSupported.into()));
+                    Some(Err(BlendError::FieldDefinitionNotSupported.into()))
                 }
-            }
-        }
-
-        None
+            })
+            .map(|result| result.map(|()| value.into()))
     }
 }
