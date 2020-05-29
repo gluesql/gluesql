@@ -21,10 +21,10 @@ CREATE TABLE Test (
 
     use Value::*;
 
-    let expected = helper
+    let found = helper
         .run("SELECT id, num, name FROM Test")
         .expect("select");
-    let found = select!(
+    let expected = select!(
         I64 I64 String;
         1   2   "Hello".to_string();
         1   9   "World".to_string();
@@ -34,11 +34,11 @@ CREATE TABLE Test (
 
     helper.run_and_print("UPDATE Test SET id = 2");
 
-    let expected = helper.run("SELECT id FROM Test").expect("select");
-    let found = select!(I64; 2; 2; 2);
+    let found = helper.run("SELECT id FROM Test").expect("select");
+    let expected = select!(I64; 2; 2; 2);
     assert_eq!(expected, found);
 
-    let expected = helper.run("SELECT id, num FROM Test").expect("select");
-    let found = select!(I64 I64; 2 2; 2 9; 2 4);
+    let found = helper.run("SELECT id, num FROM Test").expect("select");
+    let expected = select!(I64 I64; 2 2; 2 9; 2 4);
     assert_eq!(expected, found);
 }
