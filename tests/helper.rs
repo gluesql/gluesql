@@ -76,7 +76,7 @@ impl SledHelper {
             }
         }
 
-        let storage = Box::new(SledStorage::new(path.to_string()).expect("SledStorage::new"));
+        let storage = Box::new(SledStorage::new(path.to_owned()).expect("SledStorage::new"));
 
         SledHelper { storage }
     }

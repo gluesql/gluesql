@@ -26,9 +26,9 @@ CREATE TABLE Test (
         .expect("select");
     let expected = select!(
         I64 I64 String;
-        1   2   "Hello".to_string();
-        1   9   "World".to_string();
-        3   4   "Great".to_string()
+        1   2   "Hello".to_owned();
+        1   9   "World".to_owned();
+        3   4   "Great".to_owned()
     );
     assert_eq!(expected, found);
 
