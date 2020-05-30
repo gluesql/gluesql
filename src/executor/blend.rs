@@ -1,5 +1,7 @@
-use nom_sql::{Column, FieldDefinitionExpression};
+use iter_enum::Iterator;
+use nom_sql::{Column, FieldDefinitionExpression, Table};
 use std::fmt::Debug;
+use std::iter::once;
 use std::rc::Rc;
 use thiserror::Error;
 
@@ -11,6 +13,20 @@ use crate::result::Result;
 pub enum BlendError {
     #[error("this field definition is not supported yet")]
     FieldDefinitionNotSupported,
+
+    #[error("column not found: {0}")]
+    ColumnNotFound(String),
+
+    #[error("table not found: {0}")]
+    TableNotFound(String),
+}
+
+#[derive(Iterator)]
+enum Blended<I1, I2, I3, I4> {
+    All(I1),
+    AllInTable(I2),
+    Col(I3),
+    Err(I4),
 }
 
 pub struct Blend<'a> {
@@ -24,44 +40,97 @@ impl<'a> Blend<'a> {
 
     pub fn apply<T: 'static + Debug>(
         &self,
-        blend_context: Result<Rc<BlendContext<'a, T>>>,
+        context: Result<Rc<BlendContext<'a, T>>>,
     ) -> Result<Row> {
-        let &BlendContext {
-            columns, ref row, ..
-        } = &(*blend_context?);
-
-        // TODO: Should support JOIN
-        self.blend(columns, row)
+        self.blend(context?)
     }
 
-    fn blend(&self, columns: &[Column], row: &Row) -> Result<Row> {
-        let Row(values) = row;
-        let values = values
-            .iter()
-            .zip(columns.iter())
-            .filter_map(|(value, column)| self.find(value, column))
-            .collect::<Result<_>>()?;
-
-        Ok(Row(values))
-    }
-
-    fn find(&self, value: &Value, target: &Column) -> Option<Result<Value>> {
-        for expr in self.fields {
-            match expr {
-                FieldDefinitionExpression::All => {
-                    return Some(Ok(value.clone()));
-                }
-                FieldDefinitionExpression::Col(column) => {
-                    if column.name == target.name {
-                        return Some(Ok(value.clone()));
-                    }
-                }
-                FieldDefinitionExpression::AllInTable(_) | FieldDefinitionExpression::Value(_) => {
-                    return Some(Err(BlendError::FieldDefinitionNotSupported.into()));
-                }
-            }
+    fn blend<T: 'static + Debug>(&self, context: Rc<BlendContext<'a, T>>) -> Result<Row> {
+        macro_rules! err {
+            ($err: expr) => {
+                Blended::Err(once(Err($err.into())))
+            };
         }
 
-        None
+        self.fields
+            .iter()
+            .flat_map(|expr| match expr {
+                FieldDefinitionExpression::All => {
+                    Blended::All(get_values(&context).into_iter().map(Ok))
+                }
+                FieldDefinitionExpression::AllInTable(table_name) => {
+                    match get_table_values(&context, &table_name) {
+                        Some(values) => Blended::AllInTable(values.into_iter().map(Ok)),
+                        None => err!(BlendError::TableNotFound(table_name.clone())),
+                    }
+                }
+                FieldDefinitionExpression::Col(column) => match get_value(&context, column) {
+                    Some(value) => Blended::Col(once(Ok(value))),
+                    None => err!(BlendError::ColumnNotFound(column.name.clone())),
+                },
+                FieldDefinitionExpression::Value(_) => {
+                    err!(BlendError::FieldDefinitionNotSupported)
+                }
+            })
+            .collect::<Result<_>>()
+            .map(Row)
+    }
+}
+
+fn get_value<T: 'static + Debug>(context: &BlendContext<T>, target: &Column) -> Option<Value> {
+    let Table { alias, name } = context.table;
+
+    let get = || {
+        context
+            .columns
+            .iter()
+            .position(|column| column.name == target.name)
+            .and_then(|index| context.row.get_value(index))
+            .cloned()
+    };
+
+    match target.table {
+        None => get(),
+        Some(ref table) => {
+            if &target.table == alias || table == name {
+                get()
+            } else {
+                context
+                    .next
+                    .as_ref()
+                    .and_then(|next| get_value(next, target))
+            }
+        }
+    }
+}
+
+fn get_values<T: 'static + Debug>(context: &BlendContext<T>) -> Vec<Value> {
+    let Row(values) = &context.row;
+    let values = values.clone();
+
+    match &context.next {
+        Some(context) => values
+            .into_iter()
+            .chain(get_values(&context).into_iter())
+            .collect(),
+        None => values,
+    }
+}
+
+fn get_table_values<T: 'static + Debug>(
+    context: &BlendContext<T>,
+    table_name: &str,
+) -> Option<Vec<Value>> {
+    let Table { alias, name } = &context.table;
+
+    if table_name == alias.as_ref().unwrap_or(name) {
+        let Row(values) = &context.row;
+
+        Some(values.clone())
+    } else {
+        context
+            .next
+            .as_ref()
+            .and_then(|context| get_table_values(context, table_name))
     }
 }

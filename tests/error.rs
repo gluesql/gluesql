@@ -1,8 +1,8 @@
 mod helper;
 
 use gluesql::{
-    BlendError, ExecuteError, FilterContextError, FilterError, JoinError, RowError, SelectError,
-    StoreError, ValueError,
+    ExecuteError, FilterContextError, FilterError, JoinError, RowError, SelectError, StoreError,
+    ValueError,
 };
 use helper::{Helper, SledHelper};
 
@@ -44,19 +44,15 @@ fn error() {
             "SELECT * FROM TableA WHERE noname = 1;",
         ),
         (
-            RowError::ValueNotFound.into(),
-            "SELECT * FROM TableA WHERE id = (SELECT a FROM TableA WHERE id = 1 LIMIT 1);",
-        ),
-        (
             ValueError::LiteralNotSupported.into(),
             "UPDATE TableA SET id = 0.11",
         ),
         (
-            RowError::LackOfRequiredColumn("id".to_string()).into(),
+            RowError::LackOfRequiredColumn("id".to_owned()).into(),
             "INSERT INTO TableA () VALUES ();",
         ),
         (
-            RowError::LackOfRequiredValue("id".to_string()).into(),
+            RowError::LackOfRequiredValue("id".to_owned()).into(),
             "INSERT INTO TableA VALUES ();",
         ),
     ];
@@ -69,10 +65,5 @@ fn error() {
     helper.test_error(
         "INSERT INTO TableB (id) VALUES (0);",
         ValueError::SqlTypeNotSupported.into(),
-    );
-
-    helper.test_error(
-        "SELECT TableA.* FROM TableA;",
-        BlendError::FieldDefinitionNotSupported.into(),
     );
 }

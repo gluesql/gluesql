@@ -8,9 +8,6 @@ use crate::result::Result;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum RowError {
-    #[error("value not found")]
-    ValueNotFound,
-
     #[error("lack of required column: {0}")]
     LackOfRequiredColumn(String),
 
@@ -19,6 +16,9 @@ pub enum RowError {
 
     #[error("Unreachable")]
     Unreachable,
+
+    #[error("conflict! row cannot be empty")]
+    ConflictOnEmptyRow,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -33,7 +33,7 @@ impl Row {
         self.0
             .into_iter()
             .next()
-            .ok_or_else(|| RowError::ValueNotFound.into())
+            .ok_or_else(|| RowError::ConflictOnEmptyRow.into())
     }
 
     pub fn new(
