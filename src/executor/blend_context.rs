@@ -13,9 +13,8 @@ pub struct BlendContext<'a, T: 'static + Debug> {
     pub next: Option<Rc<BlendContext<'a, T>>>,
 }
 
-// TODO: use this when you implement JOIN + blend
 impl<'a, T: 'static + Debug> BlendContext<'a, T> {
-    pub fn get_value(&'a self, target: &'a Column) -> Option<&'a Value> {
+    pub fn get_value(&self, target: &Column) -> Option<Value> {
         let Table { alias, name } = self.table;
 
         let get_value = || {
@@ -23,6 +22,7 @@ impl<'a, T: 'static + Debug> BlendContext<'a, T> {
                 .iter()
                 .position(|column| column.name == target.name)
                 .and_then(|index| self.row.get_value(index))
+                .cloned()
         };
 
         match target.table {
@@ -34,6 +34,33 @@ impl<'a, T: 'static + Debug> BlendContext<'a, T> {
                     self.next.as_ref().and_then(|c| c.get_value(target))
                 }
             }
+        }
+    }
+
+    pub fn get_values(&self) -> Vec<Value> {
+        let Row(values) = &self.row;
+        let values = values.clone();
+
+        match &self.next {
+            Some(context) => values
+                .into_iter()
+                .chain(context.get_values().into_iter())
+                .collect(),
+            None => values,
+        }
+    }
+
+    pub fn get_table_values(&self, table_name: &str) -> Option<Vec<Value>> {
+        let Table { alias, name } = self.table;
+
+        if table_name == alias.as_ref().unwrap_or(name) {
+            let Row(values) = &self.row;
+
+            Some(values.clone())
+        } else {
+            self.next
+                .as_ref()
+                .and_then(|context| context.get_table_values(table_name))
         }
     }
 }
