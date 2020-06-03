@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 use crate::data::Row;
-use crate::executor::{fetch, fetch_columns, fetch_select_params, select, Filter, Update};
+use crate::executor::{fetch, fetch_columns, select, Filter, Update};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -33,8 +33,7 @@ pub fn execute<T: 'static + Debug>(
             Ok(Payload::Create)
         }
         SqlQuery::Select(statement) => {
-            let params = fetch_select_params(storage, statement)?;
-            let rows = select(storage, statement, &params, None)?.collect::<Result<_>>()?;
+            let rows = select(storage, statement, None)?.collect::<Result<_>>()?;
 
             Ok(Payload::Select(rows))
         }

@@ -23,7 +23,6 @@ pub enum JoinError {
 pub struct Join<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     join_clauses: &'a [JoinClause],
-    join_columns: &'a [(&'a Table, Vec<Column>)],
     filter_context: Option<&'a FilterContext<'a>>,
 }
 
@@ -37,17 +36,17 @@ enum Applied<I1, I2, I3, I4> {
     Mapped(I4),
 }
 
+pub type JoinColumns<'a> = Vec<Rc<(&'a Table, Rc<Vec<Column>>)>>;
+
 impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn Store<T>,
         join_clauses: &'a [JoinClause],
-        join_columns: &'a [(&'a Table, Vec<Column>)],
         filter_context: Option<&'a FilterContext<'a>>,
     ) -> Self {
         Self {
             storage,
             join_clauses,
-            join_columns,
             filter_context,
         }
     }
@@ -55,17 +54,26 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn apply(
         &self,
         init_context: Result<BlendContext<'a, T>>,
+        join_columns: Rc<JoinColumns<'a>>,
     ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
         let init_context = init_context.map(Rc::new);
         let init_rows = Applied::Init(once(init_context));
 
-        self.join_clauses.iter().zip(self.join_columns.iter()).fold(
-            init_rows,
-            |rows, (join_clause, (table, columns))| {
+        self.join_clauses
+            .iter()
+            .enumerate()
+            .map(move |(i, join_clause)| {
+                let table_columns = Rc::clone(&join_columns[i]);
+
+                (join_clause, table_columns)
+            })
+            .fold(init_rows, |rows, (join_clause, table_columns)| {
                 let storage = self.storage;
                 let filter_context = self.filter_context;
-
                 let map = move |blend_context| {
+                    let table = table_columns.0;
+                    let columns = Rc::clone(&table_columns.1);
+
                     join(
                         storage,
                         filter_context,
@@ -86,8 +94,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
                     Applied::Boxed(rows) => Applied::Mapped(rows.flat_map(map)),
                     Applied::Mapped(rows) => Applied::Boxed(Box::new(rows.flat_map(map))),
                 }
-            },
-        )
+            })
     }
 }
 
@@ -103,7 +110,7 @@ fn join<'a, T: 'static + Debug>(
     filter_context: Option<&'a FilterContext<'a>>,
     join_clause: &'a JoinClause,
     table: &'a Table,
-    columns: &'a [Column],
+    columns: Rc<Vec<Column>>,
     blend_context: Result<Rc<BlendContext<'a, T>>>,
 ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
     let err = |e| Joined::Err(once(Err(e)));
@@ -147,11 +154,11 @@ fn join<'a, T: 'static + Debug>(
         let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
 
         blended_filter
-            .check(table, columns, &row)
+            .check(table, &columns, &row)
             .map(|pass| {
                 pass.as_some(Rc::new(BlendContext {
                     table,
-                    columns,
+                    columns: Rc::clone(&columns),
                     key,
                     row,
                     next: Some(Rc::clone(&blend_context)),

@@ -4,7 +4,7 @@ use nom_sql::{
 };
 use std::fmt::Debug;
 
-use crate::executor::{fetch_select_params, select, BlendContext, FilterContext};
+use crate::executor::{select, BlendContext, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -48,8 +48,7 @@ fn parse_expr<'a, T: 'static + Debug>(
             .map(|value| Parsed::ValueRef(value)),
         ConditionBase::Literal(literal) => Ok(Parsed::LiteralRef(literal)),
         ConditionBase::NestedSelect(statement) => {
-            let params = fetch_select_params(storage, statement)?;
-            let value = select(storage, statement, &params, Some(filter_context))?
+            let value = select(storage, statement, Some(filter_context))?
                 .map(|row| row?.take_first_value())
                 .next()
                 .ok_or(FilterError::NestedSelectRowNotFound)??;

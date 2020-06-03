@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 
 use crate::data::Value;
-use crate::executor::{fetch_select_params, select, FilterContext};
+use crate::executor::{select, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -100,8 +100,7 @@ impl<'a> Parsed<'a> {
                 statement,
                 filter_context,
             } => {
-                let params = fetch_select_params(storage, statement)?;
-                let value = select(storage, statement, &params, Some(filter_context))?
+                let value = select(storage, statement, Some(filter_context))?
                     .map(|row| row?.take_first_value())
                     .filter_map(|value| {
                         value.map_or_else(

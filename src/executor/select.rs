@@ -1,9 +1,11 @@
 use boolinator::Boolinator;
 use nom_sql::{Column, JoinClause, JoinRightSide, SelectStatement, Table};
 use std::fmt::Debug;
+use std::rc::Rc;
 use thiserror::Error;
 
 use crate::data::Row;
+use crate::executor::join::JoinColumns;
 use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
 use crate::result::Result;
 use crate::storage::Store;
@@ -20,13 +22,13 @@ pub enum SelectError {
     JoinRightSideNotSupported,
 }
 
-pub struct SelectParams<'a> {
+struct SelectParams<'a> {
     pub table: &'a Table,
     pub columns: Vec<Column>,
-    pub join_columns: Vec<(&'a Table, Vec<Column>)>,
+    pub join_columns: Rc<JoinColumns<'a>>,
 }
 
-pub fn fetch_select_params<'a, T: 'static + Debug>(
+fn fetch_select_params<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
 ) -> Result<SelectParams<'a>> {
@@ -56,24 +58,27 @@ pub fn fetch_select_params<'a, T: 'static + Debug>(
                 _ => Err(SelectError::JoinRightSideNotSupported),
             }?;
 
-            Ok((table, fetch_columns(storage, table)?))
+            let item = (table, Rc::new(fetch_columns(storage, table)?));
+
+            Ok(Rc::new(item))
         })
         .collect::<Result<_>>()?;
 
     Ok(SelectParams {
         table,
         columns,
-        join_columns,
+        join_columns: Rc::new(join_columns),
     })
 }
 
 fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
-    columns: &'a [Column],
+    columns: Rc<Vec<Column>>,
 ) -> Result<impl Iterator<Item = Result<BlendContext<'a, T>>> + 'a> {
     let rows = storage.get_data(&table.name)?.map(move |data| {
         let (key, row) = data?;
+        let columns = Rc::clone(&columns);
 
         Ok(BlendContext {
             table,
@@ -90,7 +95,6 @@ fn fetch_blended<'a, T: 'static + Debug>(
 pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     statement: &'a SelectStatement,
-    params: &'a SelectParams<'a>,
     filter_context: Option<&'a FilterContext<'a>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
     let SelectStatement {
@@ -104,15 +108,20 @@ pub fn select<'a, T: 'static + Debug>(
         table,
         columns,
         join_columns,
-    } = params;
+    } = fetch_select_params(storage, statement)?;
+    let columns = Rc::new(columns);
 
     let blend = Blend::new(fields);
     let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
-    let join = Join::new(storage, join_clauses, join_columns, filter_context);
+    let join = Join::new(storage, join_clauses, filter_context);
     let limit = Limit::new(limit_clause);
 
     let rows = fetch_blended(storage, table, columns)?
-        .flat_map(move |blend_context| join.apply(blend_context))
+        .flat_map(move |blend_context| {
+            let join_columns = Rc::clone(&join_columns);
+
+            join.apply(blend_context, join_columns)
+        })
         .filter_map(move |blend_context| {
             blend_context.map_or_else(
                 |error| Some(Err(error)),
