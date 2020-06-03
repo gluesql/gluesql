@@ -85,11 +85,11 @@ fn arithmetic() {
             "UPDATE Arith SET id = name / 1",
         ),
         (
-            UpdateError::ColumnNotFound(String::from("aaa")).into(),
+            UpdateError::ColumnNotFound("aaa".to_owned()).into(),
             "UPDATE Arith SET num = aaa +  1",
         ),
         (
-            UpdateError::ColumnNotFound(String::from("aaa")).into(),
+            UpdateError::ColumnNotFound("aaa".to_owned()).into(),
             "UPDATE Arith SET aaa = 1",
         ),
     ];
