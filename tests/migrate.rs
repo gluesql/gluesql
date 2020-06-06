@@ -1,7 +1,7 @@
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 
-use gluesql::{execute, RowError, SledStorage};
+use gluesql::{execute, RowError, SledStorage, ValueError};
 
 fn new(path: &str) -> SledStorage {
     match std::fs::remove_dir_all(path) {
@@ -46,17 +46,21 @@ CREATE TABLE Test (
 
     let error_cases = vec![
         (
-            RowError::UnsupportedAstValueType,
+            RowError::UnsupportedAstValueType.into(),
             "INSERT INTO Test (id, num) VALUES (3 * 2, 1);",
         ),
         (
-            RowError::MultiRowInsertNotSupported,
+            RowError::MultiRowInsertNotSupported.into(),
             "INSERT INTO Test (id, num) VALUES (1, 1), (2, 1);",
+        ),
+        (
+            ValueError::FailedToParseNumber.into(),
+            "INSERT INTO Test (id, num) VALUES (1.1, 1);",
         ),
     ];
 
     error_cases.into_iter().for_each(|(error, sql)| {
-        let error = Err(error.into());
+        let error = Err(error);
 
         assert_eq!(error, run(sql));
     });

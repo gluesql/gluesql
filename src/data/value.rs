@@ -16,6 +16,9 @@ pub enum ValueError {
     #[error("literal not supported yet")]
     LiteralNotSupported,
 
+    #[error("failed to parse number")]
+    FailedToParseNumber,
+
     #[error("add on non numeric value")]
     AddOnNonNumeric,
 
@@ -78,7 +81,8 @@ impl Value {
         match (data_type, literal) {
             (DataType::Int, AstValue::Number(v)) => v
                 .parse()
-                .map_or_else(|_| unimplemented!(), |v| Ok(Value::I64(v))),
+                .map(Value::I64)
+                .map_err(|_| ValueError::FailedToParseNumber.into()),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
