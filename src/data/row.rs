@@ -1,7 +1,8 @@
-use nom_sql::{Column, ColumnSpecification, Literal};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
+
+use sqlparser::ast::{ColumnDef, Expr, Ident, Query, SetExpr, Values};
 
 use crate::data::Value;
 use crate::result::Result;
@@ -13,6 +14,12 @@ pub enum RowError {
 
     #[error("literals does not fit to columns")]
     LackOfRequiredValue(String),
+
+    #[error("unsupported ast value type")]
+    UnsupportedAstValueType,
+
+    #[error("inserting multiple rows not supported")]
+    MultiRowInsertNotSupported,
 
     #[error("Unreachable")]
     Unreachable,
@@ -36,34 +43,48 @@ impl Row {
             .ok_or_else(|| RowError::ConflictOnEmptyRow.into())
     }
 
-    pub fn new(
-        create_fields: Vec<ColumnSpecification>,
-        insert_fields: &Option<Vec<Column>>,
-        insert_data: &[Vec<Literal>],
-    ) -> Result<Self> {
-        let insert_data = insert_data.first().ok_or(RowError::Unreachable)?;
+    pub fn new(column_defs: Vec<ColumnDef>, columns: &[Ident], source: &Query) -> Result<Self> {
+        let values = match &source.body {
+            SetExpr::Values(Values(values)) => values,
+            _ => {
+                return Err(RowError::Unreachable.into());
+            }
+        };
 
-        create_fields
+        let values = match values.len() {
+            1 => &values[0],
+            0 => {
+                return Err(RowError::Unreachable.into());
+            }
+            _ => {
+                return Err(RowError::MultiRowInsertNotSupported.into());
+            }
+        };
+
+        column_defs
             .into_iter()
             .enumerate()
-            .map(|(i, create_field)| {
-                let ColumnSpecification {
-                    sql_type, column, ..
-                } = create_field;
+            .map(|(i, column_def)| {
+                let ColumnDef {
+                    name, data_type, ..
+                } = column_def;
+                let name = name.to_string();
 
-                let i = insert_fields.as_ref().map_or(Ok(i), |columns| {
-                    columns
+                let i = match columns.len() {
+                    0 => Ok(i),
+                    _ => columns
                         .iter()
-                        .position(|target| target.name == column.name)
-                        .ok_or_else(|| RowError::LackOfRequiredColumn(column.name.clone()))
-                })?;
+                        .position(|target| target.value == name)
+                        .ok_or_else(|| RowError::LackOfRequiredColumn(name.clone())),
+                }?;
 
-                let literal = insert_data
-                    .get(i)
-                    .ok_or(RowError::LackOfRequiredValue(column.name))?
-                    .clone();
+                let literal = values.get(i).ok_or(RowError::LackOfRequiredValue(name))?;
 
-                Value::new(sql_type, literal)
+                match literal {
+                    Expr::Value(literal) => Value::new2(data_type, literal),
+                    Expr::Identifier(value) => Ok(Value::String(value.to_string())),
+                    _ => Err(RowError::UnsupportedAstValueType.into()),
+                }
             })
             .collect::<Result<_>>()
             .map(Self)

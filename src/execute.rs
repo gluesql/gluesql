@@ -1,9 +1,9 @@
-use nom_sql::{Column, DeleteStatement, InsertStatement, SqlQuery, Table, UpdateStatement};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::data::Row;
-use crate::executor::{fetch, fetch_columns, select, Filter, Update};
+use sqlparser::ast::Statement;
+
+use crate::data::{Row, Schema};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -22,6 +22,39 @@ pub enum Payload {
     Update(usize),
 }
 
+pub fn execute<T: 'static + Debug>(
+    storage: &dyn Store<T>,
+    sql_query: &Statement,
+) -> Result<Payload> {
+    match sql_query {
+        Statement::CreateTable { name, columns, .. } => {
+            let schema = Schema {
+                table_name: name.to_string(),
+                column_defs: columns.clone(),
+            };
+
+            storage.set_schema(&schema)?;
+
+            Ok(Payload::Create)
+        }
+        Statement::Insert {
+            table_name,
+            columns,
+            source,
+        } => {
+            let table_name = table_name.to_string();
+            let Schema { column_defs, .. } = storage.get_schema2(&table_name)?;
+            let key = storage.gen_id(&table_name)?;
+            let row = Row::new(column_defs, columns, source)?;
+            let row = storage.set_data(&key, row)?;
+
+            Ok(Payload::Insert(row))
+        }
+        _ => Err(ExecuteError::QueryNotSupported.into()),
+    }
+}
+
+/*
 pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
     sql_query: &SqlQuery,
@@ -102,3 +135,4 @@ pub fn execute<T: 'static + Debug>(
         _ => Err(ExecuteError::QueryNotSupported.into()),
     }
 }
+*/

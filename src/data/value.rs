@@ -4,6 +4,8 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use thiserror::Error;
 
+use sqlparser::ast::{DataType, Value as AstValue};
+
 use crate::result::Result;
 
 #[derive(Error, Debug, PartialEq)]
@@ -68,6 +70,15 @@ impl Value {
         match (sql_type, literal) {
             (SqlType::Int(_), Literal::Integer(v)) => Ok(Value::I64(v)),
             (SqlType::Text, Literal::String(v)) => Ok(Value::String(v)),
+            _ => Err(ValueError::SqlTypeNotSupported.into()),
+        }
+    }
+
+    pub fn new2(data_type: DataType, literal: &AstValue) -> Result<Self> {
+        match (data_type, literal) {
+            (DataType::Int, AstValue::Number(v)) => v
+                .parse()
+                .map_or_else(|_| unimplemented!(), |v| Ok(Value::I64(v))),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
