@@ -1,12 +1,16 @@
-use boolinator::Boolinator;
-use nom_sql::{Column, JoinClause, JoinRightSide, SelectStatement, Table};
+// use boolinator::Boolinator;
+// use nom_sql::{Column, JoinClause, JoinRightSide, SelectStatement, Table};
+use nom_sql::SelectStatement;
 use std::fmt::Debug;
-use std::rc::Rc;
+// use std::rc::Rc;
 use thiserror::Error;
 
+use sqlparser::ast::{Query, SetExpr, TableFactor};
+
 use crate::data::Row;
-use crate::executor::join::JoinColumns;
-use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
+// use crate::executor::join::JoinColumns;
+// use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
+use crate::executor::FilterContext;
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -20,8 +24,12 @@ pub enum SelectError {
 
     #[error("unimplemented! join right side not supported")]
     JoinRightSideNotSupported,
+
+    #[error("unreachable!")]
+    Unreachable,
 }
 
+/*
 struct SelectParams<'a> {
     pub table: &'a Table,
     pub columns: Vec<Column>,
@@ -91,12 +99,54 @@ fn fetch_blended<'a, T: 'static + Debug>(
 
     Ok(rows)
 }
+*/
+
+macro_rules! err {
+    ($err: expr) => ({
+        return Err($err.into());
+    })
+}
+
+pub fn select2<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    query: &'a Query,
+    _filter_context: Option<&'a FilterContext<'a>>,
+) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
+    let table = match &query.body {
+        SetExpr::Select(statement) => {
+            let tables = &statement.from;
+
+            match tables.len() {
+                1 => &tables[0].relation,
+                0 => err!(SelectError::Unreachable),
+                _ => err!(SelectError::TooManyTables),
+            }
+        }
+        _ => err!(SelectError::Unreachable),
+    };
+
+    let table_name = match table {
+        TableFactor::Table { name, .. } => name.to_string(),
+        _ => err!(SelectError::Unreachable),
+    };
+
+    let rows = storage
+        .get_data(&table_name)?
+        .map(|item| item.map(|(_, row)| row));
+
+    Ok(rows)
+}
 
 pub fn select<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
-    statement: &'a SelectStatement,
-    filter_context: Option<&'a FilterContext<'a>>,
+    _storage: &'a dyn Store<T>,
+    _statement: &'a SelectStatement,
+    _filter_context: Option<&'a FilterContext<'a>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
+    let rows = vec![Ok(Row(vec![]))].into_iter();
+
+    Ok(rows)
+
+    /*
     let SelectStatement {
         where_clause,
         limit: limit_clause,
@@ -138,4 +188,5 @@ pub fn select<'a, T: 'static + Debug>(
         .map(move |blend_context| blend.apply(blend_context));
 
     Ok(rows)
+    */
 }

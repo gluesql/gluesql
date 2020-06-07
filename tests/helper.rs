@@ -3,6 +3,7 @@ use nom_sql::parse_query;
 use sled::IVec;
 use std::fmt::Debug;
 
+/*
 pub trait Helper<T: 'static + Debug> {
     fn get_storage(&self) -> &dyn Store<T>;
 
@@ -87,6 +88,7 @@ impl Helper<IVec> for SledHelper {
         self.storage.as_ref()
     }
 }
+*/
 
 #[macro_export]
 macro_rules! row {

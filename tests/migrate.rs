@@ -1,7 +1,9 @@
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 
-use gluesql::{execute, RowError, SledStorage, ValueError};
+mod helper;
+
+use gluesql::{execute, Payload, Row, RowError, SledStorage, Value, ValueError};
 
 fn new(path: &str) -> SledStorage {
     match std::fs::remove_dir_all(path) {
@@ -65,16 +67,9 @@ CREATE TABLE Test (
         assert_eq!(error, run(sql));
     });
 
-    /*
-    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
-    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
-    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
-
     use Value::*;
 
-    let found = helper
-        .run("SELECT id, num, name FROM Test")
-        .expect("select");
+    let found = run("SELECT id, num, name FROM Test").expect("select");
     let expected = select!(
         I64 I64 String;
         1   2   "Hello".to_owned();
@@ -83,6 +78,7 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 
+    /*
     helper.run_and_print("UPDATE Test SET id = 2");
 
     let found = helper.run("SELECT id FROM Test").expect("select");

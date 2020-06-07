@@ -4,6 +4,7 @@ use thiserror::Error;
 use sqlparser::ast::Statement;
 
 use crate::data::{Row, Schema};
+use crate::executor::select2;
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -36,6 +37,11 @@ pub fn execute<T: 'static + Debug>(
             storage.set_schema(&schema)?;
 
             Ok(Payload::Create)
+        }
+        Statement::Query(query) => {
+            let rows = select2(storage, &query, None)?.collect::<Result<_>>()?;
+
+            Ok(Payload::Select(rows))
         }
         Statement::Insert {
             table_name,

@@ -15,5 +15,5 @@ pub use filter::{BlendedFilter, Filter, FilterError};
 pub use filter_context::{FilterContext, FilterContextError};
 pub use join::{Join, JoinError};
 pub use limit::Limit;
-pub use select::{select, SelectError};
+pub use select::{select, select2, SelectError};
 pub use update::{Update, UpdateError};
