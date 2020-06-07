@@ -82,7 +82,7 @@ impl Row {
 
                 match literal {
                     Expr::Value(literal) => Value::new2(data_type, literal),
-                    Expr::Identifier(value) => Ok(Value::String(value.to_string())),
+                    Expr::Identifier(Ident { value, .. }) => Ok(Value::String(value.clone())),
                     _ => Err(RowError::UnsupportedAstValueType.into()),
                 }
             })
