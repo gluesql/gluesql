@@ -1,16 +1,16 @@
-// use boolinator::Boolinator;
+use boolinator::Boolinator;
 // use nom_sql::{Column, JoinClause, JoinRightSide, SelectStatement, Table};
 use nom_sql::SelectStatement;
 use std::fmt::Debug;
-// use std::rc::Rc;
+use std::rc::Rc;
 use thiserror::Error;
 
-use sqlparser::ast::{Query, SetExpr, TableFactor};
+use sqlparser::ast::{ColumnDef, Ident, Query, SetExpr, TableFactor};
 
-use crate::data::Row;
+use crate::data::{Row, Schema};
 // use crate::executor::join::JoinColumns;
 // use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
-use crate::executor::FilterContext;
+use crate::executor::{Filter, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -102,25 +102,26 @@ fn fetch_blended<'a, T: 'static + Debug>(
 */
 
 macro_rules! err {
-    ($err: expr) => ({
+    ($err: expr) => {{
         return Err($err.into());
-    })
+    }};
 }
 
 pub fn select2<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     query: &'a Query,
-    _filter_context: Option<&'a FilterContext<'a>>,
+    filter_context: Option<&'a FilterContext<'a>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    let table = match &query.body {
+    let (table, where_clause) = match &query.body {
         SetExpr::Select(statement) => {
             let tables = &statement.from;
-
-            match tables.len() {
+            let table = match tables.len() {
                 1 => &tables[0].relation,
                 0 => err!(SelectError::Unreachable),
                 _ => err!(SelectError::TooManyTables),
-            }
+            };
+
+            (table, statement.selection.as_ref())
         }
         _ => err!(SelectError::Unreachable),
     };
@@ -130,9 +131,31 @@ pub fn select2<'a, T: 'static + Debug>(
         _ => err!(SelectError::Unreachable),
     };
 
+    let Schema { column_defs, .. } = storage.get_schema2(&table_name)?;
+    let columns: Vec<Ident> = column_defs
+        .into_iter()
+        .map(|ColumnDef { name, .. }| name)
+        .collect();
+    let columns = Rc::new(columns);
+
+    let filter = Filter::new(storage, where_clause, filter_context);
+
     let rows = storage
         .get_data(&table_name)?
-        .map(|item| item.map(|(_, row)| row));
+        .filter_map(move |item| {
+            item.map_or_else(
+                |error| Some(Err(error)),
+                |(key, row)| {
+                    let columns = Rc::clone(&columns);
+
+                    filter
+                        .check(table, &columns, &row)
+                        .map(|pass| pass.as_some((columns, key, row)))
+                        .transpose()
+                },
+            )
+        })
+        .map(|item| item.map(|(_, _, row)| row));
 
     Ok(rows)
 }

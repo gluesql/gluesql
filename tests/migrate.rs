@@ -17,7 +17,7 @@ fn new(path: &str) -> SledStorage {
 }
 
 #[test]
-fn insert_select() {
+fn migrate() {
     let storage = new("data.db");
     let dialect = GenericDialect {};
     let run = |sql| {
@@ -75,6 +75,14 @@ CREATE TABLE Test (
         1   2   "Hello".to_owned();
         1   9   "World".to_owned();
         3   4   "Great".to_owned()
+    );
+    assert_eq!(expected, found);
+
+    let found = run("SELECT id, num, name FROM Test WHERE id = 1").expect("select");
+    let expected = select!(
+        I64 I64 String;
+        1   2   "Hello".to_owned();
+        1   9   "World".to_owned()
     );
     assert_eq!(expected, found);
 

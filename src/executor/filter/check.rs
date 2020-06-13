@@ -1,16 +1,19 @@
-use nom_sql::{
-    ArithmeticBase, ArithmeticExpression, ArithmeticOperator, ConditionBase, ConditionExpression,
-    ConditionTree, Operator,
-};
 use std::fmt::Debug;
 
-use crate::executor::{select, BlendContext, FilterContext};
+use sqlparser::ast::{BinaryOperator, Expr, Value as AstValue};
+
+// use crate::executor::{select, BlendContext, FilterContext};
+// use crate::executor::{select, FilterContext};
+use crate::executor::FilterContext;
 use crate::result::Result;
 use crate::storage::Store;
+// use crate::data::Value;
 
 use super::error::FilterError;
-use super::parsed::{Parsed, ParsedList};
+// use super::parsed::{Parsed, ParsedList};
+use super::parsed::Parsed;
 
+/*
 fn parse_arithmetic<'a>(
     filter_context: &'a FilterContext<'a>,
     expr: &'a ArithmeticExpression,
@@ -36,12 +39,27 @@ fn parse_arithmetic<'a>(
         ArithmeticOperator::Divide => Ok(l.divide(&r)?),
     }
 }
+*/
 
 fn parse_expr<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    _storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
-    expr: &'a ConditionExpression,
+    expr: &'a Expr,
 ) -> Result<Parsed<'a>> {
+    let parse_value = |value: &'a AstValue| match value {
+        v @ AstValue::Number(_) => Ok(Parsed::LiteralRef(v)),
+        _ => Err(FilterError::Unimplemented.into()),
+    };
+
+    match expr {
+        Expr::Value(value) => parse_value(&value),
+        Expr::Identifier(ident) => filter_context
+            .get_value(&ident.value)
+            .map(|value| Parsed::ValueRef(value)),
+        _ => Err(FilterError::Unimplemented.into()),
+    }
+
+    /*
     let parse_base = |base: &'a ConditionBase| match base {
         ConditionBase::Field(column) => filter_context
             .get_value(&column)
@@ -65,8 +83,10 @@ fn parse_expr<'a, T: 'static + Debug>(
         ConditionExpression::Arithmetic(expr) => parse_arithmetic(&expr),
         _ => Err(FilterError::Unimplemented.into()),
     }
+    */
 }
 
+/*
 fn parse_in_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
@@ -90,12 +110,30 @@ fn parse_in_expr<'a, T: 'static + Debug>(
         _ => Err(FilterError::Unimplemented.into()),
     }
 }
+*/
 
 pub fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
-    expr: &'a ConditionExpression,
+    expr: &'a Expr,
 ) -> Result<bool> {
+    let parse = |expr| parse_expr(storage, filter_context, expr);
+
+    let check_binary = |op: &BinaryOperator, left, right| {
+        let zip_parse = || Ok((parse(left)?, parse(right)?));
+
+        match op {
+            BinaryOperator::Eq => zip_parse().map(|(l, r)| l == r),
+            _ => Err(FilterError::Unimplemented.into()),
+        }
+    };
+
+    match expr {
+        Expr::BinaryOp { op, left, right } => check_binary(op, &left, &right),
+        _ => Err(FilterError::Unimplemented.into()),
+    }
+
+    /*
     let check = |expr| check_expr(storage, filter_context, expr);
     let parse = |expr| parse_expr(storage, filter_context, expr);
     let parse_in = |expr| parse_in_expr(storage, filter_context, expr);
@@ -118,6 +156,7 @@ pub fn check_expr<'a, T: 'static + Debug>(
             Operator::Not | Operator::Like | Operator::NotLike | Operator::Is => {
                 Err(FilterError::Unimplemented.into())
             }
+            _ => Err(FilterError::Unimplemented.into()),
         }
     };
 
@@ -129,9 +168,12 @@ pub fn check_expr<'a, T: 'static + Debug>(
         ConditionExpression::Arithmetic(_) | ConditionExpression::Base(_) => {
             Err(FilterError::Unimplemented.into())
         }
+        _ => Err(FilterError::Unimplemented.into()),
     }
+    */
 }
 
+/*
 pub fn check_blended_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,
     filter_context: Option<&FilterContext<'_>>,
@@ -155,3 +197,4 @@ pub fn check_blended_expr<T: 'static + Debug>(
         None => check_expr(storage, &filter_context, expr),
     }
 }
+*/

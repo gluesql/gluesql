@@ -1,6 +1,7 @@
-use nom_sql::{Column, Table};
 use std::fmt::Debug;
 use thiserror::Error;
+
+use sqlparser::ast::{Ident, TableFactor};
 
 use crate::data::{Row, Value};
 use crate::result::Result;
@@ -13,16 +14,16 @@ pub enum FilterContextError {
 
 #[derive(Debug)]
 pub struct FilterContext<'a> {
-    table: &'a Table,
-    columns: &'a [Column],
+    table: &'a TableFactor,
+    columns: &'a [Ident],
     row: &'a Row,
     next: Option<&'a FilterContext<'a>>,
 }
 
 impl<'a> FilterContext<'a> {
     pub fn new(
-        table: &'a Table,
-        columns: &'a [Column],
+        table: &'a TableFactor,
+        columns: &'a [Ident],
         row: &'a Row,
         next: Option<&'a FilterContext<'a>>,
     ) -> Self {
@@ -34,6 +35,24 @@ impl<'a> FilterContext<'a> {
         }
     }
 
+    pub fn get_value(&self, target: &str) -> Result<&'a Value> {
+        let get_value = || {
+            self.columns
+                .iter()
+                .position(|column| column.value == target)
+                .and_then(|index| self.row.get_value(index))
+        };
+
+        match get_value() {
+            None => match self.next {
+                None => Err(FilterContextError::ValueNotFound.into()),
+                Some(context) => context.get_value(target),
+            },
+            Some(value) => Ok(value),
+        }
+    }
+
+    /*
     pub fn get_value(&self, target: &'a Column) -> Result<&'a Value> {
         let Table { alias, name } = self.table;
 
@@ -59,4 +78,5 @@ impl<'a> FilterContext<'a> {
             }
         }
     }
+    */
 }

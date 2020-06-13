@@ -38,11 +38,24 @@ pub enum Value {
     String(String),
 }
 
+/*
 impl PartialEq<Literal> for Value {
     fn eq(&self, other: &Literal) -> bool {
         match (self, other) {
             (Value::I64(l), Literal::Integer(r)) => l == r,
             (Value::String(l), Literal::String(r)) => l == r,
+            _ => false,
+        }
+    }
+}
+*/
+impl PartialEq<AstValue> for Value {
+    fn eq(&self, other: &AstValue) -> bool {
+        match (self, other) {
+            (Value::I64(l), AstValue::Number(r)) => match r.parse::<i64>() {
+                Ok(r) => l == &r,
+                Err(_) => false,
+            },
             _ => false,
         }
     }
@@ -58,6 +71,7 @@ impl PartialOrd<Value> for Value {
     }
 }
 
+/*
 impl PartialOrd<Literal> for Value {
     fn partial_cmp(&self, other: &Literal) -> Option<Ordering> {
         match (self, other) {
@@ -67,6 +81,7 @@ impl PartialOrd<Literal> for Value {
         }
     }
 }
+*/
 
 impl Value {
     pub fn new(sql_type: SqlType, literal: Literal) -> Result<Self> {

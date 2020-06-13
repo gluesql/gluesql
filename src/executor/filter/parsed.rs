@@ -1,22 +1,26 @@
-use boolinator::Boolinator;
-use nom_sql::{Literal, SelectStatement};
-use std::cmp::Ordering;
-use std::fmt::Debug;
+// use boolinator::Boolinator;
+// use nom_sql::{Literal, SelectStatement};
+// use nom_sql::Literal;
+// use std::cmp::Ordering;
+// use std::fmt::Debug;
+
+use sqlparser::ast::Value as AstValue;
 
 use crate::data::Value;
-use crate::executor::{select, FilterContext};
-use crate::result::Result;
-use crate::storage::Store;
+// use crate::executor::{select, FilterContext};
+// use crate::result::Result;
+// use crate::storage::Store;
 
-use super::FilterError;
+// use super::FilterError;
 
 pub enum Parsed<'a> {
-    LiteralRef(&'a Literal),
-    Literal(Literal),
+    LiteralRef(&'a AstValue),
+    // Literal(Literal),
     ValueRef(&'a Value),
-    Value(Value),
+    // Value(Value),
 }
 
+/*
 pub enum ParsedList<'a, T: 'static + Debug> {
     LiteralRef(&'a Vec<Literal>),
     Value {
@@ -26,11 +30,24 @@ pub enum ParsedList<'a, T: 'static + Debug> {
     },
     Parsed(Parsed<'a>),
 }
+*/
 
 impl<'a> PartialEq for Parsed<'a> {
     fn eq(&self, other: &Parsed<'a>) -> bool {
         use Parsed::*;
 
+        match self {
+            LiteralRef(l) => match other {
+                LiteralRef(r) => l == r,
+                ValueRef(r) => r == l,
+            },
+            ValueRef(l) => match other {
+                LiteralRef(r) => l == r,
+                ValueRef(r) => l == r,
+            },
+        }
+
+        /*
         match self {
             LiteralRef(l) => match other {
                 LiteralRef(r) => l == r,
@@ -57,9 +74,11 @@ impl<'a> PartialEq for Parsed<'a> {
                 Value(r) => l == r,
             },
         }
+        */
     }
 }
 
+/*
 impl<'a> PartialOrd for Parsed<'a> {
     fn partial_cmp(&self, other: &Parsed<'a>) -> Option<Ordering> {
         use Parsed::*;
@@ -231,3 +250,4 @@ fn literal_divide(a: &Literal, b: &Literal) -> Result<Literal> {
         _ => Err(FilterError::UnreachableLiteralArithmetic.into()),
     }
 }
+*/
