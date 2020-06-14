@@ -1,31 +1,11 @@
-use sqlparser::dialect::GenericDialect;
-use sqlparser::parser::Parser;
-
 mod helper;
 
-use gluesql::{execute, Payload, Row, RowError, SledStorage, Value, ValueError};
-
-fn new(path: &str) -> SledStorage {
-    match std::fs::remove_dir_all(path) {
-        Ok(()) => (),
-        Err(e) => {
-            println!("fs::remove_file {:?}", e);
-        }
-    }
-
-    SledStorage::new(path.to_owned()).expect("SledStorage::new")
-}
+use gluesql::{Payload, Row, RowError, Value, ValueError};
+use helper::{Helper, SledHelper};
 
 #[test]
 fn migrate() {
-    let storage = new("data.db");
-    let dialect = GenericDialect {};
-    let run = |sql| {
-        let ast = Parser::parse_sql(&dialect, sql).unwrap();
-        let query = &ast[0];
-
-        execute(&storage, &query)
-    };
+    let helper = SledHelper::new("data.db");
 
     let sql = r#"
 CREATE TABLE Test (
@@ -34,7 +14,7 @@ CREATE TABLE Test (
     name TEXT
 )"#;
 
-    run(sql).unwrap();
+    helper.run(sql).unwrap();
 
     let sqls = [
         "INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")",
@@ -43,7 +23,7 @@ CREATE TABLE Test (
     ];
 
     sqls.iter().for_each(|sql| {
-        run(sql).unwrap();
+        helper.run(sql).unwrap();
     });
 
     let error_cases = vec![
@@ -64,12 +44,14 @@ CREATE TABLE Test (
     error_cases.into_iter().for_each(|(error, sql)| {
         let error = Err(error);
 
-        assert_eq!(error, run(sql));
+        assert_eq!(error, helper.run(sql));
     });
 
     use Value::*;
 
-    let found = run("SELECT id, num, name FROM Test").expect("select");
+    let found = helper
+        .run("SELECT id, num, name FROM Test")
+        .expect("select");
     let expected = select!(
         I64 I64 String;
         1   2   "Hello".to_owned();
@@ -78,7 +60,9 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 
-    let found = run("SELECT id, num, name FROM Test WHERE id = 1").expect("select");
+    let found = helper
+        .run("SELECT id, num, name FROM Test WHERE id = 1")
+        .expect("select");
     let expected = select!(
         I64 I64 String;
         1   2   "Hello".to_owned();
