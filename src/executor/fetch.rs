@@ -1,24 +1,26 @@
-use boolinator::Boolinator;
-use nom_sql::{Column, ColumnSpecification, Table};
+// use boolinator::Boolinator;
 use std::fmt::Debug;
 
-use crate::data::Row;
-use crate::executor::Filter;
+use sqlparser::ast::{ColumnDef, Ident};
+
+// use crate::data::Row;
+// use crate::executor::Filter;
 use crate::result::Result;
 use crate::storage::Store;
 
 pub fn fetch_columns<T: 'static + Debug>(
     storage: &dyn Store<T>,
-    table: &Table,
-) -> Result<Vec<Column>> {
+    table_name: &str,
+) -> Result<Vec<Ident>> {
     Ok(storage
-        .get_schema(&table.name)?
-        .fields
+        .get_schema2(table_name)?
+        .column_defs
         .into_iter()
-        .map(|ColumnSpecification { column, .. }| column)
-        .collect::<Vec<Column>>())
+        .map(|ColumnDef { name, .. }| name)
+        .collect::<Vec<Ident>>())
 }
 
+/*
 pub fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: &'a Table,
@@ -39,3 +41,4 @@ pub fn fetch<'a, T: 'static + Debug>(
 
     Ok(rows)
 }
+*/

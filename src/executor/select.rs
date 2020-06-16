@@ -5,12 +5,12 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
 
-use sqlparser::ast::{ColumnDef, Ident, Query, SetExpr, TableFactor};
+use sqlparser::ast::{Query, SetExpr, TableFactor};
 
-use crate::data::{Row, Schema};
+use crate::data::Row;
 // use crate::executor::join::JoinColumns;
 // use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
-use crate::executor::{Filter, FilterContext};
+use crate::executor::{fetch_columns, Filter, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -131,13 +131,8 @@ pub fn select2<'a, T: 'static + Debug>(
         _ => err!(SelectError::Unreachable),
     };
 
-    let Schema { column_defs, .. } = storage.get_schema2(&table_name)?;
-    let columns: Vec<Ident> = column_defs
-        .into_iter()
-        .map(|ColumnDef { name, .. }| name)
-        .collect();
+    let columns = fetch_columns(storage, &table_name)?;
     let columns = Rc::new(columns);
-
     let filter = Filter::new(storage, where_clause, filter_context);
 
     let rows = storage
