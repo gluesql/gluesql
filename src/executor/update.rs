@@ -87,9 +87,7 @@ impl<'a> Update<'a> {
 
                 value.clone_by(ast_value)
             }
-            _ => {
-                return Err(UpdateError::ExpressionNotSupported(column.value.clone()).into());
-            }
+            _ => Err(UpdateError::ExpressionNotSupported(column.value.clone()).into()),
         }
 
         /*
