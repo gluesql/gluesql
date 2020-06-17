@@ -1,6 +1,4 @@
 // use boolinator::Boolinator;
-// use nom_sql::{Literal, SelectStatement};
-// use nom_sql::Literal;
 // use std::cmp::Ordering;
 // use std::fmt::Debug;
 
@@ -22,10 +20,10 @@ pub enum Parsed<'a> {
 
 /*
 pub enum ParsedList<'a, T: 'static + Debug> {
-    LiteralRef(&'a Vec<Literal>),
+    LiteralRef(&'a Vec<AstValue>),
     Value {
         storage: &'a dyn Store<T>,
-        statement: &'a SelectStatement,
+        query: &'a Query,
         filter_context: &'a FilterContext<'a>,
     },
     Parsed(Parsed<'a>),

@@ -119,17 +119,33 @@ pub fn check_expr<'a, T: 'static + Debug>(
 ) -> Result<bool> {
     let parse = |expr| parse_expr(storage, filter_context, expr);
 
-    let check_binary = |op: &BinaryOperator, left, right| {
-        let zip_parse = || Ok((parse(left)?, parse(right)?));
-
-        match op {
-            BinaryOperator::Eq => zip_parse().map(|(l, r)| l == r),
-            _ => Err(FilterError::Unimplemented.into()),
-        }
-    };
-
     match expr {
-        Expr::BinaryOp { op, left, right } => check_binary(op, &left, &right),
+        Expr::BinaryOp { op, left, right } => {
+            let zip_parse = || Ok((parse(left)?, parse(right)?));
+
+            match op {
+                BinaryOperator::Eq => zip_parse().map(|(l, r)| l == r),
+                _ => Err(FilterError::Unimplemented.into()),
+            }
+        }
+        Expr::InList {
+            expr,
+            list,
+            negated,
+        } => {
+            let negated = *negated;
+            let target = parse(expr)?;
+
+            for item in list.iter() {
+                let parsed = parse(item)?;
+
+                if target == parsed {
+                    return Ok(!negated);
+                }
+            }
+
+            Ok(negated)
+        }
         _ => Err(FilterError::Unimplemented.into()),
     }
 
