@@ -1,8 +1,7 @@
-use nom_sql::{
-    ArithmeticBase, ArithmeticOperator, Column, FieldValueExpression, LiteralExpression,
-};
 use std::collections::HashMap;
 use thiserror::Error;
+
+use sqlparser::ast::{Assignment, Expr, Ident};
 
 use crate::data::{Row, Value};
 use crate::result::Result;
@@ -12,29 +11,32 @@ pub enum UpdateError {
     #[error("column not found {0}")]
     ColumnNotFound(String),
 
+    #[error("expression not supported {0}")]
+    ExpressionNotSupported(String),
+
     #[error("conflict on schema, {0} does not exist")]
     ConflictOnSchema(String),
 }
 
 pub struct Update<'a> {
-    fields: &'a [(Column, FieldValueExpression)],
+    fields: &'a [Assignment],
 }
 
 impl<'a> Update<'a> {
-    pub fn new(fields: &'a [(Column, FieldValueExpression)]) -> Self {
+    pub fn new(fields: &'a [Assignment]) -> Self {
         Self { fields }
     }
 
-    pub fn apply(&self, columns: &[Column], row: Row) -> Result<Row> {
+    pub fn apply(&self, columns: &[Ident], row: Row) -> Result<Row> {
         let Row(values) = row;
         let values_map = columns
             .iter()
-            .map(|c| &c.name)
+            .map(|c| &c.value)
             .zip(values.iter())
             .collect::<HashMap<_, _>>();
 
-        self.fields.iter().try_for_each(|(column, _)| {
-            let name = &column.name;
+        self.fields.iter().try_for_each(|assignment| {
+            let name = &assignment.id.value;
 
             if values_map.contains_key(name) {
                 Ok(())
@@ -63,31 +65,35 @@ impl<'a> Update<'a> {
         Ok(Row(values))
     }
 
-    fn find(&self, column: &Column) -> Option<&FieldValueExpression> {
+    fn find(&self, column: &Ident) -> Option<&Expr> {
         self.fields
             .iter()
-            .find(|(field_column, _)| column.name == field_column.name)
-            .map(|(_, expr)| expr)
+            .find(|assignment| column.value == assignment.id.value)
+            .map(|assignment| &assignment.value)
     }
 
     fn evaluate(
         &self,
-        column: &Column,
-        expr: &FieldValueExpression,
+        column: &Ident,
+        expr: &Expr,
         values_map: &HashMap<&String, &Value>,
     ) -> Result<Value> {
         match expr {
-            FieldValueExpression::Literal(LiteralExpression {
-                value: field_literal,
-                ..
-            }) => {
-                let name = &column.name;
+            Expr::Value(ast_value) => {
+                let name = &column.value;
                 let value = values_map
                     .get(name)
                     .ok_or_else(|| UpdateError::ConflictOnSchema(name.clone()))?;
 
-                value.clone_by(field_literal)
+                value.clone_by(ast_value)
             }
+            _ => {
+                return Err(UpdateError::ExpressionNotSupported(column.value.clone()).into());
+            }
+        }
+
+        /*
+        match expr {
             FieldValueExpression::Arithmetic(expr) => {
                 let parse_base = |base: &ArithmeticBase| -> Result<Value> {
                     match base {
@@ -121,5 +127,6 @@ impl<'a> Update<'a> {
                 }
             }
         }
+        */
     }
 }

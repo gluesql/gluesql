@@ -10,8 +10,7 @@ mod update;
 
 pub use blend::{Blend, BlendError};
 pub use blend_context::BlendContext;
-// pub use fetch::{fetch, fetch_columns};
-pub use fetch::fetch_columns;
+pub use fetch::{fetch, fetch_columns};
 // pub use filter::{BlendedFilter, Filter, FilterError};
 pub use filter::{Filter, FilterError};
 pub use filter_context::{FilterContext, FilterContextError};

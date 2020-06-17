@@ -1,10 +1,10 @@
-// use boolinator::Boolinator;
+use boolinator::Boolinator;
 use std::fmt::Debug;
 
-use sqlparser::ast::{ColumnDef, Ident};
+use sqlparser::ast::{ColumnDef, Ident, ObjectName, TableFactor};
 
-// use crate::data::Row;
-// use crate::executor::Filter;
+use crate::data::Row;
+use crate::executor::Filter;
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -20,25 +20,32 @@ pub fn fetch_columns<T: 'static + Debug>(
         .collect::<Vec<Ident>>())
 }
 
-/*
 pub fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
-    table: &'a Table,
-    columns: &'a [Column],
+    table_name: &ObjectName,
+    columns: &'a [Ident],
     filter: Filter<'a, T>,
-) -> Result<impl Iterator<Item = Result<(&'a [Column], T, Row)>> + 'a> {
-    let rows = storage.get_data(&table.name)?.filter_map(move |item| {
-        item.map_or_else(
-            |error| Some(Err(error)),
-            |(key, row)| {
-                filter
-                    .check(table, columns, &row)
-                    .map(|pass| pass.as_some((columns, key, row)))
-                    .transpose()
-            },
-        )
-    });
+) -> Result<impl Iterator<Item = Result<(&'a [Ident], T, Row)>> + 'a> {
+    let table = TableFactor::Table {
+        name: table_name.clone(),
+        alias: None,
+        args: vec![],
+        with_hints: vec![],
+    };
+
+    let rows = storage
+        .get_data(&table_name.to_string())?
+        .filter_map(move |item| {
+            item.map_or_else(
+                |error| Some(Err(error)),
+                |(key, row)| {
+                    filter
+                        .check(&table, columns, &row)
+                        .map(|pass| pass.as_some((columns, key, row)))
+                        .transpose()
+                },
+            )
+        });
 
     Ok(rows)
 }
-*/

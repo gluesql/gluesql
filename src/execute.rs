@@ -4,7 +4,7 @@ use thiserror::Error;
 use sqlparser::ast::Statement;
 
 use crate::data::{Row, Schema};
-use crate::executor::select2;
+use crate::executor::{fetch, fetch_columns, select2, Filter, Update};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -55,6 +55,30 @@ pub fn execute<T: 'static + Debug>(
             let row = storage.set_data(&key, row)?;
 
             Ok(Payload::Insert(row))
+        }
+        Statement::Update {
+            table_name,
+            selection,
+            assignments,
+        } => {
+            let update = Update::new(assignments);
+            let filter = Filter::new(storage, selection.as_ref(), None);
+            let columns = fetch_columns(storage, &table_name.to_string())?;
+
+            let num_rows = fetch(storage, table_name, &columns, filter)?
+                .map(|item| {
+                    let (columns, key, row) = item?;
+
+                    Ok((key, update.apply(columns, row)?))
+                })
+                .try_fold::<_, _, Result<_>>(0, |num, item: Result<(T, Row)>| {
+                    let (key, row) = item?;
+                    storage.set_data(&key, row)?;
+
+                    Ok(num + 1)
+                })?;
+
+            Ok(Payload::Update(num_rows))
         }
         _ => Err(ExecuteError::QueryNotSupported.into()),
     }

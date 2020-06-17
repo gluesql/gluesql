@@ -102,10 +102,13 @@ impl Value {
         }
     }
 
-    pub fn clone_by(&self, literal: &Literal) -> Result<Self> {
+    pub fn clone_by(&self, literal: &AstValue) -> Result<Self> {
         match (self, literal) {
-            (Value::I64(_), &Literal::Integer(v)) => Ok(Value::I64(v)),
-            (Value::String(_), &Literal::String(ref v)) => Ok(Value::String(v.clone())),
+            (Value::I64(_), AstValue::Number(v)) => v
+                .parse()
+                .map(Value::I64)
+                .map_err(|_| ValueError::FailedToParseNumber.into()),
+            (Value::String(_), AstValue::SingleQuotedString(v)) => Ok(Value::String(v.clone())),
             _ => Err(ValueError::LiteralNotSupported.into()),
         }
     }

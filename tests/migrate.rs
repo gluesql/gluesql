@@ -1,6 +1,6 @@
 mod helper;
 
-use gluesql::{Payload, Row, RowError, Value, ValueError};
+use gluesql::{Payload, Row, RowError, UpdateError, Value, ValueError};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -39,6 +39,10 @@ CREATE TABLE Test (
             ValueError::FailedToParseNumber.into(),
             "INSERT INTO Test (id, num) VALUES (1.1, 1);",
         ),
+        (
+            UpdateError::ExpressionNotSupported("id".to_owned()).into(),
+            "UPDATE Test SET id = id + 1;",
+        ),
     ];
 
     error_cases.into_iter().for_each(|(error, sql)| {
@@ -70,9 +74,20 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 
-    /*
     helper.run_and_print("UPDATE Test SET id = 2");
 
+    let found = helper
+        .run("SELECT id, num, name FROM Test")
+        .expect("select");
+    let expected = select!(
+        I64 I64 String;
+        2   2   "Hello".to_owned();
+        2   9   "World".to_owned();
+        2   4   "Great".to_owned()
+    );
+    assert_eq!(expected, found);
+
+    /*
     let found = helper.run("SELECT id FROM Test").expect("select");
     let expected = select!(I64; 2; 2; 2);
     assert_eq!(expected, found);
