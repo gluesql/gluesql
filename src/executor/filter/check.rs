@@ -2,9 +2,7 @@ use std::fmt::Debug;
 
 use sqlparser::ast::{BinaryOperator, Expr, Value as AstValue};
 
-// use crate::executor::{select, BlendContext, FilterContext};
-// use crate::executor::{select, FilterContext};
-use crate::executor::FilterContext;
+use crate::executor::{BlendContext, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 // use crate::data::Value;
@@ -189,22 +187,21 @@ pub fn check_expr<'a, T: 'static + Debug>(
     */
 }
 
-/*
 pub fn check_blended_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,
     filter_context: Option<&FilterContext<'_>>,
     blend_context: &BlendContext<'_, T>,
-    expr: &ConditionExpression,
+    expr: &Expr,
 ) -> Result<bool> {
     let BlendContext {
-        table,
+        table_alias,
         columns,
         row,
         next,
         ..
     } = blend_context;
 
-    let filter_context = FilterContext::new(table, &columns, &row, filter_context);
+    let filter_context = FilterContext::new(table_alias, &columns, &row, filter_context);
 
     match next {
         Some(blend_context) => {
@@ -213,4 +210,3 @@ pub fn check_blended_expr<T: 'static + Debug>(
         None => check_expr(storage, &filter_context, expr),
     }
 }
-*/

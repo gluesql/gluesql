@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::Statement;
+use sqlparser::ast::{ObjectName, Statement};
 
 use crate::data::{Row, Schema};
 use crate::executor::{fetch, fetch_columns, select2, Filter, Update};
@@ -12,6 +12,9 @@ use crate::storage::Store;
 pub enum ExecuteError {
     #[error("query not supported")]
     QueryNotSupported,
+
+    #[error("unreachable")]
+    Unreachable,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -63,7 +66,16 @@ pub fn execute<T: 'static + Debug>(
         } => {
             let update = Update::new(assignments);
             let filter = Filter::new(storage, selection.as_ref(), None);
-            let columns = fetch_columns(storage, &table_name.to_string())?;
+            let table_name = {
+                let ObjectName(idents) = table_name;
+
+                idents
+                    .last()
+                    .map(|ident| &ident.value)
+                    .ok_or_else(|| ExecuteError::Unreachable)?
+            };
+
+            let columns = fetch_columns(storage, table_name)?;
 
             let num_rows = fetch(storage, table_name, &columns, filter)?
                 .map(|item| {

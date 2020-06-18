@@ -1,7 +1,7 @@
 use boolinator::Boolinator;
 use std::fmt::Debug;
 
-use sqlparser::ast::{ColumnDef, Ident, ObjectName, TableFactor};
+use sqlparser::ast::{ColumnDef, Ident};
 
 use crate::data::Row;
 use crate::executor::Filter;
@@ -22,30 +22,21 @@ pub fn fetch_columns<T: 'static + Debug>(
 
 pub fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
-    table_name: &ObjectName,
+    table_name: &'a str,
     columns: &'a [Ident],
     filter: Filter<'a, T>,
 ) -> Result<impl Iterator<Item = Result<(&'a [Ident], T, Row)>> + 'a> {
-    let table = TableFactor::Table {
-        name: table_name.clone(),
-        alias: None,
-        args: vec![],
-        with_hints: vec![],
-    };
-
-    let rows = storage
-        .get_data(&table_name.to_string())?
-        .filter_map(move |item| {
-            item.map_or_else(
-                |error| Some(Err(error)),
-                |(key, row)| {
-                    filter
-                        .check(&table, columns, &row)
-                        .map(|pass| pass.as_some((columns, key, row)))
-                        .transpose()
-                },
-            )
-        });
+    let rows = storage.get_data(table_name)?.filter_map(move |item| {
+        item.map_or_else(
+            |error| Some(Err(error)),
+            |(key, row)| {
+                filter
+                    .check(&table_name, columns, &row)
+                    .map(|pass| pass.as_some((columns, key, row)))
+                    .transpose()
+            },
+        )
+    });
 
     Ok(rows)
 }

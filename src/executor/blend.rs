@@ -1,13 +1,13 @@
-use iter_enum::Iterator;
-use nom_sql::{Column, FieldDefinitionExpression, Table};
+// use iter_enum::Iterator;
+// use nom_sql::{Column, FieldDefinitionExpression, Table};
 use std::fmt::Debug;
-use std::iter::once;
-use std::rc::Rc;
+// use std::iter::once;
+// use std::rc::Rc;
 use thiserror::Error;
 
-use crate::data::{Row, Value};
-use crate::executor::BlendContext;
-use crate::result::Result;
+// use crate::data::{Row, Value};
+// use crate::executor::BlendContext;
+// use crate::result::Result;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum BlendError {
@@ -21,6 +21,7 @@ pub enum BlendError {
     TableNotFound(String),
 }
 
+/*
 #[derive(Iterator)]
 enum Blended<I1, I2, I3, I4> {
     All(I1),
@@ -28,7 +29,9 @@ enum Blended<I1, I2, I3, I4> {
     Col(I3),
     Err(I4),
 }
+*/
 
+/*
 pub struct Blend<'a> {
     fields: &'a [FieldDefinitionExpression],
 }
@@ -134,3 +137,4 @@ fn get_table_values<T: 'static + Debug>(
             .and_then(|context| get_table_values(context, table_name))
     }
 }
+*/

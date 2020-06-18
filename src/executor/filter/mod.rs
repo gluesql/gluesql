@@ -4,23 +4,19 @@ mod check;
 mod error;
 mod parsed;
 
-// use nom_sql::{Column, ConditionExpression, Table};
 use std::fmt::Debug;
 
-use sqlparser::ast::{Expr, Ident, TableFactor};
+use sqlparser::ast::{Expr, Ident};
 
 use crate::data::Row;
-// use crate::executor::{BlendContext, FilterContext};
-use crate::executor::FilterContext;
+use crate::executor::{BlendContext, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
-// use check::{check_blended_expr, check_expr};
-use check::check_expr;
+use check::{check_blended_expr, check_expr};
 
 pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
-    // where_clause: Option<&'a ConditionExpression>,
     where_clause: Option<&'a Expr>,
     context: Option<&'a FilterContext<'a>>,
 }
@@ -38,25 +34,13 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         }
     }
 
-    pub fn check(&self, table: &TableFactor, columns: &[Ident], row: &Row) -> Result<bool> {
-        let context = FilterContext::new(table, columns, row, self.context);
+    pub fn check(&self, table_alias: &str, columns: &[Ident], row: &Row) -> Result<bool> {
+        let context = FilterContext::new(table_alias, columns, row, self.context);
 
         match self.where_clause {
             Some(expr) => check_expr(self.storage, &context, expr),
             None => Ok(true),
         }
-    }
-
-    /*
-    pub fn check(&self, table: &Table, columns: &[Column], row: &Row) -> Result<bool> {
-        let context = FilterContext::new(table, columns, row, self.context);
-
-        match self.where_clause {
-            Some(expr) => check_expr(self.storage, &context, expr),
-            None => Ok(true),
-        }
-
-        Ok(true)
     }
 
     pub fn check_blended(&self, blend_context: &BlendContext<'_, T>) -> Result<bool> {
@@ -65,7 +49,6 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
             None => Ok(true),
         }
     }
-    */
 }
 
 /*

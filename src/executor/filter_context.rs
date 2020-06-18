@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{Ident, TableFactor};
+use sqlparser::ast::Ident;
 
 use crate::data::{Row, Value};
 use crate::result::Result;
@@ -14,7 +14,7 @@ pub enum FilterContextError {
 
 #[derive(Debug)]
 pub struct FilterContext<'a> {
-    table: &'a TableFactor,
+    table_alias: &'a str,
     columns: &'a [Ident],
     row: &'a Row,
     next: Option<&'a FilterContext<'a>>,
@@ -22,13 +22,13 @@ pub struct FilterContext<'a> {
 
 impl<'a> FilterContext<'a> {
     pub fn new(
-        table: &'a TableFactor,
+        table_alias: &'a str,
         columns: &'a [Ident],
         row: &'a Row,
         next: Option<&'a FilterContext<'a>>,
     ) -> Self {
         Self {
-            table,
+            table_alias,
             columns,
             row,
             next,

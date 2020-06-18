@@ -1,16 +1,15 @@
 use boolinator::Boolinator;
-// use nom_sql::{Column, JoinClause, JoinRightSide, SelectStatement, Table};
 use nom_sql::SelectStatement;
 use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
 
-use sqlparser::ast::{Query, SetExpr, TableFactor};
+use sqlparser::ast::{Ident, ObjectName, Query, SetExpr, TableFactor};
 
 use crate::data::Row;
 // use crate::executor::join::JoinColumns;
 // use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
-use crate::executor::{fetch_columns, Filter, FilterContext};
+use crate::executor::{fetch_columns, BlendContext, Filter, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -29,6 +28,12 @@ pub enum SelectError {
     Unreachable,
 }
 
+macro_rules! err {
+    ($err: expr) => {{
+        return Err($err.into());
+    }};
+}
+
 /*
 struct SelectParams<'a> {
     pub table: &'a Table,
@@ -38,8 +43,13 @@ struct SelectParams<'a> {
 
 fn fetch_select_params<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    statement: &'a SelectStatement,
+    query: &'a Query,
 ) -> Result<SelectParams<'a>> {
+    Ok(SelectParams {
+        table,
+        columns,
+    })
+
     let SelectStatement {
         tables,
         join: join_clauses,
@@ -78,18 +88,21 @@ fn fetch_select_params<'a, T: 'static + Debug>(
         join_columns: Rc::new(join_columns),
     })
 }
+*/
 
 fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
-    table: &'a Table,
-    columns: Rc<Vec<Column>>,
+    table_name: &str,
+    table_alias: &'a str,
+    columns: Rc<Vec<Ident>>,
+    // columns: Rc<Vec<Column>>,
 ) -> Result<impl Iterator<Item = Result<BlendContext<'a, T>>> + 'a> {
-    let rows = storage.get_data(&table.name)?.map(move |data| {
+    let rows = storage.get_data(table_name)?.map(move |data| {
         let (key, row) = data?;
         let columns = Rc::clone(&columns);
 
         Ok(BlendContext {
-            table,
+            table_alias,
             columns,
             key,
             row,
@@ -98,13 +111,6 @@ fn fetch_blended<'a, T: 'static + Debug>(
     });
 
     Ok(rows)
-}
-*/
-
-macro_rules! err {
-    ($err: expr) => {{
-        return Err($err.into());
-    }};
 }
 
 pub fn select2<'a, T: 'static + Debug>(
@@ -127,30 +133,35 @@ pub fn select2<'a, T: 'static + Debug>(
     };
 
     let table_name = match table {
-        TableFactor::Table { name, .. } => name.to_string(),
+        TableFactor::Table { name, .. } => {
+            let ObjectName(idents) = name;
+
+            idents
+                .last()
+                .map(|ident| &ident.value)
+                .ok_or_else(|| SelectError::Unreachable)?
+        }
         _ => err!(SelectError::Unreachable),
     };
 
     let columns = fetch_columns(storage, &table_name)?;
     let columns = Rc::new(columns);
+
     let filter = Filter::new(storage, where_clause, filter_context);
 
-    let rows = storage
-        .get_data(&table_name)?
-        .filter_map(move |item| {
-            item.map_or_else(
+    let rows = fetch_blended(storage, &table_name, &table_name, columns)?
+        .filter_map(move |blend_context| {
+            blend_context.map_or_else(
                 |error| Some(Err(error)),
-                |(key, row)| {
-                    let columns = Rc::clone(&columns);
-
+                |blend_context| {
                     filter
-                        .check(table, &columns, &row)
-                        .map(|pass| pass.as_some((columns, key, row)))
+                        .check_blended(&blend_context)
+                        .map(|pass| pass.as_some(blend_context))
                         .transpose()
                 },
             )
         })
-        .map(|item| item.map(|(_, _, row)| row));
+        .map(move |blend_context| blend_context.map(|c| c.row));
 
     Ok(rows)
 }
