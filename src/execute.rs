@@ -4,7 +4,7 @@ use thiserror::Error;
 use sqlparser::ast::{ObjectName, Statement};
 
 use crate::data::{Row, Schema};
-use crate::executor::{fetch, fetch_columns, select2, Filter, Update};
+use crate::executor::{fetch, fetch_columns, select, Filter, Update};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -42,7 +42,7 @@ pub fn execute<T: 'static + Debug>(
             Ok(Payload::Create)
         }
         Statement::Query(query) => {
-            let rows = select2(storage, &query, None)?.collect::<Result<_>>()?;
+            let rows = select(storage, &query, None)?.collect::<Result<_>>()?;
 
             Ok(Payload::Select(rows))
         }

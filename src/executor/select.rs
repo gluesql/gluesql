@@ -1,5 +1,4 @@
 use boolinator::Boolinator;
-use nom_sql::SelectStatement;
 use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
@@ -113,7 +112,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
     Ok(rows)
 }
 
-pub fn select2<'a, T: 'static + Debug>(
+pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     query: &'a Query,
     filter_context: Option<&'a FilterContext<'a>>,
@@ -166,16 +165,12 @@ pub fn select2<'a, T: 'static + Debug>(
     Ok(rows)
 }
 
-pub fn select<'a, T: 'static + Debug>(
+/*
+pub fn select2<'a, T: 'static + Debug>(
     _storage: &'a dyn Store<T>,
     _statement: &'a SelectStatement,
     _filter_context: Option<&'a FilterContext<'a>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    let rows = vec![Ok(Row(vec![]))].into_iter();
-
-    Ok(rows)
-
-    /*
     let SelectStatement {
         where_clause,
         limit: limit_clause,
@@ -217,5 +212,5 @@ pub fn select<'a, T: 'static + Debug>(
         .map(move |blend_context| blend.apply(blend_context));
 
     Ok(rows)
-    */
 }
+*/
