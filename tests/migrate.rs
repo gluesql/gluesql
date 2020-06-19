@@ -87,7 +87,6 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 
-    /*
     let found = helper.run("SELECT id FROM Test").expect("select");
     let expected = select!(I64; 2; 2; 2);
     assert_eq!(expected, found);
@@ -95,5 +94,4 @@ CREATE TABLE Test (
     let found = helper.run("SELECT id, num FROM Test").expect("select");
     let expected = select!(I64 I64; 2 2; 2 9; 2 4);
     assert_eq!(expected, found);
-    */
 }

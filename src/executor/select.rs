@@ -8,7 +8,7 @@ use sqlparser::ast::{Ident, ObjectName, Query, SetExpr, TableFactor};
 use crate::data::Row;
 // use crate::executor::join::JoinColumns;
 // use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
-use crate::executor::{fetch_columns, BlendContext, Filter, FilterContext};
+use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -117,7 +117,7 @@ pub fn select<'a, T: 'static + Debug>(
     query: &'a Query,
     filter_context: Option<&'a FilterContext<'a>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    let (table, where_clause) = match &query.body {
+    let (table, where_clause, projection) = match &query.body {
         SetExpr::Select(statement) => {
             let tables = &statement.from;
             let table = match tables.len() {
@@ -126,7 +126,11 @@ pub fn select<'a, T: 'static + Debug>(
                 _ => err!(SelectError::TooManyTables),
             };
 
-            (table, statement.selection.as_ref())
+            (
+                table,
+                statement.selection.as_ref(),
+                statement.projection.as_ref(),
+            )
         }
         _ => err!(SelectError::Unreachable),
     };
@@ -146,6 +150,7 @@ pub fn select<'a, T: 'static + Debug>(
     let columns = fetch_columns(storage, &table_name)?;
     let columns = Rc::new(columns);
 
+    let blend = Blend::new(projection);
     let filter = Filter::new(storage, where_clause, filter_context);
 
     let rows = fetch_blended(storage, &table_name, &table_name, columns)?
@@ -160,7 +165,7 @@ pub fn select<'a, T: 'static + Debug>(
                 },
             )
         })
-        .map(move |blend_context| blend_context.map(|c| c.row));
+        .map(move |blend_context| blend.apply(blend_context));
 
     Ok(rows)
 }

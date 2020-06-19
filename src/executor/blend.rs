@@ -5,9 +5,12 @@ use std::fmt::Debug;
 // use std::rc::Rc;
 use thiserror::Error;
 
+use sqlparser::ast::{Expr, SelectItem};
+
 // use crate::data::{Row, Value};
-// use crate::executor::BlendContext;
-// use crate::result::Result;
+use crate::data::Row;
+use crate::executor::BlendContext;
+use crate::result::Result;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum BlendError {
@@ -19,6 +22,54 @@ pub enum BlendError {
 
     #[error("table not found: {0}")]
     TableNotFound(String),
+}
+
+pub struct Blend<'a> {
+    fields: &'a [SelectItem],
+}
+
+impl<'a> Blend<'a> {
+    pub fn new(fields: &'a [SelectItem]) -> Self {
+        Self { fields }
+    }
+
+    pub fn apply<T: 'static + Debug>(
+        &self,
+        // context: Result<Rc<BlendContext<'a, T>>>,
+        context: Result<BlendContext<'a, T>>,
+    ) -> Result<Row> {
+        let BlendContext {
+            row: Row(values),
+            columns,
+            ..
+        } = context?;
+
+        let values = values
+            .into_iter()
+            .zip(columns.iter())
+            .filter_map(|(value, column)| {
+                self.fields
+                    .iter()
+                    .find_map(|field| match field {
+                        SelectItem::UnnamedExpr(expr) => match expr {
+                            Expr::Identifier(ident) => {
+                                if column.value == ident.value {
+                                    Some(Ok(()))
+                                } else {
+                                    None
+                                }
+                            }
+                            _ => Some(Err(BlendError::FieldDefinitionNotSupported.into())),
+                        },
+                        SelectItem::Wildcard => Some(Ok(())),
+                        _ => None,
+                    })
+                    .map(|v| v.map(|()| value))
+            })
+            .collect::<Result<_>>()?;
+
+        Ok(Row(values))
+    }
 }
 
 /*
