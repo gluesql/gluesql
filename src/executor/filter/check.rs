@@ -150,15 +150,15 @@ pub fn check_expr<'a, T: 'static + Debug>(
             let negated = *negated;
             let target = parse(expr)?;
 
-            for item in list.iter() {
-                let parsed = parse(item)?;
-
-                if target == parsed {
-                    return Ok(!negated);
-                }
-            }
-
-            Ok(negated)
+            list.iter()
+                .filter_map(|expr| {
+                    parse(expr).map_or_else(
+                        |error| Some(Err(error)),
+                        |parsed| (target == parsed).as_some(Ok(!negated)),
+                    )
+                })
+                .next()
+                .unwrap_or(Ok(negated))
         }
         Expr::InSubquery {
             expr,
