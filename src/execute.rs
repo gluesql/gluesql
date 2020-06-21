@@ -26,6 +26,15 @@ pub enum Payload {
     Update(usize),
 }
 
+fn get_table_name<'a>(table_name: &'a ObjectName) -> Result<&'a String> {
+    let ObjectName(idents) = table_name;
+
+    idents
+        .last()
+        .map(|ident| &ident.value)
+        .ok_or_else(|| ExecuteError::Unreachable.into())
+}
+
 pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
     sql_query: &Statement,
@@ -33,7 +42,7 @@ pub fn execute<T: 'static + Debug>(
     match sql_query {
         Statement::CreateTable { name, columns, .. } => {
             let schema = Schema {
-                table_name: name.to_string(),
+                table_name: get_table_name(name)?.clone(),
                 column_defs: columns.clone(),
             };
 
@@ -51,8 +60,8 @@ pub fn execute<T: 'static + Debug>(
             columns,
             source,
         } => {
-            let table_name = table_name.to_string();
-            let Schema { column_defs, .. } = storage.get_schema2(&table_name)?;
+            let table_name = get_table_name(table_name)?;
+            let Schema { column_defs, .. } = storage.get_schema2(table_name)?;
             let key = storage.gen_id(&table_name)?;
             let row = Row::new(column_defs, columns, source)?;
             let row = storage.set_data(&key, row)?;
@@ -66,17 +75,9 @@ pub fn execute<T: 'static + Debug>(
         } => {
             let update = Update::new(assignments);
             let filter = Filter::new(storage, selection.as_ref(), None);
-            let table_name = {
-                let ObjectName(idents) = table_name;
-
-                idents
-                    .last()
-                    .map(|ident| &ident.value)
-                    .ok_or_else(|| ExecuteError::Unreachable)?
-            };
+            let table_name = get_table_name(table_name)?;
 
             let columns = fetch_columns(storage, table_name)?;
-
             let num_rows = fetch(storage, table_name, &columns, filter)?
                 .map(|item| {
                     let (columns, key, row) = item?;
@@ -86,6 +87,24 @@ pub fn execute<T: 'static + Debug>(
                 .try_fold::<_, _, Result<_>>(0, |num, item: Result<(T, Row)>| {
                     let (key, row) = item?;
                     storage.set_data(&key, row)?;
+
+                    Ok(num + 1)
+                })?;
+
+            Ok(Payload::Update(num_rows))
+        }
+        Statement::Delete {
+            table_name,
+            selection,
+        } => {
+            let filter = Filter::new(storage, selection.as_ref(), None);
+            let table_name = get_table_name(table_name)?;
+
+            let columns = fetch_columns(storage, table_name)?;
+            let num_rows = fetch(storage, table_name, &columns, filter)?
+                .try_fold::<_, _, Result<_>>(0, |num: usize, item| {
+                    let (_, key, _) = item?;
+                    storage.del_data(&key)?;
 
                     Ok(num + 1)
                 })?;
