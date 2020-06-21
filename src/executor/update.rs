@@ -87,6 +87,10 @@ impl<'a> Update<'a> {
 
                 value.clone_by(ast_value)
             }
+            Expr::Identifier(ident) => ident.quote_style.map_or_else(
+                || Err(UpdateError::ExpressionNotSupported(column.value.clone()).into()),
+                |_| Ok(Value::String(ident.value.clone())),
+            ),
             _ => Err(UpdateError::ExpressionNotSupported(column.value.clone()).into()),
         }
 
