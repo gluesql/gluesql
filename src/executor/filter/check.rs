@@ -1,8 +1,9 @@
+use boolinator::Boolinator;
 use std::fmt::Debug;
 
 use sqlparser::ast::{BinaryOperator, Expr, Value as AstValue};
 
-use crate::executor::{BlendContext, FilterContext};
+use crate::executor::{select, BlendContext, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 // use crate::data::Value;
@@ -51,9 +52,24 @@ fn parse_expr<'a, T: 'static + Debug>(
 
     match expr {
         Expr::Value(value) => parse_value(&value),
-        Expr::Identifier(ident) => filter_context
-            .get_value(&ident.value)
-            .map(|value| Parsed::ValueRef(value)),
+        Expr::Identifier(ident) => match ident.quote_style {
+            Some(_) => Ok(Parsed::StringRef(&ident.value)),
+            None => filter_context
+                .get_value(&ident.value)
+                .map(|value| Parsed::ValueRef(value)),
+        },
+        Expr::CompoundIdentifier(idents) => {
+            if idents.len() != 2 {
+                return Err(FilterError::UnsupportedCompoundIdentifier(expr.to_string()).into());
+            }
+
+            let table_alias = &idents[0].value;
+            let column = &idents[1].value;
+
+            filter_context
+                .get_alias_value(table_alias, column)
+                .map(|value| Parsed::ValueRef(value))
+        }
         _ => Err(FilterError::Unimplemented.into()),
     }
 
@@ -143,6 +159,25 @@ pub fn check_expr<'a, T: 'static + Debug>(
             }
 
             Ok(negated)
+        }
+        Expr::InSubquery {
+            expr,
+            subquery,
+            negated,
+        } => {
+            let negated = *negated;
+            let target = parse(expr)?;
+
+            select(storage, &subquery, Some(filter_context))?
+                .map(|row| row?.take_first_value())
+                .filter_map(|value| {
+                    value.map_or_else(
+                        |error| Some(Err(error)),
+                        |value| (target == Parsed::ValueRef(&value)).as_some(Ok(!negated)),
+                    )
+                })
+                .next()
+                .unwrap_or(Ok(negated))
         }
         _ => Err(FilterError::Unimplemented.into()),
     }

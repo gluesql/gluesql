@@ -54,13 +54,21 @@ fn nested_select() {
     let select_sqls = [
         (6, "SELECT * FROM Request WHERE quantity IN (5, 1);"),
         (9, "SELECT * FROM Request WHERE quantity NOT IN (5, 1);"),
-        /*
-        (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request);"),
-        (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id = User.id);"),
-        (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id IN User.id);"),
+        (
+            4,
+            "SELECT * FROM Request WHERE user_id IN (SELECT id FROM User WHERE id = 3);",
+        ),
+        (
+            4,
+            "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request);",
+        ),
+        (
+            4,
+            "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id = User.id);",
+        ),
+        (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id IN (User.id));"),
         (2, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE quantity IN (6, 7, 8, 9));"),
         (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM User WHERE name IN (\"Taehoon\", \"Hwan\"));"),
-        */
     ];
 
     select_sqls

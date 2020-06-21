@@ -9,6 +9,9 @@ pub enum FilterError {
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
 
+    #[error("unsupported compound identifier {0}")]
+    UnsupportedCompoundIdentifier(String),
+
     #[error("unreachable condition base")]
     UnreachableConditionBase,
 

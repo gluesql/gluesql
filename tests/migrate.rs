@@ -1,6 +1,6 @@
 mod helper;
 
-use gluesql::{Payload, Row, RowError, UpdateError, Value, ValueError};
+use gluesql::{FilterError, Payload, Row, RowError, UpdateError, Value, ValueError};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -42,6 +42,10 @@ CREATE TABLE Test (
         (
             UpdateError::ExpressionNotSupported("id".to_owned()).into(),
             "UPDATE Test SET id = id + 1;",
+        ),
+        (
+            FilterError::UnsupportedCompoundIdentifier("Here.User.id".to_owned()).into(),
+            "SELECT * FROM Test WHERE Here.User.id = 1",
         ),
     ];
 

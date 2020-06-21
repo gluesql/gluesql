@@ -13,6 +13,7 @@ use crate::data::Value;
 
 pub enum Parsed<'a> {
     LiteralRef(&'a AstValue),
+    StringRef(&'a str),
     // Literal(Literal),
     ValueRef(&'a Value),
     // Value(Value),
@@ -34,13 +35,30 @@ impl<'a> PartialEq for Parsed<'a> {
     fn eq(&self, other: &Parsed<'a>) -> bool {
         use Parsed::*;
 
+        let eq_ast = |l: &AstValue, r| match l {
+            AstValue::SingleQuotedString(l) => l == r,
+            _ => false,
+        };
+
+        let eq_val = |l: &Value, r| match l {
+            Value::String(l) => l == r,
+            _ => false,
+        };
+
         match self {
             LiteralRef(l) => match other {
                 LiteralRef(r) => l == r,
+                StringRef(r) => eq_ast(l, r),
                 ValueRef(r) => r == l,
+            },
+            StringRef(l) => match other {
+                LiteralRef(r) => eq_ast(r, l),
+                StringRef(r) => l == r,
+                ValueRef(r) => eq_val(r, l),
             },
             ValueRef(l) => match other {
                 LiteralRef(r) => l == r,
+                StringRef(r) => eq_val(l, r),
                 ValueRef(r) => l == r,
             },
         }

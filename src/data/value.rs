@@ -56,6 +56,7 @@ impl PartialEq<AstValue> for Value {
                 Ok(r) => l == &r,
                 Err(_) => false,
             },
+            (Value::String(l), AstValue::SingleQuotedString(r)) => l == r,
             _ => false,
         }
     }
