@@ -2,7 +2,7 @@
 // use nom_sql::{Column, FieldDefinitionExpression, Table};
 use std::fmt::Debug;
 // use std::iter::once;
-// use std::rc::Rc;
+use std::rc::Rc;
 use thiserror::Error;
 
 use sqlparser::ast::{Expr, SelectItem};
@@ -35,14 +35,16 @@ impl<'a> Blend<'a> {
 
     pub fn apply<T: 'static + Debug>(
         &self,
-        // context: Result<Rc<BlendContext<'a, T>>>,
-        context: Result<BlendContext<'a, T>>,
+        context: Result<Rc<BlendContext<'a, T>>>,
     ) -> Result<Row> {
-        let BlendContext {
-            row: Row(values),
-            columns,
-            ..
-        } = context?;
+        let (values, columns) = match Rc::try_unwrap(context?) {
+            Ok(BlendContext {
+                row: Row(values),
+                columns,
+                ..
+            }) => (values, columns),
+            Err(c) => (c.row.0.clone(), Rc::clone(&c.columns)),
+        };
 
         let values = values
             .into_iter()

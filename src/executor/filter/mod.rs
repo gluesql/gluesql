@@ -51,7 +51,6 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
     }
 }
 
-/*
 pub struct BlendedFilter<'a, T: 'static + Debug> {
     filter: &'a Filter<'a, T>,
     context: Option<&'a BlendContext<'a, T>>,
@@ -62,7 +61,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         Self { filter, context }
     }
 
-    pub fn check(&self, table: &Table, columns: &[Column], row: &Row) -> Result<bool> {
+    pub fn check(&self, table_alias: &str, columns: &[Ident], row: &Row) -> Result<bool> {
         let BlendedFilter {
             filter:
                 Filter {
@@ -73,7 +72,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
             context: blend_context,
         } = self;
 
-        let filter_context = FilterContext::new(table, columns, row, *next);
+        let filter_context = FilterContext::new(table_alias, columns, row, *next);
 
         where_clause.map_or(Ok(true), |expr| match blend_context {
             Some(blend_context) => {
@@ -83,4 +82,3 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         })
     }
 }
-*/

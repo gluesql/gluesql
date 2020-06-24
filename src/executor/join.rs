@@ -1,20 +1,18 @@
-// Temporary Not used
-/*
 use boolinator::Boolinator;
 use iter_enum::Iterator;
-use nom_sql::{Column, JoinClause, JoinConstraint, JoinOperator, Table};
 use or_iterator::OrIterator;
+use std::fmt::Debug;
 use std::iter::once;
 use std::rc::Rc;
-*/
-use std::fmt::Debug;
 use thiserror::Error as ThisError;
 
-/*
+use sqlparser::ast::{
+    Ident, Join as AstJoin, JoinConstraint, JoinOperator, ObjectName, TableFactor,
+};
+
 use crate::executor::{BlendContext, BlendedFilter, Filter, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
-*/
 
 #[derive(ThisError, Debug, PartialEq)]
 pub enum JoinError {
@@ -23,12 +21,17 @@ pub enum JoinError {
 
     #[error("unimplemented! using on join not supported")]
     UsingOnJoinNotSupported,
+
+    #[error("unimplemented! natural on join not supported")]
+    NaturalOnJoinNotSupported,
+
+    #[error("umimplemented! failed to get table name")]
+    FailedToGetTableName,
 }
 
-/*
 pub struct Join<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
-    join_clauses: &'a [JoinClause],
+    join_clauses: &'a [AstJoin],
     filter_context: Option<&'a FilterContext<'a>>,
 }
 
@@ -42,12 +45,10 @@ enum Applied<I1, I2, I3, I4> {
     Mapped(I4),
 }
 
-pub type JoinColumns<'a> = Vec<Rc<(&'a Table, Rc<Vec<Column>>)>>;
-
 impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn Store<T>,
-        join_clauses: &'a [JoinClause],
+        join_clauses: &'a [AstJoin],
         filter_context: Option<&'a FilterContext<'a>>,
     ) -> Self {
         Self {
@@ -60,7 +61,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn apply(
         &self,
         init_context: Result<BlendContext<'a, T>>,
-        join_columns: Rc<JoinColumns<'a>>,
+        join_columns: Rc<Vec<Rc<Vec<Ident>>>>,
     ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
         let init_context = init_context.map(Rc::new);
         let init_rows = Applied::Init(once(init_context));
@@ -69,25 +70,17 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
             .iter()
             .enumerate()
             .map(move |(i, join_clause)| {
-                let table_columns = Rc::clone(&join_columns[i]);
+                let join_columns = Rc::clone(&join_columns[i]);
 
-                (join_clause, table_columns)
+                (join_clause, join_columns)
             })
-            .fold(init_rows, |rows, (join_clause, table_columns)| {
+            .fold(init_rows, |rows, (join_clause, join_columns)| {
                 let storage = self.storage;
                 let filter_context = self.filter_context;
                 let map = move |blend_context| {
-                    let table = table_columns.0;
-                    let columns = Rc::clone(&table_columns.1);
+                    let columns = Rc::clone(&join_columns);
 
-                    join(
-                        storage,
-                        filter_context,
-                        join_clause,
-                        table,
-                        columns,
-                        blend_context,
-                    )
+                    join(storage, filter_context, join_clause, columns, blend_context)
                 };
 
                 match rows {
@@ -114,73 +107,91 @@ enum Joined<I1, I2, I3> {
 fn join<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: Option<&'a FilterContext<'a>>,
-    join_clause: &'a JoinClause,
-    table: &'a Table,
-    columns: Rc<Vec<Column>>,
+    ast_join: &'a AstJoin,
+    columns: Rc<Vec<Ident>>,
     blend_context: Result<Rc<BlendContext<'a, T>>>,
 ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
-    let err = |e| Joined::Err(once(Err(e)));
-
-    macro_rules! try_iter {
-        ($expr: expr) => {
-            match $expr {
-                Ok(v) => v,
-                Err(e) => {
-                    return err(e);
-                }
-            }
-        };
+    macro_rules! err {
+        ($err: expr) => {{
+            return Err($err.into());
+        }};
     }
 
-    let JoinClause {
-        operator,
-        constraint,
-        ..
-    } = join_clause;
+    let err = |e| Joined::Err(once(Err(e)));
 
-    let where_clause = match constraint {
-        JoinConstraint::On(where_clause) => Some(where_clause),
-        JoinConstraint::Using(_) => {
-            return err(JoinError::UsingOnJoinNotSupported.into());
+    let AstJoin {
+        relation,
+        join_operator,
+    } = ast_join;
+
+    let blend_context = match blend_context {
+        Ok(v) => v,
+        Err(e) => {
+            return err(e);
         }
     };
-
-    let blend_context = try_iter!(blend_context);
     let init_context = Rc::clone(&blend_context);
-    let rows = try_iter!(storage.get_data(&table.name));
-    let rows = rows.filter_map(move |item| {
-        let (key, row) = match item {
-            Ok(v) => v,
-            Err(e) => {
-                return Some(Err(e));
-            }
+
+    let fetch_rows = |constraint: &'a JoinConstraint| {
+        let where_clause = match constraint {
+            JoinConstraint::On(where_clause) => Some(where_clause),
+            JoinConstraint::Using(_) => err!(JoinError::UsingOnJoinNotSupported),
+            JoinConstraint::Natural => err!(JoinError::NaturalOnJoinNotSupported),
         };
 
-        let filter = Filter::new(storage, where_clause, filter_context);
-        let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
+        let table_name = match relation {
+            TableFactor::Table { name, .. } => {
+                let ObjectName(idents) = name;
 
-        blended_filter
-            .check(table, &columns, &row)
-            .map(|pass| {
-                pass.as_some(Rc::new(BlendContext {
-                    table,
-                    columns: Rc::clone(&columns),
-                    key,
-                    row,
-                    next: Some(Rc::clone(&blend_context)),
-                }))
-            })
-            .transpose()
-    });
+                match idents.last() {
+                    Some(ident) => &ident.value,
+                    None => err!(JoinError::FailedToGetTableName),
+                }
+            }
+            _ => err!(JoinError::FailedToGetTableName),
+        };
+        let rows = storage.get_data(table_name)?;
+        let rows = rows.filter_map(move |item| {
+            let (key, row) = match item {
+                Ok(v) => v,
+                Err(e) => {
+                    return Some(Err(e));
+                }
+            };
 
-    match operator {
-        JoinOperator::Join | JoinOperator::InnerJoin => Joined::Inner(rows),
-        JoinOperator::LeftJoin | JoinOperator::LeftOuterJoin => {
-            let rows = rows.or(once(Ok(init_context)));
+            let filter = Filter::new(storage, where_clause, filter_context);
+            let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
 
-            Joined::LeftOuter(rows)
-        }
+            blended_filter
+                .check(table_name, &columns, &row)
+                .map(|pass| {
+                    pass.as_some(Rc::new(BlendContext {
+                        table_alias: table_name,
+                        columns: Rc::clone(&columns),
+                        key,
+                        row,
+                        next: Some(Rc::clone(&blend_context)),
+                    }))
+                })
+                .transpose()
+        });
+
+        Ok(rows)
+    };
+
+    match join_operator {
+        JoinOperator::Inner(constraint) => match fetch_rows(constraint) {
+            Ok(rows) => Joined::Inner(rows),
+            Err(e) => err(e),
+        },
+        JoinOperator::LeftOuter(constraint) => match fetch_rows(constraint) {
+            Ok(rows) => {
+                let rows = rows.or(once(Ok(init_context)));
+
+                Joined::LeftOuter(rows)
+            }
+            Err(e) => err(e),
+        },
         _ => err(JoinError::JoinTypeNotSupported.into()),
     }
 }
-*/

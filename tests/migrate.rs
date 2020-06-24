@@ -1,6 +1,6 @@
 mod helper;
 
-use gluesql::{FilterError, Payload, Row, RowError, UpdateError, Value, ValueError};
+use gluesql::{FilterError, JoinError, Payload, Row, RowError, UpdateError, Value, ValueError};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -46,6 +46,10 @@ CREATE TABLE Test (
         (
             FilterError::UnsupportedCompoundIdentifier("Here.User.id".to_owned()).into(),
             "SELECT * FROM Test WHERE Here.User.id = 1",
+        ),
+        (
+            JoinError::NaturalOnJoinNotSupported.into(),
+            "SELECT * FROM Test NATURAL JOIN Test",
         ),
     ];
 
