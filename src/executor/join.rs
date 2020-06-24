@@ -6,10 +6,9 @@ use std::iter::once;
 use std::rc::Rc;
 use thiserror::Error as ThisError;
 
-use sqlparser::ast::{
-    Ident, Join as AstJoin, JoinConstraint, JoinOperator, ObjectName, TableFactor,
-};
+use sqlparser::ast::{Ident, Join as AstJoin, JoinConstraint, JoinOperator};
 
+use crate::data::Table;
 use crate::executor::{BlendContext, BlendedFilter, Filter, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
@@ -111,12 +110,6 @@ fn join<'a, T: 'static + Debug>(
     columns: Rc<Vec<Ident>>,
     blend_context: Result<Rc<BlendContext<'a, T>>>,
 ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
-    macro_rules! err {
-        ($err: expr) => {{
-            return Err($err.into());
-        }};
-    }
-
     let err = |e| Joined::Err(once(Err(e)));
 
     let AstJoin {
@@ -135,22 +128,16 @@ fn join<'a, T: 'static + Debug>(
     let fetch_rows = |constraint: &'a JoinConstraint| {
         let where_clause = match constraint {
             JoinConstraint::On(where_clause) => Some(where_clause),
-            JoinConstraint::Using(_) => err!(JoinError::UsingOnJoinNotSupported),
-            JoinConstraint::Natural => err!(JoinError::NaturalOnJoinNotSupported),
-        };
-
-        let table_name = match relation {
-            TableFactor::Table { name, .. } => {
-                let ObjectName(idents) = name;
-
-                match idents.last() {
-                    Some(ident) => &ident.value,
-                    None => err!(JoinError::FailedToGetTableName),
-                }
+            JoinConstraint::Using(_) => {
+                return Err(JoinError::UsingOnJoinNotSupported.into());
             }
-            _ => err!(JoinError::FailedToGetTableName),
+            JoinConstraint::Natural => {
+                return Err(JoinError::NaturalOnJoinNotSupported.into());
+            }
         };
-        let rows = storage.get_data(table_name)?;
+
+        let table = Table::new(relation)?;
+        let rows = storage.get_data(table.get_name())?;
         let rows = rows.filter_map(move |item| {
             let (key, row) = match item {
                 Ok(v) => v,
@@ -159,14 +146,15 @@ fn join<'a, T: 'static + Debug>(
                 }
             };
 
+            let table_alias = table.get_alias();
             let filter = Filter::new(storage, where_clause, filter_context);
             let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
 
             blended_filter
-                .check(table_name, &columns, &row)
+                .check(table_alias, &columns, &row)
                 .map(|pass| {
                     pass.as_some(Rc::new(BlendContext {
-                        table_alias: table_name,
+                        table_alias,
                         columns: Rc::clone(&columns),
                         key,
                         row,

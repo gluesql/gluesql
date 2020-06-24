@@ -1,6 +1,6 @@
 use thiserror::Error as ThisError;
 
-use crate::data::{RowError, ValueError};
+use crate::data::{RowError, TableError, ValueError};
 use crate::executor::{
     BlendError, FilterContextError, FilterError, JoinError, SelectError, UpdateError,
 };
@@ -31,6 +31,8 @@ pub enum Error {
     #[error(transparent)]
     Row(#[from] RowError),
     #[error(transparent)]
+    Table(#[from] TableError),
+    #[error(transparent)]
     Value(#[from] ValueError),
 }
 
@@ -50,6 +52,7 @@ impl PartialEq for Error {
             (Filter(e), Filter(e2)) => e == e2,
             (FilterContext(e), FilterContext(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
+            (Table(e), Table(e2)) => e == e2,
             (Value(e), Value(e2)) => e == e2,
             _ => false,
         }

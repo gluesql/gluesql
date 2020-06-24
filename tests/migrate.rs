@@ -1,6 +1,8 @@
 mod helper;
 
-use gluesql::{FilterError, JoinError, Payload, Row, RowError, UpdateError, Value, ValueError};
+use gluesql::{
+    FilterError, JoinError, Payload, Row, RowError, TableError, UpdateError, Value, ValueError,
+};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -50,6 +52,10 @@ CREATE TABLE Test (
         (
             JoinError::NaturalOnJoinNotSupported.into(),
             "SELECT * FROM Test NATURAL JOIN Test",
+        ),
+        (
+            TableError::TableFactorNotSupported.into(),
+            "SELECT * FROM (SELECT * FROM Test) as A;",
         ),
     ];
 

@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{ObjectName, Statement};
+use sqlparser::ast::Statement;
 
-use crate::data::{Row, Schema};
+use crate::data::{get_table_name, Row, Schema};
 use crate::executor::{fetch, fetch_columns, select, Filter, Update};
 use crate::result::Result;
 use crate::storage::Store;
@@ -12,9 +12,6 @@ use crate::storage::Store;
 pub enum ExecuteError {
     #[error("query not supported")]
     QueryNotSupported,
-
-    #[error("unreachable")]
-    Unreachable,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -24,15 +21,6 @@ pub enum Payload {
     Select(Vec<Row>),
     Delete(usize),
     Update(usize),
-}
-
-fn get_table_name<'a>(table_name: &'a ObjectName) -> Result<&'a String> {
-    let ObjectName(idents) = table_name;
-
-    idents
-        .last()
-        .map(|ident| &ident.value)
-        .ok_or_else(|| ExecuteError::Unreachable.into())
 }
 
 pub fn execute<T: 'static + Debug>(

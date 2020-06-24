@@ -3,9 +3,9 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
 
-use sqlparser::ast::{Ident, ObjectName, Query, SetExpr, TableFactor, TableWithJoins};
+use sqlparser::ast::{Ident, Query, SetExpr, TableWithJoins};
 
-use crate::data::Row;
+use crate::data::{Row, Table};
 use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join};
 use crate::result::Result;
 use crate::storage::Store;
@@ -33,16 +33,15 @@ macro_rules! err {
 
 fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
-    table_name: &str,
-    table_alias: &'a str,
+    table: Table<'a>,
     columns: Rc<Vec<Ident>>,
 ) -> Result<impl Iterator<Item = Result<BlendContext<'a, T>>> + 'a> {
-    let rows = storage.get_data(table_name)?.map(move |data| {
+    let rows = storage.get_data(table.get_name())?.map(move |data| {
         let (key, row) = data?;
         let columns = Rc::clone(&columns);
 
         Ok(BlendContext {
-            table_alias,
+            table_alias: table.get_alias(),
             columns,
             key,
             row,
@@ -76,28 +75,15 @@ pub fn select<'a, T: 'static + Debug>(
         _ => err!(SelectError::Unreachable),
     };
 
-    fn get_table_name<'a>(relation: &'a TableFactor) -> Result<&'a String> {
-        match relation {
-            TableFactor::Table { name, .. } => {
-                let ObjectName(idents) = name;
-
-                idents
-                    .last()
-                    .map(|ident| &ident.value)
-                    .ok_or_else(|| SelectError::Unreachable.into())
-            }
-            _ => err!(SelectError::Unreachable),
-        }
-    };
-
     let TableWithJoins { relation, joins } = &table_with_joins;
-    let table_name = get_table_name(relation)?;
-    let columns = fetch_columns(storage, &table_name)?;
+    let table = Table::new(relation)?;
+
+    let columns = fetch_columns(storage, table.get_name())?;
     let columns = Rc::new(columns);
     let join_columns = joins
         .iter()
         .map(|join| {
-            let table_name = get_table_name(&join.relation)?;
+            let table_name = Table::new(&join.relation)?.get_name();
             let columns = fetch_columns(storage, table_name)?;
 
             Ok(Rc::new(columns))
@@ -109,7 +95,7 @@ pub fn select<'a, T: 'static + Debug>(
     let blend = Blend::new(projection);
     let filter = Filter::new(storage, where_clause, filter_context);
 
-    let rows = fetch_blended(storage, &table_name, &table_name, columns)?
+    let rows = fetch_blended(storage, table, columns)?
         .flat_map(move |blend_context| {
             let join_columns = Rc::clone(&join_columns);
 
