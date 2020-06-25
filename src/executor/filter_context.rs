@@ -72,32 +72,4 @@ impl<'a> FilterContext<'a> {
             Some(value) => Ok(value),
         }
     }
-
-    /*
-    pub fn get_value(&self, target: &'a Column) -> Result<&'a Value> {
-        let Table { alias, name } = self.table;
-
-        let get_value = || {
-            self.columns
-                .iter()
-                .position(|column| column.name == target.name)
-                .and_then(|index| self.row.get_value(index))
-                .ok_or_else(|| FilterContextError::ValueNotFound.into())
-        };
-
-        match target.table {
-            None => get_value(),
-            Some(ref table) => {
-                if &target.table == alias || table == name {
-                    get_value()
-                } else {
-                    self.next
-                        .map(|c| c.get_value(target))
-                        .transpose()?
-                        .ok_or_else(|| FilterContextError::ValueNotFound.into())
-                }
-            }
-        }
-    }
-    */
 }

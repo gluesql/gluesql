@@ -37,17 +37,6 @@ pub enum Value {
     String(String),
 }
 
-/*
-impl PartialEq<Literal> for Value {
-    fn eq(&self, other: &Literal) -> bool {
-        match (self, other) {
-            (Value::I64(l), Literal::Integer(r)) => l == r,
-            (Value::String(l), Literal::String(r)) => l == r,
-            _ => false,
-        }
-    }
-}
-*/
 impl PartialEq<AstValue> for Value {
     fn eq(&self, other: &AstValue) -> bool {
         match (self, other) {
