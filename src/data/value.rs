@@ -1,4 +1,3 @@
-use nom_sql::{Literal, SqlType};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt::Debug;
@@ -85,15 +84,7 @@ impl PartialOrd<Literal> for Value {
 */
 
 impl Value {
-    pub fn new(sql_type: SqlType, literal: Literal) -> Result<Self> {
-        match (sql_type, literal) {
-            (SqlType::Int(_), Literal::Integer(v)) => Ok(Value::I64(v)),
-            (SqlType::Text, Literal::String(v)) => Ok(Value::String(v)),
-            _ => Err(ValueError::SqlTypeNotSupported.into()),
-        }
-    }
-
-    pub fn new2(data_type: DataType, literal: &AstValue) -> Result<Self> {
+    pub fn new(data_type: DataType, literal: &AstValue) -> Result<Self> {
         match (data_type, literal) {
             (DataType::Int, AstValue::Number(v)) => v
                 .parse()

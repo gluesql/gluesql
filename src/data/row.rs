@@ -81,7 +81,7 @@ impl Row {
                 let literal = values.get(i).ok_or(RowError::LackOfRequiredValue(name))?;
 
                 match literal {
-                    Expr::Value(literal) => Value::new2(data_type, literal),
+                    Expr::Value(literal) => Value::new(data_type, literal),
                     Expr::Identifier(Ident { value, .. }) => Ok(Value::String(value.clone())),
                     _ => Err(RowError::UnsupportedAstValueType.into()),
                 }
