@@ -54,9 +54,7 @@ fn parse_expr<'a, T: 'static + Debug>(
         Expr::Value(value) => parse_value(&value),
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Parsed::StringRef(&ident.value)),
-            None => filter_context
-                .get_value(&ident.value)
-                .map(Parsed::ValueRef),
+            None => filter_context.get_value(&ident.value).map(Parsed::ValueRef),
         },
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
@@ -137,13 +135,18 @@ pub fn check_expr<'a, T: 'static + Debug>(
     expr: &'a Expr,
 ) -> Result<bool> {
     let parse = |expr| parse_expr(storage, filter_context, expr);
+    let check = |expr| check_expr(storage, filter_context, expr);
 
     match expr {
         Expr::BinaryOp { op, left, right } => {
             let zip_parse = || Ok((parse(left)?, parse(right)?));
+            let zip_check = || Ok((check(left)?, check(right)?));
 
             match op {
                 BinaryOperator::Eq => zip_parse().map(|(l, r)| l == r),
+                BinaryOperator::NotEq => zip_parse().map(|(l, r)| l != r),
+                BinaryOperator::And => zip_check().map(|(l, r)| l && r),
+                BinaryOperator::Or => zip_check().map(|(l, r)| l || r),
                 _ => Err(FilterError::Unimplemented.into()),
             }
         }
