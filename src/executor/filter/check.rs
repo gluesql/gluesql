@@ -1,7 +1,7 @@
 use boolinator::Boolinator;
 use std::fmt::Debug;
 
-use sqlparser::ast::{BinaryOperator, Expr, Value as AstValue};
+use sqlparser::ast::{BinaryOperator, Expr, UnaryOperator, Value as AstValue};
 
 use crate::executor::{select, BlendContext, FilterContext};
 use crate::result::Result;
@@ -56,6 +56,7 @@ fn parse_expr<'a, T: 'static + Debug>(
             Some(_) => Ok(Parsed::StringRef(&ident.value)),
             None => filter_context.get_value(&ident.value).map(Parsed::ValueRef),
         },
+        Expr::Nested(expr) => parse_expr(storage, filter_context, &expr),
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
                 return Err(FilterError::UnsupportedCompoundIdentifier(expr.to_string()).into());
@@ -150,6 +151,11 @@ pub fn check_expr<'a, T: 'static + Debug>(
                 _ => Err(FilterError::Unimplemented.into()),
             }
         }
+        Expr::UnaryOp { op, expr } => match op {
+            UnaryOperator::Not => check(&expr).map(|v| !v),
+            _ => Err(FilterError::Unimplemented.into()),
+        },
+        Expr::Nested(expr) => check(&expr),
         Expr::InList {
             expr,
             list,
