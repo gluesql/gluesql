@@ -41,7 +41,7 @@ fn parse_arithmetic<'a>(
 */
 
 fn parse_expr<'a, T: 'static + Debug>(
-    _storage: &'a dyn Store<T>,
+    storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a Expr,
 ) -> Result<Parsed<'a>> {
@@ -70,6 +70,11 @@ fn parse_expr<'a, T: 'static + Debug>(
                 .get_alias_value(table_alias, column)
                 .map(|value| Parsed::ValueRef(value))
         }
+        Expr::Subquery(query) => select(storage, &query, Some(filter_context))?
+            .map(|row| row?.take_first_value())
+            .map(|value| value.map(Parsed::Value))
+            .next()
+            .ok_or(FilterError::NestedSelectRowNotFound)?,
         _ => Err(FilterError::Unimplemented.into()),
     }
 

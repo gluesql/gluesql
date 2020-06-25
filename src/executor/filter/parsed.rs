@@ -16,7 +16,7 @@ pub enum Parsed<'a> {
     StringRef(&'a str),
     // Literal(Literal),
     ValueRef(&'a Value),
-    // Value(Value),
+    Value(Value),
 }
 
 /*
@@ -33,8 +33,6 @@ pub enum ParsedList<'a, T: 'static + Debug> {
 
 impl<'a> PartialEq for Parsed<'a> {
     fn eq(&self, other: &Parsed<'a>) -> bool {
-        use Parsed::*;
-
         let eq_ast = |l: &AstValue, r| match l {
             AstValue::SingleQuotedString(l) => l == r,
             _ => false,
@@ -45,52 +43,36 @@ impl<'a> PartialEq for Parsed<'a> {
             _ => false,
         };
 
-        match self {
-            LiteralRef(l) => match other {
-                LiteralRef(r) => l == r,
-                StringRef(r) => eq_ast(l, r),
-                ValueRef(r) => r == l,
-            },
-            StringRef(l) => match other {
-                LiteralRef(r) => eq_ast(r, l),
-                StringRef(r) => l == r,
-                ValueRef(r) => eq_val(r, l),
-            },
-            ValueRef(l) => match other {
-                LiteralRef(r) => l == r,
-                StringRef(r) => eq_val(l, r),
-                ValueRef(r) => l == r,
-            },
-        }
+        {
+            use Parsed::*;
 
-        /*
-        match self {
-            LiteralRef(l) => match other {
-                LiteralRef(r) => l == r,
-                Literal(r) => l == &r,
-                ValueRef(r) => r == l,
-                Value(r) => &r == l,
-            },
-            Literal(l) => match other {
-                LiteralRef(r) => &l == r,
-                Literal(r) => l == r,
-                ValueRef(r) => r == &l,
-                Value(r) => r == l,
-            },
-            ValueRef(l) => match other {
-                LiteralRef(r) => l == r,
-                Literal(r) => l == &r,
-                ValueRef(r) => l == r,
-                Value(r) => l == &r,
-            },
-            Value(l) => match other {
-                LiteralRef(r) => &l == r,
-                Literal(r) => l == r,
-                ValueRef(r) => &l == r,
-                Value(r) => l == r,
-            },
+            match self {
+                LiteralRef(l) => match other {
+                    LiteralRef(r) => l == r,
+                    StringRef(r) => eq_ast(l, r),
+                    ValueRef(r) => r == l,
+                    Value(r) => &r == l,
+                },
+                StringRef(l) => match other {
+                    LiteralRef(r) => eq_ast(r, l),
+                    StringRef(r) => l == r,
+                    ValueRef(r) => eq_val(r, l),
+                    Value(r) => eq_val(&r, l),
+                },
+                ValueRef(l) => match other {
+                    LiteralRef(r) => l == r,
+                    StringRef(r) => eq_val(l, r),
+                    ValueRef(r) => l == r,
+                    Value(r) => l == &r,
+                },
+                Value(l) => match other {
+                    LiteralRef(r) => &l == r,
+                    StringRef(r) => eq_val(&l, r),
+                    ValueRef(r) => &l == r,
+                    Value(r) => l == r,
+                },
+            }
         }
-        */
     }
 }
 

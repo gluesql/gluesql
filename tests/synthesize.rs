@@ -43,12 +43,18 @@ fn synthesize() {
         ),
         (3, "SELECT * FROM TableA WHERE id IN (1, 2, 4)"),
         (3, "SELECT * FROM TableA WHERE test IN (500, 300)"),
-        (2, "SELECT * FROM TableA WHERE id IN (SELECT target_id FROM TableA LIMIT 3)"),
+        (
+            2,
+            "SELECT * FROM TableA WHERE id IN (SELECT target_id FROM TableA LIMIT 3)",
+        ),
+        /*
         (1, "SELECT * FROM TableA WHERE id = 3 AND test = 500;"),
         (5, "SELECT * FROM TableA WHERE id = 3 OR test = 100;"),
         (1, "SELECT * FROM TableA WHERE id != 3 AND test != 100;"),
+        */
         (2, "SELECT * FROM TableA WHERE id = 3 LIMIT 2;"),
         (4, "SELECT * FROM TableA LIMIT 10 OFFSET 2;"),
+        /*
         (
             1,
             "SELECT * FROM TableA WHERE (id = 3 OR test = 100) AND test = 300;",
@@ -62,6 +68,7 @@ fn synthesize() {
         (3, "DELETE FROM TableA WHERE id != 3;"),
         (3, "SELECT * FROM TableA;"),
         (3, "DELETE FROM TableA;"),
+        */
     ];
 
     for (num, sql) in test_cases.iter() {

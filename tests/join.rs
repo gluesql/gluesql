@@ -103,13 +103,13 @@ fn join() {
             INNER JOIN Item ON 1 = 2
             INNER JOIN Item i2 ON 1 = 2
         "),
-        /*
         (7, "SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
             WHERE Player.id = (SELECT id FROM Player LIMIT 1 OFFSET 0);"),
         (0, "SELECT * FROM Item i1
             LEFT JOIN Player ON Player.id = i1.player_id
             WHERE Player.id = (SELECT id FROM Item i2 WHERE i2.id = i1.id)"),
+        /*
         (0, "SELECT * FROM Item i1
             LEFT JOIN Player ON Player.id = i1.player_id
             WHERE Player.id =
