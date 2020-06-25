@@ -6,7 +6,7 @@ use thiserror::Error;
 use sqlparser::ast::{Ident, Query, SetExpr, TableWithJoins};
 
 use crate::data::{Row, Table};
-use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join};
+use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -94,6 +94,7 @@ pub fn select<'a, T: 'static + Debug>(
     let join = Join::new(storage, joins, filter_context);
     let blend = Blend::new(projection);
     let filter = Filter::new(storage, where_clause, filter_context);
+    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
 
     let rows = fetch_blended(storage, table, columns)?
         .flat_map(move |blend_context| {
@@ -112,8 +113,8 @@ pub fn select<'a, T: 'static + Debug>(
                 },
             )
         })
-        // .enumerate()
-        // .filter_map(move |(i, item)| limit.check(i).as_some(item))
+        .enumerate()
+        .filter_map(move |(i, item)| limit.check(i).as_some(item))
         .map(move |blend_context| blend.apply(blend_context));
 
     Ok(rows)

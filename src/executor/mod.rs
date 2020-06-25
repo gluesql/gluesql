@@ -14,6 +14,6 @@ pub use fetch::{fetch, fetch_columns};
 pub use filter::{BlendedFilter, Filter, FilterError};
 pub use filter_context::{FilterContext, FilterContextError};
 pub use join::{Join, JoinError};
-pub use limit::Limit;
+pub use limit::{Limit, LimitError};
 pub use select::{select, SelectError};
 pub use update::{Update, UpdateError};
