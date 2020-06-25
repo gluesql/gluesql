@@ -51,7 +51,24 @@ fn ordering() {
         (2, "SELECT * FROM Operator WHERE name < \"Azzzzzzzzzz\";"),
         (1, "SELECT * FROM Operator WHERE name < \"Az\";"),
         (5, "SELECT * FROM Operator WHERE name < \"zz\";"),
+        (5, "SELECT * FROM Operator WHERE \"aa\" < \"zz\";"),
         (4, "SELECT * FROM Operator WHERE \"Romeo\" >= name;"),
+        (
+            1,
+            "SELECT * FROM Operator WHERE (SELECT name FROM Operator LIMIT 1) >= name",
+        ),
+        (
+            1,
+            "SELECT * FROM Operator WHERE name <= (SELECT name FROM Operator LIMIT 1)",
+        ),
+        (
+            5,
+            "SELECT * FROM Operator WHERE \"zz\" > (SELECT name FROM Operator LIMIT 1)",
+        ),
+        (
+            5,
+            "SELECT * FROM Operator WHERE (SELECT name FROM Operator LIMIT 1) < \"zz\"",
+        ),
         (5, "SELECT * FROM Operator WHERE NOT (1 != 1);"),
     ];
 

@@ -60,17 +60,18 @@ impl PartialOrd<Value> for Value {
     }
 }
 
-/*
-impl PartialOrd<Literal> for Value {
-    fn partial_cmp(&self, other: &Literal) -> Option<Ordering> {
+impl PartialOrd<AstValue> for Value {
+    fn partial_cmp(&self, other: &AstValue) -> Option<Ordering> {
         match (self, other) {
-            (Value::I64(l), Literal::Integer(r)) => Some(l.cmp(r)),
-            (Value::String(l), Literal::String(r)) => Some(l.cmp(r)),
+            (Value::I64(l), AstValue::Number(r)) => match r.parse::<i64>() {
+                Ok(r) => Some(l.cmp(&r)),
+                Err(_) => None,
+            },
+            (Value::String(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
 }
-*/
 
 impl Value {
     pub fn new(data_type: DataType, literal: &AstValue) -> Result<Self> {

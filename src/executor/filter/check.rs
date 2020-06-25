@@ -148,6 +148,10 @@ pub fn check_expr<'a, T: 'static + Debug>(
                 BinaryOperator::NotEq => zip_parse().map(|(l, r)| l != r),
                 BinaryOperator::And => zip_check().map(|(l, r)| l && r),
                 BinaryOperator::Or => zip_check().map(|(l, r)| l || r),
+                BinaryOperator::Lt => zip_parse().map(|(l, r)| l < r),
+                BinaryOperator::LtEq => zip_parse().map(|(l, r)| l <= r),
+                BinaryOperator::Gt => zip_parse().map(|(l, r)| l > r),
+                BinaryOperator::GtEq => zip_parse().map(|(l, r)| l >= r),
                 _ => Err(FilterError::Unimplemented.into()),
             }
         }

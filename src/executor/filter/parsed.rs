@@ -1,9 +1,10 @@
 // use boolinator::Boolinator;
-// use std::cmp::Ordering;
+use std::cmp::Ordering;
 // use std::fmt::Debug;
 
 use sqlparser::ast::Value as AstValue;
 
+use crate::data;
 use crate::data::Value;
 // use crate::executor::{select, FilterContext};
 // use crate::result::Result;
@@ -76,7 +77,6 @@ impl<'a> PartialEq for Parsed<'a> {
     }
 }
 
-/*
 impl<'a> PartialOrd for Parsed<'a> {
     fn partial_cmp(&self, other: &Parsed<'a>) -> Option<Ordering> {
         use Parsed::*;
@@ -86,25 +86,49 @@ impl<'a> PartialOrd for Parsed<'a> {
                 LiteralRef(r) => literal_partial_cmp(l, r),
                 ValueRef(r) => r.partial_cmp(l).map(|o| o.reverse()),
                 Value(r) => r.partial_cmp(*l).map(|o| o.reverse()),
-                Literal(_) => None,
+                StringRef(_) => None,
             },
             ValueRef(l) => match other {
                 LiteralRef(r) => l.partial_cmp(r),
                 ValueRef(r) => l.partial_cmp(r),
                 Value(r) => l.partial_cmp(&r),
-                Literal(_) => None,
+                StringRef(r) => match l {
+                    data::Value::String(l) => (&l.as_str()).partial_cmp(r),
+                    _ => None,
+                },
             },
             Value(l) => match other {
                 LiteralRef(r) => l.partial_cmp(*r),
                 ValueRef(r) => l.partial_cmp(*r),
                 Value(r) => l.partial_cmp(r),
-                Literal(_) => None,
+                StringRef(r) => match l {
+                    data::Value::String(l) => (&l.as_str()).partial_cmp(r),
+                    _ => None,
+                },
             },
-            Literal(_) => None,
+            StringRef(l) => match other {
+                LiteralRef(_) => None,
+                ValueRef(data::Value::String(r)) => l.partial_cmp(&r.as_str()),
+                Value(data::Value::String(r)) => l.partial_cmp(&r.as_str()),
+                StringRef(r) => l.partial_cmp(r),
+                _ => None,
+            },
         }
     }
 }
 
+fn literal_partial_cmp(a: &AstValue, b: &AstValue) -> Option<Ordering> {
+    match (a, b) {
+        (AstValue::Number(l), AstValue::Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
+            (Ok(l), Ok(r)) => Some(l.cmp(&r)),
+            _ => None,
+        },
+        (AstValue::SingleQuotedString(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
+        _ => None,
+    }
+}
+
+/*
 impl<'a> Parsed<'a> {
     pub fn exists_in<T: 'static + Debug>(&self, list: ParsedList<'_, T>) -> Result<bool> {
         Ok(match list {
@@ -210,14 +234,6 @@ impl<'a> Parsed<'a> {
             },
             Literal(_) | Value(_) => unreachable,
         }
-    }
-}
-
-fn literal_partial_cmp(a: &Literal, b: &Literal) -> Option<Ordering> {
-    match (a, b) {
-        (Literal::String(a), Literal::String(b)) => Some(a.cmp(b)),
-        (Literal::Integer(a), Literal::Integer(b)) => Some(a.cmp(b)),
-        _ => None,
     }
 }
 
