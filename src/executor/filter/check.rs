@@ -56,7 +56,7 @@ fn parse_expr<'a, T: 'static + Debug>(
             Some(_) => Ok(Parsed::StringRef(&ident.value)),
             None => filter_context
                 .get_value(&ident.value)
-                .map(|value| Parsed::ValueRef(value)),
+                .map(Parsed::ValueRef),
         },
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
@@ -68,7 +68,7 @@ fn parse_expr<'a, T: 'static + Debug>(
 
             filter_context
                 .get_alias_value(table_alias, column)
-                .map(|value| Parsed::ValueRef(value))
+                .map(Parsed::ValueRef)
         }
         Expr::Subquery(query) => select(storage, &query, Some(filter_context))?
             .map(|row| row?.take_first_value())
