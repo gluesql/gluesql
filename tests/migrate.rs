@@ -1,8 +1,6 @@
 mod helper;
 
-use gluesql::{
-    EvaluateError, JoinError, Payload, Row, RowError, TableError, UpdateError, Value, ValueError,
-};
+use gluesql::{EvaluateError, JoinError, Payload, Row, RowError, TableError, Value, ValueError};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -40,10 +38,6 @@ CREATE TABLE Test (
         (
             ValueError::FailedToParseNumber.into(),
             "INSERT INTO Test (id, num) VALUES (1.1, 1);",
-        ),
-        (
-            UpdateError::ExpressionNotSupported("id".to_owned()).into(),
-            "UPDATE Test SET id = id + 1;",
         ),
         (
             EvaluateError::UnsupportedCompoundIdentifier("Here.User.id".to_owned()).into(),

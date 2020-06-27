@@ -61,16 +61,16 @@ pub fn execute<T: 'static + Debug>(
             selection,
             assignments,
         } => {
-            let update = Update::new(assignments);
-            let filter = Filter::new(storage, selection.as_ref(), None);
             let table_name = get_table_name(table_name)?;
-
             let columns = fetch_columns(storage, table_name)?;
+            let update = Update::new(storage, table_name, assignments, &columns)?;
+            let filter = Filter::new(storage, selection.as_ref(), None);
+
             let num_rows = fetch(storage, table_name, &columns, filter)?
                 .map(|item| {
-                    let (columns, key, row) = item?;
+                    let (_, key, row) = item?;
 
-                    Ok((key, update.apply(columns, row)?))
+                    Ok((key, update.apply(row)?))
                 })
                 .try_fold::<_, _, Result<_>>(0, |num, item: Result<(T, Row)>| {
                     let (key, row) = item?;
