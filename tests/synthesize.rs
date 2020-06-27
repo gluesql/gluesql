@@ -43,7 +43,10 @@ fn synthesize() {
         ),
         (3, "SELECT * FROM TableA WHERE id IN (1, 2, 4)"),
         (3, "SELECT * FROM TableA WHERE test IN (500, 300)"),
-        (2, "SELECT * FROM TableA WHERE id IN (SELECT target_id FROM TableA LIMIT 3)"),
+        (
+            2,
+            "SELECT * FROM TableA WHERE id IN (SELECT target_id FROM TableA LIMIT 3)",
+        ),
         (1, "SELECT * FROM TableA WHERE id = 3 AND test = 500;"),
         (5, "SELECT * FROM TableA WHERE id = 3 OR test = 100;"),
         (1, "SELECT * FROM TableA WHERE id != 3 AND test != 100;"),

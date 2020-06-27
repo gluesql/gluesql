@@ -1,8 +1,7 @@
-use nom_sql::CreateTableStatement;
 use sled::{self, Db, IVec};
 use thiserror::Error as ThisError;
 
-use crate::data::Row;
+use crate::data::{Row, Schema};
 use crate::result::{Error, Result};
 use crate::storage::{RowIter, Store, StoreError};
 
@@ -60,17 +59,17 @@ impl Store<IVec> for SledStorage {
         Ok(IVec::from(id.as_bytes()))
     }
 
-    fn set_schema(&self, statement: &CreateTableStatement) -> Result<()> {
-        let key = format!("schema/{}", statement.table.name);
+    fn set_schema(&self, schema: &Schema) -> Result<()> {
+        let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
-        let value = try_into!(bincode::serialize(&statement));
+        let value = try_into!(bincode::serialize(schema));
 
         try_into!(self.tree.insert(key, value));
 
         Ok(())
     }
 
-    fn get_schema(&self, table_name: &str) -> Result<CreateTableStatement> {
+    fn get_schema(&self, table_name: &str) -> Result<Schema> {
         let key = format!("schema/{}", table_name);
         let key = key.as_bytes();
         let value = try_into!(self.tree.get(&key));

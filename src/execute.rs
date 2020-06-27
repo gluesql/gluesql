@@ -1,8 +1,9 @@
-use nom_sql::{Column, DeleteStatement, InsertStatement, SqlQuery, Table, UpdateStatement};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::data::Row;
+use sqlparser::ast::Statement;
+
+use crate::data::{get_table_name, Row, Schema};
 use crate::executor::{fetch, fetch_columns, select, Filter, Update};
 use crate::result::Result;
 use crate::storage::Store;
@@ -24,75 +25,74 @@ pub enum Payload {
 
 pub fn execute<T: 'static + Debug>(
     storage: &dyn Store<T>,
-    sql_query: &SqlQuery,
+    sql_query: &Statement,
 ) -> Result<Payload> {
     match sql_query {
-        SqlQuery::CreateTable(statement) => {
-            storage.set_schema(statement)?;
+        Statement::CreateTable { name, columns, .. } => {
+            let schema = Schema {
+                table_name: get_table_name(name)?.clone(),
+                column_defs: columns.clone(),
+            };
+
+            storage.set_schema(&schema)?;
 
             Ok(Payload::Create)
         }
-        SqlQuery::Select(statement) => {
-            let rows = select(storage, statement, None)?.collect::<Result<_>>()?;
+        Statement::Query(query) => {
+            let rows = select(storage, &query, None)?.collect::<Result<_>>()?;
 
             Ok(Payload::Select(rows))
         }
-        SqlQuery::Insert(statement) => {
-            let InsertStatement {
-                table: Table {
-                    name: table_name, ..
-                },
-                fields: insert_fields,
-                data: insert_data,
-                ..
-            } = statement;
-            let create_fields = storage.get_schema(table_name)?.fields;
-            let key = storage.gen_id(table_name)?;
-            let row = Row::new(create_fields, insert_fields, insert_data)?;
-
+        Statement::Insert {
+            table_name,
+            columns,
+            source,
+        } => {
+            let table_name = get_table_name(table_name)?;
+            let Schema { column_defs, .. } = storage.get_schema(table_name)?;
+            let key = storage.gen_id(&table_name)?;
+            let row = Row::new(column_defs, columns, source)?;
             let row = storage.set_data(&key, row)?;
 
             Ok(Payload::Insert(row))
         }
-        SqlQuery::Delete(statement) => {
-            let DeleteStatement {
-                table,
-                where_clause,
-            } = statement;
-            let filter = Filter::new(storage, where_clause.as_ref(), None);
+        Statement::Update {
+            table_name,
+            selection,
+            assignments,
+        } => {
+            let table_name = get_table_name(table_name)?;
+            let columns = fetch_columns(storage, table_name)?;
+            let update = Update::new(storage, table_name, assignments, &columns)?;
+            let filter = Filter::new(storage, selection.as_ref(), None);
 
-            let columns = fetch_columns(storage, table)?;
-            let num_rows = fetch(storage, table, &columns, filter)?.try_fold::<_, _, Result<_>>(
-                0,
-                |num: usize, item: Result<(&[Column], T, Row)>| {
-                    let (_, key, _) = item?;
-                    storage.del_data(&key)?;
-
-                    Ok(num + 1)
-                },
-            )?;
-
-            Ok(Payload::Delete(num_rows))
-        }
-        SqlQuery::Update(statement) => {
-            let UpdateStatement {
-                table,
-                fields,
-                where_clause,
-            } = statement;
-            let update = Update::new(fields);
-            let filter = Filter::new(storage, where_clause.as_ref(), None);
-            let columns = fetch_columns(storage, table)?;
-
-            let num_rows = fetch(storage, table, &columns, filter)?
+            let num_rows = fetch(storage, table_name, &columns, filter)?
                 .map(|item| {
-                    let (columns, key, row) = item?;
+                    let (_, key, row) = item?;
 
-                    Ok((key, update.apply(columns, row)?))
+                    Ok((key, update.apply(row)?))
                 })
                 .try_fold::<_, _, Result<_>>(0, |num, item: Result<(T, Row)>| {
                     let (key, row) = item?;
                     storage.set_data(&key, row)?;
+
+                    Ok(num + 1)
+                })?;
+
+            Ok(Payload::Update(num_rows))
+        }
+        Statement::Delete {
+            table_name,
+            selection,
+        } => {
+            let filter = Filter::new(storage, selection.as_ref(), None);
+            let table_name = get_table_name(table_name)?;
+
+            let columns = fetch_columns(storage, table_name)?;
+            let num_rows = fetch(storage, table_name, &columns, filter)?
+                .try_fold::<_, _, Result<_>>(0, |num: usize, item| {
+                    let (_, key, _) = item?;
+                    storage.del_data(&key)?;
 
                     Ok(num + 1)
                 })?;

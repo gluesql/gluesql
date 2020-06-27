@@ -1,5 +1,8 @@
 use gluesql::{execute, Error, Payload, Result, Row, SledStorage, Store};
-use nom_sql::parse_query;
+
+use sqlparser::dialect::GenericDialect;
+use sqlparser::parser::Parser;
+
 use sled::IVec;
 use std::fmt::Debug;
 
@@ -7,17 +10,19 @@ pub trait Helper<T: 'static + Debug> {
     fn get_storage(&self) -> &dyn Store<T>;
 
     fn run(&self, sql: &str) -> Result<Payload> {
-        let parsed = match parse_query(sql) {
+        let dialect = GenericDialect {};
+        let parsed = match Parser::parse_sql(&dialect, sql) {
             Ok(parsed) => parsed,
             Err(e) => {
-                panic!("nom_sql parse_query: {:?}", e);
+                panic!("parse_query: {:?}", e);
             }
         };
+        let parsed = &parsed[0];
 
         let storage = self.get_storage();
 
         println!("[Run] {}", parsed);
-        execute(storage, &parsed)
+        execute(storage, parsed)
     }
 
     fn run_and_print(&self, sql: &str) {

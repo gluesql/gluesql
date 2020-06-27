@@ -56,9 +56,13 @@ fn join() {
     }
 
     let select_sqls = [
-        (15, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id;"),
-        // (5, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE quantity = 1;"),
+        (
+            15,
+            "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id;",
+        ),
+        (5, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE quantity = 1;"),
         (7, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;"),
+        (7, "SELECT * FROM Item INNER JOIN Player ON Player.id = Item.player_id WHERE Player.id = 1;"),
         (7, "SELECT * FROM Item
             LEFT JOIN Player ON Player.id = Item.player_id
             LEFT JOIN Player p1 ON p1.id = Item.player_id
@@ -90,7 +94,7 @@ fn join() {
         (15, "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id AND Item.quantity = 1;"),
         (7, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
         (7, "SELECT * FROM Item i INNER JOIN Player p ON p.id = i.player_id AND p.id = 1;"),
-        (5, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND Item.quantity = 1;"),
+        (5, "SELECT * FROM Item i JOIN Player p ON p.id = i.player_id AND i.quantity = 1;"),
         (0, "SELECT * FROM Player
             INNER JOIN Item ON 1 = 2
             INNER JOIN Item i2 ON 1 = 2

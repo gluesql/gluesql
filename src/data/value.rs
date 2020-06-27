@@ -1,8 +1,9 @@
-use nom_sql::{Literal, SqlType};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use thiserror::Error;
+
+use sqlparser::ast::{DataType, Value as AstValue};
 
 use crate::result::Result;
 
@@ -13,6 +14,9 @@ pub enum ValueError {
 
     #[error("literal not supported yet")]
     LiteralNotSupported,
+
+    #[error("failed to parse number")]
+    FailedToParseNumber,
 
     #[error("add on non numeric value")]
     AddOnNonNumeric,
@@ -33,11 +37,14 @@ pub enum Value {
     String(String),
 }
 
-impl PartialEq<Literal> for Value {
-    fn eq(&self, other: &Literal) -> bool {
+impl PartialEq<AstValue> for Value {
+    fn eq(&self, other: &AstValue) -> bool {
         match (self, other) {
-            (Value::I64(l), Literal::Integer(r)) => l == r,
-            (Value::String(l), Literal::String(r)) => l == r,
+            (Value::I64(l), AstValue::Number(r)) => match r.parse::<i64>() {
+                Ok(r) => l == &r,
+                Err(_) => false,
+            },
+            (Value::String(l), AstValue::SingleQuotedString(r)) => l == r,
             _ => false,
         }
     }
@@ -53,29 +60,37 @@ impl PartialOrd<Value> for Value {
     }
 }
 
-impl PartialOrd<Literal> for Value {
-    fn partial_cmp(&self, other: &Literal) -> Option<Ordering> {
+impl PartialOrd<AstValue> for Value {
+    fn partial_cmp(&self, other: &AstValue) -> Option<Ordering> {
         match (self, other) {
-            (Value::I64(l), Literal::Integer(r)) => Some(l.cmp(r)),
-            (Value::String(l), Literal::String(r)) => Some(l.cmp(r)),
+            (Value::I64(l), AstValue::Number(r)) => match r.parse::<i64>() {
+                Ok(r) => Some(l.cmp(&r)),
+                Err(_) => None,
+            },
+            (Value::String(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
 }
 
 impl Value {
-    pub fn new(sql_type: SqlType, literal: Literal) -> Result<Self> {
-        match (sql_type, literal) {
-            (SqlType::Int(_), Literal::Integer(v)) => Ok(Value::I64(v)),
-            (SqlType::Text, Literal::String(v)) => Ok(Value::String(v)),
+    pub fn new(data_type: DataType, literal: &AstValue) -> Result<Self> {
+        match (data_type, literal) {
+            (DataType::Int, AstValue::Number(v)) => v
+                .parse()
+                .map(Value::I64)
+                .map_err(|_| ValueError::FailedToParseNumber.into()),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
 
-    pub fn clone_by(&self, literal: &Literal) -> Result<Self> {
+    pub fn clone_by(&self, literal: &AstValue) -> Result<Self> {
         match (self, literal) {
-            (Value::I64(_), &Literal::Integer(v)) => Ok(Value::I64(v)),
-            (Value::String(_), &Literal::String(ref v)) => Ok(Value::String(v.clone())),
+            (Value::I64(_), AstValue::Number(v)) => v
+                .parse()
+                .map(Value::I64)
+                .map_err(|_| ValueError::FailedToParseNumber.into()),
+            (Value::String(_), AstValue::SingleQuotedString(v)) => Ok(Value::String(v.clone())),
             _ => Err(ValueError::LiteralNotSupported.into()),
         }
     }

@@ -1,87 +1,41 @@
 use boolinator::Boolinator;
-use nom_sql::{Column, JoinClause, JoinRightSide, SelectStatement, Table};
 use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
 
-use crate::data::Row;
-use crate::executor::join::JoinColumns;
+use sqlparser::ast::{Ident, Query, SetExpr, TableWithJoins};
+
+use crate::data::{Row, Table};
 use crate::executor::{fetch_columns, Blend, BlendContext, Filter, FilterContext, Join, Limit};
 use crate::result::Result;
 use crate::storage::Store;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum SelectError {
-    #[error("table not found")]
-    TableNotFound,
-
     #[error("unimplemented! select on two or more than tables are not supported")]
     TooManyTables,
 
-    #[error("unimplemented! join right side not supported")]
-    JoinRightSideNotSupported,
+    #[error("unreachable!")]
+    Unreachable,
 }
 
-struct SelectParams<'a> {
-    pub table: &'a Table,
-    pub columns: Vec<Column>,
-    pub join_columns: Rc<JoinColumns<'a>>,
-}
-
-fn fetch_select_params<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
-    statement: &'a SelectStatement,
-) -> Result<SelectParams<'a>> {
-    let SelectStatement {
-        tables,
-        join: join_clauses,
-        ..
-    } = statement;
-    let table = tables
-        .iter()
-        .enumerate()
-        .map(|(i, table)| match i {
-            0 => Ok(table),
-            _ => Err(SelectError::TooManyTables.into()),
-        })
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .next()
-        .ok_or(SelectError::TableNotFound)?;
-
-    let columns = fetch_columns(storage, table)?;
-    let join_columns = join_clauses
-        .iter()
-        .map(|JoinClause { right, .. }| {
-            let table = match &right {
-                JoinRightSide::Table(table) => Ok(table),
-                _ => Err(SelectError::JoinRightSideNotSupported),
-            }?;
-
-            let item = (table, Rc::new(fetch_columns(storage, table)?));
-
-            Ok(Rc::new(item))
-        })
-        .collect::<Result<_>>()?;
-
-    Ok(SelectParams {
-        table,
-        columns,
-        join_columns: Rc::new(join_columns),
-    })
+macro_rules! err {
+    ($err: expr) => {{
+        return Err($err.into());
+    }};
 }
 
 fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
-    table: &'a Table,
-    columns: Rc<Vec<Column>>,
+    table: Table<'a>,
+    columns: Rc<Vec<Ident>>,
 ) -> Result<impl Iterator<Item = Result<BlendContext<'a, T>>> + 'a> {
-    let rows = storage.get_data(&table.name)?.map(move |data| {
+    let rows = storage.get_data(table.get_name())?.map(move |data| {
         let (key, row) = data?;
         let columns = Rc::clone(&columns);
 
         Ok(BlendContext {
-            table,
+            table_alias: table.get_alias(),
             columns,
             key,
             row,
@@ -94,27 +48,47 @@ fn fetch_blended<'a, T: 'static + Debug>(
 
 pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    statement: &'a SelectStatement,
+    query: &'a Query,
     filter_context: Option<&'a FilterContext<'a>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    let SelectStatement {
-        where_clause,
-        limit: limit_clause,
-        join: join_clauses,
-        fields,
-        ..
-    } = statement;
-    let SelectParams {
-        table,
-        columns,
-        join_columns,
-    } = fetch_select_params(storage, statement)?;
-    let columns = Rc::new(columns);
+    let (table_with_joins, where_clause, projection) = match &query.body {
+        SetExpr::Select(statement) => {
+            let tables = &statement.from;
+            let table_with_joins = match tables.len() {
+                1 => &tables[0],
+                0 => err!(SelectError::Unreachable),
+                _ => err!(SelectError::TooManyTables),
+            };
 
-    let blend = Blend::new(fields);
-    let filter = Filter::new(storage, where_clause.as_ref(), filter_context);
-    let join = Join::new(storage, join_clauses, filter_context);
-    let limit = Limit::new(limit_clause);
+            (
+                table_with_joins,
+                statement.selection.as_ref(),
+                statement.projection.as_ref(),
+            )
+        }
+        _ => err!(SelectError::Unreachable),
+    };
+
+    let TableWithJoins { relation, joins } = &table_with_joins;
+    let table = Table::new(relation)?;
+
+    let columns = fetch_columns(storage, table.get_name())?;
+    let columns = Rc::new(columns);
+    let join_columns = joins
+        .iter()
+        .map(|join| {
+            let table_name = Table::new(&join.relation)?.get_name();
+            let columns = fetch_columns(storage, table_name)?;
+
+            Ok(Rc::new(columns))
+        })
+        .collect::<Result<_>>()?;
+    let join_columns = Rc::new(join_columns);
+
+    let join = Join::new(storage, joins, filter_context);
+    let blend = Blend::new(projection);
+    let filter = Filter::new(storage, where_clause, filter_context);
+    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
 
     let rows = fetch_blended(storage, table, columns)?
         .flat_map(move |blend_context| {
