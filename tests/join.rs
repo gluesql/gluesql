@@ -105,7 +105,6 @@ fn join() {
         (0, "SELECT * FROM Item i1
             LEFT JOIN Player ON Player.id = i1.player_id
             WHERE Player.id = (SELECT id FROM Item i2 WHERE i2.id = i1.id)"),
-        /*
         (0, "SELECT * FROM Item i1
             LEFT JOIN Player ON Player.id = i1.player_id
             WHERE Player.id =
@@ -121,7 +120,6 @@ fn join() {
                 (SELECT i2.player_id FROM Item i2
                  JOIN Item i3 ON i3.id = i2.id
                  WHERE Player.name = \"Jorno\");"),
-        */
         // cartesian product tests
         (15, "SELECT * FROM Player INNER JOIN Item ON Player.id = Item.player_id;"),
         (25, "SELECT * FROM Player p1 LEFT JOIN Player p2 ON 1 = 1"),
