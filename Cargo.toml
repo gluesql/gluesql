@@ -10,7 +10,6 @@ edition = "2018"
 bincode = "1.2.1"
 boolinator = "2.4.0"
 iter-enum = "0.2"
-nom-sql = "0.0.11"
 or-iterator = "0.1.1"
 serde = { version = "1.0.104", features = ["derive"] }
 sled = "0.31.0"

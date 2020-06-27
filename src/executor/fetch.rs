@@ -13,7 +13,7 @@ pub fn fetch_columns<T: 'static + Debug>(
     table_name: &str,
 ) -> Result<Vec<Ident>> {
     Ok(storage
-        .get_schema2(table_name)?
+        .get_schema(table_name)?
         .column_defs
         .into_iter()
         .map(|ColumnDef { name, .. }| name)

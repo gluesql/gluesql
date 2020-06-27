@@ -1,4 +1,3 @@
-use nom_sql::CreateTableStatement;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -18,8 +17,7 @@ pub trait Store<T: Debug> {
 
     fn set_schema(&self, schema: &Schema) -> Result<()>;
 
-    fn get_schema(&self, table_name: &str) -> Result<CreateTableStatement>;
-    fn get_schema2(&self, table_name: &str) -> Result<Schema>;
+    fn get_schema(&self, table_name: &str) -> Result<Schema>;
 
     fn set_data(&self, key: &T, row: Row) -> Result<Row>;
 

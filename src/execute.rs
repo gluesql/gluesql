@@ -49,7 +49,7 @@ pub fn execute<T: 'static + Debug>(
             source,
         } => {
             let table_name = get_table_name(table_name)?;
-            let Schema { column_defs, .. } = storage.get_schema2(table_name)?;
+            let Schema { column_defs, .. } = storage.get_schema(table_name)?;
             let key = storage.gen_id(&table_name)?;
             let row = Row::new(column_defs, columns, source)?;
             let row = storage.set_data(&key, row)?;

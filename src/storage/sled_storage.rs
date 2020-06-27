@@ -1,4 +1,3 @@
-use nom_sql::CreateTableStatement;
 use sled::{self, Db, IVec};
 use thiserror::Error as ThisError;
 
@@ -70,16 +69,7 @@ impl Store<IVec> for SledStorage {
         Ok(())
     }
 
-    fn get_schema(&self, table_name: &str) -> Result<CreateTableStatement> {
-        let key = format!("schema/{}", table_name);
-        let key = key.as_bytes();
-        let value = try_into!(self.tree.get(&key));
-        let value = value.ok_or(StoreError::SchemaNotFound)?;
-        let statement = try_into!(bincode::deserialize(&value));
-
-        Ok(statement)
-    }
-    fn get_schema2(&self, table_name: &str) -> Result<Schema> {
+    fn get_schema(&self, table_name: &str) -> Result<Schema> {
         let key = format!("schema/{}", table_name);
         let key = key.as_bytes();
         let value = try_into!(self.tree.get(&key));
