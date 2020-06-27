@@ -2,7 +2,8 @@ use thiserror::Error as ThisError;
 
 use crate::data::{RowError, TableError, ValueError};
 use crate::executor::{
-    BlendError, FilterContextError, FilterError, JoinError, LimitError, SelectError, UpdateError,
+    BlendError, EvaluateError, FilterContextError, FilterError, JoinError, LimitError, SelectError,
+    UpdateError,
 };
 use crate::storage::StoreError;
 use crate::ExecuteError;
@@ -16,6 +17,8 @@ pub enum Error {
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
+    #[error(transparent)]
+    Evaluate(#[from] EvaluateError),
     #[error(transparent)]
     Select(#[from] SelectError),
     #[error(transparent)]
@@ -47,6 +50,7 @@ impl PartialEq for Error {
         match (self, other) {
             (Store(e), Store(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
+            (Evaluate(e), Evaluate(e2)) => e == e2,
             (Select(e), Select(e2)) => e == e2,
             (Join(e), Join(e2)) => e == e2,
             (Blend(e), Blend(e2)) => e == e2,

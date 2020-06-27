@@ -1,7 +1,7 @@
 mod helper;
 
 use gluesql::{
-    ExecuteError, FilterContextError, FilterError, JoinError, RowError, SelectError, StoreError,
+    EvaluateError, ExecuteError, FilterContextError, JoinError, RowError, SelectError, StoreError,
     TableError, ValueError,
 };
 use helper::{Helper, SledHelper};
@@ -35,7 +35,7 @@ fn error() {
             "SELECT * FROM TableA CROSS JOIN TableA as A;",
         ),
         (
-            FilterError::NestedSelectRowNotFound.into(),
+            EvaluateError::NestedSelectRowNotFound.into(),
             "SELECT * FROM TableA WHERE id = (SELECT id FROM TableA WHERE id = 2);",
         ),
         (

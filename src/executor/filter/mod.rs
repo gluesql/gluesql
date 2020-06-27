@@ -2,7 +2,6 @@ pub use error::FilterError;
 
 mod check;
 mod error;
-mod parsed;
 
 use std::fmt::Debug;
 
