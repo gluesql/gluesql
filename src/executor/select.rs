@@ -12,14 +12,8 @@ use crate::storage::Store;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum SelectError {
-    #[error("table not found")]
-    TableNotFound,
-
     #[error("unimplemented! select on two or more than tables are not supported")]
     TooManyTables,
-
-    #[error("unimplemented! join right side not supported")]
-    JoinRightSideNotSupported,
 
     #[error("unreachable!")]
     Unreachable,

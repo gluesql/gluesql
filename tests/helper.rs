@@ -14,7 +14,7 @@ pub trait Helper<T: 'static + Debug> {
         let parsed = match Parser::parse_sql(&dialect, sql) {
             Ok(parsed) => parsed,
             Err(e) => {
-                panic!("nom_sql parse_query: {:?}", e);
+                panic!("parse_query: {:?}", e);
             }
         };
         let parsed = &parsed[0];

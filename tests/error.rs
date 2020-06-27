@@ -2,7 +2,7 @@ mod helper;
 
 use gluesql::{
     ExecuteError, FilterContextError, FilterError, JoinError, RowError, SelectError, StoreError,
-    ValueError,
+    TableError, ValueError,
 };
 use helper::{Helper, SledHelper};
 
@@ -18,22 +18,21 @@ fn error() {
 
     let test_cases = vec![
         (StoreError::SchemaNotFound.into(), "SELECT * FROM Nothing;"),
-        (SelectError::TableNotFound.into(), "SELECT * FROM;"),
         (
             SelectError::TooManyTables.into(),
             "SELECT * FROM TableA, TableB",
         ),
         (
-            SelectError::JoinRightSideNotSupported.into(),
+            TableError::TableFactorNotSupported.into(),
             "SELECT * FROM TableA JOIN (SELECT * FROM TableB) as TableC ON 1 = 1",
         ),
         (
             JoinError::UsingOnJoinNotSupported.into(),
-            "SELECT * FROM TableA JOIN TableA USING (id)",
+            "SELECT * FROM TableA JOIN TableA USING (id);",
         ),
         (
             JoinError::JoinTypeNotSupported.into(),
-            "SELECT * FROM TableA CROSS JOIN TableA as A ON 1 = 2;",
+            "SELECT * FROM TableA CROSS JOIN TableA as A;",
         ),
         (
             FilterError::NestedSelectRowNotFound.into(),
@@ -44,16 +43,8 @@ fn error() {
             "SELECT * FROM TableA WHERE noname = 1;",
         ),
         (
-            ValueError::LiteralNotSupported.into(),
-            "UPDATE TableA SET id = 0.11",
-        ),
-        (
             RowError::LackOfRequiredColumn("id".to_owned()).into(),
-            "INSERT INTO TableA () VALUES ();",
-        ),
-        (
-            RowError::LackOfRequiredValue("id".to_owned()).into(),
-            "INSERT INTO TableA VALUES ();",
+            "INSERT INTO TableA (id2) VALUES (1);",
         ),
     ];
 

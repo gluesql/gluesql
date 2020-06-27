@@ -78,7 +78,7 @@ impl Row {
                         .ok_or_else(|| RowError::LackOfRequiredColumn(name.clone())),
                 }?;
 
-                let literal = values.get(i).ok_or(RowError::LackOfRequiredValue(name))?;
+                let literal = values.get(i).ok_or(RowError::Unreachable)?;
 
                 match literal {
                     Expr::Value(literal) => Value::new(data_type, literal),
