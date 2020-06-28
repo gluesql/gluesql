@@ -15,8 +15,8 @@ pub enum EvaluateError {
     #[error("unreachable condition base")]
     UnreachableConditionBase,
 
-    #[error("unreachable parsed arithmetic")]
-    UnreachableParsedArithmetic,
+    #[error("unreachable evaluated arithmetic")]
+    UnreachableEvaluatedArithmetic,
 
     #[error("unreachable literal arithmetic")]
     UnreachableLiteralArithmetic,

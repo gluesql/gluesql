@@ -8,7 +8,7 @@ use crate::result::Result;
 
 use super::EvaluateError;
 
-pub enum Parsed<'a> {
+pub enum Evaluated<'a> {
     LiteralRef(&'a AstValue),
     Literal(AstValue),
     StringRef(&'a str),
@@ -16,8 +16,8 @@ pub enum Parsed<'a> {
     Value(Value),
 }
 
-impl<'a> PartialEq for Parsed<'a> {
-    fn eq(&self, other: &Parsed<'a>) -> bool {
+impl<'a> PartialEq for Evaluated<'a> {
+    fn eq(&self, other: &Evaluated<'a>) -> bool {
         let eq_ast = |l: &AstValue, r| match l {
             AstValue::SingleQuotedString(l) => l == r,
             _ => false,
@@ -29,7 +29,7 @@ impl<'a> PartialEq for Parsed<'a> {
         };
 
         {
-            use Parsed::*;
+            use Evaluated::*;
 
             match self {
                 LiteralRef(l) => match other {
@@ -70,9 +70,9 @@ impl<'a> PartialEq for Parsed<'a> {
     }
 }
 
-impl<'a> PartialOrd for Parsed<'a> {
-    fn partial_cmp(&self, other: &Parsed<'a>) -> Option<Ordering> {
-        use Parsed::*;
+impl<'a> PartialOrd for Evaluated<'a> {
+    fn partial_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
+        use Evaluated::*;
 
         match self {
             LiteralRef(l) => match other {
@@ -126,81 +126,81 @@ fn literal_partial_cmp(a: &AstValue, b: &AstValue) -> Option<Ordering> {
     }
 }
 
-impl<'a> Parsed<'a> {
-    pub fn add(&self, other: &Parsed<'a>) -> Result<Parsed<'a>> {
-        use Parsed::*;
+impl<'a> Evaluated<'a> {
+    pub fn add(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
 
-        let unreachable = Err(EvaluateError::UnreachableParsedArithmetic.into());
+        let unreachable = Err(EvaluateError::UnreachableEvaluatedArithmetic.into());
 
         match self {
             LiteralRef(l) => match other {
-                LiteralRef(r) => literal_add(l, r).map(Parsed::Literal),
-                ValueRef(r) => r.add(&r.clone_by(l)?).map(Parsed::Value),
+                LiteralRef(r) => literal_add(l, r).map(Evaluated::Literal),
+                ValueRef(r) => r.add(&r.clone_by(l)?).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
-                LiteralRef(r) => l.add(&l.clone_by(r)?).map(Parsed::Value),
-                ValueRef(r) => l.add(r).map(Parsed::Value),
+                LiteralRef(r) => l.add(&l.clone_by(r)?).map(Evaluated::Value),
+                ValueRef(r) => l.add(r).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             Value(_) | StringRef(_) | Literal(_) => unreachable,
         }
     }
 
-    pub fn subtract(&self, other: &Parsed<'a>) -> Result<Parsed<'a>> {
-        use Parsed::*;
+    pub fn subtract(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
 
-        let unreachable = Err(EvaluateError::UnreachableParsedArithmetic.into());
+        let unreachable = Err(EvaluateError::UnreachableEvaluatedArithmetic.into());
 
         match self {
             LiteralRef(l) => match other {
-                LiteralRef(r) => literal_subtract(l, r).map(Parsed::Literal),
-                ValueRef(r) => r.rsubtract(&r.clone_by(l)?).map(Parsed::Value),
+                LiteralRef(r) => literal_subtract(l, r).map(Evaluated::Literal),
+                ValueRef(r) => r.rsubtract(&r.clone_by(l)?).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
-                LiteralRef(r) => l.subtract(&l.clone_by(r)?).map(Parsed::Value),
-                ValueRef(r) => l.subtract(r).map(Parsed::Value),
+                LiteralRef(r) => l.subtract(&l.clone_by(r)?).map(Evaluated::Value),
+                ValueRef(r) => l.subtract(r).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             Value(_) | StringRef(_) | Literal(_) => unreachable,
         }
     }
 
-    pub fn multiply(&self, other: &Parsed<'a>) -> Result<Parsed<'a>> {
-        use Parsed::*;
+    pub fn multiply(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
 
-        let unreachable = Err(EvaluateError::UnreachableParsedArithmetic.into());
+        let unreachable = Err(EvaluateError::UnreachableEvaluatedArithmetic.into());
 
         match self {
             LiteralRef(l) => match other {
-                LiteralRef(r) => literal_multiply(l, r).map(Parsed::Literal),
-                ValueRef(r) => r.multiply(&r.clone_by(l)?).map(Parsed::Value),
+                LiteralRef(r) => literal_multiply(l, r).map(Evaluated::Literal),
+                ValueRef(r) => r.multiply(&r.clone_by(l)?).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
-                LiteralRef(r) => l.multiply(&l.clone_by(r)?).map(Parsed::Value),
-                ValueRef(r) => l.multiply(r).map(Parsed::Value),
+                LiteralRef(r) => l.multiply(&l.clone_by(r)?).map(Evaluated::Value),
+                ValueRef(r) => l.multiply(r).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             Value(_) | StringRef(_) | Literal(_) => unreachable,
         }
     }
 
-    pub fn divide(&self, other: &Parsed<'a>) -> Result<Parsed<'a>> {
-        use Parsed::*;
+    pub fn divide(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
 
-        let unreachable = Err(EvaluateError::UnreachableParsedArithmetic.into());
+        let unreachable = Err(EvaluateError::UnreachableEvaluatedArithmetic.into());
 
         match self {
             LiteralRef(l) => match other {
-                LiteralRef(r) => literal_divide(l, r).map(Parsed::Literal),
-                ValueRef(r) => r.rdivide(&r.clone_by(l)?).map(Parsed::Value),
+                LiteralRef(r) => literal_divide(l, r).map(Evaluated::Literal),
+                ValueRef(r) => r.rdivide(&r.clone_by(l)?).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
-                LiteralRef(r) => l.divide(&l.clone_by(r)?).map(Parsed::Value),
-                ValueRef(r) => l.divide(r).map(Parsed::Value),
+                LiteralRef(r) => l.divide(&l.clone_by(r)?).map(Evaluated::Value),
+                ValueRef(r) => l.divide(r).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             Value(_) | StringRef(_) | Literal(_) => unreachable,

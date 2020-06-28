@@ -1,5 +1,5 @@
 mod error;
-mod parsed;
+mod evaluated;
 
 use std::fmt::Debug;
 
@@ -10,24 +10,26 @@ use crate::result::Result;
 use crate::storage::Store;
 
 pub use error::EvaluateError;
-pub use parsed::Parsed;
+pub use evaluated::Evaluated;
 
 pub fn evaluate<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a Expr,
-) -> Result<Parsed<'a>> {
+) -> Result<Evaluated<'a>> {
     let eval = |expr| evaluate(storage, filter_context, expr);
     let parse_value = |value: &'a AstValue| match value {
-        v @ AstValue::Number(_) => Ok(Parsed::LiteralRef(v)),
+        v @ AstValue::Number(_) => Ok(Evaluated::LiteralRef(v)),
         _ => Err(EvaluateError::Unimplemented.into()),
     };
 
     match expr {
         Expr::Value(value) => parse_value(&value),
         Expr::Identifier(ident) => match ident.quote_style {
-            Some(_) => Ok(Parsed::StringRef(&ident.value)),
-            None => filter_context.get_value(&ident.value).map(Parsed::ValueRef),
+            Some(_) => Ok(Evaluated::StringRef(&ident.value)),
+            None => filter_context
+                .get_value(&ident.value)
+                .map(Evaluated::ValueRef),
         },
         Expr::Nested(expr) => eval(&expr),
         Expr::CompoundIdentifier(idents) => {
@@ -40,11 +42,11 @@ pub fn evaluate<'a, T: 'static + Debug>(
 
             filter_context
                 .get_alias_value(table_alias, column)
-                .map(Parsed::ValueRef)
+                .map(Evaluated::ValueRef)
         }
         Expr::Subquery(query) => select(storage, &query, Some(filter_context))?
             .map(|row| row?.take_first_value())
-            .map(|value| value.map(Parsed::Value))
+            .map(|value| value.map(Evaluated::Value))
             .next()
             .ok_or(EvaluateError::NestedSelectRowNotFound)?,
         Expr::BinaryOp { op, left, right } => {

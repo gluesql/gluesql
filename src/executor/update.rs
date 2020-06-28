@@ -4,7 +4,7 @@ use thiserror::Error;
 use sqlparser::ast::{Assignment, Ident};
 
 use crate::data::{Row, Value};
-use crate::executor::{evaluate, FilterContext, Parsed};
+use crate::executor::{evaluate, Evaluated, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -53,8 +53,6 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
     fn find(&self, row: &Row, column: &Ident) -> Option<Result<Value>> {
         let context = FilterContext::new(self.table_name, self.columns, row, None);
 
-        println!("find {}", column.value);
-
         self.fields
             .iter()
             .find(|assignment| assignment.id.value == column.value)
@@ -72,11 +70,11 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                 let value = &values[index];
 
                 match parsed {
-                    Parsed::LiteralRef(v) => value.clone_by(v),
-                    Parsed::Literal(v) => value.clone_by(&v),
-                    Parsed::StringRef(v) => Ok(Value::String(v.to_string())),
-                    Parsed::ValueRef(v) => Ok(v.clone()),
-                    Parsed::Value(v) => Ok(v),
+                    Evaluated::LiteralRef(v) => value.clone_by(v),
+                    Evaluated::Literal(v) => value.clone_by(&v),
+                    Evaluated::StringRef(v) => Ok(Value::String(v.to_string())),
+                    Evaluated::ValueRef(v) => Ok(v.clone()),
+                    Evaluated::Value(v) => Ok(v),
                 }
             })
     }

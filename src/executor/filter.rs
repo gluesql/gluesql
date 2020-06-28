@@ -5,7 +5,7 @@ use thiserror::Error;
 use sqlparser::ast::{BinaryOperator, Expr, Ident, UnaryOperator};
 
 use crate::data::Row;
-use crate::executor::{evaluate, select, BlendContext, FilterContext, Parsed};
+use crate::executor::{evaluate, select, BlendContext, Evaluated, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -144,7 +144,7 @@ pub fn check_expr<'a, T: 'static + Debug>(
                 .filter_map(|value| {
                     value.map_or_else(
                         |error| Some(Err(error)),
-                        |value| (target == Parsed::ValueRef(&value)).as_some(Ok(!negated)),
+                        |value| (target == Evaluated::ValueRef(&value)).as_some(Ok(!negated)),
                     )
                 })
                 .next()
