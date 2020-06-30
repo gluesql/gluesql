@@ -10,6 +10,7 @@ fn sql_types() {
         CREATE TABLE Item (
             id INTEGER,
             content TEXT,
+            verified BOOLEAN
         );
     ";
 
@@ -20,8 +21,8 @@ fn sql_types() {
     helper.run_and_print(delete_sql);
 
     let insert_sqls = [
-        "INSERT INTO Item (id, content) VALUES (1, \"Hello\");",
-        "INSERT INTO Item (id, content) VALUES (1, \"World\");",
+        "INSERT INTO Item (id, content, verified, ratio) VALUES (1, \"Hello\", True);",
+        "INSERT INTO Item (id, content, verified, ratio) VALUES (1, \"World\", False);",
     ];
 
     for insert_sql in insert_sqls.iter() {
@@ -30,6 +31,7 @@ fn sql_types() {
 
     let test_sqls = [
         (2, "SELECT * FROM Item;"),
+        (1, "SELECT * FROM Item WHERE verified = True;"),
         (
             1,
             "UPDATE Item SET content=\"Foo\" WHERE content=\"World\";",

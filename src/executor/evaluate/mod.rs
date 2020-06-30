@@ -18,13 +18,12 @@ pub fn evaluate<'a, T: 'static + Debug>(
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| evaluate(storage, filter_context, expr);
-    let parse_value = |value: &'a AstValue| match value {
-        v @ AstValue::Number(_) => Ok(Evaluated::LiteralRef(v)),
-        _ => Err(EvaluateError::Unimplemented.into()),
-    };
 
     match expr {
-        Expr::Value(value) => parse_value(&value),
+        Expr::Value(value) => match value {
+            v @ AstValue::Number(_) | v @ AstValue::Boolean(_) => Ok(Evaluated::LiteralRef(v)),
+            _ => Err(EvaluateError::Unimplemented.into()),
+        },
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Evaluated::StringRef(&ident.value)),
             None => filter_context

@@ -33,6 +33,7 @@ pub enum ValueError {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Value {
+    Bool(bool),
     I64(i64),
     String(String),
 }
@@ -40,6 +41,7 @@ pub enum Value {
 impl PartialEq<AstValue> for Value {
     fn eq(&self, other: &AstValue) -> bool {
         match (self, other) {
+            (Value::Bool(l), AstValue::Boolean(r)) => l == r,
             (Value::I64(l), AstValue::Number(r)) => match r.parse::<i64>() {
                 Ok(r) => l == &r,
                 Err(_) => false,
@@ -80,6 +82,7 @@ impl Value {
                 .parse()
                 .map(Value::I64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
+            (DataType::Boolean, AstValue::Boolean(v)) => Ok(Value::Bool(*v)),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
@@ -91,6 +94,7 @@ impl Value {
                 .map(Value::I64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             (Value::String(_), AstValue::SingleQuotedString(v)) => Ok(Value::String(v.clone())),
+            (Value::Bool(_), AstValue::Boolean(v)) => Ok(Value::Bool(*v)),
             _ => Err(ValueError::LiteralNotSupported.into()),
         }
     }
