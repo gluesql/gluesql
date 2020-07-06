@@ -14,7 +14,7 @@ pub enum ExecuteError {
     QueryNotSupported,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub enum Payload {
     Create,
     Insert(Row),
