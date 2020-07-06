@@ -28,7 +28,7 @@ pub enum RowError {
     ConflictOnEmptyRow,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub struct Row(pub Vec<Value>);
 
 impl Row {
