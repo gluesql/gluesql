@@ -4,8 +4,8 @@ use gluesql::{Payload, Row, Value};
 use helper::{Helper, SledHelper};
 
 #[test]
-fn insert_select() {
-    let helper = SledHelper::new("data.db");
+fn basic() {
+    let helper = SledHelper::new("data/basic");
 
     helper.run_and_print(
         r#"

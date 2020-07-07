@@ -4,7 +4,7 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn nested_select() {
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/nested_select");
 
     let create_sqls: [&str; 2] = [
         "

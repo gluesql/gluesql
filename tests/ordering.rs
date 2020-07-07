@@ -6,7 +6,7 @@ use helper::{Helper, SledHelper};
 fn ordering() {
     println!("\n\n");
 
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/ordering");
 
     let create_sql = "
         CREATE TABLE Operator (

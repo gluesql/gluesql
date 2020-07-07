@@ -4,7 +4,7 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn join() {
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/join");
 
     let create_sqls: [&str; 2] = [
         "

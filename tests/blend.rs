@@ -5,7 +5,7 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn blend() {
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/blend");
 
     let create_sqls: [&str; 2] = [
         "

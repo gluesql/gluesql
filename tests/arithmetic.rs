@@ -6,7 +6,7 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn arithmetic() {
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/arithmetic");
 
     let create_sql = "
         CREATE TABLE Arith (

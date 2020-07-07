@@ -4,9 +4,7 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn synthesize() {
-    println!("\n\n");
-
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/synthesize");
 
     let create_sql = "
         CREATE TABLE TableA (
@@ -88,6 +86,4 @@ fn synthesize() {
     for (num, sql) in test_cases.iter() {
         test_select(sql, *num);
     }
-
-    println!("\n\n");
 }

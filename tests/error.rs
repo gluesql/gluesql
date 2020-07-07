@@ -8,7 +8,7 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn error() {
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/error");
 
     let sql = "DROP TABLE TableA";
     helper.test_error(sql, ExecuteError::QueryNotSupported.into());

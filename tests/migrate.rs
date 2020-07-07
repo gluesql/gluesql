@@ -5,7 +5,7 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn migrate() {
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/migrate");
 
     let sql = r#"
 CREATE TABLE Test (

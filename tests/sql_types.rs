@@ -4,7 +4,7 @@ use helper::{Helper, SledHelper};
 
 #[test]
 fn sql_types() {
-    let helper = SledHelper::new("data.db");
+    let helper = SledHelper::new("data/sql_types");
 
     let create_sql = "
         CREATE TABLE Item (
