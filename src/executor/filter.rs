@@ -88,23 +88,23 @@ pub fn check_expr<'a, T: 'static + Debug>(
     filter_context: &'a FilterContext<'a>,
     expr: &'a Expr,
 ) -> Result<bool> {
-    let parse = |expr| evaluate(storage, filter_context, expr);
+    let evaluate = |expr| evaluate(storage, filter_context, expr);
     let check = |expr| check_expr(storage, filter_context, expr);
 
     match expr {
         Expr::BinaryOp { op, left, right } => {
-            let zip_parse = || Ok((parse(left)?, parse(right)?));
+            let zip_evaluate = || Ok((evaluate(left)?, evaluate(right)?));
             let zip_check = || Ok((check(left)?, check(right)?));
 
             match op {
-                BinaryOperator::Eq => zip_parse().map(|(l, r)| l == r),
-                BinaryOperator::NotEq => zip_parse().map(|(l, r)| l != r),
+                BinaryOperator::Eq => zip_evaluate().map(|(l, r)| l == r),
+                BinaryOperator::NotEq => zip_evaluate().map(|(l, r)| l != r),
                 BinaryOperator::And => zip_check().map(|(l, r)| l && r),
                 BinaryOperator::Or => zip_check().map(|(l, r)| l || r),
-                BinaryOperator::Lt => zip_parse().map(|(l, r)| l < r),
-                BinaryOperator::LtEq => zip_parse().map(|(l, r)| l <= r),
-                BinaryOperator::Gt => zip_parse().map(|(l, r)| l > r),
-                BinaryOperator::GtEq => zip_parse().map(|(l, r)| l >= r),
+                BinaryOperator::Lt => zip_evaluate().map(|(l, r)| l < r),
+                BinaryOperator::LtEq => zip_evaluate().map(|(l, r)| l <= r),
+                BinaryOperator::Gt => zip_evaluate().map(|(l, r)| l > r),
+                BinaryOperator::GtEq => zip_evaluate().map(|(l, r)| l >= r),
                 _ => Err(FilterError::Unimplemented.into()),
             }
         }
@@ -119,13 +119,13 @@ pub fn check_expr<'a, T: 'static + Debug>(
             negated,
         } => {
             let negated = *negated;
-            let target = parse(expr)?;
+            let target = evaluate(expr)?;
 
             list.iter()
                 .filter_map(|expr| {
-                    parse(expr).map_or_else(
+                    evaluate(expr).map_or_else(
                         |error| Some(Err(error)),
-                        |parsed| (target == parsed).as_some(Ok(!negated)),
+                        |evaluated| (target == evaluated).as_some(Ok(!negated)),
                     )
                 })
                 .next()
@@ -137,7 +137,7 @@ pub fn check_expr<'a, T: 'static + Debug>(
             negated,
         } => {
             let negated = *negated;
-            let target = parse(expr)?;
+            let target = evaluate(expr)?;
 
             select(storage, &subquery, Some(filter_context))?
                 .map(|row| row?.take_first_value())

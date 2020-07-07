@@ -65,11 +65,11 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     .position(|column| column.value == id.value)
                     .ok_or_else(|| UpdateError::Unreachable)?;
 
-                let parsed = evaluate(self.storage, &context, value)?;
+                let evaluated = evaluate(self.storage, &context, value)?;
                 let Row(values) = &row;
                 let value = &values[index];
 
-                match parsed {
+                match evaluated {
                     Evaluated::LiteralRef(v) => value.clone_by(v),
                     Evaluated::Literal(v) => value.clone_by(&v),
                     Evaluated::StringRef(v) => Ok(Value::String(v.to_string())),
