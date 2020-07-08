@@ -86,7 +86,7 @@ pub fn select<'a, T: 'static + Debug>(
     let join_columns = Rc::new(join_columns);
 
     let join = Join::new(storage, joins, filter_context);
-    let blend = Blend::new(projection);
+    let blend = Blend::new(storage, projection);
     let filter = Filter::new(storage, where_clause, filter_context);
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
 

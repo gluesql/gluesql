@@ -95,7 +95,7 @@ fn blend() {
     let error_cases = vec![
         (
             BlendError::FieldDefinitionNotSupported,
-            "SELECT 1 * 2 FROM BlendItem;",
+            "SELECT (1 * 2) as a FROM BlendItem;",
         ),
         (
             BlendError::ColumnNotFound("a".to_owned()),

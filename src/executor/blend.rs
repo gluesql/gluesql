@@ -1,4 +1,5 @@
 use iter_enum::Iterator;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::once;
 use std::rc::Rc;
@@ -7,8 +8,9 @@ use thiserror::Error;
 use sqlparser::ast::{Expr, Ident, SelectItem};
 
 use crate::data::{get_table_name, Row, Value};
-use crate::executor::BlendContext;
+use crate::executor::{evaluate, BlendContext, Evaluated, FilterContext};
 use crate::result::Result;
+use crate::storage::Store;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum BlendError {
@@ -22,7 +24,8 @@ pub enum BlendError {
     TableNotFound(String),
 }
 
-pub struct Blend<'a> {
+pub struct Blend<'a, T: 'static + Debug> {
+    storage: &'a dyn Store<T>,
     fields: &'a [SelectItem],
 }
 
@@ -41,15 +44,12 @@ struct Context<'a> {
     next: Option<Box<Context<'a>>>,
 }
 
-impl<'a> Blend<'a> {
-    pub fn new(fields: &'a [SelectItem]) -> Self {
-        Self { fields }
+impl<'a, T: 'static + Debug> Blend<'a, T> {
+    pub fn new(storage: &'a dyn Store<T>, fields: &'a [SelectItem]) -> Self {
+        Self { storage, fields }
     }
 
-    pub fn apply<T: 'static + Debug>(
-        &self,
-        context: Result<Rc<BlendContext<'a, T>>>,
-    ) -> Result<Row> {
+    pub fn apply(&self, context: Result<Rc<BlendContext<'a, T>>>) -> Result<Row> {
         let context = Self::prepare(context?);
 
         let values = self
@@ -64,7 +64,7 @@ impl<'a> Blend<'a> {
         Ok(Row(values))
     }
 
-    fn prepare<T: 'static + Debug>(context: Rc<BlendContext<'a, T>>) -> Context<'a> {
+    fn prepare(context: Rc<BlendContext<'a, T>>) -> Context<'a> {
         match Rc::try_unwrap(context) {
             Ok(BlendContext {
                 table_alias,
@@ -162,9 +162,15 @@ impl<'a> Blend<'a> {
                             ))),
                         }
                     }
+                    Expr::BinaryOp { .. } => {
+                        let value =
+                            evaluate_blended(self.storage, None, &context, expr).map(Rc::new);
+
+                        Blended::Single(once(value))
+                    }
                     _ => err!(BlendError::FieldDefinitionNotSupported),
                 },
-                SelectItem::ExprWithAlias { .. } => err!(BlendError::FieldDefinitionNotSupported),
+                _ => err!(BlendError::FieldDefinitionNotSupported),
             })
             .collect::<Result<_>>()
     }
@@ -223,5 +229,35 @@ fn get_alias_values(context: &Context<'_>, table_alias: &str) -> Option<Vec<Rc<V
             .next
             .as_ref()
             .and_then(|c| get_alias_values(c, table_alias))
+    }
+}
+
+fn evaluate_blended<T: 'static + Debug>(
+    storage: &dyn Store<T>,
+    filter_context: Option<&FilterContext<'_>>,
+    context: &Context<'_>,
+    expr: &Expr,
+) -> Result<Value> {
+    let Context {
+        table_alias,
+        columns,
+        values,
+        next,
+    } = context;
+
+    // TODO: Remove clone
+    let values = values.iter().map(|v| Value::clone(&v)).collect();
+    let row = Row(values);
+    let filter_context = FilterContext::new(table_alias, &columns, &row, filter_context);
+
+    match next {
+        Some(context) => evaluate_blended(storage, Some(&filter_context), context, expr),
+        None => match evaluate(storage, &filter_context, expr)? {
+            Evaluated::LiteralRef(v) => Value::try_from(v),
+            Evaluated::Literal(v) => Value::try_from(&v),
+            Evaluated::StringRef(v) => Ok(Value::String(v.to_string())),
+            Evaluated::ValueRef(v) => Ok(v.clone()),
+            Evaluated::Value(v) => Ok(v),
+        },
     }
 }

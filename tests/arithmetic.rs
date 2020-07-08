@@ -1,7 +1,6 @@
 mod helper;
 
-use gluesql::{UpdateError, ValueError};
-
+use gluesql::{Payload, Row, UpdateError, Value, ValueError};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -96,4 +95,57 @@ fn arithmetic() {
     test_cases
         .into_iter()
         .for_each(|(error, sql)| helper.test_error(sql, error));
+}
+
+#[test]
+fn blend_arithmetic() {
+    let helper = SledHelper::new("data/blend_arithmetic");
+
+    let create_sql = "
+        CREATE TABLE Arith (
+            id INTEGER,
+            num INTEGER,
+        );
+    ";
+
+    helper.run_and_print(create_sql);
+
+    let delete_sql = "DELETE FROM Arith";
+    helper.run_and_print(delete_sql);
+
+    let insert_sqls = [
+        "INSERT INTO Arith (id, num) VALUES (1, 6);",
+        "INSERT INTO Arith (id, num) VALUES (2, 8);",
+        "INSERT INTO Arith (id, num) VALUES (3, 4);",
+        "INSERT INTO Arith (id, num) VALUES (4, 2);",
+        "INSERT INTO Arith (id, num) VALUES (5, 3);",
+    ];
+
+    for insert_sql in insert_sqls.iter() {
+        helper.run(insert_sql).unwrap();
+    }
+
+    use Value::I64;
+
+    let found = helper
+        .run("SELECT id, id + 1, id + num, 1 + 1 FROM Arith")
+        .expect("select");
+    let expected = select!(
+        I64 I64 I64 I64;
+        1   2   7   2;
+        2   3   10  2;
+        3   4   7   2;
+        4   5   6   2;
+        5   6   8   2
+    );
+    assert_eq!(expected, found);
+
+    let sql = "
+      SELECT a.id + b.id
+      FROM Arith a
+      JOIN Arith b ON a.id = b.id + 1
+    ";
+    let found = helper.run(sql).expect("select");
+    let expected = select!(I64; 3; 5; 7; 9);
+    assert_eq!(expected, found);
 }

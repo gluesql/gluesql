@@ -1,13 +1,14 @@
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
+use std::convert::TryFrom;
 use std::fmt::Debug;
-use thiserror::Error;
+use thiserror::Error as ThisError;
 
 use sqlparser::ast::{DataType, Value as AstValue};
 
-use crate::result::Result;
+use crate::result::{Error, Result};
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(ThisError, Debug, PartialEq)]
 pub enum ValueError {
     #[error("sql type not supported yet")]
     SqlTypeNotSupported,
@@ -81,6 +82,21 @@ impl PartialOrd<AstValue> for Value {
             },
             (Value::String(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
             _ => None,
+        }
+    }
+}
+
+impl TryFrom<&AstValue> for Value {
+    type Error = Error;
+
+    fn try_from(literal: &AstValue) -> Result<Self> {
+        match literal {
+            AstValue::Number(v) => v
+                .parse::<i64>()
+                .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
+                .map_err(|_| ValueError::FailedToParseNumber.into()),
+            AstValue::Boolean(v) => Ok(Value::Bool(*v)),
+            _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
 }
