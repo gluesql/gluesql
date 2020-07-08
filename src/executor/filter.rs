@@ -83,7 +83,7 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
     }
 }
 
-pub fn check_expr<'a, T: 'static + Debug>(
+fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: &'a FilterContext<'a>,
     expr: &'a Expr,
@@ -154,7 +154,7 @@ pub fn check_expr<'a, T: 'static + Debug>(
     }
 }
 
-pub fn check_blended_expr<T: 'static + Debug>(
+fn check_blended_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,
     filter_context: Option<&FilterContext<'_>>,
     blend_context: &BlendContext<'_, T>,
