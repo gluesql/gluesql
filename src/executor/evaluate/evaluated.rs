@@ -24,7 +24,7 @@ impl<'a> PartialEq for Evaluated<'a> {
         };
 
         let eq_val = |l: &Value, r| match l {
-            Value::String(l) => l == r,
+            Value::Str(l) => l == r,
             _ => false,
         };
 
@@ -87,7 +87,7 @@ impl<'a> PartialOrd for Evaluated<'a> {
                 ValueRef(r) => l.partial_cmp(r),
                 Value(r) => l.partial_cmp(&r),
                 StringRef(r) => match l {
-                    data::Value::String(l) => (&l.as_str()).partial_cmp(r),
+                    data::Value::Str(l) => (&l.as_str()).partial_cmp(r),
                     _ => None,
                 },
                 Literal(_) => panic!(),
@@ -97,15 +97,15 @@ impl<'a> PartialOrd for Evaluated<'a> {
                 ValueRef(r) => l.partial_cmp(*r),
                 Value(r) => l.partial_cmp(r),
                 StringRef(r) => match l {
-                    data::Value::String(l) => (&l.as_str()).partial_cmp(r),
+                    data::Value::Str(l) => (&l.as_str()).partial_cmp(r),
                     _ => None,
                 },
                 Literal(_) => panic!(),
             },
             StringRef(l) => match other {
                 LiteralRef(_) => None,
-                ValueRef(data::Value::String(r)) => l.partial_cmp(&r.as_str()),
-                Value(data::Value::String(r)) => l.partial_cmp(&r.as_str()),
+                ValueRef(data::Value::Str(r)) => l.partial_cmp(&r.as_str()),
+                Value(data::Value::Str(r)) => l.partial_cmp(&r.as_str()),
                 StringRef(r) => l.partial_cmp(r),
                 Literal(_) => panic!(),
                 _ => None,

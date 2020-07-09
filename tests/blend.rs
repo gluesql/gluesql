@@ -52,7 +52,7 @@ fn blend() {
         (
             "SELECT id, name FROM BlendUser",
             select!(
-                I64 String;
+                I64 Str;
                 1   "Taehoon".to_owned();
                 2   "Mike".to_owned();
                 3   "Jorno".to_owned()
@@ -81,7 +81,7 @@ fn blend() {
             JOIN BlendItem i ON u.id = 2 AND u.id = i.player_id
             ",
             select!(
-                I64 I64 I64 String;
+                I64 I64 I64 Str;
                 102 2 4 "Mike".to_owned();
                 103 2 9 "Mike".to_owned()
             ),

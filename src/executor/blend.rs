@@ -255,7 +255,7 @@ fn evaluate_blended<T: 'static + Debug>(
         None => match evaluate(storage, &filter_context, expr)? {
             Evaluated::LiteralRef(v) => Value::try_from(v),
             Evaluated::Literal(v) => Value::try_from(&v),
-            Evaluated::StringRef(v) => Ok(Value::String(v.to_string())),
+            Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
             Evaluated::ValueRef(v) => Ok(v.clone()),
             Evaluated::Value(v) => Ok(v),
         },

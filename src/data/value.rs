@@ -40,11 +40,11 @@ pub enum Value {
     Bool(bool),
     I64(i64),
     F64(f64),
-    String(String),
+    Str(String),
     OptBool(Option<bool>),
     OptI64(Option<i64>),
     OptF64(Option<f64>),
-    OptString(Option<String>),
+    OptStr(Option<String>),
 }
 
 impl PartialEq<AstValue> for Value {
@@ -62,12 +62,12 @@ impl PartialEq<AstValue> for Value {
                 Ok(r) => l == &r,
                 Err(_) => false,
             },
-            (Value::String(l), AstValue::SingleQuotedString(r))
-            | (Value::OptString(Some(l)), AstValue::SingleQuotedString(r)) => l == r,
+            (Value::Str(l), AstValue::SingleQuotedString(r))
+            | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => l == r,
             (Value::OptBool(None), AstValue::Null)
             | (Value::OptI64(None), AstValue::Null)
             | (Value::OptF64(None), AstValue::Null)
-            | (Value::OptString(None), AstValue::Null) => true,
+            | (Value::OptStr(None), AstValue::Null) => true,
             _ => false,
         }
     }
@@ -82,8 +82,9 @@ impl PartialOrd<Value> for Value {
             (Value::F64(l), Value::F64(r)) | (Value::OptF64(Some(l)), Value::F64(r)) => {
                 l.partial_cmp(r)
             }
-            (Value::String(l), Value::String(r))
-            | (Value::OptString(Some(l)), Value::String(r)) => Some(l.cmp(r)),
+            (Value::Str(l), Value::Str(r)) | (Value::OptStr(Some(l)), Value::Str(r)) => {
+                Some(l.cmp(r))
+            }
             _ => None,
         }
     }
@@ -102,8 +103,8 @@ impl PartialOrd<AstValue> for Value {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => None,
             },
-            (Value::String(l), AstValue::SingleQuotedString(r))
-            | (Value::OptString(Some(l)), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
+            (Value::Str(l), AstValue::SingleQuotedString(r))
+            | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -199,11 +200,11 @@ impl Value {
                 .map(|v| Value::OptF64(Some(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             (Value::OptF64(_), AstValue::Null) => Ok(Value::OptF64(None)),
-            (Value::String(_), AstValue::SingleQuotedString(v)) => Ok(Value::String(v.clone())),
-            (Value::OptString(_), AstValue::SingleQuotedString(v)) => {
-                Ok(Value::OptString(Some(v.clone())))
+            (Value::Str(_), AstValue::SingleQuotedString(v)) => Ok(Value::Str(v.clone())),
+            (Value::OptStr(_), AstValue::SingleQuotedString(v)) => {
+                Ok(Value::OptStr(Some(v.clone())))
             }
-            (Value::OptString(_), AstValue::Null) => Ok(Value::OptString(None)),
+            (Value::OptStr(_), AstValue::Null) => Ok(Value::OptStr(None)),
             (Value::Bool(_), AstValue::Boolean(v)) => Ok(Value::Bool(*v)),
             (Value::OptBool(_), AstValue::Boolean(v)) => Ok(Value::OptBool(Some(*v))),
             (Value::OptBool(_), AstValue::Null) => Ok(Value::OptBool(None)),

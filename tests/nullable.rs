@@ -25,7 +25,7 @@ CREATE TABLE Test (
         .run("SELECT id, num, name FROM Test")
         .expect("select");
     let expected = select!(
-        OptI64  I64 String;
+        OptI64  I64 Str;
         None    2   "Hello".to_owned();
         Some(1) 9   "World".to_owned();
         Some(3) 4   "Great".to_owned()
