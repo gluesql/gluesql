@@ -236,18 +236,6 @@ impl Value {
         }
     }
 
-    pub fn rsubtract(&self, other: &Value) -> Result<Value> {
-        use Value::*;
-
-        match (self, other) {
-            (I64(a), I64(b)) => Ok(I64(b - a)),
-            (I64(a), OptI64(Some(b))) | (OptI64(Some(a)), I64(b)) => Ok(OptI64(Some(b - a))),
-            (F64(a), F64(b)) => Ok(F64(b - a)),
-            (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(b - a))),
-            _ => Err(ValueError::SubtractOnNonNumeric.into()),
-        }
-    }
-
     pub fn multiply(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
@@ -268,18 +256,6 @@ impl Value {
             (I64(a), OptI64(Some(b))) | (OptI64(Some(a)), I64(b)) => Ok(OptI64(Some(a / b))),
             (F64(a), F64(b)) => Ok(F64(a / b)),
             (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(a / b))),
-            _ => Err(ValueError::DivideOnNonNumeric.into()),
-        }
-    }
-
-    pub fn rdivide(&self, other: &Value) -> Result<Value> {
-        use Value::*;
-
-        match (self, other) {
-            (I64(a), I64(b)) => Ok(I64(b / a)),
-            (I64(a), OptI64(Some(b))) | (OptI64(Some(a)), I64(b)) => Ok(OptI64(Some(b / a))),
-            (F64(a), F64(b)) => Ok(F64(b / a)),
-            (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(b / a))),
             _ => Err(ValueError::DivideOnNonNumeric.into()),
         }
     }

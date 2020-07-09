@@ -155,7 +155,7 @@ impl<'a> Evaluated<'a> {
         match self {
             LiteralRef(l) => match other {
                 LiteralRef(r) => literal_subtract(l, r).map(Evaluated::Literal),
-                ValueRef(r) => r.rsubtract(&r.clone_by(l)?).map(Evaluated::Value),
+                ValueRef(r) => (&r.clone_by(l)?).subtract(r).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
@@ -195,7 +195,7 @@ impl<'a> Evaluated<'a> {
         match self {
             LiteralRef(l) => match other {
                 LiteralRef(r) => literal_divide(l, r).map(Evaluated::Literal),
-                ValueRef(r) => r.rdivide(&r.clone_by(l)?).map(Evaluated::Value),
+                ValueRef(r) => (&r.clone_by(l)?).divide(r).map(Evaluated::Value),
                 Value(_) | StringRef(_) | Literal(_) => unreachable,
             },
             ValueRef(l) => match other {
