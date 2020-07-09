@@ -2,11 +2,10 @@ use thiserror::Error as ThisError;
 
 use crate::data::{RowError, TableError, ValueError};
 use crate::executor::{
-    BlendError, EvaluateError, FilterContextError, FilterError, JoinError, LimitError, SelectError,
-    UpdateError,
+    BlendError, EvaluateError, ExecuteError, FilterContextError, FilterError, JoinError,
+    LimitError, SelectError, UpdateError,
 };
 use crate::storage::StoreError;
-use crate::ExecuteError;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
