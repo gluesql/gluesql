@@ -7,8 +7,10 @@ use thiserror::Error;
 
 use sqlparser::ast::{Expr, Ident, SelectItem};
 
+use super::blend_context::BlendContext;
+use super::evaluate::{evaluate, Evaluated};
+use super::filter_context::FilterContext;
 use crate::data::{get_table_name, Row, Value};
-use crate::executor::{evaluate, BlendContext, Evaluated, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 

@@ -3,8 +3,11 @@ use thiserror::Error;
 
 use sqlparser::ast::Statement;
 
+use super::fetch::{fetch, fetch_columns};
+use super::filter::Filter;
+use super::select::select;
+use super::update::Update;
 use crate::data::{get_table_name, Row, Schema};
-use crate::executor::{fetch, fetch_columns, select, Filter, Update};
 use crate::result::Result;
 use crate::storage::Store;
 

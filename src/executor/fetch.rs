@@ -3,8 +3,8 @@ use std::fmt::Debug;
 
 use sqlparser::ast::{ColumnDef, Ident};
 
+use super::filter::Filter;
 use crate::data::Row;
-use crate::executor::Filter;
 use crate::result::Result;
 use crate::storage::Store;
 

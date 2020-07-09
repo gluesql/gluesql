@@ -5,7 +5,8 @@ use std::fmt::Debug;
 
 use sqlparser::ast::{BinaryOperator, Expr, Value as AstValue};
 
-use crate::executor::{select, FilterContext};
+use super::filter_context::FilterContext;
+use super::select::select;
 use crate::result::Result;
 use crate::storage::Store;
 

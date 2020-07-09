@@ -4,8 +4,11 @@ use thiserror::Error;
 
 use sqlparser::ast::{BinaryOperator, Expr, Ident, UnaryOperator};
 
+use super::blend_context::BlendContext;
+use super::evaluate::{evaluate, Evaluated};
+use super::filter_context::FilterContext;
+use super::select::select;
 use crate::data::Row;
-use crate::executor::{evaluate, select, BlendContext, Evaluated, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 

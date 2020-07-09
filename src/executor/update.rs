@@ -3,8 +3,9 @@ use thiserror::Error;
 
 use sqlparser::ast::{Assignment, Ident};
 
+use super::evaluate::{evaluate, Evaluated};
+use super::filter_context::FilterContext;
 use crate::data::{Row, Value};
-use crate::executor::{evaluate, Evaluated, FilterContext};
 use crate::result::Result;
 use crate::storage::Store;
 
