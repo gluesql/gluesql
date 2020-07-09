@@ -113,18 +113,26 @@ fn join<'a, T: 'static + Debug>(
     blend_context: Result<Rc<BlendContext<'a, T>>>,
 ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
     let err = |e| Joined::Err(once(Err(e)));
+    macro_rules! try_into {
+        ($v: expr) => {
+            match $v {
+                Ok(v) => v,
+                Err(e) => {
+                    return err(e);
+                }
+            }
+        };
+    }
 
     let AstJoin {
         relation,
         join_operator,
     } = ast_join;
+    let table = try_into!(Table::new(relation));
+    let table_name = table.get_name();
+    let table_alias = table.get_alias();
 
-    let blend_context = match blend_context {
-        Ok(v) => v,
-        Err(e) => {
-            return err(e);
-        }
-    };
+    let blend_context = try_into!(blend_context);
     let init_context = Rc::clone(&blend_context);
 
     let fetch_rows = |constraint: &'a JoinConstraint| {
@@ -138,8 +146,7 @@ fn join<'a, T: 'static + Debug>(
             }
         };
 
-        let table = Table::new(relation)?;
-        let rows = storage.get_data(table.get_name())?;
+        let rows = storage.get_data(table_name)?;
         let rows = rows.filter_map(move |item| {
             let (key, row) = match item {
                 Ok(v) => v,
@@ -148,7 +155,6 @@ fn join<'a, T: 'static + Debug>(
                 }
             };
 
-            let table_alias = table.get_alias();
             let filter = Filter::new(storage, where_clause, filter_context);
             let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
 
