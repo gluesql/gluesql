@@ -35,15 +35,14 @@ fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: Table<'a>,
     columns: Rc<Vec<Ident>>,
-) -> Result<impl Iterator<Item = Result<BlendContext<'a, T>>> + 'a> {
+) -> Result<impl Iterator<Item = Result<BlendContext<'a>>> + 'a> {
     let rows = storage.get_data(table.get_name())?.map(move |data| {
-        let (key, row) = data?;
+        let (_, row) = data?;
         let columns = Rc::clone(&columns);
 
         Ok(BlendContext {
             table_alias: table.get_alias(),
             columns,
-            key,
             row,
             next: None,
         })

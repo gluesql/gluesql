@@ -51,7 +51,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         Self { storage, fields }
     }
 
-    pub fn apply(&self, context: Result<Rc<BlendContext<'a, T>>>) -> Result<Row> {
+    pub fn apply(&self, context: Result<Rc<BlendContext<'a>>>) -> Result<Row> {
         let context = Self::prepare(context?);
 
         let values = self
@@ -66,7 +66,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         Ok(Row(values))
     }
 
-    fn prepare(context: Rc<BlendContext<'a, T>>) -> Context<'a> {
+    fn prepare(context: Rc<BlendContext<'a>>) -> Context<'a> {
         match Rc::try_unwrap(context) {
             Ok(BlendContext {
                 table_alias,

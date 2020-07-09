@@ -46,7 +46,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         }
     }
 
-    pub fn check_blended(&self, blend_context: &BlendContext<'_, T>) -> Result<bool> {
+    pub fn check_blended(&self, blend_context: &BlendContext<'_>) -> Result<bool> {
         match self.where_clause {
             Some(expr) => check_blended_expr(self.storage, self.context, blend_context, expr),
             None => Ok(true),
@@ -56,11 +56,11 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
 
 pub struct BlendedFilter<'a, T: 'static + Debug> {
     filter: &'a Filter<'a, T>,
-    context: Option<&'a BlendContext<'a, T>>,
+    context: Option<&'a BlendContext<'a>>,
 }
 
 impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
-    pub fn new(filter: &'a Filter<'a, T>, context: Option<&'a BlendContext<'a, T>>) -> Self {
+    pub fn new(filter: &'a Filter<'a, T>, context: Option<&'a BlendContext<'a>>) -> Self {
         Self { filter, context }
     }
 
@@ -160,7 +160,7 @@ fn check_expr<'a, T: 'static + Debug>(
 fn check_blended_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,
     filter_context: Option<&FilterContext<'_>>,
-    blend_context: &BlendContext<'_, T>,
+    blend_context: &BlendContext<'_>,
     expr: &Expr,
 ) -> Result<bool> {
     let BlendContext {

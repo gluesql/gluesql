@@ -36,7 +36,7 @@ pub struct Join<'a, T: 'static + Debug> {
     filter_context: Option<&'a FilterContext<'a>>,
 }
 
-type JoinItem<'a, T> = Result<Rc<BlendContext<'a, T>>>;
+type JoinItem<'a> = Result<Rc<BlendContext<'a>>>;
 
 #[derive(Iterator)]
 enum Applied<I1, I2, I3, I4> {
@@ -61,9 +61,9 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
 
     pub fn apply(
         &self,
-        init_context: Result<BlendContext<'a, T>>,
+        init_context: Result<BlendContext<'a>>,
         join_columns: Rc<Vec<Rc<Vec<Ident>>>>,
-    ) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
+    ) -> impl Iterator<Item = JoinItem<'a>> + 'a {
         let init_context = init_context.map(Rc::new);
         let init_rows = Applied::Init(once(init_context));
 
@@ -110,8 +110,8 @@ fn join<'a, T: 'static + Debug>(
     filter_context: Option<&'a FilterContext<'a>>,
     ast_join: &'a AstJoin,
     columns: Rc<Vec<Ident>>,
-    blend_context: Result<Rc<BlendContext<'a, T>>>,
-) -> impl Iterator<Item = JoinItem<'a, T>> + 'a {
+    blend_context: Result<Rc<BlendContext<'a>>>,
+) -> impl Iterator<Item = JoinItem<'a>> + 'a {
     let err = |e| Joined::Err(once(Err(e)));
     macro_rules! try_into {
         ($v: expr) => {
@@ -148,7 +148,7 @@ fn join<'a, T: 'static + Debug>(
 
         let rows = storage.get_data(table_name)?;
         let rows = rows.filter_map(move |item| {
-            let (key, row) = match item {
+            let (_, row) = match item {
                 Ok(v) => v,
                 Err(e) => {
                     return Some(Err(e));
@@ -164,7 +164,6 @@ fn join<'a, T: 'static + Debug>(
                     pass.as_some(Rc::new(BlendContext {
                         table_alias,
                         columns: Rc::clone(&columns),
-                        key,
                         row,
                         next: Some(Rc::clone(&blend_context)),
                     }))
