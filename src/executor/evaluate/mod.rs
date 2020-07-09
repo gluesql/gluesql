@@ -21,7 +21,10 @@ pub fn evaluate<'a, T: 'static + Debug>(
 
     match expr {
         Expr::Value(value) => match value {
-            v @ AstValue::Number(_) | v @ AstValue::Boolean(_) => Ok(Evaluated::LiteralRef(v)),
+            AstValue::Number(_)
+            | AstValue::Boolean(_)
+            | AstValue::SingleQuotedString(_)
+            | AstValue::Null => Ok(Evaluated::LiteralRef(value)),
             _ => Err(EvaluateError::Unimplemented.into()),
         },
         Expr::Identifier(ident) => match ident.quote_style {

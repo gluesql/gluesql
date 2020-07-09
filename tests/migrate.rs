@@ -65,7 +65,7 @@ CREATE TABLE Test (
         .run("SELECT id, num, name FROM Test")
         .expect("select");
     let expected = select!(
-        I64 I64 String;
+        I64 I64 Str;
         1   2   "Hello".to_owned();
         1   9   "World".to_owned();
         3   4   "Great".to_owned()
@@ -76,7 +76,7 @@ CREATE TABLE Test (
         .run("SELECT id, num, name FROM Test WHERE id = 1")
         .expect("select");
     let expected = select!(
-        I64 I64 String;
+        I64 I64 Str;
         1   2   "Hello".to_owned();
         1   9   "World".to_owned()
     );
@@ -88,7 +88,7 @@ CREATE TABLE Test (
         .run("SELECT id, num, name FROM Test")
         .expect("select");
     let expected = select!(
-        I64 I64 String;
+        I64 I64 Str;
         2   2   "Hello".to_owned();
         2   9   "World".to_owned();
         2   4   "Great".to_owned()

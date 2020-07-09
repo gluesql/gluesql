@@ -72,7 +72,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                 match evaluated {
                     Evaluated::LiteralRef(v) => value.clone_by(v),
                     Evaluated::Literal(v) => value.clone_by(&v),
-                    Evaluated::StringRef(v) => Ok(Value::String(v.to_string())),
+                    Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
                     Evaluated::ValueRef(v) => Ok(v.clone()),
                     Evaluated::Value(v) => Ok(v),
                 }

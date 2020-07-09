@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{ColumnDef, Expr, Ident, Query, SetExpr, Values};
+use sqlparser::ast::{
+    ColumnDef, ColumnOption, ColumnOptionDef, Expr, Ident, Query, SetExpr, Values,
+};
 
 use crate::data::Value;
 use crate::result::Result;
@@ -66,7 +68,10 @@ impl Row {
             .enumerate()
             .map(|(i, column_def)| {
                 let ColumnDef {
-                    name, data_type, ..
+                    name,
+                    data_type,
+                    options,
+                    ..
                 } = column_def;
                 let name = name.to_string();
 
@@ -79,10 +84,13 @@ impl Row {
                 }?;
 
                 let literal = values.get(i).ok_or(RowError::Unreachable)?;
+                let nullable = options
+                    .iter()
+                    .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
 
                 match literal {
-                    Expr::Value(literal) => Value::new(data_type, literal),
-                    Expr::Identifier(Ident { value, .. }) => Ok(Value::String(value.clone())),
+                    Expr::Value(literal) => Value::from_data_type(data_type, nullable, literal),
+                    Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
                     _ => Err(RowError::UnsupportedAstValueType.into()),
                 }
             })
