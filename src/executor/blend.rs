@@ -192,16 +192,14 @@ fn get_value(context: &Context<'_>, target: &str) -> Option<Rc<Value>> {
         ..
     } = context;
 
-    let find_next = || next.as_ref().and_then(|next| get_value(next, target));
-
-    match values {
-        Some(values) => columns
-            .iter()
-            .position(|column| column.value == target)
-            .map(|index| Rc::clone(&values[index]))
-            .or_else(find_next),
-        None => find_next(),
-    }
+    columns
+        .iter()
+        .position(|column| column.value == target)
+        .map(|index| match values {
+            Some(values) => Rc::clone(&values[index]),
+            None => Rc::new(Value::Empty),
+        })
+        .or_else(|| next.as_ref().and_then(|next| get_value(next, target)))
 }
 
 fn get_alias_value(context: &Context<'_>, alias: &str, target: &str) -> Option<Rc<Value>> {
@@ -212,36 +210,60 @@ fn get_alias_value(context: &Context<'_>, alias: &str, target: &str) -> Option<R
         next,
     } = context;
 
-    match (table_alias == &alias, values) {
-        (true, Some(values)) => columns
+    if table_alias == &alias {
+        columns
             .iter()
             .position(|column| column.value == target)
-            .map(|index| Rc::clone(&values[index])),
-        _ => next
-            .as_ref()
-            .and_then(|next| get_alias_value(next, alias, target)),
+            .map(|index| match values {
+                Some(values) => Rc::clone(&values[index]),
+                None => Rc::new(Value::Empty),
+            })
+    } else {
+        next.as_ref()
+            .and_then(|next| get_alias_value(next, alias, target))
     }
 }
 
 fn get_all_values(context: &Context<'_>) -> Vec<Rc<Value>> {
-    let Context { values, next, .. } = context;
-    let values = values.as_ref().map(|values| values.iter().map(Rc::clone));
+    let Context {
+        values,
+        next,
+        columns,
+        ..
+    } = context;
 
-    match (values, next.as_ref()) {
-        (Some(values), Some(next)) => values.chain(get_all_values(next).into_iter()).collect(),
-        (Some(values), None) => values.collect(),
-        (None, Some(next)) => get_all_values(next),
-        (None, None) => vec![],
+    let values: Vec<Rc<Value>> = match values {
+        Some(values) => values.iter().map(Rc::clone).collect(),
+        None => columns.iter().map(|_| Rc::new(Value::Empty)).collect(),
+    };
+
+    match next.as_ref() {
+        Some(next) => get_all_values(next)
+            .into_iter()
+            .chain(values.into_iter())
+            .collect(),
+        None => values,
     }
 }
 
-fn get_alias_values(context: &Context<'_>, table_alias: &str) -> Option<Vec<Rc<Value>>> {
-    match (table_alias == context.table_alias, context.values.as_ref()) {
-        (true, Some(values)) => Some(values.iter().map(Rc::clone).collect()),
-        _ => context
-            .next
-            .as_ref()
-            .and_then(|next| get_alias_values(next, table_alias)),
+fn get_alias_values(context: &Context<'_>, alias: &str) -> Option<Vec<Rc<Value>>> {
+    let Context {
+        table_alias,
+        values,
+        columns,
+        next,
+    } = context;
+
+    if table_alias == &alias {
+        let values = match values {
+            Some(values) => values.iter().map(Rc::clone).collect(),
+            None => columns.iter().map(|_| Rc::new(Value::Empty)).collect(),
+        };
+
+        Some(values)
+    } else {
+        next.as_ref()
+            .and_then(|next| get_alias_values(next, table_alias))
     }
 }
 

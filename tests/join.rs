@@ -1,5 +1,6 @@
 mod helper;
 
+use gluesql::{Payload, Row, Value};
 use helper::{Helper, SledHelper};
 
 #[test]
@@ -131,4 +132,126 @@ fn join() {
         .for_each(|(num, sql)| helper.test_rows(sql, *num));
 
     delete_sqls.iter().for_each(|sql| helper.run_and_print(sql));
+}
+
+#[test]
+fn blend_join() {
+    let helper = SledHelper::new("data/blend_join");
+
+    let create_sqls: [&str; 2] = [
+        "
+        CREATE TABLE Player (
+            id INTEGER,
+            name TEXT
+        );
+    ",
+        "
+        CREATE TABLE Item (
+            id INTEGER,
+            quantity INTEGER,
+            player_id INTEGER,
+        );
+    ",
+    ];
+
+    create_sqls.iter().for_each(|sql| helper.run_and_print(sql));
+
+    let insert_sqls = [
+        "INSERT INTO Player (id, name) VALUES (1, \"Taehoon\")",
+        "INSERT INTO Player (id, name) VALUES (2, \"Mike\")",
+        "INSERT INTO Player (id, name) VALUES (3, \"Jorno\")",
+        "INSERT INTO Player (id, name) VALUES (4, \"Berry\")",
+        "INSERT INTO Player (id, name) VALUES (5, \"Hwan\")",
+        "INSERT INTO Item (id, quantity, player_id) VALUES (101, 1, 1);",
+        "INSERT INTO Item (id, quantity, player_id) VALUES (102, 4, 2);",
+        "INSERT INTO Item (id, quantity, player_id) VALUES (103, 9, 4);",
+    ];
+
+    for insert_sql in insert_sqls.iter() {
+        helper.run(insert_sql).unwrap();
+    }
+
+    use Value::{Empty, Str, I64};
+
+    let sql = "
+        SELECT p.id, i.id
+        FROM Player p
+        LEFT JOIN Item i
+        ON p.id = i.player_id
+    ";
+    let found = helper.run(sql).expect("select");
+    let expected = Payload::Select(vec![
+        Row(vec![I64(1), I64(101)]),
+        Row(vec![I64(2), I64(102)]),
+        Row(vec![I64(3), Empty]),
+        Row(vec![I64(4), I64(103)]),
+        Row(vec![I64(5), Empty]),
+    ]);
+    assert_eq!(expected, found);
+
+    let sql = "
+        SELECT p.id, player_id
+        FROM Player p
+        LEFT JOIN Item
+        ON p.id = player_id
+    ";
+    let found = helper.run(sql).expect("select");
+    let expected = Payload::Select(vec![
+        Row(vec![I64(1), I64(1)]),
+        Row(vec![I64(2), I64(2)]),
+        Row(vec![I64(3), Empty]),
+        Row(vec![I64(4), I64(4)]),
+        Row(vec![I64(5), Empty]),
+    ]);
+    assert_eq!(expected, found);
+
+    let sql = "
+        SELECT Item.*
+        FROM Player p
+        LEFT JOIN Item
+        ON p.id = player_id
+    ";
+    let found = helper.run(sql).expect("select");
+    let expected = Payload::Select(vec![
+        Row(vec![I64(101), I64(1), I64(1)]),
+        Row(vec![I64(102), I64(4), I64(2)]),
+        Row(vec![Empty, Empty, Empty]),
+        Row(vec![I64(103), I64(9), I64(4)]),
+        Row(vec![Empty, Empty, Empty]),
+    ]);
+    assert_eq!(expected, found);
+
+    let sql = "
+        SELECT *
+        FROM Player p
+        LEFT JOIN Item
+        ON p.id = player_id
+    ";
+    let found = helper.run(sql).expect("select");
+    let expected = Payload::Select(vec![
+        Row(vec![
+            I64(1),
+            Str("Taehoon".to_owned()),
+            I64(101),
+            I64(1),
+            I64(1),
+        ]),
+        Row(vec![
+            I64(2),
+            Str("Mike".to_owned()),
+            I64(102),
+            I64(4),
+            I64(2),
+        ]),
+        Row(vec![I64(3), Str("Jorno".to_owned()), Empty, Empty, Empty]),
+        Row(vec![
+            I64(4),
+            Str("Berry".to_owned()),
+            I64(103),
+            I64(9),
+            I64(4),
+        ]),
+        Row(vec![I64(5), Str("Hwan".to_owned()), Empty, Empty, Empty]),
+    ]);
+    assert_eq!(expected, found);
 }

@@ -45,6 +45,7 @@ pub enum Value {
     OptI64(Option<i64>),
     OptF64(Option<f64>),
     OptStr(Option<String>),
+    Empty,
 }
 
 impl PartialEq<AstValue> for Value {
