@@ -180,13 +180,13 @@ fn blend_join() {
         ON p.id = i.player_id
     ";
     let found = helper.run(sql).expect("select");
-    let expected = Payload::Select(vec![
-        Row(vec![I64(1), I64(101)]),
-        Row(vec![I64(2), I64(102)]),
-        Row(vec![I64(3), Empty]),
-        Row(vec![I64(4), I64(103)]),
-        Row(vec![I64(5), Empty]),
-    ]);
+    let expected = select_with_empty!(
+        I64(1) I64(101);
+        I64(2) I64(102);
+        I64(3) Empty;
+        I64(4) I64(103);
+        I64(5) Empty
+    );
     assert_eq!(expected, found);
 
     let sql = "
@@ -196,13 +196,13 @@ fn blend_join() {
         ON p.id = player_id
     ";
     let found = helper.run(sql).expect("select");
-    let expected = Payload::Select(vec![
-        Row(vec![I64(1), I64(1)]),
-        Row(vec![I64(2), I64(2)]),
-        Row(vec![I64(3), Empty]),
-        Row(vec![I64(4), I64(4)]),
-        Row(vec![I64(5), Empty]),
-    ]);
+    let expected = select_with_empty!(
+        I64(1) I64(1);
+        I64(2) I64(2);
+        I64(3) Empty;
+        I64(4) I64(4);
+        I64(5) Empty
+    );
     assert_eq!(expected, found);
 
     let sql = "
@@ -212,13 +212,13 @@ fn blend_join() {
         ON p.id = player_id
     ";
     let found = helper.run(sql).expect("select");
-    let expected = Payload::Select(vec![
-        Row(vec![I64(101), I64(1), I64(1)]),
-        Row(vec![I64(102), I64(4), I64(2)]),
-        Row(vec![Empty, Empty, Empty]),
-        Row(vec![I64(103), I64(9), I64(4)]),
-        Row(vec![Empty, Empty, Empty]),
-    ]);
+    let expected = select_with_empty!(
+        I64(101) I64(1) I64(1);
+        I64(102) I64(4) I64(2);
+        Empty    Empty  Empty;
+        I64(103) I64(9) I64(4);
+        Empty    Empty  Empty
+    );
     assert_eq!(expected, found);
 
     let sql = "
@@ -228,30 +228,12 @@ fn blend_join() {
         ON p.id = player_id
     ";
     let found = helper.run(sql).expect("select");
-    let expected = Payload::Select(vec![
-        Row(vec![
-            I64(1),
-            Str("Taehoon".to_owned()),
-            I64(101),
-            I64(1),
-            I64(1),
-        ]),
-        Row(vec![
-            I64(2),
-            Str("Mike".to_owned()),
-            I64(102),
-            I64(4),
-            I64(2),
-        ]),
-        Row(vec![I64(3), Str("Jorno".to_owned()), Empty, Empty, Empty]),
-        Row(vec![
-            I64(4),
-            Str("Berry".to_owned()),
-            I64(103),
-            I64(9),
-            I64(4),
-        ]),
-        Row(vec![I64(5), Str("Hwan".to_owned()), Empty, Empty, Empty]),
-    ]);
+    let expected = select_with_empty!(
+        I64(1) Str("Taehoon".to_owned()) I64(101) I64(1) I64(1);
+        I64(2) Str("Mike".to_owned())    I64(102) I64(4) I64(2);
+        I64(3) Str("Jorno".to_owned())   Empty    Empty  Empty;
+        I64(4) Str("Berry".to_owned())   I64(103) I64(9) I64(4);
+        I64(5) Str("Hwan".to_owned())    Empty    Empty  Empty
+    );
     assert_eq!(expected, found);
 }
