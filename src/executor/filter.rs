@@ -41,7 +41,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         let context = FilterContext::new(table_alias, columns, row, self.context);
 
         match self.where_clause {
-            Some(expr) => check_expr(self.storage, &context, expr),
+            Some(expr) => check_expr(self.storage, Some(context).as_ref(), expr),
             None => Ok(true),
         }
     }
@@ -76,19 +76,20 @@ impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
         } = self;
 
         let filter_context = FilterContext::new(table_alias, columns, row, *next);
+        let filter_context = Some(&filter_context);
 
         where_clause.map_or(Ok(true), |expr| match blend_context {
             Some(blend_context) => {
-                check_blended_expr(*storage, Some(&filter_context), blend_context, expr)
+                check_blended_expr(*storage, filter_context, blend_context, expr)
             }
-            None => check_expr(*storage, &filter_context, expr),
+            None => check_expr(*storage, filter_context, expr),
         })
     }
 }
 
 fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    filter_context: &'a FilterContext<'a>,
+    filter_context: Option<&'a FilterContext<'a>>,
     expr: &'a Expr,
 ) -> Result<bool> {
     let evaluate = |expr| evaluate(storage, filter_context, expr);
@@ -142,7 +143,7 @@ fn check_expr<'a, T: 'static + Debug>(
             let negated = *negated;
             let target = evaluate(expr)?;
 
-            select(storage, &subquery, Some(filter_context))?
+            select(storage, &subquery, filter_context)?
                 .map(|row| row?.take_first_value())
                 .filter_map(|value| {
                     value.map_or_else(
@@ -171,12 +172,13 @@ fn check_blended_expr<T: 'static + Debug>(
         ..
     } = blend_context;
 
-    let filter_context = FilterContext::new(table_alias, &columns, &row, filter_context);
+    let row_context = row
+        .as_ref()
+        .map(|row| FilterContext::new(table_alias, &columns, row, filter_context));
+    let filter_context = row_context.as_ref().or(filter_context);
 
     match next {
-        Some(blend_context) => {
-            check_blended_expr(storage, Some(&filter_context), blend_context, expr)
-        }
-        None => check_expr(storage, &filter_context, expr),
+        Some(blend_context) => check_blended_expr(storage, filter_context, blend_context, expr),
+        None => check_expr(storage, filter_context, expr),
     }
 }

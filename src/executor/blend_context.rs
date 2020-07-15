@@ -9,6 +9,6 @@ use crate::data::Row;
 pub struct BlendContext<'a> {
     pub table_alias: &'a str,
     pub columns: Rc<Vec<Ident>>,
-    pub row: Row,
+    pub row: Option<Row>,
     pub next: Option<Rc<BlendContext<'a>>>,
 }

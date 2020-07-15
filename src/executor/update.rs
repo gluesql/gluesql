@@ -53,6 +53,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
 
     fn find(&self, row: &Row, column: &Ident) -> Option<Result<Value>> {
         let context = FilterContext::new(self.table_name, self.columns, row, None);
+        let context = Some(&context);
 
         self.fields
             .iter()
@@ -66,7 +67,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     .position(|column| column.value == id.value)
                     .ok_or_else(|| UpdateError::Unreachable)?;
 
-                let evaluated = evaluate(self.storage, &context, value)?;
+                let evaluated = evaluate(self.storage, context, value)?;
                 let Row(values) = &row;
                 let value = &values[index];
 

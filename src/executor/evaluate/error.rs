@@ -21,6 +21,9 @@ pub enum EvaluateError {
     #[error("unreachable literal arithmetic")]
     UnreachableLiteralArithmetic,
 
+    #[error("unreachable, filter context is empty: {0}")]
+    UnreachableEmptyFilterContext(String),
+
     #[error("unimplemented")]
     Unimplemented,
 }

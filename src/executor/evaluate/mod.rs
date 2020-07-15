@@ -15,7 +15,7 @@ pub use evaluated::Evaluated;
 
 pub fn evaluate<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    filter_context: &'a FilterContext<'a>,
+    filter_context: Option<&'a FilterContext<'a>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| evaluate(storage, filter_context, expr);
@@ -31,6 +31,11 @@ pub fn evaluate<'a, T: 'static + Debug>(
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Evaluated::StringRef(&ident.value)),
             None => filter_context
+                .ok_or_else(|| {
+                    let name = ident.value.to_string();
+
+                    EvaluateError::UnreachableEmptyFilterContext(name)
+                })?
                 .get_value(&ident.value)
                 .map(Evaluated::ValueRef),
         },
@@ -44,10 +49,15 @@ pub fn evaluate<'a, T: 'static + Debug>(
             let column = &idents[1].value;
 
             filter_context
+                .ok_or_else(|| {
+                    let name = format!("{}.{}", table_alias, column);
+
+                    EvaluateError::UnreachableEmptyFilterContext(name)
+                })?
                 .get_alias_value(table_alias, column)
                 .map(Evaluated::ValueRef)
         }
-        Expr::Subquery(query) => select(storage, &query, Some(filter_context))?
+        Expr::Subquery(query) => select(storage, &query, filter_context)?
             .map(|row| row?.take_first_value())
             .map(|value| value.map(Evaluated::Value))
             .next()

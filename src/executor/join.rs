@@ -113,6 +113,7 @@ fn join<'a, T: 'static + Debug>(
     blend_context: Result<Rc<BlendContext<'a>>>,
 ) -> impl Iterator<Item = JoinItem<'a>> + 'a {
     let err = |e| Joined::Err(once(Err(e)));
+
     macro_rules! try_into {
         ($v: expr) => {
             match $v {
@@ -133,7 +134,12 @@ fn join<'a, T: 'static + Debug>(
     let table_alias = table.get_alias();
 
     let blend_context = try_into!(blend_context);
-    let init_context = Rc::clone(&blend_context);
+    let init_context = Rc::new(BlendContext {
+        table_alias,
+        columns: Rc::clone(&columns),
+        row: None,
+        next: Some(Rc::clone(&blend_context)),
+    });
 
     let fetch_rows = |constraint: &'a JoinConstraint| {
         let where_clause = match constraint {
@@ -164,7 +170,7 @@ fn join<'a, T: 'static + Debug>(
                     pass.as_some(Rc::new(BlendContext {
                         table_alias,
                         columns: Rc::clone(&columns),
-                        row,
+                        row: Some(row),
                         next: Some(Rc::clone(&blend_context)),
                     }))
                 })
