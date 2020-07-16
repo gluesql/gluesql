@@ -100,7 +100,7 @@ pub fn execute<T: 'static + Debug>(
                     Ok(num + 1)
                 })?;
 
-            Ok(Payload::Update(num_rows))
+            Ok(Payload::Delete(num_rows))
         }
         _ => Err(ExecuteError::QueryNotSupported.into()),
     }
