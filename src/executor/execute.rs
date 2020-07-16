@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::Statement;
+use sqlparser::ast::{ObjectType, Statement};
 
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
@@ -15,6 +15,9 @@ use crate::storage::Store;
 pub enum ExecuteError {
     #[error("query not supported")]
     QueryNotSupported,
+
+    #[error("drop type not supported")]
+    DropTypeNotSupported,
 }
 
 #[derive(Debug, PartialEq)]
@@ -24,6 +27,7 @@ pub enum Payload {
     Select(Vec<Row>),
     Delete(usize),
     Update(usize),
+    DropTable,
 }
 
 pub fn execute<T: 'static + Debug>(
@@ -102,6 +106,22 @@ pub fn execute<T: 'static + Debug>(
 
             Ok(Payload::Delete(num_rows))
         }
+        Statement::Drop {
+            object_type, names, ..
+        } => {
+            if object_type != &ObjectType::Table {
+                return Err(ExecuteError::DropTypeNotSupported.into());
+            }
+
+            for name in names {
+                let table_name = get_table_name(name)?;
+
+                storage.del_schema(&table_name)?;
+            }
+
+            Ok(Payload::DropTable)
+        }
+
         _ => Err(ExecuteError::QueryNotSupported.into()),
     }
 }

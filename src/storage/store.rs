@@ -19,6 +19,8 @@ pub trait Store<T: Debug> {
 
     fn get_schema(&self, table_name: &str) -> Result<Schema>;
 
+    fn del_schema(&self, table_name: &str) -> Result<()>;
+
     fn set_data(&self, key: &T, row: Row) -> Result<Row>;
 
     fn get_data(&self, table_name: &str) -> Result<RowIter<T>>;

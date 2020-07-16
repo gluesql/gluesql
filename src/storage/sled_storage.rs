@@ -79,6 +79,27 @@ impl Store<IVec> for SledStorage {
         Ok(statement)
     }
 
+    fn del_schema(&self, table_name: &str) -> Result<()> {
+        let prefix = format!("data/{}/", table_name);
+
+        self.tree
+            .scan_prefix(prefix.as_bytes())
+            .map(move |item| {
+                let (key, _) = try_into!(item);
+
+                try_into!(self.tree.remove(key));
+
+                Ok(())
+            })
+            .collect::<Result<_>>()?;
+
+        let key = format!("schema/{}", table_name);
+
+        try_into!(self.tree.remove(key));
+
+        Ok(())
+    }
+
     fn set_data(&self, key: &IVec, row: Row) -> Result<Row> {
         let value = try_into!(bincode::serialize(&row));
 
