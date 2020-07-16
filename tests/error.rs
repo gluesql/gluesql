@@ -10,13 +10,11 @@ use helper::{Helper, SledHelper};
 fn error() {
     let helper = SledHelper::new("data/error");
 
-    let sql = "DROP TABLE TableA";
-    helper.test_error(sql, ExecuteError::QueryNotSupported.into());
-
     helper.run_and_print("CREATE TABLE TableA (id INTEGER);");
     helper.run_and_print("INSERT INTO TableA (id) VALUES (1);");
 
     let test_cases = vec![
+        (ExecuteError::QueryNotSupported.into(), "COMMIT;"),
         (StoreError::SchemaNotFound.into(), "SELECT * FROM Nothing;"),
         (
             SelectError::TooManyTables.into(),

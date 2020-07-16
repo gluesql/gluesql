@@ -33,6 +33,7 @@ pub trait Helper<T: 'static + Debug> {
             Payload::Insert(row) => println!("[Ok ]\n{:#?}\n", row),
             Payload::Delete(num) => println!("[Ok ] {} rows deleted.\n", num),
             Payload::Update(num) => println!("[Ok ] {} rows updated.\n", num),
+            Payload::DropTable => println!("[Ok ] :)\n"),
             Payload::Create => println!("[Ok ] :)\n"),
         };
     }
