@@ -1,20 +1,19 @@
 mod blend;
-mod blend_context;
+mod context;
 mod evaluate;
 mod execute;
 mod fetch;
 mod filter;
-mod filter_context;
 mod join;
 mod limit;
 mod select;
 mod update;
 
 pub use blend::BlendError;
+pub use context::FilterContextError;
 pub use evaluate::EvaluateError;
 pub use execute::{execute, ExecuteError, Payload};
 pub use filter::FilterError;
-pub use filter_context::FilterContextError;
 pub use join::JoinError;
 pub use limit::LimitError;
 pub use select::SelectError;

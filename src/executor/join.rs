@@ -8,9 +8,8 @@ use thiserror::Error as ThisError;
 
 use sqlparser::ast::{Ident, Join as AstJoin, JoinConstraint, JoinOperator};
 
-use super::blend_context::BlendContext;
+use super::context::{BlendContext, FilterContext};
 use super::filter::{BlendedFilter, Filter};
-use super::filter_context::FilterContext;
 use crate::data::Table;
 use crate::result::Result;
 use crate::storage::Store;

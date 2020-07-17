@@ -6,10 +6,9 @@ use thiserror::Error;
 use sqlparser::ast::{Ident, Query, SetExpr, TableWithJoins};
 
 use super::blend::Blend;
-use super::blend_context::BlendContext;
+use super::context::{BlendContext, FilterContext};
 use super::fetch::fetch_columns;
 use super::filter::Filter;
-use super::filter_context::FilterContext;
 use super::join::Join;
 use super::limit::Limit;
 use crate::data::{Row, Table};
