@@ -52,3 +52,12 @@ pub fn get_table_name<'a>(table_name: &'a ObjectName) -> Result<&'a String> {
         .map(|ident| &ident.value)
         .ok_or_else(|| TableError::Unreachable.into())
 }
+
+pub fn get_name<'a>(table_name: &'a ObjectName) -> Result<&'a String> {
+    let ObjectName(idents) = table_name;
+
+    idents
+        .last()
+        .map(|ident| &ident.value)
+        .ok_or_else(|| TableError::Unreachable.into())
+}

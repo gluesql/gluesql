@@ -1,3 +1,4 @@
+use im_rc::HashMap;
 use iter_enum::Iterator;
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -5,9 +6,9 @@ use std::iter::once;
 use std::rc::Rc;
 use thiserror::Error;
 
-use sqlparser::ast::{Expr, Ident, SelectItem};
+use sqlparser::ast::{Expr, Function, Ident, SelectItem};
 
-use super::context::{BlendContext, FilterContext};
+use super::context::{AggregateContext, BlendContext, FilterContext};
 use super::evaluate::{evaluate, Evaluated};
 use crate::data::{get_table_name, Row, Value};
 use crate::result::Result;
@@ -23,6 +24,12 @@ pub enum BlendError {
 
     #[error("table not found: {0}")]
     TableNotFound(String),
+
+    #[error("unreachable - aggregated field not found: {0}")]
+    UnreachableAggregatedFieldNotFound(String),
+
+    #[error("unreachable - aggregated map does not exist")]
+    UnreachableAggregatedMapDoesNotExist,
 }
 
 pub struct Blend<'a, T: 'static + Debug> {
@@ -50,11 +57,12 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         Self { storage, fields }
     }
 
-    pub fn apply(&self, context: Result<Rc<BlendContext<'a>>>) -> Result<Row> {
-        let context = Self::prepare(context?);
+    pub fn apply(&self, context: Result<AggregateContext<'a>>) -> Result<Row> {
+        let AggregateContext { aggregated, next } = context?;
+        let context = Self::prepare(next);
 
         let values = self
-            .blend(context)?
+            .blend(aggregated, context)?
             .into_iter()
             .map(|value| match Rc::try_unwrap(value) {
                 Ok(value) => value,
@@ -120,7 +128,11 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         }
     }
 
-    fn blend(&self, context: Context<'a>) -> Result<Vec<Rc<Value>>> {
+    fn blend(
+        &self,
+        map: Option<HashMap<&'a Function, Value>>,
+        context: Context<'a>,
+    ) -> Result<Vec<Rc<Value>>> {
         macro_rules! err {
             ($err: expr) => {
                 Blended::Err(once(Err($err.into())))
@@ -175,6 +187,19 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
 
                         Blended::Single(once(value))
                     }
+                    Expr::Function(func) => map
+                        .as_ref()
+                        .map(|map| match map.get(func) {
+                            Some(value) => {
+                                let value = Rc::new(value.clone());
+
+                                Blended::Single(once(Ok(value)))
+                            }
+                            None => err!(BlendError::UnreachableAggregatedFieldNotFound(
+                                func.to_string()
+                            )),
+                        })
+                        .unwrap_or_else(|| err!(BlendError::UnreachableAggregatedMapDoesNotExist)),
                     _ => err!(BlendError::FieldDefinitionNotSupported),
                 },
                 _ => err!(BlendError::FieldDefinitionNotSupported),

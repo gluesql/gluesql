@@ -1,3 +1,4 @@
+mod aggregate;
 mod blend;
 mod context;
 mod evaluate;
@@ -9,8 +10,9 @@ mod limit;
 mod select;
 mod update;
 
+pub use aggregate::AggregateError;
 pub use blend::BlendError;
-pub use context::FilterContextError;
+pub use context::{BlendContextError, FilterContextError};
 pub use evaluate::EvaluateError;
 pub use execute::{execute, ExecuteError, Payload};
 pub use filter::FilterError;
