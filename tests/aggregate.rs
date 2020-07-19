@@ -46,13 +46,14 @@ fn aggregate() {
         ),
         (
             "SELECT SUM(age), MAX(age), MIN(age) FROM Item",
-            select_with_empty!(
-                OptI64(Some(104)) OptI64(Some(90)) OptI64(Some(3))
+            select!(
+                OptI64    OptI64   OptI64;
+                Some(104) Some(90) Some(3)
             ),
         ),
         (
             "SELECT SUM(age) + SUM(quantity) FROM Item",
-            select_with_empty!(OptI64(Some(151))),
+            select!(OptI64; Some(151)),
         ),
         (
             "SELECT COUNT(age), COUNT(quantity) FROM Item",
