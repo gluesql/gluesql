@@ -7,7 +7,7 @@ use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::select;
 use super::update::Update;
-use crate::data::{get_table_name, Row, Schema};
+use crate::data::{get_name, Row, Schema};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -37,7 +37,7 @@ pub fn execute<T: 'static + Debug>(
     match sql_query {
         Statement::CreateTable { name, columns, .. } => {
             let schema = Schema {
-                table_name: get_table_name(name)?.clone(),
+                table_name: get_name(name)?.clone(),
                 column_defs: columns.clone(),
             };
 
@@ -55,7 +55,7 @@ pub fn execute<T: 'static + Debug>(
             columns,
             source,
         } => {
-            let table_name = get_table_name(table_name)?;
+            let table_name = get_name(table_name)?;
             let Schema { column_defs, .. } = storage.get_schema(table_name)?;
             let key = storage.gen_id(&table_name)?;
             let row = Row::new(column_defs, columns, source)?;
@@ -68,7 +68,7 @@ pub fn execute<T: 'static + Debug>(
             selection,
             assignments,
         } => {
-            let table_name = get_table_name(table_name)?;
+            let table_name = get_name(table_name)?;
             let columns = fetch_columns(storage, table_name)?;
             let update = Update::new(storage, table_name, assignments, &columns)?;
             let filter = Filter::new(storage, selection.as_ref(), None);
@@ -93,7 +93,7 @@ pub fn execute<T: 'static + Debug>(
             selection,
         } => {
             let filter = Filter::new(storage, selection.as_ref(), None);
-            let table_name = get_table_name(table_name)?;
+            let table_name = get_name(table_name)?;
 
             let columns = fetch_columns(storage, table_name)?;
             let num_rows = fetch(storage, table_name, &columns, filter)?
@@ -114,7 +114,7 @@ pub fn execute<T: 'static + Debug>(
             }
 
             for name in names {
-                let table_name = get_table_name(name)?;
+                let table_name = get_name(name)?;
 
                 storage.del_schema(&table_name)?;
             }

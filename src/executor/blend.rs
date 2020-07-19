@@ -10,7 +10,7 @@ use sqlparser::ast::{Expr, Function, Ident, SelectItem};
 
 use super::context::{AggregateContext, BlendContext, FilterContext};
 use super::evaluate::{evaluate, Evaluated};
-use crate::data::{get_table_name, Row, Value};
+use crate::data::{get_name, Row, Value};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -142,7 +142,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                     Blended::All(values)
                 }
                 SelectItem::QualifiedWildcard(alias) => {
-                    let table_alias = match get_table_name(alias) {
+                    let table_alias = match get_name(alias) {
                         Ok(alias) => alias,
                         Err(e) => {
                             return err!(e);
