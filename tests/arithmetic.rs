@@ -127,6 +127,11 @@ fn blend_arithmetic() {
 
     use Value::I64;
 
+    let sql = "SELECT 1 * 2 + 1 - 3 / 1 FROM Arith LIMIT 1;";
+    let found = helper.run(sql).expect("select");
+    let expected = select!(I64; 0);
+    assert_eq!(expected, found);
+
     let found = helper
         .run("SELECT id, id + 1, id + num, 1 + 1 FROM Arith")
         .expect("select");

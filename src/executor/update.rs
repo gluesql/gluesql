@@ -3,8 +3,8 @@ use thiserror::Error;
 
 use sqlparser::ast::{Assignment, Ident};
 
+use super::context::FilterContext;
 use super::evaluate::{evaluate, Evaluated};
-use super::filter_context::FilterContext;
 use crate::data::{Row, Value};
 use crate::result::Result;
 use crate::storage::Store;
@@ -67,7 +67,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     .position(|column| column.value == id.value)
                     .ok_or_else(|| UpdateError::Unreachable)?;
 
-                let evaluated = evaluate(self.storage, context, value)?;
+                let evaluated = evaluate(self.storage, context, None, value)?;
                 let Row(values) = &row;
                 let value = &values[index];
 

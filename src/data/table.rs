@@ -23,7 +23,7 @@ impl<'a> Table<'a> {
     pub fn new(table_factor: &'a TableFactor) -> Result<Self> {
         match table_factor {
             TableFactor::Table { name, alias, .. } => {
-                let name = get_table_name(name)?;
+                let name = get_name(name)?;
                 let alias = alias.as_ref().map(|TableAlias { name, .. }| &name.value);
 
                 Ok(Self { name, alias })
@@ -44,7 +44,7 @@ impl<'a> Table<'a> {
     }
 }
 
-pub fn get_table_name<'a>(table_name: &'a ObjectName) -> Result<&'a String> {
+pub fn get_name<'a>(table_name: &'a ObjectName) -> Result<&'a String> {
     let ObjectName(idents) = table_name;
 
     idents

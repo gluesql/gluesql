@@ -77,15 +77,18 @@ impl PartialEq<AstValue> for Value {
 impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
-            (Value::I64(l), Value::I64(r)) | (Value::OptI64(Some(l)), Value::I64(r)) => {
-                Some(l.cmp(r))
-            }
-            (Value::F64(l), Value::F64(r)) | (Value::OptF64(Some(l)), Value::F64(r)) => {
-                l.partial_cmp(r)
-            }
-            (Value::Str(l), Value::Str(r)) | (Value::OptStr(Some(l)), Value::Str(r)) => {
-                Some(l.cmp(r))
-            }
+            (Value::I64(l), Value::I64(r))
+            | (Value::OptI64(Some(l)), Value::I64(r))
+            | (Value::I64(l), Value::OptI64(Some(r)))
+            | (Value::OptI64(Some(l)), Value::OptI64(Some(r))) => Some(l.cmp(r)),
+            (Value::F64(l), Value::F64(r))
+            | (Value::OptF64(Some(l)), Value::F64(r))
+            | (Value::F64(l), Value::OptF64(Some(r)))
+            | (Value::OptF64(Some(l)), Value::OptF64(Some(r))) => l.partial_cmp(r),
+            (Value::Str(l), Value::Str(r))
+            | (Value::OptStr(Some(l)), Value::Str(r))
+            | (Value::Str(l), Value::OptStr(Some(r)))
+            | (Value::OptStr(Some(l)), Value::OptStr(Some(r))) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -219,6 +222,10 @@ impl Value {
         match (self, other) {
             (I64(a), I64(b)) => Ok(I64(a + b)),
             (I64(a), OptI64(Some(b))) | (OptI64(Some(a)), I64(b)) => Ok(OptI64(Some(a + b))),
+            (OptI64(Some(a)), OptI64(Some(b))) => Ok(OptI64(Some(a + b))),
+            (OptI64(None), OptI64(Some(a))) | (OptI64(Some(a)), OptI64(None)) => {
+                Ok(OptI64(Some(*a)))
+            }
             (F64(a), F64(b)) => Ok(F64(a + b)),
             (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(a + b))),
             _ => Err(ValueError::AddOnNonNumeric.into()),
@@ -258,6 +265,15 @@ impl Value {
             (F64(a), F64(b)) => Ok(F64(a / b)),
             (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(a / b))),
             _ => Err(ValueError::DivideOnNonNumeric.into()),
+        }
+    }
+
+    pub fn is_some(&self) -> bool {
+        use Value::*;
+
+        match self {
+            Empty | OptBool(None) | OptI64(None) | OptF64(None) | OptStr(None) => false,
+            _ => true,
         }
     }
 }

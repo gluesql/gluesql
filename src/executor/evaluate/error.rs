@@ -24,6 +24,12 @@ pub enum EvaluateError {
     #[error("unreachable, filter context is empty: {0}")]
     UnreachableEmptyFilterContext(String),
 
+    #[error("unreachable, aggregated field not found {0}")]
+    UnreachableAggregatedField(String),
+
+    #[error("unreachable, aggregated field does not exist")]
+    UnreachableEmptyAggregated,
+
     #[error("unimplemented")]
     Unimplemented,
 }

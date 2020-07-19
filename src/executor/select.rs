@@ -5,11 +5,11 @@ use thiserror::Error;
 
 use sqlparser::ast::{Ident, Query, SetExpr, TableWithJoins};
 
+use super::aggregate::Aggregate;
 use super::blend::Blend;
-use super::blend_context::BlendContext;
+use super::context::{BlendContext, FilterContext};
 use super::fetch::fetch_columns;
 use super::filter::Filter;
-use super::filter_context::FilterContext;
 use super::join::Join;
 use super::limit::Limit;
 use crate::data::{Row, Table};
@@ -92,6 +92,7 @@ pub fn select<'a, T: 'static + Debug>(
     let join_columns = Rc::new(join_columns);
 
     let join = Join::new(storage, joins, filter_context);
+    let aggregate = Aggregate::new(projection);
     let blend = Blend::new(storage, projection);
     let filter = Filter::new(storage, where_clause, filter_context);
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
@@ -114,8 +115,14 @@ pub fn select<'a, T: 'static + Debug>(
             )
         })
         .enumerate()
-        .filter_map(move |(i, item)| limit.check(i).as_some(item))
-        .map(move |blend_context| blend.apply(blend_context));
+        .filter_map(move |(i, item)| limit.check(i).as_some(item));
+
+    let rows = {
+        let rows = aggregate.apply(rows)?;
+        let rows = Box::new(rows);
+
+        rows.map(move |blend_context| blend.apply(blend_context))
+    };
 
     Ok(rows)
 }

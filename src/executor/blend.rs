@@ -1,3 +1,4 @@
+use im_rc::HashMap;
 use iter_enum::Iterator;
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -5,12 +6,11 @@ use std::iter::once;
 use std::rc::Rc;
 use thiserror::Error;
 
-use sqlparser::ast::{Expr, Ident, SelectItem};
+use sqlparser::ast::{Expr, Function, Ident, SelectItem};
 
-use super::blend_context::BlendContext;
+use super::context::{AggregateContext, BlendContext, FilterContext};
 use super::evaluate::{evaluate, Evaluated};
-use super::filter_context::FilterContext;
-use crate::data::{get_table_name, Row, Value};
+use crate::data::{get_name, Row, Value};
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -51,11 +51,12 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         Self { storage, fields }
     }
 
-    pub fn apply(&self, context: Result<Rc<BlendContext<'a>>>) -> Result<Row> {
-        let context = Self::prepare(context?);
+    pub fn apply(&self, context: Result<AggregateContext<'a>>) -> Result<Row> {
+        let AggregateContext { aggregated, next } = context?;
+        let context = Self::prepare(next);
 
         let values = self
-            .blend(context)?
+            .blend(aggregated, context)?
             .into_iter()
             .map(|value| match Rc::try_unwrap(value) {
                 Ok(value) => value,
@@ -121,7 +122,11 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         }
     }
 
-    fn blend(&self, context: Context<'a>) -> Result<Vec<Rc<Value>>> {
+    fn blend(
+        &self,
+        aggregated: Option<HashMap<&'a Function, Value>>,
+        context: Context<'a>,
+    ) -> Result<Vec<Rc<Value>>> {
         macro_rules! err {
             ($err: expr) => {
                 Blended::Err(once(Err($err.into())))
@@ -137,7 +142,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                     Blended::All(values)
                 }
                 SelectItem::QualifiedWildcard(alias) => {
-                    let table_alias = match get_table_name(alias) {
+                    let table_alias = match get_name(alias) {
                         Ok(alias) => alias,
                         Err(e) => {
                             return err!(e);
@@ -170,9 +175,15 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                             ))),
                         }
                     }
-                    Expr::BinaryOp { .. } => {
-                        let value =
-                            evaluate_blended(self.storage, None, &context, expr).map(Rc::new);
+                    Expr::BinaryOp { .. } | Expr::Function(_) => {
+                        let value = evaluate_blended(
+                            self.storage,
+                            None,
+                            &context,
+                            aggregated.as_ref(),
+                            expr,
+                        )
+                        .map(Rc::new);
 
                         Blended::Single(once(value))
                     }
@@ -271,6 +282,7 @@ fn evaluate_blended<T: 'static + Debug>(
     storage: &dyn Store<T>,
     filter_context: Option<&FilterContext<'_>>,
     context: &Context<'_>,
+    aggregated: Option<&HashMap<&Function, Value>>,
     expr: &Expr,
 ) -> Result<Value> {
     let Context {
@@ -293,8 +305,8 @@ fn evaluate_blended<T: 'static + Debug>(
     let filter_context = row_context.as_ref().or(filter_context);
 
     match next {
-        Some(context) => evaluate_blended(storage, filter_context, context, expr),
-        None => match evaluate(storage, filter_context, expr)? {
+        Some(context) => evaluate_blended(storage, filter_context, context, aggregated, expr),
+        None => match evaluate(storage, filter_context, aggregated, expr)? {
             Evaluated::LiteralRef(v) => Value::try_from(v),
             Evaluated::Literal(v) => Value::try_from(&v),
             Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
