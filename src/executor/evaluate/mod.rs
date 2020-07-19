@@ -77,15 +77,13 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
         }
-        Expr::Function(func) => {
-            aggregated
-                .as_ref()
-                .map(|aggregated| match aggregated.get(func) {
-                    Some(value) => Ok(Evaluated::Value(value.clone())),
-                    None => Err(EvaluateError::UnreachableAggregatedField(func.to_string()).into()),
-                })
-                .unwrap_or_else(|| Err(EvaluateError::UnreachableEmptyAggregated.into()))
-        }
+        Expr::Function(func) => aggregated
+            .as_ref()
+            .map(|aggregated| match aggregated.get(func) {
+                Some(value) => Ok(Evaluated::Value(value.clone())),
+                None => Err(EvaluateError::UnreachableAggregatedField(func.to_string()).into()),
+            })
+            .unwrap_or_else(|| Err(EvaluateError::UnreachableEmptyAggregated.into())),
         _ => Err(EvaluateError::Unimplemented.into()),
     }
 }

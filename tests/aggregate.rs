@@ -11,17 +11,18 @@ fn aggregate() {
         CREATE TABLE Item (
             id INTEGER,
             quantity INTEGER,
+            age INTEGER NULL,
         );
     ";
 
     helper.run_and_print(create_sql);
 
     let insert_sqls = [
-        "INSERT INTO Item (id, quantity) VALUES (1, 10);",
-        "INSERT INTO Item (id, quantity) VALUES (2, 0);",
-        "INSERT INTO Item (id, quantity) VALUES (3, 9);",
-        "INSERT INTO Item (id, quantity) VALUES (4, 3);",
-        "INSERT INTO Item (id, quantity) VALUES (5, 25);",
+        "INSERT INTO Item (id, quantity, age) VALUES (1, 10, 11);",
+        "INSERT INTO Item (id, quantity, age) VALUES (2, 0, 90);",
+        "INSERT INTO Item (id, quantity, age) VALUES (3, 9, NULL);",
+        "INSERT INTO Item (id, quantity, age) VALUES (4, 3, 3);",
+        "INSERT INTO Item (id, quantity, age) VALUES (5, 25, NULL);",
     ];
 
     for insert_sql in insert_sqls.iter() {
@@ -42,6 +43,16 @@ fn aggregate() {
         (
             "SELECT SUM(quantity) * 2 + MAX(quantity) - 3 / 1 FROM Item",
             select!(I64; 116),
+        ),
+        (
+            "SELECT SUM(age), MAX(age), MIN(age) FROM Item",
+            select_with_empty!(
+                OptI64(Some(104)) OptI64(Some(90)) OptI64(Some(3))
+            ),
+        ),
+        (
+            "SELECT SUM(age) + SUM(quantity) FROM Item",
+            select_with_empty!(OptI64(Some(151))),
         ),
     ];
 
