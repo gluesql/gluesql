@@ -54,6 +54,10 @@ fn aggregate() {
             "SELECT SUM(age) + SUM(quantity) FROM Item",
             select_with_empty!(OptI64(Some(151))),
         ),
+        (
+            "SELECT COUNT(age), COUNT(quantity) FROM Item",
+            select!(I64 I64; 3 5),
+        ),
     ];
 
     test_cases

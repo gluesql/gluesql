@@ -110,25 +110,24 @@ fn aggregate<'a>(
     expr: &'a Expr,
 ) -> Result<HashMap<&'a Function, (usize, Value)>> {
     let aggr = |aggregated, expr| aggregate(index, aggregated, context, expr);
+    let get_value = |expr: &Expr| match expr {
+        Expr::Identifier(ident) => context.get_value(&ident.value),
+        Expr::CompoundIdentifier(idents) => {
+            if idents.len() != 2 {
+                return Err(AggregateError::UnsupportedCompoundIdentifier(expr.to_string()).into());
+            }
+
+            let table_alias = &idents[0].value;
+            let column = &idents[1].value;
+
+            context.get_alias_value(table_alias, column)
+        }
+        _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
+    };
     let get_first_value = |args: &[Expr]| {
         let expr = args.get(0).ok_or(AggregateError::Unreachable)?;
 
-        match expr {
-            Expr::Identifier(ident) => context.get_value(&ident.value),
-            Expr::CompoundIdentifier(idents) => {
-                if idents.len() != 2 {
-                    return Err(
-                        AggregateError::UnsupportedCompoundIdentifier(expr.to_string()).into(),
-                    );
-                }
-
-                let table_alias = &idents[0].value;
-                let column = &idents[1].value;
-
-                context.get_alias_value(table_alias, column)
-            }
-            _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
-        }
+        get_value(expr)
     };
 
     match expr {
@@ -146,16 +145,31 @@ fn aggregate<'a>(
             let Function { name, args, .. } = func;
 
             match get_name(name)?.as_str() {
-                "COUNT" => match aggregated.get(func) {
-                    Some((current, value)) => {
-                        if &index <= current {
-                            return Ok(aggregated);
-                        }
+                "COUNT" => {
+                    let expr = args.get(0).ok_or(AggregateError::Unreachable)?;
 
-                        Ok(aggregated.update(func, (index, Value::I64(1).add(value)?)))
+                    let value_to_incr = Value::I64(match expr {
+                        Expr::Wildcard => 1,
+                        _ => {
+                            if get_value(expr)?.is_some() {
+                                1
+                            } else {
+                                0
+                            }
+                        }
+                    });
+
+                    match aggregated.get(func) {
+                        Some((current, value)) => {
+                            if &index <= current {
+                                return Ok(aggregated);
+                            }
+
+                            Ok(aggregated.update(func, (index, value_to_incr.add(value)?)))
+                        }
+                        None => Ok(aggregated.update(func, (index, value_to_incr))),
                     }
-                    None => Ok(aggregated.update(func, (index, Value::I64(1)))),
-                },
+                }
                 "SUM" => {
                     let value_to_sum = get_first_value(args)?;
 

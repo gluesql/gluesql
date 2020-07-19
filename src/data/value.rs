@@ -267,4 +267,13 @@ impl Value {
             _ => Err(ValueError::DivideOnNonNumeric.into()),
         }
     }
+
+    pub fn is_some(&self) -> bool {
+        use Value::*;
+
+        match self {
+            Empty | OptBool(None) | OptI64(None) | OptF64(None) | OptStr(None) => false,
+            _ => true,
+        }
+    }
 }
