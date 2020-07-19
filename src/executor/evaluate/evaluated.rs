@@ -241,7 +241,7 @@ fn literal_multiply(a: &AstValue, b: &AstValue) -> Result<AstValue> {
 fn literal_divide(a: &AstValue, b: &AstValue) -> Result<AstValue> {
     match (a, b) {
         (AstValue::Number(a), AstValue::Number(b)) => match (a.parse::<i64>(), b.parse::<i64>()) {
-            (Ok(a), Ok(b)) => Ok(AstValue::Number((a - b).to_string())),
+            (Ok(a), Ok(b)) => Ok(AstValue::Number((a / b).to_string())),
             _ => panic!(),
         },
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
