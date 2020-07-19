@@ -1,12 +1,14 @@
 mod error;
 mod evaluated;
 
+use im_rc::HashMap;
 use std::fmt::Debug;
 
-use sqlparser::ast::{BinaryOperator, Expr, Value as AstValue};
+use sqlparser::ast::{BinaryOperator, Expr, Function, Value as AstValue};
 
 use super::context::FilterContext;
 use super::select::select;
+use crate::data::Value;
 use crate::result::Result;
 use crate::storage::Store;
 
@@ -16,9 +18,10 @@ pub use evaluated::Evaluated;
 pub fn evaluate<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: Option<&'a FilterContext<'a>>,
+    aggregated: Option<&HashMap<&Function, Value>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    let eval = |expr| evaluate(storage, filter_context, expr);
+    let eval = |expr| evaluate(storage, filter_context, aggregated, expr);
 
     match expr {
         Expr::Value(value) => match value {
@@ -73,6 +76,15 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 BinaryOperator::Divide => l.divide(&r),
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
+        }
+        Expr::Function(func) => {
+            aggregated
+                .as_ref()
+                .map(|aggregated| match aggregated.get(func) {
+                    Some(value) => Ok(Evaluated::Value(value.clone())),
+                    None => Err(EvaluateError::UnreachableAggregatedField(func.to_string()).into()),
+                })
+                .unwrap_or_else(|| Err(EvaluateError::UnreachableEmptyAggregated.into()))
         }
         _ => Err(EvaluateError::Unimplemented.into()),
     }

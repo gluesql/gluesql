@@ -91,7 +91,7 @@ fn check_expr<'a, T: 'static + Debug>(
     filter_context: Option<&'a FilterContext<'a>>,
     expr: &'a Expr,
 ) -> Result<bool> {
-    let evaluate = |expr| evaluate(storage, filter_context, expr);
+    let evaluate = |expr| evaluate(storage, filter_context, None, expr);
     let check = |expr| check_expr(storage, filter_context, expr);
 
     match expr {

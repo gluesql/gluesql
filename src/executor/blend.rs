@@ -24,12 +24,6 @@ pub enum BlendError {
 
     #[error("table not found: {0}")]
     TableNotFound(String),
-
-    #[error("unreachable - aggregated field not found: {0}")]
-    UnreachableAggregatedFieldNotFound(String),
-
-    #[error("unreachable - aggregated map does not exist")]
-    UnreachableAggregatedMapDoesNotExist,
 }
 
 pub struct Blend<'a, T: 'static + Debug> {
@@ -130,7 +124,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
 
     fn blend(
         &self,
-        map: Option<HashMap<&'a Function, Value>>,
+        aggregated: Option<HashMap<&'a Function, Value>>,
         context: Context<'a>,
     ) -> Result<Vec<Rc<Value>>> {
         macro_rules! err {
@@ -181,25 +175,18 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                             ))),
                         }
                     }
-                    Expr::BinaryOp { .. } => {
-                        let value =
-                            evaluate_blended(self.storage, None, &context, expr).map(Rc::new);
+                    Expr::BinaryOp { .. } | Expr::Function(_) => {
+                        let value = evaluate_blended(
+                            self.storage,
+                            None,
+                            &context,
+                            aggregated.as_ref(),
+                            expr,
+                        )
+                        .map(Rc::new);
 
                         Blended::Single(once(value))
                     }
-                    Expr::Function(func) => map
-                        .as_ref()
-                        .map(|map| match map.get(func) {
-                            Some(value) => {
-                                let value = Rc::new(value.clone());
-
-                                Blended::Single(once(Ok(value)))
-                            }
-                            None => err!(BlendError::UnreachableAggregatedFieldNotFound(
-                                func.to_string()
-                            )),
-                        })
-                        .unwrap_or_else(|| err!(BlendError::UnreachableAggregatedMapDoesNotExist)),
                     _ => err!(BlendError::FieldDefinitionNotSupported),
                 },
                 _ => err!(BlendError::FieldDefinitionNotSupported),
@@ -295,6 +282,7 @@ fn evaluate_blended<T: 'static + Debug>(
     storage: &dyn Store<T>,
     filter_context: Option<&FilterContext<'_>>,
     context: &Context<'_>,
+    aggregated: Option<&HashMap<&Function, Value>>,
     expr: &Expr,
 ) -> Result<Value> {
     let Context {
@@ -317,8 +305,8 @@ fn evaluate_blended<T: 'static + Debug>(
     let filter_context = row_context.as_ref().or(filter_context);
 
     match next {
-        Some(context) => evaluate_blended(storage, filter_context, context, expr),
-        None => match evaluate(storage, filter_context, expr)? {
+        Some(context) => evaluate_blended(storage, filter_context, context, aggregated, expr),
+        None => match evaluate(storage, filter_context, aggregated, expr)? {
             Evaluated::LiteralRef(v) => Value::try_from(v),
             Evaluated::Literal(v) => Value::try_from(&v),
             Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),

@@ -67,7 +67,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     .position(|column| column.value == id.value)
                     .ok_or_else(|| UpdateError::Unreachable)?;
 
-                let evaluated = evaluate(self.storage, context, value)?;
+                let evaluated = evaluate(self.storage, context, None, value)?;
                 let Row(values) = &row;
                 let value = &values[index];
 

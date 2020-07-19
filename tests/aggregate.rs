@@ -39,6 +39,10 @@ fn aggregate() {
             "SELECT SUM(quantity), MAX(quantity), MIN(quantity) FROM Item",
             select!(I64 I64 I64; 47 25 0),
         ),
+        (
+            "SELECT SUM(quantity) * 2 + MAX(quantity) - 3 / 1 FROM Item",
+            select!(I64; 116),
+        ),
     ];
 
     test_cases
