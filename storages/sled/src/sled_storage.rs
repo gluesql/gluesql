@@ -1,9 +1,7 @@
 use sled::{self, Db, IVec};
 use thiserror::Error as ThisError;
 
-use crate::data::{Row, Schema};
-use crate::result::{Error, Result};
-use crate::storage::{RowIter, Store, StoreError};
+use gluesql::{Error, Result, Row, RowIter, Schema, Store, StoreError};
 
 #[derive(ThisError, Debug)]
 enum StorageError {

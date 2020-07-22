@@ -12,7 +12,7 @@ use super::context::{BlendContext, FilterContext};
 use super::filter::{BlendedFilter, Filter};
 use crate::data::Table;
 use crate::result::Result;
-use crate::storage::Store;
+use crate::store::Store;
 
 #[derive(ThisError, Debug, PartialEq)]
 pub enum JoinError {

@@ -7,7 +7,7 @@ use super::context::FilterContext;
 use super::evaluate::{evaluate, Evaluated};
 use crate::data::{Row, Value};
 use crate::result::Result;
-use crate::storage::Store;
+use crate::store::Store;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum UpdateError {

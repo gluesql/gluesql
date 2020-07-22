@@ -14,7 +14,7 @@ use super::join::Join;
 use super::limit::Limit;
 use crate::data::{Row, Table};
 use crate::result::Result;
-use crate::storage::Store;
+use crate::store::Store;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum SelectError {

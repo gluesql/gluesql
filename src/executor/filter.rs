@@ -9,7 +9,7 @@ use super::evaluate::{evaluate, Evaluated};
 use super::select::select;
 use crate::data::Row;
 use crate::result::Result;
-use crate::storage::Store;
+use crate::store::Store;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum FilterError {

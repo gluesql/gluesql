@@ -9,7 +9,7 @@ use super::select::select;
 use super::update::Update;
 use crate::data::{get_name, Row, Schema};
 use crate::result::Result;
-use crate::storage::Store;
+use crate::store::Store;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ExecuteError {

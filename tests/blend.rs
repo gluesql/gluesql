@@ -1,11 +1,11 @@
 mod helper;
 
-use gluesql::{BlendError, Payload, Row, Value};
-use helper::{Helper, SledHelper};
+use gluesql::{BlendError, Payload, Row, Tester, Value};
+use sled_storage::SledTester;
 
 #[test]
 fn blend() {
-    let helper = SledHelper::new("data/blend");
+    let tester = SledTester::new("data/blend");
 
     let create_sqls: [&str; 2] = [
         "
@@ -23,11 +23,11 @@ fn blend() {
     ",
     ];
 
-    create_sqls.iter().for_each(|sql| helper.run_and_print(sql));
+    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
 
     let delete_sqls = ["DELETE FROM BlendUser", "DELETE FROM BlendItem"];
 
-    delete_sqls.iter().for_each(|sql| helper.run_and_print(sql));
+    delete_sqls.iter().for_each(|sql| tester.run_and_print(sql));
 
     let insert_sqls = [
         "INSERT INTO BlendUser (id, name) VALUES (1, \"Taehoon\")",
@@ -41,12 +41,12 @@ fn blend() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        helper.run(insert_sql).unwrap();
+        tester.run(insert_sql).unwrap();
     }
 
     use Value::*;
 
-    let run = |sql| helper.run(sql).expect("select");
+    let run = |sql| tester.run(sql).expect("select");
 
     let test_cases = vec![
         (
@@ -109,5 +109,5 @@ fn blend() {
 
     error_cases
         .into_iter()
-        .for_each(|(error, sql)| helper.test_error(sql, error.into()));
+        .for_each(|(error, sql)| tester.test_error(sql, error.into()));
 }

@@ -1,12 +1,13 @@
 mod helper;
 
-use helper::{Helper, SledHelper};
+use gluesql::Tester;
+use sled_storage::SledTester;
 
 #[test]
 fn ordering() {
     println!("\n\n");
 
-    let helper = SledHelper::new("data/ordering");
+    let tester = SledTester::new("data/ordering");
 
     let create_sql = "
         CREATE TABLE Operator (
@@ -15,10 +16,10 @@ fn ordering() {
         );
     ";
 
-    helper.run_and_print(create_sql);
+    tester.run_and_print(create_sql);
 
     let delete_sql = "DELETE FROM Operator";
-    helper.run_and_print(delete_sql);
+    tester.run_and_print(delete_sql);
 
     let insert_sqls = [
         "INSERT INTO Operator (id, name) VALUES (1, \"Abstract\");",
@@ -29,7 +30,7 @@ fn ordering() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        helper.run(insert_sql).unwrap();
+        tester.run(insert_sql).unwrap();
     }
 
     let test_cases = [
@@ -73,7 +74,7 @@ fn ordering() {
     ];
 
     for (num, sql) in test_cases.iter() {
-        helper.test_rows(sql, *num);
+        tester.test_rows(sql, *num);
     }
 
     println!("\n\n");

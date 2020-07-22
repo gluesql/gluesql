@@ -1,10 +1,11 @@
 mod helper;
 
-use helper::{Helper, SledHelper};
+use gluesql::Tester;
+use sled_storage::SledTester;
 
 #[test]
 fn nested_select() {
-    let helper = SledHelper::new("data/nested_select");
+    let tester = SledTester::new("data/nested_select");
 
     let create_sqls: [&str; 2] = [
         "
@@ -22,7 +23,7 @@ fn nested_select() {
     ",
     ];
 
-    create_sqls.iter().for_each(|sql| helper.run_and_print(sql));
+    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
 
     let insert_sqls = [
         "INSERT INTO User (id, name) VALUES (1, \"Taehoon\")",
@@ -48,7 +49,7 @@ fn nested_select() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        helper.run(insert_sql).unwrap();
+        tester.run(insert_sql).unwrap();
     }
 
     let select_sqls = [
@@ -73,5 +74,5 @@ fn nested_select() {
 
     select_sqls
         .iter()
-        .for_each(|(num, sql)| helper.test_rows(sql, *num));
+        .for_each(|(num, sql)| tester.test_rows(sql, *num));
 }

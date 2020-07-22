@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::data::{Row, Schema};
-use crate::result::Result;
+use super::data::{Row, Schema};
+use super::result::Result;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum StoreError {

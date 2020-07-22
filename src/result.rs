@@ -5,7 +5,7 @@ use crate::executor::{
     AggregateError, BlendContextError, BlendError, EvaluateError, ExecuteError, FilterContextError,
     FilterError, JoinError, LimitError, SelectError, UpdateError,
 };
-use crate::storage::StoreError;
+use crate::store::StoreError;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
