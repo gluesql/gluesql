@@ -1,15 +1,15 @@
 use super::data::Row;
-use super::executor::{execute, Payload};
+use super::executor::Payload;
 use super::result::{Error, Result};
-use super::store::Store;
 
+use sqlparser::ast::Statement;
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 
-use std::fmt::Debug;
+pub struct TestQuery<'a>(pub &'a Statement);
 
-pub trait Tester<T: 'static + Debug> {
-    fn get_storage(&mut self) -> &mut dyn Store<T>;
+pub trait Tester {
+    fn execute(&mut self, parsed: TestQuery) -> Result<Payload>;
 
     fn run(&mut self, sql: &str) -> Result<Payload> {
         let dialect = GenericDialect {};
@@ -21,10 +21,8 @@ pub trait Tester<T: 'static + Debug> {
         };
         let parsed = &parsed[0];
 
-        let storage = self.get_storage();
-
         println!("[Run] {}", parsed);
-        execute(storage, parsed)
+        self.execute(TestQuery(parsed))
     }
 
     fn run_and_print(&mut self, sql: &str) {

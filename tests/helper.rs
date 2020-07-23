@@ -3,7 +3,7 @@ macro_rules! test {
     ($title: ident, $content: expr) => {
         #[test_case(memory_storage::MemoryTester::new() ; "memory")]
         #[test_case(sled_storage::SledTester::new(&format!("data/{}", stringify!($title))) ; "sled")]
-        fn $title<T: 'static + std::fmt::Debug>(mut tester: impl gluesql::Tester<T>) {
+        fn $title(mut tester: impl gluesql::Tester) {
             $content
         }
     };

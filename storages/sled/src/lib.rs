@@ -1,14 +1,10 @@
 mod sled_storage;
-
-use sled::IVec;
-
-use gluesql::store::Store;
-use gluesql::Tester;
-
 use sled_storage::SledStorage;
 
+use gluesql::{execute, Payload, Result, TestQuery, Tester};
+
 pub struct SledTester {
-    storage: Box<SledStorage>,
+    storage: Option<SledStorage>,
 }
 
 impl SledTester {
@@ -20,14 +16,28 @@ impl SledTester {
             }
         }
 
-        let storage = Box::new(SledStorage::new(path.to_owned()).expect("SledStorage::new"));
+        let storage = SledStorage::new(path.to_owned()).expect("SledStorage::new");
+        let storage = Some(storage);
 
         SledTester { storage }
     }
 }
 
-impl Tester<IVec> for SledTester {
-    fn get_storage(&mut self) -> &mut dyn Store<IVec> {
-        &mut (*self.storage)
+impl Tester for SledTester {
+    fn execute(&mut self, query: TestQuery) -> Result<Payload> {
+        let storage = self.storage.take().unwrap();
+
+        match execute(storage, query.0) {
+            Ok((storage, payload)) => {
+                self.storage = Some(storage);
+
+                Ok(payload)
+            }
+            Err((storage, error)) => {
+                self.storage = Some(storage);
+
+                Err(error)
+            }
+        }
     }
 }

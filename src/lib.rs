@@ -9,4 +9,4 @@ pub use data::*;
 pub use executor::*;
 pub use result::*;
 pub use store::*;
-pub use tester::Tester;
+pub use tester::*;
