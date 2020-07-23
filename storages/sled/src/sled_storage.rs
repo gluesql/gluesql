@@ -50,14 +50,14 @@ impl SledStorage {
 }
 
 impl Store<IVec> for SledStorage {
-    fn gen_id(&self, table_name: &str) -> Result<IVec> {
+    fn gen_id(&mut self, table_name: &str) -> Result<IVec> {
         let id = try_into!(self.tree.generate_id());
         let id = format!("data/{}/{}", table_name, id);
 
         Ok(IVec::from(id.as_bytes()))
     }
 
-    fn set_schema(&self, schema: &Schema) -> Result<()> {
+    fn set_schema(&mut self, schema: &Schema) -> Result<()> {
         let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
         let value = try_into!(bincode::serialize(schema));
@@ -77,15 +77,15 @@ impl Store<IVec> for SledStorage {
         Ok(statement)
     }
 
-    fn del_schema(&self, table_name: &str) -> Result<()> {
+    fn del_schema(&mut self, table_name: &str) -> Result<()> {
         let prefix = format!("data/{}/", table_name);
+        let tree = &self.tree;
 
-        self.tree
-            .scan_prefix(prefix.as_bytes())
+        tree.scan_prefix(prefix.as_bytes())
             .map(move |item| {
                 let (key, _) = try_into!(item);
 
-                try_into!(self.tree.remove(key));
+                try_into!(tree.remove(key));
 
                 Ok(())
             })
@@ -93,12 +93,12 @@ impl Store<IVec> for SledStorage {
 
         let key = format!("schema/{}", table_name);
 
-        try_into!(self.tree.remove(key));
+        try_into!(tree.remove(key));
 
         Ok(())
     }
 
-    fn set_data(&self, key: &IVec, row: Row) -> Result<Row> {
+    fn set_data(&mut self, key: &IVec, row: Row) -> Result<Row> {
         let value = try_into!(bincode::serialize(&row));
 
         try_into!(self.tree.insert(key, value));
@@ -119,7 +119,7 @@ impl Store<IVec> for SledStorage {
         Ok(Box::new(result_set))
     }
 
-    fn del_data(&self, key: &IVec) -> Result<()> {
+    fn del_data(&mut self, key: &IVec) -> Result<()> {
         try_into!(self.tree.remove(key));
 
         Ok(())

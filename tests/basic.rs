@@ -1,12 +1,9 @@
 mod helper;
 
-use gluesql::{Payload, Row, Tester, Value};
-use sled_storage::SledTester;
+use gluesql::{Payload, Row, Value};
+use test_case::test_case;
 
-#[test]
-fn basic() {
-    let tester = SledTester::new("data/basic");
-
+test!(basic, {
     tester.run_and_print(
         r#"
 CREATE TABLE Test (
@@ -41,4 +38,4 @@ CREATE TABLE Test (
     let found = tester.run("SELECT id, num FROM Test").expect("select");
     let expected = select!(I64 I64; 2 2; 2 9; 2 4);
     assert_eq!(expected, found);
-}
+});

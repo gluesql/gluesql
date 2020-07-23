@@ -1,12 +1,8 @@
 mod helper;
 
-use gluesql::Tester;
-use sled_storage::SledTester;
+use test_case::test_case;
 
-#[test]
-fn sql_types() {
-    let tester = SledTester::new("data/sql_types");
-
+test!(sql_types, {
     let create_sql = "
         CREATE TABLE Item (
             id INTEGER,
@@ -51,4 +47,4 @@ fn sql_types() {
     }
 
     tester.run_and_print(delete_sql);
-}
+});

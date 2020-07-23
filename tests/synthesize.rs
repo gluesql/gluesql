@@ -1,12 +1,8 @@
 mod helper;
 
-use gluesql::Tester;
-use sled_storage::SledTester;
+use test_case::test_case;
 
-#[test]
-fn synthesize() {
-    let tester = SledTester::new("data/synthesize");
-
+test!(synthesize, {
     let create_sql = "
         CREATE TABLE TableA (
             id INTEGER,
@@ -74,7 +70,7 @@ fn synthesize() {
         tester.run(insert_sql).unwrap();
     }
 
-    let test_select = |sql, num| {
+    let mut test_select = |sql, num| {
         tester.test_columns(sql, num);
     };
 
@@ -87,4 +83,4 @@ fn synthesize() {
     for (num, sql) in test_cases.iter() {
         test_select(sql, *num);
     }
-}
+});

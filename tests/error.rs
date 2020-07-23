@@ -2,14 +2,11 @@ mod helper;
 
 use gluesql::{
     EvaluateError, ExecuteError, FilterContextError, JoinError, RowError, SelectError, StoreError,
-    TableError, Tester, ValueError,
+    TableError, ValueError,
 };
-use sled_storage::SledTester;
+use test_case::test_case;
 
-#[test]
-fn error() {
-    let tester = SledTester::new("data/error");
-
+test!(error, {
     tester.run_and_print("CREATE TABLE TableA (id INTEGER);");
     tester.run_and_print("INSERT INTO TableA (id) VALUES (1);");
 
@@ -55,4 +52,4 @@ fn error() {
         "INSERT INTO TableB (id) VALUES (0);",
         ValueError::SqlTypeNotSupported.into(),
     );
-}
+});

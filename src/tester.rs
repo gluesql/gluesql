@@ -9,9 +9,9 @@ use sqlparser::parser::Parser;
 use std::fmt::Debug;
 
 pub trait Tester<T: 'static + Debug> {
-    fn get_storage(&self) -> &dyn Store<T>;
+    fn get_storage(&mut self) -> &mut dyn Store<T>;
 
-    fn run(&self, sql: &str) -> Result<Payload> {
+    fn run(&mut self, sql: &str) -> Result<Payload> {
         let dialect = GenericDialect {};
         let parsed = match Parser::parse_sql(&dialect, sql) {
             Ok(parsed) => parsed,
@@ -27,7 +27,7 @@ pub trait Tester<T: 'static + Debug> {
         execute(storage, parsed)
     }
 
-    fn run_and_print(&self, sql: &str) {
+    fn run_and_print(&mut self, sql: &str) {
         let result = self.run(sql);
 
         match result.unwrap() {
@@ -40,7 +40,7 @@ pub trait Tester<T: 'static + Debug> {
         };
     }
 
-    fn test_rows(&self, sql: &str, count: usize) {
+    fn test_rows(&mut self, sql: &str, count: usize) {
         let result = self.run(sql);
 
         match result.unwrap() {
@@ -51,7 +51,7 @@ pub trait Tester<T: 'static + Debug> {
         };
     }
 
-    fn test_columns(&self, sql: &str, count: usize) {
+    fn test_columns(&mut self, sql: &str, count: usize) {
         let result = self.run(sql);
 
         match result.unwrap() {
@@ -64,7 +64,7 @@ pub trait Tester<T: 'static + Debug> {
         };
     }
 
-    fn test_error(&self, sql: &str, expected: Error) {
+    fn test_error(&mut self, sql: &str, expected: Error) {
         let result = self.run(sql);
 
         assert_eq!(result.unwrap_err(), expected);

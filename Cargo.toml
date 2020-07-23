@@ -5,7 +5,7 @@ authors = ["Taehoon Moon <panarch@kaist.ac.kr>"]
 edition = "2018"
 
 [workspace]
-members = ["storages/sled"]
+members = ["storages/sled", "storages/memory"]
 
 [dependencies]
 boolinator = "2.4.0"
@@ -18,3 +18,5 @@ thiserror = "1.0.12"
 
 [dev-dependencies]
 sled_storage = { path = "./storages/sled" }
+memory_storage = { path = "./storages/memory" }
+test-case = "1.0.0"

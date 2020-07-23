@@ -1,12 +1,9 @@
 mod helper;
 
-use gluesql::{ExecuteError, Payload, Row, StoreError, Tester, Value};
-use sled_storage::SledTester;
+use gluesql::{ExecuteError, Payload, Row, StoreError, Value};
+use test_case::test_case;
 
-#[test]
-fn drop_table() {
-    let tester = SledTester::new("data/migrate");
-
+test!(drop_table, {
     let create_sql = r#"
 CREATE TABLE DropTable (
     id INT,
@@ -53,4 +50,4 @@ CREATE TABLE DropTable (
 
         assert_eq!(expected, found);
     });
-}
+});

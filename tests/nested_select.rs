@@ -1,12 +1,8 @@
 mod helper;
 
-use gluesql::Tester;
-use sled_storage::SledTester;
+use test_case::test_case;
 
-#[test]
-fn nested_select() {
-    let tester = SledTester::new("data/nested_select");
-
+test!(nested_select, {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE User (
@@ -75,4 +71,4 @@ fn nested_select() {
     select_sqls
         .iter()
         .for_each(|(num, sql)| tester.test_rows(sql, *num));
-}
+});

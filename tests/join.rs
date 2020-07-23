@@ -1,12 +1,9 @@
 mod helper;
 
-use gluesql::{Payload, Row, Tester, Value};
-use sled_storage::SledTester;
+use gluesql::{Payload, Row, Value};
+use test_case::test_case;
 
-#[test]
-fn join() {
-    let tester = SledTester::new("data/join");
-
+test!(join, {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -132,12 +129,9 @@ fn join() {
         .for_each(|(num, sql)| tester.test_rows(sql, *num));
 
     delete_sqls.iter().for_each(|sql| tester.run_and_print(sql));
-}
+});
 
-#[test]
-fn blend_join() {
-    let tester = SledTester::new("data/blend_join");
-
+test!(blend_join, {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -236,4 +230,4 @@ fn blend_join() {
         I64(5) Str("Hwan".to_owned())    Empty    Empty  Empty
     );
     assert_eq!(expected, found);
-}
+});

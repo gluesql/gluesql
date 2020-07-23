@@ -1,14 +1,8 @@
 mod helper;
 
-use gluesql::Tester;
-use sled_storage::SledTester;
+use test_case::test_case;
 
-#[test]
-fn ordering() {
-    println!("\n\n");
-
-    let tester = SledTester::new("data/ordering");
-
+test!(ordering, {
     let create_sql = "
         CREATE TABLE Operator (
             id INTEGER,
@@ -76,6 +70,4 @@ fn ordering() {
     for (num, sql) in test_cases.iter() {
         tester.test_rows(sql, *num);
     }
-
-    println!("\n\n");
-}
+});

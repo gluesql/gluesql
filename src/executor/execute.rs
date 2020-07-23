@@ -31,7 +31,7 @@ pub enum Payload {
 }
 
 pub fn execute<T: 'static + Debug>(
-    storage: &dyn Store<T>,
+    storage: &mut dyn Store<T>,
     sql_query: &Statement,
 ) -> Result<Payload> {
     match sql_query {
@@ -73,18 +73,23 @@ pub fn execute<T: 'static + Debug>(
             let update = Update::new(storage, table_name, assignments, &columns)?;
             let filter = Filter::new(storage, selection.as_ref(), None);
 
-            let num_rows = fetch(storage, table_name, &columns, filter)?
+            let rows: Vec<_> = fetch(storage, table_name, &columns, filter)?
                 .map(|item| {
                     let (_, key, row) = item?;
 
                     Ok((key, update.apply(row)?))
                 })
-                .try_fold::<_, _, Result<_>>(0, |num, item: Result<(T, Row)>| {
+                .collect();
+
+            let num_rows = rows.into_iter().try_fold::<_, _, Result<_>>(
+                0,
+                |num, item: Result<(T, Row)>| {
                     let (key, row) = item?;
                     storage.set_data(&key, row)?;
 
                     Ok(num + 1)
-                })?;
+                },
+            )?;
 
             Ok(Payload::Update(num_rows))
         }
@@ -92,14 +97,19 @@ pub fn execute<T: 'static + Debug>(
             table_name,
             selection,
         } => {
-            let filter = Filter::new(storage, selection.as_ref(), None);
             let table_name = get_name(table_name)?;
 
             let columns = fetch_columns(storage, table_name)?;
-            let num_rows = fetch(storage, table_name, &columns, filter)?
-                .try_fold::<_, _, Result<_>>(0, |num: usize, item| {
-                    let (_, key, _) = item?;
-                    storage.del_data(&key)?;
+            let filter = Filter::new(storage, selection.as_ref(), None);
+
+            let rows = fetch(storage, table_name, &columns, filter)?
+                .map(|item| item.map(|(_, key, _)| key))
+                .collect::<Vec<_>>();
+
+            let num_rows = rows
+                .into_iter()
+                .try_fold::<_, _, Result<_>>(0, |num: usize, key| {
+                    storage.del_data(&key?)?;
 
                     Ok(num + 1)
                 })?;

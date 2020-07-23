@@ -1,14 +1,9 @@
 mod helper;
 
-use gluesql::{
-    EvaluateError, JoinError, Payload, Row, RowError, TableError, Tester, Value, ValueError,
-};
-use sled_storage::SledTester;
+use gluesql::{EvaluateError, JoinError, Payload, Row, RowError, TableError, Value, ValueError};
+use test_case::test_case;
 
-#[test]
-fn migrate() {
-    let tester = SledTester::new("data/migrate");
-
+test!(migrate, {
     let sql = r#"
 CREATE TABLE Test (
     id INT,
@@ -110,4 +105,4 @@ CREATE TABLE Test (
         .expect("select");
     let expected = select!(I64 I64; 2 9);
     assert_eq!(expected, found);
-}
+});

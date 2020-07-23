@@ -1,12 +1,9 @@
 mod helper;
 
-use gluesql::{Payload, Row, Tester, Value, ValueError};
-use sled_storage::SledTester;
+use gluesql::{Payload, Row, Value, ValueError};
+use test_case::test_case;
 
-#[test]
-fn nullable() {
-    let tester = SledTester::new("data/nullable");
-
+test!(nullable, {
     tester.run_and_print(
         r#"
 CREATE TABLE Test (
@@ -51,4 +48,4 @@ CREATE TABLE Test (
     let found = tester.run("INSERT INTO Test VALUES (1, NULL)");
     let expected = Err(ValueError::NullValueOnNotNullField.into());
     assert_eq!(expected, found);
-}
+});

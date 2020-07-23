@@ -1,12 +1,10 @@
 mod helper;
 
-use gluesql::{BlendError, Payload, Row, Tester, Value};
-use sled_storage::SledTester;
+use test_case::test_case;
 
-#[test]
-fn blend() {
-    let tester = SledTester::new("data/blend");
+use gluesql::{BlendError, Payload, Row, Value};
 
+test!(blend, {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE BlendUser (
@@ -46,7 +44,7 @@ fn blend() {
 
     use Value::*;
 
-    let run = |sql| tester.run(sql).expect("select");
+    let mut run = |sql| tester.run(sql).expect("select");
 
     let test_cases = vec![
         (
@@ -110,4 +108,4 @@ fn blend() {
     error_cases
         .into_iter()
         .for_each(|(error, sql)| tester.test_error(sql, error.into()));
-}
+});

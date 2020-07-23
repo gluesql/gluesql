@@ -27,7 +27,7 @@ impl SledTester {
 }
 
 impl Tester<IVec> for SledTester {
-    fn get_storage(&self) -> &dyn Store<IVec> {
-        self.storage.as_ref()
+    fn get_storage(&mut self) -> &mut dyn Store<IVec> {
+        &mut (*self.storage)
     }
 }

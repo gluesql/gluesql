@@ -1,12 +1,9 @@
 mod helper;
 
-use gluesql::{Payload, Row, Tester, UpdateError, Value, ValueError};
-use sled_storage::SledTester;
+use gluesql::{Payload, Row, UpdateError, Value, ValueError};
+use test_case::test_case;
 
-#[test]
-fn arithmetic() {
-    let tester = SledTester::new("data/arithmetic");
-
+test!(arithmetic, {
     let create_sql = "
         CREATE TABLE Arith (
             id INTEGER,
@@ -95,12 +92,9 @@ fn arithmetic() {
     test_cases
         .into_iter()
         .for_each(|(error, sql)| tester.test_error(sql, error));
-}
+});
 
-#[test]
-fn blend_arithmetic() {
-    let tester = SledTester::new("data/blend_arithmetic");
-
+test!(blend_arithmetic, {
     let create_sql = "
         CREATE TABLE Arith (
             id INTEGER,
@@ -153,4 +147,4 @@ fn blend_arithmetic() {
     let found = tester.run(sql).expect("select");
     let expected = select!(I64; 3; 5; 7; 9);
     assert_eq!(expected, found);
-}
+});

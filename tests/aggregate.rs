@@ -1,12 +1,9 @@
 mod helper;
 
-use gluesql::{AggregateError, BlendContextError, Payload, Row, Tester, Value};
-use sled_storage::SledTester;
+use gluesql::{AggregateError, BlendContextError, Payload, Row, Value};
+use test_case::test_case;
 
-#[test]
-fn aggregate() {
-    let tester = SledTester::new("data/aggregate");
-
+test!(aggregate, {
     let create_sql = "
         CREATE TABLE Item (
             id INTEGER,
@@ -31,7 +28,7 @@ fn aggregate() {
 
     use Value::*;
 
-    let run = |sql| tester.run(sql).expect("select");
+    let mut run = |sql| tester.run(sql).expect("select");
 
     let test_cases = vec![
         ("SELECT COUNT(*) FROM Item", select!(I64; 5)),
@@ -87,4 +84,4 @@ fn aggregate() {
     error_cases
         .into_iter()
         .for_each(|(error, sql)| tester.test_error(sql, error));
-}
+});

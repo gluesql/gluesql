@@ -1,4 +1,15 @@
 #[macro_export]
+macro_rules! test {
+    ($title: ident, $content: expr) => {
+        #[test_case(memory_storage::MemoryTester::new() ; "memory")]
+        #[test_case(sled_storage::SledTester::new(&format!("data/{}", stringify!($title))) ; "sled")]
+        fn $title<T: 'static + std::fmt::Debug>(mut tester: impl gluesql::Tester<T>) {
+            $content
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! row {
     ( $( $p:path )* ; $( $v:expr )* ) => (
         Row(vec![$( $p($v) ),*])
@@ -18,13 +29,13 @@ macro_rules! select {
         ];
 
         Payload::Select(
-            concat!(rows ; $( $t )* ; $( $( $v2 )* );*)
+            concat_with!(rows ; $( $t )* ; $( $( $v2 )* );*)
         )
     });
 }
 
 #[macro_export]
-macro_rules! concat {
+macro_rules! concat_with {
     ( $rows: ident ; $( $t:path )* ; $( $v: expr )* ) => ({
         $rows.push(row!($( $t )* ; $( $v )*));
 
@@ -33,7 +44,7 @@ macro_rules! concat {
     ( $rows: ident ; $( $t:path )* ; $( $v: expr )* ; $( $( $v2: expr )* );* ) => ({
         $rows.push(row!($( $t )* ; $( $v )*));
 
-        concat!($rows ; $( $t )* ; $( $( $v2 )* );* )
+        concat_with!($rows ; $( $t )* ; $( $( $v2 )* );* )
     });
 }
 
