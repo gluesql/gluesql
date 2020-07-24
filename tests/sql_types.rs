@@ -1,11 +1,8 @@
 mod helper;
 
-use helper::{Helper, SledHelper};
+use test_case::test_case;
 
-#[test]
-fn sql_types() {
-    let helper = SledHelper::new("data/sql_types");
-
+test!(sql_types, {
     let create_sql = "
         CREATE TABLE Item (
             id INTEGER,
@@ -15,11 +12,11 @@ fn sql_types() {
         );
     ";
 
-    helper.run_and_print(create_sql);
+    tester.run_and_print(create_sql);
 
     let delete_sql = "DELETE FROM Item";
 
-    helper.run_and_print(delete_sql);
+    tester.run_and_print(delete_sql);
 
     let insert_sqls = [
         "INSERT INTO Item (id, content, verified, ratio) VALUES (1, \"Hello\", True, 0.1);",
@@ -27,7 +24,7 @@ fn sql_types() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        helper.run(insert_sql).unwrap();
+        tester.run(insert_sql).unwrap();
     }
 
     let test_sqls = [
@@ -46,8 +43,8 @@ fn sql_types() {
     ];
 
     for (num, sql) in test_sqls.iter() {
-        helper.test_rows(sql, *num);
+        tester.test_rows(sql, *num);
     }
 
-    helper.run_and_print(delete_sql);
-}
+    tester.run_and_print(delete_sql);
+});

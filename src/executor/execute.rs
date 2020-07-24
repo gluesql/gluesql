@@ -8,8 +8,8 @@ use super::filter::Filter;
 use super::select::select;
 use super::update::Update;
 use crate::data::{get_name, Row, Schema};
-use crate::result::Result;
-use crate::storage::Store;
+use crate::result::{MutResult, Result};
+use crate::store::{MutStore, Store};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -30,10 +30,79 @@ pub enum Payload {
     DropTable,
 }
 
-pub fn execute<T: 'static + Debug>(
-    storage: &dyn Store<T>,
+pub fn execute<T: 'static + Debug, U: Store<T> + MutStore<T>>(
+    storage: U,
     sql_query: &Statement,
-) -> Result<Payload> {
+) -> MutResult<U, Payload> {
+    let prepared = match prepare(&storage, sql_query) {
+        Ok(prepared) => prepared,
+        Err(error) => {
+            return Err((storage, error));
+        }
+    };
+
+    match prepared {
+        Prepared::Create(schema) => storage
+            .set_schema(&schema)
+            .map(|(storage, _)| (storage, Payload::Create)),
+        Prepared::Insert(table_name, row) => {
+            let (storage, key) = storage.gen_id(&table_name)?;
+            let (storage, row) = storage.set_data(&key, row)?;
+
+            Ok((storage, Payload::Insert(row)))
+        }
+        Prepared::Delete(keys) => {
+            let (storage, num_rows) =
+                keys.into_iter()
+                    .try_fold((storage, 0), |(storage, num), key| {
+                        let (storage, _) = storage.del_data(&key)?;
+
+                        Ok((storage, num + 1))
+                    })?;
+
+            Ok((storage, Payload::Delete(num_rows)))
+        }
+        Prepared::Update(items) => {
+            let (storage, num_rows) =
+                items
+                    .into_iter()
+                    .try_fold((storage, 0), |(storage, num), item| {
+                        let (key, row) = item;
+                        let (storage, _) = storage.set_data(&key, row)?;
+
+                        Ok((storage, num + 1))
+                    })?;
+
+            Ok((storage, Payload::Update(num_rows)))
+        }
+        Prepared::DropTable(table_names) => {
+            let storage = table_names
+                .iter()
+                .try_fold(storage, |storage, table_name| {
+                    let (storage, _) = storage.del_schema(table_name)?;
+
+                    Ok(storage)
+                })?;
+
+            Ok((storage, Payload::DropTable))
+        }
+        Prepared::Select(rows) => Ok((storage, Payload::Select(rows))),
+    }
+}
+
+enum Prepared<'a, T> {
+    Create(Schema),
+    Insert(&'a str, Row),
+    Delete(Vec<T>),
+    Update(Vec<(T, Row)>),
+    Select(Vec<Row>),
+    DropTable(Vec<&'a str>),
+}
+
+fn prepare<'a, T: 'static + Debug>(
+    storage: &impl Store<T>,
+    sql_query: &'a Statement,
+) -> Result<Prepared<'a, T>> {
     match sql_query {
         Statement::CreateTable { name, columns, .. } => {
             let schema = Schema {
@@ -41,14 +110,12 @@ pub fn execute<T: 'static + Debug>(
                 column_defs: columns.clone(),
             };
 
-            storage.set_schema(&schema)?;
-
-            Ok(Payload::Create)
+            Ok(Prepared::Create(schema))
         }
         Statement::Query(query) => {
             let rows = select(storage, &query, None)?.collect::<Result<_>>()?;
 
-            Ok(Payload::Select(rows))
+            Ok(Prepared::Select(rows))
         }
         Statement::Insert {
             table_name,
@@ -57,11 +124,9 @@ pub fn execute<T: 'static + Debug>(
         } => {
             let table_name = get_name(table_name)?;
             let Schema { column_defs, .. } = storage.get_schema(table_name)?;
-            let key = storage.gen_id(&table_name)?;
             let row = Row::new(column_defs, columns, source)?;
-            let row = storage.set_data(&key, row)?;
 
-            Ok(Payload::Insert(row))
+            Ok(Prepared::Insert(table_name, row))
         }
         Statement::Update {
             table_name,
@@ -73,38 +138,29 @@ pub fn execute<T: 'static + Debug>(
             let update = Update::new(storage, table_name, assignments, &columns)?;
             let filter = Filter::new(storage, selection.as_ref(), None);
 
-            let num_rows = fetch(storage, table_name, &columns, filter)?
+            let rows = fetch(storage, table_name, &columns, filter)?
                 .map(|item| {
                     let (_, key, row) = item?;
 
                     Ok((key, update.apply(row)?))
                 })
-                .try_fold::<_, _, Result<_>>(0, |num, item: Result<(T, Row)>| {
-                    let (key, row) = item?;
-                    storage.set_data(&key, row)?;
+                .collect::<Result<_>>()?;
 
-                    Ok(num + 1)
-                })?;
-
-            Ok(Payload::Update(num_rows))
+            Ok(Prepared::Update(rows))
         }
         Statement::Delete {
             table_name,
             selection,
         } => {
-            let filter = Filter::new(storage, selection.as_ref(), None);
             let table_name = get_name(table_name)?;
-
             let columns = fetch_columns(storage, table_name)?;
-            let num_rows = fetch(storage, table_name, &columns, filter)?
-                .try_fold::<_, _, Result<_>>(0, |num: usize, item| {
-                    let (_, key, _) = item?;
-                    storage.del_data(&key)?;
+            let filter = Filter::new(storage, selection.as_ref(), None);
 
-                    Ok(num + 1)
-                })?;
+            let rows = fetch(storage, table_name, &columns, filter)?
+                .map(|item| item.map(|(_, key, _)| key))
+                .collect::<Result<_>>()?;
 
-            Ok(Payload::Delete(num_rows))
+            Ok(Prepared::Delete(rows))
         }
         Statement::Drop {
             object_type, names, ..
@@ -113,15 +169,13 @@ pub fn execute<T: 'static + Debug>(
                 return Err(ExecuteError::DropTypeNotSupported.into());
             }
 
-            for name in names {
-                let table_name = get_name(name)?;
+            let names = names
+                .iter()
+                .map(|name| get_name(name).map(|n| n.as_str()))
+                .collect::<Result<_>>()?;
 
-                storage.del_schema(&table_name)?;
-            }
-
-            Ok(Payload::DropTable)
+            Ok(Prepared::DropTable(names))
         }
-
         _ => Err(ExecuteError::QueryNotSupported.into()),
     }
 }

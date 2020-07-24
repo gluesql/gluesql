@@ -5,7 +5,7 @@ use crate::executor::{
     AggregateError, BlendContextError, BlendError, EvaluateError, ExecuteError, FilterContextError,
     FilterError, JoinError, LimitError, SelectError, UpdateError,
 };
-use crate::storage::StoreError;
+use crate::store::StoreError;
 
 #[derive(ThisError, Debug)]
 pub enum Error {
@@ -45,6 +45,7 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+pub type MutResult<T, U> = std::result::Result<(T, U), (T, Error)>;
 
 impl PartialEq for Error {
     fn eq(&self, other: &Error) -> bool {

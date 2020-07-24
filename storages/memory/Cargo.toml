@@ -1,0 +1,10 @@
+[package]
+name = "memory_storage"
+version = "0.1.0"
+workspace = "../../"
+authors = ["Taehoon Moon <panarch@kaist.ac.kr>"]
+edition = "2018"
+
+[dependencies]
+gluesql = { path = "../../" }
+im-rc = "15.0.0"

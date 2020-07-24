@@ -1,12 +1,9 @@
 mod helper;
 
 use gluesql::{Payload, Row, Value};
-use helper::{Helper, SledHelper};
+use test_case::test_case;
 
-#[test]
-fn join() {
-    let helper = SledHelper::new("data/join");
-
+test!(join, {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -23,11 +20,11 @@ fn join() {
     ",
     ];
 
-    create_sqls.iter().for_each(|sql| helper.run_and_print(sql));
+    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
 
     let delete_sqls = ["DELETE FROM Player", "DELETE FROM Item"];
 
-    delete_sqls.iter().for_each(|sql| helper.run_and_print(sql));
+    delete_sqls.iter().for_each(|sql| tester.run_and_print(sql));
 
     let insert_sqls = [
         "INSERT INTO Player (id, name) VALUES (1, \"Taehoon\")",
@@ -53,7 +50,7 @@ fn join() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        helper.run(insert_sql).unwrap();
+        tester.run(insert_sql).unwrap();
     }
 
     let select_sqls = [
@@ -129,15 +126,12 @@ fn join() {
 
     select_sqls
         .iter()
-        .for_each(|(num, sql)| helper.test_rows(sql, *num));
+        .for_each(|(num, sql)| tester.test_rows(sql, *num));
 
-    delete_sqls.iter().for_each(|sql| helper.run_and_print(sql));
-}
+    delete_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+});
 
-#[test]
-fn blend_join() {
-    let helper = SledHelper::new("data/blend_join");
-
+test!(blend_join, {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -154,7 +148,7 @@ fn blend_join() {
     ",
     ];
 
-    create_sqls.iter().for_each(|sql| helper.run_and_print(sql));
+    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
 
     let insert_sqls = [
         "INSERT INTO Player (id, name) VALUES (1, \"Taehoon\")",
@@ -168,7 +162,7 @@ fn blend_join() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        helper.run(insert_sql).unwrap();
+        tester.run(insert_sql).unwrap();
     }
 
     use Value::{Empty, Str, I64};
@@ -179,7 +173,7 @@ fn blend_join() {
         LEFT JOIN Item i
         ON p.id = i.player_id
     ";
-    let found = helper.run(sql).expect("select");
+    let found = tester.run(sql).expect("select");
     let expected = select_with_empty!(
         I64(1) I64(101);
         I64(2) I64(102);
@@ -195,7 +189,7 @@ fn blend_join() {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = helper.run(sql).expect("select");
+    let found = tester.run(sql).expect("select");
     let expected = select_with_empty!(
         I64(1) I64(1);
         I64(2) I64(2);
@@ -211,7 +205,7 @@ fn blend_join() {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = helper.run(sql).expect("select");
+    let found = tester.run(sql).expect("select");
     let expected = select_with_empty!(
         I64(101) I64(1) I64(1);
         I64(102) I64(4) I64(2);
@@ -227,7 +221,7 @@ fn blend_join() {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = helper.run(sql).expect("select");
+    let found = tester.run(sql).expect("select");
     let expected = select_with_empty!(
         I64(1) Str("Taehoon".to_owned()) I64(101) I64(1) I64(1);
         I64(2) Str("Mike".to_owned())    I64(102) I64(4) I64(2);
@@ -236,4 +230,4 @@ fn blend_join() {
         I64(5) Str("Hwan".to_owned())    Empty    Empty  Empty
     );
     assert_eq!(expected, found);
-}
+});

@@ -4,15 +4,19 @@ version = "0.1.0"
 authors = ["Taehoon Moon <panarch@kaist.ac.kr>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["storages/sled", "storages/memory"]
 
 [dependencies]
-bincode = "1.2.1"
 boolinator = "2.4.0"
 im-rc = "15.0.0"
 iter-enum = "0.2"
 or-iterator = "0.1.1"
 serde = { version = "1.0.104", features = ["derive"] }
-sled = "0.31.0"
 sqlparser = { git = "https://github.com/panarch/sqlparser-rs", branch = "serde", features = ["serde"] }
 thiserror = "1.0.12"
+
+[dev-dependencies]
+sled_storage = { path = "./storages/sled" }
+memory_storage = { path = "./storages/memory" }
+test-case = "1.0.0"

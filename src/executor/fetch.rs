@@ -6,7 +6,7 @@ use sqlparser::ast::{ColumnDef, Ident};
 use super::filter::Filter;
 use crate::data::Row;
 use crate::result::Result;
-use crate::storage::Store;
+use crate::store::Store;
 
 pub fn fetch_columns<T: 'static + Debug>(
     storage: &dyn Store<T>,

@@ -10,7 +10,7 @@ use super::context::FilterContext;
 use super::select::select;
 use crate::data::Value;
 use crate::result::Result;
-use crate::storage::Store;
+use crate::store::Store;
 
 pub use error::EvaluateError;
 pub use evaluated::Evaluated;

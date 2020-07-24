@@ -1,13 +1,10 @@
 mod helper;
 
 use gluesql::{Payload, Row, Value};
-use helper::{Helper, SledHelper};
+use test_case::test_case;
 
-#[test]
-fn basic() {
-    let helper = SledHelper::new("data/basic");
-
-    helper.run_and_print(
+test!(basic, {
+    tester.run_and_print(
         r#"
 CREATE TABLE Test (
     id INTEGER,
@@ -15,13 +12,13 @@ CREATE TABLE Test (
     name TEXT
 )"#,
     );
-    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
-    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
-    helper.run_and_print("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
+    tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
+    tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
+    tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
 
     use Value::*;
 
-    let found = helper
+    let found = tester
         .run("SELECT id, num, name FROM Test")
         .expect("select");
     let expected = select!(
@@ -32,13 +29,13 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 
-    helper.run_and_print("UPDATE Test SET id = 2");
+    tester.run_and_print("UPDATE Test SET id = 2");
 
-    let found = helper.run("SELECT id FROM Test").expect("select");
+    let found = tester.run("SELECT id FROM Test").expect("select");
     let expected = select!(I64; 2; 2; 2);
     assert_eq!(expected, found);
 
-    let found = helper.run("SELECT id, num FROM Test").expect("select");
+    let found = tester.run("SELECT id, num FROM Test").expect("select");
     let expected = select!(I64 I64; 2 2; 2 9; 2 4);
     assert_eq!(expected, found);
-}
+});

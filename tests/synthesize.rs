@@ -1,11 +1,8 @@
 mod helper;
 
-use helper::{Helper, SledHelper};
+use test_case::test_case;
 
-#[test]
-fn synthesize() {
-    let helper = SledHelper::new("data/synthesize");
-
+test!(synthesize, {
     let create_sql = "
         CREATE TABLE TableA (
             id INTEGER,
@@ -14,10 +11,10 @@ fn synthesize() {
         );
     ";
 
-    helper.run_and_print(create_sql);
+    tester.run_and_print(create_sql);
 
     let delete_sql = "DELETE FROM TableA";
-    helper.run_and_print(delete_sql);
+    tester.run_and_print(delete_sql);
 
     let insert_sqls = [
         "INSERT INTO TableA (id, test, target_id) VALUES (1, 100, 2);",
@@ -29,7 +26,7 @@ fn synthesize() {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        helper.run(insert_sql).unwrap();
+        tester.run(insert_sql).unwrap();
     }
 
     let test_cases = [
@@ -66,15 +63,15 @@ fn synthesize() {
     ];
 
     for (num, sql) in test_cases.iter() {
-        helper.test_rows(sql, *num);
+        tester.test_rows(sql, *num);
     }
 
     for insert_sql in insert_sqls.iter() {
-        helper.run(insert_sql).unwrap();
+        tester.run(insert_sql).unwrap();
     }
 
-    let test_select = |sql, num| {
-        helper.test_columns(sql, num);
+    let mut test_select = |sql, num| {
+        tester.test_columns(sql, num);
     };
 
     let test_cases = [
@@ -86,4 +83,4 @@ fn synthesize() {
     for (num, sql) in test_cases.iter() {
         test_select(sql, *num);
     }
-}
+});

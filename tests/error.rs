@@ -4,14 +4,11 @@ use gluesql::{
     EvaluateError, ExecuteError, FilterContextError, JoinError, RowError, SelectError, StoreError,
     TableError, ValueError,
 };
-use helper::{Helper, SledHelper};
+use test_case::test_case;
 
-#[test]
-fn error() {
-    let helper = SledHelper::new("data/error");
-
-    helper.run_and_print("CREATE TABLE TableA (id INTEGER);");
-    helper.run_and_print("INSERT INTO TableA (id) VALUES (1);");
+test!(error, {
+    tester.run_and_print("CREATE TABLE TableA (id INTEGER);");
+    tester.run_and_print("INSERT INTO TableA (id) VALUES (1);");
 
     let test_cases = vec![
         (ExecuteError::QueryNotSupported.into(), "COMMIT;"),
@@ -48,11 +45,11 @@ fn error() {
 
     test_cases
         .into_iter()
-        .for_each(|(error, sql)| helper.test_error(sql, error));
+        .for_each(|(error, sql)| tester.test_error(sql, error));
 
-    helper.run_and_print("CREATE TABLE TableB (id BOOL);");
-    helper.test_error(
+    tester.run_and_print("CREATE TABLE TableB (id BOOL);");
+    tester.test_error(
         "INSERT INTO TableB (id) VALUES (0);",
         ValueError::SqlTypeNotSupported.into(),
     );
-}
+});
