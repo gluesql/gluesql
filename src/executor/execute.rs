@@ -8,7 +8,7 @@ use super::filter::Filter;
 use super::select::select;
 use super::update::Update;
 use crate::data::{get_name, Row, Schema};
-use crate::result::{GlueResult, Result};
+use crate::result::{MutResult, Result};
 use crate::store::{MutStore, Store};
 
 #[derive(Error, Debug, PartialEq)]
@@ -33,7 +33,7 @@ pub enum Payload {
 pub fn execute<T: 'static + Debug, U: Store<T> + MutStore<T>>(
     storage: U,
     sql_query: &Statement,
-) -> GlueResult<U, Payload> {
+) -> MutResult<U, Payload> {
     let prepared = match prepare(&storage, sql_query) {
         Ok(prepared) => prepared,
         Err(error) => {

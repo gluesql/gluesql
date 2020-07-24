@@ -1,6 +1,6 @@
 use im_rc::{vector, HashMap, Vector};
 
-use gluesql::{GlueResult, MutStore, Result, Row, RowIter, Schema, Store, StoreError};
+use gluesql::{MutResult, MutStore, Result, Row, RowIter, Schema, Store, StoreError};
 
 pub struct MemoryStorage {
     schema_map: HashMap<String, Schema>,
@@ -28,7 +28,7 @@ impl MemoryStorage {
 }
 
 impl MutStore<DataKey> for MemoryStorage {
-    fn gen_id(self, table_name: &str) -> GlueResult<Self, DataKey> {
+    fn gen_id(self, table_name: &str) -> MutResult<Self, DataKey> {
         let id = self.id + 1;
         let storage = Self {
             schema_map: self.schema_map,
@@ -44,7 +44,7 @@ impl MutStore<DataKey> for MemoryStorage {
         Ok((storage, key))
     }
 
-    fn set_schema(self, schema: &Schema) -> GlueResult<Self, ()> {
+    fn set_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let table_name = schema.table_name.to_string();
         let schema_map = self.schema_map.update(table_name, schema.clone());
         let storage = Self {
@@ -56,7 +56,7 @@ impl MutStore<DataKey> for MemoryStorage {
         Ok((storage, ()))
     }
 
-    fn del_schema(self, table_name: &str) -> GlueResult<Self, ()> {
+    fn del_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let Self {
             mut schema_map,
             mut data_map,
@@ -74,7 +74,7 @@ impl MutStore<DataKey> for MemoryStorage {
         Ok((storage, ()))
     }
 
-    fn set_data(self, key: &DataKey, row: Row) -> GlueResult<Self, Row> {
+    fn set_data(self, key: &DataKey, row: Row) -> MutResult<Self, Row> {
         let DataKey { table_name, id } = key;
         let table_name = table_name.to_string();
         let item = (*id, row.clone());
@@ -108,7 +108,7 @@ impl MutStore<DataKey> for MemoryStorage {
         Ok((storage, row))
     }
 
-    fn del_data(self, key: &DataKey) -> GlueResult<Self, ()> {
+    fn del_data(self, key: &DataKey) -> MutResult<Self, ()> {
         let DataKey { table_name, id } = key;
         let table_name = table_name.to_string();
         let Self {
@@ -122,11 +122,8 @@ impl MutStore<DataKey> for MemoryStorage {
             None => (vector![], data_map),
         };
 
-        match items.iter().position(|(item_id, _)| item_id == id) {
-            Some(index) => {
-                items.remove(index);
-            }
-            None => (),
+        if let Some(index) = items.iter().position(|(item_id, _)| item_id == id) {
+            items.remove(index);
         };
 
         let data_map = data_map.update(table_name, items);

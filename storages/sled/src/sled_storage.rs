@@ -1,7 +1,7 @@
 use sled::{self, Db, IVec};
 use thiserror::Error as ThisError;
 
-use gluesql::{Error, GlueResult, MutStore, Result, Row, RowIter, Schema, Store, StoreError};
+use gluesql::{Error, MutResult, MutStore, Result, Row, RowIter, Schema, Store, StoreError};
 
 #[derive(ThisError, Debug)]
 enum StorageError {
@@ -64,14 +64,14 @@ impl SledStorage {
 }
 
 impl MutStore<IVec> for SledStorage {
-    fn gen_id(self, table_name: &str) -> GlueResult<Self, IVec> {
+    fn gen_id(self, table_name: &str) -> MutResult<Self, IVec> {
         let id = try_self!(self, self.tree.generate_id());
         let id = format!("data/{}/{}", table_name, id);
 
         Ok((self, IVec::from(id.as_bytes())))
     }
 
-    fn set_schema(self, schema: &Schema) -> GlueResult<Self, ()> {
+    fn set_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
         let value = try_self!(self, bincode::serialize(schema));
@@ -81,7 +81,7 @@ impl MutStore<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn del_schema(self, table_name: &str) -> GlueResult<Self, ()> {
+    fn del_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let prefix = format!("data/{}/", table_name);
         let tree = &self.tree;
 
@@ -97,7 +97,7 @@ impl MutStore<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn set_data(self, key: &IVec, row: Row) -> GlueResult<Self, Row> {
+    fn set_data(self, key: &IVec, row: Row) -> MutResult<Self, Row> {
         let value = try_self!(self, bincode::serialize(&row));
 
         try_self!(self, self.tree.insert(key, value));
@@ -105,7 +105,7 @@ impl MutStore<IVec> for SledStorage {
         Ok((self, row))
     }
 
-    fn del_data(self, key: &IVec) -> GlueResult<Self, ()> {
+    fn del_data(self, key: &IVec) -> MutResult<Self, ()> {
         try_self!(self, self.tree.remove(key));
 
         Ok((self, ()))

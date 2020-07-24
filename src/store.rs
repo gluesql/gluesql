@@ -3,7 +3,7 @@ use std::marker::Sized;
 use thiserror::Error;
 
 use super::data::{Row, Schema};
-use super::result::{GlueResult, Result};
+use super::result::{MutResult, Result};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum StoreError {
@@ -23,13 +23,13 @@ pub trait MutStore<T: Debug>
 where
     Self: Sized,
 {
-    fn gen_id(self, table_name: &str) -> GlueResult<Self, T>;
+    fn gen_id(self, table_name: &str) -> MutResult<Self, T>;
 
-    fn set_schema(self, schema: &Schema) -> GlueResult<Self, ()>;
+    fn set_schema(self, schema: &Schema) -> MutResult<Self, ()>;
 
-    fn del_schema(self, table_name: &str) -> GlueResult<Self, ()>;
+    fn del_schema(self, table_name: &str) -> MutResult<Self, ()>;
 
-    fn set_data(self, key: &T, row: Row) -> GlueResult<Self, Row>;
+    fn set_data(self, key: &T, row: Row) -> MutResult<Self, Row>;
 
-    fn del_data(self, key: &T) -> GlueResult<Self, ()>;
+    fn del_data(self, key: &T) -> MutResult<Self, ()>;
 }

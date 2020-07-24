@@ -45,7 +45,7 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-pub type GlueResult<T, U> = std::result::Result<(T, U), (T, Error)>;
+pub type MutResult<T, U> = std::result::Result<(T, U), (T, Error)>;
 
 impl PartialEq for Error {
     fn eq(&self, other: &Error) -> bool {
