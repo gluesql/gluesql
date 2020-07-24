@@ -9,7 +9,7 @@ use super::select::select;
 use super::update::Update;
 use crate::data::{get_name, Row, Schema};
 use crate::result::{GlueResult, Result};
-use crate::store::Store;
+use crate::store::{MutStore, Store};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -30,21 +30,10 @@ pub enum Payload {
     DropTable,
 }
 
-pub fn execute<T: 'static + Debug, U: Store<T>>(
-    mut storage: U,
+pub fn execute<T: 'static + Debug, U: Store<T> + MutStore<T>>(
+    storage: U,
     sql_query: &Statement,
-) -> GlueResult<U> {
-    macro_rules! try_into {
-        ($expr: expr) => {
-            match $expr {
-                Ok(v) => v,
-                Err(e) => {
-                    return Err((storage, e));
-                }
-            }
-        };
-    }
-
+) -> GlueResult<U, Payload> {
     let prepared = match prepare(&storage, sql_query) {
         Ok(prepared) => prepared,
         Err(error) => {
@@ -53,41 +42,47 @@ pub fn execute<T: 'static + Debug, U: Store<T>>(
     };
 
     match prepared {
-        Prepared::Create(schema) => match storage.set_schema(&schema) {
-            Ok(()) => Ok((storage, Payload::Create)),
-            Err(e) => Err((storage, e)),
-        },
+        Prepared::Create(schema) => storage
+            .set_schema(&schema)
+            .map(|(storage, _)| (storage, Payload::Create)),
         Prepared::Insert(table_name, row) => {
-            let key = try_into!(storage.gen_id(&table_name));
-            let row = try_into!(storage.set_data(&key, row));
+            let (storage, key) = storage.gen_id(&table_name)?;
+            let (storage, row) = storage.set_data(&key, row)?;
 
             Ok((storage, Payload::Insert(row)))
         }
         Prepared::Delete(keys) => {
-            let num_rows = keys.into_iter().try_fold(0, |num, key| {
-                storage.del_data(&key)?;
+            let (storage, num_rows) =
+                keys.into_iter()
+                    .try_fold((storage, 0), |(storage, num), key| {
+                        let (storage, _) = storage.del_data(&key)?;
 
-                Ok(num + 1)
-            });
-            let num_rows = try_into!(num_rows);
+                        Ok((storage, num + 1))
+                    })?;
 
             Ok((storage, Payload::Delete(num_rows)))
         }
         Prepared::Update(items) => {
-            let num_rows = items.into_iter().try_fold(0, |num, item| {
-                let (key, row) = item;
-                storage.set_data(&key, row)?;
+            let (storage, num_rows) =
+                items
+                    .into_iter()
+                    .try_fold((storage, 0), |(storage, num), item| {
+                        let (key, row) = item;
+                        let (storage, _) = storage.set_data(&key, row)?;
 
-                Ok(num + 1)
-            });
-            let num_rows = try_into!(num_rows);
+                        Ok((storage, num + 1))
+                    })?;
 
             Ok((storage, Payload::Update(num_rows)))
         }
         Prepared::DropTable(table_names) => {
-            for table_name in table_names {
-                try_into!(storage.del_schema(table_name));
-            }
+            let storage = table_names
+                .iter()
+                .try_fold(storage, |storage, table_name| {
+                    let (storage, _) = storage.del_schema(table_name)?;
+
+                    Ok(storage)
+                })?;
 
             Ok((storage, Payload::DropTable))
         }

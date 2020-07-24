@@ -1,7 +1,7 @@
 use sled::{self, Db, IVec};
 use thiserror::Error as ThisError;
 
-use gluesql::{Error, Result, Row, RowIter, Schema, Store, StoreError};
+use gluesql::{Error, GlueResult, MutStore, Result, Row, RowIter, Schema, Store, StoreError};
 
 #[derive(ThisError, Debug)]
 enum StorageError {
@@ -37,6 +37,20 @@ macro_rules! try_into {
     };
 }
 
+macro_rules! try_self {
+    ($self: expr, $expr: expr) => {
+        match $expr {
+            Err(e) => {
+                let e: StorageError = e.into();
+                let e: Error = e.into();
+
+                return Err(($self, e));
+            }
+            Ok(v) => v,
+        }
+    };
+}
+
 pub struct SledStorage {
     tree: Db,
 }
@@ -49,24 +63,56 @@ impl SledStorage {
     }
 }
 
-impl Store<IVec> for SledStorage {
-    fn gen_id(&mut self, table_name: &str) -> Result<IVec> {
-        let id = try_into!(self.tree.generate_id());
+impl MutStore<IVec> for SledStorage {
+    fn gen_id(self, table_name: &str) -> GlueResult<Self, IVec> {
+        let id = try_self!(self, self.tree.generate_id());
         let id = format!("data/{}/{}", table_name, id);
 
-        Ok(IVec::from(id.as_bytes()))
+        Ok((self, IVec::from(id.as_bytes())))
     }
 
-    fn set_schema(&mut self, schema: &Schema) -> Result<()> {
+    fn set_schema(self, schema: &Schema) -> GlueResult<Self, ()> {
         let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
-        let value = try_into!(bincode::serialize(schema));
+        let value = try_self!(self, bincode::serialize(schema));
 
-        try_into!(self.tree.insert(key, value));
+        try_self!(self, self.tree.insert(key, value));
 
-        Ok(())
+        Ok((self, ()))
     }
 
+    fn del_schema(self, table_name: &str) -> GlueResult<Self, ()> {
+        let prefix = format!("data/{}/", table_name);
+        let tree = &self.tree;
+
+        for item in tree.scan_prefix(prefix.as_bytes()) {
+            let (key, _) = try_self!(self, item);
+
+            try_self!(self, tree.remove(key));
+        }
+
+        let key = format!("schema/{}", table_name);
+        try_self!(self, tree.remove(key));
+
+        Ok((self, ()))
+    }
+
+    fn set_data(self, key: &IVec, row: Row) -> GlueResult<Self, Row> {
+        let value = try_self!(self, bincode::serialize(&row));
+
+        try_self!(self, self.tree.insert(key, value));
+
+        Ok((self, row))
+    }
+
+    fn del_data(self, key: &IVec) -> GlueResult<Self, ()> {
+        try_self!(self, self.tree.remove(key));
+
+        Ok((self, ()))
+    }
+}
+
+impl Store<IVec> for SledStorage {
     fn get_schema(&self, table_name: &str) -> Result<Schema> {
         let key = format!("schema/{}", table_name);
         let key = key.as_bytes();
@@ -75,35 +121,6 @@ impl Store<IVec> for SledStorage {
         let statement = try_into!(bincode::deserialize(&value));
 
         Ok(statement)
-    }
-
-    fn del_schema(&mut self, table_name: &str) -> Result<()> {
-        let prefix = format!("data/{}/", table_name);
-        let tree = &self.tree;
-
-        tree.scan_prefix(prefix.as_bytes())
-            .map(move |item| {
-                let (key, _) = try_into!(item);
-
-                try_into!(tree.remove(key));
-
-                Ok(())
-            })
-            .collect::<Result<_>>()?;
-
-        let key = format!("schema/{}", table_name);
-
-        try_into!(tree.remove(key));
-
-        Ok(())
-    }
-
-    fn set_data(&mut self, key: &IVec, row: Row) -> Result<Row> {
-        let value = try_into!(bincode::serialize(&row));
-
-        try_into!(self.tree.insert(key, value));
-
-        Ok(row)
     }
 
     fn get_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
@@ -117,11 +134,5 @@ impl Store<IVec> for SledStorage {
         });
 
         Ok(Box::new(result_set))
-    }
-
-    fn del_data(&mut self, key: &IVec) -> Result<()> {
-        try_into!(self.tree.remove(key));
-
-        Ok(())
     }
 }

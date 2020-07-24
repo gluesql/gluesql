@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use im_rc::{vector, HashMap, Vector};
 
-use gluesql::{Result, Row, RowIter, Schema, Store, StoreError};
+use gluesql::{GlueResult, MutStore, Result, Row, RowIter, Schema, Store, StoreError};
 
 pub struct MemoryStorage {
     schema_map: HashMap<String, Schema>,
-    data_map: HashMap<String, Vec<(u64, Row)>>,
+    data_map: HashMap<String, Vector<(u64, Row)>>,
     id: u64,
 }
 
@@ -22,31 +22,125 @@ impl MemoryStorage {
         Ok(Self {
             schema_map,
             data_map,
-            id: 1000,
+            id: 0,
         })
     }
 }
 
-impl Store<DataKey> for MemoryStorage {
-    fn gen_id(&mut self, table_name: &str) -> Result<DataKey> {
-        self.id += 1;
+impl MutStore<DataKey> for MemoryStorage {
+    fn gen_id(self, table_name: &str) -> GlueResult<Self, DataKey> {
+        let id = self.id + 1;
+        let storage = Self {
+            schema_map: self.schema_map,
+            data_map: self.data_map,
+            id,
+        };
 
         let key = DataKey {
             table_name: table_name.to_string(),
+            id,
+        };
+
+        Ok((storage, key))
+    }
+
+    fn set_schema(self, schema: &Schema) -> GlueResult<Self, ()> {
+        let table_name = schema.table_name.to_string();
+        let schema_map = self.schema_map.update(table_name, schema.clone());
+        let storage = Self {
+            schema_map,
+            data_map: self.data_map,
             id: self.id,
         };
 
-        Ok(key)
+        Ok((storage, ()))
     }
 
-    fn set_schema(&mut self, schema: &Schema) -> Result<()> {
-        let table_name = schema.table_name.to_string();
+    fn del_schema(self, table_name: &str) -> GlueResult<Self, ()> {
+        let Self {
+            mut schema_map,
+            mut data_map,
+            id,
+        } = self;
 
-        self.schema_map.insert(table_name, schema.clone());
+        data_map.remove(table_name);
+        schema_map.remove(table_name);
+        let storage = Self {
+            schema_map,
+            data_map,
+            id,
+        };
 
-        Ok(())
+        Ok((storage, ()))
     }
 
+    fn set_data(self, key: &DataKey, row: Row) -> GlueResult<Self, Row> {
+        let DataKey { table_name, id } = key;
+        let table_name = table_name.to_string();
+        let item = (*id, row.clone());
+        let Self {
+            schema_map,
+            data_map,
+            id: self_id,
+        } = self;
+
+        let (mut items, data_map) = match data_map.extract(&table_name) {
+            Some(v) => v,
+            None => (vector![], data_map),
+        };
+
+        let items = match items.iter().position(|(item_id, _)| item_id == id) {
+            Some(index) => items.update(index, item),
+            None => {
+                items.push_back(item);
+
+                items
+            }
+        };
+
+        let data_map = data_map.update(table_name, items);
+        let storage = Self {
+            schema_map,
+            data_map,
+            id: self_id,
+        };
+
+        Ok((storage, row))
+    }
+
+    fn del_data(self, key: &DataKey) -> GlueResult<Self, ()> {
+        let DataKey { table_name, id } = key;
+        let table_name = table_name.to_string();
+        let Self {
+            schema_map,
+            data_map,
+            id: self_id,
+        } = self;
+
+        let (mut items, data_map) = match data_map.extract(&table_name) {
+            Some(v) => v,
+            None => (vector![], data_map),
+        };
+
+        match items.iter().position(|(item_id, _)| item_id == id) {
+            Some(index) => {
+                items.remove(index);
+            }
+            None => (),
+        };
+
+        let data_map = data_map.update(table_name, items);
+        let storage = Self {
+            schema_map,
+            data_map,
+            id: self_id,
+        };
+
+        Ok((storage, ()))
+    }
+}
+
+impl Store<DataKey> for MemoryStorage {
     fn get_schema(&self, table_name: &str) -> Result<Schema> {
         let schema = self
             .schema_map
@@ -55,36 +149,6 @@ impl Store<DataKey> for MemoryStorage {
             .clone();
 
         Ok(schema)
-    }
-
-    fn del_schema(&mut self, table_name: &str) -> Result<()> {
-        self.data_map.remove(table_name);
-        self.schema_map.remove(table_name);
-
-        Ok(())
-    }
-
-    fn set_data(&mut self, key: &DataKey, row: Row) -> Result<Row> {
-        let DataKey { table_name, id } = key;
-        let item = (*id, row.clone());
-
-        match self.data_map.get_mut(table_name) {
-            Some(items) => {
-                match items.iter().position(|(item_id, _)| item_id == id) {
-                    Some(index) => {
-                        items[index] = item;
-                    }
-                    None => {
-                        items.push(item);
-                    }
-                };
-            }
-            None => {
-                self.data_map.insert(table_name.to_string(), vec![item]);
-            }
-        }
-
-        Ok(row)
     }
 
     fn get_data(&self, table_name: &str) -> Result<RowIter<DataKey>> {
@@ -97,34 +161,14 @@ impl Store<DataKey> for MemoryStorage {
                         id: *id,
                     };
 
-                    Ok((key, row.clone()))
+                    (key, row.clone())
                 })
                 .collect(),
-            None => vec![],
+            None => vector![],
         };
 
-        Ok(Box::new(items.into_iter()))
-    }
+        let items = items.into_iter().map(Ok);
 
-    fn del_data(&mut self, key: &DataKey) -> Result<()> {
-        let DataKey { table_name, id } = key;
-
-        let items = match self.data_map.get_mut(table_name) {
-            Some(items) => items,
-            None => {
-                return Ok(());
-            }
-        };
-
-        let index = match items.iter().position(|(item_id, _)| item_id == id) {
-            Some(index) => index,
-            None => {
-                return Ok(());
-            }
-        };
-
-        items.remove(index);
-
-        Ok(())
+        Ok(Box::new(items))
     }
 }

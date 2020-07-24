@@ -3,7 +3,7 @@ use thiserror::Error as ThisError;
 use crate::data::{RowError, TableError, ValueError};
 use crate::executor::{
     AggregateError, BlendContextError, BlendError, EvaluateError, ExecuteError, FilterContextError,
-    FilterError, JoinError, LimitError, Payload, SelectError, UpdateError,
+    FilterError, JoinError, LimitError, SelectError, UpdateError,
 };
 use crate::store::StoreError;
 
@@ -45,7 +45,7 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
-pub type GlueResult<T> = std::result::Result<(T, Payload), (T, Error)>;
+pub type GlueResult<T, U> = std::result::Result<(T, U), (T, Error)>;
 
 impl PartialEq for Error {
     fn eq(&self, other: &Error) -> bool {
