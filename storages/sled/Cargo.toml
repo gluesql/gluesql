@@ -8,5 +8,5 @@ edition = "2018"
 [dependencies]
 gluesql = { path = "../../" }
 bincode = "1.2.1"
-sled = "0.31.0"
+sled = "0.34.0"
 thiserror = "1.0.12"
