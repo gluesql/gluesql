@@ -36,7 +36,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
     table: Table<'a>,
     columns: Rc<Vec<Ident>>,
 ) -> Result<impl Iterator<Item = Result<BlendContext<'a>>> + 'a> {
-    let rows = storage.get_data(table.get_name())?.map(move |data| {
+    let rows = storage.scan_data(table.get_name())?.map(move |data| {
         let (_, row) = data?;
         let row = Some(row);
         let columns = Rc::clone(&columns);

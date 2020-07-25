@@ -64,14 +64,14 @@ impl SledStorage {
 }
 
 impl MutStore<IVec> for SledStorage {
-    fn gen_id(self, table_name: &str) -> MutResult<Self, IVec> {
+    fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
         let id = try_self!(self, self.tree.generate_id());
         let id = format!("data/{}/{}", table_name, id);
 
         Ok((self, IVec::from(id.as_bytes())))
     }
 
-    fn set_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+    fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
         let value = try_self!(self, bincode::serialize(schema));
@@ -81,7 +81,7 @@ impl MutStore<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn del_schema(self, table_name: &str) -> MutResult<Self, ()> {
+    fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let prefix = format!("data/{}/", table_name);
         let tree = &self.tree;
 
@@ -97,7 +97,7 @@ impl MutStore<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn set_data(self, key: &IVec, row: Row) -> MutResult<Self, Row> {
+    fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, Row> {
         let value = try_self!(self, bincode::serialize(&row));
 
         try_self!(self, self.tree.insert(key, value));
@@ -105,7 +105,7 @@ impl MutStore<IVec> for SledStorage {
         Ok((self, row))
     }
 
-    fn del_data(self, key: &IVec) -> MutResult<Self, ()> {
+    fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {
         try_self!(self, self.tree.remove(key));
 
         Ok((self, ()))
@@ -113,7 +113,7 @@ impl MutStore<IVec> for SledStorage {
 }
 
 impl Store<IVec> for SledStorage {
-    fn get_schema(&self, table_name: &str) -> Result<Schema> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Schema> {
         let key = format!("schema/{}", table_name);
         let key = key.as_bytes();
         let value = try_into!(self.tree.get(&key));
@@ -123,7 +123,7 @@ impl Store<IVec> for SledStorage {
         Ok(statement)
     }
 
-    fn get_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
+    fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
         let prefix = format!("data/{}/", table_name);
 
         let result_set = self.tree.scan_prefix(prefix.as_bytes()).map(move |item| {

@@ -28,7 +28,7 @@ impl MemoryStorage {
 }
 
 impl MutStore<DataKey> for MemoryStorage {
-    fn gen_id(self, table_name: &str) -> MutResult<Self, DataKey> {
+    fn generate_id(self, table_name: &str) -> MutResult<Self, DataKey> {
         let id = self.id + 1;
         let storage = Self {
             schema_map: self.schema_map,
@@ -44,7 +44,7 @@ impl MutStore<DataKey> for MemoryStorage {
         Ok((storage, key))
     }
 
-    fn set_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+    fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let table_name = schema.table_name.to_string();
         let schema_map = self.schema_map.update(table_name, schema.clone());
         let storage = Self {
@@ -56,7 +56,7 @@ impl MutStore<DataKey> for MemoryStorage {
         Ok((storage, ()))
     }
 
-    fn del_schema(self, table_name: &str) -> MutResult<Self, ()> {
+    fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let Self {
             mut schema_map,
             mut data_map,
@@ -74,7 +74,7 @@ impl MutStore<DataKey> for MemoryStorage {
         Ok((storage, ()))
     }
 
-    fn set_data(self, key: &DataKey, row: Row) -> MutResult<Self, Row> {
+    fn insert_data(self, key: &DataKey, row: Row) -> MutResult<Self, Row> {
         let DataKey { table_name, id } = key;
         let table_name = table_name.to_string();
         let item = (*id, row.clone());
@@ -108,7 +108,7 @@ impl MutStore<DataKey> for MemoryStorage {
         Ok((storage, row))
     }
 
-    fn del_data(self, key: &DataKey) -> MutResult<Self, ()> {
+    fn delete_data(self, key: &DataKey) -> MutResult<Self, ()> {
         let DataKey { table_name, id } = key;
         let table_name = table_name.to_string();
         let Self {
@@ -138,7 +138,7 @@ impl MutStore<DataKey> for MemoryStorage {
 }
 
 impl Store<DataKey> for MemoryStorage {
-    fn get_schema(&self, table_name: &str) -> Result<Schema> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Schema> {
         let schema = self
             .schema_map
             .get(table_name)
@@ -148,7 +148,7 @@ impl Store<DataKey> for MemoryStorage {
         Ok(schema)
     }
 
-    fn get_data(&self, table_name: &str) -> Result<RowIter<DataKey>> {
+    fn scan_data(&self, table_name: &str) -> Result<RowIter<DataKey>> {
         let items = match self.data_map.get(table_name) {
             Some(items) => items
                 .iter()

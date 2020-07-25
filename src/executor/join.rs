@@ -151,7 +151,7 @@ fn join<'a, T: 'static + Debug>(
             }
         };
 
-        let rows = storage.get_data(table_name)?;
+        let rows = storage.scan_data(table_name)?;
         let rows = rows.filter_map(move |item| {
             let (_, row) = match item {
                 Ok(v) => v,

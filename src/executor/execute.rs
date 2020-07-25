@@ -43,11 +43,11 @@ pub fn execute<T: 'static + Debug, U: Store<T> + MutStore<T>>(
 
     match prepared {
         Prepared::Create(schema) => storage
-            .set_schema(&schema)
+            .insert_schema(&schema)
             .map(|(storage, _)| (storage, Payload::Create)),
         Prepared::Insert(table_name, row) => {
-            let (storage, key) = storage.gen_id(&table_name)?;
-            let (storage, row) = storage.set_data(&key, row)?;
+            let (storage, key) = storage.generate_id(&table_name)?;
+            let (storage, row) = storage.insert_data(&key, row)?;
 
             Ok((storage, Payload::Insert(row)))
         }
@@ -55,7 +55,7 @@ pub fn execute<T: 'static + Debug, U: Store<T> + MutStore<T>>(
             let (storage, num_rows) =
                 keys.into_iter()
                     .try_fold((storage, 0), |(storage, num), key| {
-                        let (storage, _) = storage.del_data(&key)?;
+                        let (storage, _) = storage.delete_data(&key)?;
 
                         Ok((storage, num + 1))
                     })?;
@@ -68,7 +68,7 @@ pub fn execute<T: 'static + Debug, U: Store<T> + MutStore<T>>(
                     .into_iter()
                     .try_fold((storage, 0), |(storage, num), item| {
                         let (key, row) = item;
-                        let (storage, _) = storage.set_data(&key, row)?;
+                        let (storage, _) = storage.insert_data(&key, row)?;
 
                         Ok((storage, num + 1))
                     })?;
@@ -79,7 +79,7 @@ pub fn execute<T: 'static + Debug, U: Store<T> + MutStore<T>>(
             let storage = table_names
                 .iter()
                 .try_fold(storage, |storage, table_name| {
-                    let (storage, _) = storage.del_schema(table_name)?;
+                    let (storage, _) = storage.delete_schema(table_name)?;
 
                     Ok(storage)
                 })?;
@@ -123,7 +123,7 @@ fn prepare<'a, T: 'static + Debug>(
             source,
         } => {
             let table_name = get_name(table_name)?;
-            let Schema { column_defs, .. } = storage.get_schema(table_name)?;
+            let Schema { column_defs, .. } = storage.fetch_schema(table_name)?;
             let row = Row::new(column_defs, columns, source)?;
 
             Ok(Prepared::Insert(table_name, row))

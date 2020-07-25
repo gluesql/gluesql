@@ -13,7 +13,7 @@ pub fn fetch_columns<T: 'static + Debug>(
     table_name: &str,
 ) -> Result<Vec<Ident>> {
     Ok(storage
-        .get_schema(table_name)?
+        .fetch_schema(table_name)?
         .column_defs
         .into_iter()
         .map(|ColumnDef { name, .. }| name)
@@ -26,7 +26,7 @@ pub fn fetch<'a, T: 'static + Debug>(
     columns: &'a [Ident],
     filter: Filter<'a, T>,
 ) -> Result<impl Iterator<Item = Result<(&'a [Ident], T, Row)>> + 'a> {
-    let rows = storage.get_data(table_name)?.filter_map(move |item| {
+    let rows = storage.scan_data(table_name)?.filter_map(move |item| {
         item.map_or_else(
             |error| Some(Err(error)),
             |(key, row)| {
