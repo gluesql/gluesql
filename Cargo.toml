@@ -13,7 +13,7 @@ im-rc = "15.0.0"
 iter-enum = "0.2"
 or-iterator = "0.1.1"
 serde = { version = "1.0.104", features = ["derive"] }
-sqlparser = { git = "https://github.com/panarch/sqlparser-rs", branch = "serde", features = ["serde"] }
+sqlparser = { version = "0.6.1", features = ["serde"] }
 thiserror = "1.0.12"
 
 [dev-dependencies]
