@@ -1,5 +1,6 @@
 use im_rc::HashMap;
 use iter_enum::Iterator;
+use serde::Serialize;
 use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::iter::once;
@@ -14,7 +15,7 @@ use crate::data::{get_name, Row, Value};
 use crate::result::Result;
 use crate::store::Store;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum BlendError {
     #[error("this field definition is not supported yet")]
     FieldDefinitionNotSupported,

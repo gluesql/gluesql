@@ -1,4 +1,5 @@
 use boolinator::Boolinator;
+use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -11,7 +12,7 @@ use crate::data::Row;
 use crate::result::Result;
 use crate::store::Store;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum FilterError {
     #[error("unimplemented")]
     Unimplemented,

@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
@@ -7,7 +8,7 @@ use sqlparser::ast::Ident;
 use crate::data::{Row, Value};
 use crate::result::Result;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum BlendContextError {
     #[error("value not found")]
     ValueNotFound,

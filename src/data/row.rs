@@ -9,7 +9,7 @@ use sqlparser::ast::{
 use crate::data::Value;
 use crate::result::Result;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum RowError {
     #[error("lack of required column: {0}")]
     LackOfRequiredColumn(String),

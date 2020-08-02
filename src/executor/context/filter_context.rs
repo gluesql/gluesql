@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -6,7 +7,7 @@ use sqlparser::ast::Ident;
 use crate::data::{Row, Value};
 use crate::result::Result;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum FilterContextError {
     #[error("value not found")]
     ValueNotFound,

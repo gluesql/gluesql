@@ -1,4 +1,5 @@
 use boolinator::Boolinator;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
@@ -16,7 +17,7 @@ use crate::data::{Row, Table};
 use crate::result::Result;
 use crate::store::Store;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum SelectError {
     #[error("unimplemented! select on two or more than tables are not supported")]
     TooManyTables,

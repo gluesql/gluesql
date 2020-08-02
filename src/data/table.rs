@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -5,7 +6,7 @@ use sqlparser::ast::{ObjectName, TableAlias, TableFactor};
 
 use crate::result::Result;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum TableError {
     #[error("unreachable")]
     Unreachable,

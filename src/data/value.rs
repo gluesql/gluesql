@@ -8,7 +8,7 @@ use sqlparser::ast::{DataType, Value as AstValue};
 
 use crate::result::{Error, Result};
 
-#[derive(ThisError, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ValueError {
     #[error("sql type not supported yet")]
     SqlTypeNotSupported,

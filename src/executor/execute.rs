@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -11,7 +12,7 @@ use crate::data::{get_name, Row, Schema};
 use crate::result::{MutResult, Result};
 use crate::store::{MutStore, Store};
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
     #[error("query not supported")]
     QueryNotSupported,
@@ -20,7 +21,7 @@ pub enum ExecuteError {
     DropTypeNotSupported,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
     Create,
     Insert(Row),

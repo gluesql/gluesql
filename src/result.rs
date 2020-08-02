@@ -1,3 +1,4 @@
+use serde::Serialize;
 use thiserror::Error as ThisError;
 
 use crate::data::{RowError, TableError, ValueError};
@@ -7,11 +8,12 @@ use crate::executor::{
 };
 use crate::store::StoreError;
 
-#[derive(ThisError, Debug)]
+#[derive(ThisError, Serialize, Debug)]
 pub enum Error {
     #[error(transparent)]
     Store(#[from] StoreError),
     #[error(transparent)]
+    #[serde(with = "stringify")]
     Storage(#[from] Box<dyn std::error::Error>),
 
     #[error(transparent)]
@@ -69,5 +71,18 @@ impl PartialEq for Error {
             (Value(e), Value(e2)) => e == e2,
             _ => false,
         }
+    }
+}
+
+mod stringify {
+    use serde::Serializer;
+    use std::fmt::Display;
+
+    pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        T: Display,
+        S: Serializer,
+    {
+        serializer.collect_str(value)
     }
 }

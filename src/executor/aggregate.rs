@@ -1,5 +1,6 @@
 use im_rc::HashMap;
 use iter_enum::Iterator;
+use serde::Serialize;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::iter::{empty, once};
@@ -12,7 +13,7 @@ use super::context::{AggregateContext, BlendContext};
 use crate::data::{get_name, Value};
 use crate::result::Result;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum AggregateError {
     #[error("unsupported compound identifier: {0}")]
     UnsupportedCompoundIdentifier(String),

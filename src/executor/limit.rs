@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -5,7 +6,7 @@ use sqlparser::ast::{Expr, Offset, Value as AstValue};
 
 use crate::result::Result;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum LimitError {
     #[error("Unreachable")]
     Unreachable,
