@@ -5,7 +5,11 @@ authors = ["Taehoon Moon <panarch@kaist.ac.kr>"]
 edition = "2018"
 
 [workspace]
-members = ["storages/sled", "storages/memory"]
+members = [
+  "storages/sled",
+  "storages/memory",
+  "interfaces/javascript",
+ ]
 
 [dependencies]
 boolinator = "2.4.0"
