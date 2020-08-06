@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "GlueSQL Web Demo",
   "author": "Taehoon Moon",
-  "license": "MPL-2.0",
+  "license": "MIT",
   "main": "index.js",
   "scripts": {
     "start": "webpack-dev-server"
