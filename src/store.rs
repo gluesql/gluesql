@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Debug;
 use std::marker::Sized;
 use thiserror::Error;
@@ -5,7 +6,7 @@ use thiserror::Error;
 use super::data::{Row, Schema};
 use super::result::{MutResult, Result};
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum StoreError {
     #[error("Schema not found")]
     SchemaNotFound,

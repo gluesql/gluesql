@@ -1,28 +1,20 @@
 use super::data::Row;
 use super::executor::Payload;
+use super::parse::{parse, Query};
 use super::result::{Error, Result};
 
-use sqlparser::ast::Statement;
-use sqlparser::dialect::GenericDialect;
-use sqlparser::parser::Parser;
-
-pub struct TestQuery<'a>(pub &'a Statement);
-
 pub trait Tester {
-    fn execute(&mut self, parsed: TestQuery) -> Result<Payload>;
+    fn execute(&mut self, query: &Query) -> Result<Payload>;
 
     fn run(&mut self, sql: &str) -> Result<Payload> {
-        let dialect = GenericDialect {};
-        let parsed = match Parser::parse_sql(&dialect, sql) {
-            Ok(parsed) => parsed,
-            Err(e) => {
-                panic!("parse_query: {:?}", e);
-            }
-        };
-        let parsed = &parsed[0];
+        println!("[Run] {}", sql);
 
-        println!("[Run] {}", parsed);
-        self.execute(TestQuery(parsed))
+        parse(sql)
+            .unwrap()
+            .iter()
+            .map(|query| self.execute(query))
+            .next()
+            .unwrap()
     }
 
     fn run_and_print(&mut self, sql: &str) {

@@ -1,6 +1,7 @@
 use boolinator::Boolinator;
 use iter_enum::Iterator;
 use or_iterator::OrIterator;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::iter::once;
 use std::rc::Rc;
@@ -14,7 +15,7 @@ use crate::data::Table;
 use crate::result::Result;
 use crate::store::Store;
 
-#[derive(ThisError, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum JoinError {
     #[error("unimplemented! join not supported")]
     JoinTypeNotSupported,

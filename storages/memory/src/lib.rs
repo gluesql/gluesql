@@ -1,7 +1,7 @@
 mod memory_storage;
-use memory_storage::MemoryStorage;
+pub use memory_storage::MemoryStorage;
 
-use gluesql::{execute, Payload, Result, TestQuery, Tester};
+use gluesql::{execute, Payload, Query, Result, Tester};
 
 pub struct MemoryTester {
     storage: Option<MemoryStorage>,
@@ -23,10 +23,10 @@ impl Default for MemoryTester {
 }
 
 impl Tester for MemoryTester {
-    fn execute(&mut self, query: TestQuery) -> Result<Payload> {
+    fn execute(&mut self, query: &Query) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
-        match execute(storage, query.0) {
+        match execute(storage, query) {
             Ok((storage, payload)) => {
                 self.storage = Some(storage);
 

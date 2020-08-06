@@ -1,7 +1,8 @@
+use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum EvaluateError {
     #[error("nested select row not found")]
     NestedSelectRowNotFound,

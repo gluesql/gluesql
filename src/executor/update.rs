@@ -1,3 +1,4 @@
+use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -9,7 +10,7 @@ use crate::data::{Row, Value};
 use crate::result::Result;
 use crate::store::Store;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq)]
 pub enum UpdateError {
     #[error("column not found {0}")]
     ColumnNotFound(String),

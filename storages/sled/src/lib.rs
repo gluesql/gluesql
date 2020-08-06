@@ -1,7 +1,7 @@
 mod sled_storage;
 use sled_storage::SledStorage;
 
-use gluesql::{execute, Payload, Result, TestQuery, Tester};
+use gluesql::{execute, Payload, Query, Result, Tester};
 
 pub struct SledTester {
     storage: Option<SledStorage>,
@@ -24,10 +24,10 @@ impl SledTester {
 }
 
 impl Tester for SledTester {
-    fn execute(&mut self, query: TestQuery) -> Result<Payload> {
+    fn execute(&mut self, query: &Query) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
-        match execute(storage, query.0) {
+        match execute(storage, query) {
             Ok((storage, payload)) => {
                 self.storage = Some(storage);
 
