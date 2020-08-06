@@ -1,8 +1,11 @@
+mod convert;
 mod utils;
 
 use wasm_bindgen::prelude::*;
 
 use memory_storage::MemoryStorage;
+
+use convert::convert;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
 // allocator.
@@ -29,7 +32,7 @@ impl Glue {
     pub fn new() -> Self {
         utils::set_panic_hook();
 
-        log("Hello, GlueSQL!");
+        log("[GlueSQL] :)");
 
         let storage = Some(MemoryStorage::new().unwrap());
 
@@ -60,6 +63,6 @@ impl Glue {
             }
         }
 
-        Ok(JsValue::from_serde(&payloads).unwrap())
+        Ok(convert(payloads))
     }
 }
