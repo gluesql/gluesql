@@ -3,6 +3,8 @@ name = "gluesql"
 version = "0.1.0"
 authors = ["Taehoon Moon <panarch@kaist.ac.kr>"]
 edition = "2018"
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "MPL-2.0"
 
 [workspace]
 members = [
