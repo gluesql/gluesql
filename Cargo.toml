@@ -7,13 +7,6 @@ description = "GlueSQL - Open source SQL database engine fully written in Rust w
 license-file = "LICENSE"
 repository = "https://github.com/panarch/gluesql"
 
-[workspace]
-members = [
-  "storages/sled",
-  "storages/memory",
-  "interfaces/javascript",
- ]
-
 [dependencies]
 boolinator = "2.4.0"
 im-rc = "15.0.0"
