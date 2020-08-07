@@ -1,11 +1,11 @@
 [package]
 name = "gluesql"
-version = "0.1.2"
+version = "0.1.4"
 authors = ["Taehoon Moon <panarch@kaist.ac.kr>"]
 edition = "2018"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license-file = "LICENSE"
-repository = "https://github.com/panarch/gluesql"
+license = "MPL-2.0"
+repository = "https://github.com/gluesql/gluesql"
 
 [dependencies]
 boolinator = "2.4.0"
