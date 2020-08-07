@@ -1,10 +1,6 @@
-mod helper;
+use crate::*;
 
-use test_case::test_case;
-
-use gluesql::{BlendError, Payload, Row, Value};
-
-test!(blend, {
+pub fn blend(mut tester: impl tests::Tester) {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE BlendUser (
@@ -108,4 +104,4 @@ test!(blend, {
     error_cases
         .into_iter()
         .for_each(|(error, sql)| tester.test_error(sql, error.into()));
-});
+}

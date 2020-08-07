@@ -22,8 +22,3 @@ or-iterator = "0.1.1"
 serde = { version = "1.0.104", features = ["derive"] }
 sqlparser = { version = "0.6.1", features = ["serde"] }
 thiserror = "1.0.12"
-
-[dev-dependencies]
-sled_storage = { path = "./storages/sled" }
-memory_storage = { path = "./storages/memory" }
-test-case = "1.0.0"

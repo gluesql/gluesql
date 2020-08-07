@@ -1,9 +1,6 @@
-mod helper;
+use crate::*;
 
-use gluesql::{Payload, Row, Value, ValueError};
-use test_case::test_case;
-
-test!(nullable, {
+pub fn nullable(mut tester: impl tests::Tester) {
     tester.run_and_print(
         r#"
 CREATE TABLE Test (
@@ -48,4 +45,4 @@ CREATE TABLE Test (
     let found = tester.run("INSERT INTO Test VALUES (1, NULL)");
     let expected = Err(ValueError::NullValueOnNotNullField.into());
     assert_eq!(expected, found);
-});
+}

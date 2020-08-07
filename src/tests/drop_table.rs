@@ -1,9 +1,6 @@
-mod helper;
+use crate::*;
 
-use gluesql::{ExecuteError, Payload, Row, StoreError, Value};
-use test_case::test_case;
-
-test!(drop_table, {
+pub fn drop_table(mut tester: impl tests::Tester) {
     let create_sql = r#"
 CREATE TABLE DropTable (
     id INT,
@@ -50,4 +47,4 @@ CREATE TABLE DropTable (
 
         assert_eq!(expected, found);
     });
-});
+}

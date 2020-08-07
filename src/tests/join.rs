@@ -1,9 +1,6 @@
-mod helper;
+use crate::*;
 
-use gluesql::{Payload, Row, Value};
-use test_case::test_case;
-
-test!(join, {
+pub fn join(mut tester: impl tests::Tester) {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -129,9 +126,9 @@ test!(join, {
         .for_each(|(num, sql)| tester.test_rows(sql, *num));
 
     delete_sqls.iter().for_each(|sql| tester.run_and_print(sql));
-});
+}
 
-test!(blend_join, {
+pub fn blend(mut tester: impl tests::Tester) {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -230,4 +227,4 @@ test!(blend_join, {
         I64(5) Str("Hwan".to_owned())    Empty    Empty  Empty
     );
     assert_eq!(expected, found);
-});
+}

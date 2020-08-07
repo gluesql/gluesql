@@ -1,9 +1,6 @@
-mod helper;
+use crate::*;
 
-use gluesql::{AggregateError, BlendContextError, Payload, Row, Value};
-use test_case::test_case;
-
-test!(aggregate, {
+pub fn aggregate(mut tester: impl tests::Tester) {
     let create_sql = "
         CREATE TABLE Item (
             id INTEGER,
@@ -84,4 +81,4 @@ test!(aggregate, {
     error_cases
         .into_iter()
         .for_each(|(error, sql)| tester.test_error(sql, error));
-});
+}

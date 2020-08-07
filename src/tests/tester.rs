@@ -1,9 +1,11 @@
-use super::data::Row;
-use super::executor::Payload;
-use super::parse::{parse, Query};
-use super::result::{Error, Result};
+use crate::data::Row;
+use crate::executor::Payload;
+use crate::parse::{parse, Query};
+use crate::result::{Error, Result};
 
 pub trait Tester {
+    fn new(namespace: &str) -> Self;
+
     fn execute(&mut self, query: &Query) -> Result<Payload>;
 
     fn run(&mut self, sql: &str) -> Result<Payload> {

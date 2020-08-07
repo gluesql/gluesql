@@ -1,12 +1,6 @@
-mod helper;
+use crate::*;
 
-use gluesql::{
-    EvaluateError, ExecuteError, FilterContextError, JoinError, RowError, SelectError, StoreError,
-    TableError, ValueError,
-};
-use test_case::test_case;
-
-test!(error, {
+pub fn error(mut tester: impl tests::Tester) {
     tester.run_and_print("CREATE TABLE TableA (id INTEGER);");
     tester.run_and_print("INSERT INTO TableA (id) VALUES (1);");
 
@@ -52,4 +46,4 @@ test!(error, {
         "INSERT INTO TableB (id) VALUES (0);",
         ValueError::SqlTypeNotSupported.into(),
     );
-});
+}

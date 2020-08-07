@@ -1,8 +1,6 @@
-mod helper;
+use crate::*;
 
-use test_case::test_case;
-
-test!(ordering, {
+pub fn ordering(mut tester: impl tests::Tester) {
     let create_sql = "
         CREATE TABLE Operator (
             id INTEGER,
@@ -70,4 +68,4 @@ test!(ordering, {
     for (num, sql) in test_cases.iter() {
         tester.test_rows(sql, *num);
     }
-});
+}

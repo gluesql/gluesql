@@ -1,9 +1,6 @@
-mod helper;
+use crate::*;
 
-use gluesql::{Payload, Row, UpdateError, Value, ValueError};
-use test_case::test_case;
-
-test!(arithmetic, {
+pub fn arithmetic(mut tester: impl tests::Tester) {
     let create_sql = "
         CREATE TABLE Arith (
             id INTEGER,
@@ -92,9 +89,9 @@ test!(arithmetic, {
     test_cases
         .into_iter()
         .for_each(|(error, sql)| tester.test_error(sql, error));
-});
+}
 
-test!(blend_arithmetic, {
+pub fn blend(mut tester: impl tests::Tester) {
     let create_sql = "
         CREATE TABLE Arith (
             id INTEGER,
@@ -147,4 +144,4 @@ test!(blend_arithmetic, {
     let found = tester.run(sql).expect("select");
     let expected = select!(I64; 3; 5; 7; 9);
     assert_eq!(expected, found);
-});
+}

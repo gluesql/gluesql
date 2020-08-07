@@ -1,8 +1,6 @@
-mod helper;
+use crate::*;
 
-use test_case::test_case;
-
-test!(synthesize, {
+pub fn synthesize(mut tester: impl tests::Tester) {
     let create_sql = "
         CREATE TABLE TableA (
             id INTEGER,
@@ -83,4 +81,4 @@ test!(synthesize, {
     for (num, sql) in test_cases.iter() {
         test_select(sql, *num);
     }
-});
+}

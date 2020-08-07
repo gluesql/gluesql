@@ -1,8 +1,6 @@
-mod helper;
+use crate::*;
 
-use test_case::test_case;
-
-test!(nested_select, {
+pub fn nested_select(mut tester: impl tests::Tester) {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE User (
@@ -71,4 +69,4 @@ test!(nested_select, {
     select_sqls
         .iter()
         .for_each(|(num, sql)| tester.test_rows(sql, *num));
-});
+}

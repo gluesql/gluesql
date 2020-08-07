@@ -1,8 +1,6 @@
-mod helper;
+use crate::*;
 
-use test_case::test_case;
-
-test!(sql_types, {
+pub fn sql_types(mut tester: impl tests::Tester) {
     let create_sql = "
         CREATE TABLE Item (
             id INTEGER,
@@ -47,4 +45,4 @@ test!(sql_types, {
     }
 
     tester.run_and_print(delete_sql);
-});
+}

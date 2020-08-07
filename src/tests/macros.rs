@@ -1,12 +1,18 @@
 #[macro_export]
 macro_rules! test {
     ($title: ident, $content: expr) => {
-        #[test_case(memory_storage::MemoryTester::new() ; "memory")]
-        #[test_case(sled_storage::SledTester::new(&format!("data/{}", stringify!($title))) ; "sled")]
-        fn $title(mut tester: impl gluesql::Tester) {
+        fn $title(mut tester: impl Tester) {
             $content
         }
-    };
+    }; /*
+       ($title: ident, $content: expr) => {
+           #[test_case(memory_storage::MemoryTester::new() ; "memory")]
+           #[test_case(sled_storage::SledTester::new(&format!("data/{}", stringify!($title))) ; "sled")]
+           fn $title(mut tester: impl gluesql::Tester) {
+               $content
+           }
+       };
+       */
 }
 
 #[macro_export]
