@@ -19,10 +19,10 @@ pub use tester::*;
 
 #[macro_export]
 macro_rules! generate_tests {
-    ($storage: ident) => {
+    ($test: meta, $storage: ident) => {
         macro_rules! glue {
             ($title: ident, $func: path) => {
-                #[test]
+                #[$test]
                 fn $title() {
                     let path = stringify!($title);
                     let storage = $storage::new(path);
