@@ -32,8 +32,6 @@ macro_rules! generate_tests {
             };
         }
 
-        use gluesql::tests::*;
-
         glue!(basic, basic::basic);
         glue!(aggregate, aggregate::aggregate);
         glue!(arithmetic, arithmetic::arithmetic);
