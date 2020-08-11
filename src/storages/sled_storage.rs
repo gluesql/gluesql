@@ -1,7 +1,7 @@
 use sled::{self, Db, IVec};
 use thiserror::Error as ThisError;
 
-use crate::{Error, MutResult, MutStore, Result, Row, RowIter, Schema, Store, StoreError};
+use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut};
 
 #[derive(ThisError, Debug)]
 enum StorageError {
@@ -63,7 +63,7 @@ impl SledStorage {
     }
 }
 
-impl MutStore<IVec> for SledStorage {
+impl StoreMut<IVec> for SledStorage {
     fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
         let id = try_self!(self, self.tree.generate_id());
         let id = format!("data/{}/{}", table_name, id);

@@ -11,7 +11,7 @@ use super::update::Update;
 use crate::data::{get_name, Row, Schema};
 use crate::parse::Query;
 use crate::result::{MutResult, Result};
-use crate::store::{MutStore, Store};
+use crate::store::{Store, StoreMut};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -32,7 +32,7 @@ pub enum Payload {
     DropTable,
 }
 
-pub fn execute<T: 'static + Debug, U: Store<T> + MutStore<T>>(
+pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T>>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {

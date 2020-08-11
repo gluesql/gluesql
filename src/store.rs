@@ -20,7 +20,7 @@ pub trait Store<T: Debug> {
     fn scan_data(&self, table_name: &str) -> Result<RowIter<T>>;
 }
 
-pub trait MutStore<T: Debug>
+pub trait StoreMut<T: Debug>
 where
     Self: Sized,
 {
