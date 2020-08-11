@@ -29,6 +29,7 @@ pub fn aggregate(mut tester: impl tests::Tester) {
 
     let test_cases = vec![
         ("SELECT COUNT(*) FROM Item", select!(I64; 5)),
+        ("SELECT count(*) FROM Item", select!(I64; 5)),
         ("SELECT COUNT(*), COUNT(*) FROM Item", select!(I64 I64; 5 5)),
         (
             "SELECT SUM(quantity), MAX(quantity), MIN(quantity) FROM Item",

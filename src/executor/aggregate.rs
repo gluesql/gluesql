@@ -145,7 +145,7 @@ fn aggregate<'a>(
         Expr::Function(func) => {
             let Function { name, args, .. } = func;
 
-            match get_name(name)?.as_str() {
+            match get_name(name)?.to_uppercase().as_str() {
                 "COUNT" => {
                     let expr = args.get(0).ok_or(AggregateError::Unreachable)?;
 
