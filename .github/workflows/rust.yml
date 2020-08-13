@@ -22,4 +22,6 @@ jobs:
     - name: Build
       run: cargo build --all-features --verbose
     - name: Run tests
+      run: cargo test --verbose
+    - name: Run tests with features
       run: cargo test --all-features --verbose
