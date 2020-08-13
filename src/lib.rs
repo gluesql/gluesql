@@ -1,4 +1,5 @@
 mod executor;
+mod glue;
 mod parse;
 mod storages;
 
@@ -13,6 +14,8 @@ pub use parse::*;
 pub use result::*;
 pub use store::*;
 
+#[cfg(feature = "sled-storage")]
+pub use glue::Glue;
 #[cfg(feature = "sled-storage")]
 pub use sled;
 #[cfg(feature = "sled-storage")]
