@@ -52,12 +52,13 @@ macro_rules! try_self {
     };
 }
 
+#[derive(Debug)]
 pub struct SledStorage {
     tree: Db,
 }
 
 impl SledStorage {
-    pub fn new(filename: String) -> Result<Self> {
+    pub fn new(filename: &str) -> Result<Self> {
         let tree = try_into!(sled::open(filename));
 
         Ok(Self { tree })
