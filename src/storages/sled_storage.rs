@@ -1,4 +1,5 @@
-use sled::{self, Db, IVec};
+use sled::{self, Config, Db, IVec};
+use std::convert::TryFrom;
 use thiserror::Error as ThisError;
 
 use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut};
@@ -58,6 +59,16 @@ pub struct SledStorage {
 impl SledStorage {
     pub fn new(filename: String) -> Result<Self> {
         let tree = try_into!(sled::open(filename));
+
+        Ok(Self { tree })
+    }
+}
+
+impl TryFrom<Config> for SledStorage {
+    type Error = Error;
+
+    fn try_from(config: Config) -> Result<Self> {
+        let tree = try_into!(config.open());
 
         Ok(Self { tree })
     }

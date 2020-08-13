@@ -1,5 +1,8 @@
 #[cfg(feature = "sled-storage")]
-use gluesql::{execute, generate_tests, tests::*, Payload, Query, Result, SledStorage};
+use std::convert::TryFrom;
+
+#[cfg(feature = "sled-storage")]
+use gluesql::{execute, generate_tests, sled, tests::*, Payload, Query, Result, SledStorage};
 
 #[cfg(feature = "sled-storage")]
 struct SledTester {
@@ -18,7 +21,11 @@ impl Tester for SledTester {
             }
         }
 
-        let storage = SledStorage::new(path).expect("SledStorage::new");
+        let config = sled::Config::default()
+            .path(path)
+            .temporary(true)
+            .mode(sled::Mode::HighThroughput);
+        let storage = SledStorage::try_from(config).expect("SledStorage::new");
         let storage = Some(storage);
 
         SledTester { storage }

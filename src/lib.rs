@@ -14,4 +14,6 @@ pub use result::*;
 pub use store::*;
 
 #[cfg(feature = "sled-storage")]
+pub use sled;
+#[cfg(feature = "sled-storage")]
 pub use storages::*;
