@@ -35,7 +35,7 @@ pub enum ValueError {
     NullValueOnNotNullField,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
     Bool(bool),
     I64(i64),
@@ -46,6 +46,35 @@ pub enum Value {
     OptF64(Option<f64>),
     OptStr(Option<String>),
     Empty,
+}
+
+impl PartialEq<Value> for Value {
+    fn eq(&self, other: &Value) -> bool {
+        match (self, other) {
+            (Value::Bool(l), Value::Bool(r))
+            | (Value::OptBool(Some(l)), Value::Bool(r))
+            | (Value::Bool(l), Value::OptBool(Some(r)))
+            | (Value::OptBool(Some(l)), Value::OptBool(Some(r))) => l == r,
+            (Value::I64(l), Value::I64(r))
+            | (Value::OptI64(Some(l)), Value::I64(r))
+            | (Value::I64(l), Value::OptI64(Some(r)))
+            | (Value::OptI64(Some(l)), Value::OptI64(Some(r))) => l == r,
+            (Value::F64(l), Value::F64(r))
+            | (Value::OptF64(Some(l)), Value::F64(r))
+            | (Value::F64(l), Value::OptF64(Some(r)))
+            | (Value::OptF64(Some(l)), Value::OptF64(Some(r))) => l == r,
+            (Value::Str(l), Value::Str(r))
+            | (Value::OptStr(Some(l)), Value::Str(r))
+            | (Value::Str(l), Value::OptStr(Some(r)))
+            | (Value::OptStr(Some(l)), Value::OptStr(Some(r))) => l == r,
+            (Value::OptBool(None), Value::OptBool(None))
+            | (Value::OptI64(None), Value::OptI64(None))
+            | (Value::OptF64(None), Value::OptF64(None))
+            | (Value::OptStr(None), Value::OptStr(None))
+            | (Value::Empty, Value::Empty) => true,
+            _ => false,
+        }
+    }
 }
 
 impl PartialEq<AstValue> for Value {
@@ -275,5 +304,33 @@ impl Value {
             Empty | OptBool(None) | OptI64(None) | OptF64(None) | OptStr(None) => false,
             _ => true,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Value;
+
+    #[test]
+    fn eq() {
+        assert_eq!(Value::Bool(true), Value::OptBool(Some(true)));
+        assert_eq!(Value::OptBool(Some(false)), Value::Bool(false));
+        assert_eq!(Value::OptBool(None), Value::OptBool(None));
+
+        assert_eq!(Value::I64(1), Value::OptI64(Some(1)));
+        assert_eq!(Value::OptI64(Some(1)), Value::I64(1));
+        assert_eq!(Value::OptI64(None), Value::OptI64(None));
+
+        assert_eq!(Value::F64(6.11), Value::OptF64(Some(6.11)));
+        assert_eq!(Value::OptF64(Some(6.11)), Value::F64(6.11));
+        assert_eq!(Value::OptF64(None), Value::OptF64(None));
+
+        let glue = || "Glue".to_owned();
+
+        assert_eq!(Value::Str(glue()), Value::OptStr(Some(glue())));
+        assert_eq!(Value::OptStr(Some(glue())), Value::Str(glue()));
+        assert_eq!(Value::OptStr(None), Value::OptStr(None));
+
+        assert_eq!(Value::Empty, Value::Empty);
     }
 }
