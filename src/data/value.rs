@@ -1,3 +1,4 @@
+use boolinator::Boolinator;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
@@ -158,57 +159,47 @@ impl TryFrom<&AstValue> for Value {
     }
 }
 
+trait BoolToValue: Sized {
+    fn as_value(self, v1: Value, v2: Value) -> Value;
+}
+
+impl BoolToValue for bool {
+    #[inline]
+    fn as_value(self, v1: Value, v2: Value) -> Value {
+        if self {
+            v1
+        } else {
+            v2
+        }
+    }
+}
+
 impl Value {
     pub fn from_data_type(data_type: DataType, nullable: bool, literal: &AstValue) -> Result<Self> {
         match (data_type, literal) {
             (DataType::Int, AstValue::Number(v)) => v
                 .parse()
-                .map(|v| {
-                    if nullable {
-                        Value::OptI64(Some(v))
-                    } else {
-                        Value::I64(v)
-                    }
-                })
+                .map(|v| nullable.as_value(Value::OptI64(Some(v)), Value::I64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             (DataType::Float(_), AstValue::Number(v)) => v
                 .parse()
-                .map(|v| {
-                    if nullable {
-                        Value::OptF64(Some(v))
-                    } else {
-                        Value::F64(v)
-                    }
-                })
+                .map(|v| nullable.as_value(Value::OptF64(Some(v)), Value::F64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             (DataType::Boolean, AstValue::Boolean(v)) => {
-                if nullable {
-                    Ok(Value::OptBool(Some(*v)))
-                } else {
-                    Ok(Value::Bool(*v))
-                }
+                Ok(nullable.as_value(Value::OptBool(Some(*v)), Value::Bool(*v)))
             }
-            (DataType::Int, AstValue::Null) => {
-                if nullable {
-                    Ok(Value::OptI64(None))
-                } else {
-                    Err(ValueError::NullValueOnNotNullField.into())
-                }
-            }
-            (DataType::Float(_), AstValue::Null) => {
-                if nullable {
-                    Ok(Value::OptF64(None))
-                } else {
-                    Err(ValueError::NullValueOnNotNullField.into())
-                }
-            }
-            (DataType::Boolean, AstValue::Null) => {
-                if nullable {
-                    Ok(Value::OptBool(None))
-                } else {
-                    Err(ValueError::NullValueOnNotNullField.into())
-                }
-            }
+            (DataType::Int, AstValue::Null) => nullable.as_result(
+                Value::OptI64(None),
+                ValueError::NullValueOnNotNullField.into(),
+            ),
+            (DataType::Float(_), AstValue::Null) => nullable.as_result(
+                Value::OptF64(None),
+                ValueError::NullValueOnNotNullField.into(),
+            ),
+            (DataType::Boolean, AstValue::Null) => nullable.as_result(
+                Value::OptBool(None),
+                ValueError::NullValueOnNotNullField.into(),
+            ),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
