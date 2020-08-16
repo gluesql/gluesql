@@ -76,8 +76,23 @@ pub fn blend(mut tester: impl tests::Tester) {
             ",
             select!(
                 I64 I64 I64 Str;
-                102 2 4 "Mike".to_owned();
-                103 2 9 "Mike".to_owned()
+                102 2   4   "Mike".to_owned();
+                103 2   9   "Mike".to_owned()
+            ),
+        ),
+        (
+            "
+            SELECT u.*, i.*
+            FROM BlendUser u
+            JOIN BlendItem i ON u.id = i.player_id
+            ",
+            select!(
+                I64 Str                  I64 I64 I64;
+                1   "Taehoon".to_owned() 101 1   1;
+                2   "Mike".to_owned()    102 2   4;
+                2   "Mike".to_owned()    103 2   9;
+                3   "Jorno".to_owned()   104 3   2;
+                3   "Jorno".to_owned()   105 3   1
             ),
         ),
     ];

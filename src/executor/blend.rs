@@ -274,8 +274,7 @@ fn get_alias_values(context: &Context<'_>, alias: &str) -> Option<Vec<Rc<Value>>
 
         Some(values)
     } else {
-        next.as_ref()
-            .and_then(|next| get_alias_values(next, table_alias))
+        next.as_ref().and_then(|next| get_alias_values(next, alias))
     }
 }
 
