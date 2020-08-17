@@ -49,7 +49,7 @@ gluesql = "0.1.10"
 ```
 
 ### Usage
-All you only need to do is implement 2 traits: `Store` and `StoreMut`!
+All you only need to do is implementing 2 traits: `Store` and `StoreMut`!
 In `src/store.rs`,
 ```rust
 pub trait Store<T: Debug> {
