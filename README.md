@@ -66,7 +66,7 @@ pub trait StoreMut<T: Debug> where Self: Sized {
 }
 ```
 
-### Examples - [GlueSQL-js](https://github.com/gluesql/gluesql-js, "GlueSQL-js")
+### Examples - [GlueSQL-js](https://github.com/gluesql/gluesql-js)  
 Use SQL in web browsers!  
 GlueSQL-js provides 3 storage options,
 * in-memory
