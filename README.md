@@ -79,6 +79,19 @@ GlueSQL-js provides 3 storage options,
 
 ## Plans
 :smile:
+* More SQL syntax supports - GROUP BY, HAVING ...
+
+### Providing more `Store` traits
+Not only `Store` and `StoreMut`, but also GlueSQL will separately provides,  
+* ForeignKey trait
+* Transaction trait
+* Index trait
+
+Then users can make their own SQL database with only using
+* `Store` & `StoreMut`, or  
+* `Store` + `StoreMut` + `ForeignKey` but without `Index` and `Transaction` support.
+* with all traits.
+* etc...
 
 ## Contribution
 It's very early stage, please feel free to do whatever you want to.  
