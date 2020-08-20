@@ -5,7 +5,7 @@
 ![Rust](https://github.com/gluesql/gluesql/workflows/Rust/badge.svg)
 
 ## SQL Database Engine as a Library
-GlueSQL is a SQL database library written in Rust, it provides parser ([sql-parser](https://github.com/ballista-compute/sqlparser-rs)), execution layer, and an optional storage ([sled](https://github.com/spacejam/sled)).  
+GlueSQL is a SQL database library written in Rust, it provides parser ([sqlparser-rs](https://github.com/ballista-compute/sqlparser-rs)), execution layer, and an optional storage ([sled](https://github.com/spacejam/sled)).  
 Developers can use GlueSQL to build their own SQL databases or they can simply use GlueSQL as an embedded SQL database using default storage.  
 
 ## Standalone Mode
