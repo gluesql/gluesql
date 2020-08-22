@@ -1,12 +1,14 @@
 [package]
 name = "gluesql"
-version = "0.1.9"
+version = "0.1.12"
 authors = ["Taehoon Moon <panarch@kaist.ac.kr>"]
 edition = "2018"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "MPL-2.0"
+license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
-keywords = ["sql-database", "sql", "functional-programming", "no-mutable-in-the-middle", "websql", "webassembly"]
+documentation = "https://docs.rs/gluesql/"
+readme = "README.md"
+keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webassembly"]
 
 [features]
 sled-storage = ["sled", "bincode"]

@@ -3,6 +3,14 @@ use crate::executor::Payload;
 use crate::parse::{parse, Query};
 use crate::result::{Error, Result};
 
+/// If you want to make your custom storage and want to run integrate tests,
+/// you should implement this `Tester` trait.
+///
+/// To see how to use it,
+/// * [tests/sled_storage.rs](https://github.com/gluesql/gluesql/blob/main/tests/sled_storage.rs)
+///
+/// Actual test cases are in [/src/tests/](https://github.com/gluesql/gluesql/blob/main/src/tests/),
+/// not in `/tests/`.
 pub trait Tester {
     fn new(namespace: &str) -> Self;
 
