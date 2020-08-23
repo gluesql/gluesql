@@ -74,24 +74,19 @@ GlueSQL-js provides 3 storage options,
 * sessionStorage.
 
 ## SQL Features
-`src/tests/*`
-:smile:
+GlueSQL currently supports limited queries, it's in very early stage.
 
-## Plans
-:smile:
-* More SQL syntax supports - GROUP BY, HAVING ...
+* `CREATE` with 4 types: `INTEGER`, `FLOAT`, `BOOLEAN`, `TEXT` with an optional `NULL` attribute.
+* `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `DROP TABLE`
+* Nested select, join, aggregations ...
 
-### Providing more `Store` traits
-Not only `Store` and `StoreMut`, but also GlueSQL will separately provides,  
-* ForeignKey trait
-* Transaction trait
-* Index trait
+You can see current query supports in [src/tests/*](https://github.com/gluesql/gluesql/tree/main/src/tests).
 
-Then users can make their own SQL database with only using
-* `Store` & `StoreMut`, or  
-* `Store` + `StoreMut` + `ForeignKey` but without `Index` and `Transaction` support.
-* with all traits.
-* etc...
+### Other expected use cases
+* Run SQL in web browsers - [gluesql-js](https://github.com/gluesql/gluesql-js)
+It would be cool to make state management library using `gluesql-js`.
+* Add SQL layer to NoSQL databases: Redis, CouchDB...
+* Build new SQL database management system
 
 ## Contribution
 It's very early stage, please feel free to do whatever you want to.  
