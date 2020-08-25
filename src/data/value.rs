@@ -200,6 +200,10 @@ impl Value {
                 Value::OptBool(None),
                 ValueError::NullValueOnNotNullField.into(),
             ),
+            (DataType::Text, AstValue::Null) => nullable.as_result(
+                Value::OptStr(None),
+                ValueError::NullValueOnNotNullField.into(),
+            ),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
