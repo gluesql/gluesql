@@ -35,6 +35,10 @@ pub fn error(mut tester: impl tests::Tester) {
             RowError::LackOfRequiredColumn("id".to_owned()).into(),
             "INSERT INTO TableA (id2) VALUES (1);",
         ),
+        (
+            RowError::LackOfRequiredValue("id".to_owned()).into(),
+            "INSERT INTO TableA (id2, id) VALUES (100);",
+        ),
     ];
 
     test_cases
