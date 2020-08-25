@@ -46,3 +46,23 @@ CREATE TABLE Test (
     let expected = Err(ValueError::NullValueOnNotNullField.into());
     assert_eq!(expected, found);
 }
+
+pub fn nullable_text(mut tester: impl tests::Tester) {
+    tester.run_and_print(
+        "
+        CREATE TABLE Foo (
+            id INTEGER,
+            name TEXT NULL
+        );
+    ",
+    );
+
+    let insert_sqls = [
+        "INSERT INTO Foo (id, name) VALUES (1, \"Hello\")",
+        "INSERT INTO Foo (id, name) VALUES (2, Null)",
+    ];
+
+    for insert_sql in insert_sqls.iter() {
+        tester.run(insert_sql).unwrap();
+    }
+}

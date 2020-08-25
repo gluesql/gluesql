@@ -44,6 +44,7 @@ macro_rules! generate_tests {
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
         glue!(nullable, nullable::nullable);
+        glue!(nullable_text, nullable::nullable_text);
         glue!(ordering, ordering::ordering);
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
