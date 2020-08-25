@@ -83,7 +83,9 @@ impl Row {
                         .ok_or_else(|| RowError::LackOfRequiredColumn(name.clone())),
                 }?;
 
-                let literal = values.get(i).ok_or(RowError::Unreachable)?;
+                let literal = values
+                    .get(i)
+                    .ok_or_else(|| RowError::LackOfRequiredValue(name.clone()))?;
                 let nullable = options
                     .iter()
                     .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
