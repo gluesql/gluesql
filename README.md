@@ -26,7 +26,7 @@ fn main() {
     let storage = SledStorage::new("data.db").unwrap();
     let mut glue = Glue::new(storage);
 
-    let sql = "
+    let sqls = "
         CREATE TABLE Glue (id INTEGER);
         INSERT INTO Glue VALUES (100);
         INSERT INTO Glue VALUES (200);
