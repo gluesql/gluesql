@@ -9,7 +9,7 @@ GlueSQL is a SQL database library written in Rust which provides parser ([sqlpar
 Developers can use GlueSQL to build their own SQL databases or they can simply use GlueSQL as an embedded SQL database using default storage.  
 
 ## Standalone Mode
-You can simply use GlueSQL as an embedded SQL database, GlueSQL provides [sled](https://github.com/spacejam/sled, "sled") as a default storage engine.
+You can simply use GlueSQL as an embedded SQL database, GlueSQL provides [sled](https://github.com/spacejam/sled "sled") as a default storage engine.
 
 ### Installation
 In your `Cargo.toml`
