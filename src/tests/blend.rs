@@ -43,6 +43,7 @@ pub fn blend(mut tester: impl tests::Tester) {
     let mut run = |sql| tester.run(sql).expect("select");
 
     let test_cases = vec![
+        ("SELECT 1 FROM BlendUser", select!(I64; 1; 1; 1)),
         (
             "SELECT id, name FROM BlendUser",
             select!(
