@@ -15,18 +15,18 @@ You can simply use GlueSQL as an embedded SQL database, GlueSQL provides [sled](
 In your `Cargo.toml`
 ```toml
 [dependencies]
-gluesql = { version = "0.1.13", features = ["sled-storage"] }
+gluesql = { version = "0.1.15", features = ["sled-storage"] }
 ```
 
 ### Usage
 ```rust
-use gluesql::*;
+use gluesql::{parse, Glue, SledStorage};
 
 fn main() {
     let storage = SledStorage::new("data.db").unwrap();
     let mut glue = Glue::new(storage);
 
-    let sql = "
+    let sqls = "
         CREATE TABLE Glue (id INTEGER);
         INSERT INTO Glue VALUES (100);
         INSERT INTO Glue VALUES (200);
@@ -45,7 +45,7 @@ fn main() {
 Now you don't need to include `sled-storage`. So in `Cargo.toml`,
 ```toml
 [dependencies]
-gluesql = "0.1.13"
+gluesql = "0.1.15"
 ```
 
 ### Usage
