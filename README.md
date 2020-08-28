@@ -20,7 +20,7 @@ gluesql = { version = "0.1.15", features = ["sled-storage"] }
 
 ### Usage
 ```rust
-use gluesql::*;
+use gluesql::{parse, Glue, SledStorage};
 
 fn main() {
     let storage = SledStorage::new("data.db").unwrap();
