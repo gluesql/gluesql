@@ -188,6 +188,11 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
 
                         Blended::Single(once(value))
                     }
+                    Expr::Value(literal) => {
+                        let value = Value::try_from(literal).map(Rc::new);
+
+                        Blended::Single(once(value))
+                    }
                     _ => err!(BlendError::FieldDefinitionNotSupported),
                 },
                 _ => err!(BlendError::FieldDefinitionNotSupported),
