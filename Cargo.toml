@@ -10,6 +10,9 @@ documentation = "https://docs.rs/gluesql/"
 readme = "README.md"
 keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webassembly"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 sled-storage = ["sled", "bincode"]
 
