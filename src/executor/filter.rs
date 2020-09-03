@@ -161,7 +161,13 @@ fn check_expr<'a, T: 'static + Debug>(
             high,
         } => {
             let target = evaluate(expr)?;
-            let result = evaluate(low)? <= target && target <= evaluate(high)?;
+            let (low_eval, high_eval) = (evaluate(low)?, evaluate(high)?);
+            let (lower, higher) = if (low_eval < high_eval) {
+                (low_eval, high_eval)
+            } else {
+                (high_eval, low_eval)
+            };
+            let result = lower <= target && target <= higher;
             Ok(if *negated { !result } else { result })
         }
         _ => Err(FilterError::Unimplemented.into()),
