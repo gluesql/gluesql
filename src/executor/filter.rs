@@ -154,6 +154,16 @@ fn check_expr<'a, T: 'static + Debug>(
                 .next()
                 .unwrap_or(Ok(negated))
         }
+        Expr::Between {
+            expr,
+            negated,
+            low,
+            high,
+        } => {
+            let target = evaluate(expr)?;
+            let result = evaluate(low)? <= target && target <= evaluate(high)?;
+            Ok(if *negated { !result } else { result })
+        }
         _ => Err(FilterError::Unimplemented.into()),
     }
 }
