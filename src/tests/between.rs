@@ -61,16 +61,6 @@ CREATE TABLE Test (
     assert_eq!(expected, found);
 
     let found = tester
-        .run("SELECT name FROM Test WHERE name NOT BETWEEN 'Doll' AND 'Gehrman'")
-        .expect("select");
-    let expected = select!(
-        Str;
-        "Amelia".to_owned();
-        "Maria".to_owned()
-    );
-    assert_eq!(expected, found);
-
-    let found = tester
         .run("SELECT strength, name FROM Test WHERE name NOT BETWEEN 'Doll' AND 'Gehrman'")
         .expect("select");
     let expected = select!(
