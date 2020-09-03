@@ -162,7 +162,7 @@ fn check_expr<'a, T: 'static + Debug>(
         } => {
             let target = evaluate(expr)?;
             let (low_eval, high_eval) = (evaluate(low)?, evaluate(high)?);
-            let (lower, higher) = if (low_eval < high_eval) {
+            let (lower, higher) = if low_eval < high_eval {
                 (low_eval, high_eval)
             } else {
                 (high_eval, low_eval)
