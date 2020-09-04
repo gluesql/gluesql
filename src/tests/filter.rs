@@ -29,17 +29,6 @@ CREATE TABLE Test (
     assert_eq!(expected, found);
 
     let found = tester
-        .run("SELECT id, name FROM Test WHERE id BETWEEN 4 AND 2")
-        .expect("select");
-    let expected = select!(
-        I64 Str;
-        2   "Doll".to_owned();
-        3   "Gascoigne".to_owned();
-        4   "Gehrman".to_owned()
-    );
-    assert_eq!(expected, found);
-
-    let found = tester
         .run("SELECT id, name FROM Test WHERE name BETWEEN 'Doll' AND 'Gehrman'")
         .expect("select");
     let expected = select!(

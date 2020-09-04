@@ -1,10 +1,10 @@
 pub mod aggregate;
 pub mod arithmetic;
 pub mod basic;
-pub mod between;
 pub mod blend;
 pub mod drop_table;
 pub mod error;
+pub mod filter;
 pub mod join;
 pub mod migrate;
 pub mod nested_select;
@@ -49,6 +49,6 @@ macro_rules! generate_tests {
         glue!(ordering, ordering::ordering);
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
-        glue!(between, between::between);
+        glue!(between, filter::between);
     };
 }
