@@ -68,9 +68,9 @@ CREATE TABLE Boss (
     name TEXT
 )"#,
     );
-    tester.run_and_print("INSERT INTO Boss (id, name, strength) VALUES (1, \"Amelia\")");
-    tester.run_and_print("INSERT INTO Boss (id, name, strength) VALUES (4, \"Gehrman\")");
-    tester.run_and_print("INSERT INTO Boss (id, name, strength) VALUES (5, \"Maria\")");
+    tester.run_and_print("INSERT INTO Boss (id, name) VALUES (1, \"Amelia\")");
+    tester.run_and_print("INSERT INTO Boss (id, name) VALUES (4, \"Gehrman\")");
+    tester.run_and_print("INSERT INTO Boss (id, name) VALUES (5, \"Maria\")");
 
     tester.run_and_print(
         r#"
