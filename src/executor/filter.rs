@@ -94,7 +94,6 @@ fn check_expr<'a, T: 'static + Debug>(
 ) -> Result<bool> {
     let evaluate = |expr| evaluate(storage, filter_context, None, expr);
     let check = |expr| check_expr(storage, filter_context, expr);
-
     match expr {
         Expr::BinaryOp { op, left, right } => {
             let zip_evaluate = || Ok((evaluate(left)?, evaluate(right)?));
@@ -154,6 +153,16 @@ fn check_expr<'a, T: 'static + Debug>(
                 .next()
                 .unwrap_or(Ok(negated))
         }
+        Expr::IsNull(expr) => Ok(match evaluate(expr)? {
+            Evaluated::ValueRef(v) => !v.is_some(),
+            Evaluated::Value(v) => !v.is_some(),
+            _ => false,
+        }),
+        Expr::IsNotNull(expr) => Ok(match evaluate(expr)? {
+            Evaluated::ValueRef(v) => v.is_some(),
+            Evaluated::Value(v) => v.is_some(),
+            _ => false,
+        }),
         _ => Err(FilterError::Unimplemented.into()),
     }
 }

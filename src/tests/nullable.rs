@@ -1,4 +1,5 @@
 use crate::*;
+use Value::*;
 
 pub fn nullable(mut tester: impl tests::Tester) {
     tester.run_and_print(
@@ -12,8 +13,6 @@ CREATE TABLE Test (
     tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (NULL, 2, \"Hello\")");
     tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
     tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
-
-    use Value::*;
 
     let found = tester
         .run("SELECT id, num, name FROM Test")
@@ -30,6 +29,18 @@ CREATE TABLE Test (
         .run("SELECT id, num FROM Test WHERE id = NULL AND name = \'Hello\'")
         .expect("select");
     let expected = select!(OptI64 I64; None 2);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE id IS NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64; None 2);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE id IS NOT NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64; Some(1) 9; Some(3) 4);
     assert_eq!(expected, found);
 
     tester.run_and_print("UPDATE Test SET id = 2");
@@ -65,4 +76,16 @@ pub fn nullable_text(mut tester: impl tests::Tester) {
     for insert_sql in insert_sqls.iter() {
         tester.run(insert_sql).unwrap();
     }
+
+    let found = tester
+        .run("SELECT id, name FROM Foo WHERE name IS NULL")
+        .expect("select");
+    let expected = select!(I64 OptStr; 2 None);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, name FROM Foo WHERE name IS NOT NULL")
+        .expect("select");
+    let expected = select!(I64 Str; 1 "Hello".to_string());
+    assert_eq!(expected, found);
 }
