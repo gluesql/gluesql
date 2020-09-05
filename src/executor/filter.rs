@@ -153,6 +153,17 @@ fn check_expr<'a, T: 'static + Debug>(
                 .next()
                 .unwrap_or(Ok(negated))
         }
+        Expr::Between {
+            expr,
+            negated,
+            low,
+            high,
+        } => {
+            let negated = *negated;
+            let target = evaluate(expr)?;
+
+            Ok(negated ^ (evaluate(low)? <= target && target <= evaluate(high)?))
+        }
         Expr::IsNull(expr) => Ok(match evaluate(expr)? {
             Evaluated::ValueRef(v) => !v.is_some(),
             Evaluated::Value(v) => !v.is_some(),
