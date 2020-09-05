@@ -50,5 +50,6 @@ macro_rules! generate_tests {
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
         glue!(between, filter::between);
+        glue!(exists, filter::exists);
     };
 }

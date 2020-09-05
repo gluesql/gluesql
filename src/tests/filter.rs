@@ -59,3 +59,59 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 }
+
+pub fn exists(mut tester: impl tests::Tester) {
+    tester.run_and_print(
+        r#"
+CREATE TABLE Boss (
+    id INTEGER,
+    name TEXT
+)"#,
+    );
+    tester.run_and_print("INSERT INTO Boss (id, name, strength) VALUES (1, \"Amelia\")");
+    tester.run_and_print("INSERT INTO Boss (id, name, strength) VALUES (4, \"Gehrman\")");
+    tester.run_and_print("INSERT INTO Boss (id, name, strength) VALUES (5, \"Maria\")");
+
+    tester.run_and_print(
+        r#"
+CREATE TABLE Hunter (
+    id INTEGER,
+    name TEXT
+)"#,
+    );
+    tester.run_and_print("INSERT INTO Hunter (id, name) VALUES (2, \"Gehrman\")");
+    tester.run_and_print("INSERT INTO Hunter (id, name) VALUES (3, \"Maria\")");
+
+    use Value::*;
+
+    let found = tester
+        .run(
+            r#"SELECT name 
+                     FROM Boss 
+                     WHERE EXISTS (
+                         SELECT * FROM Hunter WHERE Hunter.name = Boss.name
+                     )"#,
+        )
+        .expect("select");
+    let expected = select!(
+        Str;
+        "Gehrman".to_owned();
+        "Maria".to_owned()
+    );
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run(
+            r#"SELECT name 
+                     FROM Boss 
+                     WHERE NOT EXISTS (
+                         SELECT * FROM Hunter WHERE Hunter.name = Boss.name
+                     )"#,
+        )
+        .expect("select");
+    let expected = select!(
+        Str;
+        "Amelia".to_owned()
+    );
+    assert_eq!(expected, found);
+}
