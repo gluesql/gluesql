@@ -246,6 +246,16 @@ impl<'a> Evaluated<'a> {
             StringRef(_) => unreachable(),
         }
     }
+
+    pub fn is_some(&self) -> bool {
+        match self {
+            Evaluated::ValueRef(v) => v.is_some(),
+            Evaluated::Value(v) => v.is_some(),
+            Evaluated::Literal(v) => *v != AstValue::Null,
+            Evaluated::LiteralRef(v) => **v != AstValue::Null,
+            Evaluated::StringRef(_v) => true,
+        }
+    }
 }
 
 fn literal_add(a: &AstValue, b: &AstValue) -> Result<AstValue> {

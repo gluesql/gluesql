@@ -43,6 +43,66 @@ CREATE TABLE Test (
     let expected = select!(OptI64 I64; Some(1) 9; Some(3) 4);
     assert_eq!(expected, found);
 
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE id + 1 IS NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE id + 1 IS NOT NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64; None 2; Some(1) 9; Some(3) 4);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE 100 IS NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE 100 IS NOT NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64; None 2; Some(1) 9; Some(3) 4);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE 8 + 3 IS NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE 8 + 3 IS NOT NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64; None 2; Some(1) 9; Some(3) 4);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE NULL IS NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64; None 2; Some(1) 9; Some(3) 4);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE NULL IS NOT NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE \"NULL\" IS NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64);
+    assert_eq!(expected, found);
+
+    let found = tester
+        .run("SELECT id, num FROM Test WHERE \"NULL\" IS NOT NULL")
+        .expect("select");
+    let expected = select!(OptI64 I64; None 2; Some(1) 9; Some(3) 4);
+    assert_eq!(expected, found);
+
     tester.run_and_print("UPDATE Test SET id = 2");
 
     let found = tester.run("SELECT id FROM Test").expect("select");
@@ -76,16 +136,4 @@ pub fn nullable_text(mut tester: impl tests::Tester) {
     for insert_sql in insert_sqls.iter() {
         tester.run(insert_sql).unwrap();
     }
-
-    let found = tester
-        .run("SELECT id, name FROM Foo WHERE name IS NULL")
-        .expect("select");
-    let expected = select!(I64 OptStr; 2 None);
-    assert_eq!(expected, found);
-
-    let found = tester
-        .run("SELECT id, name FROM Foo WHERE name IS NOT NULL")
-        .expect("select");
-    let expected = select!(I64 Str; 1 "Hello".to_string());
-    assert_eq!(expected, found);
 }

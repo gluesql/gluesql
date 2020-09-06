@@ -7,6 +7,15 @@ macro_rules! row {
 
 #[macro_export]
 macro_rules! select {
+    () => (
+        Payload::Select(vec![])
+    );
+    ( $( $t:path )*) => (
+        select!()
+    );
+    ( $( $t:path )* ;) => (
+        select!()
+    );
     ( $( $t:path )* ; $( $v: expr )* ) => (
         Payload::Select(vec![
             row!($( $t )* ; $( $v )* )

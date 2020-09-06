@@ -164,16 +164,8 @@ fn check_expr<'a, T: 'static + Debug>(
 
             Ok(negated ^ (evaluate(low)? <= target && target <= evaluate(high)?))
         }
-        Expr::IsNull(expr) => Ok(match evaluate(expr)? {
-            Evaluated::ValueRef(v) => !v.is_some(),
-            Evaluated::Value(v) => !v.is_some(),
-            _ => false,
-        }),
-        Expr::IsNotNull(expr) => Ok(match evaluate(expr)? {
-            Evaluated::ValueRef(v) => v.is_some(),
-            Evaluated::Value(v) => v.is_some(),
-            _ => false,
-        }),
+        Expr::IsNull(expr) => Ok(!evaluate(expr)?.is_some()),
+        Expr::IsNotNull(expr) => Ok(evaluate(expr)?.is_some()),
         _ => Err(FilterError::Unimplemented.into()),
     }
 }
