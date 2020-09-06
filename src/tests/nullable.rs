@@ -15,36 +15,141 @@ CREATE TABLE Test (
 
     use Value::*;
 
-    let found = tester
-        .run("SELECT id, num, name FROM Test")
-        .expect("select");
-    let expected = select!(
-        OptI64  I64 Str;
-        None    2   "Hello".to_owned();
-        Some(1) 9   "World".to_owned();
-        Some(3) 4   "Great".to_owned()
-    );
-    assert_eq!(expected, found);
+    let mut run = |sql| tester.run(sql).expect("select");
 
-    let found = tester
-        .run("SELECT id, num FROM Test WHERE id = NULL AND name = \'Hello\'")
-        .expect("select");
-    let expected = select!(OptI64 I64; None 2);
-    assert_eq!(expected, found);
+    let test_cases = vec![
+        (
+            "SELECT id, num, name FROM Test",
+            select!(
+                OptI64  I64 Str;
+                None    2   "Hello".to_owned();
+                Some(1) 9   "World".to_owned();
+                Some(3) 4   "Great".to_owned()
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = NULL AND name = \'Hello\'",
+            select!(
+                OptI64 I64;
+                None   2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id IS NULL",
+            select!(
+                OptI64 I64;
+                None   2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id IS NOT NULL",
+            select!(
+                OptI64  I64;
+                Some(1) 9;
+                Some(3) 4
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id + 1 IS NULL",
+            select!(OptI64 I64),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id + 1 IS NOT NULL",
+            select!(
+                OptI64  I64;
+                None    2;
+                Some(1) 9;
+                Some(3) 4
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE 100 IS NULL",
+            select!(OptI64 I64),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE 100 IS NOT NULL",
+            select!(
+                OptI64  I64;
+                None    2;
+                Some(1) 9;
+                Some(3) 4
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE 8 + 3 IS NULL",
+            select!(OptI64 I64),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE 8 + 3 IS NOT NULL",
+            select!(
+                OptI64  I64;
+                None    2;
+                Some(1) 9;
+                Some(3) 4
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE NULL IS NULL",
+            select!(
+                OptI64  I64;
+                None    2;
+                Some(1) 9;
+                Some(3) 4
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE NULL IS NOT NULL",
+            select!(OptI64 I64),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE \"NULL\" IS NULL",
+            select!(OptI64 I64),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE \"NULL\" IS NOT NULL",
+            select!(
+                OptI64  I64;
+                None    2;
+                Some(1) 9;
+                Some(3) 4
+            ),
+        ),
+    ];
+    test_cases
+        .into_iter()
+        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
 
     tester.run_and_print("UPDATE Test SET id = 2");
 
-    let found = tester.run("SELECT id FROM Test").expect("select");
-    let expected = select!(OptI64; Some(2); Some(2); Some(2));
-    assert_eq!(expected, found);
+    let mut run = |sql| tester.run(sql);
 
-    let found = tester.run("SELECT id, num FROM Test").expect("select");
-    let expected = select!(OptI64 I64; Some(2) 2; Some(2) 9; Some(2) 4);
-    assert_eq!(expected, found);
-
-    let found = tester.run("INSERT INTO Test VALUES (1, NULL)");
-    let expected = Err(ValueError::NullValueOnNotNullField.into());
-    assert_eq!(expected, found);
+    let test_cases = vec![
+        (
+            "SELECT id FROM Test",
+            Ok(select!(
+                OptI64;
+                Some(2);
+                Some(2);
+                Some(2)
+            )),
+        ),
+        (
+            "SELECT id, num FROM Test",
+            Ok(select!(
+                OptI64  I64;
+                Some(2) 2;
+                Some(2) 9;
+                Some(2) 4
+            )),
+        ),
+        (
+            "INSERT INTO Test VALUES (1, NULL)",
+            Err(ValueError::NullValueOnNotNullField.into()),
+        ),
+    ];
+    test_cases
+        .into_iter()
+        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
 }
 
 pub fn nullable_text(mut tester: impl tests::Tester) {
