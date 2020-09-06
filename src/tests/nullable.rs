@@ -1,5 +1,4 @@
 use crate::*;
-use Value::*;
 
 pub fn nullable(mut tester: impl tests::Tester) {
     tester.run_and_print(
@@ -13,6 +12,8 @@ CREATE TABLE Test (
     tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (NULL, 2, \"Hello\")");
     tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
     tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
+
+    use Value::*;
 
     let found = tester
         .run("SELECT id, num, name FROM Test")
