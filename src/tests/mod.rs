@@ -49,6 +49,6 @@ macro_rules! generate_tests {
         glue!(ordering, ordering::ordering);
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
-        glue!(between, filter::between);
+        glue!(filter, filter::filter);
     };
 }

@@ -164,6 +164,7 @@ fn check_expr<'a, T: 'static + Debug>(
 
             Ok(negated ^ (evaluate(low)? <= target && target <= evaluate(high)?))
         }
+        Expr::Exists(query) => Ok(select(storage, query, filter_context)?.next().is_some()),
         Expr::IsNull(expr) => Ok(!evaluate(expr)?.is_some()),
         Expr::IsNotNull(expr) => Ok(evaluate(expr)?.is_some()),
         _ => Err(FilterError::Unimplemented.into()),
