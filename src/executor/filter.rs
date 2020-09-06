@@ -94,6 +94,7 @@ fn check_expr<'a, T: 'static + Debug>(
 ) -> Result<bool> {
     let evaluate = |expr| evaluate(storage, filter_context, None, expr);
     let check = |expr| check_expr(storage, filter_context, expr);
+
     match expr {
         Expr::BinaryOp { op, left, right } => {
             let zip_evaluate = || Ok((evaluate(left)?, evaluate(right)?));
