@@ -251,8 +251,8 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::ValueRef(v) => v.is_some(),
             Evaluated::Value(v) => v.is_some(),
-            Evaluated::Literal(v) => *v != AstValue::Null,
-            Evaluated::LiteralRef(v) => **v != AstValue::Null,
+            Evaluated::Literal(v) => v != &AstValue::Null,
+            Evaluated::LiteralRef(v) => v != &&AstValue::Null,
             Evaluated::StringRef(_v) => true,
         }
     }
