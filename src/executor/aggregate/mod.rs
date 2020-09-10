@@ -1,9 +1,9 @@
+mod error;
+mod state;
+
 use iter_enum::Iterator;
-use serde::Serialize;
-use std::fmt::Debug;
 use std::iter::{empty, once};
 use std::rc::Rc;
-use thiserror::Error;
 
 use sqlparser::ast::{Expr, Function, SelectItem};
 
@@ -12,23 +12,8 @@ use super::context::{AggregateContext, BlendContext};
 use crate::data::{get_name, Value};
 use crate::result::Result;
 
-mod state;
+pub use error::AggregateError;
 use state::State;
-
-#[derive(Error, Serialize, Debug, PartialEq)]
-pub enum AggregateError {
-    #[error("unsupported compound identifier: {0}")]
-    UnsupportedCompoundIdentifier(String),
-
-    #[error("unsupported aggregation: {0}")]
-    UnsupportedAggregation(String),
-
-    #[error("only identifier is allowed in aggregation")]
-    OnlyIdentifierAllowed,
-
-    #[error("unreachable")]
-    Unreachable,
-}
 
 #[derive(Iterator)]
 enum Aggregated<I1, I2, I3> {
