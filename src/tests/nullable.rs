@@ -51,13 +51,15 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE id + 1 IS NULL",
-            select!(OptI64 I64),
+            select!(
+                OptI64  I64;
+                None    2
+            ),
         ),
         (
             "SELECT id, num FROM Test WHERE id + 1 IS NOT NULL",
             select!(
                 OptI64  I64;
-                None    2;
                 Some(1) 9;
                 Some(3) 4
             ),
@@ -112,6 +114,69 @@ CREATE TABLE Test (
                 None    2;
                 Some(1) 9;
                 Some(3) 4
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = NULL + 1;",
+            select!(
+                OptI64  I64;
+                None    2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = 1 + NULL;",
+            select!(
+                OptI64  I64;
+                None    2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = NULL - 1;",
+            select!(
+                OptI64  I64;
+                None    2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = 1 - NULL;",
+            select!(
+                OptI64  I64;
+                None    2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = NULL * 1;",
+            select!(
+                OptI64  I64;
+                None    2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = 1 * NULL;",
+            select!(
+                OptI64  I64;
+                None    2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = NULL / 1;",
+            select!(
+                OptI64  I64;
+                None    2
+            ),
+        ),
+        (
+            "SELECT id, num FROM Test WHERE id = 1 / NULL;",
+            select!(
+                OptI64  I64;
+                None    2
+            ),
+        ),
+        (
+            "SELECT id + 1, 1 + id, id - 1, 1 - id, id * 1, 1 * id, id / 1, 1 / id FROM Test WHERE id = NULL;",
+            select!(
+                OptI64 OptI64 OptI64 OptI64 OptI64 OptI64 OptI64 OptI64;
+                None   None   None   None   None   None   None   None
             ),
         ),
     ];
