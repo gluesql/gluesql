@@ -25,7 +25,7 @@ pub enum ExecuteError {
 #[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
     Create,
-    Insert(Row),
+    Insert(Vec<Row>),
     Select(Vec<Row>),
     Delete(usize),
     Update(usize),
@@ -48,11 +48,19 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T>>(
         Prepared::Create(schema) => storage
             .insert_schema(&schema)
             .map(|(storage, _)| (storage, Payload::Create)),
-        Prepared::Insert(table_name, row) => {
-            let (storage, key) = storage.generate_id(&table_name)?;
-            let (storage, row) = storage.insert_data(&key, row)?;
-
-            Ok((storage, Payload::Insert(row)))
+        Prepared::Insert(table_name, rows) => {
+            match rows.into_iter().try_fold(
+                (storage, Vec::<Row>::new()),
+                |(storage, mut rows), row| {
+                    let (storage, key) = storage.generate_id(&table_name)?;
+                    let (storage, row) = storage.insert_data(&key, row)?;
+                    rows.push(row);
+                    Ok((storage, rows))
+                },
+            ) {
+                Ok((storage, rows)) => Ok((storage, Payload::Insert(rows))),
+                Err(err) => Err(err),
+            }
         }
         Prepared::Delete(keys) => {
             let (storage, num_rows) =
@@ -95,7 +103,7 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T>>(
 
 enum Prepared<'a, T> {
     Create(Schema),
-    Insert(&'a str, Row),
+    Insert(&'a str, Vec<Row>),
     Delete(Vec<T>),
     Update(Vec<(T, Row)>),
     Select(Vec<Row>),
@@ -127,9 +135,9 @@ fn prepare<'a, T: 'static + Debug>(
         } => {
             let table_name = get_name(table_name)?;
             let Schema { column_defs, .. } = storage.fetch_schema(table_name)?;
-            let row = Row::new(column_defs, columns, source)?;
+            let rows = Row::new(column_defs, columns, source)?;
 
-            Ok(Prepared::Insert(table_name, row))
+            Ok(Prepared::Insert(table_name, rows))
         }
         Statement::Update {
             table_name,
