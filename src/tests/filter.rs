@@ -66,35 +66,3 @@ pub fn filter(mut tester: impl tests::Tester) {
         .iter()
         .for_each(|(num, sql)| tester.test_rows(sql, *num));
 }
-
-pub fn create(mut tester: impl tests::Tester) {
-    let create_sqls = ["
-        CREATE TABLE Test (
-            id INTEGER,
-            name TEXT,
-            height FLOAT
-        );"];
-
-    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
-
-    let insert_sqls = ["INSERT INTO Test (id, name, height) VALUES (1, \"Amelia\", 1.7);"];
-
-    insert_sqls.iter().for_each(|sql| tester.run_and_print(sql));
-
-    let create_sqls = ["
-        CREATE TABLE Test (
-            id INTEGER,
-            age INTEGER
-        );"];
-
-    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
-
-    let insert_sqls = ["INSERT INTO Test (id, age) VALUES (2, 20);"];
-
-    insert_sqls.iter().for_each(|sql| tester.run_and_print(sql));
-
-    let select_sqls = [(2, "SELECT * FROM Test")];
-    select_sqls
-        .iter()
-        .for_each(|(num, sql)| tester.test_rows(sql, *num));
-}
