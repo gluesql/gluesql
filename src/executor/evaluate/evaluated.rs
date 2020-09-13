@@ -264,7 +264,9 @@ fn literal_add(a: &AstValue, b: &AstValue) -> Result<AstValue> {
             (Ok(a), Ok(b)) => Ok(AstValue::Number((a + b).to_string())),
             _ => panic!(),
         },
-        (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_),AstValue::Null) => Ok(AstValue::Null),
+        (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
+            Ok(AstValue::Null)
+        }
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
     }
 }
@@ -275,7 +277,9 @@ fn literal_subtract(a: &AstValue, b: &AstValue) -> Result<AstValue> {
             (Ok(a), Ok(b)) => Ok(AstValue::Number((a - b).to_string())),
             _ => panic!(),
         },
-        (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_),AstValue::Null) => Ok(AstValue::Null),
+        (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
+            Ok(AstValue::Null)
+        }
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
     }
 }
@@ -286,7 +290,9 @@ fn literal_multiply(a: &AstValue, b: &AstValue) -> Result<AstValue> {
             (Ok(a), Ok(b)) => Ok(AstValue::Number((a * b).to_string())),
             _ => panic!(),
         },
-        (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_),AstValue::Null) => Ok(AstValue::Null),
+        (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
+            Ok(AstValue::Null)
+        }
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
     }
 }
@@ -297,7 +303,9 @@ fn literal_divide(a: &AstValue, b: &AstValue) -> Result<AstValue> {
             (Ok(a), Ok(b)) => Ok(AstValue::Number((a / b).to_string())),
             _ => panic!(),
         },
-        (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_),AstValue::Null) => Ok(AstValue::Null),
+        (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
+            Ok(AstValue::Null)
+        }
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
     }
 }

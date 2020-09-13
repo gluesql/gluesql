@@ -249,13 +249,15 @@ impl Value {
             (OptI64(Some(a)), OptI64(Some(b))) => Ok(OptI64(Some(a + b))),
             (F64(a), F64(b)) => Ok(F64(a + b)),
             (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(a + b))),
-            (OptI64(None), OptI64(_)) | (OptI64(_), OptI64(None)) |
-            (OptI64(None), I64(_)) | (I64(_), OptI64(None)) => Ok(OptI64(None)),
-            (OptF64(_), OptF64(None)) | (OptF64(None), OptF64(_)) |
-            (F64(_), OptF64(None)) | (OptF64(None), F64(_))=> Ok(OptF64(None)),
-            _ => {
-                println!("{:?} {:?}",self, other);
-                Err(ValueError::AddOnNonNumeric.into())},
+            (OptI64(None), OptI64(_))
+            | (OptI64(_), OptI64(None))
+            | (OptI64(None), I64(_))
+            | (I64(_), OptI64(None)) => Ok(OptI64(None)),
+            (OptF64(_), OptF64(None))
+            | (OptF64(None), OptF64(_))
+            | (F64(_), OptF64(None))
+            | (OptF64(None), F64(_)) => Ok(OptF64(None)),
+            _ => Err(ValueError::AddOnNonNumeric.into()),
         }
     }
 
@@ -267,10 +269,14 @@ impl Value {
             (I64(a), OptI64(Some(b))) | (OptI64(Some(a)), I64(b)) => Ok(OptI64(Some(a - b))),
             (F64(a), F64(b)) => Ok(F64(a - b)),
             (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(a - b))),
-            (OptI64(None), OptI64(_)) | (OptI64(_), OptI64(None)) |
-            (OptI64(None), I64(_)) | (I64(_), OptI64(None)) => Ok(OptI64(None)),
-            (OptF64(_), OptF64(None)) | (OptF64(None), OptF64(_)) |
-            (F64(_), OptF64(None)) | (OptF64(None), F64(_))=> Ok(OptF64(None)),
+            (OptI64(None), OptI64(_))
+            | (OptI64(_), OptI64(None))
+            | (OptI64(None), I64(_))
+            | (I64(_), OptI64(None)) => Ok(OptI64(None)),
+            (OptF64(_), OptF64(None))
+            | (OptF64(None), OptF64(_))
+            | (F64(_), OptF64(None))
+            | (OptF64(None), F64(_)) => Ok(OptF64(None)),
             _ => Err(ValueError::SubtractOnNonNumeric.into()),
         }
     }
@@ -283,10 +289,14 @@ impl Value {
             (I64(a), OptI64(Some(b))) | (OptI64(Some(a)), I64(b)) => Ok(OptI64(Some(a * b))),
             (F64(a), F64(b)) => Ok(F64(a * b)),
             (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(a * b))),
-            (OptI64(None), OptI64(_)) | (OptI64(_), OptI64(None)) |
-            (OptI64(None), I64(_)) | (I64(_), OptI64(None)) => Ok(OptI64(None)),
-            (OptF64(_), OptF64(None)) | (OptF64(None), OptF64(_)) |
-            (F64(_), OptF64(None)) | (OptF64(None), F64(_))=> Ok(OptF64(None)),
+            (OptI64(None), OptI64(_))
+            | (OptI64(_), OptI64(None))
+            | (OptI64(None), I64(_))
+            | (I64(_), OptI64(None)) => Ok(OptI64(None)),
+            (OptF64(_), OptF64(None))
+            | (OptF64(None), OptF64(_))
+            | (F64(_), OptF64(None))
+            | (OptF64(None), F64(_)) => Ok(OptF64(None)),
             _ => Err(ValueError::MultiplyOnNonNumeric.into()),
         }
     }
@@ -299,10 +309,14 @@ impl Value {
             (I64(a), OptI64(Some(b))) | (OptI64(Some(a)), I64(b)) => Ok(OptI64(Some(a / b))),
             (F64(a), F64(b)) => Ok(F64(a / b)),
             (F64(a), OptF64(Some(b))) | (OptF64(Some(a)), F64(b)) => Ok(OptF64(Some(a / b))),
-            (OptI64(None), OptI64(_)) | (OptI64(_), OptI64(None)) |
-            (OptI64(None), I64(_)) | (I64(_), OptI64(None)) => Ok(OptI64(None)),
-            (OptF64(_), OptF64(None)) | (OptF64(None), OptF64(_)) |
-            (F64(_), OptF64(None)) | (OptF64(None), F64(_))=> Ok(OptF64(None)),
+            (OptI64(None), OptI64(_))
+            | (OptI64(_), OptI64(None))
+            | (OptI64(None), I64(_))
+            | (I64(_), OptI64(None)) => Ok(OptI64(None)),
+            (OptF64(_), OptF64(None))
+            | (OptF64(None), OptF64(_))
+            | (F64(_), OptF64(None))
+            | (OptF64(None), F64(_)) => Ok(OptF64(None)),
             _ => Err(ValueError::DivideOnNonNumeric.into()),
         }
     }
