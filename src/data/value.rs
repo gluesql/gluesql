@@ -175,7 +175,11 @@ impl BoolToValue for bool {
 }
 
 impl Value {
-    pub fn from_data_type(data_type: DataType, nullable: bool, literal: &AstValue) -> Result<Self> {
+    pub fn from_data_type(
+        data_type: &DataType,
+        nullable: bool,
+        literal: &AstValue,
+    ) -> Result<Self> {
         match (data_type, literal) {
             (DataType::Int, AstValue::Number(v)) => v
                 .parse()

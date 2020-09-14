@@ -11,7 +11,9 @@ CREATE TABLE Test (
     );
     tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
     tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
-    tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
+    tester.run_and_print(
+        "INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\"), (4, 7, \"Job\")",
+    );
 
     use Value::*;
 
@@ -22,17 +24,18 @@ CREATE TABLE Test (
         I64 I64 Str;
         1   2   "Hello".to_owned();
         1   9   "World".to_owned();
-        3   4   "Great".to_owned()
+        3   4   "Great".to_owned();
+        4   7   "Job".to_owned()
     );
     assert_eq!(expected, found);
 
     tester.run_and_print("UPDATE Test SET id = 2");
 
     let found = tester.run("SELECT id FROM Test").expect("select");
-    let expected = select!(I64; 2; 2; 2);
+    let expected = select!(I64; 2; 2; 2; 2);
     assert_eq!(expected, found);
 
     let found = tester.run("SELECT id, num FROM Test").expect("select");
-    let expected = select!(I64 I64; 2 2; 2 9; 2 4);
+    let expected = select!(I64 I64; 2 2; 2 9; 2 4; 2 7);
     assert_eq!(expected, found);
 }

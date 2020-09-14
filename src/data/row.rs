@@ -20,9 +20,6 @@ pub enum RowError {
     #[error("unsupported ast value type")]
     UnsupportedAstValueType,
 
-    #[error("inserting multiple rows not supported")]
-    MultiRowInsertNotSupported,
-
     #[error("Unreachable")]
     Unreachable,
 
@@ -45,7 +42,11 @@ impl Row {
             .ok_or_else(|| RowError::ConflictOnEmptyRow.into())
     }
 
-    pub fn new(column_defs: Vec<ColumnDef>, columns: &[Ident], source: &Query) -> Result<Self> {
+    pub fn new(
+        column_defs: Vec<ColumnDef>,
+        columns: &[Ident],
+        source: &Query,
+    ) -> Result<Vec<Self>> {
         let values = match &source.body {
             SetExpr::Values(Values(values)) => values,
             _ => {
@@ -53,50 +54,51 @@ impl Row {
             }
         };
 
-        let values = match values.len() {
-            1 => &values[0],
-            0 => {
-                return Err(RowError::Unreachable.into());
-            }
-            _ => {
-                return Err(RowError::MultiRowInsertNotSupported.into());
-            }
-        };
+        if values.is_empty() {
+            return Err(RowError::Unreachable.into());
+        }
 
-        column_defs
-            .into_iter()
-            .enumerate()
-            .map(|(i, column_def)| {
-                let ColumnDef {
-                    name,
-                    data_type,
-                    options,
-                    ..
-                } = column_def;
-                let name = name.to_string();
-
-                let i = match columns.len() {
-                    0 => Ok(i),
-                    _ => columns
-                        .iter()
-                        .position(|target| target.value == name)
-                        .ok_or_else(|| RowError::LackOfRequiredColumn(name.clone())),
-                }?;
-
-                let literal = values
-                    .get(i)
-                    .ok_or_else(|| RowError::LackOfRequiredValue(name.clone()))?;
-                let nullable = options
+        values
+            .iter()
+            .map(|values| {
+                (&column_defs)
                     .iter()
-                    .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
+                    .enumerate()
+                    .map(|(i, column_def)| {
+                        let ColumnDef {
+                            name,
+                            data_type,
+                            options,
+                            ..
+                        } = column_def;
+                        let name = name.to_string();
 
-                match literal {
-                    Expr::Value(literal) => Value::from_data_type(data_type, nullable, literal),
-                    Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
-                    _ => Err(RowError::UnsupportedAstValueType.into()),
-                }
+                        let i = match columns.len() {
+                            0 => Ok(i),
+                            _ => columns
+                                .iter()
+                                .position(|target| target.value == name)
+                                .ok_or_else(|| RowError::LackOfRequiredColumn(name.clone())),
+                        }?;
+
+                        let literal = values
+                            .get(i)
+                            .ok_or_else(|| RowError::LackOfRequiredValue(name.clone()))?;
+                        let nullable = options
+                            .iter()
+                            .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
+
+                        match literal {
+                            Expr::Value(literal) => {
+                                Value::from_data_type(&data_type, nullable, literal)
+                            }
+                            Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
+                            _ => Err(RowError::UnsupportedAstValueType.into()),
+                        }
+                    })
+                    .collect::<Result<_>>()
+                    .map(Self)
             })
-            .collect::<Result<_>>()
-            .map(Self)
+            .collect()
     }
 }
