@@ -32,7 +32,7 @@ pub trait Tester {
 
         match result.unwrap() {
             Payload::Select(rows) => println!("[Ok ]\n{:#?}\n", rows),
-            Payload::Insert(rows) => println!("[Ok ]\n{:#?}\n", rows),
+            Payload::Insert(num) => println!("[Ok ] {} rows inserted.\n", num),
             Payload::Delete(num) => println!("[Ok ] {} rows deleted.\n", num),
             Payload::Update(num) => println!("[Ok ] {} rows updated.\n", num),
             Payload::DropTable => println!("[Ok ] :)\n"),

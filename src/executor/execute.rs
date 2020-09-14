@@ -25,7 +25,7 @@ pub enum ExecuteError {
 #[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
     Create,
-    Insert(Vec<Row>),
+    Insert(usize),
     Select(Vec<Row>),
     Delete(usize),
     Update(usize),
@@ -50,13 +50,13 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T>>(
             .map(|(storage, _)| (storage, Payload::Create)),
         Prepared::Insert(table_name, rows) => rows
             .into_iter()
-            .try_fold((storage, Vec::<Row>::new()), |(storage, mut rows), row| {
+            .try_fold((storage, 0), |(storage, num), row| {
                 let (storage, key) = storage.generate_id(&table_name)?;
-                let (storage, row) = storage.insert_data(&key, row)?;
-                rows.push(row);
-                Ok((storage, rows))
+                let (storage, _) = storage.insert_data(&key, row)?;
+
+                Ok((storage, num + 1))
             })
-            .map(|(storage, rows)| (storage, Payload::Insert(rows))),
+            .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows))),
         Prepared::Delete(keys) => {
             let (storage, num_rows) =
                 keys.into_iter()
