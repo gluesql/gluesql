@@ -1,18 +1,23 @@
 mod error;
+mod hash;
 mod state;
 
 use iter_enum::Iterator;
+use std::convert::TryFrom;
+use std::fmt::Debug;
 use std::iter::{empty, once};
 use std::rc::Rc;
 
 use sqlparser::ast::{Expr, Function, SelectItem};
 
-use super::context::{AggregateContext, BlendContext};
-// use super::evaluate::{evaluate, Evaluated};
+use super::context::{AggregateContext, BlendContext, FilterContext, UnionContext};
+use super::evaluate::{evaluate_union, Evaluated};
 use crate::data::{get_name, Value};
 use crate::result::Result;
+use crate::store::Store;
 
 pub use error::AggregateError;
+use hash::GroupKey;
 use state::State;
 
 #[derive(Iterator)]
@@ -22,13 +27,26 @@ enum Aggregated<I1, I2, I3> {
     Empty(I3),
 }
 
-pub struct Aggregate<'a> {
+pub struct Aggregate<'a, T: 'static + Debug> {
+    storage: &'a dyn Store<T>,
     fields: &'a [SelectItem],
+    group_by: &'a [Expr],
+    filter_context: Option<&'a FilterContext<'a>>,
 }
 
-impl<'a> Aggregate<'a> {
-    pub fn new(fields: &'a [SelectItem]) -> Self {
-        Self { fields }
+impl<'a, T: 'static + Debug> Aggregate<'a, T> {
+    pub fn new(
+        storage: &'a dyn Store<T>,
+        fields: &'a [SelectItem],
+        group_by: &'a [Expr],
+        filter_context: Option<&'a FilterContext<'a>>,
+    ) -> Self {
+        Self {
+            storage,
+            fields,
+            group_by,
+            filter_context,
+        }
     }
 
     pub fn apply(
@@ -50,8 +68,21 @@ impl<'a> Aggregate<'a> {
             (State::new(), None),
             |(state, _), (index, row)| {
                 let context = row?;
-                let state = state.apply(index);
+                let evaluated: Vec<Evaluated<'_>> = self
+                    .group_by
+                    .iter()
+                    .map(|expr| {
+                        let union_context = UnionContext::new(self.filter_context, Some(&context));
 
+                        evaluate_union(self.storage, union_context, None, expr)
+                    })
+                    .collect::<Result<_>>()?;
+                let group_key = evaluated
+                    .iter()
+                    .map(GroupKey::try_from)
+                    .collect::<Result<Vec<GroupKey>>>()?;
+
+                let state = state.apply(group_key, index);
                 let state = self
                     .fields
                     .iter()
@@ -80,6 +111,10 @@ impl<'a> Aggregate<'a> {
     }
 
     fn check_aggregate(&self) -> bool {
+        if !self.group_by.is_empty() {
+            return true;
+        }
+
         self.fields.iter().any(|field| match field {
             SelectItem::UnnamedExpr(expr) => check(expr),
             SelectItem::ExprWithAlias { expr, .. } => check(expr),

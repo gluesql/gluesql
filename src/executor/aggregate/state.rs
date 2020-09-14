@@ -1,40 +1,99 @@
 use im_rc::HashMap;
 use std::cmp::Ordering;
+use std::rc::Rc;
 
 use sqlparser::ast::Function;
 
+use crate::utils::ImVector;
+
+use super::hash::GroupKey;
 use crate::data::Value;
 use crate::result::Result;
 
+type Key<'a> = (Rc<Vec<GroupKey>>, &'a Function);
+
 pub struct State<'a> {
     index: usize,
-    values: HashMap<&'a Function, (usize, Value)>,
+    group: Rc<Vec<GroupKey>>,
+    values: HashMap<Key<'a>, (usize, Value)>,
+    keys: ImVector<Key<'a>>,
 }
 
 impl<'a> State<'a> {
     pub fn new() -> Self {
         State {
             index: 0,
+            group: Rc::new(vec![GroupKey::Null]),
             values: HashMap::new(),
+            keys: ImVector::new(),
         }
     }
 
-    pub fn apply(self, index: usize) -> Self {
+    pub fn apply(self, group: Vec<GroupKey>, index: usize) -> Self {
         Self {
             index,
+            group: Rc::new(group),
             values: self.values,
+            keys: self.keys,
         }
+    }
+
+    fn update(self, func: &'a Function, value: Value) -> Self {
+        let key = (Rc::clone(&self.group), func);
+        let keys = if self.values.contains_key(&key) {
+            self.keys
+        } else {
+            self.keys.push((Rc::clone(&self.group), func))
+        };
+
+        let values = self.values.update(key, (self.index, value));
+
+        Self {
+            index: self.index,
+            group: self.group,
+            values,
+            keys,
+        }
+    }
+
+    fn get(&self, key: &'a Function) -> Option<&(usize, Value)> {
+        let group = Rc::clone(&self.group);
+
+        self.values.get(&(group, key))
     }
 
     pub fn export(self) -> HashMap<&'a Function, Value> {
-        self.values
-            .iter()
-            .map(|(key, (_, value))| (*key, value.clone()))
-            .collect()
+        let size = {
+            let (target, _) = self.keys.first().unwrap();
+
+            match self.keys.iter().position(|(key, _)| key != target) {
+                Some(s) => s,
+                None => self.keys.len(),
+            }
+        };
+
+        self.keys
+            .chunks(size)
+            .map(|keys| {
+                keys.iter()
+                    .map(|key| {
+                        let a: &'a Function = key.1;
+                        let b: Value = self
+                            .values
+                            .get(key)
+                            .map(|(_, value)| value.clone())
+                            .unwrap();
+
+                        (a, b)
+                    })
+                    .collect::<HashMap<&'a Function, Value>>()
+            })
+            .collect::<Vec<HashMap<&'a Function, Value>>>()[0]
+            .clone()
     }
 
     pub fn add(self, key: &'a Function, target: &Value) -> Result<Self> {
-        let value = match self.values.get(key) {
+        let value = match self.get(key) {
             Some((index, value)) => {
                 if &self.index <= index {
                     return Ok(self);
@@ -49,7 +108,7 @@ impl<'a> State<'a> {
     }
 
     pub fn set_max(self, key: &'a Function, target: &Value) -> Self {
-        if let Some((index, value)) = self.values.get(key) {
+        if let Some((index, value)) = self.get(key) {
             if &self.index <= index {
                 return self;
             }
@@ -66,7 +125,7 @@ impl<'a> State<'a> {
     }
 
     pub fn set_min(self, key: &'a Function, target: &Value) -> Self {
-        if let Some((index, value)) = self.values.get(key) {
+        if let Some((index, value)) = self.get(key) {
             if &self.index <= index {
                 return self;
             }
@@ -80,12 +139,5 @@ impl<'a> State<'a> {
         }
 
         self.update(key, target.clone())
-    }
-
-    fn update(self, key: &'a Function, value: Value) -> Self {
-        Self {
-            index: self.index,
-            values: self.values.update(key, (self.index, value)),
-        }
     }
 }
