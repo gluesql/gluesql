@@ -48,20 +48,15 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T>>(
         Prepared::Create(schema) => storage
             .insert_schema(&schema)
             .map(|(storage, _)| (storage, Payload::Create)),
-        Prepared::Insert(table_name, rows) => {
-            match rows.into_iter().try_fold(
-                (storage, Vec::<Row>::new()),
-                |(storage, mut rows), row| {
-                    let (storage, key) = storage.generate_id(&table_name)?;
-                    let (storage, row) = storage.insert_data(&key, row)?;
-                    rows.push(row);
-                    Ok((storage, rows))
-                },
-            ) {
-                Ok((storage, rows)) => Ok((storage, Payload::Insert(rows))),
-                Err(err) => Err(err),
-            }
-        }
+        Prepared::Insert(table_name, rows) => rows
+            .into_iter()
+            .try_fold((storage, Vec::<Row>::new()), |(storage, mut rows), row| {
+                let (storage, key) = storage.generate_id(&table_name)?;
+                let (storage, row) = storage.insert_data(&key, row)?;
+                rows.push(row);
+                Ok((storage, rows))
+            })
+            .map(|(storage, rows)| (storage, Payload::Insert(rows))),
         Prepared::Delete(keys) => {
             let (storage, num_rows) =
                 keys.into_iter()

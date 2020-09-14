@@ -20,9 +20,6 @@ pub enum RowError {
     #[error("unsupported ast value type")]
     UnsupportedAstValueType,
 
-    #[error("inserting multiple rows not supported")]
-    MultiRowInsertNotSupported,
-
     #[error("Unreachable")]
     Unreachable,
 
@@ -64,9 +61,8 @@ impl Row {
         values
             .iter()
             .map(|values| {
-                column_defs
-                    .clone()
-                    .into_iter()
+                (&column_defs)
+                    .iter()
                     .enumerate()
                     .map(|(i, column_def)| {
                         let ColumnDef {
@@ -94,7 +90,7 @@ impl Row {
 
                         match literal {
                             Expr::Value(literal) => {
-                                Value::from_data_type(data_type, nullable, literal)
+                                Value::from_data_type(data_type.clone(), nullable, literal)
                             }
                             Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
                             _ => Err(RowError::UnsupportedAstValueType.into()),
