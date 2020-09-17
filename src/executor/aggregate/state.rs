@@ -8,6 +8,7 @@ use crate::utils::ImVector;
 
 use super::hash::GroupKey;
 use crate::data::Value;
+use crate::executor::context::BlendContext;
 use crate::result::Result;
 
 type Key<'a> = (Rc<Vec<GroupKey>>, &'a Function);
@@ -17,6 +18,7 @@ pub struct State<'a> {
     group: Rc<Vec<GroupKey>>,
     values: HashMap<Key<'a>, (usize, Value)>,
     keys: ImVector<Key<'a>>,
+    contexts: HashMap<Rc<Vec<GroupKey>>, Rc<BlendContext<'a>>>,
 }
 
 impl<'a> State<'a> {
@@ -26,15 +28,20 @@ impl<'a> State<'a> {
             group: Rc::new(vec![GroupKey::Null]),
             values: HashMap::new(),
             keys: ImVector::new(),
+            contexts: HashMap::new(),
         }
     }
 
-    pub fn apply(self, group: Vec<GroupKey>, index: usize) -> Self {
+    pub fn apply(self, group: Vec<GroupKey>, context: Rc<BlendContext<'a>>, index: usize) -> Self {
+        let group = Rc::new(group);
+        let contexts = self.contexts.update(Rc::clone(&group), context);
+
         Self {
             index,
-            group: Rc::new(group),
+            group,
             values: self.values,
             keys: self.keys,
+            contexts,
         }
     }
 
@@ -53,6 +60,7 @@ impl<'a> State<'a> {
             group: self.group,
             values,
             keys,
+            contexts: self.contexts,
         }
     }
 
@@ -62,20 +70,22 @@ impl<'a> State<'a> {
         self.values.get(&(group, key))
     }
 
-    pub fn export(self) -> HashMap<&'a Function, Value> {
-        let size = {
-            let (target, _) = self.keys.first().unwrap();
-
-            match self.keys.iter().position(|(key, _)| key != target) {
-                Some(s) => s,
+    pub fn export(self) -> Vec<(HashMap<&'a Function, Value>, Option<Rc<BlendContext<'a>>>)> {
+        let size = match self.keys.first() {
+            Some((target, _)) => match self.keys.iter().position(|(key, _)| key != target) {
+                Some(size) => size,
                 None => self.keys.len(),
+            },
+            None => {
+                return vec![];
             }
         };
 
         self.keys
             .chunks(size)
             .map(|keys| {
-                keys.iter()
+                let aggregated = keys
+                    .iter()
                     .map(|key| {
                         let a: &'a Function = key.1;
                         let b: Value = self
@@ -86,10 +96,12 @@ impl<'a> State<'a> {
 
                         (a, b)
                     })
-                    .collect::<HashMap<&'a Function, Value>>()
+                    .collect::<HashMap<&'a Function, Value>>();
+                let next = self.contexts.get(&keys[0].0).map(Rc::clone);
+
+                (aggregated, next)
             })
-            .collect::<Vec<HashMap<&'a Function, Value>>>()[0]
-            .clone()
+            .collect::<Vec<(HashMap<&'a Function, Value>, Option<Rc<BlendContext<'a>>>)>>()
     }
 
     pub fn add(self, key: &'a Function, target: &Value) -> Result<Self> {

@@ -5,7 +5,6 @@ mod state;
 use iter_enum::Iterator;
 use std::convert::TryFrom;
 use std::fmt::Debug;
-use std::iter::{empty, once};
 use std::rc::Rc;
 
 use sqlparser::ast::{Expr, Function, SelectItem};
@@ -21,10 +20,10 @@ use hash::GroupKey;
 use state::State;
 
 #[derive(Iterator)]
-enum Aggregated<I1, I2, I3> {
+enum Aggregated<I1, I2> {
     Applied(I1),
     Skipped(I2),
-    Empty(I3),
+    // Empty(I3),
 }
 
 pub struct Aggregate<'a, T: 'static + Debug> {
@@ -64,39 +63,41 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
             return Ok(Aggregated::Skipped(rows));
         }
 
-        let (state, next) = rows.enumerate().try_fold::<_, _, Result<_>>(
-            (State::new(), None),
-            |(state, _), (index, row)| {
-                let context = row?;
-                let evaluated: Vec<Evaluated<'_>> = self
-                    .group_by
-                    .iter()
-                    .map(|expr| {
-                        let union_context = UnionContext::new(self.filter_context, Some(&context));
+        let state =
+            rows.enumerate()
+                .try_fold::<_, _, Result<_>>(State::new(), |state, (index, row)| {
+                    let context = row?;
+                    let evaluated: Vec<Evaluated<'_>> = self
+                        .group_by
+                        .iter()
+                        .map(|expr| {
+                            let union_context =
+                                UnionContext::new(self.filter_context, Some(&context));
 
-                        evaluate_union(self.storage, union_context, None, expr)
-                    })
-                    .collect::<Result<_>>()?;
-                let group_key = evaluated
-                    .iter()
-                    .map(GroupKey::try_from)
-                    .collect::<Result<Vec<GroupKey>>>()?;
+                            evaluate_union(self.storage, union_context, None, expr)
+                        })
+                        .collect::<Result<_>>()?;
+                    let group_key = evaluated
+                        .iter()
+                        .map(GroupKey::try_from)
+                        .collect::<Result<Vec<GroupKey>>>()?;
 
-                let state = state.apply(group_key, index);
-                let state = self
-                    .fields
-                    .iter()
-                    .try_fold(state, |state, field| match field {
-                        SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
-                            aggregate(state, &context, &expr)
-                        }
-                        _ => Ok(state),
-                    })?;
+                    let state = state.apply(group_key, Rc::clone(&context), index);
+                    let state = self
+                        .fields
+                        .iter()
+                        .try_fold(state, |state, field| match field {
+                            SelectItem::UnnamedExpr(expr)
+                            | SelectItem::ExprWithAlias { expr, .. } => {
+                                aggregate(state, &context, &expr)
+                            }
+                            _ => Ok(state),
+                        })?;
 
-                Ok((state, Some(context)))
-            },
-        )?;
+                    Ok(state)
+                })?;
 
+        /*
         let next = match next {
             Some(next) => next,
             None => {
@@ -106,6 +107,18 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
 
         let aggregated = Some(state.export());
         let rows = once(Ok(AggregateContext { aggregated, next }));
+        */
+
+        let rows = state
+            .export()
+            .into_iter()
+            .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)))
+            .map(|(aggregated, next)| {
+                Ok(AggregateContext {
+                    aggregated: Some(aggregated),
+                    next,
+                })
+            });
 
         Ok(Aggregated::Applied(rows))
     }
