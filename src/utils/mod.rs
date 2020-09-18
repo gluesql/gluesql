@@ -2,4 +2,4 @@ mod indexmap;
 mod vector;
 
 pub use self::indexmap::IndexMap;
-pub use vector::ImVector;
+pub use vector::Vector;

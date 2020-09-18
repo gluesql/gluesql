@@ -1,8 +1,8 @@
 use std::vec::IntoIter;
 
-pub struct ImVector<T>(Vec<T>);
+pub struct Vector<T>(Vec<T>);
 
-impl<T> ImVector<T> {
+impl<T> Vector<T> {
     pub fn new() -> Self {
         Self(vec![])
     }
@@ -16,13 +16,8 @@ impl<T> ImVector<T> {
     pub fn get(&self, i: usize) -> Option<&T> {
         self.0.get(i)
     }
-}
 
-impl<T> IntoIterator for ImVector<T> {
-    type Item = T;
-    type IntoIter = IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
+    pub fn into_iter(self) -> IntoIter<T> {
         self.0.into_iter()
     }
 }

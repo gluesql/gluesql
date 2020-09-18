@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use sqlparser::ast::Function;
 
-use crate::utils::{ImVector, IndexMap};
+use crate::utils::{IndexMap, Vector};
 
 use super::hash::GroupKey;
 use crate::data::Value;
@@ -19,7 +19,7 @@ pub struct State<'a> {
     group: Group,
     values: IndexMap<(Group, &'a Function), (usize, Value)>,
     groups: HashSet<Group>,
-    contexts: ImVector<Rc<BlendContext<'a>>>,
+    contexts: Vector<Rc<BlendContext<'a>>>,
 }
 
 impl<'a> State<'a> {
@@ -28,7 +28,7 @@ impl<'a> State<'a> {
             index: 0,
             group: Rc::new(vec![GroupKey::Null]),
             values: IndexMap::new(),
-            contexts: ImVector::new(),
+            contexts: Vector::new(),
             groups: HashSet::new(),
         }
     }
