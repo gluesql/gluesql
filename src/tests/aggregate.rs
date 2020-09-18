@@ -144,6 +144,10 @@ pub fn group_by(mut tester: impl tests::Tester) {
                  5 "Seattle".to_owned()
             ),
         ),
+        (
+            "SELECT ratio FROM Item GROUP BY id, city",
+            select!(F64; 0.2; 0.9; 1.1; 3.2; 11.1; 6.11),
+        ),
     ];
 
     test_cases
