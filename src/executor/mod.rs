@@ -10,9 +10,9 @@ mod limit;
 mod select;
 mod update;
 
-pub use aggregate::AggregateError;
+pub use aggregate::{AggregateError, GroupKey};
 pub use blend::BlendError;
-pub use context::{BlendContextError, FilterContextError};
+pub use context::{BlendContextError, FilterContextError, UnionContextError};
 pub use evaluate::EvaluateError;
 pub use execute::{execute, ExecuteError, Payload};
 pub use filter::FilterError;

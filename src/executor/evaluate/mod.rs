@@ -6,7 +6,7 @@ use std::fmt::Debug;
 
 use sqlparser::ast::{BinaryOperator, Expr, Function, Value as AstValue};
 
-use super::context::FilterContext;
+use super::context::{FilterContext, UnionContext};
 use super::select::select;
 use crate::data::Value;
 use crate::result::Result;
@@ -21,7 +21,18 @@ pub fn evaluate<'a, T: 'static + Debug>(
     aggregated: Option<&HashMap<&Function, Value>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    let eval = |expr| evaluate(storage, filter_context, aggregated, expr);
+    let context = UnionContext::new(filter_context, None);
+
+    evaluate_union(storage, context, aggregated, expr)
+}
+
+pub fn evaluate_union<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    context: UnionContext<'a>,
+    aggregated: Option<&HashMap<&Function, Value>>,
+    expr: &'a Expr,
+) -> Result<Evaluated<'a>> {
+    let eval = |expr| evaluate_union(storage, context.clone(), aggregated, expr);
 
     match expr {
         Expr::Value(value) => match value {
@@ -33,14 +44,7 @@ pub fn evaluate<'a, T: 'static + Debug>(
         },
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Evaluated::StringRef(&ident.value)),
-            None => filter_context
-                .ok_or_else(|| {
-                    let name = ident.value.to_string();
-
-                    EvaluateError::UnreachableEmptyFilterContext(name)
-                })?
-                .get_value(&ident.value)
-                .map(Evaluated::ValueRef),
+            None => context.get_value(&ident.value).map(Evaluated::ValueRef),
         },
         Expr::Nested(expr) => eval(&expr),
         Expr::CompoundIdentifier(idents) => {
@@ -51,16 +55,11 @@ pub fn evaluate<'a, T: 'static + Debug>(
             let table_alias = &idents[0].value;
             let column = &idents[1].value;
 
-            filter_context
-                .ok_or_else(|| {
-                    let name = format!("{}.{}", table_alias, column);
-
-                    EvaluateError::UnreachableEmptyFilterContext(name)
-                })?
+            context
                 .get_alias_value(table_alias, column)
                 .map(Evaluated::ValueRef)
         }
-        Expr::Subquery(query) => select(storage, &query, filter_context)?
+        Expr::Subquery(query) => select(storage, &query, context.filter_context)?
             .map(|row| row?.take_first_value())
             .map(|value| value.map(Evaluated::Value))
             .next()
