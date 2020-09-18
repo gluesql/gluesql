@@ -81,7 +81,7 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                         .map(GroupKey::try_from)
                         .collect::<Result<Vec<GroupKey>>>()?;
 
-                    let state = state.apply(group, Rc::clone(&context), index);
+                    let state = state.apply(index, group, Rc::clone(&context));
                     let state = self
                         .fields
                         .iter()

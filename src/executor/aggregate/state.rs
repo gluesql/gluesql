@@ -11,14 +11,14 @@ use crate::data::Value;
 use crate::executor::context::BlendContext;
 use crate::result::Result;
 
-type Key<'a> = (Rc<Vec<GroupKey>>, &'a Function);
+type Group = Rc<Vec<GroupKey>>;
 type ValuesMap<'a> = HashMap<&'a Function, Value>;
 
 pub struct State<'a> {
     index: usize,
-    group: Rc<Vec<GroupKey>>,
-    values: IndexMap<Key<'a>, (usize, Value)>,
-    groups: HashSet<Rc<Vec<GroupKey>>>,
+    group: Group,
+    values: IndexMap<(Group, &'a Function), (usize, Value)>,
+    groups: HashSet<Group>,
     contexts: ImVector<Rc<BlendContext<'a>>>,
 }
 
@@ -33,7 +33,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn apply(self, group: Vec<GroupKey>, context: Rc<BlendContext<'a>>, index: usize) -> Self {
+    pub fn apply(self, index: usize, group: Vec<GroupKey>, context: Rc<BlendContext<'a>>) -> Self {
         let group = Rc::new(group);
         let (groups, contexts) = if self.groups.contains(&group) {
             (self.groups, self.contexts)
@@ -66,15 +66,15 @@ impl<'a> State<'a> {
         }
     }
 
-    fn get(&self, key: &'a Function) -> Option<&(usize, Value)> {
+    fn get(&self, func: &'a Function) -> Option<&(usize, Value)> {
         let group = Rc::clone(&self.group);
 
-        self.values.get(&(group, key))
+        self.values.get(&(group, func))
     }
 
     pub fn export(self) -> Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)> {
         let size = match self.values.keys().next() {
-            Some((target, _)) => match self.values.keys().position(|(key, _)| key != target) {
+            Some((target, _)) => match self.values.keys().position(|(group, _)| group != target) {
                 Some(size) => size,
                 None => self.values.len(),
             },
@@ -90,15 +90,15 @@ impl<'a> State<'a> {
         values
             .into_iter()
             .map(|(k, (_, v))| (k, v))
-            .collect::<Vec<(Key<'a>, Value)>>()
+            .collect::<Vec<((Group, &'a Function), Value)>>()
             .chunks(size)
             .enumerate()
             .map(|(i, entries)| {
                 let aggregated = entries
-                    .into_iter()
-                    .map(|(key, value)| {
-                        // TODO: remove value.clone()
-                        (key.1, value.clone())
+                    .iter()
+                    .map(|((_, func), value)| {
+                        // TODO: remove value.clone(), itertools chunks?
+                        (*func, value.clone())
                     })
                     .collect::<HashMap<&'a Function, Value>>();
                 let next = contexts.get(i).map(Rc::clone);
@@ -108,8 +108,8 @@ impl<'a> State<'a> {
             .collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>()
     }
 
-    pub fn add(self, key: &'a Function, target: &Value) -> Result<Self> {
-        let value = match self.get(key) {
+    pub fn add(self, func: &'a Function, target: &Value) -> Result<Self> {
+        let value = match self.get(func) {
             Some((index, value)) => {
                 if &self.index <= index {
                     return Ok(self);
@@ -120,11 +120,11 @@ impl<'a> State<'a> {
             None => target.clone(),
         };
 
-        Ok(self.update(key, value))
+        Ok(self.update(func, value))
     }
 
-    pub fn set_max(self, key: &'a Function, target: &Value) -> Self {
-        if let Some((index, value)) = self.get(key) {
+    pub fn set_max(self, func: &'a Function, target: &Value) -> Self {
+        if let Some((index, value)) = self.get(func) {
             if &self.index <= index {
                 return self;
             }
@@ -137,11 +137,11 @@ impl<'a> State<'a> {
             }
         };
 
-        self.update(key, target.clone())
+        self.update(func, target.clone())
     }
 
-    pub fn set_min(self, key: &'a Function, target: &Value) -> Self {
-        if let Some((index, value)) = self.get(key) {
+    pub fn set_min(self, func: &'a Function, target: &Value) -> Self {
+        if let Some((index, value)) = self.get(func) {
             if &self.index <= index {
                 return self;
             }
@@ -154,6 +154,6 @@ impl<'a> State<'a> {
             }
         }
 
-        self.update(key, target.clone())
+        self.update(func, target.clone())
     }
 }
