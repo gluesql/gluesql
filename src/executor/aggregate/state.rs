@@ -1,4 +1,5 @@
 use im_rc::{HashMap, HashSet};
+use itertools::Itertools;
 use std::cmp::Ordering;
 use std::rc::Rc;
 
@@ -28,8 +29,8 @@ impl<'a> State<'a> {
             index: 0,
             group: Rc::new(vec![GroupKey::Null]),
             values: IndexMap::new(),
-            contexts: Vector::new(),
             groups: HashSet::new(),
+            contexts: Vector::new(),
         }
     }
 
@@ -48,8 +49,8 @@ impl<'a> State<'a> {
             index,
             group,
             values: self.values,
-            contexts,
             groups,
+            contexts,
         }
     }
 
@@ -61,8 +62,8 @@ impl<'a> State<'a> {
             index: self.index,
             group: self.group,
             values,
-            contexts: self.contexts,
             groups: self.groups,
+            contexts: self.contexts,
         }
     }
 
@@ -90,16 +91,12 @@ impl<'a> State<'a> {
         values
             .into_iter()
             .map(|(k, (_, v))| (k, v))
-            .collect::<Vec<((Group, &'a Function), Value)>>()
             .chunks(size)
+            .into_iter()
             .enumerate()
             .map(|(i, entries)| {
                 let aggregated = entries
-                    .iter()
-                    .map(|((_, func), value)| {
-                        // TODO: remove value.clone(), itertools chunks?
-                        (*func, value.clone())
-                    })
+                    .map(|((_, func), value)| (func, value))
                     .collect::<HashMap<&'a Function, Value>>();
                 let next = contexts.get(i).map(Rc::clone);
 

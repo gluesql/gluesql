@@ -21,6 +21,7 @@ boolinator = "2.4.0"
 indexmap = "1.6.0"
 im-rc = "15.0.0"
 iter-enum = "0.2"
+itertools = "0.9.0"
 or-iterator = "0.1.1"
 serde = { version = "1.0.104", features = ["derive"] }
 sqlparser = { version = "0.6.1", features = ["serde"] }
