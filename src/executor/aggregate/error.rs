@@ -13,9 +13,6 @@ pub enum AggregateError {
     #[error("only identifier is allowed in aggregation")]
     OnlyIdentifierAllowed,
 
-    #[error("floating point numbers cannot be grouped")]
-    FloatCannotBeGrouped,
-
     #[error("unreachable")]
     Unreachable,
 }
