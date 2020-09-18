@@ -90,18 +90,19 @@ pub fn group_by(mut tester: impl tests::Tester) {
             id INTEGER,
             quantity INTEGER NULL,
             city TEXT,
+            ratio FLOAT,
         );
     ";
 
     tester.run_and_print(create_sql);
 
     let insert_sqls = [
-        "INSERT INTO Item (id, quantity, city) VALUES (1, 10, \"Seoul\");",
-        "INSERT INTO Item (id, quantity, city) VALUES (2, 0, \"Dhaka\");",
-        "INSERT INTO Item (id, quantity, city) VALUES (3, NULL, \"Beijing\");",
-        "INSERT INTO Item (id, quantity, city) VALUES (3, 30, \"Daejeon\");",
-        "INSERT INTO Item (id, quantity, city) VALUES (4, 11, \"Seoul\");",
-        "INSERT INTO Item (id, quantity, city) VALUES (5, 24, \"Seattle\");",
+        "INSERT INTO Item (id, quantity, city, ratio) VALUES (1, 10, \"Seoul\", 0.2);",
+        "INSERT INTO Item (id, quantity, city, ratio) VALUES (2, 0, \"Dhaka\", 0.9);",
+        "INSERT INTO Item (id, quantity, city, ratio) VALUES (3, NULL, \"Beijing\", 1.1);",
+        "INSERT INTO Item (id, quantity, city, ratio) VALUES (3, 30, \"Daejeon\", 3.2);",
+        "INSERT INTO Item (id, quantity, city, ratio) VALUES (4, 11, \"Seoul\", 11.1);",
+        "INSERT INTO Item (id, quantity, city, ratio) VALUES (5, 24, \"Seattle\", 6.11);",
     ];
 
     for insert_sql in insert_sqls.iter() {
@@ -148,4 +149,13 @@ pub fn group_by(mut tester: impl tests::Tester) {
     test_cases
         .into_iter()
         .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
+
+    let error_cases = vec![(
+        ValueError::FloatCannotBeGroupedBy.into(),
+        "SELECT * FROM Item GROUP BY ratio;",
+    )];
+
+    error_cases
+        .into_iter()
+        .for_each(|(error, sql)| tester.test_error(sql, error));
 }
