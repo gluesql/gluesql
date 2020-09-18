@@ -1,34 +1,45 @@
 use std::convert::TryFrom;
 
+use crate::data::Value;
 use crate::executor::evaluate::Evaluated;
 use crate::result::{Error, Result};
 
-// Evaluated -> Hash Key
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, std::fmt::Debug)]
 pub enum GroupKey {
     I64(i64),
-    /*
     Bool(bool),
     Str(String),
-    */
     Null,
 }
 
 impl TryFrom<&Evaluated<'_>> for GroupKey {
     type Error = Error;
 
-    fn try_from(_evaluated: &Evaluated<'_>) -> Result<Self> {
-        /*
-        match literal {
-            AstValue::Number(v) => v
-                .parse::<i64>()
-                .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            AstValue::Boolean(v) => Ok(Value::Bool(*v)),
-            _ => Err(ValueError::SqlTypeNotSupported.into()),
+    fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
+        match evaluated {
+            Evaluated::LiteralRef(l) => GroupKey::try_from(&Value::try_from(*l)?),
+            Evaluated::Literal(l) => GroupKey::try_from(&Value::try_from(l)?),
+            Evaluated::ValueRef(v) => GroupKey::try_from(*v),
+            Evaluated::Value(v) => GroupKey::try_from(v),
+            Evaluated::StringRef(s) => Ok(GroupKey::Str(s.to_string())),
         }
-        */
+    }
+}
 
-        Ok(GroupKey::I64(1))
+impl TryFrom<&Value> for GroupKey {
+    type Error = Error;
+
+    fn try_from(value: &Value) -> Result<Self> {
+        use Value::*;
+
+        match value {
+            Bool(v) | OptBool(Some(v)) => Ok(GroupKey::Bool(*v)),
+            I64(v) | OptI64(Some(v)) => Ok(GroupKey::I64(*v)),
+            Str(v) | OptStr(Some(v)) => Ok(GroupKey::Str(v.clone())),
+            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(GroupKey::Null),
+            _ => {
+                panic!();
+            }
+        }
     }
 }

@@ -35,6 +35,7 @@ macro_rules! generate_tests {
 
         glue!(basic, basic::basic);
         glue!(aggregate, aggregate::aggregate);
+        glue!(aggregate_group_by, aggregate::group_by);
         glue!(arithmetic, arithmetic::arithmetic);
         glue!(arithmetic_blend, arithmetic::blend);
         glue!(blend, blend::blend);

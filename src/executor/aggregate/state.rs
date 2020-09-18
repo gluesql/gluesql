@@ -1,4 +1,4 @@
-use im_rc::HashMap;
+use im_rc::{HashMap, HashSet};
 use std::cmp::Ordering;
 use std::rc::Rc;
 
@@ -12,13 +12,15 @@ use crate::executor::context::BlendContext;
 use crate::result::Result;
 
 type Key<'a> = (Rc<Vec<GroupKey>>, &'a Function);
+type ValuesMap<'a> = HashMap<&'a Function, Value>;
 
 pub struct State<'a> {
     index: usize,
     group: Rc<Vec<GroupKey>>,
     values: HashMap<Key<'a>, (usize, Value)>,
     keys: ImVector<Key<'a>>,
-    contexts: HashMap<Rc<Vec<GroupKey>>, Rc<BlendContext<'a>>>,
+    contexts: ImVector<Rc<BlendContext<'a>>>,
+    groups: HashSet<Rc<Vec<GroupKey>>>,
 }
 
 impl<'a> State<'a> {
@@ -28,13 +30,21 @@ impl<'a> State<'a> {
             group: Rc::new(vec![GroupKey::Null]),
             values: HashMap::new(),
             keys: ImVector::new(),
-            contexts: HashMap::new(),
+            contexts: ImVector::new(),
+            groups: HashSet::new(),
         }
     }
 
     pub fn apply(self, group: Vec<GroupKey>, context: Rc<BlendContext<'a>>, index: usize) -> Self {
         let group = Rc::new(group);
-        let contexts = self.contexts.update(Rc::clone(&group), context);
+        let (groups, contexts) = if self.groups.contains(&group) {
+            (self.groups, self.contexts)
+        } else {
+            (
+                self.groups.update(Rc::clone(&group)),
+                self.contexts.push(context),
+            )
+        };
 
         Self {
             index,
@@ -42,11 +52,13 @@ impl<'a> State<'a> {
             values: self.values,
             keys: self.keys,
             contexts,
+            groups,
         }
     }
 
     fn update(self, func: &'a Function, value: Value) -> Self {
         let key = (Rc::clone(&self.group), func);
+
         let keys = if self.values.contains_key(&key) {
             self.keys
         } else {
@@ -61,6 +73,7 @@ impl<'a> State<'a> {
             values,
             keys,
             contexts: self.contexts,
+            groups: self.groups,
         }
     }
 
@@ -70,38 +83,37 @@ impl<'a> State<'a> {
         self.values.get(&(group, key))
     }
 
-    pub fn export(self) -> Vec<(HashMap<&'a Function, Value>, Option<Rc<BlendContext<'a>>>)> {
+    pub fn export(self) -> Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)> {
         let size = match self.keys.first() {
             Some((target, _)) => match self.keys.iter().position(|(key, _)| key != target) {
                 Some(size) => size,
                 None => self.keys.len(),
             },
             None => {
-                return vec![];
+                return self.contexts.into_iter().map(|c| (None, Some(c))).collect();
             }
         };
 
         self.keys
             .chunks(size)
-            .map(|keys| {
+            .enumerate()
+            .map(|(i, keys)| {
+                // let values = self.values;
+                // TODO: remove value.clone(), by using Rc?
                 let aggregated = keys
                     .iter()
                     .map(|key| {
-                        let a: &'a Function = key.1;
-                        let b: Value = self
-                            .values
-                            .get(key)
-                            .map(|(_, value)| value.clone())
-                            .unwrap();
+                        let value = self.values.get(key).map(|(_, value)| value.clone());
 
-                        (a, b)
+                        (key.1, value)
                     })
+                    .filter_map(|(func, value)| value.map(|v| (func, v)))
                     .collect::<HashMap<&'a Function, Value>>();
-                let next = self.contexts.get(&keys[0].0).map(Rc::clone);
+                let next = self.contexts.get(i).map(Rc::clone);
 
-                (aggregated, next)
+                (Some(aggregated), next)
             })
-            .collect::<Vec<(HashMap<&'a Function, Value>, Option<Rc<BlendContext<'a>>>)>>()
+            .collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>()
     }
 
     pub fn add(self, key: &'a Function, target: &Value) -> Result<Self> {

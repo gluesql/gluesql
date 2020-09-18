@@ -23,7 +23,6 @@ use state::State;
 enum Aggregated<I1, I2> {
     Applied(I1),
     Skipped(I2),
-    // Empty(I3),
 }
 
 pub struct Aggregate<'a, T: 'static + Debug> {
@@ -77,12 +76,12 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                             evaluate_union(self.storage, union_context, None, expr)
                         })
                         .collect::<Result<_>>()?;
-                    let group_key = evaluated
+                    let group = evaluated
                         .iter()
                         .map(GroupKey::try_from)
                         .collect::<Result<Vec<GroupKey>>>()?;
 
-                    let state = state.apply(group_key, Rc::clone(&context), index);
+                    let state = state.apply(group, Rc::clone(&context), index);
                     let state = self
                         .fields
                         .iter()
@@ -97,28 +96,11 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                     Ok(state)
                 })?;
 
-        /*
-        let next = match next {
-            Some(next) => next,
-            None => {
-                return Ok(Aggregated::Empty(empty()));
-            }
-        };
-
-        let aggregated = Some(state.export());
-        let rows = once(Ok(AggregateContext { aggregated, next }));
-        */
-
         let rows = state
             .export()
             .into_iter()
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)))
-            .map(|(aggregated, next)| {
-                Ok(AggregateContext {
-                    aggregated: Some(aggregated),
-                    next,
-                })
-            });
+            .map(|(aggregated, next)| Ok(AggregateContext { aggregated, next }));
 
         Ok(Aggregated::Applied(rows))
     }

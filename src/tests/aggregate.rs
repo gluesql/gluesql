@@ -83,3 +83,69 @@ pub fn aggregate(mut tester: impl tests::Tester) {
         .into_iter()
         .for_each(|(error, sql)| tester.test_error(sql, error));
 }
+
+pub fn group_by(mut tester: impl tests::Tester) {
+    let create_sql = "
+        CREATE TABLE Item (
+            id INTEGER,
+            quantity INTEGER NULL,
+            city TEXT,
+        );
+    ";
+
+    tester.run_and_print(create_sql);
+
+    let insert_sqls = [
+        "INSERT INTO Item (id, quantity, city) VALUES (1, 10, \"Seoul\");",
+        "INSERT INTO Item (id, quantity, city) VALUES (2, 0, \"Dhaka\");",
+        "INSERT INTO Item (id, quantity, city) VALUES (3, NULL, \"Beijing\");",
+        "INSERT INTO Item (id, quantity, city) VALUES (3, 30, \"Daejeon\");",
+        "INSERT INTO Item (id, quantity, city) VALUES (4, 11, \"Seoul\");",
+        "INSERT INTO Item (id, quantity, city) VALUES (5, 24, \"Seattle\");",
+    ];
+
+    for insert_sql in insert_sqls.iter() {
+        tester.run(insert_sql).unwrap();
+    }
+
+    let mut run = |sql| tester.run(sql).expect("select");
+
+    use Value::*;
+
+    let test_cases = vec![
+        (
+            "SELECT id, COUNT(*) FROM Item GROUP BY id",
+            select!(I64 I64; 1 1; 2 1; 3 2; 4 1; 5 1),
+        ),
+        (
+            "SELECT id FROM Item GROUP BY id",
+            select!(I64; 1; 2; 3; 4; 5),
+        ),
+        (
+            "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city",
+            select!(
+                 OptI64   I64 Str;
+                 Some(21) 2 "Seoul".to_owned();
+                 Some(0)  1 "Dhaka".to_owned();
+                 None     1 "Beijing".to_owned();
+                 Some(30) 1 "Daejeon".to_owned();
+                 Some(24) 1 "Seattle".to_owned()
+            ),
+        ),
+        (
+            "SELECT id, city FROM Item GROUP BY city",
+            select!(
+                 I64 Str;
+                 1 "Seoul".to_owned();
+                 2 "Dhaka".to_owned();
+                 3 "Beijing".to_owned();
+                 3 "Daejeon".to_owned();
+                 5 "Seattle".to_owned()
+            ),
+        ),
+    ];
+
+    test_cases
+        .into_iter()
+        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
+}
