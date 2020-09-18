@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use sqlparser::ast::Function;
 
-use crate::utils::ImVector;
+use crate::utils::{ImVector, IndexMap};
 
 use super::hash::GroupKey;
 use crate::data::Value;
@@ -17,10 +17,9 @@ type ValuesMap<'a> = HashMap<&'a Function, Value>;
 pub struct State<'a> {
     index: usize,
     group: Rc<Vec<GroupKey>>,
-    values: HashMap<Key<'a>, (usize, Value)>,
-    keys: ImVector<Key<'a>>,
-    contexts: ImVector<Rc<BlendContext<'a>>>,
+    values: IndexMap<Key<'a>, (usize, Value)>,
     groups: HashSet<Rc<Vec<GroupKey>>>,
+    contexts: ImVector<Rc<BlendContext<'a>>>,
 }
 
 impl<'a> State<'a> {
@@ -28,8 +27,7 @@ impl<'a> State<'a> {
         State {
             index: 0,
             group: Rc::new(vec![GroupKey::Null]),
-            values: HashMap::new(),
-            keys: ImVector::new(),
+            values: IndexMap::new(),
             contexts: ImVector::new(),
             groups: HashSet::new(),
         }
@@ -50,7 +48,6 @@ impl<'a> State<'a> {
             index,
             group,
             values: self.values,
-            keys: self.keys,
             contexts,
             groups,
         }
@@ -58,20 +55,12 @@ impl<'a> State<'a> {
 
     fn update(self, func: &'a Function, value: Value) -> Self {
         let key = (Rc::clone(&self.group), func);
-
-        let keys = if self.values.contains_key(&key) {
-            self.keys
-        } else {
-            self.keys.push((Rc::clone(&self.group), func))
-        };
-
-        let values = self.values.update(key, (self.index, value));
+        let (values, _) = self.values.insert(key, (self.index, value));
 
         Self {
             index: self.index,
             group: self.group,
             values,
-            keys,
             contexts: self.contexts,
             groups: self.groups,
         }
@@ -84,32 +73,35 @@ impl<'a> State<'a> {
     }
 
     pub fn export(self) -> Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)> {
-        let size = match self.keys.first() {
-            Some((target, _)) => match self.keys.iter().position(|(key, _)| key != target) {
+        let size = match self.values.keys().next() {
+            Some((target, _)) => match self.values.keys().position(|(key, _)| key != target) {
                 Some(size) => size,
-                None => self.keys.len(),
+                None => self.values.len(),
             },
             None => {
                 return self.contexts.into_iter().map(|c| (None, Some(c))).collect();
             }
         };
 
-        self.keys
+        let Self {
+            values, contexts, ..
+        } = self;
+
+        values
+            .into_iter()
+            .map(|(k, (_, v))| (k, v))
+            .collect::<Vec<(Key<'a>, Value)>>()
             .chunks(size)
             .enumerate()
-            .map(|(i, keys)| {
-                // let values = self.values;
-                // TODO: remove value.clone(), by using Rc?
-                let aggregated = keys
-                    .iter()
-                    .map(|key| {
-                        let value = self.values.get(key).map(|(_, value)| value.clone());
-
-                        (key.1, value)
+            .map(|(i, entries)| {
+                let aggregated = entries
+                    .into_iter()
+                    .map(|(key, value)| {
+                        // TODO: remove value.clone()
+                        (key.1, value.clone())
                     })
-                    .filter_map(|(func, value)| value.map(|v| (func, v)))
                     .collect::<HashMap<&'a Function, Value>>();
-                let next = self.contexts.get(i).map(Rc::clone);
+                let next = contexts.get(i).map(Rc::clone);
 
                 (Some(aggregated), next)
             })

@@ -18,6 +18,7 @@ sled-storage = ["sled", "bincode"]
 
 [dependencies]
 boolinator = "2.4.0"
+indexmap = "1.6.0"
 im-rc = "15.0.0"
 iter-enum = "0.2"
 or-iterator = "0.1.1"
