@@ -26,10 +26,6 @@ CREATE TABLE Test (
             "INSERT INTO Test (id, num) VALUES (3 * 2, 1);",
         ),
         (
-            RowError::MultiRowInsertNotSupported.into(),
-            "INSERT INTO Test (id, num) VALUES (1, 1), (2, 1);",
-        ),
-        (
             ValueError::FailedToParseNumber.into(),
             "INSERT INTO Test (id, num) VALUES (1.1, 1);",
         ),
