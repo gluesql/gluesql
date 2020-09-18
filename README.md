@@ -91,4 +91,4 @@ It would be cool to make state management library using `gluesql-js`.
 ## Contribution
 It's very early stage, please feel free to do whatever you want to.  
 Only the thing you need to be aware of is...  
-- Except for `src/glue.rs` and `src/tests/`, there is no place to use `mut` keyword.  
+- Except for `src/glue.rs`, `src/tests/` and `src/utils/`, there is no place to use `mut` keyword.  
