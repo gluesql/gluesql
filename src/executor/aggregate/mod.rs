@@ -16,7 +16,7 @@ use crate::result::Result;
 use crate::store::Store;
 
 pub use error::AggregateError;
-use hash::GroupKey;
+pub use hash::GroupKey;
 use state::State;
 
 #[derive(Iterator)]

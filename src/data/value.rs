@@ -1,12 +1,13 @@
 use boolinator::Boolinator;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use thiserror::Error as ThisError;
 
 use sqlparser::ast::{DataType, Value as AstValue};
 
+use crate::executor::GroupKey;
 use crate::result::{Error, Result};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
@@ -155,6 +156,42 @@ impl TryFrom<&AstValue> for Value {
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             AstValue::Boolean(v) => Ok(Value::Bool(*v)),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
+        }
+    }
+}
+
+impl TryInto<GroupKey> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<GroupKey> {
+        use Value::*;
+
+        match self {
+            Bool(v) | OptBool(Some(v)) => Ok(GroupKey::Bool(*v)),
+            I64(v) | OptI64(Some(v)) => Ok(GroupKey::I64(*v)),
+            Str(v) | OptStr(Some(v)) => Ok(GroupKey::Str(v.clone())),
+            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(GroupKey::Null),
+            _ => {
+                panic!();
+            }
+        }
+    }
+}
+
+impl TryInto<GroupKey> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<GroupKey> {
+        use Value::*;
+
+        match self {
+            Bool(v) | OptBool(Some(v)) => Ok(GroupKey::Bool(v)),
+            I64(v) | OptI64(Some(v)) => Ok(GroupKey::I64(v)),
+            Str(v) | OptStr(Some(v)) => Ok(GroupKey::Str(v)),
+            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(GroupKey::Null),
+            _ => {
+                panic!();
+            }
         }
     }
 }
