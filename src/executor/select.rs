@@ -96,7 +96,7 @@ pub fn select<'a, T: 'static + Debug>(
     let join = Join::new(storage, joins, filter_context);
     let aggregate = Aggregate::new(storage, projection, group_by, filter_context);
     let blend = Blend::new(storage, projection);
-    let filter = Filter::new(storage, where_clause, filter_context);
+    let filter = Filter::new(storage, where_clause, filter_context, None);
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
 
     let rows = fetch_blended(storage, table, columns)?

@@ -142,7 +142,7 @@ fn prepare<'a, T: 'static + Debug>(
             let table_name = get_name(table_name)?;
             let columns = fetch_columns(storage, table_name)?;
             let update = Update::new(storage, table_name, assignments, &columns)?;
-            let filter = Filter::new(storage, selection.as_ref(), None);
+            let filter = Filter::new(storage, selection.as_ref(), None, None);
 
             let rows = fetch(storage, table_name, &columns, filter)?
                 .map(|item| {
@@ -160,7 +160,7 @@ fn prepare<'a, T: 'static + Debug>(
         } => {
             let table_name = get_name(table_name)?;
             let columns = fetch_columns(storage, table_name)?;
-            let filter = Filter::new(storage, selection.as_ref(), None);
+            let filter = Filter::new(storage, selection.as_ref(), None, None);
 
             let rows = fetch(storage, table_name, &columns, filter)?
                 .map(|item| item.map(|(_, key, _)| key))
