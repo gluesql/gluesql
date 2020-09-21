@@ -148,6 +148,17 @@ pub fn group_by(mut tester: impl tests::Tester) {
             "SELECT ratio FROM Item GROUP BY id, city",
             select!(F64; 0.2; 0.9; 1.1; 3.2; 11.1; 6.11),
         ),
+        (
+            "SELECT ratio FROM Item GROUP BY id, city HAVING ratio > 10",
+            select!(F64; 11.1),
+        ),
+        (
+            "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1",
+            select!(
+                 OptI64   I64 Str;
+                 Some(21) 2 "Seoul".to_owned()
+            ),
+        ),
     ];
 
     test_cases

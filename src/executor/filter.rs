@@ -184,7 +184,7 @@ fn check_expr<T: 'static + Debug>(
     }
 }
 
-fn check_blended_expr<T: 'static + Debug>(
+pub fn check_blended_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,
     filter_context: Option<&FilterContext<'_>>,
     blend_context: &BlendContext<'_>,
