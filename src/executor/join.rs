@@ -161,7 +161,7 @@ fn join<'a, T: 'static + Debug>(
                 }
             };
 
-            let filter = Filter::new(storage, where_clause, filter_context);
+            let filter = Filter::new(storage, where_clause, filter_context, None);
             let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
 
             blended_filter

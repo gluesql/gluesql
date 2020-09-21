@@ -2,6 +2,7 @@ mod error;
 mod hash;
 mod state;
 
+use boolinator::Boolinator;
 use iter_enum::Iterator;
 use std::convert::TryFrom;
 use std::fmt::Debug;
@@ -11,6 +12,7 @@ use sqlparser::ast::{Expr, Function, SelectItem};
 
 use super::context::{AggregateContext, BlendContext, FilterContext, UnionContext};
 use super::evaluate::{evaluate_union, Evaluated};
+use super::filter::check_blended_expr;
 use crate::data::{get_name, Value};
 use crate::result::Result;
 use crate::store::Store;
@@ -29,6 +31,7 @@ pub struct Aggregate<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
+    having: Option<&'a Expr>,
     filter_context: Option<&'a FilterContext<'a>>,
 }
 
@@ -37,12 +40,14 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         storage: &'a dyn Store<T>,
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
+        having: Option<&'a Expr>,
         filter_context: Option<&'a FilterContext<'a>>,
     ) -> Self {
         Self {
             storage,
             fields,
             group_by,
+            having,
             filter_context,
         }
     }
@@ -96,11 +101,21 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                     Ok(state)
                 })?;
 
+        let storage = self.storage;
+        let filter_context = self.filter_context;
+        let having = self.having;
         let rows = state
             .export()
             .into_iter()
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)))
-            .map(|(aggregated, next)| Ok(AggregateContext { aggregated, next }));
+            .filter_map(move |(aggregated, next)| match having {
+                Some(having) => {
+                    check_blended_expr(storage, filter_context, &next, aggregated.as_ref(), having)
+                        .map(|pass| pass.as_some(AggregateContext { aggregated, next }))
+                        .transpose()
+                }
+                None => Some(Ok(AggregateContext { aggregated, next })),
+            });
 
         Ok(Aggregated::Applied(rows))
     }

@@ -58,7 +58,7 @@ pub fn select<'a, T: 'static + Debug>(
     query: &'a Query,
     filter_context: Option<&'a FilterContext<'a>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    let (table_with_joins, where_clause, projection, group_by) = match &query.body {
+    let (table_with_joins, where_clause, projection, group_by, having) = match &query.body {
         SetExpr::Select(statement) => {
             let tables = &statement.from;
             let table_with_joins = match tables.len() {
@@ -72,6 +72,7 @@ pub fn select<'a, T: 'static + Debug>(
                 statement.selection.as_ref(),
                 statement.projection.as_ref(),
                 &statement.group_by,
+                statement.having.as_ref(),
             )
         }
         _ => err!(SelectError::Unreachable),
@@ -94,9 +95,9 @@ pub fn select<'a, T: 'static + Debug>(
     let join_columns = Rc::new(join_columns);
 
     let join = Join::new(storage, joins, filter_context);
-    let aggregate = Aggregate::new(storage, projection, group_by, filter_context);
+    let aggregate = Aggregate::new(storage, projection, group_by, having, filter_context);
     let blend = Blend::new(storage, projection);
-    let filter = Filter::new(storage, where_clause, filter_context);
+    let filter = Filter::new(storage, where_clause, filter_context, None);
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
 
     let rows = fetch_blended(storage, table, columns)?
