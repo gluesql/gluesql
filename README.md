@@ -61,7 +61,7 @@ pub trait StoreMut<T: Debug> where Self: Sized {
     fn generate_id(self, table_name: &str) -> MutResult<Self, T>;
     fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()>;
     fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
-    fn insert_data(self, key: &T, row: Row) -> MutResult<Self, Row>;
+    fn insert_data(self, key: &T, row: Row) -> MutResult<Self, ()>;
     fn delete_data(self, key: &T) -> MutResult<Self, ()>;
 }
 ```
