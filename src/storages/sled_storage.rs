@@ -109,12 +109,12 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, Row> {
+    fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, ()> {
         let value = try_self!(self, bincode::serialize(&row));
 
         try_self!(self, self.tree.insert(key, value));
 
-        Ok((self, row))
+        Ok((self, ()))
     }
 
     fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {

@@ -33,7 +33,7 @@ where
 
     fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
 
-    fn insert_data(self, key: &T, row: Row) -> MutResult<Self, Row>;
+    fn insert_data(self, key: &T, row: Row) -> MutResult<Self, ()>;
 
     fn delete_data(self, key: &T) -> MutResult<Self, ()>;
 }
