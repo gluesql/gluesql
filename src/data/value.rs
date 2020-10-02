@@ -240,9 +240,9 @@ impl Value {
                 Value::OptBool(None),
                 ValueError::NullValueOnNotNullField.into(),
             ),
-            (DataType::Text, AstValue::SingleQuotedString(r)) => 
+            (DataType::Text, AstValue::SingleQuotedString(r)) => {
                 Ok(nullable.as_value(Value::OptStr(Some(r.into())), Value::Str(r.into())))
-             ,
+            }
             (DataType::Text, AstValue::Null) => nullable.as_result(
                 Value::OptStr(None),
                 ValueError::NullValueOnNotNullField.into(),
