@@ -21,7 +21,7 @@ CREATE TABLE Test (
     use Value::*;
 
     let found = tester
-        .run("SELECT id, num, name FROM Test")
+        .run("SELECT id, num, name AS freetext FROM Test")
         .expect("select");
     let expected = select!(
         I64 I64 Str;
