@@ -12,7 +12,6 @@ pub mod nullable;
 pub mod ordering;
 pub mod sql_types;
 pub mod synthesize;
-pub mod loadfromfile;
 mod tester;
 
 pub mod macros;
@@ -33,7 +32,7 @@ macro_rules! generate_tests {
                 }
             };
         }
-/*
+
         glue!(basic, basic::basic);
         glue!(aggregate, aggregate::aggregate);
         glue!(aggregate_group_by, aggregate::group_by);
@@ -52,10 +51,5 @@ macro_rules! generate_tests {
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
         glue!(filter, filter::filter);
-        */
-        // in order to show eprintln use --nocapture
-        //
-        // cargo test --all-features -- --nocapture
-        glue!(loadfromfile, loadfromfile::loadfromfile);
     };
 }
