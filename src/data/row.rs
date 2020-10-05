@@ -17,6 +17,9 @@ pub enum RowError {
     #[error("literals does not fit to columns")]
     LackOfRequiredValue(String),
 
+    #[error("literals have more values than target columns")]
+    TooManyValues,
+
     #[error("unsupported ast value type")]
     UnsupportedAstValueType,
 
@@ -61,6 +64,10 @@ impl Row {
         values
             .iter()
             .map(|values| {
+                if values.len() > column_defs.len() {
+                    return Err(RowError::TooManyValues.into());
+                }
+
                 (&column_defs)
                     .iter()
                     .enumerate()
