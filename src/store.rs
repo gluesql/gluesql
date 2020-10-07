@@ -37,3 +37,10 @@ where
 
     fn delete_data(self, key: &T) -> MutResult<Self, ()>;
 }
+
+pub trait AlterTable
+where
+    Self: Sized,
+{
+    fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()>;
+}

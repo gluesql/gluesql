@@ -1,8 +1,11 @@
 use sled::{self, Config, Db, IVec};
 use std::convert::TryFrom;
+use std::str;
 use thiserror::Error as ThisError;
 
-use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut};
+use crate::{
+    AlterTable, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut,
+};
 
 #[derive(ThisError, Debug)]
 enum StorageError {
@@ -13,6 +16,8 @@ enum StorageError {
     Sled(#[from] sled::Error),
     #[error(transparent)]
     Bincode(#[from] bincode::Error),
+    #[error(transparent)]
+    Str(#[from] str::Utf8Error),
 }
 
 impl Into<Error> for StorageError {
@@ -22,6 +27,7 @@ impl Into<Error> for StorageError {
         match self {
             Sled(e) => Error::Storage(Box::new(e)),
             Bincode(e) => Error::Storage(e),
+            Str(e) => Error::Storage(Box::new(e)),
             Store(e) => e.into(),
         }
     }
@@ -146,5 +152,47 @@ impl Store<IVec> for SledStorage {
         });
 
         Ok(Box::new(result_set))
+    }
+}
+
+impl AlterTable for SledStorage {
+    fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
+        let key = format!("schema/{}", table_name);
+        let key = key.as_bytes();
+        let value = try_self!(self, self.tree.get(&key));
+        let value = try_self!(self, value.ok_or(StoreError::SchemaNotFound));
+        let Schema { column_defs, .. } = try_self!(self, bincode::deserialize(&value));
+
+        let schema = Schema {
+            table_name: new_table_name.to_string(),
+            column_defs,
+        };
+
+        let tree = &self.tree;
+
+        // remove existing schema
+        let key = format!("schema/{}", table_name);
+        try_self!(self, tree.remove(key));
+
+        // insert new schema
+        let value = try_self!(self, bincode::serialize(&schema));
+        let key = format!("schema/{}", new_table_name);
+        let key = key.as_bytes();
+        try_self!(self, self.tree.insert(key, value));
+
+        // replace data
+        let prefix = format!("data/{}/", table_name);
+
+        for item in tree.scan_prefix(prefix.as_bytes()) {
+            let (key, value) = try_self!(self, item);
+
+            let new_key = try_self!(self, str::from_utf8(key.as_ref()));
+            let new_key = new_key.replace(table_name, new_table_name);
+            try_self!(self, tree.insert(new_key, value));
+
+            try_self!(self, tree.remove(key));
+        }
+
+        Ok((self, ()))
     }
 }

@@ -2,8 +2,9 @@ use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{ObjectType, Statement};
+use sqlparser::ast::{AlterTableOperation, ObjectType, Statement};
 
+use super::alter_table::alter_table;
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::select;
@@ -11,7 +12,7 @@ use super::update::Update;
 use crate::data::{get_name, Row, Schema};
 use crate::parse::Query;
 use crate::result::{MutResult, Result};
-use crate::store::{Store, StoreMut};
+use crate::store::{AlterTable, Store, StoreMut};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -30,9 +31,10 @@ pub enum Payload {
     Delete(usize),
     Update(usize),
     DropTable,
+    AlterTable,
 }
 
-pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T>>(
+pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
@@ -93,6 +95,8 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T>>(
             Ok((storage, Payload::DropTable))
         }
         Prepared::Select(rows) => Ok((storage, Payload::Select(rows))),
+        Prepared::AlterTable(table_name, operation) => alter_table(storage, table_name, operation)
+            .map(|(storage, _)| (storage, Payload::AlterTable)),
     }
 }
 
@@ -103,6 +107,7 @@ enum Prepared<'a, T> {
     Update(Vec<(T, Row)>),
     Select(Vec<Row>),
     DropTable(Vec<&'a str>),
+    AlterTable(&'a str, &'a AlterTableOperation),
 }
 
 fn prepare<'a, T: 'static + Debug>(
@@ -181,6 +186,11 @@ fn prepare<'a, T: 'static + Debug>(
                 .collect::<Result<_>>()?;
 
             Ok(Prepared::DropTable(names))
+        }
+        Statement::AlterTable { name, operation } => {
+            let table_name = get_name(name)?;
+
+            Ok(Prepared::AlterTable(table_name, operation))
         }
         _ => Err(ExecuteError::QueryNotSupported.into()),
     }
