@@ -9,13 +9,10 @@ pub fn alter_table<T: AlterTable>(
     operation: &AlterTableOperation,
 ) -> MutResult<T, ()> {
     match operation {
-        /*
         AlterTableOperation::RenameColumn {
             old_column_name, // Ident
             new_column_name,
-        } => {
-        }
-        */
+        } => storage.rename_column(table_name, &old_column_name.value, &new_column_name.value),
         AlterTableOperation::RenameTable {
             table_name: new_table_name,
         } => storage.rename_schema(table_name, &new_table_name.value),

@@ -10,6 +10,10 @@ use super::result::{MutResult, Result};
 pub enum StoreError {
     #[error("Schema not found")]
     SchemaNotFound,
+
+    // AlterTable error
+    #[error("Column not found")]
+    ColumnNotFound,
 }
 
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
@@ -43,4 +47,11 @@ where
     Self: Sized,
 {
     fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()>;
+
+    fn rename_column(
+        self,
+        table_name: &str,
+        old_column_name: &str,
+        new_column_name: &str,
+    ) -> MutResult<Self, ()>;
 }

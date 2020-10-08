@@ -3,6 +3,9 @@ use std::convert::TryFrom;
 use std::str;
 use thiserror::Error as ThisError;
 
+use sqlparser::ast::{ColumnDef, Ident};
+
+use crate::utils::Vector;
 use crate::{
     AlterTable, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut,
 };
@@ -192,6 +195,52 @@ impl AlterTable for SledStorage {
 
             try_self!(self, tree.remove(key));
         }
+
+        Ok((self, ()))
+    }
+
+    fn rename_column(
+        self,
+        table_name: &str,
+        old_column_name: &str,
+        new_column_name: &str,
+    ) -> MutResult<Self, ()> {
+        let key = format!("schema/{}", table_name);
+        let key = key.as_bytes();
+        let value = try_self!(self, self.tree.get(&key));
+        let value = try_self!(self, value.ok_or(StoreError::SchemaNotFound));
+        let Schema { column_defs, .. } = try_self!(self, bincode::deserialize(&value));
+
+        let i = column_defs
+            .iter()
+            .position(|column_def| column_def.name.value == old_column_name)
+            .ok_or(StoreError::ColumnNotFound);
+        let i = try_self!(self, i);
+
+        let ColumnDef {
+            name: Ident { quote_style, .. },
+            data_type,
+            collation,
+            options,
+        } = column_defs[i].clone();
+
+        let column_def = ColumnDef {
+            name: Ident {
+                quote_style,
+                value: new_column_name.to_string(),
+            },
+            data_type,
+            collation,
+            options,
+        };
+        let column_defs = Vector::from(column_defs).update(i, column_def).into();
+
+        let schema = Schema {
+            table_name: table_name.to_string(),
+            column_defs,
+        };
+        let value = try_self!(self, bincode::serialize(&schema));
+        try_self!(self, self.tree.insert(key, value));
 
         Ok((self, ()))
     }
