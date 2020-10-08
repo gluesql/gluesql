@@ -135,13 +135,7 @@ impl StoreMut<IVec> for SledStorage {
 
 impl Store<IVec> for SledStorage {
     fn fetch_schema(&self, table_name: &str) -> Result<Schema> {
-        let key = format!("schema/{}", table_name);
-        let key = key.as_bytes();
-        let value = try_into!(self.tree.get(&key));
-        let value = value.ok_or(StoreError::SchemaNotFound)?;
-        let statement = try_into!(bincode::deserialize(&value));
-
-        Ok(statement)
+        fetch_schema(&self.tree, table_name).map(|(_, schema)| schema)
     }
 
     fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
@@ -160,11 +154,12 @@ impl Store<IVec> for SledStorage {
 
 impl AlterTable for SledStorage {
     fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
-        let key = format!("schema/{}", table_name);
-        let key = key.as_bytes();
-        let value = try_self!(self, self.tree.get(&key));
-        let value = try_self!(self, value.ok_or(StoreError::SchemaNotFound));
-        let Schema { column_defs, .. } = try_self!(self, bincode::deserialize(&value));
+        let Schema { column_defs, .. } = match fetch_schema(&self.tree, table_name) {
+            Ok((_, schema)) => schema,
+            Err(e) => {
+                return Err((self, e));
+            }
+        };
 
         let schema = Schema {
             table_name: new_table_name.to_string(),
@@ -205,11 +200,12 @@ impl AlterTable for SledStorage {
         old_column_name: &str,
         new_column_name: &str,
     ) -> MutResult<Self, ()> {
-        let key = format!("schema/{}", table_name);
-        let key = key.as_bytes();
-        let value = try_self!(self, self.tree.get(&key));
-        let value = try_self!(self, value.ok_or(StoreError::SchemaNotFound));
-        let Schema { column_defs, .. } = try_self!(self, bincode::deserialize(&value));
+        let (key, column_defs) = match fetch_schema(&self.tree, table_name) {
+            Ok((key, schema)) => (key, schema.column_defs),
+            Err(e) => {
+                return Err((self, e));
+            }
+        };
 
         let i = column_defs
             .iter()
@@ -244,4 +240,13 @@ impl AlterTable for SledStorage {
 
         Ok((self, ()))
     }
+}
+
+fn fetch_schema(tree: &Db, table_name: &str) -> Result<(String, Schema)> {
+    let key = format!("schema/{}", table_name);
+    let value = try_into!(tree.get(&key.as_bytes()));
+    let value = value.ok_or(StoreError::SchemaNotFound)?;
+    let schema = try_into!(bincode::deserialize(&value));
+
+    Ok((key, schema))
 }
