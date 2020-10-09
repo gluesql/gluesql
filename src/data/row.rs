@@ -2,9 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{
-    ColumnDef, ColumnOption, ColumnOptionDef, Expr, Ident, Query, SetExpr, Values,
-};
+use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Ident};
 
 use crate::data::Value;
 use crate::result::Result;
@@ -22,9 +20,6 @@ pub enum RowError {
 
     #[error("unsupported ast value type")]
     UnsupportedAstValueType,
-
-    #[error("Unreachable")]
-    Unreachable,
 
     #[error("conflict! row cannot be empty")]
     ConflictOnEmptyRow,
@@ -45,67 +40,45 @@ impl Row {
             .ok_or_else(|| RowError::ConflictOnEmptyRow.into())
     }
 
-    pub fn new(
-        column_defs: Vec<ColumnDef>,
-        columns: &[Ident],
-        source: &Query,
-    ) -> Result<Vec<Self>> {
-        let values = match &source.body {
-            SetExpr::Values(Values(values)) => values,
-            _ => {
-                return Err(RowError::Unreachable.into());
-            }
-        };
-
-        if values.is_empty() {
-            return Err(RowError::Unreachable.into());
+    pub fn new(column_defs: &[ColumnDef], columns: &[Ident], values: &[Expr]) -> Result<Self> {
+        if values.len() > column_defs.len() {
+            return Err(RowError::TooManyValues.into());
         }
 
-        values
+        column_defs
             .iter()
-            .map(|values| {
-                if values.len() > column_defs.len() {
-                    return Err(RowError::TooManyValues.into());
-                }
+            .enumerate()
+            .map(|(i, column_def)| {
+                let ColumnDef {
+                    name,
+                    data_type,
+                    options,
+                    ..
+                } = column_def;
+                let name = name.to_string();
 
-                (&column_defs)
+                let i = match columns.len() {
+                    0 => Ok(i),
+                    _ => columns
+                        .iter()
+                        .position(|target| target.value == name)
+                        .ok_or_else(|| RowError::LackOfRequiredColumn(name.clone())),
+                }?;
+
+                let literal = values
+                    .get(i)
+                    .ok_or_else(|| RowError::LackOfRequiredValue(name.clone()))?;
+                let nullable = options
                     .iter()
-                    .enumerate()
-                    .map(|(i, column_def)| {
-                        let ColumnDef {
-                            name,
-                            data_type,
-                            options,
-                            ..
-                        } = column_def;
-                        let name = name.to_string();
+                    .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
 
-                        let i = match columns.len() {
-                            0 => Ok(i),
-                            _ => columns
-                                .iter()
-                                .position(|target| target.value == name)
-                                .ok_or_else(|| RowError::LackOfRequiredColumn(name.clone())),
-                        }?;
-
-                        let literal = values
-                            .get(i)
-                            .ok_or_else(|| RowError::LackOfRequiredValue(name.clone()))?;
-                        let nullable = options
-                            .iter()
-                            .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
-
-                        match literal {
-                            Expr::Value(literal) => {
-                                Value::from_data_type(&data_type, nullable, literal)
-                            }
-                            Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
-                            _ => Err(RowError::UnsupportedAstValueType.into()),
-                        }
-                    })
-                    .collect::<Result<_>>()
-                    .map(Self)
+                match literal {
+                    Expr::Value(literal) => Value::from_data_type(&data_type, nullable, literal),
+                    Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
+                    _ => Err(RowError::UnsupportedAstValueType.into()),
+                }
             })
-            .collect()
+            .collect::<Result<_>>()
+            .map(Self)
     }
 }

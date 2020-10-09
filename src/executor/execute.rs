@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{ObjectType, Statement};
+use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
 
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
@@ -20,6 +20,9 @@ pub enum ExecuteError {
 
     #[error("drop type not supported")]
     DropTypeNotSupported,
+
+    #[error("unreachable")]
+    Unreachable,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -130,7 +133,17 @@ fn prepare<'a, T: 'static + Debug>(
         } => {
             let table_name = get_name(table_name)?;
             let Schema { column_defs, .. } = storage.fetch_schema(table_name)?;
-            let rows = Row::new(column_defs, columns, source)?;
+            let values_list = match &source.body {
+                SetExpr::Values(Values(values_list)) => values_list,
+                _ => {
+                    return Err(ExecuteError::Unreachable.into());
+                }
+            };
+
+            let rows = values_list
+                .iter()
+                .map(|values| Row::new(&column_defs, columns, values))
+                .collect::<Result<_>>()?;
 
             Ok(Prepared::Insert(table_name, rows))
         }
