@@ -58,21 +58,36 @@ impl Row {
                 let name = name.to_string();
 
                 let i = match columns.len() {
-                    0 => Ok(i),
-                    _ => columns
-                        .iter()
-                        .position(|target| target.value == name)
-                        .ok_or_else(|| RowError::LackOfRequiredColumn(name.clone())),
+                    0 => Some(i),
+                    _ => columns.iter().position(|target| target.value == name),
+                };
+
+                let default = options
+                    .iter()
+                    .find(|ColumnOptionDef { option, .. }| match option {
+                        ColumnOption::Default(_) => true,
+                        _ => false,
+                    });
+
+                let expr = match (i, default) {
+                    (Some(i), _) => values
+                        .get(i)
+                        .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
+                    (
+                        None,
+                        Some(&ColumnOptionDef {
+                            option: ColumnOption::Default(ref expr),
+                            ..
+                        }),
+                    ) => Ok(expr),
+                    (None, _) => Err(RowError::LackOfRequiredColumn(name.clone())),
                 }?;
 
-                let literal = values
-                    .get(i)
-                    .ok_or_else(|| RowError::LackOfRequiredValue(name.clone()))?;
                 let nullable = options
                     .iter()
                     .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
 
-                match literal {
+                match expr {
                     Expr::Value(literal) => Value::from_data_type(&data_type, nullable, literal),
                     Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
                     _ => Err(RowError::UnsupportedAstValueType.into()),
