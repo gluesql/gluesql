@@ -21,8 +21,8 @@ pub enum ExecuteError {
     #[error("drop type not supported")]
     DropTypeNotSupported,
 
-    #[error("unreachable")]
-    Unreachable,
+    #[error("unsupported insert value type: {0}")]
+    UnsupportedInsertValueType(String),
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -135,8 +135,10 @@ fn prepare<'a, T: 'static + Debug>(
             let Schema { column_defs, .. } = storage.fetch_schema(table_name)?;
             let values_list = match &source.body {
                 SetExpr::Values(Values(values_list)) => values_list,
-                _ => {
-                    return Err(ExecuteError::Unreachable.into());
+                set_expr => {
+                    return Err(
+                        ExecuteError::UnsupportedInsertValueType(set_expr.to_string()).into(),
+                    );
                 }
             };
 
