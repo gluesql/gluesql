@@ -43,6 +43,10 @@ pub fn error(mut tester: impl tests::Tester) {
             RowError::TooManyValues.into(),
             "INSERT INTO TableA VALUES (100), (100, 200);",
         ),
+        (
+            ExecuteError::UnsupportedInsertValueType("SELECT id FROM TableA".to_owned()).into(),
+            "INSERT INTO TableA SELECT id FROM TableA",
+        ),
     ];
 
     test_cases
