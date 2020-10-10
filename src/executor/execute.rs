@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{AlterTableOperation, ObjectType, Statement};
+use sqlparser::ast::{AlterTableOperation, ObjectType, SetExpr, Statement, Values};
 
 use super::alter_table::alter_table;
 use super::fetch::{fetch, fetch_columns};
@@ -21,6 +21,9 @@ pub enum ExecuteError {
 
     #[error("drop type not supported")]
     DropTypeNotSupported,
+
+    #[error("unsupported insert value type: {0}")]
+    UnsupportedInsertValueType(String),
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -135,7 +138,19 @@ fn prepare<'a, T: 'static + Debug>(
         } => {
             let table_name = get_name(table_name)?;
             let Schema { column_defs, .. } = storage.fetch_schema(table_name)?;
-            let rows = Row::new(column_defs, columns, source)?;
+            let values_list = match &source.body {
+                SetExpr::Values(Values(values_list)) => values_list,
+                set_expr => {
+                    return Err(
+                        ExecuteError::UnsupportedInsertValueType(set_expr.to_string()).into(),
+                    );
+                }
+            };
+
+            let rows = values_list
+                .iter()
+                .map(|values| Row::new(&column_defs, columns, values))
+                .collect::<Result<_>>()?;
 
             Ok(Prepared::Insert(table_name, rows))
         }

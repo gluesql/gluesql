@@ -3,6 +3,7 @@ pub mod alter_table;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
+pub mod default;
 pub mod drop_table;
 pub mod error;
 pub mod filter;
@@ -47,6 +48,7 @@ macro_rules! generate_tests {
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
+        glue!(default, default::default);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
         glue!(ordering, ordering::ordering);
