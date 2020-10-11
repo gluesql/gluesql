@@ -44,6 +44,10 @@ pub fn add_drop(tester: impl tests::Tester) {
             Err(StoreError::DefaultValueRequired("amount INT".to_owned()).into()),
         ),
         (
+            "ALTER TABLE Foo ADD COLUMN id INTEGER",
+            Err(StoreError::ColumnAlreadyExists("id".to_owned()).into()),
+        ),
+        (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER DEFAULT 10",
             Ok(Payload::AlterTable),
         ),

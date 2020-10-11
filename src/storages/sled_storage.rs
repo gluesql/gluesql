@@ -250,6 +250,16 @@ impl AlterTable for SledStorage {
             },
         ) = try_self!(self, fetch_schema(&self.tree, table_name));
 
+        if column_defs
+            .iter()
+            .any(|ColumnDef { name, .. }| name.value == column_def.name.value)
+        {
+            return Err((
+                self,
+                StoreError::ColumnAlreadyExists(column_def.name.value.to_string()).into(),
+            ));
+        }
+
         let ColumnDef {
             options, data_type, ..
         } = column_def;

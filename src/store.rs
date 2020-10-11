@@ -20,6 +20,10 @@ pub enum StoreError {
     // AlterTable error
     #[error("Default value is required: {0}")]
     DefaultValueRequired(String),
+
+    // AlterTable error
+    #[error("Column already exists: {0}")]
+    ColumnAlreadyExists(String),
 }
 
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
