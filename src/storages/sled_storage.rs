@@ -1,22 +1,29 @@
+#[cfg(feature = "alter-table")]
 use boolinator::Boolinator;
 use sled::{self, Config, Db, IVec};
 use std::convert::TryFrom;
+#[cfg(feature = "alter-table")]
 use std::iter::once;
 use std::str;
 use thiserror::Error as ThisError;
 
+#[cfg(feature = "alter-table")]
 use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident, Value as AstValue};
 
+#[cfg(feature = "alter-table")]
 use crate::utils::Vector;
 use crate::{
-    AlterTable, AlterTableError, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError,
-    StoreMut, Value,
+    AlterTable, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut,
 };
+#[cfg(feature = "alter-table")]
+use crate::{AlterTableError, Value};
 
 #[derive(ThisError, Debug)]
 enum StorageError {
     #[error(transparent)]
     Store(#[from] StoreError),
+
+    #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
 
@@ -37,6 +44,8 @@ impl Into<Error> for StorageError {
             Bincode(e) => Error::Storage(e),
             Str(e) => Error::Storage(Box::new(e)),
             Store(e) => e.into(),
+
+            #[cfg(feature = "alter-table")]
             AlterTable(e) => e.into(),
         }
     }
@@ -64,6 +73,7 @@ macro_rules! try_into {
     };
 }
 
+#[cfg(feature = "alter-table")]
 macro_rules! try_self {
     ($self: expr, $expr: expr) => {
         match $expr {
@@ -166,6 +176,10 @@ impl Store<IVec> for SledStorage {
     }
 }
 
+#[cfg(not(feature = "alter-table"))]
+impl AlterTable for SledStorage {}
+
+#[cfg(feature = "alter-table")]
 impl AlterTable for SledStorage {
     fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
         let (_, Schema { column_defs, .. }) = try_self!(self, fetch_schema(&self.tree, table_name));

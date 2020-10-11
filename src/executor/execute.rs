@@ -2,7 +2,9 @@ use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{AlterTableOperation, ObjectType, SetExpr, Statement, Values};
+#[cfg(feature = "alter-table")]
+use sqlparser::ast::AlterTableOperation;
+use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
 
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
@@ -24,6 +26,7 @@ pub enum ExecuteError {
     #[error("unsupported insert value type: {0}")]
     UnsupportedInsertValueType(String),
 
+    #[cfg(feature = "alter-table")]
     #[error("unsupported alter table operation: {0}")]
     UnsupportedAlterTableOperation(String),
 }
@@ -36,6 +39,8 @@ pub enum Payload {
     Delete(usize),
     Update(usize),
     DropTable,
+
+    #[cfg(feature = "alter-table")]
     AlterTable,
 }
 
@@ -99,6 +104,9 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
             Ok((storage, Payload::DropTable))
         }
+        Prepared::Select(rows) => Ok((storage, Payload::Select(rows))),
+
+        #[cfg(feature = "alter-table")]
         Prepared::AlterTable(table_name, operation) => {
             let result = match operation {
                 AlterTableOperation::RenameTable {
@@ -128,7 +136,6 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
             result.map(|(storage, _)| (storage, Payload::AlterTable))
         }
-        Prepared::Select(rows) => Ok((storage, Payload::Select(rows))),
     }
 }
 
@@ -139,6 +146,8 @@ enum Prepared<'a, T> {
     Update(Vec<(T, Row)>),
     Select(Vec<Row>),
     DropTable(Vec<&'a str>),
+
+    #[cfg(feature = "alter-table")]
     AlterTable(&'a str, &'a AlterTableOperation),
 }
 
@@ -231,11 +240,14 @@ fn prepare<'a, T: 'static + Debug>(
 
             Ok(Prepared::DropTable(names))
         }
+
+        #[cfg(feature = "alter-table")]
         Statement::AlterTable { name, operation } => {
             let table_name = get_name(name)?;
 
             Ok(Prepared::AlterTable(table_name, operation))
         }
+
         _ => Err(ExecuteError::QueryNotSupported.into()),
     }
 }

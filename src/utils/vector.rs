@@ -14,7 +14,7 @@ impl<T> Vector<T> {
         self
     }
 
-    #[cfg(feature = "sled-storage")]
+    #[cfg(all(feature = "alter-table", feature = "sled-storage"))]
     pub fn update(mut self, i: usize, value: T) -> Self {
         self.0[i] = value;
 

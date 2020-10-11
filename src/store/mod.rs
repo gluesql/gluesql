@@ -1,5 +1,9 @@
+#[cfg(feature = "alter-table")]
 mod alter_table;
+#[cfg(feature = "alter-table")]
 pub use alter_table::*;
+#[cfg(not(feature = "alter-table"))]
+pub trait AlterTable {}
 
 use serde::Serialize;
 use std::fmt::Debug;
