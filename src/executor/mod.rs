@@ -1,5 +1,4 @@
 mod aggregate;
-mod alter_table;
 mod blend;
 mod context;
 mod evaluate;
