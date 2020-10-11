@@ -46,9 +46,6 @@ macro_rules! try_into {
             e
         })?
     };
-}
-
-macro_rules! try_self {
     ($self: expr, $expr: expr) => {
         match $expr {
             Err(e) => {
@@ -100,7 +97,7 @@ impl TryFrom<Config> for SledStorage {
 
 impl StoreMut<IVec> for SledStorage {
     fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
-        let id = try_self!(self, self.tree.generate_id());
+        let id = try_into!(self, self.tree.generate_id());
         let id = format!("data/{}/{}", table_name, id);
 
         Ok((self, IVec::from(id.as_bytes())))
@@ -109,9 +106,9 @@ impl StoreMut<IVec> for SledStorage {
     fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
-        let value = try_self!(self, bincode::serialize(schema));
+        let value = try_into!(self, bincode::serialize(schema));
 
-        try_self!(self, self.tree.insert(key, value));
+        try_into!(self, self.tree.insert(key, value));
 
         Ok((self, ()))
     }
@@ -121,27 +118,27 @@ impl StoreMut<IVec> for SledStorage {
         let tree = &self.tree;
 
         for item in tree.scan_prefix(prefix.as_bytes()) {
-            let (key, _) = try_self!(self, item);
+            let (key, _) = try_into!(self, item);
 
-            try_self!(self, tree.remove(key));
+            try_into!(self, tree.remove(key));
         }
 
         let key = format!("schema/{}", table_name);
-        try_self!(self, tree.remove(key));
+        try_into!(self, tree.remove(key));
 
         Ok((self, ()))
     }
 
     fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, ()> {
-        let value = try_self!(self, bincode::serialize(&row));
+        let value = try_into!(self, bincode::serialize(&row));
 
-        try_self!(self, self.tree.insert(key, value));
+        try_into!(self, self.tree.insert(key, value));
 
         Ok((self, ()))
     }
 
     fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {
-        try_self!(self, self.tree.remove(key));
+        try_into!(self, self.tree.remove(key));
 
         Ok((self, ()))
     }
@@ -179,25 +176,25 @@ impl AlterTable for SledStorage {
 
         // remove existing schema
         let key = format!("schema/{}", table_name);
-        try_self!(self, tree.remove(key));
+        try_into!(self, tree.remove(key));
 
         // insert new schema
-        let value = try_self!(self, bincode::serialize(&schema));
+        let value = try_into!(self, bincode::serialize(&schema));
         let key = format!("schema/{}", new_table_name);
         let key = key.as_bytes();
-        try_self!(self, self.tree.insert(key, value));
+        try_into!(self, self.tree.insert(key, value));
 
         // replace data
         let prefix = format!("data/{}/", table_name);
 
         for item in tree.scan_prefix(prefix.as_bytes()) {
-            let (key, value) = try_self!(self, item);
+            let (key, value) = try_into!(self, item);
 
-            let new_key = try_self!(self, str::from_utf8(key.as_ref()));
+            let new_key = try_into!(self, str::from_utf8(key.as_ref()));
             let new_key = new_key.replace(table_name, new_table_name);
-            try_self!(self, tree.insert(new_key, value));
+            try_into!(self, tree.insert(new_key, value));
 
-            try_self!(self, tree.remove(key));
+            try_into!(self, tree.remove(key));
         }
 
         Ok((self, ()))
@@ -215,7 +212,7 @@ impl AlterTable for SledStorage {
             .iter()
             .position(|column_def| column_def.name.value == old_column_name)
             .ok_or(StoreError::ColumnNotFound);
-        let i = try_self!(self, i);
+        let i = try_into!(self, i);
 
         let ColumnDef {
             name: Ident { quote_style, .. },
@@ -239,8 +236,8 @@ impl AlterTable for SledStorage {
             table_name: table_name.to_string(),
             column_defs,
         };
-        let value = try_self!(self, bincode::serialize(&schema));
-        try_self!(self, self.tree.insert(key, value));
+        let value = try_into!(self, bincode::serialize(&schema));
+        try_into!(self, self.tree.insert(key, value));
 
         Ok((self, ()))
     }
@@ -288,12 +285,12 @@ impl AlterTable for SledStorage {
         let prefix = format!("data/{}/", table_name);
 
         for item in self.tree.scan_prefix(prefix.as_bytes()) {
-            let (key, row) = try_self!(self, item);
-            let row: Row = try_self!(self, bincode::deserialize(&row));
+            let (key, row) = try_into!(self, item);
+            let row: Row = try_into!(self, bincode::deserialize(&row));
             let row = Row(row.0.into_iter().chain(once(value.clone())).collect());
-            let row = try_self!(self, bincode::serialize(&row));
+            let row = try_into!(self, bincode::serialize(&row));
 
-            try_self!(self, self.tree.insert(key, row));
+            try_into!(self, self.tree.insert(key, row));
         }
 
         // update schema
@@ -306,8 +303,8 @@ impl AlterTable for SledStorage {
             table_name,
             column_defs,
         };
-        let schema_value = try_self!(self, bincode::serialize(&schema));
-        try_self!(self, self.tree.insert(key, schema_value));
+        let schema_value = try_into!(self, bincode::serialize(&schema));
+        try_into!(self, self.tree.insert(key, schema_value));
 
         Ok((self, ()))
     }
