@@ -23,6 +23,9 @@ pub enum ExecuteError {
 
     #[error("unsupported insert value type: {0}")]
     UnsupportedInsertValueType(String),
+
+    #[error("unsupported alter table operation: {0}")]
+    UnsupportedAlterTableOperation(String),
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -117,7 +120,10 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
                     if_exists,
                     ..
                 } => storage.drop_column(table_name, &column_name.value, *if_exists),
-                _ => Ok((storage, ())),
+                _ => Err((
+                    storage,
+                    ExecuteError::UnsupportedAlterTableOperation(operation.to_string()).into(),
+                )),
             };
 
             result.map(|(storage, _)| (storage, Payload::AlterTable))

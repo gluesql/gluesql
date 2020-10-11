@@ -47,6 +47,13 @@ pub fn error(mut tester: impl tests::Tester) {
             ExecuteError::UnsupportedInsertValueType("SELECT id FROM TableA".to_owned()).into(),
             "INSERT INTO TableA SELECT id FROM TableA",
         ),
+        (
+            ExecuteError::UnsupportedAlterTableOperation(
+                r#"ADD CONSTRAINT "hey" PRIMARY KEY (asdf)"#.to_owned(),
+            )
+            .into(),
+            r#"ALTER TABLE Foo ADD CONSTRAINT "hey" PRIMARY KEY (asdf);"#,
+        ),
     ];
 
     test_cases
