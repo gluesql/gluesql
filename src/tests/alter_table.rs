@@ -27,7 +27,7 @@ pub fn rename(tester: impl tests::Tester) {
         ("SELECT new_id FROM Bar", Ok(select!(I64; 1; 2; 3))),
         (
             "ALTER TABLE Bar RENAME COLUMN hello TO idid",
-            Err(StoreError::ColumnNotFound.into()),
+            Err(AlterTableError::ColumnNotFound.into()),
         ),
     ];
 
@@ -41,11 +41,11 @@ pub fn add_drop(tester: impl tests::Tester) {
         ("SELECT * FROM Foo;", Ok(select!(I64; 1; 2))),
         (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER",
-            Err(StoreError::DefaultValueRequired("amount INT".to_owned()).into()),
+            Err(AlterTableError::DefaultValueRequired("amount INT".to_owned()).into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN id INTEGER",
-            Err(StoreError::ColumnAlreadyExists("id".to_owned()).into()),
+            Err(AlterTableError::ColumnAlreadyExists("id".to_owned()).into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER DEFAULT 10",

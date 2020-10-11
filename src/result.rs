@@ -6,12 +6,14 @@ use crate::executor::{
     AggregateError, BlendContextError, BlendError, EvaluateError, ExecuteError, FilterContextError,
     FilterError, JoinError, LimitError, SelectError, UnionContextError, UpdateError,
 };
-use crate::store::StoreError;
+use crate::store::{AlterTableError, StoreError};
 
 #[derive(ThisError, Serialize, Debug)]
 pub enum Error {
     #[error(transparent)]
     Store(#[from] StoreError),
+    #[error(transparent)]
+    AlterTable(#[from] AlterTableError),
     #[error(transparent)]
     #[serde(with = "stringify")]
     Storage(#[from] Box<dyn std::error::Error>),
@@ -57,6 +59,7 @@ impl PartialEq for Error {
 
         match (self, other) {
             (Store(e), Store(e2)) => e == e2,
+            (AlterTable(e), AlterTable(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
             (Evaluate(e), Evaluate(e2)) => e == e2,
             (Select(e), Select(e2)) => e == e2,

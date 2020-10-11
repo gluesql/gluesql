@@ -8,13 +8,16 @@ use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident, Value as A
 
 use crate::utils::Vector;
 use crate::{
-    AlterTable, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut, Value,
+    AlterTable, AlterTableError, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError,
+    StoreMut, Value,
 };
 
 #[derive(ThisError, Debug)]
 enum StorageError {
     #[error(transparent)]
     Store(#[from] StoreError),
+    #[error(transparent)]
+    AlterTable(#[from] AlterTableError),
 
     #[error(transparent)]
     Sled(#[from] sled::Error),
@@ -33,6 +36,7 @@ impl Into<Error> for StorageError {
             Bincode(e) => Error::Storage(e),
             Str(e) => Error::Storage(Box::new(e)),
             Store(e) => e.into(),
+            AlterTable(e) => e.into(),
         }
     }
 }
@@ -210,7 +214,7 @@ impl AlterTable for SledStorage {
         let i = column_defs
             .iter()
             .position(|column_def| column_def.name.value == old_column_name)
-            .ok_or(StoreError::ColumnNotFound);
+            .ok_or(AlterTableError::ColumnNotFound);
         let i = try_into!(self, i);
 
         let ColumnDef {
@@ -256,7 +260,7 @@ impl AlterTable for SledStorage {
         {
             return Err((
                 self,
-                StoreError::ColumnAlreadyExists(column_def.name.value.to_string()).into(),
+                AlterTableError::ColumnAlreadyExists(column_def.name.value.to_string()).into(),
             ));
         }
 
@@ -285,7 +289,7 @@ impl AlterTable for SledStorage {
             (None, false) => {
                 return Err((
                     self,
-                    StoreError::DefaultValueRequired(column_def.to_string()).into(),
+                    AlterTableError::DefaultValueRequired(column_def.to_string()).into(),
                 ));
             }
         };
