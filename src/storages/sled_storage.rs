@@ -214,7 +214,7 @@ impl AlterTable for SledStorage {
         let i = column_defs
             .iter()
             .position(|column_def| column_def.name.value == old_column_name)
-            .ok_or(AlterTableError::ColumnNotFound);
+            .ok_or(AlterTableError::RenamingColumnNotFound);
         let i = try_into!(self, i);
 
         let ColumnDef {
@@ -258,9 +258,11 @@ impl AlterTable for SledStorage {
             .iter()
             .any(|ColumnDef { name, .. }| name.value == column_def.name.value)
         {
+            let adding_column = column_def.name.value.to_string();
+
             return Err((
                 self,
-                AlterTableError::ColumnAlreadyExists(column_def.name.value.to_string()).into(),
+                AlterTableError::AddingColumnAlreadyExists(adding_column).into(),
             ));
         }
 

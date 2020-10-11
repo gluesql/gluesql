@@ -27,7 +27,7 @@ pub fn rename(tester: impl tests::Tester) {
         ("SELECT new_id FROM Bar", Ok(select!(I64; 1; 2; 3))),
         (
             "ALTER TABLE Bar RENAME COLUMN hello TO idid",
-            Err(AlterTableError::ColumnNotFound.into()),
+            Err(AlterTableError::RenamingColumnNotFound.into()),
         ),
     ];
 
@@ -45,7 +45,7 @@ pub fn add_drop(tester: impl tests::Tester) {
         ),
         (
             "ALTER TABLE Foo ADD COLUMN id INTEGER",
-            Err(AlterTableError::ColumnAlreadyExists("id".to_owned()).into()),
+            Err(AlterTableError::AddingColumnAlreadyExists("id".to_owned()).into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER DEFAULT 10",

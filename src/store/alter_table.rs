@@ -8,14 +8,14 @@ use crate::result::MutResult;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum AlterTableError {
-    #[error("Column not found")]
-    ColumnNotFound,
+    #[error("Renaming column not found")]
+    RenamingColumnNotFound,
 
     #[error("Default value is required: {0}")]
     DefaultValueRequired(String),
 
-    #[error("Column already exists: {0}")]
-    ColumnAlreadyExists(String),
+    #[error("Adding column already exists: {0}")]
+    AddingColumnAlreadyExists(String),
 }
 
 pub trait AlterTable
