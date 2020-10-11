@@ -61,22 +61,17 @@ impl Row {
 
                 let default = options
                     .iter()
-                    .find(|ColumnOptionDef { option, .. }| match option {
-                        ColumnOption::Default(_) => true,
-                        _ => false,
-                    });
+                    .filter_map(|ColumnOptionDef { option, .. }| match option {
+                        ColumnOption::Default(expr) => Some(expr),
+                        _ => None,
+                    })
+                    .next();
 
                 let expr = match (i, default) {
                     (Some(i), _) => values
                         .get(i)
                         .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
-                    (
-                        None,
-                        Some(&ColumnOptionDef {
-                            option: ColumnOption::Default(ref expr),
-                            ..
-                        }),
-                    ) => Ok(expr),
+                    (None, Some(expr)) => Ok(expr),
                     (None, _) => Err(RowError::LackOfRequiredColumn(name.clone())),
                 }?;
 
