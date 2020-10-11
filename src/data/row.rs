@@ -18,9 +18,6 @@ pub enum RowError {
     #[error("literals have more values than target columns")]
     TooManyValues,
 
-    #[error("unsupported ast value type")]
-    UnsupportedAstValueType,
-
     #[error("conflict! row cannot be empty")]
     ConflictOnEmptyRow,
 }
@@ -87,11 +84,7 @@ impl Row {
                     .iter()
                     .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
 
-                match expr {
-                    Expr::Value(literal) => Value::from_data_type(&data_type, nullable, literal),
-                    Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
-                    _ => Err(RowError::UnsupportedAstValueType.into()),
-                }
+                Value::from_expr(&data_type, nullable, expr)
             })
             .collect::<Result<_>>()
             .map(Self)
