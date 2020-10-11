@@ -60,8 +60,8 @@ pub fn add_drop(tester: impl tests::Tester) {
             "SELECT * FROM Foo;",
             Ok(select!(
                 I64 I64 OptBool;
-                1 10 None;
-                2 10 None
+                1   10  None;
+                2   10  None
             )),
         ),
         (
@@ -79,6 +79,38 @@ pub fn add_drop(tester: impl tests::Tester) {
         (
             "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
             Err(ValueError::ExprNotSupported("(SELECT id FROM Bar LIMIT 1)".to_owned()).into()),
+        ),
+        (
+            "ALTER TABLE Foo DROP COLUMN IF EXISTS something;",
+            Ok(Payload::AlterTable),
+        ),
+        (
+            "ALTER TABLE Foo DROP COLUMN something;",
+            Err(AlterTableError::DroppingColumnNotFound("something".to_owned()).into()),
+        ),
+        (
+            "ALTER TABLE Foo DROP COLUMN amount;",
+            Ok(Payload::AlterTable),
+        ),
+        (
+            "SELECT * FROM Foo;",
+            Ok(select!(
+                I64 OptBool OptBool;
+                1   None    Some(true);
+                2   None    Some(true)
+            )),
+        ),
+        (
+            "ALTER TABLE Foo DROP COLUMN IF EXISTS opt2;",
+            Ok(Payload::AlterTable),
+        ),
+        (
+            "SELECT * FROM Foo;",
+            Ok(select!(
+                I64 OptBool;
+                1   None;
+                2   None
+            )),
         ),
     ];
 

@@ -16,6 +16,9 @@ pub enum AlterTableError {
 
     #[error("Adding column already exists: {0}")]
     AddingColumnAlreadyExists(String),
+
+    #[error("Dropping column not found: {0}")]
+    DroppingColumnNotFound(String),
 }
 
 pub trait AlterTable
@@ -32,4 +35,11 @@ where
     ) -> MutResult<Self, ()>;
 
     fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()>;
+
+    fn drop_column(
+        self,
+        table_name: &str,
+        column_name: &str,
+        if_exists: bool,
+    ) -> MutResult<Self, ()>;
 }

@@ -1,3 +1,4 @@
+use boolinator::Boolinator;
 use sled::{self, Config, Db, IVec};
 use std::convert::TryFrom;
 use std::iter::once;
@@ -312,6 +313,71 @@ impl AlterTable for SledStorage {
         let column_defs = column_defs
             .into_iter()
             .chain(once(column_def.clone()))
+            .collect::<Vec<ColumnDef>>();
+
+        let schema = Schema {
+            table_name,
+            column_defs,
+        };
+        let schema_value = try_into!(self, bincode::serialize(&schema));
+        try_into!(self, self.tree.insert(key, schema_value));
+
+        Ok((self, ()))
+    }
+
+    fn drop_column(
+        self,
+        table_name: &str,
+        column_name: &str,
+        if_exists: bool,
+    ) -> MutResult<Self, ()> {
+        let (
+            key,
+            Schema {
+                table_name,
+                column_defs,
+            },
+        ) = try_self!(self, fetch_schema(&self.tree, table_name));
+
+        let index = column_defs
+            .iter()
+            .position(|ColumnDef { name, .. }| name.value == column_name);
+
+        let index = match (index, if_exists) {
+            (Some(index), _) => index,
+            (None, true) => {
+                return Ok((self, ()));
+            }
+            (None, false) => {
+                return Err((
+                    self,
+                    AlterTableError::DroppingColumnNotFound(column_name.to_string()).into(),
+                ));
+            }
+        };
+
+        // migrate data
+        let prefix = format!("data/{}/", table_name);
+
+        for item in self.tree.scan_prefix(prefix.as_bytes()) {
+            let (key, row) = try_into!(self, item);
+            let row: Row = try_into!(self, bincode::deserialize(&row));
+            let row = Row(row
+                .0
+                .into_iter()
+                .enumerate()
+                .filter_map(|(i, v)| (i != index).as_some(v))
+                .collect());
+            let row = try_into!(self, bincode::serialize(&row));
+
+            try_into!(self, self.tree.insert(key, row));
+        }
+
+        // update schema
+        let column_defs = column_defs
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, v)| (i != index).as_some(v))
             .collect::<Vec<ColumnDef>>();
 
         let schema = Schema {
