@@ -3,6 +3,8 @@ use std::fmt::Debug;
 use std::marker::Sized;
 use thiserror::Error;
 
+use sqlparser::ast::ColumnDef;
+
 use super::data::{Row, Schema};
 use super::result::{MutResult, Result};
 
@@ -14,6 +16,10 @@ pub enum StoreError {
     // AlterTable error
     #[error("Column not found")]
     ColumnNotFound,
+
+    // AlterTable error
+    #[error("Default value is required: {0}")]
+    DefaultValueRequired(String),
 }
 
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
@@ -54,4 +60,6 @@ where
         old_column_name: &str,
         new_column_name: &str,
     ) -> MutResult<Self, ()>;
+
+    fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()>;
 }

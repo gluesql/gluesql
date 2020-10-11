@@ -1,13 +1,14 @@
 use sled::{self, Config, Db, IVec};
 use std::convert::TryFrom;
+use std::iter::once;
 use std::str;
 use thiserror::Error as ThisError;
 
-use sqlparser::ast::{ColumnDef, Ident};
+use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident, Value as AstValue};
 
 use crate::utils::Vector;
 use crate::{
-    AlterTable, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut,
+    AlterTable, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut, Value,
 };
 
 #[derive(ThisError, Debug)]
@@ -52,6 +53,19 @@ macro_rules! try_self {
         match $expr {
             Err(e) => {
                 let e: StorageError = e.into();
+                let e: Error = e.into();
+
+                return Err(($self, e));
+            }
+            Ok(v) => v,
+        }
+    };
+}
+
+macro_rules! try3 {
+    ($self: expr, $expr: expr) => {
+        match $expr {
+            Err(e) => {
                 let e: Error = e.into();
 
                 return Err(($self, e));
@@ -154,12 +168,7 @@ impl Store<IVec> for SledStorage {
 
 impl AlterTable for SledStorage {
     fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
-        let Schema { column_defs, .. } = match fetch_schema(&self.tree, table_name) {
-            Ok((_, schema)) => schema,
-            Err(e) => {
-                return Err((self, e));
-            }
-        };
+        let (_, Schema { column_defs, .. }) = try3!(self, fetch_schema(&self.tree, table_name));
 
         let schema = Schema {
             table_name: new_table_name.to_string(),
@@ -200,12 +209,7 @@ impl AlterTable for SledStorage {
         old_column_name: &str,
         new_column_name: &str,
     ) -> MutResult<Self, ()> {
-        let (key, column_defs) = match fetch_schema(&self.tree, table_name) {
-            Ok((key, schema)) => (key, schema.column_defs),
-            Err(e) => {
-                return Err((self, e));
-            }
-        };
+        let (key, Schema { column_defs, .. }) = try3!(self, fetch_schema(&self.tree, table_name));
 
         let i = column_defs
             .iter()
@@ -237,6 +241,73 @@ impl AlterTable for SledStorage {
         };
         let value = try_self!(self, bincode::serialize(&schema));
         try_self!(self, self.tree.insert(key, value));
+
+        Ok((self, ()))
+    }
+
+    fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
+        let (
+            key,
+            Schema {
+                table_name,
+                column_defs,
+            },
+        ) = try3!(self, fetch_schema(&self.tree, table_name));
+
+        let ColumnDef {
+            options, data_type, ..
+        } = column_def;
+
+        let nullable = options
+            .iter()
+            .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
+        let default = options
+            .iter()
+            .filter_map(|ColumnOptionDef { option, .. }| match option {
+                ColumnOption::Default(expr) => Some(expr),
+                _ => None,
+            })
+            .map(|expr| Value::from_expr(&data_type, nullable, expr))
+            .next();
+
+        let value = match (default, nullable) {
+            (Some(value), _) => try3!(self, value),
+            (None, true) => try3!(
+                self,
+                Value::from_data_type(&data_type, nullable, &AstValue::Null)
+            ),
+            (None, false) => {
+                return Err((
+                    self,
+                    StoreError::DefaultValueRequired(column_def.to_string()).into(),
+                ));
+            }
+        };
+
+        // migrate data
+        let prefix = format!("data/{}/", table_name);
+
+        for item in self.tree.scan_prefix(prefix.as_bytes()) {
+            let (key, row) = try_self!(self, item);
+            let row: Row = try_self!(self, bincode::deserialize(&row));
+            let row = Row(row.0.into_iter().chain(once(value.clone())).collect());
+            let row = try_self!(self, bincode::serialize(&row));
+
+            try_self!(self, self.tree.insert(key, row));
+        }
+
+        // update schema
+        let column_defs = column_defs
+            .into_iter()
+            .chain(once(column_def.clone()))
+            .collect::<Vec<ColumnDef>>();
+
+        let schema = Schema {
+            table_name,
+            column_defs,
+        };
+        let schema_value = try_self!(self, bincode::serialize(&schema));
+        try_self!(self, self.tree.insert(key, schema_value));
 
         Ok((self, ()))
     }

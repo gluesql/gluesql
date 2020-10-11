@@ -42,7 +42,8 @@ macro_rules! generate_tests {
         glue!(arithmetic_blend, arithmetic::blend);
         glue!(blend, blend::blend);
         glue!(drop_table, drop_table::drop_table);
-        glue!(alter_table, alter_table::alter_table);
+        glue!(alter_table_rename, alter_table::rename);
+        glue!(alter_table_add_drop, alter_table::add_drop);
         glue!(error, error::error);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
