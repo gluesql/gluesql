@@ -59,13 +59,11 @@ macro_rules! try_into {
     };
 }
 
-macro_rules! try3 {
+macro_rules! try_self {
     ($self: expr, $expr: expr) => {
         match $expr {
             Err(e) => {
-                let e: Error = e.into();
-
-                return Err(($self, e));
+                return Err(($self, e.into()));
             }
             Ok(v) => v,
         }
@@ -165,7 +163,7 @@ impl Store<IVec> for SledStorage {
 
 impl AlterTable for SledStorage {
     fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
-        let (_, Schema { column_defs, .. }) = try3!(self, fetch_schema(&self.tree, table_name));
+        let (_, Schema { column_defs, .. }) = try_self!(self, fetch_schema(&self.tree, table_name));
 
         let schema = Schema {
             table_name: new_table_name.to_string(),
@@ -206,7 +204,8 @@ impl AlterTable for SledStorage {
         old_column_name: &str,
         new_column_name: &str,
     ) -> MutResult<Self, ()> {
-        let (key, Schema { column_defs, .. }) = try3!(self, fetch_schema(&self.tree, table_name));
+        let (key, Schema { column_defs, .. }) =
+            try_self!(self, fetch_schema(&self.tree, table_name));
 
         let i = column_defs
             .iter()
@@ -249,7 +248,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
             },
-        ) = try3!(self, fetch_schema(&self.tree, table_name));
+        ) = try_self!(self, fetch_schema(&self.tree, table_name));
 
         let ColumnDef {
             options, data_type, ..
@@ -268,8 +267,8 @@ impl AlterTable for SledStorage {
             .next();
 
         let value = match (default, nullable) {
-            (Some(value), _) => try3!(self, value),
-            (None, true) => try3!(
+            (Some(value), _) => try_self!(self, value),
+            (None, true) => try_self!(
                 self,
                 Value::from_data_type(&data_type, nullable, &AstValue::Null)
             ),
