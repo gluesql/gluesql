@@ -1,10 +1,17 @@
+#[cfg(feature = "alter-table")]
+mod alter_table;
+#[cfg(feature = "alter-table")]
+pub use alter_table::*;
+#[cfg(not(feature = "alter-table"))]
+pub trait AlterTable {}
+
 use serde::Serialize;
 use std::fmt::Debug;
 use std::marker::Sized;
 use thiserror::Error;
 
-use super::data::{Row, Schema};
-use super::result::{MutResult, Result};
+use crate::data::{Row, Schema};
+use crate::result::{MutResult, Result};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum StoreError {

@@ -1,4 +1,6 @@
 pub mod aggregate;
+#[cfg(feature = "alter-table")]
+pub mod alter_table;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
@@ -53,5 +55,10 @@ macro_rules! generate_tests {
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
         glue!(filter, filter::filter);
+
+        #[cfg(feature = "alter-table")]
+        glue!(alter_table_rename, alter_table::rename);
+        #[cfg(feature = "alter-table")]
+        glue!(alter_table_add_drop, alter_table::add_drop);
     };
 }

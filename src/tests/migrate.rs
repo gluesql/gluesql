@@ -22,7 +22,7 @@ CREATE TABLE Test (
 
     let error_cases = vec![
         (
-            RowError::UnsupportedAstValueType.into(),
+            ValueError::ExprNotSupported("3 * 2".to_owned()).into(),
             "INSERT INTO Test (id, num) VALUES (3 * 2, 1);",
         ),
         (

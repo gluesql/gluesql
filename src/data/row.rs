@@ -18,9 +18,6 @@ pub enum RowError {
     #[error("literals have more values than target columns")]
     TooManyValues,
 
-    #[error("unsupported ast value type")]
-    UnsupportedAstValueType,
-
     #[error("conflict! row cannot be empty")]
     ConflictOnEmptyRow,
 }
@@ -64,22 +61,17 @@ impl Row {
 
                 let default = options
                     .iter()
-                    .find(|ColumnOptionDef { option, .. }| match option {
-                        ColumnOption::Default(_) => true,
-                        _ => false,
-                    });
+                    .filter_map(|ColumnOptionDef { option, .. }| match option {
+                        ColumnOption::Default(expr) => Some(expr),
+                        _ => None,
+                    })
+                    .next();
 
                 let expr = match (i, default) {
                     (Some(i), _) => values
                         .get(i)
                         .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
-                    (
-                        None,
-                        Some(&ColumnOptionDef {
-                            option: ColumnOption::Default(ref expr),
-                            ..
-                        }),
-                    ) => Ok(expr),
+                    (None, Some(expr)) => Ok(expr),
                     (None, _) => Err(RowError::LackOfRequiredColumn(name.clone())),
                 }?;
 
@@ -87,11 +79,7 @@ impl Row {
                     .iter()
                     .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
 
-                match expr {
-                    Expr::Value(literal) => Value::from_data_type(&data_type, nullable, literal),
-                    Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
-                    _ => Err(RowError::UnsupportedAstValueType.into()),
-                }
+                Value::from_expr(&data_type, nullable, expr)
             })
             .collect::<Result<_>>()
             .map(Self)

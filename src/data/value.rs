@@ -5,7 +5,7 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use thiserror::Error as ThisError;
 
-use sqlparser::ast::{DataType, Value as AstValue};
+use sqlparser::ast::{DataType, Expr, Ident, Value as AstValue};
 
 use crate::executor::GroupKey;
 use crate::result::{Error, Result};
@@ -17,6 +17,9 @@ pub enum ValueError {
 
     #[error("literal not supported yet")]
     LiteralNotSupported,
+
+    #[error("ast expr not supported: {0}")]
+    ExprNotSupported(String),
 
     #[error("failed to parse number")]
     FailedToParseNumber,
@@ -211,6 +214,14 @@ impl BoolToValue for bool {
 }
 
 impl Value {
+    pub fn from_expr(data_type: &DataType, nullable: bool, expr: &Expr) -> Result<Self> {
+        match expr {
+            Expr::Value(literal) => Value::from_data_type(&data_type, nullable, literal),
+            Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
+            _ => Err(ValueError::ExprNotSupported(expr.to_string()).into()),
+        }
+    }
+
     pub fn from_data_type(
         data_type: &DataType,
         nullable: bool,

@@ -14,6 +14,7 @@ keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webass
 all-features = true
 
 [features]
+alter-table = []
 sled-storage = ["sled", "bincode"]
 
 [dependencies]

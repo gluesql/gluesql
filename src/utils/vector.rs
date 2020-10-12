@@ -1,3 +1,4 @@
+use std::convert::{From, Into};
 use std::vec::IntoIter;
 
 pub struct Vector<T>(Vec<T>);
@@ -13,11 +14,41 @@ impl<T> Vector<T> {
         self
     }
 
+    #[cfg(all(feature = "alter-table", feature = "sled-storage"))]
+    pub fn update(mut self, i: usize, value: T) -> Self {
+        self.0[i] = value;
+
+        self
+    }
+
     pub fn get(&self, i: usize) -> Option<&T> {
         self.0.get(i)
     }
+}
 
-    pub fn into_iter(self) -> IntoIter<T> {
+impl<T> Default for Vector<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> IntoIterator for Vector<T> {
+    type Item = T;
+    type IntoIter = IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl<T> From<Vec<T>> for Vector<T> {
+    fn from(vector: Vec<T>) -> Self {
+        Self(vector)
+    }
+}
+
+impl<T> Into<Vec<T>> for Vector<T> {
+    fn into(self) -> Vec<T> {
+        self.0
     }
 }

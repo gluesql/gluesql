@@ -29,8 +29,19 @@ impl<K: Hash + Eq, V> IndexMap<K, V> {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+}
 
-    pub fn into_iter(self) -> IntoIter<K, V> {
+impl<K: Hash + Eq, V> Default for IndexMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<K: Hash + Eq, V> IntoIterator for IndexMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = IntoIter<K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }
