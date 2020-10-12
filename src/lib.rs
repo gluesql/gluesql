@@ -39,9 +39,11 @@
 //! ## Custom Storage
 //! All you need to implement for `gluesql` is implementing 3 traits (2 for functions, 1 for
 //! running tests).
+//! There is also an optional trait (AlterTable), whether implementing it or not is all up to you.
 //!
 //! * [Store](store/trait.Store.html)
 //! * [StoreMut](store/trait.StoreMut.html)
+//! * [AlterTable - optional](store/trait.AlterTable.html)
 //! * [Tester](tests/trait.Tester.html)
 //!
 //! Custom storage examples to see,
