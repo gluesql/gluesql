@@ -15,7 +15,7 @@ You can simply use GlueSQL as an embedded SQL database, GlueSQL provides [sled](
 In your `Cargo.toml`
 ```toml
 [dependencies]
-gluesql = { version = "0.1.16", features = ["sled-storage"] }
+gluesql = { version = "0.2", features = ["sled-storage"] }
 ```
 
 ### Usage
@@ -45,24 +45,35 @@ fn main() {
 Now you don't need to include `sled-storage`. So in `Cargo.toml`,
 ```toml
 [dependencies]
-gluesql = "0.1.16"
+gluesql = "0.2"
 ```
 
 ### Usage
 All you only need to do is implementing 2 traits: `Store` and `StoreMut`!
-In `src/store.rs`,
+In `src/store/mod.rs`,
 ```rust
 pub trait Store<T: Debug> {
-    fn fetch_schema(&self, table_name: &str) -> Result<Schema>;
-    fn scan_data(&self, table_name: &str) -> Result<RowIter<T>>;
+    fn fetch_schema(..) -> ..;
+    fn scan_data(..) -> ..;
 }
 
 pub trait StoreMut<T: Debug> where Self: Sized {
-    fn generate_id(self, table_name: &str) -> MutResult<Self, T>;
-    fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()>;
-    fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
-    fn insert_data(self, key: &T, row: Row) -> MutResult<Self, ()>;
-    fn delete_data(self, key: &T) -> MutResult<Self, ()>;
+    fn generate_id(..) -> ..;
+    fn insert_schema(..) -> ..;
+    fn delete_schema(..) -> ..;
+    fn insert_data(..) -> ..;
+    fn delete_data(..) -> ..;
+}
+```
+
+And a single optional trait, whether implementing this is all up to you!
+In `src/store/alter_table.rs`,
+```rust
+pub trait AlterTable where Self: Sized {
+    fn rename_schema(..) -> ..;
+    fn rename_column(..) -> ..;
+    fn add_column(..) -> ..;
+    fn drop_column(..) -> ..;
 }
 ```
 
@@ -77,6 +88,7 @@ GlueSQL-js provides 3 storage options,
 GlueSQL currently supports limited queries, it's in very early stage.
 
 * `CREATE` with 4 types: `INTEGER`, `FLOAT`, `BOOLEAN`, `TEXT` with an optional `NULL` attribute.
+* `ALTER TABLE` with 4 operations: `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
 * `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `DROP TABLE`
 * `GROUP BY`, `HAVING`
 * Nested select, join, aggregations ...
