@@ -1,79 +1,13 @@
-#[cfg(feature = "alter-table")]
 use boolinator::Boolinator;
-use sled::{self, Config, Db, IVec};
-use std::convert::TryFrom;
-#[cfg(feature = "alter-table")]
 use std::iter::once;
 use std::str;
-use thiserror::Error as ThisError;
 
-#[cfg(feature = "alter-table")]
 use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident, Value as AstValue};
 
-#[cfg(feature = "alter-table")]
+use super::{fetch_schema, AlterTableError, SledStorage, StorageError};
 use crate::utils::Vector;
-use crate::{
-    AlterTable, Error, MutResult, Result, Row, RowIter, Schema, Store, StoreError, StoreMut,
-};
-#[cfg(feature = "alter-table")]
-use crate::{AlterTableError, Value};
+use crate::{try_into, AlterTable, Error, MutResult, Row, Schema, Value};
 
-#[derive(ThisError, Debug)]
-enum StorageError {
-    #[error(transparent)]
-    Store(#[from] StoreError),
-
-    #[cfg(feature = "alter-table")]
-    #[error(transparent)]
-    AlterTable(#[from] AlterTableError),
-
-    #[error(transparent)]
-    Sled(#[from] sled::Error),
-    #[error(transparent)]
-    Bincode(#[from] bincode::Error),
-    #[error(transparent)]
-    Str(#[from] str::Utf8Error),
-}
-
-impl Into<Error> for StorageError {
-    fn into(self) -> Error {
-        use StorageError::*;
-
-        match self {
-            Sled(e) => Error::Storage(Box::new(e)),
-            Bincode(e) => Error::Storage(e),
-            Str(e) => Error::Storage(Box::new(e)),
-            Store(e) => e.into(),
-
-            #[cfg(feature = "alter-table")]
-            AlterTable(e) => e.into(),
-        }
-    }
-}
-
-macro_rules! try_into {
-    ($expr: expr) => {
-        $expr.map_err(|e| {
-            let e: StorageError = e.into();
-            let e: Error = e.into();
-
-            e
-        })?
-    };
-    ($self: expr, $expr: expr) => {
-        match $expr {
-            Err(e) => {
-                let e: StorageError = e.into();
-                let e: Error = e.into();
-
-                return Err(($self, e));
-            }
-            Ok(v) => v,
-        }
-    };
-}
-
-#[cfg(feature = "alter-table")]
 macro_rules! try_self {
     ($self: expr, $expr: expr) => {
         match $expr {
@@ -85,101 +19,6 @@ macro_rules! try_self {
     };
 }
 
-#[derive(Debug)]
-pub struct SledStorage {
-    tree: Db,
-}
-
-impl SledStorage {
-    pub fn new(filename: &str) -> Result<Self> {
-        let tree = try_into!(sled::open(filename));
-
-        Ok(Self { tree })
-    }
-}
-
-impl TryFrom<Config> for SledStorage {
-    type Error = Error;
-
-    fn try_from(config: Config) -> Result<Self> {
-        let tree = try_into!(config.open());
-
-        Ok(Self { tree })
-    }
-}
-
-impl StoreMut<IVec> for SledStorage {
-    fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
-        let id = try_into!(self, self.tree.generate_id());
-        let id = format!("data/{}/{}", table_name, id);
-
-        Ok((self, IVec::from(id.as_bytes())))
-    }
-
-    fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
-        let key = format!("schema/{}", schema.table_name);
-        let key = key.as_bytes();
-        let value = try_into!(self, bincode::serialize(schema));
-
-        try_into!(self, self.tree.insert(key, value));
-
-        Ok((self, ()))
-    }
-
-    fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
-        let prefix = format!("data/{}/", table_name);
-        let tree = &self.tree;
-
-        for item in tree.scan_prefix(prefix.as_bytes()) {
-            let (key, _) = try_into!(self, item);
-
-            try_into!(self, tree.remove(key));
-        }
-
-        let key = format!("schema/{}", table_name);
-        try_into!(self, tree.remove(key));
-
-        Ok((self, ()))
-    }
-
-    fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, ()> {
-        let value = try_into!(self, bincode::serialize(&row));
-
-        try_into!(self, self.tree.insert(key, value));
-
-        Ok((self, ()))
-    }
-
-    fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {
-        try_into!(self, self.tree.remove(key));
-
-        Ok((self, ()))
-    }
-}
-
-impl Store<IVec> for SledStorage {
-    fn fetch_schema(&self, table_name: &str) -> Result<Schema> {
-        fetch_schema(&self.tree, table_name).map(|(_, schema)| schema)
-    }
-
-    fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
-        let prefix = format!("data/{}/", table_name);
-
-        let result_set = self.tree.scan_prefix(prefix.as_bytes()).map(move |item| {
-            let (key, value) = try_into!(item);
-            let value = try_into!(bincode::deserialize(&value));
-
-            Ok((key, value))
-        });
-
-        Ok(Box::new(result_set))
-    }
-}
-
-#[cfg(not(feature = "alter-table"))]
-impl AlterTable for SledStorage {}
-
-#[cfg(feature = "alter-table")]
 impl AlterTable for SledStorage {
     fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
         let (_, Schema { column_defs, .. }) = try_self!(self, fetch_schema(&self.tree, table_name));
@@ -403,13 +242,4 @@ impl AlterTable for SledStorage {
 
         Ok((self, ()))
     }
-}
-
-fn fetch_schema(tree: &Db, table_name: &str) -> Result<(String, Schema)> {
-    let key = format!("schema/{}", table_name);
-    let value = try_into!(tree.get(&key.as_bytes()));
-    let value = value.ok_or(StoreError::SchemaNotFound)?;
-    let schema = try_into!(bincode::deserialize(&value));
-
-    Ok((key, schema))
 }
