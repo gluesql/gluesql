@@ -1,3 +1,5 @@
+//! Tests in this file are only executed when feature = "alter-table" is enabled.
+
 use crate::*;
 use Value::*;
 
