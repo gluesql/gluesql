@@ -26,7 +26,6 @@ pub fn rename(tester: impl tests::Tester) {
             Ok(Payload::AlterTable),
         ),
         ("SELECT new_id FROM Bar", Ok(select!(I64; 1; 2; 3))),
-        ("SELECT new_id FROM Bar", Ok(select!(I64; 1; 2; 3))),
         (
             "ALTER TABLE Bar RENAME COLUMN hello TO idid",
             Err(AlterTableError::RenamingColumnNotFound.into()),
