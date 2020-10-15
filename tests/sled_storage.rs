@@ -2,7 +2,10 @@
 use std::convert::TryFrom;
 
 #[cfg(feature = "sled-storage")]
-use gluesql::{execute, generate_tests, sled, tests::*, Payload, Query, Result, SledStorage};
+use gluesql::{
+    execute, generate_alter_table_tests, generate_tests, sled, tests::*, Payload, Query, Result,
+    SledStorage,
+};
 
 #[cfg(feature = "sled-storage")]
 struct SledTester {
