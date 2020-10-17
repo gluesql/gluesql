@@ -96,6 +96,24 @@ pub fn blend(mut tester: impl tests::Tester) {
                 3   "Jorno".to_owned()   105 3   1
             ),
         ),
+        (
+            "SELECT id as Ident, name FROM BlendUser",
+            select!(
+                I64 Str;
+                1   "Taehoon".to_owned();
+                2   "Mike".to_owned();
+                3   "Jorno".to_owned()
+            ),
+        ),
+        (
+            "SELECT 2+id+2*100-1 as Ident, name FROM BlendUser",
+            select!(
+                I64 Str;
+                202   "Taehoon".to_owned();
+                203   "Mike".to_owned();
+                204   "Jorno".to_owned()
+            ),
+        ),
     ];
 
     test_cases
