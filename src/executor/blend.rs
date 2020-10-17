@@ -155,47 +155,48 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                         None => err!(BlendError::TableNotFound(table_alias.to_string())),
                     }
                 }
-                SelectItem::UnnamedExpr(expr) => match expr {
-                    Expr::Identifier(ident) => match get_value(&context, &ident.value) {
-                        Some(value) => Blended::Single(once(Ok(value))),
-                        None => err!(BlendError::ColumnNotFound(ident.to_string())),
-                    },
-                    Expr::CompoundIdentifier(idents) => {
-                        if idents.len() != 2 {
-                            return err!(BlendError::FieldDefinitionNotSupported);
-                        }
-
-                        let table_alias = &idents[0].value;
-                        let column = &idents[1].value;
-
-                        match get_alias_value(&context, table_alias, column) {
+                SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
+                    match expr {
+                        Expr::Identifier(ident) => match get_value(&context, &ident.value) {
                             Some(value) => Blended::Single(once(Ok(value))),
-                            None => err!(BlendError::ColumnNotFound(format!(
-                                "{}.{}",
-                                table_alias, column
-                            ))),
+                            None => err!(BlendError::ColumnNotFound(ident.to_string())),
+                        },
+                        Expr::CompoundIdentifier(idents) => {
+                            if idents.len() != 2 {
+                                return err!(BlendError::FieldDefinitionNotSupported);
+                            }
+
+                            let table_alias = &idents[0].value;
+                            let column = &idents[1].value;
+
+                            match get_alias_value(&context, table_alias, column) {
+                                Some(value) => Blended::Single(once(Ok(value))),
+                                None => err!(BlendError::ColumnNotFound(format!(
+                                    "{}.{}",
+                                    table_alias, column
+                                ))),
+                            }
                         }
-                    }
-                    Expr::BinaryOp { .. } | Expr::Function(_) => {
-                        let value = evaluate_blended(
-                            self.storage,
-                            None,
-                            &context,
-                            aggregated.as_ref(),
-                            expr,
-                        )
-                        .map(Rc::new);
+                        Expr::BinaryOp { .. } | Expr::Function(_) => {
+                            let value = evaluate_blended(
+                                self.storage,
+                                None,
+                                &context,
+                                aggregated.as_ref(),
+                                expr,
+                            )
+                            .map(Rc::new);
 
-                        Blended::Single(once(value))
-                    }
-                    Expr::Value(literal) => {
-                        let value = Value::try_from(literal).map(Rc::new);
+                            Blended::Single(once(value))
+                        }
+                        Expr::Value(literal) => {
+                            let value = Value::try_from(literal).map(Rc::new);
 
-                        Blended::Single(once(value))
+                            Blended::Single(once(value))
+                        }
+                        _ => err!(BlendError::FieldDefinitionNotSupported),
                     }
-                    _ => err!(BlendError::FieldDefinitionNotSupported),
-                },
-                _ => err!(BlendError::FieldDefinitionNotSupported),
+                }
             })
             .collect::<Result<_>>()
     }
