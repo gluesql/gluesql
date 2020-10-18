@@ -106,12 +106,12 @@ pub fn blend(mut tester: impl tests::Tester) {
             ),
         ),
         (
-            "SELECT 2+id+2*100-1 as Ident, name FROM BlendUser",
+            "SELECT (1 + 2) as foo, 2+id+2*100-1 as Ident, name FROM BlendUser",
             select!(
-                I64 Str;
-                202   "Taehoon".to_owned();
-                203   "Mike".to_owned();
-                204   "Jorno".to_owned()
+                I64 I64 Str;
+                3   202   "Taehoon".to_owned();
+                3   203   "Mike".to_owned();
+                3   204   "Jorno".to_owned()
             ),
         ),
     ];
@@ -123,7 +123,7 @@ pub fn blend(mut tester: impl tests::Tester) {
     let error_cases = vec![
         (
             BlendError::FieldDefinitionNotSupported,
-            "SELECT (1 * 2) as a FROM BlendItem;",
+            "SELECT a.b.c.d as a FROM BlendItem;",
         ),
         (
             BlendError::ColumnNotFound("a".to_owned()),

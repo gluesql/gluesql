@@ -177,7 +177,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                                 ))),
                             }
                         }
-                        Expr::BinaryOp { .. } | Expr::Function(_) => {
+                        _ => {
                             let value = evaluate_blended(
                                 self.storage,
                                 None,
@@ -189,12 +189,6 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
 
                             Blended::Single(once(value))
                         }
-                        Expr::Value(literal) => {
-                            let value = Value::try_from(literal).map(Rc::new);
-
-                            Blended::Single(once(value))
-                        }
-                        _ => err!(BlendError::FieldDefinitionNotSupported),
                     }
                 }
             })
