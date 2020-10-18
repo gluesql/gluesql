@@ -122,7 +122,7 @@ pub fn blend(mut tester: impl tests::Tester) {
 
     let error_cases = vec![
         (
-            BlendError::FieldDefinitionNotSupported,
+            BlendError::NotSupportedCompoundIdentifier("a.b.c.d".to_owned()),
             "SELECT a.b.c.d as a FROM BlendItem;",
         ),
         (

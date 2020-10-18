@@ -17,8 +17,8 @@ use crate::store::Store;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum BlendError {
-    #[error("this field definition is not supported yet")]
-    FieldDefinitionNotSupported,
+    #[error("Not supported compound identifier: {0}")]
+    NotSupportedCompoundIdentifier(String),
 
     #[error("column not found: {0}")]
     ColumnNotFound(String),
@@ -163,7 +163,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                         },
                         Expr::CompoundIdentifier(idents) => {
                             if idents.len() != 2 {
-                                return err!(BlendError::FieldDefinitionNotSupported);
+                                return err!(BlendError::NotSupportedCompoundIdentifier(expr.to_string()));
                             }
 
                             let table_alias = &idents[0].value;
