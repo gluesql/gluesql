@@ -2,6 +2,7 @@ use boolinator::Boolinator;
 use im_rc::HashMap;
 use serde::Serialize;
 use std::fmt::Debug;
+use std::rc::Rc;
 use thiserror::Error;
 
 use sqlparser::ast::{BinaryOperator, Expr, Function, Ident, UnaryOperator};
@@ -22,7 +23,7 @@ pub enum FilterError {
 pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     where_clause: Option<&'a Expr>,
-    context: Option<&'a FilterContext<'a>>,
+    context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<&'a HashMap<&'a Function, Value>>,
 }
 
@@ -30,7 +31,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
     pub fn new(
         storage: &'a dyn Store<T>,
         where_clause: Option<&'a Expr>,
-        context: Option<&'a FilterContext<'a>>,
+        context: Option<Rc<FilterContext<'a>>>,
         aggregated: Option<&'a HashMap<&'a Function, Value>>,
     ) -> Self {
         Self {
@@ -42,70 +43,45 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
     }
 
     pub fn check(&self, table_alias: &str, columns: &[Ident], row: &Row) -> Result<bool> {
-        let context = FilterContext::new(table_alias, columns, row, self.context);
+        let next = self.context.as_ref().map(Rc::clone);
+        let context = FilterContext::new(table_alias, columns, row, next);
+        let context = Some(context).map(Rc::new);
 
         match self.where_clause {
-            Some(expr) => check_expr(self.storage, Some(context).as_ref(), self.aggregated, expr),
+            Some(expr) => check_expr(self.storage, context, self.aggregated, expr),
             None => Ok(true),
         }
     }
 
     pub fn check_blended(&self, blend_context: &BlendContext<'_>) -> Result<bool> {
         match self.where_clause {
-            Some(expr) => check_blended_expr(
-                self.storage,
-                self.context,
-                blend_context,
-                self.aggregated,
-                expr,
-            ),
+            Some(expr) => {
+                let context = self.context.as_ref().map(Rc::clone);
+                let context = FilterContext::concat(context, blend_context);
+
+                check_expr(self.storage, context, self.aggregated, expr)
+            }
             None => Ok(true),
         }
     }
 }
 
-pub struct BlendedFilter<'a, T: 'static + Debug> {
-    filter: &'a Filter<'a, T>,
-    context: Option<&'a BlendContext<'a>>,
-}
-
-impl<'a, T: 'static + Debug> BlendedFilter<'a, T> {
-    pub fn new(filter: &'a Filter<'a, T>, context: Option<&'a BlendContext<'a>>) -> Self {
-        Self { filter, context }
-    }
-
-    pub fn check(&self, table_alias: &str, columns: &[Ident], row: &Row) -> Result<bool> {
-        let BlendedFilter {
-            filter:
-                Filter {
-                    storage,
-                    where_clause,
-                    context: next,
-                    aggregated,
-                },
-            context: blend_context,
-        } = self;
-
-        let filter_context = FilterContext::new(table_alias, columns, row, *next);
-        let filter_context = Some(&filter_context);
-
-        where_clause.map_or(Ok(true), |expr| match blend_context {
-            Some(blend_context) => {
-                check_blended_expr(*storage, filter_context, blend_context, *aggregated, expr)
-            }
-            None => check_expr(*storage, filter_context, *aggregated, expr),
-        })
-    }
-}
-
-fn check_expr<T: 'static + Debug>(
+pub fn check_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,
-    filter_context: Option<&FilterContext<'_>>,
+    filter_context: Option<Rc<FilterContext<'_>>>,
     aggregated: Option<&HashMap<&Function, Value>>,
     expr: &Expr,
 ) -> Result<bool> {
-    let evaluate = |expr| evaluate(storage, filter_context, aggregated, expr);
-    let check = |expr| check_expr(storage, filter_context, aggregated, expr);
+    let evaluate = |expr| {
+        let filter_context = filter_context.as_ref().map(Rc::clone);
+
+        evaluate(storage, filter_context, aggregated, expr)
+    };
+    let check = |expr| {
+        let filter_context = filter_context.as_ref().map(Rc::clone);
+
+        check_expr(storage, filter_context, aggregated, expr)
+    };
 
     match expr {
         Expr::BinaryOp { op, left, right } => {
@@ -181,33 +157,5 @@ fn check_expr<T: 'static + Debug>(
         Expr::IsNull(expr) => Ok(!evaluate(expr)?.is_some()),
         Expr::IsNotNull(expr) => Ok(evaluate(expr)?.is_some()),
         _ => Err(FilterError::Unimplemented.into()),
-    }
-}
-
-pub fn check_blended_expr<T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    filter_context: Option<&FilterContext<'_>>,
-    blend_context: &BlendContext<'_>,
-    aggregated: Option<&HashMap<&Function, Value>>,
-    expr: &Expr,
-) -> Result<bool> {
-    let BlendContext {
-        table_alias,
-        columns,
-        row,
-        next,
-        ..
-    } = blend_context;
-
-    let row_context = row
-        .as_ref()
-        .map(|row| FilterContext::new(table_alias, &columns, row, filter_context));
-    let filter_context = row_context.as_ref().or(filter_context);
-
-    match next {
-        Some(blend_context) => {
-            check_blended_expr(storage, filter_context, blend_context, aggregated, expr)
-        }
-        None => check_expr(storage, filter_context, aggregated, expr),
     }
 }

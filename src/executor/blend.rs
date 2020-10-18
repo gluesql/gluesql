@@ -285,7 +285,7 @@ impl Context<'_> {
 
 fn evaluate_blended<T: 'static + Debug>(
     storage: &dyn Store<T>,
-    filter_context: Option<&FilterContext<'_>>,
+    filter_context: Option<Rc<FilterContext<'_>>>,
     context: &Context<'_>,
     aggregated: Option<&HashMap<&Function, Value>>,
     expr: &Expr,
@@ -304,10 +304,14 @@ fn evaluate_blended<T: 'static + Debug>(
         Row(values)
     });
 
-    let row_context = row
-        .as_ref()
-        .map(|row| FilterContext::new(table_alias, &columns, row, filter_context));
-    let filter_context = row_context.as_ref().or(filter_context);
+    let filter_context = match row.as_ref() {
+        Some(row) => {
+            let filter_context = FilterContext::new(table_alias, &columns, row, filter_context);
+
+            Some(Rc::new(filter_context))
+        }
+        None => filter_context,
+    };
 
     match next {
         Some(context) => evaluate_blended(storage, filter_context, context, aggregated, expr),
