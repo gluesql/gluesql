@@ -42,12 +42,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
         let row = Some(row);
         let columns = Rc::clone(&columns);
 
-        Ok(BlendContext {
-            table_alias: table.get_alias(),
-            columns,
-            row,
-            next: None,
-        })
+        Ok(BlendContext::new(table.get_alias(), columns, row, None))
     });
 
     Ok(rows)

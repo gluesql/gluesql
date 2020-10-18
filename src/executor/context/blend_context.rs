@@ -23,6 +23,20 @@ pub struct BlendContext<'a> {
 }
 
 impl<'a> BlendContext<'a> {
+    pub fn new(
+        table_alias: &'a str,
+        columns: Rc<Vec<Ident>>,
+        row: Option<Row>,
+        next: Option<Rc<BlendContext<'a>>>,
+    ) -> Self {
+        Self {
+            table_alias,
+            columns,
+            row,
+            next,
+        }
+    }
+
     pub fn get_value(&'a self, target: &str) -> Result<&'a Value> {
         let get_value = || {
             self.columns
