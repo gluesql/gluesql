@@ -40,13 +40,6 @@ enum Blended<I1, I2, I3, I4> {
     Err(I4),
 }
 
-struct Context<'a> {
-    table_alias: &'a str,
-    columns: Rc<Vec<Ident>>,
-    values: Option<Vec<Rc<Value>>>,
-    next: Option<Box<Context<'a>>>,
-}
-
 impl<'a, T: 'static + Debug> Blend<'a, T> {
     pub fn new(storage: &'a dyn Store<T>, fields: &'a [SelectItem]) -> Self {
         Self { storage, fields }
@@ -138,7 +131,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
             .iter()
             .flat_map(|item| match item {
                 SelectItem::Wildcard => {
-                    let values = get_all_values(&context).into_iter().map(Ok);
+                    let values = context.get_all_values().into_iter().map(Ok);
 
                     Blended::All(values)
                 }
@@ -150,26 +143,28 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                         }
                     };
 
-                    match get_alias_values(&context, table_alias) {
+                    match context.get_alias_values(table_alias) {
                         Some(values) => Blended::AllInTable(values.into_iter().map(Ok)),
                         None => err!(BlendError::TableNotFound(table_alias.to_string())),
                     }
                 }
                 SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
                     match expr {
-                        Expr::Identifier(ident) => match get_value(&context, &ident.value) {
+                        Expr::Identifier(ident) => match context.get_value(&ident.value) {
                             Some(value) => Blended::Single(once(Ok(value))),
                             None => err!(BlendError::ColumnNotFound(ident.to_string())),
                         },
                         Expr::CompoundIdentifier(idents) => {
                             if idents.len() != 2 {
-                                return err!(BlendError::NotSupportedCompoundIdentifier(expr.to_string()));
+                                return err!(BlendError::NotSupportedCompoundIdentifier(
+                                    expr.to_string()
+                                ));
                             }
 
                             let table_alias = &idents[0].value;
                             let column = &idents[1].value;
 
-                            match get_alias_value(&context, table_alias, column) {
+                            match context.get_alias_value(table_alias, column) {
                                 Some(value) => Blended::Single(once(Ok(value))),
                                 None => err!(BlendError::ColumnNotFound(format!(
                                     "{}.{}",
@@ -196,33 +191,22 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
     }
 }
 
-fn get_value(context: &Context<'_>, target: &str) -> Option<Rc<Value>> {
-    let Context {
-        values,
-        columns,
-        next,
-        ..
-    } = context;
-
-    columns
-        .iter()
-        .position(|column| column.value == target)
-        .map(|index| match values {
-            Some(values) => Rc::clone(&values[index]),
-            None => Rc::new(Value::Empty),
-        })
-        .or_else(|| next.as_ref().and_then(|next| get_value(next, target)))
+struct Context<'a> {
+    table_alias: &'a str,
+    columns: Rc<Vec<Ident>>,
+    values: Option<Vec<Rc<Value>>>,
+    next: Option<Box<Context<'a>>>,
 }
 
-fn get_alias_value(context: &Context<'_>, alias: &str, target: &str) -> Option<Rc<Value>> {
-    let Context {
-        table_alias,
-        values,
-        columns,
-        next,
-    } = context;
+impl Context<'_> {
+    fn get_value(&self, target: &str) -> Option<Rc<Value>> {
+        let Context {
+            values,
+            columns,
+            next,
+            ..
+        } = self;
 
-    if table_alias == &alias {
         columns
             .iter()
             .position(|column| column.value == target)
@@ -230,51 +214,72 @@ fn get_alias_value(context: &Context<'_>, alias: &str, target: &str) -> Option<R
                 Some(values) => Rc::clone(&values[index]),
                 None => Rc::new(Value::Empty),
             })
-    } else {
-        next.as_ref()
-            .and_then(|next| get_alias_value(next, alias, target))
+            .or_else(|| next.as_ref().and_then(|next| next.get_value(target)))
     }
-}
 
-fn get_all_values(context: &Context<'_>) -> Vec<Rc<Value>> {
-    let Context {
-        values,
-        next,
-        columns,
-        ..
-    } = context;
+    fn get_alias_value(&self, alias: &str, target: &str) -> Option<Rc<Value>> {
+        let Context {
+            table_alias,
+            values,
+            columns,
+            next,
+        } = self;
 
-    let values: Vec<Rc<Value>> = match values {
-        Some(values) => values.iter().map(Rc::clone).collect(),
-        None => columns.iter().map(|_| Rc::new(Value::Empty)).collect(),
-    };
-
-    match next.as_ref() {
-        Some(next) => get_all_values(next)
-            .into_iter()
-            .chain(values.into_iter())
-            .collect(),
-        None => values,
+        if table_alias == &alias {
+            columns
+                .iter()
+                .position(|column| column.value == target)
+                .map(|index| match values {
+                    Some(values) => Rc::clone(&values[index]),
+                    None => Rc::new(Value::Empty),
+                })
+        } else {
+            next.as_ref()
+                .and_then(|next| next.get_alias_value(alias, target))
+        }
     }
-}
 
-fn get_alias_values(context: &Context<'_>, alias: &str) -> Option<Vec<Rc<Value>>> {
-    let Context {
-        table_alias,
-        values,
-        columns,
-        next,
-    } = context;
+    fn get_all_values(&self) -> Vec<Rc<Value>> {
+        let Context {
+            values,
+            next,
+            columns,
+            ..
+        } = self;
 
-    if table_alias == &alias {
-        let values = match values {
+        let values: Vec<Rc<Value>> = match values {
             Some(values) => values.iter().map(Rc::clone).collect(),
             None => columns.iter().map(|_| Rc::new(Value::Empty)).collect(),
         };
 
-        Some(values)
-    } else {
-        next.as_ref().and_then(|next| get_alias_values(next, alias))
+        match next.as_ref() {
+            Some(next) => next
+                .get_all_values()
+                .into_iter()
+                .chain(values.into_iter())
+                .collect(),
+            None => values,
+        }
+    }
+
+    fn get_alias_values(&self, alias: &str) -> Option<Vec<Rc<Value>>> {
+        let Context {
+            table_alias,
+            values,
+            columns,
+            next,
+        } = self;
+
+        if table_alias == &alias {
+            let values = match values {
+                Some(values) => values.iter().map(Rc::clone).collect(),
+                None => columns.iter().map(|_| Rc::new(Value::Empty)).collect(),
+            };
+
+            Some(values)
+        } else {
+            next.as_ref().and_then(|next| next.get_alias_values(alias))
+        }
     }
 }
 
