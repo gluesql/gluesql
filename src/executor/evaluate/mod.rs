@@ -43,7 +43,10 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 None => {
                     panic!();
                 }
-                Some(context) => context.get_value(&ident.value).map(Evaluated::ValueRef),
+                Some(context) => context.get_value(&ident.value).map(|value| match value {
+                    Some(value) => Evaluated::ValueRef(value),
+                    None => Evaluated::Value(Value::Empty),
+                }),
             },
         },
         Expr::Nested(expr) => eval(&expr),
@@ -60,9 +63,14 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 None => {
                     panic!();
                 }
-                Some(context) => context
-                    .get_alias_value(table_alias, column)
-                    .map(Evaluated::ValueRef),
+                Some(context) => {
+                    context
+                        .get_alias_value(table_alias, column)
+                        .map(|value| match value {
+                            Some(value) => Evaluated::ValueRef(value),
+                            None => Evaluated::Value(Value::Empty),
+                        })
+                }
             }
         }
         Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))?

@@ -74,4 +74,35 @@ impl<'a> BlendContext<'a> {
             Some(value) => Ok(value),
         }
     }
+
+    pub fn get_alias_values(&self, alias: &str) -> Option<Vec<Value>> {
+        if self.table_alias == alias {
+            let values = match &self.row {
+                Some(Row(values)) => values.clone(),
+                None => self.columns.iter().map(|_| Value::Empty).collect(),
+            };
+
+            Some(values)
+        } else {
+            self.next
+                .as_ref()
+                .and_then(|next| next.get_alias_values(alias))
+        }
+    }
+
+    pub fn get_all_values(&'a self) -> Vec<Value> {
+        let values: Vec<Value> = match &self.row {
+            Some(Row(values)) => values.clone(),
+            None => self.columns.iter().map(|_| Value::Empty).collect(),
+        };
+
+        match &self.next {
+            Some(next) => next
+                .get_all_values()
+                .into_iter()
+                .chain(values.into_iter())
+                .collect(),
+            None => values,
+        }
+    }
 }

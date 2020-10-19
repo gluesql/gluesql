@@ -120,20 +120,10 @@ pub fn blend(mut tester: impl tests::Tester) {
         .into_iter()
         .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
 
-    let error_cases = vec![
-        (
-            BlendError::NotSupportedCompoundIdentifier("a.b.c.d".to_owned()),
-            "SELECT a.b.c.d as a FROM BlendItem;",
-        ),
-        (
-            BlendError::ColumnNotFound("a".to_owned()),
-            "SELECT a FROM BlendUser",
-        ),
-        (
-            BlendError::TableNotFound("Whatever".to_owned()),
-            "SELECT Whatever.* FROM BlendUser",
-        ),
-    ];
+    let error_cases = vec![(
+        BlendError::TableNotFound("Whatever".to_owned()),
+        "SELECT Whatever.* FROM BlendUser",
+    )];
 
     error_cases
         .into_iter()

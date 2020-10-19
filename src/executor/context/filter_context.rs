@@ -19,7 +19,7 @@ pub enum FilterContextError {
 pub struct FilterContext<'a> {
     table_alias: &'a str,
     columns: &'a [Ident],
-    row: &'a Row,
+    row: Option<&'a Row>,
     next: Option<Rc<FilterContext<'a>>>,
 }
 
@@ -36,14 +36,9 @@ impl<'a> FilterContext<'a> {
             ..
         } = blend_context;
 
-        let filter_context = match &row {
-            Some(row) => {
-                let filter_context = FilterContext::new(table_alias, &columns, row, filter_context);
-
-                Some(Rc::new(filter_context))
-            }
-            None => filter_context,
-        };
+        let filter_context =
+            FilterContext::new(table_alias, &columns, row.as_ref(), filter_context);
+        let filter_context = Some(Rc::new(filter_context));
 
         match next {
             Some(next) => FilterContext::concat(filter_context, &next),
@@ -54,7 +49,7 @@ impl<'a> FilterContext<'a> {
     pub fn new(
         table_alias: &'a str,
         columns: &'a [Ident],
-        row: &'a Row,
+        row: Option<&'a Row>,
         next: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
         Self {
@@ -65,12 +60,12 @@ impl<'a> FilterContext<'a> {
         }
     }
 
-    pub fn get_value(&self, target: &str) -> Result<&'a Value> {
+    pub fn get_value(&self, target: &str) -> Result<Option<&'a Value>> {
         let get_value = || {
             self.columns
                 .iter()
                 .position(|column| column.value == target)
-                .and_then(|index| self.row.get_value(index))
+                .map(|index| self.row.and_then(|row| row.get_value(index)))
         };
 
         match get_value() {
@@ -82,7 +77,7 @@ impl<'a> FilterContext<'a> {
         }
     }
 
-    pub fn get_alias_value(&self, table_alias: &str, target: &str) -> Result<&'a Value> {
+    pub fn get_alias_value(&self, table_alias: &str, target: &str) -> Result<Option<&'a Value>> {
         let get_value = || {
             if self.table_alias != table_alias {
                 return None;
@@ -91,7 +86,7 @@ impl<'a> FilterContext<'a> {
             self.columns
                 .iter()
                 .position(|column| column.value == target)
-                .and_then(|index| self.row.get_value(index))
+                .map(|index| self.row.and_then(|row| row.get_value(index)))
         };
 
         match get_value() {
