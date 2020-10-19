@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::fmt::Debug;
+use std::rc::Rc;
 use thiserror::Error;
 
 use sqlparser::ast::Ident;
@@ -17,16 +18,16 @@ pub enum FilterContextError {
 pub struct FilterContext<'a> {
     table_alias: &'a str,
     columns: &'a [Ident],
-    row: &'a Row,
-    next: Option<&'a FilterContext<'a>>,
+    row: Option<&'a Row>,
+    next: Option<Rc<FilterContext<'a>>>,
 }
 
 impl<'a> FilterContext<'a> {
     pub fn new(
         table_alias: &'a str,
         columns: &'a [Ident],
-        row: &'a Row,
-        next: Option<&'a FilterContext<'a>>,
+        row: Option<&'a Row>,
+        next: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
         Self {
             table_alias,
@@ -36,16 +37,16 @@ impl<'a> FilterContext<'a> {
         }
     }
 
-    pub fn get_value(&self, target: &str) -> Result<&'a Value> {
+    pub fn get_value(&self, target: &str) -> Result<Option<&'a Value>> {
         let get_value = || {
             self.columns
                 .iter()
                 .position(|column| column.value == target)
-                .and_then(|index| self.row.get_value(index))
+                .map(|index| self.row.and_then(|row| row.get_value(index)))
         };
 
         match get_value() {
-            None => match self.next {
+            None => match &self.next {
                 None => Err(FilterContextError::ValueNotFound.into()),
                 Some(context) => context.get_value(target),
             },
@@ -53,7 +54,7 @@ impl<'a> FilterContext<'a> {
         }
     }
 
-    pub fn get_alias_value(&self, table_alias: &str, target: &str) -> Result<&'a Value> {
+    pub fn get_alias_value(&self, table_alias: &str, target: &str) -> Result<Option<&'a Value>> {
         let get_value = || {
             if self.table_alias != table_alias {
                 return None;
@@ -62,11 +63,11 @@ impl<'a> FilterContext<'a> {
             self.columns
                 .iter()
                 .position(|column| column.value == target)
-                .and_then(|index| self.row.get_value(index))
+                .map(|index| self.row.and_then(|row| row.get_value(index)))
         };
 
         match get_value() {
-            None => match self.next {
+            None => match &self.next {
                 None => Err(FilterContextError::ValueNotFound.into()),
                 Some(context) => context.get_alias_value(table_alias, target),
             },

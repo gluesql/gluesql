@@ -42,12 +42,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
         let row = Some(row);
         let columns = Rc::clone(&columns);
 
-        Ok(BlendContext {
-            table_alias: table.get_alias(),
-            columns,
-            row,
-            next: None,
-        })
+        Ok(BlendContext::new(table.get_alias(), columns, row, None))
     });
 
     Ok(rows)
@@ -56,7 +51,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
 pub fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     query: &'a Query,
-    filter_context: Option<&'a FilterContext<'a>>,
+    filter_context: Option<Rc<FilterContext<'a>>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
     let (table_with_joins, where_clause, projection, group_by, having) = match &query.body {
         SetExpr::Select(statement) => {
@@ -94,8 +89,14 @@ pub fn select<'a, T: 'static + Debug>(
         .collect::<Result<_>>()?;
     let join_columns = Rc::new(join_columns);
 
-    let join = Join::new(storage, joins, filter_context);
-    let aggregate = Aggregate::new(storage, projection, group_by, having, filter_context);
+    let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
+    let aggregate = Aggregate::new(
+        storage,
+        projection,
+        group_by,
+        having,
+        filter_context.as_ref().map(Rc::clone),
+    );
     let blend = Blend::new(storage, projection);
     let filter = Filter::new(storage, where_clause, filter_context, None);
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;

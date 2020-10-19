@@ -10,7 +10,7 @@ use thiserror::Error as ThisError;
 use sqlparser::ast::{Ident, Join as AstJoin, JoinConstraint, JoinOperator};
 
 use super::context::{BlendContext, FilterContext};
-use super::filter::{BlendedFilter, Filter};
+use super::filter::Filter;
 use crate::data::Table;
 use crate::result::Result;
 use crate::store::Store;
@@ -33,7 +33,7 @@ pub enum JoinError {
 pub struct Join<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     join_clauses: &'a [AstJoin],
-    filter_context: Option<&'a FilterContext<'a>>,
+    filter_context: Option<Rc<FilterContext<'a>>>,
 }
 
 type JoinItem<'a> = Result<Rc<BlendContext<'a>>>;
@@ -50,7 +50,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn Store<T>,
         join_clauses: &'a [AstJoin],
-        filter_context: Option<&'a FilterContext<'a>>,
+        filter_context: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
         Self {
             storage,
@@ -66,6 +66,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
     ) -> impl Iterator<Item = JoinItem<'a>> + 'a {
         let init_context = init_context.map(Rc::new);
         let init_rows = Applied::Init(once(init_context));
+        let filter_context = self.filter_context.as_ref().map(Rc::clone);
 
         self.join_clauses
             .iter()
@@ -77,10 +78,11 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
             })
             .fold(init_rows, |rows, (join_clause, join_columns)| {
                 let storage = self.storage;
-                let filter_context = self.filter_context;
+                let filter_context = filter_context.as_ref().map(Rc::clone);
                 let map = move |blend_context| {
                     let columns = Rc::clone(&join_columns);
 
+                    let filter_context = filter_context.as_ref().map(Rc::clone);
                     join(storage, filter_context, join_clause, columns, blend_context)
                 };
 
@@ -107,7 +109,7 @@ enum Joined<I1, I2, I3> {
 
 fn join<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
-    filter_context: Option<&'a FilterContext<'a>>,
+    filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
     columns: Rc<Vec<Ident>>,
     blend_context: Result<Rc<BlendContext<'a>>>,
@@ -134,12 +136,12 @@ fn join<'a, T: 'static + Debug>(
     let table_alias = table.get_alias();
 
     let blend_context = try_into!(blend_context);
-    let init_context = Rc::new(BlendContext {
+    let init_context = Rc::new(BlendContext::new(
         table_alias,
-        columns: Rc::clone(&columns),
-        row: None,
-        next: Some(Rc::clone(&blend_context)),
-    });
+        Rc::clone(&columns),
+        None,
+        Some(Rc::clone(&blend_context)),
+    ));
 
     let fetch_rows = |constraint: &'a JoinConstraint| {
         let where_clause = match constraint {
@@ -161,18 +163,19 @@ fn join<'a, T: 'static + Debug>(
                 }
             };
 
+            let filter_context = filter_context.as_ref().map(Rc::clone);
+            let filter_context = blend_context.concat_into(filter_context);
             let filter = Filter::new(storage, where_clause, filter_context, None);
-            let blended_filter = BlendedFilter::new(&filter, Some(&blend_context));
 
-            blended_filter
+            filter
                 .check(table_alias, &columns, &row)
                 .map(|pass| {
-                    pass.as_some(Rc::new(BlendContext {
+                    pass.as_some(Rc::new(BlendContext::new(
                         table_alias,
-                        columns: Rc::clone(&columns),
-                        row: Some(row),
-                        next: Some(Rc::clone(&blend_context)),
-                    }))
+                        Rc::clone(&columns),
+                        Some(row),
+                        Some(Rc::clone(&blend_context)),
+                    )))
                 })
                 .transpose()
         });

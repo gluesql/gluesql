@@ -10,9 +10,9 @@ use std::rc::Rc;
 
 use sqlparser::ast::{Expr, Function, SelectItem};
 
-use super::context::{AggregateContext, BlendContext, FilterContext, UnionContext};
-use super::evaluate::{evaluate_union, Evaluated};
-use super::filter::check_blended_expr;
+use super::context::{AggregateContext, BlendContext, FilterContext};
+use super::evaluate::{evaluate, Evaluated};
+use super::filter::check_expr;
 use crate::data::{get_name, Value};
 use crate::result::Result;
 use crate::store::Store;
@@ -32,7 +32,7 @@ pub struct Aggregate<'a, T: 'static + Debug> {
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
-    filter_context: Option<&'a FilterContext<'a>>,
+    filter_context: Option<Rc<FilterContext<'a>>>,
 }
 
 impl<'a, T: 'static + Debug> Aggregate<'a, T> {
@@ -41,7 +41,7 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
         having: Option<&'a Expr>,
-        filter_context: Option<&'a FilterContext<'a>>,
+        filter_context: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
         Self {
             storage,
@@ -70,15 +70,15 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         let state =
             rows.enumerate()
                 .try_fold::<_, _, Result<_>>(State::new(), |state, (index, row)| {
-                    let context = row?;
+                    let blend_context = row?;
                     let evaluated: Vec<Evaluated<'_>> = self
                         .group_by
                         .iter()
                         .map(|expr| {
-                            let union_context =
-                                UnionContext::new(self.filter_context, Some(&context));
+                            let filter_context = self.filter_context.as_ref().map(Rc::clone);
+                            let filter_context = blend_context.concat_into(filter_context);
 
-                            evaluate_union(self.storage, union_context, None, expr)
+                            evaluate(self.storage, filter_context, None, expr)
                         })
                         .collect::<Result<_>>()?;
                     let group = evaluated
@@ -86,14 +86,14 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                         .map(GroupKey::try_from)
                         .collect::<Result<Vec<GroupKey>>>()?;
 
-                    let state = state.apply(index, group, Rc::clone(&context));
+                    let state = state.apply(index, group, Rc::clone(&blend_context));
                     let state = self
                         .fields
                         .iter()
                         .try_fold(state, |state, field| match field {
                             SelectItem::UnnamedExpr(expr)
                             | SelectItem::ExprWithAlias { expr, .. } => {
-                                aggregate(state, &context, &expr)
+                                aggregate(state, &blend_context, &expr)
                             }
                             _ => Ok(state),
                         })?;
@@ -102,7 +102,7 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                 })?;
 
         let storage = self.storage;
-        let filter_context = self.filter_context;
+        let filter_context = self.filter_context.as_ref().map(Rc::clone);
         let having = self.having;
         let rows = state
             .export()
@@ -110,7 +110,10 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)))
             .filter_map(move |(aggregated, next)| match having {
                 Some(having) => {
-                    check_blended_expr(storage, filter_context, &next, aggregated.as_ref(), having)
+                    let filter_context = filter_context.as_ref().map(Rc::clone);
+                    let filter_context = next.concat_into(filter_context);
+
+                    check_expr(storage, filter_context, aggregated.as_ref(), having)
                         .map(|pass| pass.as_some(AggregateContext { aggregated, next }))
                         .transpose()
                 }

@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::fmt::Debug;
+use std::rc::Rc;
 use thiserror::Error;
 
 use sqlparser::ast::{Assignment, Ident};
@@ -53,8 +54,8 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
     }
 
     fn find(&self, row: &Row, column: &Ident) -> Option<Result<Value>> {
-        let context = FilterContext::new(self.table_name, self.columns, row, None);
-        let context = Some(&context);
+        let context = FilterContext::new(self.table_name, self.columns, Some(row), None);
+        let context = Some(Rc::new(context));
 
         self.fields
             .iter()
