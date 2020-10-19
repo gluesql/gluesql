@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use sqlparser::ast::{Function, SelectItem};
 
-use super::context::{AggregateContext, BlendContext, FilterContext};
+use super::context::{AggregateContext, BlendContext};
 use super::evaluate::{evaluate, Evaluated};
 use crate::data::{get_name, Row, Value};
 use crate::result::Result;
@@ -65,7 +65,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
             };
         }
 
-        let filter_context = FilterContext::concat(None, &context);
+        let filter_context = context.concat_into(None);
 
         self.fields
             .iter()

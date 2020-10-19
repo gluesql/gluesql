@@ -164,7 +164,7 @@ fn join<'a, T: 'static + Debug>(
             };
 
             let filter_context = filter_context.as_ref().map(Rc::clone);
-            let filter_context = FilterContext::concat(filter_context, &blend_context);
+            let filter_context = blend_context.concat_into(filter_context);
             let filter = Filter::new(storage, where_clause, filter_context, None);
 
             filter

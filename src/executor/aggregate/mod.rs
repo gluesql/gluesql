@@ -76,8 +76,7 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                         .iter()
                         .map(|expr| {
                             let filter_context = self.filter_context.as_ref().map(Rc::clone);
-                            let filter_context =
-                                FilterContext::concat(filter_context, &blend_context);
+                            let filter_context = blend_context.concat_into(filter_context);
 
                             evaluate(self.storage, filter_context, None, expr)
                         })
@@ -112,7 +111,7 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
             .filter_map(move |(aggregated, next)| match having {
                 Some(having) => {
                     let filter_context = filter_context.as_ref().map(Rc::clone);
-                    let filter_context = FilterContext::concat(filter_context, &next);
+                    let filter_context = next.concat_into(filter_context);
 
                     check_expr(storage, filter_context, aggregated.as_ref(), having)
                         .map(|pass| pass.as_some(AggregateContext { aggregated, next }))

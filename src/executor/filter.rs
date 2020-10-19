@@ -57,7 +57,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         match self.where_clause {
             Some(expr) => {
                 let context = self.context.as_ref().map(Rc::clone);
-                let context = FilterContext::concat(context, blend_context);
+                let context = blend_context.concat_into(context);
 
                 check_expr(self.storage, context, self.aggregated, expr)
             }

@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use sqlparser::ast::Ident;
 
+use super::FilterContext;
 use crate::data::{Row, Value};
 use crate::result::Result;
 
@@ -16,10 +17,10 @@ pub enum BlendContextError {
 
 #[derive(Debug)]
 pub struct BlendContext<'a> {
-    pub table_alias: &'a str,
-    pub columns: Rc<Vec<Ident>>,
-    pub row: Option<Row>,
-    pub next: Option<Rc<BlendContext<'a>>>,
+    table_alias: &'a str,
+    columns: Rc<Vec<Ident>>,
+    row: Option<Row>,
+    next: Option<Rc<BlendContext<'a>>>,
 }
 
 impl<'a> BlendContext<'a> {
@@ -34,6 +35,28 @@ impl<'a> BlendContext<'a> {
             columns,
             row,
             next,
+        }
+    }
+
+    pub fn concat_into(
+        &'a self,
+        filter_context: Option<Rc<FilterContext<'a>>>,
+    ) -> Option<Rc<FilterContext<'a>>> {
+        let BlendContext {
+            table_alias,
+            columns,
+            row,
+            next,
+            ..
+        } = self;
+
+        let filter_context =
+            FilterContext::new(table_alias, &columns, row.as_ref(), filter_context);
+        let filter_context = Some(Rc::new(filter_context));
+
+        match next {
+            Some(next) => next.concat_into(filter_context),
+            None => filter_context,
         }
     }
 
