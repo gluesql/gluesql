@@ -8,7 +8,7 @@ use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
 
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
-use super::select::select;
+use super::select::select_with_aliases;
 use super::update::Update;
 use crate::data::{get_name, Row, Schema};
 use crate::parse::Query;
@@ -35,7 +35,10 @@ pub enum ExecuteError {
 pub enum Payload {
     Create,
     Insert(usize),
-    Select(Vec<Row>),
+    Select {
+        aliases: Vec<String>,
+        rows: Vec<Row>,
+    },
     Delete(usize),
     Update(usize),
     DropTable,
@@ -104,7 +107,7 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
             Ok((storage, Payload::DropTable))
         }
-        Prepared::Select(rows) => Ok((storage, Payload::Select(rows))),
+        Prepared::Select { aliases, rows } => Ok((storage, Payload::Select { aliases, rows })),
 
         #[cfg(feature = "alter-table")]
         Prepared::AlterTable(table_name, operation) => {
@@ -144,7 +147,10 @@ enum Prepared<'a, T> {
     Insert(&'a str, Vec<Row>),
     Delete(Vec<T>),
     Update(Vec<(T, Row)>),
-    Select(Vec<Row>),
+    Select {
+        aliases: Vec<String>,
+        rows: Vec<Row>,
+    },
     DropTable(Vec<&'a str>),
 
     #[cfg(feature = "alter-table")]
@@ -165,9 +171,10 @@ fn prepare<'a, T: 'static + Debug>(
             Ok(Prepared::Create(schema))
         }
         Statement::Query(query) => {
-            let rows = select(storage, &query, None)?.collect::<Result<_>>()?;
+            let (aliases, rows) = select_with_aliases(storage, &query, None, true)?;
+            let rows = rows.collect::<Result<_>>()?;
 
-            Ok(Prepared::Select(rows))
+            Ok(Prepared::Select { aliases, rows })
         }
         Statement::Insert {
             table_name,

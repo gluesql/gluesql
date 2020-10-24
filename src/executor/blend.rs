@@ -17,8 +17,8 @@ use crate::store::Store;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum BlendError {
-    #[error("table not found: {0}")]
-    TableNotFound(String),
+    #[error("table alias not found: {0}")]
+    TableAliasNotFound(String),
 }
 
 pub struct Blend<'a, T: 'static + Debug> {
@@ -77,7 +77,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
 
                     match context.get_alias_values(table_alias) {
                         Some(values) => Blended::AllInTable(values.into_iter().map(Ok)),
-                        None => err!(BlendError::TableNotFound(table_alias.to_string())),
+                        None => err!(BlendError::TableAliasNotFound(table_alias.to_string())),
                     }
                 }
                 SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
