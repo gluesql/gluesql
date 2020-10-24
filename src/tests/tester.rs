@@ -31,7 +31,7 @@ pub trait Tester {
         let result = self.run(sql);
 
         match result.unwrap() {
-            Payload::Select(rows) => println!("[Ok ]\n{:#?}\n", rows),
+            Payload::Select { rows, .. } => println!("[Ok ]\n{:#?}\n", rows),
             Payload::Insert(num) => println!("[Ok ] {} rows inserted.\n", num),
             Payload::Delete(num) => println!("[Ok ] {} rows deleted.\n", num),
             Payload::Update(num) => println!("[Ok ] {} rows updated.\n", num),
@@ -46,7 +46,7 @@ pub trait Tester {
         let result = self.run(sql);
 
         match result.unwrap() {
-            Payload::Select(rows) => assert_eq!(count, rows.len()),
+            Payload::Select { rows, .. } => assert_eq!(count, rows.len()),
             Payload::Delete(num) => assert_eq!(count, num),
             Payload::Update(num) => assert_eq!(count, num),
             _ => panic!("compare is only for Select, Delete and Update"),
@@ -57,7 +57,7 @@ pub trait Tester {
         let result = self.run(sql);
 
         match result.unwrap() {
-            Payload::Select(rows) => {
+            Payload::Select { rows, .. } => {
                 let Row(items) = rows.into_iter().next().unwrap();
 
                 assert_eq!(count, items.len())

@@ -15,6 +15,7 @@ pub mod nullable;
 pub mod ordering;
 pub mod sql_types;
 pub mod synthesize;
+
 mod tester;
 
 pub mod macros;

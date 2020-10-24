@@ -17,8 +17,8 @@ use crate::store::Store;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum BlendError {
-    #[error("table not found: {0}")]
-    TableNotFound(String),
+    #[error("table alias not found: {0}")]
+    TableAliasNotFound(String),
 }
 
 pub struct Blend<'a, T: 'static + Debug> {
@@ -41,15 +41,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
 
     pub fn apply(&self, context: Result<AggregateContext<'a>>) -> Result<Row> {
         let AggregateContext { aggregated, next } = context?;
-
-        let values = self
-            .blend(aggregated, next)?
-            .into_iter()
-            .map(|value| match Rc::try_unwrap(value) {
-                Ok(value) => value,
-                Err(value) => (*value).clone(),
-            })
-            .collect();
+        let values = self.blend(aggregated, next)?;
 
         Ok(Row(values))
     }
@@ -58,7 +50,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         &self,
         aggregated: Option<HashMap<&'a Function, Value>>,
         context: Rc<BlendContext<'a>>,
-    ) -> Result<Vec<Rc<Value>>> {
+    ) -> Result<Vec<Value>> {
         macro_rules! err {
             ($err: expr) => {
                 Blended::Err(once(Err($err.into())))
@@ -71,7 +63,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
             .iter()
             .flat_map(|item| match item {
                 SelectItem::Wildcard => {
-                    let values = context.get_all_values().into_iter().map(Rc::new).map(Ok);
+                    let values = context.get_all_values().into_iter().map(Ok);
 
                     Blended::All(values)
                 }
@@ -84,10 +76,8 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                     };
 
                     match context.get_alias_values(table_alias) {
-                        Some(values) => {
-                            Blended::AllInTable(values.into_iter().map(Rc::new).map(Ok))
-                        }
-                        None => err!(BlendError::TableNotFound(table_alias.to_string())),
+                        Some(values) => Blended::AllInTable(values.into_iter().map(Ok)),
+                        None => err!(BlendError::TableAliasNotFound(table_alias.to_string())),
                     }
                 }
                 SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
@@ -107,8 +97,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                         Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
                         Evaluated::ValueRef(v) => Ok(v.clone()),
                         Evaluated::Value(v) => Ok(v),
-                    }
-                    .map(Rc::new);
+                    };
 
                     Blended::Single(once(value))
                 }
