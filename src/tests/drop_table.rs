@@ -22,8 +22,9 @@ CREATE TABLE DropTable (
         (
             "SELECT id, num, name FROM DropTable;",
             Ok(select!(
-                I64 I64 Str;
-                1   2   "Hello".to_owned()
+                id  | num | name
+                I64 | I64 | Str;
+                1     2     "Hello".to_owned()
             )),
         ),
         ("DROP TABLE DropTable;", Ok(Payload::DropTable)),
@@ -34,7 +35,7 @@ CREATE TABLE DropTable (
         (create_sql, Ok(Payload::Create)),
         (
             "SELECT id, num, name FROM DropTable;",
-            Ok(Payload::Select(vec![])),
+            Ok(select!(id | num | name)),
         ),
         (
             "DROP VIEW DropTable;",

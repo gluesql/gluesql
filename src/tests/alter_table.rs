@@ -18,14 +18,14 @@ pub fn rename(tester: impl tests::Tester) {
             "INSERT INTO Foo VALUES (1), (2), (3);",
             Ok(Payload::Insert(3)),
         ),
-        ("SELECT id FROM Foo", Ok(select!(I64; 1; 2; 3))),
+        ("SELECT id FROM Foo", Ok(select!(id; I64; 1; 2; 3))),
         ("ALTER TABLE Foo RENAME TO Bar;", Ok(Payload::AlterTable)),
-        ("SELECT id FROM Bar", Ok(select!(I64; 1; 2; 3))),
+        ("SELECT id FROM Bar", Ok(select!(id; I64; 1; 2; 3))),
         (
             "ALTER TABLE Bar RENAME COLUMN id TO new_id",
             Ok(Payload::AlterTable),
         ),
-        ("SELECT new_id FROM Bar", Ok(select!(I64; 1; 2; 3))),
+        ("SELECT new_id FROM Bar", Ok(select!(new_id; I64; 1; 2; 3))),
         (
             "ALTER TABLE Bar RENAME COLUMN hello TO idid",
             Err(AlterTableError::RenamingColumnNotFound.into()),
@@ -39,7 +39,7 @@ pub fn add_drop(tester: impl tests::Tester) {
     let test_cases = [
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),
-        ("SELECT * FROM Foo;", Ok(select!(I64; 1; 2))),
+        ("SELECT * FROM Foo;", Ok(select!(id; I64; 1; 2))),
         (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER",
             Err(AlterTableError::DefaultValueRequired("amount INT".to_owned()).into()),
@@ -52,7 +52,10 @@ pub fn add_drop(tester: impl tests::Tester) {
             "ALTER TABLE Foo ADD COLUMN amount INTEGER DEFAULT 10",
             Ok(Payload::AlterTable),
         ),
-        ("SELECT * FROM Foo;", Ok(select!(I64 I64; 1 10; 2 10))),
+        (
+            "SELECT * FROM Foo;",
+            Ok(select!(id | amount; I64 | I64; 1 10; 2 10)),
+        ),
         (
             "ALTER TABLE Foo ADD COLUMN opt BOOLEAN NULL",
             Ok(Payload::AlterTable),
@@ -60,9 +63,10 @@ pub fn add_drop(tester: impl tests::Tester) {
         (
             "SELECT * FROM Foo;",
             Ok(select!(
-                I64 I64 OptBool;
-                1   10  None;
-                2   10  None
+                id  | amount | opt
+                I64 | I64    | OptBool;
+                1     10       None;
+                2     10       None
             )),
         ),
         (
@@ -72,9 +76,10 @@ pub fn add_drop(tester: impl tests::Tester) {
         (
             "SELECT * FROM Foo;",
             Ok(select!(
-                I64 I64 OptBool OptBool;
-                1   10  None    Some(true);
-                2   10  None    Some(true)
+                id  | amount | opt     | opt2
+                I64 | I64    | OptBool | OptBool;
+                1     10       None      Some(true);
+                2     10       None      Some(true)
             )),
         ),
         (
@@ -96,9 +101,10 @@ pub fn add_drop(tester: impl tests::Tester) {
         (
             "SELECT * FROM Foo;",
             Ok(select!(
-                I64 OptBool OptBool;
-                1   None    Some(true);
-                2   None    Some(true)
+                id  | opt     | opt2
+                I64 | OptBool | OptBool;
+                1     None      Some(true);
+                2     None      Some(true)
             )),
         ),
         (
@@ -108,9 +114,10 @@ pub fn add_drop(tester: impl tests::Tester) {
         (
             "SELECT * FROM Foo;",
             Ok(select!(
-                I64 OptBool;
-                1   None;
-                2   None
+                id  | opt
+                I64 | OptBool;
+                1     None;
+                2     None
             )),
         ),
     ];

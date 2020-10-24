@@ -7,29 +7,28 @@ macro_rules! row {
 
 #[macro_export]
 macro_rules! select {
-    () => (
-        Payload::Select(vec![])
-    );
-    ( $( $t:path )*) => (
-        select!()
-    );
-    ( $( $t:path )* ;) => (
-        select!()
-    );
-    ( $( $t:path )* ; $( $v: expr )* ) => (
-        Payload::Select(vec![
-            row!($( $t )* ; $( $v )* )
-        ])
-    );
-    ( $( $t:path )* ; $( $v: expr )* ; $( $( $v2: expr )* );*) => ({
+    ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ; $( $( $v2: expr )+ );+) => ({
         let mut rows = vec![
-            row!($( $t )* ; $( $v )*),
+            row!($( $t )+ ; $( $v )+),
         ];
 
-        Payload::Select(
-            concat_with!(rows ; $( $t )* ; $( $( $v2 )* );*)
-        )
+        Payload::Select {
+            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
+        }
     });
+    ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
+        Payload::Select {
+            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            rows: vec![row!($( $t )+ ; $( $v )+ )],
+        }
+    );
+    ( $( $c: tt )|+ $( ; )?) => (
+        Payload::Select {
+            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            rows: vec![],
+        }
+    );
 }
 
 #[macro_export]
@@ -48,19 +47,21 @@ macro_rules! concat_with {
 
 #[macro_export]
 macro_rules! select_with_empty {
-    ( $( $v: expr )* ) => (
-        Payload::Select(vec![
-            Row(vec![$( $v ),*])
-        ])
+    ( $( $c: tt )|* ; $( $v: expr )* ) => (
+        Payload::Select {
+            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            rows: vec![Row(vec![$( $v ),*])],
+        }
     );
-    ( $( $v: expr )* ; $( $( $v2: expr )* );*) => ({
+    ( $( $c: tt )|* ; $( $v: expr )* ; $( $( $v2: expr )* );*) => ({
         let mut rows = vec![
             Row(vec![$( $v ),*])
         ];
 
-        Payload::Select(
-            concat_with_empty!(rows ; $( $( $v2 )* );*)
-        )
+        Payload::Select {
+            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            rows: concat_with_empty!(rows ; $( $( $v2 )* );*),
+        }
     });
 }
 

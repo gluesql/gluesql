@@ -25,12 +25,13 @@ pub fn default(mut tester: impl tests::Tester) {
         (
             "SELECT * FROM Test;",
             select!(
-                I64 I64 OptBool;
-                8   80  Some(true);
-                1   10  Some(false);
-                2   20  Some(false);
-                1   30  None;
-                1   40  Some(true)
+                id  | num | flag
+                I64 | I64 | OptBool;
+                8     80    Some(true);
+                1     10    Some(false);
+                2     20    Some(false);
+                1     30    None;
+                1     40    Some(true)
             ),
         ),
     ];
