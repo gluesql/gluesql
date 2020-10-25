@@ -29,6 +29,21 @@ CREATE TABLE DropTable (
         ),
         ("DROP TABLE DropTable;", Ok(Payload::DropTable)),
         (
+            "DROP TABLE DropTable;",
+            Err(ExecuteError::TableNotExists.into()),
+        ),
+        (
+            r#"
+CREATE TABLE DropTable (
+    id INT,
+    num INT,
+    name TEXT
+)"#,
+            Ok(Payload::Create),
+        ),
+        ("DROP TABLE IF EXISTS DropTable;", Ok(Payload::DropTable)),
+        ("DROP TABLE IF EXISTS DropTable;", Ok(Payload::DropTable)),
+        (
             "SELECT id, num, name FROM DropTable;",
             Err(StoreError::SchemaNotFound.into()),
         ),
