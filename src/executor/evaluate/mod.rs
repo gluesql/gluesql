@@ -132,10 +132,6 @@ fn evaluate_function<'a, T: 'static + Debug>(
 
     match get_name(name)?.to_uppercase().as_str() {
         name @ "LOWER" | name @ "UPPER" => {
-            let expr = args
-                .get(0)
-                .ok_or(EvaluateError::UnreachableEmptyFunctionArg)?;
-
             let convert = |s: String| {
                 if name == "LOWER" {
                     s.to_lowercase()
@@ -144,6 +140,15 @@ fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
 
+            if args.len() != 1 {
+                return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+                    expected: 1,
+                    found: args.len(),
+                }
+                .into());
+            }
+
+            let expr = &args[0];
             let value: Value = match eval(expr)?.try_into()? {
                 Value::Str(s) => Value::Str(convert(s)),
                 Value::OptStr(s) => Value::OptStr(s.map(convert)),
