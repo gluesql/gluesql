@@ -13,7 +13,7 @@ use crate::store::{AlterTable, Store, StoreMut};
 
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
-use super::select::select_with_aliases;
+use super::select::select_with_labels;
 use super::update::Update;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
@@ -42,7 +42,7 @@ pub enum Payload {
     Create,
     Insert(usize),
     Select {
-        aliases: Vec<String>,
+        labels: Vec<String>,
         rows: Vec<Row>,
     },
     Delete(usize),
@@ -140,7 +140,7 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
             Ok((storage, Payload::DropTable))
         }
-        Prepared::Select { aliases, rows } => Ok((storage, Payload::Select { aliases, rows })),
+        Prepared::Select { labels, rows } => Ok((storage, Payload::Select { labels, rows })),
 
         #[cfg(feature = "alter-table")]
         Prepared::AlterTable(table_name, operation) => {
@@ -184,7 +184,7 @@ enum Prepared<'a, T> {
     Delete(Vec<T>),
     Update(Vec<(T, Row)>),
     Select {
-        aliases: Vec<String>,
+        labels: Vec<String>,
         rows: Vec<Row>,
     },
     DropTable {
@@ -218,10 +218,10 @@ fn prepare<'a, T: 'static + Debug>(
             })
         }
         Statement::Query(query) => {
-            let (aliases, rows) = select_with_aliases(storage, &query, None, true)?;
+            let (labels, rows) = select_with_labels(storage, &query, None, true)?;
             let rows = rows.collect::<Result<_>>()?;
 
-            Ok(Prepared::Select { aliases, rows })
+            Ok(Prepared::Select { labels, rows })
         }
         Statement::Insert {
             table_name,

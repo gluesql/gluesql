@@ -47,21 +47,21 @@ fn fetch_blended<'a, T: 'static + Debug>(
     Ok(rows)
 }
 
-fn get_aliases<'a>(
+fn get_labels<'a>(
     projection: &[SelectItem],
     table_alias: &str,
     columns: &'a [Ident],
     join_columns: &'a [(&String, Vec<Ident>)],
 ) -> Result<Vec<String>> {
     #[derive(Iterator)]
-    enum Aliased<I1, I2, I3, I4> {
+    enum Labeled<I1, I2, I3, I4> {
         Err(I1),
         Wildcard(I2),
         QualifiedWildcard(I3),
         Once(I4),
     };
 
-    let err = |e| Aliased::Err(once(Err(e)));
+    let err = |e| Labeled::Err(once(Err(e)));
 
     macro_rules! try_into {
         ($v: expr) => {
@@ -74,25 +74,25 @@ fn get_aliases<'a>(
         };
     }
 
-    let to_aliases = |columns: &'a [Ident]| columns.iter().map(|ident| ident.value.to_string());
+    let to_labels = |columns: &'a [Ident]| columns.iter().map(|ident| ident.value.to_string());
 
     projection
         .iter()
         .flat_map(|item| match item {
             SelectItem::Wildcard => {
-                let columns = to_aliases(columns);
-                let join_columns = join_columns
+                let labels = to_labels(columns);
+                let join_labels = join_columns
                     .iter()
-                    .flat_map(|(_, columns)| to_aliases(columns));
-                let columns = columns.chain(join_columns).map(Ok);
+                    .flat_map(|(_, columns)| to_labels(columns));
+                let labels = labels.chain(join_labels).map(Ok);
 
-                Aliased::Wildcard(columns)
+                Labeled::Wildcard(labels)
             }
             SelectItem::QualifiedWildcard(target) => {
                 let target_table_alias = try_into!(get_name(target));
 
                 if table_alias == target_table_alias {
-                    return Aliased::QualifiedWildcard(to_aliases(columns).map(Ok));
+                    return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));
                 }
 
                 let columns = join_columns
@@ -103,11 +103,12 @@ fn get_aliases<'a>(
                         SelectError::TableAliasNotFound(target_table_alias.to_string()).into()
                     });
                 let columns = try_into!(columns);
+                let labels = to_labels(columns).map(Ok);
 
-                Aliased::QualifiedWildcard(to_aliases(columns).map(Ok))
+                Labeled::QualifiedWildcard(labels)
             }
             SelectItem::UnnamedExpr(expr) => {
-                let alias = match expr {
+                let label = match expr {
                     Expr::CompoundIdentifier(idents) => try_into!(idents
                         .last()
                         .map(|ident| ident.value.to_string())
@@ -115,20 +116,20 @@ fn get_aliases<'a>(
                     _ => expr.to_string(),
                 };
 
-                Aliased::Once(once(Ok(alias)))
+                Labeled::Once(once(Ok(label)))
             }
             SelectItem::ExprWithAlias { alias, .. } => {
-                Aliased::Once(once(Ok(alias.value.to_string())))
+                Labeled::Once(once(Ok(alias.value.to_string())))
             }
         })
         .collect::<Result<_>>()
 }
 
-pub fn select_with_aliases<'a, T: 'static + Debug>(
+pub fn select_with_labels<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
-    with_aliases: bool,
+    with_labels: bool,
 ) -> Result<(Vec<String>, impl Iterator<Item = Result<Row>> + 'a)> {
     macro_rules! err {
         ($err: expr) => {{
@@ -172,8 +173,8 @@ pub fn select_with_aliases<'a, T: 'static + Debug>(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let aliases = if with_aliases {
-        get_aliases(&projection, table.get_alias(), &columns, &join_columns)?
+    let labels = if with_labels {
+        get_labels(&projection, table.get_alias(), &columns, &join_columns)?
     } else {
         vec![]
     };
@@ -225,7 +226,7 @@ pub fn select_with_aliases<'a, T: 'static + Debug>(
         rows.map(move |blend_context| blend.apply(blend_context))
     };
 
-    Ok((aliases, rows))
+    Ok((labels, rows))
 }
 
 pub fn select<'a, T: 'static + Debug>(
@@ -233,7 +234,7 @@ pub fn select<'a, T: 'static + Debug>(
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
 ) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    let (_, rows) = select_with_aliases(storage, query, filter_context, false)?;
+    let (_, rows) = select_with_labels(storage, query, filter_context, false)?;
 
     Ok(rows)
 }
