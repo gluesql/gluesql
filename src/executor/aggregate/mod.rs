@@ -21,12 +21,6 @@ pub use error::AggregateError;
 pub use hash::GroupKey;
 use state::State;
 
-#[derive(Iterator)]
-enum Aggregated<I1, I2> {
-    Applied(I1),
-    Skipped(I2),
-}
-
 pub struct Aggregate<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     fields: &'a [SelectItem],
@@ -56,6 +50,12 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         &self,
         rows: impl Iterator<Item = Result<Rc<BlendContext<'a>>>>,
     ) -> Result<impl Iterator<Item = Result<AggregateContext<'a>>>> {
+        #[derive(Iterator)]
+        enum Aggregated<I1, I2> {
+            Applied(I1),
+            Skipped(I2),
+        }
+
         if !self.check_aggregate() {
             let rows = rows.map(|row| {
                 row.map(|blend_context| AggregateContext {
