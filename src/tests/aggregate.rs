@@ -74,8 +74,8 @@ pub fn aggregate(mut tester: impl tests::Tester) {
             "SELECT SUM(id.name.ok) FROM Item;",
         ),
         (
-            AggregateError::UnsupportedAggregation("WHATEVER".to_owned()).into(),
-            "SELECT WHATEVER(*) FROM Item;",
+            AggregateError::UnsupportedAggregation("AVG".to_owned()).into(),
+            "SELECT AVG(*) FROM Item;",
         ),
         (
             AggregateError::OnlyIdentifierAllowed.into(),
