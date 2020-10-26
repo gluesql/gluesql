@@ -2,6 +2,7 @@ mod error;
 mod evaluated;
 
 use im_rc::HashMap;
+use std::convert::TryInto;
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -9,7 +10,7 @@ use sqlparser::ast::{BinaryOperator, Expr, Function, Value as AstValue};
 
 use super::context::FilterContext;
 use super::select::select;
-use crate::data::Value;
+use crate::data::{get_name, Value};
 use crate::result::Result;
 use crate::store::Store;
 
@@ -92,11 +93,63 @@ pub fn evaluate<'a, T: 'static + Debug>(
         }
         Expr::Function(func) => aggregated
             .as_ref()
-            .map(|aggregated| match aggregated.get(func) {
-                Some(value) => Ok(Evaluated::Value(value.clone())),
-                None => Err(EvaluateError::UnreachableAggregatedField(func.to_string()).into()),
-            })
-            .unwrap_or_else(|| Err(EvaluateError::UnreachableEmptyAggregated.into())),
+            .map(|aggr| aggr.get(func))
+            .flatten()
+            .map_or_else(
+                || {
+                    let context = context.as_ref().map(Rc::clone);
+
+                    evaluate_function(storage, context, aggregated, func)
+                },
+                |value| Ok(Evaluated::Value(value.clone())),
+            ),
         _ => Err(EvaluateError::Unimplemented.into()),
+    }
+}
+
+fn evaluate_function<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    context: Option<Rc<FilterContext<'a>>>,
+    aggregated: Option<&HashMap<&Function, Value>>,
+    func: &'a Function,
+) -> Result<Evaluated<'a>> {
+    let eval = |expr| {
+        let context = context.as_ref().map(Rc::clone);
+
+        evaluate(storage, context, aggregated, expr)
+    };
+
+    let Function { name, args, .. } = func;
+
+    match get_name(name)?.to_uppercase().as_str() {
+        name @ "LOWER" | name @ "UPPER" => {
+            let convert = |s: String| {
+                if name == "LOWER" {
+                    s.to_lowercase()
+                } else {
+                    s.to_uppercase()
+                }
+            };
+
+            if args.len() != 1 {
+                return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+                    expected: 1,
+                    found: args.len(),
+                }
+                .into());
+            }
+
+            let expr = &args[0];
+            let value: Value = match eval(expr)?.try_into()? {
+                Value::Str(s) => Value::Str(convert(s)),
+                Value::OptStr(s) => Value::OptStr(s.map(convert)),
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresStringValue(name.to_string()).into());
+                }
+            };
+
+            Ok(Evaluated::Value(value))
+        }
+        name => Err(EvaluateError::FunctionNotSupported(name.to_owned()).into()),
     }
 }

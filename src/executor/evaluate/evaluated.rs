@@ -1,10 +1,11 @@
 use std::cmp::Ordering;
+use std::convert::{TryFrom, TryInto};
 
 use sqlparser::ast::Value as AstValue;
 
 use crate::data;
 use crate::data::Value;
-use crate::result::Result;
+use crate::result::{Error, Result};
 
 use super::EvaluateError;
 
@@ -141,6 +142,20 @@ fn literal_partial_cmp(a: &AstValue, b: &AstValue) -> Option<Ordering> {
         },
         (AstValue::SingleQuotedString(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
         _ => None,
+    }
+}
+
+impl TryInto<Value> for Evaluated<'_> {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self {
+            Evaluated::LiteralRef(v) => Value::try_from(v),
+            Evaluated::Literal(v) => Value::try_from(&v),
+            Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
+            Evaluated::ValueRef(v) => Ok(v.clone()),
+            Evaluated::Value(v) => Ok(v),
+        }
     }
 }
 

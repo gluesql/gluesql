@@ -1,7 +1,7 @@
 use im_rc::HashMap;
 use iter_enum::Iterator;
 use serde::Serialize;
-use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::fmt::Debug;
 use std::iter::once;
 use std::rc::Rc;
@@ -10,7 +10,7 @@ use thiserror::Error;
 use sqlparser::ast::{Function, SelectItem};
 
 use super::context::{AggregateContext, BlendContext};
-use super::evaluate::{evaluate, Evaluated};
+use super::evaluate::evaluate;
 use crate::data::{get_name, Row, Value};
 use crate::result::Result;
 use crate::store::Store;
@@ -57,6 +57,17 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
             };
         }
 
+        macro_rules! try_into {
+            ($v: expr) => {
+                match $v {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return err!(e);
+                    }
+                }
+            };
+        }
+
         let filter_context = context.concat_into(None);
 
         self.fields
@@ -68,12 +79,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                     Blended::All(values)
                 }
                 SelectItem::QualifiedWildcard(alias) => {
-                    let table_alias = match get_name(alias) {
-                        Ok(alias) => alias,
-                        Err(e) => {
-                            return err!(e);
-                        }
-                    };
+                    let table_alias = try_into!(get_name(alias));
 
                     match context.get_alias_values(table_alias) {
                         Some(values) => Blended::AllInTable(values.into_iter().map(Ok)),
@@ -83,21 +89,9 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                 SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
                     let filter_context = filter_context.as_ref().map(Rc::clone);
 
-                    let value =
-                        match evaluate(self.storage, filter_context, aggregated.as_ref(), expr) {
-                            Ok(value) => value,
-                            Err(e) => {
-                                return err!(e);
-                            }
-                        };
-
-                    let value = match value {
-                        Evaluated::LiteralRef(v) => Value::try_from(v),
-                        Evaluated::Literal(v) => Value::try_from(&v),
-                        Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
-                        Evaluated::ValueRef(v) => Ok(v.clone()),
-                        Evaluated::Value(v) => Ok(v),
-                    };
+                    let value = evaluate(self.storage, filter_context, aggregated.as_ref(), expr)
+                        .map(|evaluated| evaluated.try_into());
+                    let value = try_into!(value);
 
                     Blended::Single(once(value))
                 }

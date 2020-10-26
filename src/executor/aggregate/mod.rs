@@ -21,12 +21,6 @@ pub use error::AggregateError;
 pub use hash::GroupKey;
 use state::State;
 
-#[derive(Iterator)]
-enum Aggregated<I1, I2> {
-    Applied(I1),
-    Skipped(I2),
-}
-
 pub struct Aggregate<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     fields: &'a [SelectItem],
@@ -56,7 +50,13 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         &self,
         rows: impl Iterator<Item = Result<Rc<BlendContext<'a>>>>,
     ) -> Result<impl Iterator<Item = Result<AggregateContext<'a>>>> {
-        if !self.check_aggregate() {
+        #[derive(Iterator)]
+        enum Aggregated<I1, I2> {
+            Applied(I1),
+            Skipped(I2),
+        }
+
+        if !self.check_aggregate()? {
             let rows = rows.map(|row| {
                 row.map(|blend_context| AggregateContext {
                     aggregated: None,
@@ -123,16 +123,20 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         Ok(Aggregated::Applied(rows))
     }
 
-    fn check_aggregate(&self) -> bool {
+    fn check_aggregate(&self) -> Result<bool> {
         if !self.group_by.is_empty() {
-            return true;
+            return Ok(true);
         }
 
-        self.fields.iter().any(|field| match field {
-            SelectItem::UnnamedExpr(expr) => check(expr),
-            SelectItem::ExprWithAlias { expr, .. } => check(expr),
-            _ => false,
-        })
+        self.fields
+            .iter()
+            .map(|field| match field {
+                SelectItem::UnnamedExpr(expr) => check(expr),
+                SelectItem::ExprWithAlias { expr, .. } => check(expr),
+                _ => Ok(false),
+            })
+            .collect::<Result<Vec<bool>>>()
+            .map(|checked| checked.into_iter().any(|c| c))
     }
 }
 
@@ -202,15 +206,20 @@ fn aggregate<'a>(
     }
 }
 
-fn check(expr: &Expr) -> bool {
-    match expr {
+fn check(expr: &Expr) -> Result<bool> {
+    let checked = match expr {
         Expr::Between {
             expr, low, high, ..
-        } => check(expr) || check(low) || check(high),
-        Expr::BinaryOp { left, right, .. } => check(left) || check(right),
-        Expr::UnaryOp { expr, .. } => check(expr),
-        Expr::Nested(expr) => check(expr),
-        Expr::Function(_) => true,
+        } => check(expr)? || check(low)? || check(high)?,
+        Expr::BinaryOp { left, right, .. } => check(left)? || check(right)?,
+        Expr::UnaryOp { expr, .. } => check(expr)?,
+        Expr::Nested(expr) => check(expr)?,
+        Expr::Function(func) => matches!(
+            get_name(&func.name)?.to_uppercase().as_str(),
+            "COUNT" | "SUM" | "MAX" | "MIN" | "AVG"
+        ),
         _ => false,
-    }
+    };
+
+    Ok(checked)
 }
