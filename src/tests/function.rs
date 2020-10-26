@@ -44,6 +44,14 @@ pub fn function(mut tester: impl tests::Tester) {
             )),
         ),
         (
+            "SELECT LOWER() FROM Item",
+            Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+                expected: 1,
+                found: 0,
+            }
+            .into()),
+        ),
+        (
             "SELECT LOWER(1) FROM Item",
             Err(EvaluateError::FunctionRequiresStringValue("LOWER".to_owned()).into()),
         ),
