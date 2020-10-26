@@ -13,19 +13,19 @@ macro_rules! select {
         ];
 
         Payload::Select {
-            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
         }
     });
     ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
         Payload::Select {
-            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![row!($( $t )+ ; $( $v )+ )],
         }
     );
     ( $( $c: tt )|+ $( ; )?) => (
         Payload::Select {
-            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![],
         }
     );
@@ -49,7 +49,7 @@ macro_rules! concat_with {
 macro_rules! select_with_empty {
     ( $( $c: tt )|* ; $( $v: expr )* ) => (
         Payload::Select {
-            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![Row(vec![$( $v ),*])],
         }
     );
@@ -59,7 +59,7 @@ macro_rules! select_with_empty {
         ];
 
         Payload::Select {
-            aliases: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: concat_with_empty!(rows ; $( $( $v2 )* );*),
         }
     });
