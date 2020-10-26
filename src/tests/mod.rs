@@ -9,6 +9,7 @@ pub mod default;
 pub mod drop_table;
 pub mod error;
 pub mod filter;
+pub mod function;
 pub mod join;
 pub mod migrate;
 pub mod nested_select;
@@ -73,6 +74,7 @@ macro_rules! generate_tests {
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
         glue!(filter, filter::filter);
+        glue!(function, function::function);
 
         generate_alter_table_tests!();
     };
