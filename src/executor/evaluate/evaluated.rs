@@ -325,7 +325,6 @@ impl<'a> Evaluated<'a> {
             StringRef(_) => unreachable(),
         }
     }
-
 }
 
 fn literal_add(a: &AstValue, b: &AstValue) -> Result<AstValue> {
@@ -385,10 +384,8 @@ fn literal_positive(a: &AstValue) -> Result<AstValue> {
         AstValue::Number(a) => match a.parse::<i64>() {
             Ok(a) => Ok(AstValue::Number(a.to_string())),
             _ => panic!(),
-        }
-        AstValue::Null => {
-            Ok(AstValue::Null)
-        }
+        },
+        AstValue::Null => Ok(AstValue::Null),
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
     }
 }
@@ -398,10 +395,8 @@ fn literal_negative(a: &AstValue) -> Result<AstValue> {
         AstValue::Number(a) => match a.parse::<i64>() {
             Ok(a) => Ok(AstValue::Number((-a).to_string())),
             _ => panic!(),
-        }
-        AstValue::Null => {
-            Ok(AstValue::Null)
-        }
+        },
+        AstValue::Null => Ok(AstValue::Null),
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
     }
 }
