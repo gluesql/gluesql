@@ -372,7 +372,7 @@ fn literal_positive(a: &AstValue) -> Result<AstValue> {
             Ok(a) => Ok(AstValue::Number(a.to_string())),
             _ => panic!(),
         }
-        AstValue::Null | AstValue::Number(_) => {
+        AstValue::Null => {
             Ok(AstValue::Null)
         }
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
@@ -385,7 +385,7 @@ fn literal_negative(a: &AstValue) -> Result<AstValue> {
             Ok(a) => Ok(AstValue::Number((-a).to_string())),
             _ => panic!(),
         }
-        AstValue::Null | AstValue::Number(_) => {
+        AstValue::Null => {
             Ok(AstValue::Null)
         }
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),

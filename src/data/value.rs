@@ -152,20 +152,6 @@ impl PartialOrd<AstValue> for Value {
     }
 }
 
-impl Neg for Value {
-    type Output = Value;
-
-    fn neg(self) -> Self::Output {
-        match self {
-            Value::I64(v) => Value::I64(-v),
-            Value::OptI64(Some(v)) => Value::OptI64(Some(-v)),
-            Value::F64(v) => Value::F64(-v),
-            Value::OptF64(Some(v)) => Value::OptF64(Some(-v)),
-            _ => Value::Empty,
-        }
-    }
-}
-
 impl TryFrom<&AstValue> for Value {
     type Error = Error;
 
