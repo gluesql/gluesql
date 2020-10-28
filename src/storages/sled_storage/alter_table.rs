@@ -19,10 +19,21 @@ macro_rules! try_self {
     };
 }
 
+macro_rules! fetch_schema {
+    ($self: expr, $tree: expr, $table_name: expr) => {{
+        let (key, schema) = try_self!($self, fetch_schema($tree, $table_name));
+        let schema = try_into!(
+            $self,
+            schema.ok_or_else(|| AlterTableError::TableNotFound($table_name.to_string()))
+        );
+
+        (key, schema)
+    }};
+}
+
 impl AlterTable for SledStorage {
     fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
-        let (_, Schema { column_defs, .. }) = try_self!(self, fetch_schema(&self.tree, table_name));
-
+        let (_, Schema { column_defs, .. }) = fetch_schema!(self, &self.tree, table_name);
         let schema = Schema {
             table_name: new_table_name.to_string(),
             column_defs,
@@ -62,8 +73,7 @@ impl AlterTable for SledStorage {
         old_column_name: &str,
         new_column_name: &str,
     ) -> MutResult<Self, ()> {
-        let (key, Schema { column_defs, .. }) =
-            try_self!(self, fetch_schema(&self.tree, table_name));
+        let (key, Schema { column_defs, .. }) = fetch_schema!(self, &self.tree, table_name);
 
         let i = column_defs
             .iter()
@@ -106,7 +116,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
             },
-        ) = try_self!(self, fetch_schema(&self.tree, table_name));
+        ) = fetch_schema!(self, &self.tree, table_name);
 
         if column_defs
             .iter()
@@ -190,7 +200,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
             },
-        ) = try_self!(self, fetch_schema(&self.tree, table_name));
+        ) = fetch_schema!(self, &self.tree, table_name);
 
         let index = column_defs
             .iter()

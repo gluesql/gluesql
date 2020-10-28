@@ -1,5 +1,7 @@
 use boolinator::Boolinator;
+use serde::Serialize;
 use std::fmt::Debug;
+use thiserror::Error;
 
 use sqlparser::ast::{ColumnDef, Ident};
 
@@ -8,12 +10,19 @@ use crate::data::Row;
 use crate::result::Result;
 use crate::store::Store;
 
+#[derive(Error, Serialize, Debug, PartialEq)]
+pub enum FetchError {
+    #[error("table not found: {0}")]
+    TableNotFound(String),
+}
+
 pub fn fetch_columns<T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &str,
 ) -> Result<Vec<Ident>> {
     Ok(storage
         .fetch_schema(table_name)?
+        .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
         .column_defs
         .into_iter()
         .map(|ColumnDef { name, .. }| name)

@@ -7,7 +7,7 @@ use thiserror::Error as ThisError;
 use crate::AlterTable;
 #[cfg(feature = "alter-table")]
 use crate::AlterTableError;
-use crate::{Error, Result, Schema, StoreError};
+use crate::{Error, Result, Schema};
 
 #[cfg(feature = "alter-table")]
 mod alter_table;
@@ -18,9 +18,6 @@ mod store;
 
 #[derive(ThisError, Debug)]
 enum StorageError {
-    #[error(transparent)]
-    Store(#[from] StoreError),
-
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
@@ -41,7 +38,6 @@ impl Into<Error> for StorageError {
             Sled(e) => Error::Storage(Box::new(e)),
             Bincode(e) => Error::Storage(e),
             Str(e) => Error::Storage(Box::new(e)),
-            Store(e) => e.into(),
 
             #[cfg(feature = "alter-table")]
             AlterTable(e) => e.into(),
@@ -95,11 +91,10 @@ impl TryFrom<Config> for SledStorage {
     }
 }
 
-fn fetch_schema(tree: &Db, table_name: &str) -> Result<(String, Schema)> {
+fn fetch_schema(tree: &Db, table_name: &str) -> Result<(String, Option<Schema>)> {
     let key = format!("schema/{}", table_name);
     let value = try_into!(tree.get(&key.as_bytes()));
-    let value = value.ok_or(StoreError::SchemaNotFound)?;
-    let schema = try_into!(bincode::deserialize(&value));
+    let schema = try_into!(value.map(|v| bincode::deserialize(&v)).transpose());
 
     Ok((key, schema))
 }

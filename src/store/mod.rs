@@ -5,25 +5,17 @@ pub use alter_table::*;
 #[cfg(not(feature = "alter-table"))]
 pub trait AlterTable {}
 
-use serde::Serialize;
 use std::fmt::Debug;
 use std::marker::Sized;
-use thiserror::Error;
 
 use crate::data::{Row, Schema};
 use crate::result::{MutResult, Result};
-
-#[derive(Error, Serialize, Debug, PartialEq)]
-pub enum StoreError {
-    #[error("Schema not found")]
-    SchemaNotFound,
-}
 
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` queries.
 pub trait Store<T: Debug> {
-    fn fetch_schema(&self, table_name: &str) -> Result<Schema>;
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
     fn scan_data(&self, table_name: &str) -> Result<RowIter<T>>;
 }

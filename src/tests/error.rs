@@ -6,7 +6,10 @@ pub fn error(mut tester: impl tests::Tester) {
 
     let test_cases = vec![
         (ExecuteError::QueryNotSupported.into(), "COMMIT;"),
-        (StoreError::SchemaNotFound.into(), "SELECT * FROM Nothing;"),
+        (
+            FetchError::TableNotFound("Nothing".to_owned()).into(),
+            "SELECT * FROM Nothing;",
+        ),
         (
             SelectError::TooManyTables.into(),
             "SELECT * FROM TableA, TableB",
