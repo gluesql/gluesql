@@ -1,19 +1,20 @@
-use serde::Serialize;
 use std::fmt::Debug;
-use thiserror::Error;
 
+use serde::Serialize;
 #[cfg(feature = "alter-table")]
 use sqlparser::ast::AlterTableOperation;
 use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
+use thiserror::Error;
 
-use super::fetch::{fetch, fetch_columns};
-use super::filter::Filter;
-use super::select::select;
-use super::update::Update;
 use crate::data::{get_name, Row, Schema};
 use crate::parse::Query;
 use crate::result::{MutResult, Result};
 use crate::store::{AlterTable, Store, StoreMut};
+
+use super::fetch::{fetch, fetch_columns};
+use super::filter::Filter;
+use super::select::select_with_labels;
+use super::update::Update;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -29,13 +30,21 @@ pub enum ExecuteError {
     #[cfg(feature = "alter-table")]
     #[error("unsupported alter table operation: {0}")]
     UnsupportedAlterTableOperation(String),
+
+    #[error("table does not exist")]
+    TableNotExists,
+    #[error("table already exists")]
+    TableAlreadyExists,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
     Create,
     Insert(usize),
-    Select(Vec<Row>),
+    Select {
+        labels: Vec<String>,
+        rows: Vec<Row>,
+    },
     Delete(usize),
     Update(usize),
     DropTable,
@@ -48,18 +57,37 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
+    macro_rules! try_into {
+        ($storage: expr, $expr: expr) => {
+            match $expr {
+                Err(e) => {
+                    return Err(($storage, e.into()));
+                }
+                Ok(v) => v,
+            }
+        };
+    }
+
     let Query(query) = query;
-    let prepared = match prepare(&storage, query) {
-        Ok(prepared) => prepared,
-        Err(error) => {
-            return Err((storage, error));
-        }
-    };
+    let prepared = try_into!(storage, prepare(&storage, query));
 
     match prepared {
-        Prepared::Create(schema) => storage
-            .insert_schema(&schema)
-            .map(|(storage, _)| (storage, Payload::Create)),
+        Prepared::Create {
+            schema,
+            if_not_exists,
+        } => {
+            if try_into!(storage, storage.fetch_schema(&schema.table_name)).is_some() {
+                return if if_not_exists {
+                    Ok((storage, Payload::Create))
+                } else {
+                    Err((storage, ExecuteError::TableAlreadyExists.into()))
+                };
+            }
+
+            storage
+                .insert_schema(&schema)
+                .map(|(storage, _)| (storage, Payload::Create))
+        }
         Prepared::Insert(table_name, rows) => rows
             .into_iter()
             .try_fold((storage, 0), |(storage, num), row| {
@@ -93,18 +121,24 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
             Ok((storage, Payload::Update(num_rows)))
         }
-        Prepared::DropTable(table_names) => {
-            let storage = table_names
-                .iter()
-                .try_fold(storage, |storage, table_name| {
-                    let (storage, _) = storage.delete_schema(table_name)?;
+        Prepared::DropTable {
+            schema_names,
+            if_exists,
+        } => schema_names
+            .iter()
+            .try_fold(storage, |storage, table_name| {
+                let schema = try_into!(storage, storage.fetch_schema(table_name));
 
-                    Ok(storage)
-                })?;
+                if !if_exists {
+                    try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
+                }
 
-            Ok((storage, Payload::DropTable))
-        }
-        Prepared::Select(rows) => Ok((storage, Payload::Select(rows))),
+                storage
+                    .delete_schema(table_name)
+                    .map(|(storage, _)| storage)
+            })
+            .map(|storage| (storage, Payload::DropTable)),
+        Prepared::Select { labels, rows } => Ok((storage, Payload::Select { labels, rows })),
 
         #[cfg(feature = "alter-table")]
         Prepared::AlterTable(table_name, operation) => {
@@ -140,12 +174,21 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 }
 
 enum Prepared<'a, T> {
-    Create(Schema),
+    Create {
+        schema: Schema,
+        if_not_exists: bool,
+    },
     Insert(&'a str, Vec<Row>),
     Delete(Vec<T>),
     Update(Vec<(T, Row)>),
-    Select(Vec<Row>),
-    DropTable(Vec<&'a str>),
+    Select {
+        labels: Vec<String>,
+        rows: Vec<Row>,
+    },
+    DropTable {
+        schema_names: Vec<&'a str>,
+        if_exists: bool,
+    },
 
     #[cfg(feature = "alter-table")]
     AlterTable(&'a str, &'a AlterTableOperation),
@@ -156,18 +199,27 @@ fn prepare<'a, T: 'static + Debug>(
     sql_query: &'a Statement,
 ) -> Result<Prepared<'a, T>> {
     match sql_query {
-        Statement::CreateTable { name, columns, .. } => {
+        Statement::CreateTable {
+            name,
+            columns,
+            if_not_exists,
+            ..
+        } => {
             let schema = Schema {
                 table_name: get_name(name)?.clone(),
                 column_defs: columns.clone(),
             };
 
-            Ok(Prepared::Create(schema))
+            Ok(Prepared::Create {
+                schema,
+                if_not_exists: *if_not_exists,
+            })
         }
         Statement::Query(query) => {
-            let rows = select(storage, &query, None)?.collect::<Result<_>>()?;
+            let (labels, rows) = select_with_labels(storage, &query, None, true)?;
+            let rows = rows.collect::<Result<_>>()?;
 
-            Ok(Prepared::Select(rows))
+            Ok(Prepared::Select { labels, rows })
         }
         Statement::Insert {
             table_name,
@@ -175,7 +227,10 @@ fn prepare<'a, T: 'static + Debug>(
             source,
         } => {
             let table_name = get_name(table_name)?;
-            let Schema { column_defs, .. } = storage.fetch_schema(table_name)?;
+            let Schema { column_defs, .. } = storage
+                .fetch_schema(table_name)?
+                .ok_or(ExecuteError::TableNotExists)?;
+
             let values_list = match &source.body {
                 SetExpr::Values(Values(values_list)) => values_list,
                 set_expr => {
@@ -227,7 +282,10 @@ fn prepare<'a, T: 'static + Debug>(
             Ok(Prepared::Delete(rows))
         }
         Statement::Drop {
-            object_type, names, ..
+            object_type,
+            names,
+            if_exists,
+            ..
         } => {
             if object_type != &ObjectType::Table {
                 return Err(ExecuteError::DropTypeNotSupported.into());
@@ -238,7 +296,10 @@ fn prepare<'a, T: 'static + Debug>(
                 .map(|name| get_name(name).map(|n| n.as_str()))
                 .collect::<Result<_>>()?;
 
-            Ok(Prepared::DropTable(names))
+            Ok(Prepared::DropTable {
+                schema_names: names,
+                if_exists: *if_exists,
+            })
         }
 
         #[cfg(feature = "alter-table")]

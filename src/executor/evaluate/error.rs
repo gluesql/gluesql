@@ -10,6 +10,17 @@ pub enum EvaluateError {
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
 
+    #[error("function is not supported: {0}")]
+    FunctionNotSupported(String),
+
+    #[error("function requires string value: {0}")]
+    FunctionRequiresStringValue(String),
+
+    #[error(
+        "number of function parameters not matching (expected: {expected:?}, found: {found:?})"
+    )]
+    NumberOfFunctionParamsNotMatching { expected: usize, found: usize },
+
     #[error("unsupported compound identifier {0}")]
     UnsupportedCompoundIdentifier(String),
 
@@ -21,12 +32,6 @@ pub enum EvaluateError {
 
     #[error("unreachable literal arithmetic")]
     UnreachableLiteralArithmetic,
-
-    #[error("unreachable, aggregated field not found {0}")]
-    UnreachableAggregatedField(String),
-
-    #[error("unreachable, aggregated field does not exist")]
-    UnreachableEmptyAggregated,
 
     #[error("unimplemented")]
     Unimplemented,

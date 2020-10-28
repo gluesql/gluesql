@@ -3,19 +3,15 @@ use thiserror::Error as ThisError;
 
 use crate::data::{RowError, TableError, ValueError};
 use crate::executor::{
-    AggregateError, BlendContextError, BlendError, EvaluateError, ExecuteError, FilterContextError,
-    FilterError, JoinError, LimitError, SelectError, UpdateError,
+    AggregateError, BlendContextError, BlendError, EvaluateError, ExecuteError, FetchError,
+    FilterContextError, FilterError, JoinError, LimitError, SelectError, UpdateError,
 };
 
 #[cfg(feature = "alter-table")]
 use crate::store::AlterTableError;
-use crate::store::StoreError;
 
 #[derive(ThisError, Serialize, Debug)]
 pub enum Error {
-    #[error(transparent)]
-    Store(#[from] StoreError),
-
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
@@ -26,6 +22,8 @@ pub enum Error {
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
+    #[error(transparent)]
+    Fetch(#[from] FetchError),
     #[error(transparent)]
     Evaluate(#[from] EvaluateError),
     #[error(transparent)]
@@ -62,10 +60,10 @@ impl PartialEq for Error {
         use Error::*;
 
         match (self, other) {
-            (Store(e), Store(e2)) => e == e2,
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
+            (Fetch(e), Fetch(e2)) => e == e2,
             (Evaluate(e), Evaluate(e2)) => e == e2,
             (Select(e), Select(e2)) => e == e2,
             (Join(e), Join(e2)) => e == e2,

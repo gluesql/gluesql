@@ -172,11 +172,12 @@ pub fn blend(mut tester: impl tests::Tester) {
     ";
     let found = tester.run(sql).expect("select");
     let expected = select_with_empty!(
-        I64(1) I64(101);
-        I64(2) I64(102);
-        I64(3) Empty;
-        I64(4) I64(103);
-        I64(5) Empty
+        id     | id;
+        I64(1)   I64(101);
+        I64(2)   I64(102);
+        I64(3)   Empty;
+        I64(4)   I64(103);
+        I64(5)   Empty
     );
     assert_eq!(expected, found);
 
@@ -188,11 +189,12 @@ pub fn blend(mut tester: impl tests::Tester) {
     ";
     let found = tester.run(sql).expect("select");
     let expected = select_with_empty!(
-        I64(1) I64(1);
-        I64(2) I64(2);
-        I64(3) Empty;
-        I64(4) I64(4);
-        I64(5) Empty
+        id     | player_id;
+        I64(1)   I64(1);
+        I64(2)   I64(2);
+        I64(3)   Empty;
+        I64(4)   I64(4);
+        I64(5)   Empty
     );
     assert_eq!(expected, found);
 
@@ -204,11 +206,12 @@ pub fn blend(mut tester: impl tests::Tester) {
     ";
     let found = tester.run(sql).expect("select");
     let expected = select_with_empty!(
-        I64(101) I64(1) I64(1);
-        I64(102) I64(4) I64(2);
-        Empty    Empty  Empty;
-        I64(103) I64(9) I64(4);
-        Empty    Empty  Empty
+        id       | quantity | player_id;
+        I64(101)   I64(1)     I64(1);
+        I64(102)   I64(4)     I64(2);
+        Empty      Empty      Empty;
+        I64(103)   I64(9)     I64(4);
+        Empty      Empty      Empty
     );
     assert_eq!(expected, found);
 
@@ -220,11 +223,12 @@ pub fn blend(mut tester: impl tests::Tester) {
     ";
     let found = tester.run(sql).expect("select");
     let expected = select_with_empty!(
-        I64(1) Str("Taehoon".to_owned()) I64(101) I64(1) I64(1);
-        I64(2) Str("Mike".to_owned())    I64(102) I64(4) I64(2);
-        I64(3) Str("Jorno".to_owned())   Empty    Empty  Empty;
-        I64(4) Str("Berry".to_owned())   I64(103) I64(9) I64(4);
-        I64(5) Str("Hwan".to_owned())    Empty    Empty  Empty
+        id     | name                      | id       | quantity | player_id;
+        I64(1)   Str("Taehoon".to_owned())   I64(101)   I64(1)     I64(1);
+        I64(2)   Str("Mike".to_owned())      I64(102)   I64(4)     I64(2);
+        I64(3)   Str("Jorno".to_owned())     Empty      Empty      Empty;
+        I64(4)   Str("Berry".to_owned())     I64(103)   I64(9)     I64(4);
+        I64(5)   Str("Hwan".to_owned())      Empty      Empty      Empty
     );
     assert_eq!(expected, found);
 }

@@ -4,10 +4,12 @@ pub mod alter_table;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
+pub mod create_table;
 pub mod default;
 pub mod drop_table;
 pub mod error;
 pub mod filter;
+pub mod function;
 pub mod join;
 pub mod migrate;
 pub mod nested_select;
@@ -15,6 +17,7 @@ pub mod nullable;
 pub mod ordering;
 pub mod sql_types;
 pub mod synthesize;
+
 mod tester;
 
 pub mod macros;
@@ -57,6 +60,7 @@ macro_rules! generate_tests {
         glue!(arithmetic, arithmetic::arithmetic);
         glue!(arithmetic_blend, arithmetic::blend);
         glue!(blend, blend::blend);
+        glue!(create_table, create_table::create_table);
         glue!(drop_table, drop_table::drop_table);
         glue!(error, error::error);
         glue!(join, join::join);
@@ -70,6 +74,7 @@ macro_rules! generate_tests {
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
         glue!(filter, filter::filter);
+        glue!(function, function::function);
 
         generate_alter_table_tests!();
     };
