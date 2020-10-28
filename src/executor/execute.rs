@@ -31,9 +31,9 @@ pub enum ExecuteError {
     #[error("unsupported alter table operation: {0}")]
     UnsupportedAlterTableOperation(String),
 
-    #[error("TableNotExists")]
+    #[error("table does not exist")]
     TableNotExists,
-    #[error("TableAlreadyExists")]
+    #[error("table already exists")]
     TableAlreadyExists,
 }
 
@@ -57,26 +57,33 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
+    macro_rules! try_into {
+        ($storage: expr, $expr: expr) => {
+            match $expr {
+                Err(e) => {
+                    return Err(($storage, e.into()));
+                }
+                Ok(v) => v,
+            }
+        };
+    }
+
     let Query(query) = query;
-    let prepared = match prepare(&storage, query) {
-        Ok(prepared) => prepared,
-        Err(error) => {
-            return Err((storage, error));
-        }
-    };
+    let prepared = try_into!(storage, prepare(&storage, query));
 
     match prepared {
         Prepared::Create {
             schema,
             if_not_exists,
         } => {
-            if storage.fetch_schema(&schema.table_name).is_ok() {
+            if try_into!(storage, storage.fetch_schema(&schema.table_name)).is_some() {
                 return if if_not_exists {
                     Ok((storage, Payload::Create))
                 } else {
                     Err((storage, ExecuteError::TableAlreadyExists.into()))
                 };
             }
+
             storage
                 .insert_schema(&schema)
                 .map(|(storage, _)| (storage, Payload::Create))
@@ -117,29 +124,20 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
         Prepared::DropTable {
             schema_names,
             if_exists,
-        } => {
-            let storage = match if_exists {
-                true => Ok(storage),
-                false => schema_names
-                    .iter()
-                    .try_fold(storage, |storage, table_name| {
-                        if storage.fetch_schema(table_name).is_ok() {
-                            Ok(storage)
-                        } else {
-                            Err((storage, ExecuteError::TableNotExists.into()))
-                        }
-                    }),
-            }?;
-            let storage = schema_names
-                .iter()
-                .try_fold(storage, |storage, table_name| {
-                    let (storage, _) = storage.delete_schema(table_name)?;
+        } => schema_names
+            .iter()
+            .try_fold(storage, |storage, table_name| {
+                let schema = try_into!(storage, storage.fetch_schema(table_name));
 
-                    Ok(storage)
-                })?;
+                if !if_exists {
+                    try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
+                }
 
-            Ok((storage, Payload::DropTable))
-        }
+                storage
+                    .delete_schema(table_name)
+                    .map(|(storage, _)| storage)
+            })
+            .map(|storage| (storage, Payload::DropTable)),
         Prepared::Select { labels, rows } => Ok((storage, Payload::Select { labels, rows })),
 
         #[cfg(feature = "alter-table")]
@@ -229,7 +227,10 @@ fn prepare<'a, T: 'static + Debug>(
             source,
         } => {
             let table_name = get_name(table_name)?;
-            let Schema { column_defs, .. } = storage.fetch_schema(table_name)?;
+            let Schema { column_defs, .. } = storage
+                .fetch_schema(table_name)?
+                .ok_or(ExecuteError::TableNotExists)?;
+
             let values_list = match &source.body {
                 SetExpr::Values(Values(values_list)) => values_list,
                 set_expr => {

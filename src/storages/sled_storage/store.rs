@@ -54,7 +54,7 @@ impl StoreMut<IVec> for SledStorage {
 }
 
 impl Store<IVec> for SledStorage {
-    fn fetch_schema(&self, table_name: &str) -> Result<Schema> {
+    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         fetch_schema(&self.tree, table_name).map(|(_, schema)| schema)
     }
 
