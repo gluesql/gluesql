@@ -5,7 +5,7 @@ use im_rc::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use sqlparser::ast::{BinaryOperator, Expr, Function, Value as AstValue};
+use sqlparser::ast::{BinaryOperator, UnaryOperator, Expr, Function, Value as AstValue};
 
 use super::context::FilterContext;
 use super::select::select;
@@ -87,6 +87,15 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 BinaryOperator::Minus => l.subtract(&r),
                 BinaryOperator::Multiply => l.multiply(&r),
                 BinaryOperator::Divide => l.divide(&r),
+                _ => Err(EvaluateError::Unimplemented.into()),
+            }
+        }
+        Expr::UnaryOp { op, expr } => {
+            let v = eval(expr)?;
+
+            match op {
+                UnaryOperator::Plus => v.positive(),
+                UnaryOperator::Minus => v.negative(),
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
         }

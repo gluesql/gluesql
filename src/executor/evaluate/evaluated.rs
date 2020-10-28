@@ -79,9 +79,11 @@ impl<'a> PartialEq for Evaluated<'a> {
                     Literal(_) => panic!(),
                 },
                 Literal(l) => match other {
+                    Literal(r) => l == r,
+                    LiteralRef(r) => &l == r,
                     ValueRef(r) => r == &l,
                     StringRef(_) => false,
-                    _ => panic!(),
+                    Value(_) => panic!(),
                 },
             }
         }
@@ -143,6 +145,7 @@ fn literal_partial_cmp(a: &AstValue, b: &AstValue) -> Option<Ordering> {
         _ => None,
     }
 }
+
 
 impl<'a> Evaluated<'a> {
     pub fn add(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
@@ -274,6 +277,41 @@ impl<'a> Evaluated<'a> {
             Evaluated::StringRef(_v) => true,
         }
     }
+
+    pub fn positive(&self) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
+
+        let unreachable = || Err(EvaluateError::UnreachableEvaluatedArithmetic.into());
+
+        let positive_literal = |l| literal_positive(l).map(Evaluated::Literal);
+        let positive_value = |l: &data::Value| l.positive().map(Evaluated::Value);
+
+        match self {
+            LiteralRef(v) => positive_literal(v),
+            Literal(v) => positive_literal(&v),
+            ValueRef(v) => positive_value(v),
+            Value(v) => positive_value(&v),
+            StringRef(_) => unreachable(),
+        }
+    }
+
+    pub fn negative(&self) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
+
+        let unreachable = || Err(EvaluateError::UnreachableEvaluatedArithmetic.into());
+
+        let negative_literal = |l| literal_negative(l).map(Evaluated::Literal);
+        let negative_value = |l: &data::Value| l.negative().map(Evaluated::Value);
+
+        match self {
+            LiteralRef(v) => negative_literal(v),
+            Literal(v) => negative_literal(&v),
+            ValueRef(v) => negative_value(v),
+            Value(v) => negative_value(&v),
+            StringRef(_) => unreachable(),
+        }
+    }
+
 }
 
 fn literal_add(a: &AstValue, b: &AstValue) -> Result<AstValue> {
@@ -322,6 +360,32 @@ fn literal_divide(a: &AstValue, b: &AstValue) -> Result<AstValue> {
             _ => panic!(),
         },
         (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
+            Ok(AstValue::Null)
+        }
+        _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+    }
+}
+
+fn literal_positive(a: &AstValue) -> Result<AstValue> {
+    match a {
+        AstValue::Number(a) => match a.parse::<i64>() {
+            Ok(a) => Ok(AstValue::Number(a.to_string())),
+            _ => panic!(),
+        }
+        AstValue::Null | AstValue::Number(_) => {
+            Ok(AstValue::Null)
+        }
+        _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+    }
+}
+
+fn literal_negative(a: &AstValue) -> Result<AstValue> {
+    match a {
+        AstValue::Number(a) => match a.parse::<i64>() {
+            Ok(a) => Ok(AstValue::Number((-a).to_string())),
+            _ => panic!(),
+        }
+        AstValue::Null | AstValue::Number(_) => {
             Ok(AstValue::Null)
         }
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),

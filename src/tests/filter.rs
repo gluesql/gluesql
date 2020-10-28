@@ -60,6 +60,8 @@ pub fn filter(mut tester: impl tests::Tester) {
                 SELECT * FROM Hunter WHERE Hunter.name = Boss.name
              )",
         ),
+        (5, "SELECT name FROM Boss WHERE +1 = 1"),
+        (3, "SELECT id FROM Hunter WHERE -1 = -1"),
     ];
 
     select_sqls

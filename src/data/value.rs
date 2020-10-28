@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
+use std::ops::Neg;
 use thiserror::Error as ThisError;
 
 use sqlparser::ast::{DataType, Expr, Ident, Value as AstValue};
@@ -147,6 +148,20 @@ impl PartialOrd<AstValue> for Value {
             (Value::Str(l), AstValue::SingleQuotedString(r))
             | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
             _ => None,
+        }
+    }
+}
+
+impl Neg for Value {
+    type Output = Value;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Value::I64(v) => Value::I64(-v),
+            Value::OptI64(Some(v)) => Value::OptI64(Some(-v)),
+            Value::F64(v) => Value::F64(-v),
+            Value::OptF64(Some(v)) => Value::OptF64(Some(-v)),
+            _ => Value::Empty,
         }
     }
 }
@@ -379,6 +394,34 @@ impl Value {
             self,
             Empty | OptBool(None) | OptI64(None) | OptF64(None) | OptStr(None)
         )
+    }
+
+    pub fn positive(&self) -> Result<Value> {
+        use Value::*;
+
+        match self {
+            I64(a) => Ok(I64(*a)),
+            OptI64(Some(a)) => Ok(OptI64(Some(*a))),
+            F64(a) => Ok(F64(*a)),
+            OptF64(Some(a)) => Ok(OptF64(Some(*a))),
+            OptI64(None) => Ok(OptI64(None)),
+            OptF64(None) => Ok(OptF64(None)),
+            _ => Err(ValueError::FailedToParseNumber.into()),
+        }
+    }
+
+    pub fn negative(&self) -> Result<Value> {
+        use Value::*;
+
+        match self {
+            I64(a) => Ok(I64(-a)),
+            OptI64(Some(a)) => Ok(OptI64(Some(-a))),
+            F64(a) => Ok(F64(-a)),
+            OptF64(Some(a)) => Ok(OptF64(Some(-a))),
+            OptI64(None) => Ok(OptI64(None)),
+            OptF64(None) => Ok(OptF64(None)),
+            _ => Err(ValueError::FailedToParseNumber.into()),
+        }
     }
 }
 
