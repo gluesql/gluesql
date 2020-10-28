@@ -146,7 +146,6 @@ fn literal_partial_cmp(a: &AstValue, b: &AstValue) -> Option<Ordering> {
     }
 }
 
-
 impl<'a> Evaluated<'a> {
     pub fn add(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
         use Evaluated::*;
