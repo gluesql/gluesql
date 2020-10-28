@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use std::ops::Neg;
 use thiserror::Error as ThisError;
 
 use sqlparser::ast::{DataType, Expr, Ident, Value as AstValue};

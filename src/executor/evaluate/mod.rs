@@ -6,7 +6,7 @@ use std::convert::TryInto;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use sqlparser::ast::{BinaryOperator, UnaryOperator, Expr, Function, Value as AstValue};
+use sqlparser::ast::{BinaryOperator, Expr, Function, UnaryOperator, Value as AstValue};
 
 use super::context::FilterContext;
 use super::select::select;
