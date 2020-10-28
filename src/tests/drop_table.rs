@@ -45,7 +45,7 @@ CREATE TABLE DropTable (
         ("DROP TABLE IF EXISTS DropTable;", Ok(Payload::DropTable)),
         (
             "SELECT id, num, name FROM DropTable;",
-            Err(StoreError::SchemaNotFound.into()),
+            Err(FetchError::TableNotFound("DropTable".to_owned()).into()),
         ),
         (create_sql, Ok(Payload::Create)),
         (

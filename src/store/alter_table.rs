@@ -8,6 +8,9 @@ use crate::result::MutResult;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum AlterTableError {
+    #[error("Table not found: {0}")]
+    TableNotFound(String),
+
     #[error("Renaming column not found")]
     RenamingColumnNotFound,
 

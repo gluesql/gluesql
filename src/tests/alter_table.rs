@@ -19,6 +19,10 @@ pub fn rename(tester: impl tests::Tester) {
             Ok(Payload::Insert(3)),
         ),
         ("SELECT id FROM Foo", Ok(select!(id; I64; 1; 2; 3))),
+        (
+            "ALTER TABLE Foo2 RENAME TO Bar;",
+            Err(AlterTableError::TableNotFound("Foo2".to_owned()).into()),
+        ),
         ("ALTER TABLE Foo RENAME TO Bar;", Ok(Payload::AlterTable)),
         ("SELECT id FROM Bar", Ok(select!(id; I64; 1; 2; 3))),
         (
