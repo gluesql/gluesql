@@ -60,9 +60,38 @@ pub fn filter(mut tester: impl tests::Tester) {
                 SELECT * FROM Hunter WHERE Hunter.name = Boss.name
              )",
         ),
+        (5, "SELECT name FROM Boss WHERE +1 = 1"),
+        (3, "SELECT id FROM Hunter WHERE -1 = -1"),
+        (5, "SELECT name FROM Boss WHERE -2.0 < -1.0"),
+        (3, "SELECT id FROM Hunter WHERE +2 > +1.0"),
+        (2, "SELECT name FROM Boss WHERE id <= +2"),
+        (2, "SELECT name FROM Boss WHERE +id <= 2"),
     ];
 
     select_sqls
         .iter()
         .for_each(|(num, sql)| tester.test_rows(sql, *num));
+
+    let select_sqls_err = vec![
+        (
+            EvaluateError::LiteralUnaryPlusOnNonNumeric.into(),
+            "SELECT id FROM Hunter WHERE +'abcd' > 1.0",
+        ),
+        (
+            EvaluateError::LiteralUnaryMinusOnNonNumeric.into(),
+            "SELECT id FROM Hunter WHERE -'abcd' < 1.0",
+        ),
+        (
+            ValueError::UnaryPlusOnNonNumeric.into(),
+            "SELECT id FROM Hunter WHERE +name > 1.0",
+        ),
+        (
+            ValueError::UnaryMinusOnNonNumeric.into(),
+            "SELECT id FROM Hunter WHERE -name < 1.0",
+        ),
+    ];
+
+    select_sqls_err
+        .into_iter()
+        .for_each(|(error, sql)| tester.test_error(sql, error));
 }

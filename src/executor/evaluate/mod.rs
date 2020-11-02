@@ -6,7 +6,7 @@ use std::convert::TryInto;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-use sqlparser::ast::{BinaryOperator, Expr, Function, Value as AstValue};
+use sqlparser::ast::{BinaryOperator, Expr, Function, UnaryOperator, Value as AstValue};
 
 use super::context::FilterContext;
 use super::select::select;
@@ -91,6 +91,16 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
         }
+        Expr::UnaryOp { op, expr } => {
+            let v = eval(expr)?;
+
+            match op {
+                UnaryOperator::Plus => v.unary_plus(),
+                UnaryOperator::Minus => v.unary_minus(),
+                _ => Err(EvaluateError::Unimplemented.into()),
+            }
+        }
+
         Expr::Function(func) => aggregated
             .as_ref()
             .map(|aggr| aggr.get(func))
