@@ -1,14 +1,16 @@
-use std::fmt::Debug;
-
+use futures::executor::block_on;
+use futures::stream::{self, TryStreamExt};
 use serde::Serialize;
+use std::fmt::Debug;
+use thiserror::Error as ThisError;
+
 #[cfg(feature = "alter-table")]
 use sqlparser::ast::AlterTableOperation;
 use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
-use thiserror::Error;
 
 use crate::data::{get_name, Row, Schema};
 use crate::parse::Query;
-use crate::result::{MutResult, Result};
+use crate::result::{Error, MutResult, Result};
 use crate::store::{AlterTable, Store, StoreMut};
 
 use super::fetch::{fetch, fetch_columns};
@@ -16,7 +18,7 @@ use super::filter::Filter;
 use super::select::select_with_labels;
 use super::update::Update;
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
     #[error("query not supported")]
     QueryNotSupported,
@@ -57,6 +59,13 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
+    block_on(execute_async(storage, query))
+}
+
+async fn execute_async<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+    storage: U,
+    query: &Query,
+) -> MutResult<U, Payload> {
     macro_rules! try_into {
         ($storage: expr, $expr: expr) => {
             match $expr {
@@ -69,7 +78,8 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     }
 
     let Query(query) = query;
-    let prepared = try_into!(storage, prepare(&storage, query));
+    let prepared = prepare(&storage, query).await;
+    let prepared = try_into!(storage, prepared);
 
     match prepared {
         Prepared::Create {
@@ -86,6 +96,7 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
             storage
                 .insert_schema(&schema)
+                .await
                 .map(|(storage, _)| (storage, Payload::Create))
         }
         Prepared::Insert(table_name, rows) => rows
@@ -124,9 +135,8 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
         Prepared::DropTable {
             schema_names,
             if_exists,
-        } => schema_names
-            .iter()
-            .try_fold(storage, |storage, table_name| {
+        } => stream::iter(schema_names.into_iter().map(Ok::<&str, (U, Error)>))
+            .try_fold(storage, |storage, table_name| async move {
                 let schema = try_into!(storage, storage.fetch_schema(table_name));
 
                 if !if_exists {
@@ -135,8 +145,10 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
                 storage
                     .delete_schema(table_name)
+                    .await
                     .map(|(storage, _)| storage)
             })
+            .await
             .map(|storage| (storage, Payload::DropTable)),
         Prepared::Select { labels, rows } => Ok((storage, Payload::Select { labels, rows })),
 
@@ -194,7 +206,9 @@ enum Prepared<'a, T> {
     AlterTable(&'a str, &'a AlterTableOperation),
 }
 
-fn prepare<'a, T: 'static + Debug>(
+// looks like... false positive
+#[allow(clippy::needless_lifetimes)]
+async fn prepare<'a, T: 'static + Debug>(
     storage: &impl Store<T>,
     sql_query: &'a Statement,
 ) -> Result<Prepared<'a, T>> {

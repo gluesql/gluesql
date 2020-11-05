@@ -1,9 +1,11 @@
+use async_trait::async_trait;
 use sled::IVec;
 
 use super::{fetch_schema, SledStorage, StorageError};
 use crate::try_into;
 use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreMut};
 
+#[async_trait]
 impl StoreMut<IVec> for SledStorage {
     fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
         let id = try_into!(self, self.tree.generate_id());
@@ -12,7 +14,7 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, IVec::from(id.as_bytes())))
     }
 
-    fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
         let value = try_into!(self, bincode::serialize(schema));
@@ -22,7 +24,7 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
+    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let prefix = format!("data/{}/", table_name);
         let tree = &self.tree;
 
