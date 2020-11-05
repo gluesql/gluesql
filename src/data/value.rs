@@ -41,6 +41,12 @@ pub enum ValueError {
 
     #[error("floating numbers cannot be grouped by")]
     FloatCannotBeGroupedBy,
+
+    #[error("unary plus operation for non numeric value")]
+    UnaryPlusOnNonNumeric,
+
+    #[error("unary minus operation for non numeric value")]
+    UnaryMinusOnNonNumeric,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -93,12 +99,18 @@ impl PartialEq<AstValue> for Value {
             (Value::I64(l), AstValue::Number(r))
             | (Value::OptI64(Some(l)), AstValue::Number(r)) => match r.parse::<i64>() {
                 Ok(r) => l == &r,
-                Err(_) => false,
+                Err(_) => match r.parse::<f64>() {
+                    Ok(r) => (*l as f64) == r,
+                    Err(_) => false,
+                },
             },
             (Value::F64(l), AstValue::Number(r))
             | (Value::OptF64(Some(l)), AstValue::Number(r)) => match r.parse::<f64>() {
                 Ok(r) => l == &r,
-                Err(_) => false,
+                Err(_) => match r.parse::<i64>() {
+                    Ok(r) => *l == (r as f64),
+                    Err(_) => false,
+                },
             },
             (Value::Str(l), AstValue::SingleQuotedString(r))
             | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => l == r,
@@ -118,10 +130,18 @@ impl PartialOrd<Value> for Value {
             | (Value::OptI64(Some(l)), Value::I64(r))
             | (Value::I64(l), Value::OptI64(Some(r)))
             | (Value::OptI64(Some(l)), Value::OptI64(Some(r))) => Some(l.cmp(r)),
+            (Value::I64(l), Value::F64(r))
+            | (Value::OptI64(Some(l)), Value::F64(r))
+            | (Value::I64(l), Value::OptF64(Some(r)))
+            | (Value::OptI64(Some(l)), Value::OptF64(Some(r))) => (*l as f64).partial_cmp(r),
             (Value::F64(l), Value::F64(r))
             | (Value::OptF64(Some(l)), Value::F64(r))
             | (Value::F64(l), Value::OptF64(Some(r)))
             | (Value::OptF64(Some(l)), Value::OptF64(Some(r))) => l.partial_cmp(r),
+            (Value::F64(l), Value::I64(r))
+            | (Value::OptF64(Some(l)), Value::I64(r))
+            | (Value::F64(l), Value::OptI64(Some(r)))
+            | (Value::OptF64(Some(l)), Value::OptI64(Some(r))) => l.partial_cmp(&(*r as f64)),
             (Value::Str(l), Value::Str(r))
             | (Value::OptStr(Some(l)), Value::Str(r))
             | (Value::Str(l), Value::OptStr(Some(r)))
@@ -137,12 +157,18 @@ impl PartialOrd<AstValue> for Value {
             (Value::I64(l), AstValue::Number(r))
             | (Value::OptI64(Some(l)), AstValue::Number(r)) => match r.parse::<i64>() {
                 Ok(r) => Some(l.cmp(&r)),
-                Err(_) => None,
+                Err(_) => match r.parse::<f64>() {
+                    Ok(r) => (*l as f64).partial_cmp(&r),
+                    Err(_) => None,
+                },
             },
             (Value::F64(l), AstValue::Number(r))
             | (Value::OptF64(Some(l)), AstValue::Number(r)) => match r.parse::<f64>() {
                 Ok(r) => l.partial_cmp(&r),
-                Err(_) => None,
+                Err(_) => match r.parse::<i64>() {
+                    Ok(r) => l.partial_cmp(&(r as f64)),
+                    Err(_) => None,
+                },
             },
             (Value::Str(l), AstValue::SingleQuotedString(r))
             | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
@@ -379,6 +405,29 @@ impl Value {
             self,
             Empty | OptBool(None) | OptI64(None) | OptF64(None) | OptStr(None)
         )
+    }
+
+    pub fn unary_plus(&self) -> Result<Value> {
+        use Value::*;
+
+        match self {
+            I64(_) | OptI64(_) | F64(_) | OptF64(_) => Ok(self.clone()),
+            _ => Err(ValueError::UnaryPlusOnNonNumeric.into()),
+        }
+    }
+
+    pub fn unary_minus(&self) -> Result<Value> {
+        use Value::*;
+
+        match self {
+            I64(a) => Ok(I64(-a)),
+            OptI64(Some(a)) => Ok(OptI64(Some(-a))),
+            F64(a) => Ok(F64(-a)),
+            OptF64(Some(a)) => Ok(OptF64(Some(-a))),
+            OptI64(None) => Ok(OptI64(None)),
+            OptF64(None) => Ok(OptF64(None)),
+            _ => Err(ValueError::UnaryMinusOnNonNumeric.into()),
+        }
     }
 }
 

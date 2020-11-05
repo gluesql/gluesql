@@ -56,7 +56,7 @@ impl<'a> PartialEq for Evaluated<'a> {
                     StringRef(r) => eq_ast(l, r),
                     ValueRef(r) => r == l,
                     Value(r) => &r == l,
-                    Literal(_) => panic!(),
+                    Literal(r) => *l == r,
                 },
                 StringRef(l) => match other {
                     LiteralRef(r) => eq_ast(r, l),
@@ -77,12 +77,14 @@ impl<'a> PartialEq for Evaluated<'a> {
                     StringRef(r) => eq_val(&l, r),
                     ValueRef(r) => &l == r,
                     Value(r) => l == r,
-                    Literal(_) => panic!(),
+                    Literal(r) => l == r,
                 },
                 Literal(l) => match other {
+                    Literal(r) => l == r,
+                    LiteralRef(r) => &l == r,
                     ValueRef(r) => r == &l,
                     StringRef(_) => false,
-                    _ => panic!(),
+                    Value(_) => panic!(),
                 },
             }
         }
@@ -99,7 +101,7 @@ impl<'a> PartialOrd for Evaluated<'a> {
                 ValueRef(r) => r.partial_cmp(l).map(|o| o.reverse()),
                 Value(r) => r.partial_cmp(*l).map(|o| o.reverse()),
                 StringRef(_) => None,
-                Literal(_) => panic!(),
+                Literal(r) => literal_partial_cmp(&l, &r),
             },
             ValueRef(l) => match other {
                 LiteralRef(r) => l.partial_cmp(r),
@@ -109,7 +111,7 @@ impl<'a> PartialOrd for Evaluated<'a> {
                     data::Value::Str(l) => (&l.as_str()).partial_cmp(r),
                     _ => None,
                 },
-                Literal(_) => panic!(),
+                Literal(r) => l.partial_cmp(&r),
             },
             Value(l) => match other {
                 LiteralRef(r) => l.partial_cmp(*r),
@@ -119,7 +121,7 @@ impl<'a> PartialOrd for Evaluated<'a> {
                     data::Value::Str(l) => (&l.as_str()).partial_cmp(r),
                     _ => None,
                 },
-                Literal(_) => panic!(),
+                Literal(r) => l.partial_cmp(r),
             },
             StringRef(l) => match other {
                 LiteralRef(_) => None,
@@ -129,16 +131,33 @@ impl<'a> PartialOrd for Evaluated<'a> {
                 Literal(_) => panic!(),
                 _ => None,
             },
-            Literal(_) => panic!(),
+            Literal(l) => match other {
+                LiteralRef(r) => literal_partial_cmp(&l, &r),
+                ValueRef(r) => r.partial_cmp(&l).map(|o| o.reverse()),
+                Value(r) => r.partial_cmp(l).map(|o| o.reverse()),
+                StringRef(_) => None,
+                Literal(r) => literal_partial_cmp(l, r),
+            },
         }
     }
 }
 
 fn literal_partial_cmp(a: &AstValue, b: &AstValue) -> Option<Ordering> {
     match (a, b) {
-        (AstValue::Number(l), AstValue::Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
-            (Ok(l), Ok(r)) => Some(l.cmp(&r)),
-            _ => None,
+        (AstValue::Number(a), AstValue::Number(b)) => match (a.parse::<i64>(), b.parse::<i64>()) {
+            (Ok(a), Ok(b)) => Some(a.cmp(&b)),
+            (_, Ok(b)) => match a.parse::<f64>() {
+                Ok(a) => a.partial_cmp(&(b as f64)),
+                _ => None,
+            },
+            (Ok(a), _) => match b.parse::<f64>() {
+                Ok(b) => (a as f64).partial_cmp(&b),
+                _ => None,
+            },
+            _ => match (a.parse::<f64>(), b.parse::<f64>()) {
+                (Ok(a), Ok(b)) => a.partial_cmp(&b),
+                _ => None,
+            },
         },
         (AstValue::SingleQuotedString(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
         _ => None,
@@ -289,6 +308,40 @@ impl<'a> Evaluated<'a> {
             Evaluated::StringRef(_v) => true,
         }
     }
+
+    pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
+
+        let unreachable = || Err(EvaluateError::UnreachableEvaluatedArithmetic.into());
+
+        let plus_literal = |v| literal_plus(v).map(Evaluated::Literal);
+        let plus_value = |v: &data::Value| v.unary_plus().map(Evaluated::Value);
+
+        match self {
+            LiteralRef(v) => plus_literal(v),
+            Literal(v) => plus_literal(&v),
+            ValueRef(v) => plus_value(v),
+            Value(v) => plus_value(&v),
+            StringRef(_) => unreachable(),
+        }
+    }
+
+    pub fn unary_minus(&self) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
+
+        let unreachable = || Err(EvaluateError::UnreachableEvaluatedArithmetic.into());
+
+        let minus_literal = |v| literal_minus(v).map(Evaluated::Literal);
+        let minus_value = |v: &data::Value| v.unary_minus().map(Evaluated::Value);
+
+        match self {
+            LiteralRef(v) => minus_literal(v),
+            Literal(v) => minus_literal(&v),
+            ValueRef(v) => minus_value(v),
+            Value(v) => minus_value(&v),
+            StringRef(_) => unreachable(),
+        }
+    }
 }
 
 fn literal_add(a: &AstValue, b: &AstValue) -> Result<AstValue> {
@@ -340,5 +393,33 @@ fn literal_divide(a: &AstValue, b: &AstValue) -> Result<AstValue> {
             Ok(AstValue::Null)
         }
         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+    }
+}
+
+fn literal_plus(v: &AstValue) -> Result<AstValue> {
+    match v {
+        AstValue::Number(v) => v
+            .parse::<i64>()
+            .map_or_else(
+                |_| v.parse::<f64>().map(|_| AstValue::Number(v.to_string())),
+                |v| Ok(AstValue::Number(v.to_string())),
+            )
+            .map_err(|_| EvaluateError::LiteralUnaryPlusOnNonNumeric.into()),
+        AstValue::Null => Ok(AstValue::Null),
+        _ => Err(EvaluateError::LiteralUnaryPlusOnNonNumeric.into()),
+    }
+}
+
+fn literal_minus(v: &AstValue) -> Result<AstValue> {
+    match v {
+        AstValue::Number(v) => v
+            .parse::<i64>()
+            .map_or_else(
+                |_| v.parse::<f64>().map(|v| AstValue::Number((-v).to_string())),
+                |v| Ok(AstValue::Number((-v).to_string())),
+            )
+            .map_err(|_| EvaluateError::LiteralUnaryMinusOnNonNumeric.into()),
+        AstValue::Null => Ok(AstValue::Null),
+        _ => Err(EvaluateError::LiteralUnaryMinusOnNonNumeric.into()),
     }
 }
