@@ -265,15 +265,22 @@ async fn prepare<'a, T: 'static + Debug>(
             let update = Update::new(storage, table_name, assignments, &columns)?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            let rows = fetch(storage, table_name, &columns, filter)?
-                .map(|item| {
-                    let (_, key, row) = item?;
+            let rows = fetch(storage, table_name, &columns, filter).await?;
 
-                    Ok((key, update.apply(row)?))
+            stream::iter(rows)
+                .and_then(|item| {
+                    let update = &update;
+                    let (_, key, row) = item;
+
+                    async move {
+                        let row = update.apply(row).await?;
+
+                        Ok((key, row))
+                    }
                 })
-                .collect::<Result<_>>()?;
-
-            Ok(Prepared::Update(rows))
+                .try_collect::<Vec<_>>()
+                .await
+                .map(Prepared::Update)
         }
         Statement::Delete {
             table_name,
@@ -283,7 +290,8 @@ async fn prepare<'a, T: 'static + Debug>(
             let columns = fetch_columns(storage, table_name)?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            let rows = fetch(storage, table_name, &columns, filter)?
+            let rows = fetch(storage, table_name, &columns, filter)
+                .await?
                 .map(|item| item.map(|(_, key, _)| key))
                 .collect::<Result<_>>()?;
 

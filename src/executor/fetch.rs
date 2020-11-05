@@ -29,7 +29,7 @@ pub fn fetch_columns<T: 'static + Debug>(
         .collect::<Vec<Ident>>())
 }
 
-pub fn fetch<'a, T: 'static + Debug>(
+pub async fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &'a str,
     columns: &'a [Ident],

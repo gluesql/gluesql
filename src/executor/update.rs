@@ -1,3 +1,4 @@
+use futures::stream::{self, TryStreamExt};
 use serde::Serialize;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -53,7 +54,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         })
     }
 
-    fn find(&self, row: &Row, column: &Ident) -> Option<Result<Value>> {
+    async fn find(&self, row: &Row, column: &Ident) -> Option<Result<Value>> {
         let context = FilterContext::new(self.table_name, self.columns, Some(row), None);
         let context = Some(Rc::new(context));
 
@@ -83,22 +84,24 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
             })
     }
 
-    pub fn apply(&self, row: Row) -> Result<Row> {
+    pub async fn apply(&self, row: Row) -> Result<Row> {
         let Row(values) = &row;
 
-        values
-            .clone()
-            .into_iter()
-            .enumerate()
-            .map(|(i, value)| {
-                let column = &self
-                    .columns
-                    .get(i)
-                    .ok_or_else(|| UpdateError::ConflictOnSchema)?;
+        let values = values.clone().into_iter().enumerate().map(|(i, value)| {
+            self.columns
+                .get(i)
+                .map(|column| (column, value))
+                .ok_or_else(|| UpdateError::ConflictOnSchema.into())
+        });
 
-                self.find(&row, column).unwrap_or(Ok(value))
+        stream::iter(values)
+            .and_then(|(column, value)| {
+                let row = &row;
+
+                async move { self.find(row, column).await.unwrap_or(Ok(value)) }
             })
-            .collect::<Result<_>>()
+            .try_collect::<Vec<_>>()
+            .await
             .map(Row)
     }
 }
