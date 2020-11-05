@@ -99,39 +99,33 @@ async fn execute_async<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTabl
                 .await
                 .map(|(storage, _)| (storage, Payload::Create))
         }
-        Prepared::Insert(table_name, rows) => rows
-            .into_iter()
-            .try_fold((storage, 0), |(storage, num), row| {
-                let (storage, key) = storage.generate_id(&table_name)?;
-                let (storage, _) = storage.insert_data(&key, row)?;
+        Prepared::Insert(table_name, rows) => {
+            stream::iter(rows.into_iter().map(Ok::<Row, (U, Error)>))
+                .try_fold((storage, 0), |(storage, num), row| async move {
+                    let (storage, key) = storage.generate_id(&table_name).await?;
+                    let (storage, _) = storage.insert_data(&key, row).await?;
+
+                    Ok((storage, num + 1))
+                })
+                .await
+                .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows)))
+        }
+        Prepared::Delete(keys) => stream::iter(keys.into_iter().map(Ok::<T, (U, Error)>))
+            .try_fold((storage, 0), |(storage, num), key| async move {
+                let (storage, _) = storage.delete_data(&key).await?;
 
                 Ok((storage, num + 1))
             })
-            .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows))),
-        Prepared::Delete(keys) => {
-            let (storage, num_rows) =
-                keys.into_iter()
-                    .try_fold((storage, 0), |(storage, num), key| {
-                        let (storage, _) = storage.delete_data(&key)?;
+            .await
+            .map(|(storage, num_rows)| (storage, Payload::Delete(num_rows))),
+        Prepared::Update(items) => stream::iter(items.into_iter().map(Ok::<_, (U, Error)>))
+            .try_fold((storage, 0), |(storage, num), (key, row)| async move {
+                let (storage, _) = storage.insert_data(&key, row).await?;
 
-                        Ok((storage, num + 1))
-                    })?;
-
-            Ok((storage, Payload::Delete(num_rows)))
-        }
-        Prepared::Update(items) => {
-            let (storage, num_rows) =
-                items
-                    .into_iter()
-                    .try_fold((storage, 0), |(storage, num), item| {
-                        let (key, row) = item;
-                        let (storage, _) = storage.insert_data(&key, row)?;
-
-                        Ok((storage, num + 1))
-                    })?;
-
-            Ok((storage, Payload::Update(num_rows)))
-        }
+                Ok((storage, num + 1))
+            })
+            .await
+            .map(|(storage, num_rows)| (storage, Payload::Update(num_rows))),
         Prepared::DropTable {
             schema_names,
             if_exists,

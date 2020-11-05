@@ -7,7 +7,7 @@ use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreMut};
 
 #[async_trait]
 impl StoreMut<IVec> for SledStorage {
-    fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
+    async fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
         let id = try_into!(self, self.tree.generate_id());
         let id = format!("data/{}/{}", table_name, id);
 
@@ -40,7 +40,7 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, ()> {
+    async fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, ()> {
         let value = try_into!(self, bincode::serialize(&row));
 
         try_into!(self, self.tree.insert(key, value));
@@ -48,7 +48,7 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {
+    async fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {
         try_into!(self, self.tree.remove(key));
 
         Ok((self, ()))
