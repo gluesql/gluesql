@@ -53,7 +53,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         }
     }
 
-    pub fn check_blended(&self, blend_context: &BlendContext<'_>) -> Result<bool> {
+    pub async fn check_blended(&self, blend_context: &BlendContext<'_>) -> Result<bool> {
         match self.where_clause {
             Some(expr) => {
                 let context = self.context.as_ref().map(Rc::clone);

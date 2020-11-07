@@ -3,9 +3,10 @@ mod hash;
 mod state;
 
 use boolinator::Boolinator;
-use iter_enum::Iterator;
+use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
 use std::convert::TryFrom;
 use std::fmt::Debug;
+use std::pin::Pin;
 use std::rc::Rc;
 
 use sqlparser::ast::{Expr, Function, SelectItem};
@@ -14,7 +15,7 @@ use super::context::{AggregateContext, BlendContext, FilterContext};
 use super::evaluate::{evaluate, Evaluated};
 use super::filter::check_expr;
 use crate::data::{get_name, Value};
-use crate::result::Result;
+use crate::result::{Error, Result};
 use crate::store::Store;
 
 pub use error::AggregateError;
@@ -28,6 +29,9 @@ pub struct Aggregate<'a, T: 'static + Debug> {
     having: Option<&'a Expr>,
     filter_context: Option<Rc<FilterContext<'a>>>,
 }
+
+type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
+    + 'a;
 
 impl<'a, T: 'static + Debug> Aggregate<'a, T> {
     pub fn new(
@@ -46,64 +50,58 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         }
     }
 
-    pub fn apply(
+    pub async fn apply(
         &self,
-        rows: impl Iterator<Item = Result<Rc<BlendContext<'a>>>>,
-    ) -> Result<impl Iterator<Item = Result<AggregateContext<'a>>>> {
-        #[derive(Iterator)]
-        enum Aggregated<I1, I2> {
-            Applied(I1),
-            Skipped(I2),
-        }
-
+        rows: impl TryStream<Ok = Rc<BlendContext<'a>>, Error = Error> + 'a,
+    ) -> Result<Pin<Box<Applied<'a>>>> {
         if !self.check_aggregate()? {
-            let rows = rows.map(|row| {
-                row.map(|blend_context| AggregateContext {
-                    aggregated: None,
-                    next: blend_context,
-                })
+            let rows = rows.map_ok(|blend_context| AggregateContext {
+                aggregated: None,
+                next: blend_context,
             });
 
-            return Ok(Aggregated::Skipped(rows));
+            return Ok(Box::pin(rows));
         }
 
-        let state =
-            rows.enumerate()
-                .try_fold::<_, _, Result<_>>(State::new(), |state, (index, row)| {
-                    let blend_context = row?;
-                    let evaluated: Vec<Evaluated<'_>> = self
-                        .group_by
-                        .iter()
-                        .map(|expr| {
-                            let filter_context = self.filter_context.as_ref().map(Rc::clone);
-                            let filter_context = blend_context.concat_into(filter_context);
+        let state = rows
+            .into_stream()
+            .enumerate()
+            .map(|(i, row)| row.map(|row| (i, row)))
+            .try_fold(State::new(), |state, (index, blend_context)| async move {
+                let evaluated: Vec<Evaluated<'_>> = self
+                    .group_by
+                    .iter()
+                    .map(|expr| {
+                        let filter_context = self.filter_context.as_ref().map(Rc::clone);
+                        let filter_context = blend_context.concat_into(filter_context);
 
-                            evaluate(self.storage, filter_context, None, expr)
-                        })
-                        .collect::<Result<_>>()?;
-                    let group = evaluated
-                        .iter()
-                        .map(GroupKey::try_from)
-                        .collect::<Result<Vec<GroupKey>>>()?;
+                        evaluate(self.storage, filter_context, None, expr)
+                    })
+                    .collect::<Result<_>>()?;
+                let group = evaluated
+                    .iter()
+                    .map(GroupKey::try_from)
+                    .collect::<Result<Vec<GroupKey>>>()?;
 
-                    let state = state.apply(index, group, Rc::clone(&blend_context));
-                    let state = self
-                        .fields
-                        .iter()
-                        .try_fold(state, |state, field| match field {
-                            SelectItem::UnnamedExpr(expr)
-                            | SelectItem::ExprWithAlias { expr, .. } => {
-                                aggregate(state, &blend_context, &expr)
-                            }
-                            _ => Ok(state),
-                        })?;
+                let state = state.apply(index, group, Rc::clone(&blend_context));
+                let state = self
+                    .fields
+                    .iter()
+                    .try_fold(state, |state, field| match field {
+                        SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
+                            aggregate(state, &blend_context, &expr)
+                        }
+                        _ => Ok(state),
+                    })?;
 
-                    Ok(state)
-                })?;
+                Ok(state)
+            })
+            .await?;
 
         let storage = self.storage;
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
         let having = self.having;
+
         let rows = state
             .export()
             .into_iter()
@@ -120,7 +118,9 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                 None => Some(Ok(AggregateContext { aggregated, next })),
             });
 
-        Ok(Aggregated::Applied(rows))
+        let rows = stream::iter(rows);
+
+        Ok(Box::pin(rows))
     }
 
     fn check_aggregate(&self) -> Result<bool> {

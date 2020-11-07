@@ -39,14 +39,14 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         Self { storage, fields }
     }
 
-    pub fn apply(&self, context: Result<AggregateContext<'a>>) -> Result<Row> {
+    pub async fn apply(&self, context: Result<AggregateContext<'a>>) -> Result<Row> {
         let AggregateContext { aggregated, next } = context?;
-        let values = self.blend(aggregated, next)?;
+        let values = self.blend(aggregated, next).await?;
 
         Ok(Row(values))
     }
 
-    fn blend(
+    async fn blend(
         &self,
         aggregated: Option<HashMap<&'a Function, Value>>,
         context: Rc<BlendContext<'a>>,

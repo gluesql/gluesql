@@ -224,8 +224,8 @@ async fn prepare<'a, T: 'static + Debug>(
             })
         }
         Statement::Query(query) => {
-            let (labels, rows) = select_with_labels(storage, &query, None, true)?;
-            let rows = rows.collect::<Result<_>>()?;
+            let (labels, rows) = select_with_labels(storage, &query, None, true).await?;
+            let rows = rows.try_collect::<Vec<_>>().await?;
 
             Ok(Prepared::Select { labels, rows })
         }

@@ -1,9 +1,10 @@
 use boolinator::Boolinator;
-use iter_enum::Iterator;
+use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
 use or_iterator::OrIterator;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::iter::once;
+use std::pin::Pin;
 use std::rc::Rc;
 use thiserror::Error as ThisError;
 
@@ -12,7 +13,7 @@ use sqlparser::ast::{Ident, Join as AstJoin, JoinConstraint, JoinOperator};
 use super::context::{BlendContext, FilterContext};
 use super::filter::Filter;
 use crate::data::Table;
-use crate::result::Result;
+use crate::result::{Error, Result};
 use crate::store::Store;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
@@ -36,15 +37,9 @@ pub struct Join<'a, T: 'static + Debug> {
     filter_context: Option<Rc<FilterContext<'a>>>,
 }
 
-type JoinItem<'a> = Result<Rc<BlendContext<'a>>>;
-
-#[derive(Iterator)]
-enum Applied<I1, I2, I3, I4> {
-    Init(I1),
-    Once(I2),
-    Boxed(I3),
-    Mapped(I4),
-}
+type JoinItem<'a> = Rc<BlendContext<'a>>;
+type Joined<'a> =
+    Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
 
 impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn new(
@@ -59,83 +54,66 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
         }
     }
 
-    pub fn apply(
+    pub async fn apply(
         &self,
         init_context: Result<BlendContext<'a>>,
         join_columns: Rc<Vec<Rc<Vec<Ident>>>>,
-    ) -> impl Iterator<Item = JoinItem<'a>> + 'a {
+    ) -> Result<Joined<'a>> {
         let init_context = init_context.map(Rc::new);
-        let init_rows = Applied::Init(once(init_context));
+        let init_rows: Joined<'a> = Box::pin(stream::iter(once(init_context)));
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
 
-        self.join_clauses
+        let joins = self
+            .join_clauses
             .iter()
             .enumerate()
             .map(move |(i, join_clause)| {
                 let join_columns = Rc::clone(&join_columns[i]);
 
-                (join_clause, join_columns)
-            })
-            .fold(init_rows, |rows, (join_clause, join_columns)| {
+                Ok::<_, Error>((join_clause, join_columns))
+            });
+
+        let rows = stream::iter(joins)
+            .try_fold(init_rows, |rows, (join_clause, join_columns)| {
                 let storage = self.storage;
                 let filter_context = filter_context.as_ref().map(Rc::clone);
-                let map = move |blend_context| {
-                    let columns = Rc::clone(&join_columns);
 
-                    let filter_context = filter_context.as_ref().map(Rc::clone);
-                    join(storage, filter_context, join_clause, columns, blend_context)
-                };
+                async move {
+                    let rows = rows
+                        .map(Ok)
+                        .and_then(move |blend_context| {
+                            let columns = Rc::clone(&join_columns);
+                            let filter_context = filter_context.as_ref().map(Rc::clone);
 
-                match rows {
-                    Applied::Init(rows) => Applied::Once(rows.flat_map(map)),
-                    Applied::Once(rows) => {
-                        let rows: Box<dyn Iterator<Item = _>> = Box::new(rows.flat_map(map));
+                            join(storage, filter_context, join_clause, columns, blend_context)
+                        })
+                        .try_flatten();
 
-                        Applied::Boxed(rows)
-                    }
-                    Applied::Boxed(rows) => Applied::Mapped(rows.flat_map(map)),
-                    Applied::Mapped(rows) => Applied::Boxed(Box::new(rows.flat_map(map))),
+                    Ok::<Joined<'a>, _>(Box::pin(rows))
                 }
             })
+            .await?;
+
+        Ok(Box::pin(rows))
     }
 }
 
-#[derive(Iterator)]
-enum Joined<I1, I2, I3> {
-    Err(I1),
-    Inner(I2),
-    LeftOuter(I3),
-}
-
-fn join<'a, T: 'static + Debug>(
+async fn join<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
     columns: Rc<Vec<Ident>>,
     blend_context: Result<Rc<BlendContext<'a>>>,
-) -> impl Iterator<Item = JoinItem<'a>> + 'a {
-    let err = |e| Joined::Err(once(Err(e)));
-
-    macro_rules! try_into {
-        ($v: expr) => {
-            match $v {
-                Ok(v) => v,
-                Err(e) => {
-                    return err(e);
-                }
-            }
-        };
-    }
-
+) -> Result<Joined<'a>> {
     let AstJoin {
         relation,
         join_operator,
     } = ast_join;
-    let table = try_into!(Table::new(relation));
+    let table = Table::new(relation)?;
     let table_name = table.get_name();
     let table_alias = table.get_alias();
 
-    let blend_context = try_into!(blend_context);
+    let blend_context = blend_context?;
     let init_context = Rc::new(BlendContext::new(
         table_alias,
         Rc::clone(&columns),
@@ -184,18 +162,16 @@ fn join<'a, T: 'static + Debug>(
     };
 
     match join_operator {
-        JoinOperator::Inner(constraint) => match fetch_rows(constraint) {
-            Ok(rows) => Joined::Inner(rows),
-            Err(e) => err(e),
-        },
-        JoinOperator::LeftOuter(constraint) => match fetch_rows(constraint) {
-            Ok(rows) => {
-                let rows = rows.or(once(Ok(init_context)));
+        JoinOperator::Inner(constraint) => fetch_rows(constraint).map(|rows| {
+            let rows: Joined<'a> = Box::pin(stream::iter(rows));
 
-                Joined::LeftOuter(rows)
-            }
-            Err(e) => err(e),
-        },
-        _ => err(JoinError::JoinTypeNotSupported.into()),
+            rows
+        }),
+        JoinOperator::LeftOuter(constraint) => fetch_rows(constraint).map(|rows| {
+            let rows: Joined<'a> = Box::pin(stream::iter(rows.or(once(Ok(init_context)))));
+
+            rows
+        }),
+        _ => Err(JoinError::JoinTypeNotSupported.into()),
     }
 }
