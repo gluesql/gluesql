@@ -50,8 +50,12 @@ impl<'a> BlendContext<'a> {
             ..
         } = self;
 
-        let filter_context =
-            FilterContext::new(table_alias, &columns, row.as_ref(), filter_context);
+        let filter_context = FilterContext::new(
+            table_alias,
+            Rc::clone(&columns),
+            row.as_ref(),
+            filter_context,
+        );
         let filter_context = Some(Rc::new(filter_context));
 
         match next {

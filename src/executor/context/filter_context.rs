@@ -17,7 +17,7 @@ pub enum FilterContextError {
 #[derive(Debug)]
 pub struct FilterContext<'a> {
     table_alias: &'a str,
-    columns: &'a [Ident],
+    columns: Rc<Vec<Ident>>,
     row: Option<&'a Row>,
     next: Option<Rc<FilterContext<'a>>>,
 }
@@ -25,7 +25,7 @@ pub struct FilterContext<'a> {
 impl<'a> FilterContext<'a> {
     pub fn new(
         table_alias: &'a str,
-        columns: &'a [Ident],
+        columns: Rc<Vec<Ident>>,
         row: Option<&'a Row>,
         next: Option<Rc<FilterContext<'a>>>,
     ) -> Self {

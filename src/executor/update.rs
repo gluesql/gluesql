@@ -28,7 +28,7 @@ pub struct Update<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     table_name: &'a str,
     fields: &'a [Assignment],
-    columns: &'a [Ident],
+    columns: Rc<Vec<Ident>>,
 }
 
 impl<'a, T: 'static + Debug> Update<'a, T> {
@@ -36,7 +36,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         storage: &'a dyn Store<T>,
         table_name: &'a str,
         fields: &'a [Assignment],
-        columns: &'a [Ident],
+        columns: Rc<Vec<Ident>>,
     ) -> Result<Self> {
         for assignment in fields.iter() {
             let Assignment { id, .. } = assignment;
@@ -55,7 +55,8 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
     }
 
     async fn find(&self, row: &Row, column: &Ident) -> Option<Result<Value>> {
-        let context = FilterContext::new(self.table_name, self.columns, Some(row), None);
+        let context =
+            FilterContext::new(self.table_name, Rc::clone(&self.columns), Some(row), None);
         let context = Some(Rc::new(context));
 
         self.fields

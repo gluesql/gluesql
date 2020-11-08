@@ -146,7 +146,7 @@ async fn join<'a, T: 'static + Debug>(
             let filter = Filter::new(storage, where_clause, filter_context, None);
 
             filter
-                .check(table_alias, &columns, &row)
+                .check(table_alias, Rc::clone(&columns), &row)
                 .map(|pass| {
                     pass.as_some(Rc::new(BlendContext::new(
                         table_alias,

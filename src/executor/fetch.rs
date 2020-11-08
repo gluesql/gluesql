@@ -1,6 +1,7 @@
 use boolinator::Boolinator;
 use serde::Serialize;
 use std::fmt::Debug;
+use std::rc::Rc;
 use thiserror::Error;
 
 use sqlparser::ast::{ColumnDef, Ident};
@@ -32,15 +33,17 @@ pub fn fetch_columns<T: 'static + Debug>(
 pub async fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &'a str,
-    columns: &'a [Ident],
+    columns: Rc<Vec<Ident>>,
     filter: Filter<'a, T>,
-) -> Result<impl Iterator<Item = Result<(&'a [Ident], T, Row)>> + 'a> {
+) -> Result<impl Iterator<Item = Result<(Rc<Vec<Ident>>, T, Row)>> + 'a> {
     let rows = storage.scan_data(table_name)?.filter_map(move |item| {
+        let columns = Rc::clone(&columns);
+
         item.map_or_else(
             |error| Some(Err(error)),
             |(key, row)| {
                 filter
-                    .check(&table_name, columns, &row)
+                    .check(&table_name, Rc::clone(&columns), &row)
                     .map(|pass| pass.as_some((columns, key, row)))
                     .transpose()
             },

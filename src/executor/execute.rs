@@ -2,6 +2,7 @@ use futures::executor::block_on;
 use futures::stream::{self, TryStreamExt};
 use serde::Serialize;
 use std::fmt::Debug;
+use std::rc::Rc;
 use thiserror::Error as ThisError;
 
 #[cfg(feature = "alter-table")]
@@ -261,11 +262,11 @@ async fn prepare<'a, T: 'static + Debug>(
             assignments,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = fetch_columns(storage, table_name)?;
-            let update = Update::new(storage, table_name, assignments, &columns)?;
+            let columns = Rc::new(fetch_columns(storage, table_name)?);
+            let update = Update::new(storage, table_name, assignments, Rc::clone(&columns))?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            let rows = fetch(storage, table_name, &columns, filter).await?;
+            let rows = fetch(storage, table_name, columns, filter).await?;
 
             stream::iter(rows)
                 .and_then(|item| {
@@ -287,10 +288,10 @@ async fn prepare<'a, T: 'static + Debug>(
             selection,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = fetch_columns(storage, table_name)?;
+            let columns = Rc::new(fetch_columns(storage, table_name)?);
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            let rows = fetch(storage, table_name, &columns, filter)
+            let rows = fetch(storage, table_name, columns, filter)
                 .await?
                 .map(|item| item.map(|(_, key, _)| key))
                 .collect::<Result<_>>()?;
