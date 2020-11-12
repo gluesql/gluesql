@@ -45,7 +45,7 @@ pub fn evaluate<'a, T: 'static + Debug>(
                     panic!();
                 }
                 Some(context) => context.get_value(&ident.value).map(|value| match value {
-                    Some(value) => Evaluated::ValueRef(value),
+                    Some(value) => Evaluated::Value(value.clone()),
                     None => Evaluated::Value(Value::Empty),
                 }),
             },
@@ -68,7 +68,7 @@ pub fn evaluate<'a, T: 'static + Debug>(
                     context
                         .get_alias_value(table_alias, column)
                         .map(|value| match value {
-                            Some(value) => Evaluated::ValueRef(value),
+                            Some(value) => Evaluated::Value(value.clone()),
                             None => Evaluated::Value(Value::Empty),
                         })
                 }
