@@ -53,6 +53,22 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         }
     }
 
+    pub async fn check_async(
+        &self,
+        table_alias: &str,
+        columns: Rc<Vec<Ident>>,
+        row: &Row,
+    ) -> Result<bool> {
+        let next = self.context.as_ref().map(Rc::clone);
+        let context = FilterContext::new(table_alias, Rc::clone(&columns), Some(row), next);
+        let context = Some(context).map(Rc::new);
+
+        match self.where_clause {
+            Some(expr) => check_expr(self.storage, context, self.aggregated, expr),
+            None => Ok(true),
+        }
+    }
+
     pub async fn check_blended(&self, blend_context: &BlendContext<'_>) -> Result<bool> {
         match self.where_clause {
             Some(expr) => {

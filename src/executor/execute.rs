@@ -266,9 +266,7 @@ async fn prepare<'a, T: 'static + Debug>(
             let update = Update::new(storage, table_name, assignments, Rc::clone(&columns))?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            let rows = fetch(storage, table_name, columns, filter).await?;
-
-            stream::iter(rows)
+            fetch(storage, table_name, columns, filter)?
                 .and_then(|item| {
                     let update = &update;
                     let (_, key, row) = item;
@@ -291,12 +289,11 @@ async fn prepare<'a, T: 'static + Debug>(
             let columns = Rc::new(fetch_columns(storage, table_name)?);
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            let rows = fetch(storage, table_name, columns, filter)
-                .await?
-                .map(|item| item.map(|(_, key, _)| key))
-                .collect::<Result<_>>()?;
-
-            Ok(Prepared::Delete(rows))
+            fetch(storage, table_name, columns, filter)?
+                .map_ok(|(_, key, _)| key)
+                .try_collect::<Vec<_>>()
+                .await
+                .map(Prepared::Delete)
         }
         Statement::Drop {
             object_type,

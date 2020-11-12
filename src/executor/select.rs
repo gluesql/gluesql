@@ -1,6 +1,6 @@
 use boolinator::Boolinator;
 use futures::executor::block_on;
-use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
+use futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt};
 use iter_enum::Iterator;
 use serde::Serialize;
 use std::fmt::Debug;
@@ -37,7 +37,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: Table<'a>,
     columns: Rc<Vec<Ident>>,
-) -> Result<impl Iterator<Item = Result<BlendContext<'a>>> + 'a> {
+) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
     let rows = storage.scan_data(table.get_name())?.map(move |data| {
         let (_, row) = data?;
         let row = Some(row);
@@ -46,7 +46,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
         Ok(BlendContext::new(table.get_alias(), columns, row, None))
     });
 
-    Ok(rows)
+    Ok(stream::iter(rows))
 }
 
 fn get_labels<'a>(
@@ -205,8 +205,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     let filter = Rc::new(Filter::new(storage, where_clause, filter_context, None));
     let limit = Rc::new(Limit::new(query.limit.as_ref(), query.offset.as_ref())?);
 
-    let rows = fetch_blended(storage, table, columns)?;
-    let rows = stream::iter(rows)
+    let rows = fetch_blended(storage, table, columns)?
         .then(move |blend_context| {
             let join_columns = Rc::clone(&join_columns);
             let join = Rc::clone(&join);
