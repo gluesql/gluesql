@@ -5,6 +5,7 @@ use thiserror::Error;
 
 use sqlparser::ast::Ident;
 
+use super::BlendContext;
 use crate::data::{Row, Value};
 use crate::result::Result;
 
@@ -20,6 +21,7 @@ pub struct FilterContext<'a> {
     columns: Rc<Vec<Ident>>,
     row: Option<&'a Row>,
     next: Option<Rc<FilterContext<'a>>>,
+    next2: Option<Rc<BlendContext<'a>>>,
 }
 
 impl<'a> FilterContext<'a> {
@@ -34,27 +36,47 @@ impl<'a> FilterContext<'a> {
             columns,
             row,
             next,
+            next2: None,
         }
     }
 
-    pub fn get_value(&self, target: &str) -> Result<Option<&'a Value>> {
-        let get_value = || {
-            self.columns
-                .iter()
-                .position(|column| column.value == target)
-                .map(|index| self.row.and_then(|row| row.get_value(index)))
-        };
+    pub fn concat(
+        filter_context: Option<Rc<FilterContext<'a>>>,
+        blend_context: Option<Rc<BlendContext<'a>>>,
+    ) -> Self {
+        // TODO: ASAP
+        Self {
+            table_alias: "this-should-be-fixed-it-is-just-for-temporary-use",
+            columns: Rc::new(vec![]),
+            row: None,
+            next: filter_context,
+            next2: blend_context,
+        }
+    }
 
-        match get_value() {
-            None => match &self.next {
-                None => Err(FilterContextError::ValueNotFound.into()),
-                Some(context) => context.get_value(target),
+    pub fn get_value(&'a self, target: &str) -> Result<Option<&'a Value>> {
+        let value = self
+            .columns
+            .iter()
+            .position(|column| column.value == target)
+            .map(|index| self.row.and_then(|row| row.get_value(index)));
+
+        if let Some(value) = value {
+            return Ok(value);
+        }
+
+        match (&self.next, &self.next2) {
+            (None, None) => Err(FilterContextError::ValueNotFound.into()),
+            (Some(fc), None) => fc.get_value(target),
+            (None, Some(bc)) => bc.get_value(target).map(Some),
+            (Some(fc), Some(bc)) => match bc.get_value(target) {
+                v @ Ok(_) => v.map(Some),
+                Err(_) => fc.get_value(target),
             },
-            Some(value) => Ok(value),
         }
     }
 
-    pub fn get_alias_value(&self, table_alias: &str, target: &str) -> Result<Option<&'a Value>> {
+    pub fn get_alias_value(&'a self, table_alias: &str, target: &str) -> Result<Option<&'a Value>> {
         let get_value = || {
             if self.table_alias != table_alias {
                 return None;
@@ -66,12 +88,18 @@ impl<'a> FilterContext<'a> {
                 .map(|index| self.row.and_then(|row| row.get_value(index)))
         };
 
-        match get_value() {
-            None => match &self.next {
-                None => Err(FilterContextError::ValueNotFound.into()),
-                Some(context) => context.get_alias_value(table_alias, target),
+        if let Some(value) = get_value() {
+            return Ok(value);
+        }
+
+        match (&self.next, &self.next2) {
+            (None, None) => Err(FilterContextError::ValueNotFound.into()),
+            (Some(fc), None) => fc.get_alias_value(table_alias, target),
+            (None, Some(bc)) => bc.get_alias_value(table_alias, target).map(Some),
+            (Some(fc), Some(bc)) => match bc.get_alias_value(table_alias, target) {
+                v @ Ok(_) => v.map(Some),
+                Err(_) => fc.get_alias_value(table_alias, target),
             },
-            Some(value) => Ok(value),
         }
     }
 }

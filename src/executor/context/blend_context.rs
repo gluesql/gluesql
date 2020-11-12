@@ -18,8 +18,8 @@ pub enum BlendContextError {
 #[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
-    columns: Rc<Vec<Ident>>,
-    row: Option<Row>,
+    pub columns: Rc<Vec<Ident>>,
+    pub row: Option<Row>,
     next: Option<Rc<BlendContext<'a>>>,
 }
 

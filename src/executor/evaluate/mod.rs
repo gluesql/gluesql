@@ -20,11 +20,12 @@ pub use evaluated::Evaluated;
 pub fn evaluate<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<&HashMap<&Function, Value>>,
+    aggregated: Option<Rc<HashMap<&Function, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
+        let aggregated = aggregated.as_ref().map(Rc::clone);
 
         evaluate(storage, context, aggregated, expr)
     };
@@ -108,6 +109,7 @@ pub fn evaluate<'a, T: 'static + Debug>(
             .map_or_else(
                 || {
                     let context = context.as_ref().map(Rc::clone);
+                    let aggregated = aggregated.as_ref().map(Rc::clone);
 
                     evaluate_function(storage, context, aggregated, func)
                 },
@@ -120,11 +122,12 @@ pub fn evaluate<'a, T: 'static + Debug>(
 fn evaluate_function<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<&HashMap<&Function, Value>>,
+    aggregated: Option<Rc<HashMap<&Function, Value>>>,
     func: &'a Function,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
+        let aggregated = aggregated.as_ref().map(Rc::clone);
 
         evaluate(storage, context, aggregated, expr)
     };

@@ -7,6 +7,7 @@ use thiserror::Error as ThisError;
 
 use sqlparser::ast::{ColumnDef, Ident};
 
+use super::context::BlendContext;
 use super::filter::Filter;
 use crate::data::Row;
 use crate::result::{Error, Result};
@@ -46,11 +47,15 @@ pub fn fetch<'a, T: 'static + Debug>(
             let columns = Rc::clone(&columns);
             let filter = Rc::clone(&filter);
 
+            let context = Rc::new(BlendContext::new(table_name, columns, Some(row), None));
+
+            // TODO: remove two unwrap() uses.
             async move {
-                filter
-                    .check(&table_name, Rc::clone(&columns), &row)
-                    .await
-                    .map(|pass| pass.as_some((columns, key, row)))
+                filter.check(Rc::clone(&context)).await.map(|pass| {
+                    let context = Rc::try_unwrap(context).unwrap();
+
+                    pass.as_some((context.columns, key, context.row.unwrap()))
+                })
             }
         });
 

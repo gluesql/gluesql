@@ -1,3 +1,4 @@
+use async_recursion::async_recursion;
 use boolinator::Boolinator;
 use im_rc::HashMap;
 use serde::Serialize;
@@ -5,12 +6,12 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
 
-use sqlparser::ast::{BinaryOperator, Expr, Function, Ident, UnaryOperator};
+use sqlparser::ast::{BinaryOperator, Expr, Function, UnaryOperator};
 
 use super::context::{BlendContext, FilterContext};
 use super::evaluate::{evaluate, Evaluated};
 use super::select::select;
-use crate::data::{Row, Value};
+use crate::data::Value;
 use crate::result::Result;
 use crate::store::Store;
 
@@ -24,7 +25,7 @@ pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     where_clause: Option<&'a Expr>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<&'a HashMap<&'a Function, Value>>,
+    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
 }
 
 impl<'a, T: 'static + Debug> Filter<'a, T> {
@@ -32,7 +33,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         storage: &'a dyn Store<T>,
         where_clause: Option<&'a Expr>,
         context: Option<Rc<FilterContext<'a>>>,
-        aggregated: Option<&'a HashMap<&'a Function, Value>>,
+        aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     ) -> Self {
         Self {
             storage,
@@ -42,43 +43,37 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         }
     }
 
-    pub async fn check(&self, table_alias: &str, columns: Rc<Vec<Ident>>, row: &Row) -> Result<bool> {
-        let next = self.context.as_ref().map(Rc::clone);
-        let context = FilterContext::new(table_alias, Rc::clone(&columns), Some(row), next);
-        let context = Some(context).map(Rc::new);
-
-        match self.where_clause {
-            Some(expr) => check_expr(self.storage, context, self.aggregated, expr),
-            None => Ok(true),
-        }
-    }
-
-    pub async fn check_blended(&self, blend_context: &BlendContext<'_>) -> Result<bool> {
+    pub async fn check(&self, blend_context: Rc<BlendContext<'a>>) -> Result<bool> {
         match self.where_clause {
             Some(expr) => {
                 let context = self.context.as_ref().map(Rc::clone);
-                let context = blend_context.concat_into(context);
+                let context = FilterContext::concat(context, Some(blend_context));
+                let context = Some(context).map(Rc::new);
+                let aggregated = self.aggregated.as_ref().map(Rc::clone);
 
-                check_expr(self.storage, context, self.aggregated, expr)
+                check_expr(self.storage, context, aggregated, expr).await
             }
             None => Ok(true),
         }
     }
 }
 
-pub fn check_expr<T: 'static + Debug>(
+#[async_recursion(?Send)]
+pub async fn check_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,
-    filter_context: Option<Rc<FilterContext<'_>>>,
-    aggregated: Option<&HashMap<&Function, Value>>,
+    filter_context: Option<Rc<FilterContext<'async_recursion>>>,
+    aggregated: Option<Rc<HashMap<&'async_recursion Function, Value>>>,
     expr: &Expr,
 ) -> Result<bool> {
-    let evaluate = |expr| {
+    let evaluate = |expr: &'async_recursion Expr| {
         let filter_context = filter_context.as_ref().map(Rc::clone);
+        let aggregated = aggregated.as_ref().map(Rc::clone);
 
         evaluate(storage, filter_context, aggregated, expr)
     };
     let check = |expr| {
         let filter_context = filter_context.as_ref().map(Rc::clone);
+        let aggregated = aggregated.as_ref().map(Rc::clone);
 
         check_expr(storage, filter_context, aggregated, expr)
     };
@@ -86,13 +81,18 @@ pub fn check_expr<T: 'static + Debug>(
     match expr {
         Expr::BinaryOp { op, left, right } => {
             let zip_evaluate = || Ok((evaluate(left)?, evaluate(right)?));
-            let zip_check = || Ok((check(left)?, check(right)?));
+            let zip_check = || async move {
+                let l = check(left).await?;
+                let r = check(right).await?;
+
+                Ok((l, r))
+            };
 
             match op {
                 BinaryOperator::Eq => zip_evaluate().map(|(l, r)| l == r),
                 BinaryOperator::NotEq => zip_evaluate().map(|(l, r)| l != r),
-                BinaryOperator::And => zip_check().map(|(l, r)| l && r),
-                BinaryOperator::Or => zip_check().map(|(l, r)| l || r),
+                BinaryOperator::And => zip_check().await.map(|(l, r)| l && r),
+                BinaryOperator::Or => zip_check().await.map(|(l, r)| l || r),
                 BinaryOperator::Lt => zip_evaluate().map(|(l, r)| l < r),
                 BinaryOperator::LtEq => zip_evaluate().map(|(l, r)| l <= r),
                 BinaryOperator::Gt => zip_evaluate().map(|(l, r)| l > r),
@@ -101,10 +101,10 @@ pub fn check_expr<T: 'static + Debug>(
             }
         }
         Expr::UnaryOp { op, expr } => match op {
-            UnaryOperator::Not => check(&expr).map(|v| !v),
+            UnaryOperator::Not => check(&expr).await.map(|v| !v),
             _ => Err(FilterError::Unimplemented.into()),
         },
-        Expr::Nested(expr) => check(&expr),
+        Expr::Nested(expr) => check(&expr).await,
         Expr::InList {
             expr,
             list,

@@ -218,7 +218,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
 
             async move {
                 filter
-                    .check_blended(&blend_context)
+                    .check(Rc::clone(&blend_context))
                     .await
                     .map(|pass| pass.as_some(blend_context))
             }
@@ -234,10 +234,10 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         .apply(rows)
         .await?
         .into_stream()
-        .and_then(move |blend_context| {
+        .and_then(move |aggregate_context| {
             let blend = Rc::clone(&blend);
 
-            async move { blend.apply(Ok(blend_context)).await }
+            async move { blend.apply(Ok(aggregate_context)).await }
         });
 
     Ok((labels, rows))

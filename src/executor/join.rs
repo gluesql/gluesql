@@ -183,17 +183,17 @@ fn fetch_joined<'a, T: 'static + Debug>(
                 let filter_context = blend_context.concat_into(filter_context);
                 let filter = Filter::new(storage, where_clause, filter_context, None);
 
+                let context = Rc::new(BlendContext::new(
+                    table_alias,
+                    Rc::clone(&columns),
+                    Some(row),
+                    Some(Rc::clone(&blend_context)),
+                ));
+
                 filter
-                    .check(table_alias, Rc::clone(&columns), &row)
+                    .check(Rc::clone(&context))
                     .await
-                    .map(|pass| {
-                        pass.as_some(Rc::new(BlendContext::new(
-                            table_alias,
-                            Rc::clone(&columns),
-                            Some(row),
-                            Some(Rc::clone(&blend_context)),
-                        )))
-                    })
+                    .map(|pass| pass.as_some(context))
             }
         });
 

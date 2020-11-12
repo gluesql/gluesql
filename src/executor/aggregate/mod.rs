@@ -105,20 +105,40 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         let rows = state
             .export()
             .into_iter()
-            .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)))
-            .filter_map(move |(aggregated, next)| match having {
-                Some(having) => {
-                    let filter_context = filter_context.as_ref().map(Rc::clone);
-                    let filter_context = next.concat_into(filter_context);
+            .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
+        let rows = stream::iter(rows)
+            .filter_map(move |(aggregated, next)| {
+                let filter_context = filter_context.as_ref().map(Rc::clone);
+                let aggregated = aggregated.map(Rc::new);
 
-                    check_expr(storage, filter_context, aggregated.as_ref(), having)
-                        .map(|pass| pass.as_some(AggregateContext { aggregated, next }))
-                        .transpose()
+                async move {
+                    match having {
+                        None => Some(Ok((aggregated.as_ref().map(Rc::clone), next))),
+                        Some(having) => {
+                            let filter_context =
+                                FilterContext::concat(filter_context, Some(Rc::clone(&next)));
+                            let filter_context = Some(filter_context).map(Rc::new);
+                            let aggregated = aggregated.as_ref().map(Rc::clone);
+
+                            check_expr(
+                                storage,
+                                filter_context,
+                                aggregated.as_ref().map(Rc::clone),
+                                having,
+                            )
+                            .await
+                            .map(|pass| pass.as_some((aggregated, next)))
+                            .transpose()
+                        }
+                    }
                 }
-                None => Some(Ok(AggregateContext { aggregated, next })),
-            });
+            })
+            .map_ok(|(aggregated, next)| {
+                // TODO: Remove unwrap!
+                let aggregated = aggregated.map(|a| Rc::try_unwrap(a).unwrap());
 
-        let rows = stream::iter(rows);
+                AggregateContext { aggregated, next }
+            });
 
         Ok(Box::pin(rows))
     }

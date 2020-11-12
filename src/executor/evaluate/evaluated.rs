@@ -83,7 +83,7 @@ impl<'a> PartialEq for Evaluated<'a> {
                     Literal(r) => l == r,
                     LiteralRef(r) => &l == r,
                     ValueRef(r) => r == &l,
-                    Value(r) => &r == &l,
+                    Value(r) => r == l,
                     StringRef(_) => false,
                 },
             }

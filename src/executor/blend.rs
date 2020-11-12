@@ -69,6 +69,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         }
 
         let filter_context = context.concat_into(None);
+        let aggregated = aggregated.map(Rc::new);
 
         self.fields
             .iter()
@@ -88,8 +89,9 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                 }
                 SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
                     let filter_context = filter_context.as_ref().map(Rc::clone);
+                    let aggregated = aggregated.as_ref().map(Rc::clone);
 
-                    let value = evaluate(self.storage, filter_context, aggregated.as_ref(), expr)
+                    let value = evaluate(self.storage, filter_context, aggregated, expr)
                         .map(|evaluated| evaluated.try_into());
                     let value = try_into!(value);
 

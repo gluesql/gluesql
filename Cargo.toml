@@ -26,6 +26,7 @@ sled-storage = ["sled", "bincode"]
 
 [dependencies]
 async-trait = "0.1.41"
+async-recursion = "0.3.1"
 boolinator = "2.4.0"
 futures = "0.3"
 indexmap = "1.6.0"
