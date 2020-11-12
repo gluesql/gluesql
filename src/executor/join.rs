@@ -1,6 +1,6 @@
 use boolinator::Boolinator;
 use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
-use or_iterator::OrIterator;
+// use or_iterator::OrIterator;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::iter::once;
@@ -114,64 +114,88 @@ async fn join<'a, T: 'static + Debug>(
     let table_alias = table.get_alias();
 
     let blend_context = blend_context?;
+    /*
     let init_context = Rc::new(BlendContext::new(
-        table_alias,
+        table.get_alias(),
         Rc::clone(&columns),
         None,
         Some(Rc::clone(&blend_context)),
     ));
+    */
 
-    let fetch_rows = |constraint: &'a JoinConstraint| {
-        let where_clause = match constraint {
-            JoinConstraint::On(where_clause) => Some(where_clause),
-            JoinConstraint::Using(_) => {
-                return Err(JoinError::UsingOnJoinNotSupported.into());
-            }
-            JoinConstraint::Natural => {
-                return Err(JoinError::NaturalOnJoinNotSupported.into());
-            }
-        };
-
-        let rows = storage.scan_data(table_name)?;
-        let rows = rows.filter_map(move |item| {
-            let (_, row) = match item {
-                Ok(v) => v,
-                Err(e) => {
-                    return Some(Err(e));
-                }
-            };
-
-            let filter_context = filter_context.as_ref().map(Rc::clone);
-            let filter_context = blend_context.concat_into(filter_context);
-            let filter = Filter::new(storage, where_clause, filter_context, None);
-
-            filter
-                .check(table_alias, Rc::clone(&columns), &row)
-                .map(|pass| {
-                    pass.as_some(Rc::new(BlendContext::new(
-                        table_alias,
-                        Rc::clone(&columns),
-                        Some(row),
-                        Some(Rc::clone(&blend_context)),
-                    )))
-                })
-                .transpose()
-        });
-
-        Ok(rows)
+    let fetch_joined = |constraint: &'a JoinConstraint| {
+        fetch_joined(
+            storage,
+            table_name,
+            table_alias,
+            Rc::clone(&columns),
+            filter_context,
+            blend_context,
+            constraint,
+        )
     };
 
     match join_operator {
-        JoinOperator::Inner(constraint) => fetch_rows(constraint).map(|rows| {
-            let rows: Joined<'a> = Box::pin(stream::iter(rows));
+        JoinOperator::Inner(constraint) => fetch_joined(constraint).map(|rows| {
+            let rows: Joined<'a> = Box::pin(rows);
 
             rows
         }),
-        JoinOperator::LeftOuter(constraint) => fetch_rows(constraint).map(|rows| {
-            let rows: Joined<'a> = Box::pin(stream::iter(rows.or(once(Ok(init_context)))));
+        /*
+        JoinOperator::LeftOuter(constraint) => fetch(constraint).map(|rows| {
+            let rows: Joined<'a> = Box::pin(rows.or(once(Ok(init_context))));
 
             rows
         }),
+        */
         _ => Err(JoinError::JoinTypeNotSupported.into()),
     }
+}
+
+fn fetch_joined<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    table_name: &'a str,
+    table_alias: &'a str,
+    columns: Rc<Vec<Ident>>,
+    filter_context: Option<Rc<FilterContext<'a>>>,
+    blend_context: Rc<BlendContext<'a>>,
+    constraint: &'a JoinConstraint,
+) -> Result<impl TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a> {
+    let where_clause = match constraint {
+        JoinConstraint::On(where_clause) => Some(where_clause),
+        JoinConstraint::Using(_) => {
+            return Err(JoinError::UsingOnJoinNotSupported.into());
+        }
+        JoinConstraint::Natural => {
+            return Err(JoinError::NaturalOnJoinNotSupported.into());
+        }
+    };
+
+    let rows = storage
+        .scan_data(table_name)
+        .map(stream::iter)?
+        .try_filter_map(move |(_, row)| {
+            let filter_context = filter_context.as_ref().map(Rc::clone);
+            let blend_context = Rc::clone(&blend_context);
+            let columns = Rc::clone(&columns);
+
+            async move {
+                let filter_context = blend_context.concat_into(filter_context);
+                let filter = Filter::new(storage, where_clause, filter_context, None);
+
+                filter
+                    .check(table_alias, Rc::clone(&columns), &row)
+                    .await
+                    .map(|pass| {
+                        pass.as_some(Rc::new(BlendContext::new(
+                            table_alias,
+                            Rc::clone(&columns),
+                            Some(row),
+                            Some(Rc::clone(&blend_context)),
+                        )))
+                    })
+            }
+        });
+
+    Ok(rows)
 }

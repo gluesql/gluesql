@@ -48,7 +48,7 @@ pub fn fetch<'a, T: 'static + Debug>(
 
             async move {
                 filter
-                    .check_async(&table_name, Rc::clone(&columns), &row)
+                    .check(&table_name, Rc::clone(&columns), &row)
                     .await
                     .map(|pass| pass.as_some((columns, key, row)))
             }
