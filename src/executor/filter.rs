@@ -1,5 +1,6 @@
 use async_recursion::async_recursion;
 use boolinator::Boolinator;
+use futures::stream::{self, StreamExt};
 use im_rc::HashMap;
 use serde::Serialize;
 use std::fmt::Debug;
@@ -80,7 +81,12 @@ pub async fn check_expr<T: 'static + Debug>(
 
     match expr {
         Expr::BinaryOp { op, left, right } => {
-            let zip_evaluate = || Ok((evaluate(left)?, evaluate(right)?));
+            let zip_evaluate = || async move {
+                let l = evaluate(left).await?;
+                let r = evaluate(right).await?;
+
+                Ok((l, r))
+            };
             let zip_check = || async move {
                 let l = check(left).await?;
                 let r = check(right).await?;
@@ -89,14 +95,14 @@ pub async fn check_expr<T: 'static + Debug>(
             };
 
             match op {
-                BinaryOperator::Eq => zip_evaluate().map(|(l, r)| l == r),
-                BinaryOperator::NotEq => zip_evaluate().map(|(l, r)| l != r),
+                BinaryOperator::Eq => zip_evaluate().await.map(|(l, r)| l == r),
+                BinaryOperator::NotEq => zip_evaluate().await.map(|(l, r)| l != r),
                 BinaryOperator::And => zip_check().await.map(|(l, r)| l && r),
                 BinaryOperator::Or => zip_check().await.map(|(l, r)| l || r),
-                BinaryOperator::Lt => zip_evaluate().map(|(l, r)| l < r),
-                BinaryOperator::LtEq => zip_evaluate().map(|(l, r)| l <= r),
-                BinaryOperator::Gt => zip_evaluate().map(|(l, r)| l > r),
-                BinaryOperator::GtEq => zip_evaluate().map(|(l, r)| l >= r),
+                BinaryOperator::Lt => zip_evaluate().await.map(|(l, r)| l < r),
+                BinaryOperator::LtEq => zip_evaluate().await.map(|(l, r)| l <= r),
+                BinaryOperator::Gt => zip_evaluate().await.map(|(l, r)| l > r),
+                BinaryOperator::GtEq => zip_evaluate().await.map(|(l, r)| l >= r),
                 _ => Err(FilterError::Unimplemented.into()),
             }
         }
@@ -111,15 +117,23 @@ pub async fn check_expr<T: 'static + Debug>(
             negated,
         } => {
             let negated = *negated;
-            let target = evaluate(expr)?;
+            let target = evaluate(expr).await?;
 
-            list.iter()
+            stream::iter(list.iter())
                 .filter_map(|expr| {
-                    evaluate(expr).map_or_else(
-                        |error| Some(Err(error)),
-                        |evaluated| (target == evaluated).as_some(Ok(!negated)),
-                    )
+                    let target = &target;
+
+                    async move {
+                        evaluate(expr).await.map_or_else(
+                            |error| Some(Err(error)),
+                            |evaluated| (target == &evaluated).as_some(Ok(!negated)),
+                        )
+                    }
                 })
+                .take(1)
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
                 .next()
                 .unwrap_or(Ok(negated))
         }
@@ -129,7 +143,7 @@ pub async fn check_expr<T: 'static + Debug>(
             negated,
         } => {
             let negated = *negated;
-            let target = evaluate(expr)?;
+            let target = evaluate(expr).await?;
 
             select(storage, &subquery, filter_context)?
                 .map(|row| row?.take_first_value())
@@ -149,13 +163,13 @@ pub async fn check_expr<T: 'static + Debug>(
             high,
         } => {
             let negated = *negated;
-            let target = evaluate(expr)?;
+            let target = evaluate(expr).await?;
 
-            Ok(negated ^ (evaluate(low)? <= target && target <= evaluate(high)?))
+            Ok(negated ^ (evaluate(low).await? <= target && target <= evaluate(high).await?))
         }
         Expr::Exists(query) => Ok(select(storage, query, filter_context)?.next().is_some()),
-        Expr::IsNull(expr) => Ok(!evaluate(expr)?.is_some()),
-        Expr::IsNotNull(expr) => Ok(evaluate(expr)?.is_some()),
+        Expr::IsNull(expr) => Ok(!evaluate(expr).await?.is_some()),
+        Expr::IsNotNull(expr) => Ok(evaluate(expr).await?.is_some()),
         _ => Err(FilterError::Unimplemented.into()),
     }
 }

@@ -1,5 +1,6 @@
 use boolinator::Boolinator;
 use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
+// TODO: Re-enable LEFT OUTER JOIN
 // use or_iterator::OrIterator;
 use serde::Serialize;
 use std::fmt::Debug;
@@ -175,19 +176,21 @@ fn fetch_joined<'a, T: 'static + Debug>(
         .scan_data(table_name)
         .map(stream::iter)?
         .try_filter_map(move |(_, row)| {
-            let filter_context = filter_context.as_ref().map(Rc::clone);
+            let filter_context = FilterContext::concat(
+                filter_context.as_ref().map(Rc::clone),
+                Some(&blend_context).map(Rc::clone),
+            );
+            let filter_context = Some(filter_context).map(Rc::new);
             let blend_context = Rc::clone(&blend_context);
             let columns = Rc::clone(&columns);
 
             async move {
-                let filter_context = blend_context.concat_into(filter_context);
                 let filter = Filter::new(storage, where_clause, filter_context, None);
-
                 let context = Rc::new(BlendContext::new(
                     table_alias,
                     Rc::clone(&columns),
                     Some(row),
-                    Some(Rc::clone(&blend_context)),
+                    Some(&blend_context).map(Rc::clone),
                 ));
 
                 filter

@@ -68,16 +68,18 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
             .enumerate()
             .map(|(i, row)| row.map(|row| (i, row)))
             .try_fold(State::new(), |state, (index, blend_context)| async move {
-                let evaluated: Vec<Evaluated<'_>> = self
-                    .group_by
-                    .iter()
-                    .map(|expr| {
-                        let filter_context = self.filter_context.as_ref().map(Rc::clone);
-                        let filter_context = blend_context.concat_into(filter_context);
+                let evaluated: Vec<Evaluated<'_>> = stream::iter(self.group_by.iter())
+                    .then(|expr| {
+                        let filter_context = FilterContext::concat(
+                            self.filter_context.as_ref().map(Rc::clone),
+                            Some(&blend_context).map(Rc::clone),
+                        );
+                        let filter_context = Some(filter_context).map(Rc::new);
 
-                        evaluate(self.storage, filter_context, None, expr)
+                        async move { evaluate(self.storage, filter_context, None, expr).await }
                     })
-                    .collect::<Result<_>>()?;
+                    .try_collect::<Vec<_>>()
+                    .await?;
                 let group = evaluated
                     .iter()
                     .map(GroupKey::try_from)

@@ -54,15 +54,18 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         })
     }
 
-    async fn find(&self, row: &Row, column: &Ident) -> Option<Result<Value>> {
+    async fn find(&self, row: &Row, column: &Ident) -> Result<Option<Value>> {
         let context =
             FilterContext::new(self.table_name, Rc::clone(&self.columns), Some(row), None);
         let context = Some(Rc::new(context));
 
-        self.fields
+        match self
+            .fields
             .iter()
             .find(|assignment| assignment.id.value == column.value)
-            .map(|assignment| {
+        {
+            None => Ok(None),
+            Some(assignment) => {
                 let Assignment { id, value } = &assignment;
 
                 let index = self
@@ -71,7 +74,8 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     .position(|column| column.value == id.value)
                     .ok_or_else(|| UpdateError::Unreachable)?;
 
-                let evaluated = evaluate(self.storage, context, None, value)?;
+                let evaluated = evaluate(self.storage, context, None, value).await?;
+
                 let Row(values) = &row;
                 let value = &values[index];
 
@@ -82,7 +86,9 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     Evaluated::ValueRef(v) => Ok(v.clone()),
                     Evaluated::Value(v) => Ok(v),
                 }
-            })
+                .map(Some)
+            }
+        }
     }
 
     pub async fn apply(&self, row: Row) -> Result<Row> {
@@ -99,7 +105,12 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
             .and_then(|(column, value)| {
                 let row = &row;
 
-                async move { self.find(row, column).await.unwrap_or(Ok(value)) }
+                async move {
+                    self.find(row, column)
+                        .await
+                        .transpose()
+                        .unwrap_or(Ok(value))
+                }
             })
             .try_collect::<Vec<_>>()
             .await

@@ -5,7 +5,6 @@ use thiserror::Error;
 
 use sqlparser::ast::Ident;
 
-use super::FilterContext;
 use crate::data::{Row, Value};
 use crate::result::Result;
 
@@ -35,32 +34,6 @@ impl<'a> BlendContext<'a> {
             columns,
             row,
             next,
-        }
-    }
-
-    pub fn concat_into(
-        &'a self,
-        filter_context: Option<Rc<FilterContext<'a>>>,
-    ) -> Option<Rc<FilterContext<'a>>> {
-        let BlendContext {
-            table_alias,
-            columns,
-            row,
-            next,
-            ..
-        } = self;
-
-        let filter_context = FilterContext::new(
-            table_alias,
-            Rc::clone(&columns),
-            row.as_ref(),
-            filter_context,
-        );
-        let filter_context = Some(Rc::new(filter_context));
-
-        match next {
-            Some(next) => next.concat_into(filter_context),
-            None => filter_context,
         }
     }
 

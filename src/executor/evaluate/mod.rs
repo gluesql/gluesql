@@ -1,6 +1,7 @@
 mod error;
 mod evaluated;
 
+use async_recursion::async_recursion;
 use im_rc::HashMap;
 use std::convert::TryInto;
 use std::fmt::Debug;
@@ -17,10 +18,11 @@ use crate::store::Store;
 pub use error::EvaluateError;
 pub use evaluated::Evaluated;
 
-pub fn evaluate<'a, T: 'static + Debug>(
+#[async_recursion(?Send)]
+pub async fn evaluate<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&Function, Value>>>,
+    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
@@ -51,7 +53,7 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 }),
             },
         },
-        Expr::Nested(expr) => eval(&expr),
+        Expr::Nested(expr) => eval(&expr).await,
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
                 return Err(EvaluateError::UnsupportedCompoundIdentifier(expr.to_string()).into());
@@ -81,8 +83,8 @@ pub fn evaluate<'a, T: 'static + Debug>(
             .next()
             .ok_or(EvaluateError::NestedSelectRowNotFound)?,
         Expr::BinaryOp { op, left, right } => {
-            let l = eval(left)?;
-            let r = eval(right)?;
+            let l = eval(left).await?;
+            let r = eval(right).await?;
 
             match op {
                 BinaryOperator::Plus => l.add(&r),
@@ -93,7 +95,7 @@ pub fn evaluate<'a, T: 'static + Debug>(
             }
         }
         Expr::UnaryOp { op, expr } => {
-            let v = eval(expr)?;
+            let v = eval(expr).await?;
 
             match op {
                 UnaryOperator::Plus => v.unary_plus(),
@@ -101,28 +103,23 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
         }
+        Expr::Function(func) => match aggregated.as_ref().map(|aggr| aggr.get(func)).flatten() {
+            Some(value) => Ok(Evaluated::Value(value.clone())),
+            None => {
+                let context = context.as_ref().map(Rc::clone);
+                let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        Expr::Function(func) => aggregated
-            .as_ref()
-            .map(|aggr| aggr.get(func))
-            .flatten()
-            .map_or_else(
-                || {
-                    let context = context.as_ref().map(Rc::clone);
-                    let aggregated = aggregated.as_ref().map(Rc::clone);
-
-                    evaluate_function(storage, context, aggregated, func)
-                },
-                |value| Ok(Evaluated::Value(value.clone())),
-            ),
+                evaluate_function(storage, context, aggregated, func).await
+            }
+        },
         _ => Err(EvaluateError::Unimplemented.into()),
     }
 }
 
-fn evaluate_function<'a, T: 'static + Debug>(
+async fn evaluate_function<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&Function, Value>>>,
+    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     func: &'a Function,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
@@ -153,7 +150,7 @@ fn evaluate_function<'a, T: 'static + Debug>(
             }
 
             let expr = &args[0];
-            let value: Value = match eval(expr)?.try_into()? {
+            let value: Value = match eval(expr).await?.try_into()? {
                 Value::Str(s) => Value::Str(convert(s)),
                 Value::OptStr(s) => Value::OptStr(s.map(convert)),
                 _ => {
