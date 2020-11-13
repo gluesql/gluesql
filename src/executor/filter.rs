@@ -1,6 +1,6 @@
 use async_recursion::async_recursion;
 use boolinator::Boolinator;
-use futures::stream::{self, StreamExt};
+use futures::stream::{self, StreamExt, TryStreamExt};
 use im_rc::HashMap;
 use serde::Serialize;
 use std::fmt::Debug;
@@ -142,19 +142,27 @@ pub async fn check_expr<T: 'static + Debug>(
             subquery,
             negated,
         } => {
-            let negated = *negated;
             let target = evaluate(expr).await?;
 
-            select(storage, &subquery, filter_context)?
-                .map(|row| row?.take_first_value())
-                .filter_map(|value| {
-                    value.map_or_else(
-                        |error| Some(Err(error)),
-                        |value| (target == Evaluated::ValueRef(&value)).as_some(Ok(!negated)),
-                    )
+            select(storage, &subquery, filter_context)
+                .await?
+                .try_filter_map(|row| {
+                    let target = &target;
+
+                    async move {
+                        let value = row.take_first_value()?;
+
+                        (target == &Evaluated::ValueRef(&value))
+                            .as_some(Ok(!negated))
+                            .transpose()
+                    }
                 })
+                .take(1)
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
                 .next()
-                .unwrap_or(Ok(negated))
+                .unwrap_or(Ok(*negated))
         }
         Expr::Between {
             expr,
@@ -167,7 +175,14 @@ pub async fn check_expr<T: 'static + Debug>(
 
             Ok(negated ^ (evaluate(low).await? <= target && target <= evaluate(high).await?))
         }
-        Expr::Exists(query) => Ok(select(storage, query, filter_context)?.next().is_some()),
+        Expr::Exists(query) => Ok(select(storage, query, filter_context)
+            .await?
+            .into_stream()
+            .take(1)
+            .try_collect::<Vec<_>>()
+            .await?
+            .get(0)
+            .is_some()),
         Expr::IsNull(expr) => Ok(!evaluate(expr).await?.is_some()),
         Expr::IsNotNull(expr) => Ok(evaluate(expr).await?.is_some()),
         _ => Err(FilterError::Unimplemented.into()),

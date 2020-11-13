@@ -1,5 +1,4 @@
 use boolinator::Boolinator;
-use futures::executor::block_on;
 use futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt};
 use iter_enum::Iterator;
 use serde::Serialize;
@@ -243,25 +242,12 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     Ok((labels, rows))
 }
 
-pub fn select<'a, T: 'static + Debug>(
+pub async fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
-) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    block_on(select_temp(storage, query, filter_context))
-}
-
-pub async fn select_temp<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
-    query: &'a Query,
-    filter_context: Option<Rc<FilterContext<'a>>>,
-) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    // TODO: remove block_on
-    // let (_, rows) = block_on(select_with_labels(storage, query, filter_context, false))?;
-    let (_, rows) = select_with_labels(storage, query, filter_context, false).await?;
-    let rows = rows.try_collect::<Vec<_>>().await?.into_iter().map(Ok);
-
-    // let rows = block_on(rows)?;
-
-    Ok(rows)
+) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {
+    select_with_labels(storage, query, filter_context, false)
+        .await
+        .map(|(_, rows)| rows)
 }

@@ -2,6 +2,7 @@ mod error;
 mod evaluated;
 
 use async_recursion::async_recursion;
+use futures::stream::{StreamExt, TryStreamExt};
 use im_rc::HashMap;
 use std::convert::TryInto;
 use std::fmt::Debug;
@@ -77,11 +78,15 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 }
             }
         }
-        Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))?
-            .map(|row| row?.take_first_value())
-            .map(|value| value.map(Evaluated::Value))
+        Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))
+            .await?
+            .map_ok(|row| row.take_first_value().map(Evaluated::Value))
+            .take(1)
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
             .next()
-            .ok_or(EvaluateError::NestedSelectRowNotFound)?,
+            .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))?,
         Expr::BinaryOp { op, left, right } => {
             let l = eval(left).await?;
             let r = eval(right).await?;
