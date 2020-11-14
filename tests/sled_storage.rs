@@ -1,4 +1,6 @@
 #[cfg(feature = "sled-storage")]
+use futures::executor::block_on;
+#[cfg(feature = "sled-storage")]
 use std::convert::TryFrom;
 
 #[cfg(feature = "sled-storage")]
@@ -37,7 +39,7 @@ impl Tester for SledTester {
     fn execute(&mut self, query: &Query) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
-        match execute(storage, query) {
+        match block_on(execute(storage, query)) {
             Ok((storage, payload)) => {
                 self.storage = Some(storage);
 

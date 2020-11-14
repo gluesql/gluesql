@@ -1,4 +1,3 @@
-use futures::executor::block_on;
 use futures::stream::{self, TryStreamExt};
 use serde::Serialize;
 use std::fmt::Debug;
@@ -56,14 +55,7 @@ pub enum Payload {
     AlterTable,
 }
 
-pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
-    storage: U,
-    query: &Query,
-) -> MutResult<U, Payload> {
-    block_on(execute_async(storage, query))
-}
-
-async fn execute_async<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
