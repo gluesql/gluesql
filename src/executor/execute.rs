@@ -259,7 +259,8 @@ async fn prepare<'a, T: 'static + Debug>(
             let update = Update::new(storage, table_name, assignments, Rc::clone(&columns))?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            fetch(storage, table_name, columns, filter)?
+            fetch(storage, table_name, columns, filter)
+                .await?
                 .and_then(|item| {
                     let update = &update;
                     let (_, key, row) = item;
@@ -282,7 +283,8 @@ async fn prepare<'a, T: 'static + Debug>(
             let columns = Rc::new(fetch_columns(storage, table_name).await?);
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            fetch(storage, table_name, columns, filter)?
+            fetch(storage, table_name, columns, filter)
+                .await?
                 .map_ok(|(_, key, _)| key)
                 .try_collect::<Vec<_>>()
                 .await

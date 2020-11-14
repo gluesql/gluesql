@@ -32,12 +32,12 @@ pub enum SelectError {
     Unreachable,
 }
 
-fn fetch_blended<'a, T: 'static + Debug>(
+async fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: Table<'a>,
     columns: Rc<Vec<Ident>>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
-    let rows = storage.scan_data(table.get_name())?.map(move |data| {
+    let rows = storage.scan_data(table.get_name()).await?.map(move |data| {
         let (_, row) = data?;
         let row = Some(row);
         let columns = Rc::clone(&columns);
@@ -210,7 +210,8 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     let filter = Rc::new(Filter::new(storage, where_clause, filter_context, None));
     let limit = Rc::new(Limit::new(query.limit.as_ref(), query.offset.as_ref())?);
 
-    let rows = fetch_blended(storage, table, columns)?
+    let rows = fetch_blended(storage, table, columns)
+        .await?
         .then(move |blend_context| {
             let join_columns = Rc::clone(&join_columns);
             let join = Rc::clone(&join);

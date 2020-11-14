@@ -33,7 +33,7 @@ pub async fn fetch_columns<T: 'static + Debug>(
         .collect::<Vec<Ident>>())
 }
 
-pub fn fetch<'a, T: 'static + Debug>(
+pub async fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &'a str,
     columns: Rc<Vec<Ident>>,
@@ -43,6 +43,7 @@ pub fn fetch<'a, T: 'static + Debug>(
 
     let rows = storage
         .scan_data(table_name)
+        .await
         .map(stream::iter)?
         .try_filter_map(move |(key, row)| {
             let columns = Rc::clone(&columns);

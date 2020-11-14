@@ -133,12 +133,12 @@ async fn join<'a, T: 'static + Debug>(
     };
 
     match join_operator {
-        JoinOperator::Inner(constraint) => fetch_joined(constraint).map(|rows| {
+        JoinOperator::Inner(constraint) => fetch_joined(constraint).await.map(|rows| {
             let rows: Joined<'a> = Box::pin(rows);
 
             rows
         }),
-        JoinOperator::LeftOuter(constraint) => fetch_joined(constraint).map(|rows| {
+        JoinOperator::LeftOuter(constraint) => fetch_joined(constraint).await.map(|rows| {
             let init_rows = once(async { Ok(init_context) });
             let rows: Joined<'a> = Box::pin(OrStream::new(rows, init_rows));
 
@@ -148,7 +148,7 @@ async fn join<'a, T: 'static + Debug>(
     }
 }
 
-fn fetch_joined<'a, T: 'static + Debug>(
+async fn fetch_joined<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     table_name: &'a str,
     table_alias: &'a str,
@@ -169,6 +169,7 @@ fn fetch_joined<'a, T: 'static + Debug>(
 
     let rows = storage
         .scan_data(table_name)
+        .await
         .map(stream::iter)?
         .try_filter_map(move |(_, row)| {
             let filter_context = FilterContext::concat(

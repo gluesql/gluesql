@@ -61,7 +61,7 @@ impl Store<IVec> for SledStorage {
         fetch_schema(&self.tree, table_name).map(|(_, schema)| schema)
     }
 
-    fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
         let prefix = format!("data/{}/", table_name);
 
         let result_set = self.tree.scan_prefix(prefix.as_bytes()).map(move |item| {
