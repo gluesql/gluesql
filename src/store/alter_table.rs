@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -24,22 +25,23 @@ pub enum AlterTableError {
     DroppingColumnNotFound(String),
 }
 
+#[async_trait]
 pub trait AlterTable
 where
     Self: Sized,
 {
-    fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()>;
+    async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()>;
 
-    fn rename_column(
+    async fn rename_column(
         self,
         table_name: &str,
         old_column_name: &str,
         new_column_name: &str,
     ) -> MutResult<Self, ()>;
 
-    fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()>;
+    async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()>;
 
-    fn drop_column(
+    async fn drop_column(
         self,
         table_name: &str,
         column_name: &str,

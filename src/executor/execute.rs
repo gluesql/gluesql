@@ -144,23 +144,31 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             let result = match operation {
                 AlterTableOperation::RenameTable {
                     table_name: new_table_name,
-                } => storage.rename_schema(table_name, &new_table_name.value),
+                } => {
+                    storage
+                        .rename_schema(table_name, &new_table_name.value)
+                        .await
+                }
                 AlterTableOperation::RenameColumn {
                     old_column_name,
                     new_column_name,
-                } => storage.rename_column(
-                    table_name,
-                    &old_column_name.value,
-                    &new_column_name.value,
-                ),
+                } => {
+                    storage
+                        .rename_column(table_name, &old_column_name.value, &new_column_name.value)
+                        .await
+                }
                 AlterTableOperation::AddColumn { column_def } => {
-                    storage.add_column(table_name, column_def)
+                    storage.add_column(table_name, column_def).await
                 }
                 AlterTableOperation::DropColumn {
                     column_name,
                     if_exists,
                     ..
-                } => storage.drop_column(table_name, &column_name.value, *if_exists),
+                } => {
+                    storage
+                        .drop_column(table_name, &column_name.value, *if_exists)
+                        .await
+                }
                 _ => Err((
                     storage,
                     ExecuteError::UnsupportedAlterTableOperation(operation.to_string()).into(),
