@@ -79,7 +79,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             schema,
             if_not_exists,
         } => {
-            if try_into!(storage, storage.fetch_schema(&schema.table_name)).is_some() {
+            if try_into!(storage, storage.fetch_schema(&schema.table_name).await).is_some() {
                 return if if_not_exists {
                     Ok((storage, Payload::Create))
                 } else {
@@ -124,7 +124,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             if_exists,
         } => stream::iter(schema_names.into_iter().map(Ok::<&str, (U, Error)>))
             .try_fold(storage, |storage, table_name| async move {
-                let schema = try_into!(storage, storage.fetch_schema(table_name));
+                let schema = try_into!(storage, storage.fetch_schema(table_name).await);
 
                 if !if_exists {
                     try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
@@ -229,7 +229,8 @@ async fn prepare<'a, T: 'static + Debug>(
         } => {
             let table_name = get_name(table_name)?;
             let Schema { column_defs, .. } = storage
-                .fetch_schema(table_name)?
+                .fetch_schema(table_name)
+                .await?
                 .ok_or(ExecuteError::TableNotExists)?;
 
             let values_list = match &source.body {
@@ -254,7 +255,7 @@ async fn prepare<'a, T: 'static + Debug>(
             assignments,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = Rc::new(fetch_columns(storage, table_name)?);
+            let columns = Rc::new(fetch_columns(storage, table_name).await?);
             let update = Update::new(storage, table_name, assignments, Rc::clone(&columns))?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
@@ -278,7 +279,7 @@ async fn prepare<'a, T: 'static + Debug>(
             selection,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = Rc::new(fetch_columns(storage, table_name)?);
+            let columns = Rc::new(fetch_columns(storage, table_name).await?);
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
             fetch(storage, table_name, columns, filter)?

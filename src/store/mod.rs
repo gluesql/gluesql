@@ -15,8 +15,9 @@ use crate::result::{MutResult, Result};
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` queries.
+#[async_trait]
 pub trait Store<T: Debug> {
-    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
+    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
     fn scan_data(&self, table_name: &str) -> Result<RowIter<T>>;
 }

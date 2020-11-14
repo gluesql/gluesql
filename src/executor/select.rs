@@ -161,18 +161,24 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     let TableWithJoins { relation, joins } = &table_with_joins;
     let table = Table::new(relation)?;
 
-    let columns = fetch_columns(storage, table.get_name())?;
-    let join_columns = joins
-        .iter()
-        .map(|join| {
-            let table = Table::new(&join.relation)?;
-            let table_alias = table.get_alias();
-            let table_name = table.get_name();
-            let columns = fetch_columns(storage, table_name)?;
+    let columns = fetch_columns(storage, table.get_name()).await?;
+    let join_columns = stream::iter(joins.iter())
+        .map(Ok::<_, Error>)
+        .and_then(|join| {
+            let table = Table::new(&join.relation);
 
-            Ok((table_alias, columns))
+            async move {
+                let table = table?;
+                let table_alias = table.get_alias();
+                let table_name = table.get_name();
+
+                let columns = fetch_columns(storage, table_name).await?;
+
+                Ok((table_alias, columns))
+            }
         })
-        .collect::<Result<Vec<_>>>()?;
+        .try_collect::<Vec<_>>()
+        .await?;
 
     let labels = if with_labels {
         get_labels(&projection, table.get_alias(), &columns, &join_columns)?

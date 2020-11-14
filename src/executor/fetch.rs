@@ -19,12 +19,13 @@ pub enum FetchError {
     TableNotFound(String),
 }
 
-pub fn fetch_columns<T: 'static + Debug>(
+pub async fn fetch_columns<T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &str,
 ) -> Result<Vec<Ident>> {
     Ok(storage
-        .fetch_schema(table_name)?
+        .fetch_schema(table_name)
+        .await?
         .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
         .column_defs
         .into_iter()
