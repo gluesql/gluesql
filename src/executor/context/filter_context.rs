@@ -7,10 +7,18 @@ use super::BlendContext;
 use crate::data::{Row, Value};
 
 #[derive(Debug)]
+enum Content<'a> {
+    Some {
+        table_alias: &'a str,
+        columns: Rc<Vec<Ident>>,
+        row: Option<&'a Row>,
+    },
+    None,
+}
+
+#[derive(Debug)]
 pub struct FilterContext<'a> {
-    table_alias: &'a str,
-    columns: Rc<Vec<Ident>>,
-    row: Option<&'a Row>,
+    content: Content<'a>,
     next: Option<Rc<FilterContext<'a>>>,
     next2: Option<Rc<BlendContext<'a>>>,
 }
@@ -23,9 +31,11 @@ impl<'a> FilterContext<'a> {
         next: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
         Self {
-            table_alias,
-            columns,
-            row,
+            content: Content::Some {
+                table_alias,
+                columns,
+                row,
+            },
             next,
             next2: None,
         }
@@ -35,25 +45,23 @@ impl<'a> FilterContext<'a> {
         filter_context: Option<Rc<FilterContext<'a>>>,
         blend_context: Option<Rc<BlendContext<'a>>>,
     ) -> Self {
-        // TODO: ASAP
         Self {
-            table_alias: "this-should-be-fixed-it-is-just-for-temporary-use",
-            columns: Rc::new(vec![]),
-            row: None,
+            content: Content::None,
             next: filter_context,
             next2: blend_context,
         }
     }
 
     pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
-        let value = self
-            .columns
-            .iter()
-            .position(|column| column.value == target)
-            .map(|index| self.row.and_then(|row| row.get_value(index)));
+        if let Content::Some { columns, row, .. } = &self.content {
+            let value = columns
+                .iter()
+                .position(|column| column.value == target)
+                .map(|index| row.and_then(|row| row.get_value(index)));
 
-        if let Some(value) = value {
-            return value;
+            if let Some(value) = value {
+                return value;
+            }
         }
 
         match (&self.next, &self.next2) {
@@ -67,29 +75,36 @@ impl<'a> FilterContext<'a> {
         }
     }
 
-    pub fn get_alias_value(&'a self, table_alias: &str, target: &str) -> Option<&'a Value> {
-        let get_value = || {
-            if self.table_alias != table_alias {
-                return None;
+    pub fn get_alias_value(&'a self, target_alias: &str, target: &str) -> Option<&'a Value> {
+        if let Content::Some {
+            table_alias,
+            columns,
+            row,
+        } = &self.content
+        {
+            let get_value = || {
+                if table_alias != &target_alias {
+                    return None;
+                }
+
+                columns
+                    .iter()
+                    .position(|column| column.value == target)
+                    .map(|index| row.and_then(|row| row.get_value(index)))
+            };
+
+            if let Some(value) = get_value() {
+                return value;
             }
-
-            self.columns
-                .iter()
-                .position(|column| column.value == target)
-                .map(|index| self.row.and_then(|row| row.get_value(index)))
-        };
-
-        if let Some(value) = get_value() {
-            return value;
         }
 
         match (&self.next, &self.next2) {
             (None, None) => None,
-            (Some(fc), None) => fc.get_alias_value(table_alias, target),
-            (None, Some(bc)) => bc.get_alias_value(table_alias, target),
-            (Some(fc), Some(bc)) => match bc.get_alias_value(table_alias, target) {
+            (Some(fc), None) => fc.get_alias_value(target_alias, target),
+            (None, Some(bc)) => bc.get_alias_value(target_alias, target),
+            (Some(fc), Some(bc)) => match bc.get_alias_value(target_alias, target) {
                 v @ Some(_) => v,
-                None => fc.get_alias_value(table_alias, target),
+                None => fc.get_alias_value(target_alias, target),
             },
         }
     }
