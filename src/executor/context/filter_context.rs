@@ -68,13 +68,10 @@ impl<'a> FilterContext<'a> {
         match (&self.next, &self.next2) {
             (None, None) => Err(FilterContextError::ValueNotFound.into()),
             (Some(fc), None) => fc.get_value(target),
-            (None, Some(bc)) => bc
-                .get_value(target)
-                .map(Some)
-                .map_err(|_| FilterContextError::ValueNotFound.into()),
+            (None, Some(bc)) => Ok(bc.get_value(target)),
             (Some(fc), Some(bc)) => match bc.get_value(target) {
-                v @ Ok(_) => v.map(Some),
-                Err(_) => fc.get_value(target),
+                v @ Some(_) => Ok(v),
+                None => fc.get_value(target),
             },
         }
     }
@@ -98,13 +95,10 @@ impl<'a> FilterContext<'a> {
         match (&self.next, &self.next2) {
             (None, None) => Err(FilterContextError::ValueNotFound.into()),
             (Some(fc), None) => fc.get_alias_value(table_alias, target),
-            (None, Some(bc)) => bc
-                .get_alias_value(table_alias, target)
-                .map(Some)
-                .map_err(|_| FilterContextError::ValueNotFound.into()),
+            (None, Some(bc)) => Ok(bc.get_alias_value(table_alias, target)),
             (Some(fc), Some(bc)) => match bc.get_alias_value(table_alias, target) {
-                v @ Ok(_) => v.map(Some),
-                Err(_) => fc.get_alias_value(table_alias, target),
+                v @ Some(_) => Ok(v),
+                None => fc.get_alias_value(table_alias, target),
             },
         }
     }

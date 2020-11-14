@@ -68,18 +68,21 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
             .enumerate()
             .map(|(i, row)| row.map(|row| (i, row)))
             .try_fold(State::new(), |state, (index, blend_context)| async move {
-                let evaluated: Vec<Evaluated<'_>> = stream::iter(self.group_by.iter())
-                    .then(|expr| {
-                        let filter_context = FilterContext::concat(
-                            self.filter_context.as_ref().map(Rc::clone),
-                            Some(&blend_context).map(Rc::clone),
-                        );
-                        let filter_context = Some(filter_context).map(Rc::new);
+                let evaluated: Vec<Evaluated<'_>> =
+                    stream::iter(self.group_by.iter())
+                        .then(|expr| {
+                            let filter_context = FilterContext::concat(
+                                self.filter_context.as_ref().map(Rc::clone),
+                                Some(&blend_context).map(Rc::clone),
+                            );
+                            let filter_context = Some(filter_context).map(Rc::new);
 
-                        async move { evaluate(self.storage, filter_context, None, expr).await }
-                    })
-                    .try_collect::<Vec<_>>()
-                    .await?;
+                            async move {
+                                evaluate(self.storage, filter_context, None, expr, false).await
+                            }
+                        })
+                        .try_collect::<Vec<_>>()
+                        .await?;
                 let group = evaluated
                     .iter()
                     .map(GroupKey::try_from)
@@ -169,18 +172,24 @@ fn aggregate<'a>(
 ) -> Result<State<'a>> {
     let aggr = |state, expr| aggregate(state, context, expr);
     let get_value = |expr: &Expr| match expr {
-        Expr::Identifier(ident) => context.get_value(&ident.value),
+        Expr::Identifier(ident) => context
+            .get_value(&ident.value)
+            .ok_or_else(|| AggregateError::ValueNotFound(ident.value.to_string())),
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
-                return Err(AggregateError::UnsupportedCompoundIdentifier(expr.to_string()).into());
+                return Err(AggregateError::UnsupportedCompoundIdentifier(
+                    expr.to_string(),
+                ));
             }
 
             let table_alias = &idents[0].value;
             let column = &idents[1].value;
 
-            context.get_alias_value(table_alias, column)
+            context
+                .get_alias_value(table_alias, column)
+                .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
         }
-        _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
+        _ => Err(AggregateError::OnlyIdentifierAllowed),
     };
     let get_first_value = |args: &[Expr]| {
         let expr = args.get(0).ok_or(AggregateError::Unreachable)?;

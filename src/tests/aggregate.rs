@@ -82,7 +82,7 @@ pub fn aggregate(mut tester: impl tests::Tester) {
             "SELECT SUM(1 + 2) FROM Item;",
         ),
         (
-            BlendContextError::ValueNotFound.into(),
+            AggregateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",
         ),
     ];

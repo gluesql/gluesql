@@ -25,12 +25,13 @@ pub async fn evaluate<'a, T: 'static + Debug>(
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     expr: &'a Expr,
+    use_empty: bool,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
         let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        evaluate(storage, context, aggregated, expr)
+        evaluate(storage, context, aggregated, expr, use_empty)
     };
 
     match expr {
@@ -48,10 +49,19 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => {
                     panic!();
                 }
-                Some(context) => context.get_value(&ident.value).map(|value| match value {
-                    Some(value) => Evaluated::Value(value.clone()),
-                    None => Evaluated::Value(Value::Empty),
-                }),
+                Some(context) => context
+                    .get_value(&ident.value)
+                    .map(|value| match value {
+                        Some(value) => Ok(value.clone()),
+                        None => {
+                            if use_empty {
+                                Ok(Value::Empty)
+                            } else {
+                                Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
+                            }
+                        }
+                    })?
+                    .map(Evaluated::Value),
             },
         },
         Expr::Nested(expr) => eval(&expr).await,
@@ -68,14 +78,19 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => {
                     panic!();
                 }
-                Some(context) => {
-                    context
-                        .get_alias_value(table_alias, column)
-                        .map(|value| match value {
-                            Some(value) => Evaluated::Value(value.clone()),
-                            None => Evaluated::Value(Value::Empty),
-                        })
-                }
+                Some(context) => context
+                    .get_alias_value(table_alias, column)
+                    .map(|value| match value {
+                        Some(value) => Ok(value.clone()),
+                        None => {
+                            if use_empty {
+                                Ok(Value::Empty)
+                            } else {
+                                Err(EvaluateError::ValueNotFound(column.to_string()).into())
+                            }
+                        }
+                    })?
+                    .map(Evaluated::Value),
             }
         }
         Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))
@@ -114,7 +129,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 let context = context.as_ref().map(Rc::clone);
                 let aggregated = aggregated.as_ref().map(Rc::clone);
 
-                evaluate_function(storage, context, aggregated, func).await
+                evaluate_function(storage, context, aggregated, func, use_empty).await
             }
         },
         _ => Err(EvaluateError::Unimplemented.into()),
@@ -126,12 +141,13 @@ async fn evaluate_function<'a, T: 'static + Debug>(
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     func: &'a Function,
+    use_empty: bool,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
         let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        evaluate(storage, context, aggregated, expr)
+        evaluate(storage, context, aggregated, expr, use_empty)
     };
 
     let Function { name, args, .. } = func;

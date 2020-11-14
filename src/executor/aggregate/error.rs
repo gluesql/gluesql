@@ -13,6 +13,9 @@ pub enum AggregateError {
     #[error("only identifier is allowed in aggregation")]
     OnlyIdentifierAllowed,
 
+    #[error("value not found: {0}")]
+    ValueNotFound(String),
+
     #[error("unreachable")]
     Unreachable,
 }

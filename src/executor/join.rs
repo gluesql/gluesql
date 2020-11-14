@@ -1,10 +1,7 @@
 use boolinator::Boolinator;
-use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
-// TODO: Re-enable LEFT OUTER JOIN
-// use or_iterator::OrIterator;
+use futures::stream::{self, once, StreamExt, TryStream, TryStreamExt};
 use serde::Serialize;
 use std::fmt::Debug;
-use std::iter::once;
 use std::pin::Pin;
 use std::rc::Rc;
 use thiserror::Error as ThisError;
@@ -16,6 +13,7 @@ use super::filter::Filter;
 use crate::data::Table;
 use crate::result::{Error, Result};
 use crate::store::Store;
+use crate::utils::OrStream;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum JoinError {
@@ -61,7 +59,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
         join_columns: Rc<Vec<Rc<Vec<Ident>>>>,
     ) -> Result<Joined<'a>> {
         let init_context = init_context.map(Rc::new);
-        let init_rows: Joined<'a> = Box::pin(stream::iter(once(init_context)));
+        let init_rows: Joined<'a> = Box::pin(stream::once(async { init_context }));
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
 
         let joins = self
@@ -115,14 +113,12 @@ async fn join<'a, T: 'static + Debug>(
     let table_alias = table.get_alias();
 
     let blend_context = blend_context?;
-    /*
     let init_context = Rc::new(BlendContext::new(
         table.get_alias(),
         Rc::clone(&columns),
         None,
         Some(Rc::clone(&blend_context)),
     ));
-    */
 
     let fetch_joined = |constraint: &'a JoinConstraint| {
         fetch_joined(
@@ -142,13 +138,12 @@ async fn join<'a, T: 'static + Debug>(
 
             rows
         }),
-        /*
-        JoinOperator::LeftOuter(constraint) => fetch(constraint).map(|rows| {
-            let rows: Joined<'a> = Box::pin(rows.or(once(Ok(init_context))));
+        JoinOperator::LeftOuter(constraint) => fetch_joined(constraint).map(|rows| {
+            let init_rows = once(async { Ok(init_context) });
+            let rows: Joined<'a> = Box::pin(OrStream::new(rows, init_rows));
 
             rows
         }),
-        */
         _ => Err(JoinError::JoinTypeNotSupported.into()),
     }
 }

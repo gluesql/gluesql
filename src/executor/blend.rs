@@ -69,12 +69,10 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                             }
                         }
                         SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
-                            let value = evaluate(self.storage, filter_context, aggregated, expr)
+                            evaluate(self.storage, filter_context, aggregated, expr, true)
                                 .await
-                                .map(|evaluated| evaluated.try_into());
-                            let value = value?;
-
-                            Ok(vec![value?])
+                                .map(|evaluated| evaluated.try_into())?
+                                .map(|v| vec![v])
                         }
                     }
                 }

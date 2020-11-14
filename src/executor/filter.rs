@@ -70,7 +70,7 @@ pub async fn check_expr<T: 'static + Debug>(
         let filter_context = filter_context.as_ref().map(Rc::clone);
         let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        evaluate(storage, filter_context, aggregated, expr)
+        evaluate(storage, filter_context, aggregated, expr, false)
     };
     let check = |expr| {
         let filter_context = filter_context.as_ref().map(Rc::clone);

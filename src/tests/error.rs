@@ -31,7 +31,7 @@ pub fn error(mut tester: impl tests::Tester) {
             "SELECT * FROM TableA WHERE id = (SELECT id FROM TableA WHERE id = 2);",
         ),
         (
-            FilterContextError::ValueNotFound.into(),
+            EvaluateError::ValueNotFound("noname".to_owned()).into(),
             "SELECT * FROM TableA WHERE noname = 1;",
         ),
         (

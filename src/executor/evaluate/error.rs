@@ -27,6 +27,9 @@ pub enum EvaluateError {
     )]
     NumberOfFunctionParamsNotMatching { expected: usize, found: usize },
 
+    #[error("value not found: {0}")]
+    ValueNotFound(String),
+
     #[error("unsupported compound identifier {0}")]
     UnsupportedCompoundIdentifier(String),
 
