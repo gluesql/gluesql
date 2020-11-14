@@ -49,19 +49,14 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => {
                     panic!();
                 }
-                Some(context) => context
-                    .get_value(&ident.value)
-                    .map(|value| match value {
-                        Some(value) => Ok(value.clone()),
-                        None => {
-                            if use_empty {
-                                Ok(Value::Empty)
-                            } else {
-                                Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
-                            }
-                        }
-                    })?
-                    .map(Evaluated::Value),
+                Some(context) => match (context.get_value(&ident.value), use_empty) {
+                    (Some(value), _) => Ok(value.clone()),
+                    (None, true) => Ok(Value::Empty),
+                    (None, false) => {
+                        Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
+                    }
+                }
+                .map(Evaluated::Value),
             },
         },
         Expr::Nested(expr) => eval(&expr).await,
@@ -78,19 +73,12 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => {
                     panic!();
                 }
-                Some(context) => context
-                    .get_alias_value(table_alias, column)
-                    .map(|value| match value {
-                        Some(value) => Ok(value.clone()),
-                        None => {
-                            if use_empty {
-                                Ok(Value::Empty)
-                            } else {
-                                Err(EvaluateError::ValueNotFound(column.to_string()).into())
-                            }
-                        }
-                    })?
-                    .map(Evaluated::Value),
+                Some(context) => match (context.get_alias_value(table_alias, column), use_empty) {
+                    (Some(value), _) => Ok(value.clone()),
+                    (None, true) => Ok(Value::Empty),
+                    (None, false) => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
+                }
+                .map(Evaluated::Value),
             }
         }
         Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))

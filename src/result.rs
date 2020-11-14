@@ -3,8 +3,8 @@ use thiserror::Error as ThisError;
 
 use crate::data::{RowError, TableError, ValueError};
 use crate::executor::{
-    AggregateError, BlendError, EvaluateError, ExecuteError, FetchError, FilterContextError,
-    FilterError, JoinError, LimitError, SelectError, UpdateError,
+    AggregateError, BlendError, EvaluateError, ExecuteError, FetchError, FilterError, JoinError,
+    LimitError, SelectError, UpdateError,
 };
 
 #[cfg(feature = "alter-table")]
@@ -39,8 +39,6 @@ pub enum Error {
     #[error(transparent)]
     Filter(#[from] FilterError),
     #[error(transparent)]
-    FilterContext(#[from] FilterContextError),
-    #[error(transparent)]
     Limit(#[from] LimitError),
     #[error(transparent)]
     Row(#[from] RowError),
@@ -69,7 +67,6 @@ impl PartialEq for Error {
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
             (Filter(e), Filter(e2)) => e == e2,
-            (FilterContext(e), FilterContext(e2)) => e == e2,
             (Limit(e), Limit(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,

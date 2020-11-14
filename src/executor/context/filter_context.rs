@@ -1,19 +1,10 @@
-use serde::Serialize;
 use std::fmt::Debug;
 use std::rc::Rc;
-use thiserror::Error;
 
 use sqlparser::ast::Ident;
 
 use super::BlendContext;
 use crate::data::{Row, Value};
-use crate::result::Result;
-
-#[derive(Error, Serialize, Debug, PartialEq)]
-pub enum FilterContextError {
-    #[error("value not found")]
-    ValueNotFound,
-}
 
 #[derive(Debug)]
 pub struct FilterContext<'a> {
@@ -54,7 +45,7 @@ impl<'a> FilterContext<'a> {
         }
     }
 
-    pub fn get_value(&'a self, target: &str) -> Result<Option<&'a Value>> {
+    pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
         let value = self
             .columns
             .iter()
@@ -62,21 +53,21 @@ impl<'a> FilterContext<'a> {
             .map(|index| self.row.and_then(|row| row.get_value(index)));
 
         if let Some(value) = value {
-            return Ok(value);
+            return value;
         }
 
         match (&self.next, &self.next2) {
-            (None, None) => Err(FilterContextError::ValueNotFound.into()),
+            (None, None) => None,
             (Some(fc), None) => fc.get_value(target),
-            (None, Some(bc)) => Ok(bc.get_value(target)),
+            (None, Some(bc)) => bc.get_value(target),
             (Some(fc), Some(bc)) => match bc.get_value(target) {
-                v @ Some(_) => Ok(v),
+                v @ Some(_) => v,
                 None => fc.get_value(target),
             },
         }
     }
 
-    pub fn get_alias_value(&'a self, table_alias: &str, target: &str) -> Result<Option<&'a Value>> {
+    pub fn get_alias_value(&'a self, table_alias: &str, target: &str) -> Option<&'a Value> {
         let get_value = || {
             if self.table_alias != table_alias {
                 return None;
@@ -89,15 +80,15 @@ impl<'a> FilterContext<'a> {
         };
 
         if let Some(value) = get_value() {
-            return Ok(value);
+            return value;
         }
 
         match (&self.next, &self.next2) {
-            (None, None) => Err(FilterContextError::ValueNotFound.into()),
+            (None, None) => None,
             (Some(fc), None) => fc.get_alias_value(table_alias, target),
-            (None, Some(bc)) => Ok(bc.get_alias_value(table_alias, target)),
+            (None, Some(bc)) => bc.get_alias_value(table_alias, target),
             (Some(fc), Some(bc)) => match bc.get_alias_value(table_alias, target) {
-                v @ Some(_) => Ok(v),
+                v @ Some(_) => v,
                 None => fc.get_alias_value(table_alias, target),
             },
         }
