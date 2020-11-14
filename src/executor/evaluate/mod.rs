@@ -44,20 +44,18 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         },
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Evaluated::StringRef(&ident.value)),
-            // TODO: remove panic!
-            None => match context {
-                None => {
-                    panic!();
-                }
-                Some(context) => match (context.get_value(&ident.value), use_empty) {
+            None => {
+                let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
+
+                match (context.get_value(&ident.value), use_empty) {
                     (Some(value), _) => Ok(value.clone()),
                     (None, true) => Ok(Value::Empty),
                     (None, false) => {
                         Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
                     }
                 }
-                .map(Evaluated::Value),
-            },
+                .map(Evaluated::Value)
+            }
         },
         Expr::Nested(expr) => eval(&expr).await,
         Expr::CompoundIdentifier(idents) => {
@@ -67,19 +65,14 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             let table_alias = &idents[0].value;
             let column = &idents[1].value;
+            let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
 
-            // TODO: remove panic!
-            match context {
-                None => {
-                    panic!();
-                }
-                Some(context) => match (context.get_alias_value(table_alias, column), use_empty) {
-                    (Some(value), _) => Ok(value.clone()),
-                    (None, true) => Ok(Value::Empty),
-                    (None, false) => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
-                }
-                .map(Evaluated::Value),
+            match (context.get_alias_value(table_alias, column), use_empty) {
+                (Some(value), _) => Ok(value.clone()),
+                (None, true) => Ok(Value::Empty),
+                (None, false) => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
             }
+            .map(Evaluated::Value)
         }
         Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))
             .await?

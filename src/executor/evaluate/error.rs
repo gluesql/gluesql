@@ -42,6 +42,9 @@ pub enum EvaluateError {
     #[error("unreachable literal arithmetic")]
     UnreachableLiteralArithmetic,
 
+    #[error("unreachable empty context")]
+    UnreachableEmptyContext,
+
     #[error("unimplemented")]
     Unimplemented,
 }
