@@ -3,8 +3,8 @@ use thiserror::Error as ThisError;
 
 use crate::data::{RowError, TableError, ValueError};
 use crate::executor::{
-    AggregateError, BlendContextError, BlendError, EvaluateError, ExecuteError, FetchError,
-    FilterContextError, FilterError, JoinError, LimitError, SelectError, UpdateError,
+    AggregateError, BlendError, EvaluateError, ExecuteError, FetchError, FilterError, JoinError,
+    LimitError, SelectError, UpdateError,
 };
 
 #[cfg(feature = "alter-table")]
@@ -33,15 +33,11 @@ pub enum Error {
     #[error(transparent)]
     Blend(#[from] BlendError),
     #[error(transparent)]
-    BlendContext(#[from] BlendContextError),
-    #[error(transparent)]
     Aggregate(#[from] AggregateError),
     #[error(transparent)]
     Update(#[from] UpdateError),
     #[error(transparent)]
     Filter(#[from] FilterError),
-    #[error(transparent)]
-    FilterContext(#[from] FilterContextError),
     #[error(transparent)]
     Limit(#[from] LimitError),
     #[error(transparent)]
@@ -68,11 +64,9 @@ impl PartialEq for Error {
             (Select(e), Select(e2)) => e == e2,
             (Join(e), Join(e2)) => e == e2,
             (Blend(e), Blend(e2)) => e == e2,
-            (BlendContext(e), BlendContext(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
             (Filter(e), Filter(e2)) => e == e2,
-            (FilterContext(e), FilterContext(e2)) => e == e2,
             (Limit(e), Limit(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,

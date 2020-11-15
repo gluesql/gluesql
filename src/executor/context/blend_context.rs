@@ -1,25 +1,15 @@
-use serde::Serialize;
 use std::fmt::Debug;
 use std::rc::Rc;
-use thiserror::Error;
 
 use sqlparser::ast::Ident;
 
-use super::FilterContext;
 use crate::data::{Row, Value};
-use crate::result::Result;
-
-#[derive(Error, Serialize, Debug, PartialEq)]
-pub enum BlendContextError {
-    #[error("value not found")]
-    ValueNotFound,
-}
 
 #[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
-    columns: Rc<Vec<Ident>>,
-    row: Option<Row>,
+    pub columns: Rc<Vec<Ident>>,
+    pub row: Option<Row>,
     next: Option<Rc<BlendContext<'a>>>,
 }
 
@@ -38,46 +28,24 @@ impl<'a> BlendContext<'a> {
         }
     }
 
-    pub fn concat_into(
-        &'a self,
-        filter_context: Option<Rc<FilterContext<'a>>>,
-    ) -> Option<Rc<FilterContext<'a>>> {
-        let BlendContext {
-            table_alias,
-            columns,
-            row,
-            next,
-            ..
-        } = self;
-
-        let filter_context =
-            FilterContext::new(table_alias, &columns, row.as_ref(), filter_context);
-        let filter_context = Some(Rc::new(filter_context));
-
-        match next {
-            Some(next) => next.concat_into(filter_context),
-            None => filter_context,
-        }
-    }
-
-    pub fn get_value(&'a self, target: &str) -> Result<&'a Value> {
+    pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
         let get_value = || {
             self.columns
                 .iter()
                 .position(|column| column.value == target)
-                .and_then(|index| self.row.as_ref().and_then(|row| row.get_value(index)))
+                .map(|index| self.row.as_ref().and_then(|row| row.get_value(index)))
         };
 
         match get_value() {
             None => match &self.next {
-                None => Err(BlendContextError::ValueNotFound.into()),
+                None => None,
                 Some(context) => context.get_value(target),
             },
-            Some(value) => Ok(value),
+            Some(value) => value,
         }
     }
 
-    pub fn get_alias_value(&'a self, table_alias: &str, target: &str) -> Result<&'a Value> {
+    pub fn get_alias_value(&'a self, table_alias: &str, target: &str) -> Option<&'a Value> {
         let get_value = || {
             if self.table_alias != table_alias {
                 return None;
@@ -86,15 +54,15 @@ impl<'a> BlendContext<'a> {
             self.columns
                 .iter()
                 .position(|column| column.value == target)
-                .and_then(|index| self.row.as_ref().and_then(|row| row.get_value(index)))
+                .map(|index| self.row.as_ref().and_then(|row| row.get_value(index)))
         };
 
         match get_value() {
             None => match &self.next {
-                None => Err(BlendContextError::ValueNotFound.into()),
+                None => None,
                 Some(context) => context.get_alias_value(table_alias, target),
             },
-            Some(value) => Ok(value),
+            Some(value) => value,
         }
     }
 

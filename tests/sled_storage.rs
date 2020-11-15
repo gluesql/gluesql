@@ -1,19 +1,18 @@
 #[cfg(feature = "sled-storage")]
-use std::convert::TryFrom;
+use sled::IVec;
+#[cfg(feature = "sled-storage")]
+use std::{cell::RefCell, convert::TryFrom, rc::Rc};
 
 #[cfg(feature = "sled-storage")]
-use gluesql::{
-    execute, generate_alter_table_tests, generate_tests, sled, tests::*, Payload, Query, Result,
-    SledStorage,
-};
+use gluesql::{generate_alter_table_tests, generate_tests, sled, tests::*, SledStorage};
 
 #[cfg(feature = "sled-storage")]
 struct SledTester {
-    storage: Option<SledStorage>,
+    storage: Rc<RefCell<Option<SledStorage>>>,
 }
 
 #[cfg(feature = "sled-storage")]
-impl Tester for SledTester {
+impl Tester<IVec, SledStorage> for SledTester {
     fn new(namespace: &str) -> Self {
         let path = format!("data/{}", namespace);
 
@@ -28,29 +27,20 @@ impl Tester for SledTester {
             .path(path)
             .temporary(true)
             .mode(sled::Mode::HighThroughput);
-        let storage = SledStorage::try_from(config).expect("SledStorage::new");
-        let storage = Some(storage);
+
+        let storage = SledStorage::try_from(config)
+            .map(Some)
+            .map(RefCell::new)
+            .map(Rc::new)
+            .expect("SledStorage::new");
 
         SledTester { storage }
     }
 
-    fn execute(&mut self, query: &Query) -> Result<Payload> {
-        let storage = self.storage.take().unwrap();
-
-        match execute(storage, query) {
-            Ok((storage, payload)) => {
-                self.storage = Some(storage);
-
-                Ok(payload)
-            }
-            Err((storage, error)) => {
-                self.storage = Some(storage);
-
-                Err(error)
-            }
-        }
+    fn get_cell(&mut self) -> Rc<RefCell<Option<SledStorage>>> {
+        Rc::clone(&self.storage)
     }
 }
 
 #[cfg(feature = "sled-storage")]
-generate_tests!(test, SledTester);
+generate_tests!(tokio::test, SledTester);

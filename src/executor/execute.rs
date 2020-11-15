@@ -1,14 +1,16 @@
-use std::fmt::Debug;
-
+use futures::stream::{self, TryStreamExt};
 use serde::Serialize;
+use std::fmt::Debug;
+use std::rc::Rc;
+use thiserror::Error as ThisError;
+
 #[cfg(feature = "alter-table")]
 use sqlparser::ast::AlterTableOperation;
 use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
-use thiserror::Error;
 
 use crate::data::{get_name, Row, Schema};
 use crate::parse::Query;
-use crate::result::{MutResult, Result};
+use crate::result::{Error, MutResult, Result};
 use crate::store::{AlterTable, Store, StoreMut};
 
 use super::fetch::{fetch, fetch_columns};
@@ -16,7 +18,7 @@ use super::filter::Filter;
 use super::select::select_with_labels;
 use super::update::Update;
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
     #[error("query not supported")]
     QueryNotSupported,
@@ -53,7 +55,7 @@ pub enum Payload {
     AlterTable,
 }
 
-pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
@@ -69,14 +71,15 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     }
 
     let Query(query) = query;
-    let prepared = try_into!(storage, prepare(&storage, query));
+    let prepared = prepare(&storage, query).await;
+    let prepared = try_into!(storage, prepared);
 
     match prepared {
         Prepared::Create {
             schema,
             if_not_exists,
         } => {
-            if try_into!(storage, storage.fetch_schema(&schema.table_name)).is_some() {
+            if try_into!(storage, storage.fetch_schema(&schema.table_name).await).is_some() {
                 return if if_not_exists {
                     Ok((storage, Payload::Create))
                 } else {
@@ -86,48 +89,42 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
             storage
                 .insert_schema(&schema)
+                .await
                 .map(|(storage, _)| (storage, Payload::Create))
         }
-        Prepared::Insert(table_name, rows) => rows
-            .into_iter()
-            .try_fold((storage, 0), |(storage, num), row| {
-                let (storage, key) = storage.generate_id(&table_name)?;
-                let (storage, _) = storage.insert_data(&key, row)?;
+        Prepared::Insert(table_name, rows) => {
+            stream::iter(rows.into_iter().map(Ok::<Row, (U, Error)>))
+                .try_fold((storage, 0), |(storage, num), row| async move {
+                    let (storage, key) = storage.generate_id(&table_name).await?;
+                    let (storage, _) = storage.insert_data(&key, row).await?;
+
+                    Ok((storage, num + 1))
+                })
+                .await
+                .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows)))
+        }
+        Prepared::Delete(keys) => stream::iter(keys.into_iter().map(Ok::<T, (U, Error)>))
+            .try_fold((storage, 0), |(storage, num), key| async move {
+                let (storage, _) = storage.delete_data(&key).await?;
 
                 Ok((storage, num + 1))
             })
-            .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows))),
-        Prepared::Delete(keys) => {
-            let (storage, num_rows) =
-                keys.into_iter()
-                    .try_fold((storage, 0), |(storage, num), key| {
-                        let (storage, _) = storage.delete_data(&key)?;
+            .await
+            .map(|(storage, num_rows)| (storage, Payload::Delete(num_rows))),
+        Prepared::Update(items) => stream::iter(items.into_iter().map(Ok::<_, (U, Error)>))
+            .try_fold((storage, 0), |(storage, num), (key, row)| async move {
+                let (storage, _) = storage.insert_data(&key, row).await?;
 
-                        Ok((storage, num + 1))
-                    })?;
-
-            Ok((storage, Payload::Delete(num_rows)))
-        }
-        Prepared::Update(items) => {
-            let (storage, num_rows) =
-                items
-                    .into_iter()
-                    .try_fold((storage, 0), |(storage, num), item| {
-                        let (key, row) = item;
-                        let (storage, _) = storage.insert_data(&key, row)?;
-
-                        Ok((storage, num + 1))
-                    })?;
-
-            Ok((storage, Payload::Update(num_rows)))
-        }
+                Ok((storage, num + 1))
+            })
+            .await
+            .map(|(storage, num_rows)| (storage, Payload::Update(num_rows))),
         Prepared::DropTable {
             schema_names,
             if_exists,
-        } => schema_names
-            .iter()
-            .try_fold(storage, |storage, table_name| {
-                let schema = try_into!(storage, storage.fetch_schema(table_name));
+        } => stream::iter(schema_names.into_iter().map(Ok::<&str, (U, Error)>))
+            .try_fold(storage, |storage, table_name| async move {
+                let schema = try_into!(storage, storage.fetch_schema(table_name).await);
 
                 if !if_exists {
                     try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
@@ -135,8 +132,10 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
                 storage
                     .delete_schema(table_name)
+                    .await
                     .map(|(storage, _)| storage)
             })
+            .await
             .map(|storage| (storage, Payload::DropTable)),
         Prepared::Select { labels, rows } => Ok((storage, Payload::Select { labels, rows })),
 
@@ -145,23 +144,31 @@ pub fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
             let result = match operation {
                 AlterTableOperation::RenameTable {
                     table_name: new_table_name,
-                } => storage.rename_schema(table_name, &new_table_name.value),
+                } => {
+                    storage
+                        .rename_schema(table_name, &new_table_name.value)
+                        .await
+                }
                 AlterTableOperation::RenameColumn {
                     old_column_name,
                     new_column_name,
-                } => storage.rename_column(
-                    table_name,
-                    &old_column_name.value,
-                    &new_column_name.value,
-                ),
+                } => {
+                    storage
+                        .rename_column(table_name, &old_column_name.value, &new_column_name.value)
+                        .await
+                }
                 AlterTableOperation::AddColumn { column_def } => {
-                    storage.add_column(table_name, column_def)
+                    storage.add_column(table_name, column_def).await
                 }
                 AlterTableOperation::DropColumn {
                     column_name,
                     if_exists,
                     ..
-                } => storage.drop_column(table_name, &column_name.value, *if_exists),
+                } => {
+                    storage
+                        .drop_column(table_name, &column_name.value, *if_exists)
+                        .await
+                }
                 _ => Err((
                     storage,
                     ExecuteError::UnsupportedAlterTableOperation(operation.to_string()).into(),
@@ -194,7 +201,9 @@ enum Prepared<'a, T> {
     AlterTable(&'a str, &'a AlterTableOperation),
 }
 
-fn prepare<'a, T: 'static + Debug>(
+// looks like... false positive
+#[allow(clippy::needless_lifetimes)]
+async fn prepare<'a, T: 'static + Debug>(
     storage: &impl Store<T>,
     sql_query: &'a Statement,
 ) -> Result<Prepared<'a, T>> {
@@ -216,8 +225,8 @@ fn prepare<'a, T: 'static + Debug>(
             })
         }
         Statement::Query(query) => {
-            let (labels, rows) = select_with_labels(storage, &query, None, true)?;
-            let rows = rows.collect::<Result<_>>()?;
+            let (labels, rows) = select_with_labels(storage, &query, None, true).await?;
+            let rows = rows.try_collect::<Vec<_>>().await?;
 
             Ok(Prepared::Select { labels, rows })
         }
@@ -228,7 +237,8 @@ fn prepare<'a, T: 'static + Debug>(
         } => {
             let table_name = get_name(table_name)?;
             let Schema { column_defs, .. } = storage
-                .fetch_schema(table_name)?
+                .fetch_schema(table_name)
+                .await?
                 .ok_or(ExecuteError::TableNotExists)?;
 
             let values_list = match &source.body {
@@ -253,33 +263,40 @@ fn prepare<'a, T: 'static + Debug>(
             assignments,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = fetch_columns(storage, table_name)?;
-            let update = Update::new(storage, table_name, assignments, &columns)?;
+            let columns = Rc::new(fetch_columns(storage, table_name).await?);
+            let update = Update::new(storage, table_name, assignments, Rc::clone(&columns))?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            let rows = fetch(storage, table_name, &columns, filter)?
-                .map(|item| {
-                    let (_, key, row) = item?;
+            fetch(storage, table_name, columns, filter)
+                .await?
+                .and_then(|item| {
+                    let update = &update;
+                    let (_, key, row) = item;
 
-                    Ok((key, update.apply(row)?))
+                    async move {
+                        let row = update.apply(row).await?;
+
+                        Ok((key, row))
+                    }
                 })
-                .collect::<Result<_>>()?;
-
-            Ok(Prepared::Update(rows))
+                .try_collect::<Vec<_>>()
+                .await
+                .map(Prepared::Update)
         }
         Statement::Delete {
             table_name,
             selection,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = fetch_columns(storage, table_name)?;
+            let columns = Rc::new(fetch_columns(storage, table_name).await?);
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            let rows = fetch(storage, table_name, &columns, filter)?
-                .map(|item| item.map(|(_, key, _)| key))
-                .collect::<Result<_>>()?;
-
-            Ok(Prepared::Delete(rows))
+            fetch(storage, table_name, columns, filter)
+                .await?
+                .map_ok(|(_, key, _)| key)
+                .try_collect::<Vec<_>>()
+                .await
+                .map(Prepared::Delete)
         }
         Statement::Drop {
             object_type,

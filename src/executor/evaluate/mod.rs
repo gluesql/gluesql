@@ -1,6 +1,8 @@
 mod error;
 mod evaluated;
 
+use async_recursion::async_recursion;
+use futures::stream::{StreamExt, TryStreamExt};
 use im_rc::HashMap;
 use std::convert::TryInto;
 use std::fmt::Debug;
@@ -17,16 +19,19 @@ use crate::store::Store;
 pub use error::EvaluateError;
 pub use evaluated::Evaluated;
 
-pub fn evaluate<'a, T: 'static + Debug>(
+#[async_recursion(?Send)]
+pub async fn evaluate<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<&HashMap<&Function, Value>>,
+    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     expr: &'a Expr,
+    use_empty: bool,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
+        let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        evaluate(storage, context, aggregated, expr)
+        evaluate(storage, context, aggregated, expr, use_empty)
     };
 
     match expr {
@@ -39,18 +44,20 @@ pub fn evaluate<'a, T: 'static + Debug>(
         },
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Evaluated::StringRef(&ident.value)),
-            // TODO: remove panic!
-            None => match context {
-                None => {
-                    panic!();
+            None => {
+                let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
+
+                match (context.get_value(&ident.value), use_empty) {
+                    (Some(value), _) => Ok(value.clone()),
+                    (None, true) => Ok(Value::Empty),
+                    (None, false) => {
+                        Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
+                    }
                 }
-                Some(context) => context.get_value(&ident.value).map(|value| match value {
-                    Some(value) => Evaluated::ValueRef(value),
-                    None => Evaluated::Value(Value::Empty),
-                }),
-            },
+                .map(Evaluated::Value)
+            }
         },
-        Expr::Nested(expr) => eval(&expr),
+        Expr::Nested(expr) => eval(&expr).await,
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
                 return Err(EvaluateError::UnsupportedCompoundIdentifier(expr.to_string()).into());
@@ -58,30 +65,27 @@ pub fn evaluate<'a, T: 'static + Debug>(
 
             let table_alias = &idents[0].value;
             let column = &idents[1].value;
+            let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
 
-            // TODO: remove panic!
-            match context {
-                None => {
-                    panic!();
-                }
-                Some(context) => {
-                    context
-                        .get_alias_value(table_alias, column)
-                        .map(|value| match value {
-                            Some(value) => Evaluated::ValueRef(value),
-                            None => Evaluated::Value(Value::Empty),
-                        })
-                }
+            match (context.get_alias_value(table_alias, column), use_empty) {
+                (Some(value), _) => Ok(value.clone()),
+                (None, true) => Ok(Value::Empty),
+                (None, false) => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
             }
+            .map(Evaluated::Value)
         }
-        Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))?
-            .map(|row| row?.take_first_value())
-            .map(|value| value.map(Evaluated::Value))
+        Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))
+            .await?
+            .map_ok(|row| row.take_first_value().map(Evaluated::Value))
+            .take(1)
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
             .next()
-            .ok_or(EvaluateError::NestedSelectRowNotFound)?,
+            .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))?,
         Expr::BinaryOp { op, left, right } => {
-            let l = eval(left)?;
-            let r = eval(right)?;
+            let l = eval(left).await?;
+            let r = eval(right).await?;
 
             match op {
                 BinaryOperator::Plus => l.add(&r),
@@ -92,7 +96,7 @@ pub fn evaluate<'a, T: 'static + Debug>(
             }
         }
         Expr::UnaryOp { op, expr } => {
-            let v = eval(expr)?;
+            let v = eval(expr).await?;
 
             match op {
                 UnaryOperator::Plus => v.unary_plus(),
@@ -100,33 +104,31 @@ pub fn evaluate<'a, T: 'static + Debug>(
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
         }
+        Expr::Function(func) => match aggregated.as_ref().map(|aggr| aggr.get(func)).flatten() {
+            Some(value) => Ok(Evaluated::Value(value.clone())),
+            None => {
+                let context = context.as_ref().map(Rc::clone);
+                let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        Expr::Function(func) => aggregated
-            .as_ref()
-            .map(|aggr| aggr.get(func))
-            .flatten()
-            .map_or_else(
-                || {
-                    let context = context.as_ref().map(Rc::clone);
-
-                    evaluate_function(storage, context, aggregated, func)
-                },
-                |value| Ok(Evaluated::Value(value.clone())),
-            ),
+                evaluate_function(storage, context, aggregated, func, use_empty).await
+            }
+        },
         _ => Err(EvaluateError::Unimplemented.into()),
     }
 }
 
-fn evaluate_function<'a, T: 'static + Debug>(
+async fn evaluate_function<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<&HashMap<&Function, Value>>,
+    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     func: &'a Function,
+    use_empty: bool,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
+        let aggregated = aggregated.as_ref().map(Rc::clone);
 
-        evaluate(storage, context, aggregated, expr)
+        evaluate(storage, context, aggregated, expr, use_empty)
     };
 
     let Function { name, args, .. } = func;
@@ -150,7 +152,7 @@ fn evaluate_function<'a, T: 'static + Debug>(
             }
 
             let expr = &args[0];
-            let value: Value = match eval(expr)?.try_into()? {
+            let value: Value = match eval(expr).await?.try_into()? {
                 Value::Str(s) => Value::Str(convert(s)),
                 Value::OptStr(s) => Value::OptStr(s.map(convert)),
                 _ => {

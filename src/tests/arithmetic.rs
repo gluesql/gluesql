@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn arithmetic(mut tester: impl tests::Tester) {
+test_case!(arithmetic, async move {
     let create_sql = "
         CREATE TABLE Arith (
             id INTEGER,
@@ -8,11 +8,10 @@ pub fn arithmetic(mut tester: impl tests::Tester) {
             name TEXT,
         );
     ";
-
-    tester.run_and_print(create_sql);
+    run!(create_sql);
 
     let delete_sql = "DELETE FROM Arith";
-    tester.run_and_print(delete_sql);
+    run!(delete_sql);
 
     let insert_sqls = [
         "INSERT INTO Arith (id, num, name) VALUES (1, 6, \"A\");",
@@ -23,7 +22,7 @@ pub fn arithmetic(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     let test_cases = [
@@ -60,7 +59,7 @@ pub fn arithmetic(mut tester: impl tests::Tester) {
     ];
 
     for (num, sql) in test_cases.iter() {
-        tester.test_rows(sql, *num);
+        count!(*num, sql);
     }
 
     let test_cases = vec![
@@ -86,12 +85,12 @@ pub fn arithmetic(mut tester: impl tests::Tester) {
         ),
     ];
 
-    test_cases
-        .into_iter()
-        .for_each(|(error, sql)| tester.test_error(sql, error));
-}
+    for (error, sql) in test_cases.into_iter() {
+        test!(Err(error), sql);
+    }
+});
 
-pub fn blend(mut tester: impl tests::Tester) {
+test_case!(blend, async move {
     let create_sql = "
         CREATE TABLE Arith (
             id INTEGER,
@@ -99,10 +98,10 @@ pub fn blend(mut tester: impl tests::Tester) {
         );
     ";
 
-    tester.run_and_print(create_sql);
+    run!(create_sql);
 
     let delete_sql = "DELETE FROM Arith";
-    tester.run_and_print(delete_sql);
+    run!(delete_sql);
 
     let insert_sqls = [
         "INSERT INTO Arith (id, num) VALUES (1, 6);",
@@ -113,19 +112,17 @@ pub fn blend(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     use Value::I64;
 
     let sql = "SELECT 1 * 2 + 1 - 3 / 1 FROM Arith LIMIT 1;";
-    let found = tester.run(sql).expect("select");
+    let found = run!(sql);
     let expected = select!("1 * 2 + 1 - 3 / 1"; I64; 0);
     assert_eq!(expected, found);
 
-    let found = tester
-        .run("SELECT id, id + 1, id + num, 1 + 1 FROM Arith")
-        .expect("select");
+    let found = run!("SELECT id, id + 1, id + num, 1 + 1 FROM Arith");
     let expected = select!(
         id  | "id + 1" | "id + num" | "1 + 1"
         I64 | I64      | I64        | I64;
@@ -142,7 +139,7 @@ pub fn blend(mut tester: impl tests::Tester) {
       FROM Arith a
       JOIN Arith b ON a.id = b.id + 1
     ";
-    let found = tester.run(sql).expect("select");
+    let found = run!(sql);
     let expected = select!("a.id + b.id"; I64; 3; 5; 7; 9);
     assert_eq!(expected, found);
-}
+});

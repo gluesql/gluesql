@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn aggregate(mut tester: impl tests::Tester) {
+test_case!(aggregate, async move {
     let create_sql = "
         CREATE TABLE Item (
             id INTEGER,
@@ -9,7 +9,7 @@ pub fn aggregate(mut tester: impl tests::Tester) {
         );
     ";
 
-    tester.run_and_print(create_sql);
+    run!(create_sql);
 
     let insert_sqls = [
         "INSERT INTO Item (id, quantity, age) VALUES (1, 10, 11);",
@@ -20,12 +20,10 @@ pub fn aggregate(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     use Value::*;
-
-    let mut run = |sql| tester.run(sql).expect("select");
 
     let test_cases = vec![
         ("SELECT COUNT(*) FROM Item", select!("COUNT(*)"; I64; 5)),
@@ -64,9 +62,9 @@ pub fn aggregate(mut tester: impl tests::Tester) {
         ),
     ];
 
-    test_cases
-        .into_iter()
-        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
+    for (sql, expected) in test_cases.into_iter() {
+        test!(Ok(expected), sql);
+    }
 
     let error_cases = vec![
         (
@@ -82,17 +80,17 @@ pub fn aggregate(mut tester: impl tests::Tester) {
             "SELECT SUM(1 + 2) FROM Item;",
         ),
         (
-            BlendContextError::ValueNotFound.into(),
+            AggregateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",
         ),
     ];
 
-    error_cases
-        .into_iter()
-        .for_each(|(error, sql)| tester.test_error(sql, error));
-}
+    for (error, sql) in error_cases.into_iter() {
+        test!(Err(error), sql);
+    }
+});
 
-pub fn group_by(mut tester: impl tests::Tester) {
+test_case!(group_by, async move {
     let create_sql = "
         CREATE TABLE Item (
             id INTEGER,
@@ -102,7 +100,7 @@ pub fn group_by(mut tester: impl tests::Tester) {
         );
     ";
 
-    tester.run_and_print(create_sql);
+    run!(create_sql);
 
     let insert_sqls = [
         "INSERT INTO Item (id, quantity, city, ratio) VALUES (1, 10, \"Seoul\", 0.2);",
@@ -114,10 +112,8 @@ pub fn group_by(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
-
-    let mut run = |sql| tester.run(sql).expect("select");
 
     use Value::*;
 
@@ -172,16 +168,16 @@ pub fn group_by(mut tester: impl tests::Tester) {
         ),
     ];
 
-    test_cases
-        .into_iter()
-        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
+    for (sql, expected) in test_cases.into_iter() {
+        test!(Ok(expected), sql);
+    }
 
     let error_cases = vec![(
         ValueError::FloatCannotBeGroupedBy.into(),
         "SELECT * FROM Item GROUP BY ratio;",
     )];
 
-    error_cases
-        .into_iter()
-        .for_each(|(error, sql)| tester.test_error(sql, error));
-}
+    for (error, sql) in error_cases.into_iter() {
+        test!(Err(error), sql);
+    }
+});

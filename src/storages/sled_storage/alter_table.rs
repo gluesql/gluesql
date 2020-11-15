@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use boolinator::Boolinator;
 use std::iter::once;
 use std::str;
@@ -31,8 +32,9 @@ macro_rules! fetch_schema {
     }};
 }
 
+#[async_trait]
 impl AlterTable for SledStorage {
-    fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
+    async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
         let (_, Schema { column_defs, .. }) = fetch_schema!(self, &self.tree, table_name);
         let schema = Schema {
             table_name: new_table_name.to_string(),
@@ -67,7 +69,7 @@ impl AlterTable for SledStorage {
         Ok((self, ()))
     }
 
-    fn rename_column(
+    async fn rename_column(
         self,
         table_name: &str,
         old_column_name: &str,
@@ -109,7 +111,7 @@ impl AlterTable for SledStorage {
         Ok((self, ()))
     }
 
-    fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
+    async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
         let (
             key,
             Schema {
@@ -188,7 +190,7 @@ impl AlterTable for SledStorage {
         Ok((self, ()))
     }
 
-    fn drop_column(
+    async fn drop_column(
         self,
         table_name: &str,
         column_name: &str,

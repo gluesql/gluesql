@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn sql_types(mut tester: impl tests::Tester) {
+test_case!(sql_types, async move {
     let create_sql = "
         CREATE TABLE Item (
             id INTEGER,
@@ -10,11 +10,11 @@ pub fn sql_types(mut tester: impl tests::Tester) {
         );
     ";
 
-    tester.run_and_print(create_sql);
+    run!(create_sql);
 
     let delete_sql = "DELETE FROM Item";
 
-    tester.run_and_print(delete_sql);
+    run!(delete_sql);
 
     let insert_sqls = [
         "INSERT INTO Item (id, content, verified, ratio) VALUES (1, \"Hello\", True, 0.1);",
@@ -22,7 +22,7 @@ pub fn sql_types(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     let test_sqls = [
@@ -41,8 +41,8 @@ pub fn sql_types(mut tester: impl tests::Tester) {
     ];
 
     for (num, sql) in test_sqls.iter() {
-        tester.test_rows(sql, *num);
+        count!(*num, sql);
     }
 
-    tester.run_and_print(delete_sql);
-}
+    run!(delete_sql);
+});

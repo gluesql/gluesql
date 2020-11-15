@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn synthesize(mut tester: impl tests::Tester) {
+test_case!(synthesize, async move {
     let create_sql = "
         CREATE TABLE TableA (
             id INTEGER,
@@ -9,10 +9,7 @@ pub fn synthesize(mut tester: impl tests::Tester) {
         );
     ";
 
-    tester.run_and_print(create_sql);
-
-    let delete_sql = "DELETE FROM TableA";
-    tester.run_and_print(delete_sql);
+    run!(create_sql);
 
     let insert_sqls = [
         "INSERT INTO TableA (id, test, target_id) VALUES (1, 100, 2);",
@@ -24,7 +21,7 @@ pub fn synthesize(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     let test_cases = [
@@ -61,24 +58,28 @@ pub fn synthesize(mut tester: impl tests::Tester) {
     ];
 
     for (num, sql) in test_cases.iter() {
-        tester.test_rows(sql, *num);
+        count!(*num, sql);
     }
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
-    let mut test_select = |sql, num| {
-        tester.test_columns(sql, num);
-    };
+    use Value::I64;
 
-    let test_cases = [
-        (2, "SELECT id, test FROM TableA;"),
-        (1, "SELECT id FROM TableA;"),
-        (3, "SELECT * FROM TableA;"),
+    let test_cases = vec![
+        (
+            select!(id | test; I64 | I64; 1 100),
+            "SELECT id, test FROM TableA LIMIT 1;",
+        ),
+        (select!(id; I64; 1), "SELECT id FROM TableA LIMIT 1;"),
+        (
+            select!(id | test | target_id; I64 | I64 | I64; 1 100 2),
+            "SELECT * FROM TableA LIMIT 1;",
+        ),
     ];
 
-    for (num, sql) in test_cases.iter() {
-        test_select(sql, *num);
+    for (expected, sql) in test_cases.into_iter() {
+        test!(Ok(expected), sql);
     }
-}
+});

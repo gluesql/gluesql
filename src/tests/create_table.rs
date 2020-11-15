@@ -1,8 +1,6 @@
 use crate::*;
 
-pub fn create_table(mut tester: impl tests::Tester) {
-    let mut run = |sql| tester.run(sql);
-
+test_case!(create_table, async move {
     let test_cases = vec![
         (
             r#"
@@ -41,7 +39,8 @@ pub fn create_table(mut tester: impl tests::Tester) {
             Ok(Payload::Create),
         ),
     ];
-    test_cases
-        .into_iter()
-        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
-}
+
+    for (sql, expected) in test_cases.into_iter() {
+        test!(expected, sql);
+    }
+});

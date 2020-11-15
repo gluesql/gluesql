@@ -1,4 +1,6 @@
 #[cfg(feature = "sled-storage")]
+use futures::executor::block_on;
+#[cfg(feature = "sled-storage")]
 use gluesql::{execute, parse, Glue, SledStorage};
 
 #[cfg(feature = "sled-storage")]
@@ -13,7 +15,7 @@ fn immutable_api() {
     ";
 
     parse(sqls).unwrap().iter().fold(storage, |storage, query| {
-        let (storage, _) = execute(storage, query).unwrap();
+        let (storage, _) = block_on(execute(storage, query)).unwrap();
 
         storage
     });

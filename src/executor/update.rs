@@ -1,3 +1,4 @@
+use futures::stream::{self, TryStreamExt};
 use serde::Serialize;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -27,7 +28,7 @@ pub struct Update<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     table_name: &'a str,
     fields: &'a [Assignment],
-    columns: &'a [Ident],
+    columns: Rc<Vec<Ident>>,
 }
 
 impl<'a, T: 'static + Debug> Update<'a, T> {
@@ -35,7 +36,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         storage: &'a dyn Store<T>,
         table_name: &'a str,
         fields: &'a [Assignment],
-        columns: &'a [Ident],
+        columns: Rc<Vec<Ident>>,
     ) -> Result<Self> {
         for assignment in fields.iter() {
             let Assignment { id, .. } = assignment;
@@ -53,14 +54,18 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         })
     }
 
-    fn find(&self, row: &Row, column: &Ident) -> Option<Result<Value>> {
-        let context = FilterContext::new(self.table_name, self.columns, Some(row), None);
+    async fn find(&self, row: &Row, column: &Ident) -> Result<Option<Value>> {
+        let context =
+            FilterContext::new(self.table_name, Rc::clone(&self.columns), Some(row), None);
         let context = Some(Rc::new(context));
 
-        self.fields
+        match self
+            .fields
             .iter()
             .find(|assignment| assignment.id.value == column.value)
-            .map(|assignment| {
+        {
+            None => Ok(None),
+            Some(assignment) => {
                 let Assignment { id, value } = &assignment;
 
                 let index = self
@@ -69,7 +74,8 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     .position(|column| column.value == id.value)
                     .ok_or_else(|| UpdateError::Unreachable)?;
 
-                let evaluated = evaluate(self.storage, context, None, value)?;
+                let evaluated = evaluate(self.storage, context, None, value, false).await?;
+
                 let Row(values) = &row;
                 let value = &values[index];
 
@@ -80,25 +86,34 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     Evaluated::ValueRef(v) => Ok(v.clone()),
                     Evaluated::Value(v) => Ok(v),
                 }
-            })
+                .map(Some)
+            }
+        }
     }
 
-    pub fn apply(&self, row: Row) -> Result<Row> {
+    pub async fn apply(&self, row: Row) -> Result<Row> {
         let Row(values) = &row;
 
-        values
-            .clone()
-            .into_iter()
-            .enumerate()
-            .map(|(i, value)| {
-                let column = &self
-                    .columns
-                    .get(i)
-                    .ok_or_else(|| UpdateError::ConflictOnSchema)?;
+        let values = values.clone().into_iter().enumerate().map(|(i, value)| {
+            self.columns
+                .get(i)
+                .map(|column| (column, value))
+                .ok_or_else(|| UpdateError::ConflictOnSchema.into())
+        });
 
-                self.find(&row, column).unwrap_or(Ok(value))
+        stream::iter(values)
+            .and_then(|(column, value)| {
+                let row = &row;
+
+                async move {
+                    self.find(row, column)
+                        .await
+                        .transpose()
+                        .unwrap_or(Ok(value))
+                }
             })
-            .collect::<Result<_>>()
+            .try_collect::<Vec<_>>()
+            .await
             .map(Row)
     }
 }

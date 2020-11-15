@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn nested_select(mut tester: impl tests::Tester) {
+test_case!(nested_select, async move {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE User (
@@ -17,7 +17,9 @@ pub fn nested_select(mut tester: impl tests::Tester) {
     ",
     ];
 
-    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+    for sql in create_sqls.iter() {
+        run!(sql);
+    }
 
     let insert_sqls = [
         "INSERT INTO User (id, name) VALUES (1, \"Taehoon\")",
@@ -43,7 +45,7 @@ pub fn nested_select(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     let select_sqls = [
@@ -66,7 +68,7 @@ pub fn nested_select(mut tester: impl tests::Tester) {
         (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM User WHERE name IN (\"Taehoon\", \"Hwan\"));"),
     ];
 
-    select_sqls
-        .iter()
-        .for_each(|(num, sql)| tester.test_rows(sql, *num));
-}
+    for (num, sql) in select_sqls.iter() {
+        count!(*num, sql);
+    }
+});

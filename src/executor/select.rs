@@ -1,10 +1,11 @@
 use boolinator::Boolinator;
+use futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt};
 use iter_enum::Iterator;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::iter::once;
 use std::rc::Rc;
-use thiserror::Error;
+use thiserror::Error as ThisError;
 
 use sqlparser::ast::{Expr, Ident, Query, SelectItem, SetExpr, TableWithJoins};
 
@@ -16,10 +17,10 @@ use super::filter::Filter;
 use super::join::Join;
 use super::limit::Limit;
 use crate::data::{get_name, Row, Table};
-use crate::result::Result;
+use crate::result::{Error, Result};
 use crate::store::Store;
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum SelectError {
     #[error("unimplemented! select on two or more than tables are not supported")]
     TooManyTables,
@@ -31,12 +32,12 @@ pub enum SelectError {
     Unreachable,
 }
 
-fn fetch_blended<'a, T: 'static + Debug>(
+async fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: Table<'a>,
     columns: Rc<Vec<Ident>>,
-) -> Result<impl Iterator<Item = Result<BlendContext<'a>>> + 'a> {
-    let rows = storage.scan_data(table.get_name())?.map(move |data| {
+) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
+    let rows = storage.scan_data(table.get_name()).await?.map(move |data| {
         let (_, row) = data?;
         let row = Some(row);
         let columns = Rc::clone(&columns);
@@ -44,7 +45,7 @@ fn fetch_blended<'a, T: 'static + Debug>(
         Ok(BlendContext::new(table.get_alias(), columns, row, None))
     });
 
-    Ok(rows)
+    Ok(stream::iter(rows))
 }
 
 fn get_labels<'a>(
@@ -125,12 +126,12 @@ fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-pub fn select_with_labels<'a, T: 'static + Debug>(
+pub async fn select_with_labels<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
-) -> Result<(Vec<String>, impl Iterator<Item = Result<Row>> + 'a)> {
+) -> Result<(Vec<String>, impl TryStream<Ok = Row, Error = Error> + 'a)> {
     macro_rules! err {
         ($err: expr) => {{
             return Err($err.into());
@@ -160,18 +161,24 @@ pub fn select_with_labels<'a, T: 'static + Debug>(
     let TableWithJoins { relation, joins } = &table_with_joins;
     let table = Table::new(relation)?;
 
-    let columns = fetch_columns(storage, table.get_name())?;
-    let join_columns = joins
-        .iter()
-        .map(|join| {
-            let table = Table::new(&join.relation)?;
-            let table_alias = table.get_alias();
-            let table_name = table.get_name();
-            let columns = fetch_columns(storage, table_name)?;
+    let columns = fetch_columns(storage, table.get_name()).await?;
+    let join_columns = stream::iter(joins.iter())
+        .map(Ok::<_, Error>)
+        .and_then(|join| {
+            let table = Table::new(&join.relation);
 
-            Ok((table_alias, columns))
+            async move {
+                let table = table?;
+                let table_alias = table.get_alias();
+                let table_name = table.get_name();
+
+                let columns = fetch_columns(storage, table_name).await?;
+
+                Ok((table_alias, columns))
+            }
         })
-        .collect::<Result<Vec<_>>>()?;
+        .try_collect::<Vec<_>>()
+        .await?;
 
     let labels = if with_labels {
         get_labels(&projection, table.get_alias(), &columns, &join_columns)?
@@ -187,7 +194,11 @@ pub fn select_with_labels<'a, T: 'static + Debug>(
         .collect::<Vec<_>>();
     let join_columns = Rc::new(join_columns);
 
-    let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
+    let join = Rc::new(Join::new(
+        storage,
+        joins,
+        filter_context.as_ref().map(Rc::clone),
+    ));
     let aggregate = Aggregate::new(
         storage,
         projection,
@@ -195,46 +206,55 @@ pub fn select_with_labels<'a, T: 'static + Debug>(
         having,
         filter_context.as_ref().map(Rc::clone),
     );
-    let blend = Blend::new(storage, projection);
-    let filter = Filter::new(storage, where_clause, filter_context, None);
-    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+    let blend = Rc::new(Blend::new(storage, projection));
+    let filter = Rc::new(Filter::new(storage, where_clause, filter_context, None));
+    let limit = Rc::new(Limit::new(query.limit.as_ref(), query.offset.as_ref())?);
 
-    let rows = fetch_blended(storage, table, columns)?
-        .flat_map(move |blend_context| {
+    let rows = fetch_blended(storage, table, columns)
+        .await?
+        .then(move |blend_context| {
             let join_columns = Rc::clone(&join_columns);
+            let join = Rc::clone(&join);
 
-            join.apply(blend_context, join_columns)
+            async move { join.apply(blend_context, join_columns).await }
         })
-        .filter_map(move |blend_context| {
-            blend_context.map_or_else(
-                |error| Some(Err(error)),
-                |blend_context| {
-                    filter
-                        .check_blended(&blend_context)
-                        .map(|pass| pass.as_some(blend_context))
-                        .transpose()
-                },
-            )
+        .try_flatten()
+        .try_filter_map(move |blend_context| {
+            let filter = Rc::clone(&filter);
+
+            async move {
+                filter
+                    .check(Rc::clone(&blend_context))
+                    .await
+                    .map(|pass| pass.as_some(blend_context))
+            }
         })
         .enumerate()
-        .filter_map(move |(i, item)| limit.check(i).as_some(item));
+        .filter_map(move |(i, item)| {
+            let limit = Rc::clone(&limit);
 
-    let rows = {
-        let rows = aggregate.apply(rows)?;
-        let rows = Box::new(rows);
+            async move { limit.check(i).as_some(item) }
+        });
 
-        rows.map(move |blend_context| blend.apply(blend_context))
-    };
+    let rows = aggregate
+        .apply(rows)
+        .await?
+        .into_stream()
+        .and_then(move |aggregate_context| {
+            let blend = Rc::clone(&blend);
+
+            async move { blend.apply(Ok(aggregate_context)).await }
+        });
 
     Ok((labels, rows))
 }
 
-pub fn select<'a, T: 'static + Debug>(
+pub async fn select<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
-) -> Result<impl Iterator<Item = Result<Row>> + 'a> {
-    let (_, rows) = select_with_labels(storage, query, filter_context, false)?;
-
-    Ok(rows)
+) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {
+    select_with_labels(storage, query, filter_context, false)
+        .await
+        .map(|(_, rows)| rows)
 }

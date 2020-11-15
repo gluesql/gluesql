@@ -27,6 +27,9 @@ pub enum EvaluateError {
     )]
     NumberOfFunctionParamsNotMatching { expected: usize, found: usize },
 
+    #[error("value not found: {0}")]
+    ValueNotFound(String),
+
     #[error("unsupported compound identifier {0}")]
     UnsupportedCompoundIdentifier(String),
 
@@ -38,6 +41,9 @@ pub enum EvaluateError {
 
     #[error("unreachable literal arithmetic")]
     UnreachableLiteralArithmetic,
+
+    #[error("unreachable empty context")]
+    UnreachableEmptyContext,
 
     #[error("unimplemented")]
     Unimplemented,

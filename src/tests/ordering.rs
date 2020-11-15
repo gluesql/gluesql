@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn ordering(mut tester: impl tests::Tester) {
+test_case!(ordering, async move {
     let create_sql = "
         CREATE TABLE Operator (
             id INTEGER,
@@ -8,10 +8,10 @@ pub fn ordering(mut tester: impl tests::Tester) {
         );
     ";
 
-    tester.run_and_print(create_sql);
+    run!(create_sql);
 
     let delete_sql = "DELETE FROM Operator";
-    tester.run_and_print(delete_sql);
+    run!(delete_sql);
 
     let insert_sqls = [
         "INSERT INTO Operator (id, name) VALUES (1, \"Abstract\");",
@@ -22,7 +22,7 @@ pub fn ordering(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     let test_cases = [
@@ -66,6 +66,6 @@ pub fn ordering(mut tester: impl tests::Tester) {
     ];
 
     for (num, sql) in test_cases.iter() {
-        tester.test_rows(sql, *num);
+        count!(*num, sql);
     }
-}
+});

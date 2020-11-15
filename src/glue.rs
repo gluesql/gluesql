@@ -1,5 +1,7 @@
 #[cfg(feature = "sled-storage")]
 use crate::{execute, storages::SledStorage, Payload, Query, Result};
+#[cfg(feature = "sled-storage")]
+use futures::executor::block_on;
 
 #[cfg(feature = "sled-storage")]
 pub struct Glue {
@@ -17,7 +19,7 @@ impl Glue {
     pub fn execute(&mut self, query: &Query) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
-        match execute(storage, query) {
+        match block_on(execute(storage, query)) {
             Ok((storage, payload)) => {
                 self.storage = Some(storage);
 

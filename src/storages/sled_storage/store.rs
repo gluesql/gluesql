@@ -1,18 +1,27 @@
+use async_trait::async_trait;
 use sled::IVec;
 
 use super::{fetch_schema, SledStorage, StorageError};
 use crate::try_into;
 use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreMut};
 
+#[async_trait]
 impl StoreMut<IVec> for SledStorage {
-    fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
+    async fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
         let id = try_into!(self, self.tree.generate_id());
-        let id = format!("data/{}/{}", table_name, id);
+        let id = id.to_be_bytes();
+        let prefix = format!("data/{}/", table_name);
 
-        Ok((self, IVec::from(id.as_bytes())))
+        let bytes = prefix
+            .into_bytes()
+            .into_iter()
+            .chain(id.iter().copied())
+            .collect::<Vec<_>>();
+
+        Ok((self, IVec::from(bytes.as_slice())))
     }
 
-    fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
         let value = try_into!(self, bincode::serialize(schema));
@@ -22,7 +31,7 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
+    async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let prefix = format!("data/{}/", table_name);
         let tree = &self.tree;
 
@@ -38,7 +47,7 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, ()> {
+    async fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, ()> {
         let value = try_into!(self, bincode::serialize(&row));
 
         try_into!(self, self.tree.insert(key, value));
@@ -46,19 +55,20 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {
+    async fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {
         try_into!(self, self.tree.remove(key));
 
         Ok((self, ()))
     }
 }
 
+#[async_trait]
 impl Store<IVec> for SledStorage {
-    fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         fetch_schema(&self.tree, table_name).map(|(_, schema)| schema)
     }
 
-    fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
         let prefix = format!("data/{}/", table_name);
 
         let result_set = self.tree.scan_prefix(prefix.as_bytes()).map(move |item| {
