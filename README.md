@@ -15,7 +15,7 @@ You can simply use GlueSQL as an embedded SQL database, GlueSQL provides [sled](
 In your `Cargo.toml`
 ```toml
 [dependencies]
-gluesql = "0.2"
+gluesql = "0.3"
 ```
 
 ### Usage
@@ -45,11 +45,11 @@ fn main() {
 Now you don't need to include `sled-storage`. So in `Cargo.toml`,
 ```toml
 [dependencies]
-gluesql = { version = "0.2", default-features = false, features = ["alter-table"] }
+gluesql = { version = "0.3", default-features = false, features = ["alter-table"] }
 
 # alter-table is optional.
 # If your DB does not have plan to support ALTER TABLE, then use this below.
-gluesql = { version = "0.2", default-features = false }
+gluesql = { version = "0.3", default-features = false }
 ```
 
 ### Usage
@@ -57,16 +57,16 @@ All you only need to do is implementing 2 traits: `Store` and `StoreMut`!
 In `src/store/mod.rs`,
 ```rust
 pub trait Store<T: Debug> {
-    fn fetch_schema(..) -> ..;
-    fn scan_data(..) -> ..;
+    async fn fetch_schema(..) -> ..;
+    async fn scan_data(..) -> ..;
 }
 
 pub trait StoreMut<T: Debug> where Self: Sized {
-    fn generate_id(..) -> ..;
-    fn insert_schema(..) -> ..;
-    fn delete_schema(..) -> ..;
-    fn insert_data(..) -> ..;
-    fn delete_data(..) -> ..;
+    async fn generate_id(..) -> ..;
+    async fn insert_schema(..) -> ..;
+    async fn delete_schema(..) -> ..;
+    async fn insert_data(..) -> ..;
+    async fn delete_data(..) -> ..;
 }
 ```
 
@@ -74,10 +74,10 @@ And a single optional trait, whether implementing this is all up to you!
 In `src/store/alter_table.rs`,
 ```rust
 pub trait AlterTable where Self: Sized {
-    fn rename_schema(..) -> ..;
-    fn rename_column(..) -> ..;
-    fn add_column(..) -> ..;
-    fn drop_column(..) -> ..;
+    async fn rename_schema(..) -> ..;
+    async fn rename_column(..) -> ..;
+    async fn add_column(..) -> ..;
+    async fn drop_column(..) -> ..;
 }
 ```
 

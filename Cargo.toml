@@ -1,7 +1,7 @@
 [package]
 name = "gluesql"
-version = "0.2.3"
-authors = ["Taehoon Moon <panarch@kaist.ac.kr>"]
+version = "0.3.0"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 edition = "2018"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
