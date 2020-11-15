@@ -9,9 +9,16 @@ use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreMut};
 impl StoreMut<IVec> for SledStorage {
     async fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
         let id = try_into!(self, self.tree.generate_id());
-        let id = format!("data/{}/{}", table_name, id);
+        let id = id.to_be_bytes();
+        let prefix = format!("data/{}/", table_name);
 
-        Ok((self, IVec::from(id.as_bytes())))
+        let bytes = prefix
+            .into_bytes()
+            .into_iter()
+            .chain(id.iter().copied())
+            .collect::<Vec<_>>();
+
+        Ok((self, IVec::from(bytes.as_slice())))
     }
 
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
