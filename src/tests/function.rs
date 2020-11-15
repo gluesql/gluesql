@@ -1,8 +1,6 @@
 use crate::*;
 
-pub fn function(mut tester: impl tests::Tester) {
-    let mut run = |sql| tester.run(sql);
-
+test_case!(function, async move {
     use Value::Str;
 
     let test_cases = vec![
@@ -61,7 +59,7 @@ pub fn function(mut tester: impl tests::Tester) {
         ),
     ];
 
-    test_cases
-        .into_iter()
-        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
-}
+    for (sql, expected) in test_cases.into_iter() {
+        test!(expected, sql);
+    }
+});

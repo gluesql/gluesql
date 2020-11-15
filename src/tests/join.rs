@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn join(mut tester: impl tests::Tester) {
+test_case!(join, async move {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -17,11 +17,15 @@ pub fn join(mut tester: impl tests::Tester) {
     ",
     ];
 
-    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+    for sql in create_sqls.iter() {
+        run!(sql);
+    }
 
     let delete_sqls = ["DELETE FROM Player", "DELETE FROM Item"];
 
-    delete_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+    for sql in delete_sqls.iter() {
+        run!(sql);
+    }
 
     let insert_sqls = [
         "INSERT INTO Player (id, name) VALUES (1, \"Taehoon\")",
@@ -47,7 +51,7 @@ pub fn join(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     let select_sqls = [
@@ -121,14 +125,16 @@ pub fn join(mut tester: impl tests::Tester) {
         (30, "SELECT * FROM Item INNER JOIN Item i2 ON i2.id IN (101, 103);"),
     ];
 
-    select_sqls
-        .iter()
-        .for_each(|(num, sql)| tester.test_rows(sql, *num));
+    for (num, sql) in select_sqls.iter() {
+        count!(*num, sql);
+    }
 
-    delete_sqls.iter().for_each(|sql| tester.run_and_print(sql));
-}
+    for sql in delete_sqls.iter() {
+        run!(sql);
+    }
+});
 
-pub fn blend(mut tester: impl tests::Tester) {
+test_case!(blend, async move {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -145,7 +151,9 @@ pub fn blend(mut tester: impl tests::Tester) {
     ",
     ];
 
-    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+    for sql in create_sqls.iter() {
+        run!(sql);
+    }
 
     let insert_sqls = [
         "INSERT INTO Player (id, name) VALUES (1, \"Taehoon\")",
@@ -159,7 +167,7 @@ pub fn blend(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     use Value::{Empty, Str, I64};
@@ -170,7 +178,7 @@ pub fn blend(mut tester: impl tests::Tester) {
         LEFT JOIN Item i
         ON p.id = i.player_id
     ";
-    let found = tester.run(sql).expect("select");
+    let found = run!(sql);
     let expected = select_with_empty!(
         id     | id;
         I64(1)   I64(101);
@@ -187,7 +195,7 @@ pub fn blend(mut tester: impl tests::Tester) {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = tester.run(sql).expect("select");
+    let found = run!(sql);
     let expected = select_with_empty!(
         id     | player_id;
         I64(1)   I64(1);
@@ -204,7 +212,7 @@ pub fn blend(mut tester: impl tests::Tester) {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = tester.run(sql).expect("select");
+    let found = run!(sql);
     let expected = select_with_empty!(
         id       | quantity | player_id;
         I64(101)   I64(1)     I64(1);
@@ -221,7 +229,7 @@ pub fn blend(mut tester: impl tests::Tester) {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = tester.run(sql).expect("select");
+    let found = run!(sql);
     let expected = select_with_empty!(
         id     | name                      | id       | quantity | player_id;
         I64(1)   Str("Taehoon".to_owned())   I64(101)   I64(1)     I64(1);
@@ -231,4 +239,4 @@ pub fn blend(mut tester: impl tests::Tester) {
         I64(5)   Str("Hwan".to_owned())      Empty      Empty      Empty
     );
     assert_eq!(expected, found);
-}
+});

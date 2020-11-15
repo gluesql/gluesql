@@ -1,9 +1,9 @@
 use crate::*;
 
-pub fn default(mut tester: impl tests::Tester) {
+test_case!(default, async move {
     use Value::*;
 
-    let test_cases = [
+    let test_cases = vec![
         (
             "CREATE TABLE Test (
                 id INTEGER DEFAULT 1,
@@ -36,9 +36,7 @@ pub fn default(mut tester: impl tests::Tester) {
         ),
     ];
 
-    test_cases.iter().for_each(|(sql, expected)| {
-        let found = tester.run(sql).unwrap();
-
-        assert_eq!(expected, &found);
-    });
-}
+    for (sql, expected) in test_cases.into_iter() {
+        test!(Ok(expected), sql);
+    }
+});

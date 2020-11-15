@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn migrate(mut tester: impl tests::Tester) {
+test_case!(migrate, async move {
     let sql = r#"
 CREATE TABLE Test (
     id INT,
@@ -8,7 +8,7 @@ CREATE TABLE Test (
     name TEXT
 )"#;
 
-    tester.run(sql).unwrap();
+    run!(sql);
 
     let sqls = [
         "INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")",
@@ -16,9 +16,9 @@ CREATE TABLE Test (
         "INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")",
     ];
 
-    sqls.iter().for_each(|sql| {
-        tester.run(sql).unwrap();
-    });
+    for sql in sqls.iter() {
+        run!(sql);
+    }
 
     let error_cases = vec![
         (
@@ -43,17 +43,13 @@ CREATE TABLE Test (
         ),
     ];
 
-    error_cases.into_iter().for_each(|(error, sql)| {
-        let error = Err(error);
-
-        assert_eq!(error, tester.run(sql));
-    });
+    for (error, sql) in error_cases.into_iter() {
+        test!(Err(error), sql);
+    }
 
     use Value::*;
 
-    let found = tester
-        .run("SELECT id, num, name FROM Test")
-        .expect("select");
+    let found = run!("SELECT id, num, name FROM Test");
     let expected = select!(
         id  | num | name
         I64 | I64 | Str;
@@ -63,9 +59,7 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 
-    let found = tester
-        .run("SELECT id, num, name FROM Test WHERE id = 1")
-        .expect("select");
+    let found = run!("SELECT id, num, name FROM Test WHERE id = 1");
     let expected = select!(
         id  | num | name
         I64 | I64 | Str;
@@ -74,11 +68,9 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 
-    tester.run_and_print("UPDATE Test SET id = 2");
+    run!("UPDATE Test SET id = 2");
 
-    let found = tester
-        .run("SELECT id, num, name FROM Test")
-        .expect("select");
+    let found = run!("SELECT id, num, name FROM Test");
     let expected = select!(
         id  | num | name;
         I64 | I64 | Str;
@@ -88,17 +80,15 @@ CREATE TABLE Test (
     );
     assert_eq!(expected, found);
 
-    let found = tester.run("SELECT id FROM Test").expect("select");
+    let found = run!("SELECT id FROM Test");
     let expected = select!(id; I64; 2; 2; 2);
     assert_eq!(expected, found);
 
-    let found = tester.run("SELECT id, num FROM Test").expect("select");
+    let found = run!("SELECT id, num FROM Test");
     let expected = select!(id | num; I64 | I64; 2 2; 2 9; 2 4);
     assert_eq!(expected, found);
 
-    let found = tester
-        .run("SELECT id, num FROM Test LIMIT 1 OFFSET 1")
-        .expect("select");
+    let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
     let expected = select!(id | num; I64 | I64; 2 9);
     assert_eq!(expected, found);
-}
+});

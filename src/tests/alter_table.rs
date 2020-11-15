@@ -3,16 +3,8 @@
 use crate::*;
 use Value::*;
 
-fn run(mut tester: impl tests::Tester, test_cases: &[(&str, Result<Payload>)]) {
-    test_cases.iter().for_each(|(sql, expected)| {
-        let found = tester.run(sql);
-
-        assert_eq!(expected, &found);
-    });
-}
-
-pub fn rename(tester: impl tests::Tester) {
-    let test_cases = [
+test_case!(rename, async move {
+    let test_cases = vec![
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         (
             "INSERT INTO Foo VALUES (1), (2), (3);",
@@ -36,11 +28,13 @@ pub fn rename(tester: impl tests::Tester) {
         ),
     ];
 
-    run(tester, &test_cases);
-}
+    for (sql, expected) in test_cases.into_iter() {
+        test!(expected, sql);
+    }
+});
 
-pub fn add_drop(tester: impl tests::Tester) {
-    let test_cases = [
+test_case!(add_drop, async move {
+    let test_cases = vec![
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),
         ("SELECT * FROM Foo;", Ok(select!(id; I64; 1; 2))),
@@ -126,5 +120,7 @@ pub fn add_drop(tester: impl tests::Tester) {
         ),
     ];
 
-    run(tester, &test_cases);
-}
+    for (sql, expected) in test_cases.into_iter() {
+        test!(expected, sql);
+    }
+});

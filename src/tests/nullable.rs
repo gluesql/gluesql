@@ -1,21 +1,19 @@
 use crate::*;
 
-pub fn nullable(mut tester: impl tests::Tester) {
-    tester.run_and_print(
+test_case!(nullable, async move {
+    run!(
         r#"
 CREATE TABLE Test (
     id INTEGER NULL,
     num INTEGER,
     name TEXT
-)"#,
+)"#
     );
-    tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (NULL, 2, \"Hello\")");
-    tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
-    tester.run_and_print("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
+    run!("INSERT INTO Test (id, num, name) VALUES (NULL, 2, \"Hello\")");
+    run!("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
+    run!("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
 
     use Value::*;
-
-    let mut run = |sql| tester.run(sql).expect("select");
 
     let test_cases = vec![
         (
@@ -199,13 +197,12 @@ CREATE TABLE Test (
             ),
         ),
     ];
-    test_cases
-        .into_iter()
-        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
 
-    tester.run_and_print("UPDATE Test SET id = 2");
+    for (sql, expected) in test_cases.into_iter() {
+        test!(Ok(expected), sql);
+    }
 
-    let mut run = |sql| tester.run(sql);
+    run!("UPDATE Test SET id = 2");
 
     let test_cases = vec![
         (
@@ -233,19 +230,20 @@ CREATE TABLE Test (
             Err(ValueError::NullValueOnNotNullField.into()),
         ),
     ];
-    test_cases
-        .into_iter()
-        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
-}
 
-pub fn nullable_text(mut tester: impl tests::Tester) {
-    tester.run_and_print(
+    for (sql, expected) in test_cases.into_iter() {
+        test!(expected, sql);
+    }
+});
+
+test_case!(nullable_text, async move {
+    run!(
         "
         CREATE TABLE Foo (
             id INTEGER,
             name TEXT NULL
         );
-    ",
+    "
     );
 
     let insert_sqls = [
@@ -254,6 +252,6 @@ pub fn nullable_text(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
-}
+});

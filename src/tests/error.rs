@@ -1,8 +1,8 @@
 use crate::*;
 
-pub fn error(mut tester: impl tests::Tester) {
-    tester.run_and_print("CREATE TABLE TableA (id INTEGER);");
-    tester.run_and_print("INSERT INTO TableA (id) VALUES (1);");
+test_case!(error, async move {
+    run!("CREATE TABLE TableA (id INTEGER);");
+    run!("INSERT INTO TableA (id) VALUES (1);");
 
     let test_cases = vec![
         (ExecuteError::QueryNotSupported.into(), "COMMIT;"),
@@ -60,13 +60,13 @@ pub fn error(mut tester: impl tests::Tester) {
         ),
     ];
 
-    test_cases
-        .into_iter()
-        .for_each(|(error, sql)| tester.test_error(sql, error));
+    for (error, sql) in test_cases.into_iter() {
+        test!(Err(error), sql);
+    }
 
-    tester.run_and_print("CREATE TABLE TableB (id BOOL);");
-    tester.test_error(
-        "INSERT INTO TableB (id) VALUES (0);",
-        ValueError::SqlTypeNotSupported.into(),
+    run!("CREATE TABLE TableB (id BOOL);");
+    test!(
+        Err(ValueError::SqlTypeNotSupported.into()),
+        "INSERT INTO TableB (id) VALUES (0);"
     );
-}
+});

@@ -45,11 +45,11 @@ macro_rules! generate_tests {
         macro_rules! glue {
             ($title: ident, $func: path) => {
                 #[$test]
-                fn $title() {
+                async fn $title() {
                     let path = stringify!($title);
                     let storage = $storage::new(path);
 
-                    $func(storage);
+                    $func(storage).await;
                 }
             };
         }
@@ -61,20 +61,20 @@ macro_rules! generate_tests {
         glue!(arithmetic_blend, arithmetic::blend);
         glue!(blend, blend::blend);
         glue!(create_table, create_table::create_table);
+        glue!(default, default::default);
         glue!(drop_table, drop_table::drop_table);
         glue!(error, error::error);
+        glue!(filter, filter::filter);
+        glue!(function, function::function);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
-        glue!(default, default::default);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
         glue!(ordering, ordering::ordering);
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
-        glue!(filter, filter::filter);
-        glue!(function, function::function);
 
         generate_alter_table_tests!();
     };

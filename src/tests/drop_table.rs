@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn drop_table(mut tester: impl tests::Tester) {
+test_case!(drop_table, async move {
     let create_sql = r#"
 CREATE TABLE DropTable (
     id INT,
@@ -8,13 +8,13 @@ CREATE TABLE DropTable (
     name TEXT
 )"#;
 
-    tester.run(create_sql).unwrap();
+    run!(create_sql);
 
     let sqls = ["INSERT INTO DropTable (id, num, name) VALUES (1, 2, \"Hello\")"];
 
-    sqls.iter().for_each(|sql| {
-        tester.run(sql).unwrap();
-    });
+    for sql in sqls.iter() {
+        run!(sql);
+    }
 
     use Value::*;
 
@@ -58,9 +58,7 @@ CREATE TABLE DropTable (
         ),
     ];
 
-    sqls.into_iter().for_each(|(sql, expected)| {
-        let found = tester.run(sql);
-
-        assert_eq!(expected, found);
-    });
-}
+    for (sql, expected) in sqls.into_iter() {
+        test!(expected, sql);
+    }
+});

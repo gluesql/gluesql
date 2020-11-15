@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn blend(mut tester: impl tests::Tester) {
+test_case!(blend, async move {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE BlendUser (
@@ -17,11 +17,15 @@ pub fn blend(mut tester: impl tests::Tester) {
     ",
     ];
 
-    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+    for sql in create_sqls.iter() {
+        run!(sql);
+    }
 
     let delete_sqls = ["DELETE FROM BlendUser", "DELETE FROM BlendItem"];
 
-    delete_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+    for sql in delete_sqls.iter() {
+        run!(sql);
+    }
 
     let insert_sqls = [
         "INSERT INTO BlendUser (id, name) VALUES (1, \"Taehoon\")",
@@ -35,12 +39,10 @@ pub fn blend(mut tester: impl tests::Tester) {
     ];
 
     for insert_sql in insert_sqls.iter() {
-        tester.run(insert_sql).unwrap();
+        run!(insert_sql);
     }
 
     use Value::*;
-
-    let mut run = |sql| tester.run(sql).expect("select");
 
     let test_cases = vec![
         ("SELECT 1 FROM BlendUser", select!(1; I64; 1; 1; 1)),
@@ -121,9 +123,9 @@ pub fn blend(mut tester: impl tests::Tester) {
         ),
     ];
 
-    test_cases
-        .into_iter()
-        .for_each(|(sql, expected)| assert_eq!(expected, run(sql)));
+    for (sql, expected) in test_cases.into_iter() {
+        test!(Ok(expected), sql);
+    }
 
     let error_cases = vec![
         (
@@ -136,7 +138,7 @@ pub fn blend(mut tester: impl tests::Tester) {
         ),
     ];
 
-    error_cases
-        .into_iter()
-        .for_each(|(error, sql)| tester.test_error(sql, error));
-}
+    for (error, sql) in error_cases.into_iter() {
+        test!(Err(error), sql);
+    }
+});

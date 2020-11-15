@@ -1,6 +1,6 @@
 use crate::*;
 
-pub fn filter(mut tester: impl tests::Tester) {
+test_case!(filter, async move {
     let create_sqls = [
         "
         CREATE TABLE Boss (
@@ -15,7 +15,9 @@ pub fn filter(mut tester: impl tests::Tester) {
         );",
     ];
 
-    create_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+    for sql in create_sqls.iter() {
+        run!(sql);
+    }
 
     let insert_sqls = [
         "INSERT INTO Boss (id, name, strength) VALUES (1, \"Amelia\", 10.10);",
@@ -28,7 +30,9 @@ pub fn filter(mut tester: impl tests::Tester) {
         "INSERT INTO Hunter (id, name) VALUES (3, \"Maria\");",
     ];
 
-    insert_sqls.iter().for_each(|sql| tester.run_and_print(sql));
+    for sql in insert_sqls.iter() {
+        run!(sql);
+    }
 
     let select_sqls = [
         (3, "SELECT id, name FROM Boss WHERE id BETWEEN 2 AND 4"),
@@ -68,11 +72,11 @@ pub fn filter(mut tester: impl tests::Tester) {
         (2, "SELECT name FROM Boss WHERE +id <= 2"),
     ];
 
-    select_sqls
-        .iter()
-        .for_each(|(num, sql)| tester.test_rows(sql, *num));
+    for (num, sql) in select_sqls.iter() {
+        count!(*num, sql);
+    }
 
-    let select_sqls_err = vec![
+    let error_sqls = vec![
         (
             EvaluateError::LiteralUnaryPlusOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE +'abcd' > 1.0",
@@ -91,7 +95,7 @@ pub fn filter(mut tester: impl tests::Tester) {
         ),
     ];
 
-    select_sqls_err
-        .into_iter()
-        .for_each(|(error, sql)| tester.test_error(sql, error));
-}
+    for (error, sql) in error_sqls.into_iter() {
+        test!(Err(error), sql);
+    }
+});
