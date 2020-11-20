@@ -129,7 +129,7 @@ impl<'a> PartialOrd for Evaluated<'a> {
                 ValueRef(data::Value::Str(r)) => l.partial_cmp(&r.as_str()),
                 Value(data::Value::Str(r)) => l.partial_cmp(&r.as_str()),
                 StringRef(r) => l.partial_cmp(r),
-                Literal(_) => panic!(),
+                Literal(_) => None,
                 _ => None,
             },
             Literal(l) => match other {
@@ -349,7 +349,18 @@ fn literal_add(a: &AstValue, b: &AstValue) -> Result<AstValue> {
     match (a, b) {
         (AstValue::Number(a), AstValue::Number(b)) => match (a.parse::<i64>(), b.parse::<i64>()) {
             (Ok(a), Ok(b)) => Ok(AstValue::Number((a + b).to_string())),
-            _ => panic!(),
+            (Ok(a), _) => match b.parse::<f64>() {
+                Ok(b) => Ok(AstValue::Number(((a as f64) + b).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
+            (_, Ok(b)) => match a.parse::<f64>() {
+                Ok(a) => Ok(AstValue::Number((a + (b as f64)).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
+            (_, _) => match (a.parse::<f64>(), b.parse::<f64>()) {
+                (Ok(a), Ok(b)) => Ok(AstValue::Number((a + b).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
         },
         (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
             Ok(AstValue::Null)
@@ -362,7 +373,18 @@ fn literal_subtract(a: &AstValue, b: &AstValue) -> Result<AstValue> {
     match (a, b) {
         (AstValue::Number(a), AstValue::Number(b)) => match (a.parse::<i64>(), b.parse::<i64>()) {
             (Ok(a), Ok(b)) => Ok(AstValue::Number((a - b).to_string())),
-            _ => panic!(),
+            (Ok(a), _) => match b.parse::<f64>() {
+                Ok(b) => Ok(AstValue::Number(((a as f64) - b).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
+            (_, Ok(b)) => match a.parse::<f64>() {
+                Ok(a) => Ok(AstValue::Number((a - (b as f64)).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
+            (_, _) => match (a.parse::<f64>(), b.parse::<f64>()) {
+                (Ok(a), Ok(b)) => Ok(AstValue::Number((a - b).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
         },
         (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
             Ok(AstValue::Null)
@@ -375,7 +397,18 @@ fn literal_multiply(a: &AstValue, b: &AstValue) -> Result<AstValue> {
     match (a, b) {
         (AstValue::Number(a), AstValue::Number(b)) => match (a.parse::<i64>(), b.parse::<i64>()) {
             (Ok(a), Ok(b)) => Ok(AstValue::Number((a * b).to_string())),
-            _ => panic!(),
+            (Ok(a), _) => match b.parse::<f64>() {
+                Ok(b) => Ok(AstValue::Number(((a as f64) * b).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
+            (_, Ok(b)) => match a.parse::<f64>() {
+                Ok(a) => Ok(AstValue::Number((a * (b as f64)).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
+            (_, _) => match (a.parse::<f64>(), b.parse::<f64>()) {
+                (Ok(a), Ok(b)) => Ok(AstValue::Number((a * b).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
         },
         (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
             Ok(AstValue::Null)
@@ -388,7 +421,18 @@ fn literal_divide(a: &AstValue, b: &AstValue) -> Result<AstValue> {
     match (a, b) {
         (AstValue::Number(a), AstValue::Number(b)) => match (a.parse::<i64>(), b.parse::<i64>()) {
             (Ok(a), Ok(b)) => Ok(AstValue::Number((a / b).to_string())),
-            _ => panic!(),
+            (Ok(a), _) => match b.parse::<f64>() {
+                Ok(b) => Ok(AstValue::Number(((a as f64) / b).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
+            (_, Ok(b)) => match a.parse::<f64>() {
+                Ok(a) => Ok(AstValue::Number((a / (b as f64)).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
+            (_, _) => match (a.parse::<f64>(), b.parse::<f64>()) {
+                (Ok(a), Ok(b)) => Ok(AstValue::Number((a / b).to_string())),
+                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+            },
         },
         (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
             Ok(AstValue::Null)

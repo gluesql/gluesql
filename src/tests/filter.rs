@@ -76,6 +76,17 @@ test_case!(filter, async move {
         count!(*num, sql);
     }
 
+    let select_opt_sqls = [
+        (5, "SELECT name FROM Boss WHERE 2 = 1.0 + 1"),
+        (3, "SELECT id FROM Hunter WHERE -1.0 - 1.0 < -1"),
+        (5, "SELECT name FROM Boss WHERE -2.0 * -3.0 = 6"),
+        (3, "SELECT id FROM Hunter WHERE +2 / 1.0 > +1.0"),
+    ];
+
+    for (num, sql) in select_opt_sqls.iter() {
+        count!(*num, sql);
+    }
+
     let error_sqls = vec![
         (
             EvaluateError::LiteralUnaryPlusOnNonNumeric.into(),
