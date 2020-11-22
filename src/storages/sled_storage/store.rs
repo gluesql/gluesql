@@ -5,7 +5,7 @@ use super::{fetch_schema, SledStorage, StorageError};
 use crate::try_into;
 use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreMut};
 
-#[async_trait]
+#[async_trait(?Send)]
 impl StoreMut<IVec> for SledStorage {
     async fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
         let id = try_into!(self, self.tree.generate_id());
@@ -62,7 +62,7 @@ impl StoreMut<IVec> for SledStorage {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl Store<IVec> for SledStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         fetch_schema(&self.tree, table_name).map(|(_, schema)| schema)

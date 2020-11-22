@@ -25,7 +25,7 @@ pub enum AlterTableError {
     DroppingColumnNotFound(String),
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait AlterTable
 where
     Self: Sized,
