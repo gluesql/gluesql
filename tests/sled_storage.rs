@@ -1,17 +1,14 @@
-#[cfg(feature = "sled-storage")]
+#![cfg(feature = "sled-storage")]
+
 use sled::IVec;
-#[cfg(feature = "sled-storage")]
 use std::{cell::RefCell, convert::TryFrom, rc::Rc};
 
-#[cfg(feature = "sled-storage")]
 use gluesql::{generate_alter_table_tests, generate_tests, sled, tests::*, SledStorage};
 
-#[cfg(feature = "sled-storage")]
 struct SledTester {
     storage: Rc<RefCell<Option<SledStorage>>>,
 }
 
-#[cfg(feature = "sled-storage")]
 impl Tester<IVec, SledStorage> for SledTester {
     fn new(namespace: &str) -> Self {
         let path = format!("data/{}", namespace);
@@ -42,5 +39,4 @@ impl Tester<IVec, SledStorage> for SledTester {
     }
 }
 
-#[cfg(feature = "sled-storage")]
 generate_tests!(tokio::test, SledTester);
