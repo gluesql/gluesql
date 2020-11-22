@@ -15,7 +15,7 @@ use crate::result::{MutResult, Result};
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` queries.
-#[async_trait]
+#[async_trait(?Send)]
 pub trait Store<T: Debug> {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
@@ -24,7 +24,7 @@ pub trait Store<T: Debug> {
 
 /// `StoreMut` takes role of mutation, related to `INSERT`, `CREATE`, `DELETE`, `DROP` and
 /// `UPDATE`.
-#[async_trait]
+#[async_trait(?Send)]
 pub trait StoreMut<T: Debug>
 where
     Self: Sized,

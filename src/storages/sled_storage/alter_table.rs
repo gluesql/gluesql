@@ -32,7 +32,7 @@ macro_rules! fetch_schema {
     }};
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl AlterTable for SledStorage {
     async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
         let (_, Schema { column_defs, .. }) = fetch_schema!(self, &self.tree, table_name);
