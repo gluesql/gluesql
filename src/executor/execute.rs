@@ -17,8 +17,6 @@ use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
-use crate::Value;
-use std::any::Any;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
