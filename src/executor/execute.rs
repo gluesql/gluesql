@@ -17,6 +17,8 @@ use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::select_with_labels;
 use super::update::Update;
+use crate::Value;
+use std::any::Any;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -241,19 +243,32 @@ async fn prepare<'a, T: 'static + Debug>(
                 .await?
                 .ok_or(ExecuteError::TableNotExists)?;
 
-            let values_list = match &source.body {
-                SetExpr::Values(Values(values_list)) => values_list,
+            let rows = match &source.body {
+                SetExpr::Values(Values(values_list)) => values_list
+                    .iter()
+                    .map(|values| Row::new(&column_defs, columns, values))
+                    .collect::<Result<_>>()?,
+                SetExpr::Select(select) => {
+                    select_with_labels(
+                        storage,
+                        &sqlparser::ast::Query {
+                            ctes: vec![],
+                            body: SetExpr::Select(select.clone()),
+                            order_by: vec![],
+                            limit: None,
+                            offset: None,
+                            fetch: None,
+                        },
+                        None,
+                        true
+                    ).await?.1.try_collect::<Vec<_>>().await?
+                },
                 set_expr => {
                     return Err(
                         ExecuteError::UnsupportedInsertValueType(set_expr.to_string()).into(),
                     );
                 }
             };
-
-            let rows = values_list
-                .iter()
-                .map(|values| Row::new(&column_defs, columns, values))
-                .collect::<Result<_>>()?;
 
             Ok(Prepared::Insert(table_name, rows))
         }
