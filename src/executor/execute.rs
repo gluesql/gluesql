@@ -15,7 +15,7 @@ use crate::store::{AlterTable, Store, StoreMut};
 
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
-use super::select::select_with_labels;
+use super::select::{select, select_with_labels};
 use super::update::Update;
 use crate::Value;
 use std::any::Any;
@@ -248,20 +248,19 @@ async fn prepare<'a, T: 'static + Debug>(
                     .iter()
                     .map(|values| Row::new(&column_defs, columns, values))
                     .collect::<Result<_>>()?,
-                SetExpr::Select(select) => {
-                    select_with_labels(
+                SetExpr::Select(select_query) => {
+                    select(
                         storage,
                         &sqlparser::ast::Query {
                             ctes: vec![],
-                            body: SetExpr::Select(select.clone()),
+                            body: SetExpr::Select(select_query.clone()),
                             order_by: vec![],
                             limit: None,
                             offset: None,
                             fetch: None,
                         },
                         None,
-                        true
-                    ).await?.1.try_collect::<Vec<_>>().await?
+                    ).await?.try_collect::<Vec<_>>().await?
                 },
                 set_expr => {
                     return Err(
