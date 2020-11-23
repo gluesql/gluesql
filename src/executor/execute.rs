@@ -15,7 +15,7 @@ use crate::store::{AlterTable, Store, StoreMut};
 
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
-use super::select::select_with_labels;
+use super::select::{select, select_with_labels};
 use super::update::Update;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
@@ -27,7 +27,7 @@ pub enum ExecuteError {
     DropTypeNotSupported,
 
     #[error("unsupported insert value type: {0}")]
-    UnsupportedInsertValueType(String),
+    UnreachableUnsupportedInsertValueType(String),
 
     #[cfg(feature = "alter-table")]
     #[error("unsupported alter table operation: {0}")]
@@ -241,19 +241,35 @@ async fn prepare<'a, T: 'static + Debug>(
                 .await?
                 .ok_or(ExecuteError::TableNotExists)?;
 
-            let values_list = match &source.body {
-                SetExpr::Values(Values(values_list)) => values_list,
+            let rows = match &source.body {
+                SetExpr::Values(Values(values_list)) => values_list
+                    .iter()
+                    .map(|values| Row::new(&column_defs, columns, values))
+                    .collect::<Result<_>>()?,
+                SetExpr::Select(select_query) => {
+                    select(
+                        storage,
+                        &sqlparser::ast::Query {
+                            ctes: vec![],
+                            body: SetExpr::Select(select_query.clone()),
+                            order_by: vec![],
+                            limit: None,
+                            offset: None,
+                            fetch: None,
+                        },
+                        None,
+                    )
+                    .await?
+                    .try_collect::<Vec<_>>()
+                    .await?
+                }
                 set_expr => {
-                    return Err(
-                        ExecuteError::UnsupportedInsertValueType(set_expr.to_string()).into(),
-                    );
+                    return Err(ExecuteError::UnreachableUnsupportedInsertValueType(
+                        set_expr.to_string(),
+                    )
+                    .into());
                 }
             };
-
-            let rows = values_list
-                .iter()
-                .map(|values| Row::new(&column_defs, columns, values))
-                .collect::<Result<_>>()?;
 
             Ok(Prepared::Insert(table_name, rows))
         }
