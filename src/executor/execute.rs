@@ -258,8 +258,11 @@ async fn prepare<'a, T: 'static + Debug>(
                             fetch: None,
                         },
                         None,
-                    ).await?.try_collect::<Vec<_>>().await?
-                },
+                    )
+                    .await?
+                    .try_collect::<Vec<_>>()
+                    .await?
+                }
                 set_expr => {
                     return Err(
                         ExecuteError::UnsupportedInsertValueType(set_expr.to_string()).into(),

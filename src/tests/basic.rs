@@ -35,7 +35,7 @@ CREATE TABLE TestA (
         )),
         "SELECT id, num, name FROM Test"
     );
-    
+
     test!(
         Ok(select!(
             id  | num | name
