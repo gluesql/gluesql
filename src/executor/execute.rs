@@ -27,7 +27,7 @@ pub enum ExecuteError {
     DropTypeNotSupported,
 
     #[error("unsupported insert value type: {0}")]
-    UnsupportedInsertValueType(String),
+    UnreachableUnsupportedInsertValueType(String),
 
     #[cfg(feature = "alter-table")]
     #[error("unsupported alter table operation: {0}")]
@@ -264,9 +264,10 @@ async fn prepare<'a, T: 'static + Debug>(
                     .await?
                 }
                 set_expr => {
-                    return Err(
-                        ExecuteError::UnsupportedInsertValueType(set_expr.to_string()).into(),
-                    );
+                    return Err(ExecuteError::UnreachableUnsupportedInsertValueType(
+                        set_expr.to_string(),
+                    )
+                    .into());
                 }
             };
 
