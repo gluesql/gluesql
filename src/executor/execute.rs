@@ -9,7 +9,7 @@ use sqlparser::ast::AlterTableOperation;
 use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
 
 use crate::data::{get_name, Row, Schema};
-use crate::parse::Query;
+use crate::parse_sql::Query;
 use crate::result::{Error, MutResult, Result};
 use crate::store::{AlterTable, Store, StoreMut};
 

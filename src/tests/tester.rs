@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 use crate::executor::{execute, Payload};
-use crate::parse::parse;
+use crate::parse_sql::parse;
 use crate::result::Result;
 use crate::store::{AlterTable, Store, StoreMut};
 
