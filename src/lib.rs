@@ -65,7 +65,7 @@ pub use sqlparser as parser;
 
 mod executor;
 mod glue;
-mod parse;
+mod parse_sql;
 mod storages;
 mod utils;
 
@@ -76,7 +76,7 @@ pub mod tests;
 
 pub use data::*;
 pub use executor::*;
-pub use parse::*;
+pub use parse_sql::*;
 pub use result::*;
 pub use store::*;
 
