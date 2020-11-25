@@ -10,7 +10,7 @@ pub fn bench_insert(c: &mut Criterion) {
     match std::fs::remove_dir_all(&path) {
         Ok(()) => (),
         // Silently ignore, 99% of the time this will already be removed.
-        Err(_) => ()
+        Err(_) => (),
     }
 
     let config = sled::Config::default()
@@ -59,7 +59,7 @@ pub fn bench_select(c: &mut Criterion) {
     match std::fs::remove_dir_all(&path) {
         Ok(()) => (),
         // Silently ignore, 99% of the time this will already be removed.
-        Err(_) => ()
+        Err(_) => (),
     }
 
     let config = sled::Config::default()
@@ -78,7 +78,7 @@ pub fn bench_select(c: &mut Criterion) {
             field_two TEXT,
             field_three TEXT
         );"
-            .to_string();
+        .to_string();
         // Insert 100k elements
         for i in 0..100000 {
             sqls += &*format!(
@@ -133,7 +133,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
     match std::fs::remove_dir_all(&path) {
         Ok(()) => (),
         // Silently ignore, 99% of the time this will already be removed.
-        Err(_) => ()
+        Err(_) => (),
     }
 
     let config = sled::Config::default()
@@ -159,7 +159,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
             field_three TEXT
         );
         "
-            .to_string();
+        .to_string();
         // Insert 100k elements
         for i in 0..100000 {
             sqls += &*format!(
