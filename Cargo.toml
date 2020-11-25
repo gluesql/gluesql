@@ -44,3 +44,8 @@ sled = { version = "0.34.4", optional = true }
 
 [dev-dependencies]
 tokio = { version = "0.3.3", features = ["macros", "rt"] }
+criterion = "0.3"
+
+[[bench]]
+name = "sled_benchmark"
+harness = false
