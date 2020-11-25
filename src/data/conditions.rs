@@ -6,47 +6,29 @@ use crate::Value;
 enum Condition {
     /// Represents an expression of the type `column_name = value`
     /// For example: `country = "France"`
-    Equals {
-        column_name: String,
-        value: Value
-    },
+    Equals { column_name: String, value: Value },
     /// Represents an expression of the type `column_name != value` or `column_name <> value`
     /// For example: `stock != 0` or `stock <> 0`
-    NotEquals {
-        column_name: String,
-        value: Value
-    },
+    NotEquals { column_name: String, value: Value },
     /// Represents an expression of the type `column_name > value`
     /// For example: `price > 50`
-    GreaterThan {
-        column_name: String,
-        value: Value
-    },
+    GreaterThan { column_name: String, value: Value },
     /// Represents an expression of the type `column_name >= value`
     /// For example: `price >= 40`
-    GreaterThanOrEquals {
-        column_name: String,
-        value: Value
-    },
+    GreaterThanOrEquals { column_name: String, value: Value },
     /// Represents an expression of the type `column_name < value`
     /// For example: `price < 60`
-    LessThan {
-        column_name: String,
-        value: Value
-    },
+    LessThan { column_name: String, value: Value },
     /// Represents an expression of the type `column_name <= value`
     /// For example: `price <= 35`
-    LessThanOrEquals {
-        column_name: String,
-        value: Value
-    },
+    LessThanOrEquals { column_name: String, value: Value },
     /// Represents an expression of the type `column_name BETWEEN min AND max`
     /// For example: `price BETWEEN 20 AND 30`
     Between {
         column_name: String,
         min: Value,
-        max: Value
-    }
+        max: Value,
+    },
 }
 /// The links are the links between the different conditions in place.
 enum Link {
