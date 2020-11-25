@@ -112,7 +112,11 @@ pub fn bench_select(c: &mut Criterion) {
     });
     c.bench_function("select_many", |b| {
         b.iter(|| {
-            let query_str = format!("SELECT * FROM Testing WHERE id > {} AND id < {}", id, id + 50);
+            let query_str = format!(
+                "SELECT * FROM Testing WHERE id > {} AND id < {}",
+                id,
+                id + 50
+            );
             id += 1;
             if id >= 10000 {
                 id = 1;
@@ -123,7 +127,6 @@ pub fn bench_select(c: &mut Criterion) {
         })
     });
 }
-
 
 pub fn bench_select_tainted(c: &mut Criterion) {
     // Generate a new database
@@ -159,7 +162,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
             field_three TEXT
         );
         "
-            .to_string();
+        .to_string();
         // Insert 100k elements
         for i in 0..100000 {
             sqls += &*format!(
@@ -193,7 +196,11 @@ pub fn bench_select_tainted(c: &mut Criterion) {
     });
     c.bench_function("select_many_tainted", |b| {
         b.iter(|| {
-            let query_str = format!("SELECT * FROM Testing WHERE id > {} AND id < {}", id, id + 50);
+            let query_str = format!(
+                "SELECT * FROM Testing WHERE id > {} AND id < {}",
+                id,
+                id + 50
+            );
             id += 1;
             if id >= 10000 {
                 id = 1;
@@ -204,7 +211,6 @@ pub fn bench_select_tainted(c: &mut Criterion) {
         })
     });
 }
-
 
 criterion_group!(benches, bench_insert, bench_select, bench_select_tainted);
 criterion_main!(benches);
