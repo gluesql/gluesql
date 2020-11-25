@@ -12,12 +12,18 @@ use {
 
 #[cfg(feature = "alter-table")]
 use crate::store::AlterTableError;
+#[cfg(feature = "index")]
+use crate::IndexError;
 
 #[derive(ThisError, Serialize, Debug)]
 pub enum Error {
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
+
+    #[cfg(feature = "index")]
+    #[error(transparent)]
+    Index(#[from] IndexError),
 
     #[error(transparent)]
     #[serde(with = "stringify")]

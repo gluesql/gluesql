@@ -1,7 +1,8 @@
+mod conditions;
 mod row;
 mod schema;
 mod table;
-pub mod value;
+mod value;
 
 pub use {
     row::{Row, RowError},

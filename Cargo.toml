@@ -20,6 +20,10 @@ default = ["sled-storage", "alter-table"]
 # You can include whether ALTER TABLE support or not for your custom database implementation.
 alter-table = []
 
+# INDEXes are optionnal.
+# You can choose to import INDEXes or not for your custom implementation.
+index = []
+
 # Who wants to make a custom storage engine,
 # default storage engine sled-storage is not required.
 sled-storage = ["sled", "bincode"]

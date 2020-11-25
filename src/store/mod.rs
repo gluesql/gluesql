@@ -5,6 +5,13 @@ pub use alter_table::*;
 #[cfg(not(feature = "alter-table"))]
 pub trait AlterTable {}
 
+#[cfg(feature = "index")]
+mod index;
+#[cfg(feature = "index")]
+pub use index::*;
+#[cfg(not(feature = "index"))]
+pub trait Index {}
+
 use async_trait::async_trait;
 use std::fmt::Debug;
 use std::marker::Sized;
