@@ -34,11 +34,5 @@ where
     ) -> MutResult<Self, ()>;
 
     /// Drops one or more already created index(es)
-    async fn drop(
-        self,
-        table_name: &str,
-        row_names: Vec<&str>,
-    ) -> MutResult<Self, ()>;
-
-    /// Scans the database for documents matching an array of requirements.
+    async fn drop(self, table_name: &str, row_names: Vec<&str>) -> MutResult<Self, ()>;
 }
