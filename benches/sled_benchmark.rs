@@ -1,5 +1,5 @@
-use gluesql::{Glue, parse, SledStorage};
 use criterion::{criterion_group, criterion_main, Criterion};
+use gluesql::{parse, Glue, SledStorage};
 use std::convert::TryFrom;
 
 // Generate benchmark tests
@@ -38,17 +38,20 @@ pub fn bench_insert(c: &mut Criterion) {
     // Prepare query out of scope, and copy it at the beginning
     let mut id = 0;
 
-    c.bench_function("insert_one", |b| b.iter(|| {
-        let query_str =
-            format!("INSERT INTO Testing \
-            VALUES ({:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");", &id);
-        id += 1;
-        for query in parse(&query_str).unwrap() {
-            glue.execute(&query).unwrap();
-        }
-    }));
+    c.bench_function("insert_one", |b| {
+        b.iter(|| {
+            let query_str = format!(
+                "INSERT INTO Testing \
+            VALUES ({:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");",
+                &id
+            );
+            id += 1;
+            for query in parse(&query_str).unwrap() {
+                glue.execute(&query).unwrap();
+            }
+        })
+    });
 }
-
 
 pub fn bench_select(c: &mut Criterion) {
     // Generate a new database
@@ -76,11 +79,15 @@ pub fn bench_select(c: &mut Criterion) {
             field_one TEXT,
             field_two TEXT,
             field_three TEXT
-        );".to_string();
+        );"
+        .to_string();
         // Insert 100k elements
         for i in 0..100000 {
-            sqls += &*format!("INSERT INTO Testing \
-            VALUES ({:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");", &i);
+            sqls += &*format!(
+                "INSERT INTO Testing \
+            VALUES ({:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");",
+                &i
+            );
         }
 
         for query in parse(&sqls).unwrap() {
@@ -91,16 +98,18 @@ pub fn bench_select(c: &mut Criterion) {
     // Prepare query out of scope, and copy it at the beginning
     let mut id = 0;
 
-    c.bench_function("select_one", |b| b.iter(|| {
-        let query_str = format!("SELECT * FROM Testing WHERE id = {}", id);
-        id += 1;
-        if id >= 10000 {
-            id = 1;
-        }
-        for query in parse(&query_str).unwrap() {
-            glue.execute(&query).unwrap();
-        }
-    }));
+    c.bench_function("select_one", |b| {
+        b.iter(|| {
+            let query_str = format!("SELECT * FROM Testing WHERE id = {}", id);
+            id += 1;
+            if id >= 10000 {
+                id = 1;
+            }
+            for query in parse(&query_str).unwrap() {
+                glue.execute(&query).unwrap();
+            }
+        })
+    });
 }
 
 criterion_group!(benches, bench_insert, bench_select);
