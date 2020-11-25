@@ -68,7 +68,7 @@ macro_rules! try_into {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SledStorage {
     tree: Db,
 }
