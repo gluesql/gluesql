@@ -19,7 +19,7 @@ pub enum IndexError {
 }
 
 #[async_trait]
-pub trait AlterTable
+pub trait Index
 where
     Self: Sized,
 {
