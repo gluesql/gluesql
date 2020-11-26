@@ -15,6 +15,7 @@ use super::select::select;
 use crate::data::Value;
 use crate::result::Result;
 use crate::store::Store;
+use crate::convert_where_query;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum FilterError {
@@ -52,6 +53,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
                 let context = Some(context).map(Rc::new);
                 let aggregated = self.aggregated.as_ref().map(Rc::clone);
 
+
                 check_expr(self.storage, context, aggregated, expr).await
             }
             None => Ok(true),
@@ -59,6 +61,23 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
     }
 }
 
+//Doing thid for the sake of testing
+//TODO: Replace this with a proper wa to deal with feature flags.
+#[cfg(feature = "index")]
+#[async_recursion(?Send)]
+pub async fn check_expr<T: 'static + Debug>(
+    storage: &dyn Store<T>,
+    filter_context: Option<Rc<FilterContext<'async_recursion>>>,
+    aggregated: Option<Rc<HashMap<&'async_recursion Function, Value>>>,
+    expr: &Expr,
+) -> Result<bool> {
+    eprintln!("Calling testing function !");
+    convert_where_query(expr);
+    Ok(true)
+}
+
+
+#[cfg(not(feature = "index"))]
 #[async_recursion(?Send)]
 pub async fn check_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,

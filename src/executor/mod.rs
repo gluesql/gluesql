@@ -9,6 +9,7 @@ mod join;
 mod limit;
 mod select;
 mod update;
+mod converter;
 
 pub use aggregate::{AggregateError, GroupKey};
 pub use blend::BlendError;
@@ -20,3 +21,4 @@ pub use join::JoinError;
 pub use limit::LimitError;
 pub use select::SelectError;
 pub use update::UpdateError;
+pub use converter::convert_where_query;
