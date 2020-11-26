@@ -19,6 +19,7 @@ use super::limit::Limit;
 use crate::data::{get_name, Row, Table};
 use crate::result::{Error, Result};
 use crate::store::Store;
+use crate::convert_where_query;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum SelectError {
@@ -157,6 +158,13 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         }
         _ => err!(SelectError::Unreachable),
     };
+
+    //Doing this for the sake of resting
+    //TODO: Remove this horror
+    if let Some(where_query) = where_clause {
+        convert_where_query(where_query);
+    }
+
 
     let TableWithJoins { relation, joins } = &table_with_joins;
     let table = Table::new(relation)?;

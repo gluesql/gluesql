@@ -1,6 +1,7 @@
 mod aggregate;
 mod blend;
 mod context;
+mod converter;
 mod create_table;
 mod evaluate;
 mod execute;
@@ -14,6 +15,7 @@ mod validate;
 
 pub use aggregate::{AggregateError, GroupKey};
 pub use blend::BlendError;
+pub use converter::convert_where_query;
 pub use create_table::CreateTableError;
 pub use evaluate::EvaluateError;
 pub use execute::{execute, ExecuteError, Payload};
