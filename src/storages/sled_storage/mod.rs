@@ -1,72 +1,15 @@
+mod alter_table;
+mod error;
+mod store;
+mod store_mut;
+#[cfg(not(feature = "alter-table"))]
+impl crate::AlterTable for SledStorage {}
+
 use sled::{self, Config, Db};
 use std::convert::TryFrom;
-use std::str;
-use thiserror::Error as ThisError;
 
-#[cfg(not(feature = "alter-table"))]
-use crate::AlterTable;
-#[cfg(feature = "alter-table")]
-use crate::AlterTableError;
 use crate::{Error, Result, Schema};
-
-#[cfg(feature = "alter-table")]
-mod alter_table;
-#[cfg(not(feature = "alter-table"))]
-impl AlterTable for SledStorage {}
-
-mod store;
-
-#[derive(ThisError, Debug)]
-enum StorageError {
-    #[cfg(feature = "alter-table")]
-    #[error(transparent)]
-    AlterTable(#[from] AlterTableError),
-
-    #[error(transparent)]
-    Sled(#[from] sled::Error),
-    #[error(transparent)]
-    Bincode(#[from] bincode::Error),
-    #[error(transparent)]
-    Str(#[from] str::Utf8Error),
-}
-
-impl Into<Error> for StorageError {
-    fn into(self) -> Error {
-        use StorageError::*;
-
-        match self {
-            Sled(e) => Error::Storage(Box::new(e)),
-            Bincode(e) => Error::Storage(e),
-            Str(e) => Error::Storage(Box::new(e)),
-
-            #[cfg(feature = "alter-table")]
-            AlterTable(e) => e.into(),
-        }
-    }
-}
-
-#[macro_export]
-macro_rules! try_into {
-    ($expr: expr) => {
-        $expr.map_err(|e| {
-            let e: StorageError = e.into();
-            let e: Error = e.into();
-
-            e
-        })?
-    };
-    ($self: expr, $expr: expr) => {
-        match $expr {
-            Err(e) => {
-                let e: StorageError = e.into();
-                let e: Error = e.into();
-
-                return Err(($self, e));
-            }
-            Ok(v) => v,
-        }
-    };
-}
+use error::err_into;
 
 #[derive(Debug, Clone)]
 pub struct SledStorage {
@@ -75,7 +18,7 @@ pub struct SledStorage {
 
 impl SledStorage {
     pub fn new(filename: &str) -> Result<Self> {
-        let tree = try_into!(sled::open(filename));
+        let tree = sled::open(filename).map_err(err_into)?;
 
         Ok(Self { tree })
     }
@@ -85,7 +28,7 @@ impl TryFrom<Config> for SledStorage {
     type Error = Error;
 
     fn try_from(config: Config) -> Result<Self> {
-        let tree = try_into!(config.open());
+        let tree = config.open().map_err(err_into)?;
 
         Ok(Self { tree })
     }
@@ -93,8 +36,11 @@ impl TryFrom<Config> for SledStorage {
 
 fn fetch_schema(tree: &Db, table_name: &str) -> Result<(String, Option<Schema>)> {
     let key = format!("schema/{}", table_name);
-    let value = try_into!(tree.get(&key.as_bytes()));
-    let schema = try_into!(value.map(|v| bincode::deserialize(&v)).transpose());
+    let value = tree.get(&key.as_bytes()).map_err(err_into)?;
+    let schema = value
+        .map(|v| bincode::deserialize(&v))
+        .transpose()
+        .map_err(err_into)?;
 
     Ok((key, schema))
 }
