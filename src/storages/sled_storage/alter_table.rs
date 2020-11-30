@@ -1,3 +1,5 @@
+#![cfg(feature = "alter-table")]
+
 use async_trait::async_trait;
 use boolinator::Boolinator;
 use std::iter::once;
@@ -5,9 +7,9 @@ use std::str;
 
 use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident, Value as AstValue};
 
-use super::{err_into, fetch_schema, AlterTableError, SledStorage};
+use super::{error::err_into, fetch_schema, SledStorage};
 use crate::utils::Vector;
-use crate::{AlterTable, MutResult, Row, Schema, Value};
+use crate::{AlterTable, AlterTableError, MutResult, Row, Schema, Value};
 
 macro_rules! try_self {
     ($self: expr, $expr: expr) => {
