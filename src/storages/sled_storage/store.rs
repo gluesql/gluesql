@@ -1,9 +1,19 @@
 use async_trait::async_trait;
 use sled::IVec;
 
-use super::{fetch_schema, SledStorage, StorageError};
-use crate::try_into;
-use crate::{Error, MutResult, Result, Row, RowIter, Schema, Store, StoreMut};
+use super::{err_into, fetch_schema, SledStorage};
+use crate::{MutResult, Result, Row, RowIter, Schema, Store, StoreMut};
+
+macro_rules! try_into {
+    ($self: expr, $expr: expr) => {
+        match $expr.map_err(err_into) {
+            Err(e) => {
+                return Err(($self, e));
+            }
+            Ok(v) => v,
+        }
+    };
+}
 
 #[async_trait(?Send)]
 impl StoreMut<IVec> for SledStorage {
@@ -72,8 +82,8 @@ impl Store<IVec> for SledStorage {
         let prefix = format!("data/{}/", table_name);
 
         let result_set = self.tree.scan_prefix(prefix.as_bytes()).map(move |item| {
-            let (key, value) = try_into!(item);
-            let value = try_into!(bincode::deserialize(&value));
+            let (key, value) = item.map_err(err_into)?;
+            let value = bincode::deserialize(&value).map_err(err_into)?;
 
             Ok((key, value))
         });
