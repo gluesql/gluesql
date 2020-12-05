@@ -35,7 +35,7 @@ pub enum SelectError {
 async fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: Table<'a>,
-    columns: Rc<Vec<Ident>>,
+    columns: Rc<[Ident]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
     let rows = storage.scan_data(table.get_name()).await?.map(move |data| {
         let (_, row) = data?;
@@ -186,13 +186,13 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         vec![]
     };
 
-    let columns = Rc::new(columns);
+    let columns = Rc::from(columns);
     let join_columns = join_columns
         .into_iter()
         .map(|(_, columns)| columns)
-        .map(Rc::new)
+        .map(Rc::from)
         .collect::<Vec<_>>();
-    let join_columns = Rc::new(join_columns);
+    let join_columns = Rc::from(join_columns);
 
     let join = Rc::new(Join::new(
         storage,

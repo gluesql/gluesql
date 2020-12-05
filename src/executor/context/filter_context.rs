@@ -10,7 +10,7 @@ use crate::data::{Row, Value};
 enum Content<'a> {
     Some {
         table_alias: &'a str,
-        columns: Rc<Vec<Ident>>,
+        columns: Rc<[Ident]>,
         row: Option<&'a Row>,
     },
     None,
@@ -26,7 +26,7 @@ pub struct FilterContext<'a> {
 impl<'a> FilterContext<'a> {
     pub fn new(
         table_alias: &'a str,
-        columns: Rc<Vec<Ident>>,
+        columns: Rc<[Ident]>,
         row: Option<&'a Row>,
         next: Option<Rc<FilterContext<'a>>>,
     ) -> Self {

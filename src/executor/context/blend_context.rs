@@ -8,7 +8,7 @@ use crate::data::{Row, Value};
 #[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
-    pub columns: Rc<Vec<Ident>>,
+    pub columns: Rc<[Ident]>,
     pub row: Option<Row>,
     next: Option<Rc<BlendContext<'a>>>,
 }
@@ -16,7 +16,7 @@ pub struct BlendContext<'a> {
 impl<'a> BlendContext<'a> {
     pub fn new(
         table_alias: &'a str,
-        columns: Rc<Vec<Ident>>,
+        columns: Rc<[Ident]>,
         row: Option<Row>,
         next: Option<Rc<BlendContext<'a>>>,
     ) -> Self {

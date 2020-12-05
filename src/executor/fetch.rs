@@ -36,9 +36,9 @@ pub async fn fetch_columns<T: 'static + Debug>(
 pub async fn fetch<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &'a str,
-    columns: Rc<Vec<Ident>>,
+    columns: Rc<[Ident]>,
     filter: Filter<'a, T>,
-) -> Result<impl TryStream<Ok = (Rc<Vec<Ident>>, T, Row), Error = Error> + 'a> {
+) -> Result<impl TryStream<Ok = (Rc<[Ident]>, T, Row), Error = Error> + 'a> {
     let filter = Rc::new(filter);
 
     let rows = storage

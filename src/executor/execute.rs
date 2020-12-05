@@ -279,7 +279,7 @@ async fn prepare<'a, T: 'static + Debug>(
             assignments,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = Rc::new(fetch_columns(storage, table_name).await?);
+            let columns = Rc::from(fetch_columns(storage, table_name).await?);
             let update = Update::new(storage, table_name, assignments, Rc::clone(&columns))?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
@@ -304,7 +304,7 @@ async fn prepare<'a, T: 'static + Debug>(
             selection,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = Rc::new(fetch_columns(storage, table_name).await?);
+            let columns = Rc::from(fetch_columns(storage, table_name).await?);
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
             fetch(storage, table_name, columns, filter)

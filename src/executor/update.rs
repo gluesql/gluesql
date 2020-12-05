@@ -28,7 +28,7 @@ pub struct Update<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     table_name: &'a str,
     fields: &'a [Assignment],
-    columns: Rc<Vec<Ident>>,
+    columns: Rc<[Ident]>,
 }
 
 impl<'a, T: 'static + Debug> Update<'a, T> {
@@ -36,7 +36,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         storage: &'a dyn Store<T>,
         table_name: &'a str,
         fields: &'a [Assignment],
-        columns: Rc<Vec<Ident>>,
+        columns: Rc<[Ident]>,
     ) -> Result<Self> {
         for assignment in fields.iter() {
             let Assignment { id, .. } = assignment;
@@ -72,7 +72,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                     .columns
                     .iter()
                     .position(|column| column.value == id.value)
-                    .ok_or_else(|| UpdateError::Unreachable)?;
+                    .ok_or(UpdateError::Unreachable)?;
 
                 let evaluated = evaluate(self.storage, context, None, value, false).await?;
 
