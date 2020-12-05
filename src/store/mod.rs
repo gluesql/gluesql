@@ -37,5 +37,5 @@ where
 
     async fn update_data(self, rows: Vec<(T, Row)>) -> MutResult<Self, ()>;
 
-    async fn delete_data(self, key: &T) -> MutResult<Self, ()>;
+    async fn delete_data(self, keys: Vec<T>) -> MutResult<Self, ()>;
 }

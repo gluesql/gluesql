@@ -74,8 +74,10 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    async fn delete_data(self, key: &IVec) -> MutResult<Self, ()> {
-        try_into!(self, self.tree.remove(key));
+    async fn delete_data(self, keys: Vec<IVec>) -> MutResult<Self, ()> {
+        for key in keys.into_iter() {
+            try_into!(self, self.tree.remove(key));
+        }
 
         Ok((self, ()))
     }

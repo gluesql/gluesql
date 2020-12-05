@@ -100,14 +100,14 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .await
                 .map(|(storage, _)| (storage, Payload::Insert(num_rows)))
         }
-        Prepared::Delete(keys) => stream::iter(keys.into_iter().map(Ok::<T, (U, Error)>))
-            .try_fold((storage, 0), |(storage, num), key| async move {
-                let (storage, _) = storage.delete_data(&key).await?;
+        Prepared::Delete(keys) => {
+            let num_rows = keys.len();
 
-                Ok((storage, num + 1))
-            })
-            .await
-            .map(|(storage, num_rows)| (storage, Payload::Delete(num_rows))),
+            storage
+                .delete_data(keys)
+                .await
+                .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
+        }
         Prepared::Update(rows) => {
             let num_rows = rows.len();
 
