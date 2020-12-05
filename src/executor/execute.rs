@@ -93,15 +93,12 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .map(|(storage, _)| (storage, Payload::Create))
         }
         Prepared::Insert(table_name, rows) => {
-            stream::iter(rows.into_iter().map(Ok::<Row, (U, Error)>))
-                .try_fold((storage, 0), |(storage, num), row| async move {
-                    let (storage, key) = storage.generate_id(&table_name).await?;
-                    let (storage, _) = storage.insert_data(&key, row).await?;
+            let num_rows = rows.len();
 
-                    Ok((storage, num + 1))
-                })
+            storage
+                .insert_data(table_name, rows)
                 .await
-                .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows)))
+                .map(|(storage, _)| (storage, Payload::Insert(num_rows)))
         }
         Prepared::Delete(keys) => stream::iter(keys.into_iter().map(Ok::<T, (U, Error)>))
             .try_fold((storage, 0), |(storage, num), key| async move {
@@ -111,14 +108,14 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             })
             .await
             .map(|(storage, num_rows)| (storage, Payload::Delete(num_rows))),
-        Prepared::Update(items) => stream::iter(items.into_iter().map(Ok::<_, (U, Error)>))
-            .try_fold((storage, 0), |(storage, num), (key, row)| async move {
-                let (storage, _) = storage.insert_data(&key, row).await?;
+        Prepared::Update(rows) => {
+            let num_rows = rows.len();
 
-                Ok((storage, num + 1))
-            })
-            .await
-            .map(|(storage, num_rows)| (storage, Payload::Update(num_rows))),
+            storage
+                .update_data(rows)
+                .await
+                .map(|(storage, _)| (storage, Payload::Update(num_rows)))
+        }
         Prepared::DropTable {
             schema_names,
             if_exists,

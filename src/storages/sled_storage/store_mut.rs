@@ -17,20 +17,6 @@ macro_rules! try_into {
 
 #[async_trait(?Send)]
 impl StoreMut<IVec> for SledStorage {
-    async fn generate_id(self, table_name: &str) -> MutResult<Self, IVec> {
-        let id = try_into!(self, self.tree.generate_id());
-        let id = id.to_be_bytes();
-        let prefix = format!("data/{}/", table_name);
-
-        let bytes = prefix
-            .into_bytes()
-            .into_iter()
-            .chain(id.iter().copied())
-            .collect::<Vec<_>>();
-
-        Ok((self, IVec::from(bytes.as_slice())))
-    }
-
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let key = format!("schema/{}", schema.table_name);
         let key = key.as_bytes();
@@ -57,10 +43,33 @@ impl StoreMut<IVec> for SledStorage {
         Ok((self, ()))
     }
 
-    async fn insert_data(self, key: &IVec, row: Row) -> MutResult<Self, ()> {
-        let value = try_into!(self, bincode::serialize(&row));
+    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+        for row in rows.into_iter() {
+            let id = try_into!(self, self.tree.generate_id());
+            let id = id.to_be_bytes();
+            let prefix = format!("data/{}/", table_name);
 
-        try_into!(self, self.tree.insert(key, value));
+            let bytes = prefix
+                .into_bytes()
+                .into_iter()
+                .chain(id.iter().copied())
+                .collect::<Vec<_>>();
+
+            let key = IVec::from(bytes);
+            let value = try_into!(self, bincode::serialize(&row));
+
+            try_into!(self, self.tree.insert(key, value));
+        }
+
+        Ok((self, ()))
+    }
+
+    async fn update_data(self, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
+        for (key, row) in rows.into_iter() {
+            let value = try_into!(self, bincode::serialize(&row));
+
+            try_into!(self, self.tree.insert(key, value));
+        }
 
         Ok((self, ()))
     }
