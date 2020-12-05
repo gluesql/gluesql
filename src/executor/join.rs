@@ -56,7 +56,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
     pub async fn apply(
         &self,
         init_context: Result<BlendContext<'a>>,
-        join_columns: Rc<Vec<Rc<Vec<Ident>>>>,
+        join_columns: Rc<[Rc<[Ident]>]>,
     ) -> Result<Joined<'a>> {
         let init_context = init_context.map(Rc::new);
         let init_rows: Joined<'a> = Box::pin(stream::once(async { init_context }));
@@ -101,7 +101,7 @@ async fn join<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
-    columns: Rc<Vec<Ident>>,
+    columns: Rc<[Ident]>,
     blend_context: Result<Rc<BlendContext<'a>>>,
 ) -> Result<Joined<'a>> {
     let AstJoin {
@@ -152,7 +152,7 @@ async fn fetch_joined<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     table_name: &'a str,
     table_alias: &'a str,
-    columns: Rc<Vec<Ident>>,
+    columns: Rc<[Ident]>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     blend_context: Rc<BlendContext<'a>>,
     constraint: &'a JoinConstraint,
