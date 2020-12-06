@@ -1,27 +1,25 @@
 use crate::*;
 
 test_case!(aggregate, async move {
-    let create_sql = "
+    run!(
+        "
         CREATE TABLE Item (
             id INTEGER,
             quantity INTEGER,
             age INTEGER NULL,
         );
-    ";
-
-    run!(create_sql);
-
-    let insert_sqls = [
-        "INSERT INTO Item (id, quantity, age) VALUES (1, 10, 11);",
-        "INSERT INTO Item (id, quantity, age) VALUES (2, 0, 90);",
-        "INSERT INTO Item (id, quantity, age) VALUES (3, 9, NULL);",
-        "INSERT INTO Item (id, quantity, age) VALUES (4, 3, 3);",
-        "INSERT INTO Item (id, quantity, age) VALUES (5, 25, NULL);",
-    ];
-
-    for insert_sql in insert_sqls.iter() {
-        run!(insert_sql);
-    }
+    "
+    );
+    run!(
+        "
+        INSERT INTO Item (id, quantity, age) VALUES
+            (1, 10,   11),
+            (2,  0,   90),
+            (3,  9, NULL),
+            (4,  3,    3),
+            (5, 25, NULL);
+    "
+    );
 
     use Value::*;
 
@@ -91,29 +89,27 @@ test_case!(aggregate, async move {
 });
 
 test_case!(group_by, async move {
-    let create_sql = "
+    run!(
+        "
         CREATE TABLE Item (
             id INTEGER,
             quantity INTEGER NULL,
             city TEXT,
             ratio FLOAT,
         );
-    ";
-
-    run!(create_sql);
-
-    let insert_sqls = [
-        "INSERT INTO Item (id, quantity, city, ratio) VALUES (1, 10, \"Seoul\", 0.2);",
-        "INSERT INTO Item (id, quantity, city, ratio) VALUES (2, 0, \"Dhaka\", 0.9);",
-        "INSERT INTO Item (id, quantity, city, ratio) VALUES (3, NULL, \"Beijing\", 1.1);",
-        "INSERT INTO Item (id, quantity, city, ratio) VALUES (3, 30, \"Daejeon\", 3.2);",
-        "INSERT INTO Item (id, quantity, city, ratio) VALUES (4, 11, \"Seoul\", 11.1);",
-        "INSERT INTO Item (id, quantity, city, ratio) VALUES (5, 24, \"Seattle\", 6.11);",
-    ];
-
-    for insert_sql in insert_sqls.iter() {
-        run!(insert_sql);
-    }
+    "
+    );
+    run!(
+        "
+        INSERT INTO Item (id, quantity, city, ratio) VALUES
+            (1,   10,   \"Seoul\",  0.2),
+            (2,    0,   \"Dhaka\",  0.9),
+            (3, NULL, \"Beijing\",  1.1),
+            (3,   30, \"Daejeon\",  3.2),
+            (4,   11,   \"Seoul\", 11.1),
+            (5,   24, \"Seattle\", 6.11);
+    "
+    );
 
     use Value::*;
 

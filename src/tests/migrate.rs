@@ -1,24 +1,23 @@
 use crate::*;
 
 test_case!(migrate, async move {
-    let sql = r#"
-CREATE TABLE Test (
-    id INT,
-    num INT,
-    name TEXT
-)"#;
-
-    run!(sql);
-
-    let sqls = [
-        "INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")",
-        "INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")",
-        "INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")",
-    ];
-
-    for sql in sqls.iter() {
-        run!(sql);
-    }
+    run!(
+        "
+        CREATE TABLE Test (
+            id INT,
+            num INT,
+            name TEXT
+        );
+    "
+    );
+    run!(
+        "
+        INSERT INTO Test (id, num, name) VALUES
+            (1, 2, \"Hello\"),
+            (1, 9, \"World\"),
+            (3, 4, \"Great\");
+        "
+    );
 
     let error_cases = vec![
         (

@@ -1,29 +1,26 @@
 use crate::*;
 
 test_case!(arithmetic, async move {
-    let create_sql = "
+    run!(
+        "
         CREATE TABLE Arith (
             id INTEGER,
             num INTEGER,
             name TEXT,
         );
-    ";
-    run!(create_sql);
-
-    let delete_sql = "DELETE FROM Arith";
-    run!(delete_sql);
-
-    let insert_sqls = [
-        "INSERT INTO Arith (id, num, name) VALUES (1, 6, \"A\");",
-        "INSERT INTO Arith (id, num, name) VALUES (2, 8, \"B\");",
-        "INSERT INTO Arith (id, num, name) VALUES (3, 4, \"C\");",
-        "INSERT INTO Arith (id, num, name) VALUES (4, 2, \"D\");",
-        "INSERT INTO Arith (id, num, name) VALUES (5, 3, \"E\");",
-    ];
-
-    for insert_sql in insert_sqls.iter() {
-        run!(insert_sql);
-    }
+    "
+    );
+    run!("DELETE FROM Arith");
+    run!(
+        "
+        INSERT INTO Arith (id, num, name) VALUES
+            (1, 6, \"A\"),
+            (2, 8, \"B\"),
+            (3, 4, \"C\"),
+            (4, 2, \"D\"),
+            (5, 3, \"E\");
+    "
+    );
 
     let test_cases = [
         // add on WHERE
@@ -91,29 +88,25 @@ test_case!(arithmetic, async move {
 });
 
 test_case!(blend, async move {
-    let create_sql = "
+    run!(
+        "
         CREATE TABLE Arith (
             id INTEGER,
             num INTEGER,
         );
-    ";
-
-    run!(create_sql);
-
-    let delete_sql = "DELETE FROM Arith";
-    run!(delete_sql);
-
-    let insert_sqls = [
-        "INSERT INTO Arith (id, num) VALUES (1, 6);",
-        "INSERT INTO Arith (id, num) VALUES (2, 8);",
-        "INSERT INTO Arith (id, num) VALUES (3, 4);",
-        "INSERT INTO Arith (id, num) VALUES (4, 2);",
-        "INSERT INTO Arith (id, num) VALUES (5, 3);",
-    ];
-
-    for insert_sql in insert_sqls.iter() {
-        run!(insert_sql);
-    }
+    "
+    );
+    run!("DELETE FROM Arith");
+    run!(
+        "
+        INSERT INTO Arith (id, num) VALUES
+            (1, 6),
+            (2, 8),
+            (3, 4),
+            (4, 2),
+            (5, 3);
+    "
+    );
 
     use Value::I64;
 

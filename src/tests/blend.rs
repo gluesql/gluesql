@@ -28,14 +28,20 @@ test_case!(blend, async move {
     }
 
     let insert_sqls = [
-        "INSERT INTO BlendUser (id, name) VALUES (1, \"Taehoon\")",
-        "INSERT INTO BlendUser (id, name) VALUES (2, \"Mike\")",
-        "INSERT INTO BlendUser (id, name) VALUES (3, \"Jorno\")",
-        "INSERT INTO BlendItem (id, player_id, quantity) VALUES (101, 1, 1);",
-        "INSERT INTO BlendItem (id, player_id, quantity) VALUES (102, 2, 4);",
-        "INSERT INTO BlendItem (id, player_id, quantity) VALUES (103, 2, 9);",
-        "INSERT INTO BlendItem (id, player_id, quantity) VALUES (104, 3, 2);",
-        "INSERT INTO BlendItem (id, player_id, quantity) VALUES (105, 3, 1);",
+        "
+        INSERT INTO BlendUser (id, name) VALUES
+            (1, \"Taehoon\"),
+            (2,    \"Mike\"),
+            (3,   \"Jorno\");
+        ",
+        "
+        INSERT INTO BlendItem (id, player_id, quantity) VALUES
+            (101, 1, 1),
+            (102, 2, 4),
+            (103, 2, 9),
+            (104, 3, 2),
+            (105, 3, 1);
+        ",
     ];
 
     for insert_sql in insert_sqls.iter() {
