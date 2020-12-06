@@ -63,10 +63,10 @@ pub trait Store<T: Debug> {
 }
 
 pub trait StoreMut<T: Debug> where Self: Sized {
-    async fn generate_id(..) -> ..;
     async fn insert_schema(..) -> ..;
     async fn delete_schema(..) -> ..;
     async fn insert_data(..) -> ..;
+    async fn update_data(..) -> ..;
     async fn delete_data(..) -> ..;
 }
 ```
