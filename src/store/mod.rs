@@ -29,13 +29,13 @@ pub trait StoreMut<T: Debug>
 where
     Self: Sized,
 {
-    async fn generate_id(self, table_name: &str) -> MutResult<Self, T>;
-
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()>;
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
 
-    async fn insert_data(self, key: &T, row: Row) -> MutResult<Self, ()>;
+    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()>;
 
-    async fn delete_data(self, key: &T) -> MutResult<Self, ()>;
+    async fn update_data(self, rows: Vec<(T, Row)>) -> MutResult<Self, ()>;
+
+    async fn delete_data(self, keys: Vec<T>) -> MutResult<Self, ()>;
 }
