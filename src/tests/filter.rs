@@ -20,14 +20,20 @@ test_case!(filter, async move {
     }
 
     let insert_sqls = [
-        "INSERT INTO Boss (id, name, strength) VALUES (1, \"Amelia\", 10.10);",
-        "INSERT INTO Boss (id, name, strength) VALUES (2, \"Doll\", 20.20);",
-        "INSERT INTO Boss (id, name, strength) VALUES (3, \"Gascoigne\", 30.30);",
-        "INSERT INTO Boss (id, name, strength) VALUES (4, \"Gehrman\", 40.40);",
-        "INSERT INTO Boss (id, name, strength) VALUES (5, \"Maria\", 50.50);",
-        "INSERT INTO Hunter (id, name) VALUES (1, \"Gascoigne\");",
-        "INSERT INTO Hunter (id, name) VALUES (2, \"Gehrman\");",
-        "INSERT INTO Hunter (id, name) VALUES (3, \"Maria\");",
+        "
+        INSERT INTO Boss (id, name, strength) VALUES
+            (1,    \"Amelia\", 10.10),
+            (2,      \"Doll\", 20.20),
+            (3, \"Gascoigne\", 30.30),
+            (4,   \"Gehrman\", 40.40),
+            (5,     \"Maria\", 50.50);
+        ",
+        "
+        INSERT INTO Hunter (id, name) VALUES
+            (1, \"Gascoigne\"),
+            (2,   \"Gehrman\"),
+            (3,     \"Maria\");
+        ",
     ];
 
     for sql in insert_sqls.iter() {

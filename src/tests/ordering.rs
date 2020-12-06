@@ -1,29 +1,25 @@
 use crate::*;
 
 test_case!(ordering, async move {
-    let create_sql = "
+    run!(
+        "
         CREATE TABLE Operator (
             id INTEGER,
             name TEXT,
         );
-    ";
-
-    run!(create_sql);
-
-    let delete_sql = "DELETE FROM Operator";
-    run!(delete_sql);
-
-    let insert_sqls = [
-        "INSERT INTO Operator (id, name) VALUES (1, \"Abstract\");",
-        "INSERT INTO Operator (id, name) VALUES (2, \"Azzzz\");",
-        "INSERT INTO Operator (id, name) VALUES (3, \"July\");",
-        "INSERT INTO Operator (id, name) VALUES (4, \"Romeo\");",
-        "INSERT INTO Operator (id, name) VALUES (5, \"Trade\");",
-    ];
-
-    for insert_sql in insert_sqls.iter() {
-        run!(insert_sql);
-    }
+    "
+    );
+    run!("DELETE FROM Operator");
+    run!(
+        "
+        INSERT INTO Operator (id, name) VALUES
+            (1, \"Abstract\"),
+            (2,    \"Azzzz\"),
+            (3,     \"July\"),
+            (4,    \"Romeo\"),
+            (5,    \"Trade\");
+    "
+    );
 
     let test_cases = [
         (1, "SELECT * FROM Operator WHERE id < 2;"),

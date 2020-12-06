@@ -9,9 +9,14 @@ CREATE TABLE Test (
     name TEXT
 )"#
     );
-    run!("INSERT INTO Test (id, num, name) VALUES (NULL, 2, \"Hello\")");
-    run!("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
-    run!("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\")");
+    run!(
+        "
+        INSERT INTO Test (id, num, name) VALUES
+            (NULL, 2, \"Hello\"),
+            (   1, 9, \"World\"),
+            (   3, 4, \"Great\");
+    "
+    );
 
     use Value::*;
 
@@ -246,12 +251,5 @@ test_case!(nullable_text, async move {
     "
     );
 
-    let insert_sqls = [
-        "INSERT INTO Foo (id, name) VALUES (1, \"Hello\")",
-        "INSERT INTO Foo (id, name) VALUES (2, Null)",
-    ];
-
-    for insert_sql in insert_sqls.iter() {
-        run!(insert_sql);
-    }
+    run!("INSERT INTO Foo (id, name) VALUES (1, \"Hello\"), (2, Null);");
 });

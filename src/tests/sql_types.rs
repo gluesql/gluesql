@@ -1,29 +1,25 @@
 use crate::*;
 
 test_case!(sql_types, async move {
-    let create_sql = "
+    run!(
+        "
         CREATE TABLE Item (
             id INTEGER,
             content TEXT,
             verified BOOLEAN,
             ratio FLOAT
         );
-    ";
-
-    run!(create_sql);
-
-    let delete_sql = "DELETE FROM Item";
-
-    run!(delete_sql);
-
-    let insert_sqls = [
-        "INSERT INTO Item (id, content, verified, ratio) VALUES (1, \"Hello\", True, 0.1);",
-        "INSERT INTO Item (id, content, verified, ratio) VALUES (1, \"World\", False, 0.9);",
-    ];
-
-    for insert_sql in insert_sqls.iter() {
-        run!(insert_sql);
-    }
+    "
+    );
+    run!(
+        "
+        INSERT INTO Item
+            (id,   content, verified, ratio)
+        VALUES
+            ( 1, \"Hello\",     True,   0.1),
+            ( 1, \"World\",    False,   0.9);
+    "
+    );
 
     let test_sqls = [
         (2, "SELECT * FROM Item;"),
@@ -44,5 +40,5 @@ test_case!(sql_types, async move {
         count!(*num, sql);
     }
 
-    run!(delete_sql);
+    run!("DELETE FROM Item");
 });
