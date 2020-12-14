@@ -1,7 +1,10 @@
 use async_trait::async_trait;
-use sled::IVec;
+use sled::{
+    transaction::{ConflictableTransactionError, TransactionError},
+    IVec,
+};
 
-use super::{err_into, SledStorage};
+use super::{err_into, error::StorageError, SledStorage};
 use crate::{MutResult, Row, Schema, StoreMut};
 
 macro_rules! try_into {
@@ -13,6 +16,20 @@ macro_rules! try_into {
             Ok(v) => v,
         }
     };
+}
+
+macro_rules! transaction {
+    ($self: expr, $expr: expr) => {{
+        let result = $self.tree.transaction($expr).map_err(|e| match e {
+            TransactionError::Abort(e) => e,
+            TransactionError::Storage(e) => StorageError::Sled(e).into(),
+        });
+
+        match result {
+            Ok(_) => Ok(($self, ())),
+            Err(e) => Err(($self, e)),
+        }
+    }};
 }
 
 #[async_trait(?Send)]
@@ -44,41 +61,51 @@ impl StoreMut<IVec> for SledStorage {
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
-        for row in rows.into_iter() {
-            let id = try_into!(self, self.tree.generate_id());
-            let id = id.to_be_bytes();
-            let prefix = format!("data/{}/", table_name);
+        transaction!(self, |tree| {
+            for row in rows.iter() {
+                let id = tree.generate_id()?;
+                let id = id.to_be_bytes();
+                let prefix = format!("data/{}/", table_name);
 
-            let bytes = prefix
-                .into_bytes()
-                .into_iter()
-                .chain(id.iter().copied())
-                .collect::<Vec<_>>();
+                let bytes = prefix
+                    .into_bytes()
+                    .into_iter()
+                    .chain(id.iter().copied())
+                    .collect::<Vec<_>>();
 
-            let key = IVec::from(bytes);
-            let value = try_into!(self, bincode::serialize(&row));
+                let key = IVec::from(bytes);
+                let value = bincode::serialize(row)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-            try_into!(self, self.tree.insert(key, value));
-        }
+                tree.insert(key, value)?;
+            }
 
-        Ok((self, ()))
+            Ok(())
+        })
     }
 
     async fn update_data(self, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
-        for (key, row) in rows.into_iter() {
-            let value = try_into!(self, bincode::serialize(&row));
+        transaction!(self, |tree| {
+            for (key, row) in rows.iter() {
+                let value = bincode::serialize(row)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-            try_into!(self, self.tree.insert(key, value));
-        }
+                tree.insert(key, value)?;
+            }
 
-        Ok((self, ()))
+            Ok(())
+        })
     }
 
     async fn delete_data(self, keys: Vec<IVec>) -> MutResult<Self, ()> {
-        for key in keys.into_iter() {
-            try_into!(self, self.tree.remove(key));
-        }
+        transaction!(self, |tree| {
+            for key in keys.iter() {
+                tree.remove(key)?;
+            }
 
-        Ok((self, ()))
+            Ok(())
+        })
     }
 }
