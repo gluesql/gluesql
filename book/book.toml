@@ -1,0 +1,10 @@
+[book]
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>", "Kyran Gostelow <kyran@gostelow.me>"]
+language = "en"
+multilingual = false
+src = "src"
+title = "GlueSQL Documentation"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
+keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webassembly"]
