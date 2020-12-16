@@ -64,6 +64,6 @@ fn main() {
         value => panic!("Unexpected type: {:?}", value),
     };
 
-    println!("Hello {}!", to_greet);
+    println!("Hello {}!", to_greet); // Will always output "Hello World!"
 }
 ```
