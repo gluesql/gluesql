@@ -6,14 +6,14 @@
 [![Chat](https://img.shields.io/discord/780298017940176946)](https://discord.gg/C6TDEgzDzY)
 
 ## SQL Database Engine as a Library
-GlueSQL is a SQL database library written in Rust which provides parser ([sqlparser-rs](https://github.com/ballista-compute/sqlparser-rs)), execution layer, and an optional storage ([sled](https://github.com/spacejam/sled)).  
-Developers can use GlueSQL to build their own SQL databases or they can simply use GlueSQL as an embedded SQL database using default storage.  
+GlueSQL is a SQL database library written in Rust. It provides a parser ([sqlparser-rs](https://github.com/ballista-compute/sqlparser-rs)), execution layer, and optional storage ([sled](https://github.com/spacejam/sled)) packaged into a single library.
+Developers can choose to use GlueSQL to build their own SQL database, or as an embedded SQL database using default storage.  
 
 ## Standalone Mode
-You can simply use GlueSQL as an embedded SQL database, GlueSQL provides [sled](https://github.com/spacejam/sled "sled") as a default storage engine.
+You can use GlueSQL as an embedded SQL database. GlueSQL provides [sled](https://github.com/spacejam/sled "sled") as a default storage engine.
 
 ### Installation
-In your `Cargo.toml`
+In your `Cargo.toml`:
 ```toml
 [dependencies]
 gluesql = "0.4"
@@ -43,7 +43,7 @@ fn main() {
 
 ## SQL Library Mode (For Custom Storage)
 ### Installation
-Now you don't need to include `sled-storage`. So in `Cargo.toml`,
+`sled-storage` is optional. So in `Cargo.toml`:
 ```toml
 [dependencies]
 gluesql = { version = "0.4", default-features = false, features = ["alter-table"] }
@@ -54,7 +54,7 @@ gluesql = { version = "0.4", default-features = false }
 ```
 
 ### Usage
-All you only need to do is implementing 2 traits: `Store` and `StoreMut`!
+There are two required 2 traits for using GlueSQL: `Store` and `StoreMut`:
 In `src/store/mod.rs`,
 ```rust
 pub trait Store<T: Debug> {
@@ -71,7 +71,7 @@ pub trait StoreMut<T: Debug> where Self: Sized {
 }
 ```
 
-And a single optional trait, whether implementing this is all up to you!
+.. there is also a single, optional trait:
 In `src/store/alter_table.rs`,
 ```rust
 pub trait AlterTable where Self: Sized {
@@ -82,8 +82,8 @@ pub trait AlterTable where Self: Sized {
 }
 ```
 
-### Examples - [GlueSQL-js](https://github.com/gluesql/gluesql-js)  
-Use SQL in web browsers!  
+### Examples - [GlueSQL-js](https://github.com/gluesql/gluesql-js)
+Use SQL in web browsers!
 GlueSQL-js provides 3 storage options,
 * in-memory
 * localStorage
@@ -102,11 +102,11 @@ You can see current query supports in [src/tests/*](https://github.com/gluesql/g
 
 ### Other expected use cases
 * Run SQL in web browsers - [gluesql-js](https://github.com/gluesql/gluesql-js)
-It would be cool to make state management library using `gluesql-js`.
+It would be cool to make a state management library using `gluesql-js`.
 * Add SQL layer to NoSQL databases: Redis, CouchDB...
 * Build new SQL database management system
 
 ## Contribution
-It's very early stage, please feel free to do whatever you want to.  
-Only the thing you need to be aware of is...  
-- Except for `src/glue.rs`, `src/tests/` and `src/utils/`, there is no place to use `mut` keyword.  
+GlueSQL is still in the very early stages of development. Please feel free to contribute however you'd like!
+The only the thing you need to be aware of is...
+- Except for `src/glue.rs`, `src/tests/` and `src/utils/`, there is no place to use `mut` keyword.
