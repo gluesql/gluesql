@@ -7,7 +7,7 @@
 
 ## SQL Database Engine as a Library
 GlueSQL is a SQL database library written in Rust. It provides a parser ([sqlparser-rs](https://github.com/ballista-compute/sqlparser-rs)), execution layer, and optional storage ([sled](https://github.com/spacejam/sled)) packaged into a single library.
-Developers can choose to use GlueSQL to build their own SQL database, or as an embedded SQL database using default storage.  
+Developers can choose to use GlueSQL to build their own SQL database, or as an embedded SQL database using the default storage engine.  
 
 ## Standalone Mode
 You can use GlueSQL as an embedded SQL database. GlueSQL provides [sled](https://github.com/spacejam/sled "sled") as a default storage engine.
@@ -54,7 +54,7 @@ gluesql = { version = "0.4", default-features = false }
 ```
 
 ### Usage
-There are two required 2 traits for using GlueSQL: `Store` and `StoreMut`:
+There are two required 2 traits for using GlueSQL: `Store` and `StoreMut`.
 In `src/store/mod.rs`,
 ```rust
 pub trait Store<T: Debug> {
@@ -90,7 +90,7 @@ GlueSQL-js provides 3 storage options,
 * sessionStorage.
 
 ## SQL Features
-GlueSQL currently supports limited queries, it's in very early stage.
+GlueSQL currently supports a limited subset of queries. It's being actively developed.
 
 * `CREATE` with 4 types: `INTEGER`, `FLOAT`, `BOOLEAN`, `TEXT` with an optional `NULL` attribute.
 * `ALTER TABLE` with 4 operations: `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
@@ -98,7 +98,7 @@ GlueSQL currently supports limited queries, it's in very early stage.
 * `GROUP BY`, `HAVING`
 * Nested select, join, aggregations ...
 
-You can see currently supported queries in [src/tests/*](https://github.com/gluesql/gluesql/tree/main/src/tests).
+You can see tests for the currently supported queries in [src/tests/*](https://github.com/gluesql/gluesql/tree/main/src/tests).
 
 ### Other expected use cases
 * Run SQL in web browsers - [gluesql-js](https://github.com/gluesql/gluesql-js)
@@ -108,5 +108,5 @@ It would be cool to make a state management library using `gluesql-js`.
 
 ## Contribution
 GlueSQL is still in the very early stages of development. Please feel free to contribute however you'd like!
-The only the thing you need to be aware of is...
-- Except for `src/glue.rs`, `src/tests/` and `src/utils/`, there is no place to use `mut` keyword.
+The only thing you need to be aware of is...
+- Except for `src/glue.rs`, `src/tests/` and `src/utils/`, using the `mut` keyword is discouraged.
