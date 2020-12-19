@@ -98,7 +98,7 @@ GlueSQL currently supports limited queries, it's in very early stage.
 * `GROUP BY`, `HAVING`
 * Nested select, join, aggregations ...
 
-You can see current query supports in [src/tests/*](https://github.com/gluesql/gluesql/tree/main/src/tests).
+You can see currently supported queries in [src/tests/*](https://github.com/gluesql/gluesql/tree/main/src/tests).
 
 ### Other expected use cases
 * Run SQL in web browsers - [gluesql-js](https://github.com/gluesql/gluesql-js)
