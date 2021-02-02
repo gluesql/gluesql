@@ -6,7 +6,7 @@ use thiserror::Error as ThisError;
 
 #[cfg(feature = "alter-table")]
 use sqlparser::ast::AlterTableOperation;
-use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
+use sqlparser::ast::{Ident, ObjectType, SetExpr, Statement, Values};
 
 use crate::data::{get_name, Row, Schema};
 use crate::parse_sql::Query;
@@ -17,6 +17,7 @@ use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
+use super::validate::{validate_rows, validate_rows_by, ColumnValidation};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -93,6 +94,10 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .map(|(storage, _)| (storage, Payload::Create))
         }
         Prepared::Insert(table_name, rows) => {
+            let validated =
+                validate_rows(&storage, &table_name, ColumnValidation::All, &rows).await;
+            try_into!(storage, validated);
+
             let num_rows = rows.len();
 
             storage
@@ -108,7 +113,17 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .await
                 .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
         }
-        Prepared::Update(rows) => {
+        Prepared::Update(table_name, columns_to_update, rows) => {
+            let validated = validate_rows_by(
+                &storage,
+                &table_name,
+                ColumnValidation::SpecifiedColumns(columns_to_update),
+                &rows,
+                |row| &row.1,
+            )
+            .await;
+            try_into!(storage, validated);
+
             let num_rows = rows.len();
 
             storage
@@ -184,7 +199,7 @@ enum Prepared<'a, T> {
     },
     Insert(&'a str, Vec<Row>),
     Delete(Vec<T>),
-    Update(Vec<(T, Row)>),
+    Update(&'a str, Vec<Ident>, Vec<(T, Row)>),
     Select {
         labels: Vec<String>,
         rows: Vec<Row>,
@@ -279,6 +294,7 @@ async fn prepare<'a, T: 'static + Debug>(
             let columns = Rc::from(fetch_columns(storage, table_name).await?);
             let update = Update::new(storage, table_name, assignments, Rc::clone(&columns))?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
+            let columns_to_update = update.columns_to_update();
 
             fetch(storage, table_name, columns, filter)
                 .await?
@@ -294,7 +310,7 @@ async fn prepare<'a, T: 'static + Debug>(
                 })
                 .try_collect::<Vec<_>>()
                 .await
-                .map(Prepared::Update)
+                .map(|rows| Prepared::Update(table_name, columns_to_update, rows))
         }
         Statement::Delete {
             table_name,

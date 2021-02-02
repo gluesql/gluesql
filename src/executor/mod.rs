@@ -9,6 +9,7 @@ mod join;
 mod limit;
 mod select;
 mod update;
+mod validate;
 
 pub use aggregate::{AggregateError, GroupKey};
 pub use blend::BlendError;

@@ -47,6 +47,9 @@ pub enum ValueError {
 
     #[error("unary minus operation for non numeric value")]
     UnaryMinusOnNonNumeric,
+
+    #[error("Duplicate entry '{0}' for unique column '{1}'")]
+    DuplicateEntryOnUniqueField(String, String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,6 +129,10 @@ impl PartialEq<AstValue> for Value {
 impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
+            (Value::Bool(l), Value::Bool(r))
+            | (Value::OptBool(Some(l)), Value::Bool(r))
+            | (Value::Bool(l), Value::OptBool(Some(r)))
+            | (Value::OptBool(Some(l)), Value::OptBool(Some(r))) => Some(l.cmp(r)),
             (Value::I64(l), Value::I64(r))
             | (Value::OptI64(Some(l)), Value::I64(r))
             | (Value::I64(l), Value::OptI64(Some(r)))

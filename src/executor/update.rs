@@ -116,4 +116,11 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
             .await
             .map(Row)
     }
+
+    pub fn columns_to_update(&self) -> Vec<Ident> {
+        self.fields
+            .iter()
+            .map(|assignment| assignment.id.clone())
+            .collect()
+    }
 }
