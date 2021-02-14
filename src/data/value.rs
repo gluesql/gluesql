@@ -7,7 +7,7 @@ use thiserror::Error as ThisError;
 
 use sqlparser::ast::{DataType, Expr, Ident, Value as AstValue};
 
-use crate::executor::GroupKey;
+use crate::executor::{GroupKey, UniqueKey};
 use crate::result::{Error, Result};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
@@ -48,8 +48,8 @@ pub enum ValueError {
     #[error("unary minus operation for non numeric value")]
     UnaryMinusOnNonNumeric,
 
-    #[error("Duplicate entry '{0}' for unique column '{1}'")]
-    DuplicateEntryOnUniqueField(String, String),
+    #[error("floating columns cannot be set to unique constraint")]
+    FloatCannotBeUnique,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -227,6 +227,38 @@ impl TryInto<GroupKey> for Value {
             Str(v) | OptStr(Some(v)) => Ok(GroupKey::Str(v)),
             Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(GroupKey::Null),
             F64(_) | OptF64(_) => Err(ValueError::FloatCannotBeGroupedBy.into()),
+        }
+    }
+}
+
+impl TryInto<UniqueKey> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<UniqueKey> {
+        use Value::*;
+
+        match self {
+            Bool(v) | OptBool(Some(v)) => Ok(UniqueKey::Bool(*v)),
+            I64(v) | OptI64(Some(v)) => Ok(UniqueKey::I64(*v)),
+            Str(v) | OptStr(Some(v)) => Ok(UniqueKey::Str(v.clone())),
+            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(UniqueKey::Null),
+            F64(_) | OptF64(_) => Err(ValueError::FloatCannotBeUnique.into()),
+        }
+    }
+}
+
+impl TryInto<UniqueKey> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<UniqueKey> {
+        use Value::*;
+
+        match self {
+            Bool(v) | OptBool(Some(v)) => Ok(UniqueKey::Bool(v)),
+            I64(v) | OptI64(Some(v)) => Ok(UniqueKey::I64(v)),
+            Str(v) | OptStr(Some(v)) => Ok(UniqueKey::Str(v)),
+            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(UniqueKey::Null),
+            F64(_) | OptF64(_) => Err(ValueError::FloatCannotBeUnique.into()),
         }
     }
 }

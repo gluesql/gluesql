@@ -17,7 +17,7 @@ use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
-use super::validate::{validate_rows, validate_rows_by, ColumnValidation};
+use super::validate::{validate_rows, validate_table, ColumnValidation};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -36,8 +36,6 @@ pub enum ExecuteError {
 
     #[error("table does not exist")]
     TableNotExists,
-    #[error("table already exists")]
-    TableAlreadyExists,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -80,13 +78,8 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             schema,
             if_not_exists,
         } => {
-            if try_into!(storage, storage.fetch_schema(&schema.table_name).await).is_some() {
-                return if if_not_exists {
-                    Ok((storage, Payload::Create))
-                } else {
-                    Err((storage, ExecuteError::TableAlreadyExists.into()))
-                };
-            }
+            let validated = validate_table(&storage, &schema, if_not_exists).await;
+            try_into!(storage, validated);
 
             storage
                 .insert_schema(&schema)
@@ -95,7 +88,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
         }
         Prepared::Insert(table_name, rows) => {
             let validated =
-                validate_rows(&storage, &table_name, ColumnValidation::All, &rows).await;
+                validate_rows(&storage, &table_name, ColumnValidation::All, rows.iter()).await;
             try_into!(storage, validated);
 
             let num_rows = rows.len();
@@ -114,12 +107,11 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
         }
         Prepared::Update(table_name, columns_to_update, rows) => {
-            let validated = validate_rows_by(
+            let validated = validate_rows(
                 &storage,
                 &table_name,
                 ColumnValidation::SpecifiedColumns(columns_to_update),
-                &rows,
-                |row| &row.1,
+                rows.iter().map(|r| &r.1),
             )
             .await;
             try_into!(storage, validated);

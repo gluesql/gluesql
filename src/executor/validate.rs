@@ -1,204 +1,245 @@
-use futures::stream::{self, TryStreamExt};
-use sqlparser::ast::{ColumnDef, ColumnOption, Ident};
-use std::{cmp::Ordering, fmt::Debug, rc::Rc};
+use im_rc::HashSet;
+use serde::Serialize;
+use sqlparser::ast::{ColumnDef, ColumnOption, DataType, Ident};
+use std::{convert::TryInto, fmt::Debug, rc::Rc};
+use thiserror::Error as ThisError;
 
-use crate::data::{Row, Schema, Value, ValueError};
+use crate::data::{Row, Schema, Value};
 use crate::result::Result;
 use crate::store::Store;
-
-use super::execute::ExecuteError;
+use crate::utils::Vector;
 
 pub enum ColumnValidation {
     All,
     SpecifiedColumns(Vec<Ident>),
 }
 
-pub async fn validate_rows<'a, T: 'static + Debug>(
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum UniqueKey {
+    Bool(bool),
+    I64(i64),
+    Str(String),
+    Null,
+}
+
+#[derive(Debug, PartialEq, Serialize, ThisError)]
+pub enum ValidateError {
+    #[error("conflict! storage row has no column on index {0}")]
+    ConflictOnStorageColumnIndex(usize),
+
+    #[error("conflict! column '{0}' of data type '{1}' conflicts with unique constraint")]
+    ConflictOnUniqueColumnDataType(String, String),
+
+    #[error("duplicate entry '{0}' for unique column '{1}'")]
+    DuplicateEntryOnUniqueField(String, String),
+
+    #[error("table already exists")]
+    TableAlreadyExists,
+
+    #[error("table does not exist")]
+    TableNotExists,
+
+    #[error("column '{0}' of data type '{1}' is unsupported for unique constraint")]
+    UnsupportedDataTypeForUniqueColumn(String, String),
+}
+
+pub async fn validate_rows<T: 'static + Debug>(
     storage: &impl Store<T>,
     table_name: &str,
     column_validation: ColumnValidation,
-    rows: &'a [Row],
+    row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
-    validate_rows_by(storage, table_name, column_validation, rows, |r| r).await
+    validate_unique(storage, table_name, column_validation, row_iter).await
 }
 
-pub async fn validate_rows_by<'a, T: 'static + Debug, U: 'static + Debug, F>(
+pub async fn validate_table<T: 'static + Debug>(
     storage: &impl Store<T>,
-    table_name: &str,
-    column_validation: ColumnValidation,
-    items: &'a [U],
-    item_to_row: F,
-) -> Result<()>
-where
-    F: Fn(&U) -> &Row,
-{
-    if items.is_empty() {
-        return Ok(());
-    }
-
-    validate_unique_by(storage, table_name, column_validation, items, item_to_row).await
-}
-
-async fn validate_unique_by<'a, T: 'static + Debug, U: 'static + Debug, F>(
-    storage: &impl Store<T>,
-    table_name: &str,
-    column_validation: ColumnValidation,
-    items: &'a [U],
-    item_to_row: F,
-) -> Result<()>
-where
-    F: Fn(&U) -> &Row,
-{
-    let Schema { column_defs, .. } = storage
-        .fetch_schema(table_name)
-        .await?
-        .ok_or(ExecuteError::TableNotExists)?;
-    let column_indexes = match column_validation {
-        ColumnValidation::All => fetch_all_unique_column_indexes(&column_defs),
-        ColumnValidation::SpecifiedColumns(columns) => {
-            fetch_specified_unique_column_indexes(&column_defs, &columns)
-        }
-    };
-    let unique_checks = create_unique_checks(&column_defs, &column_indexes, items, item_to_row)?;
-    if unique_checks.is_empty() {
-        return Ok(());
-    }
-
-    let column_defs = Rc::new(column_defs);
-    let unique_checks = Rc::new(unique_checks);
-    storage
-        .scan_data(table_name)
-        .await
-        .map(stream::iter)?
-        .try_for_each(|(_, row)| {
-            let column_defs = Rc::clone(&column_defs);
-            let unique_checks = Rc::clone(&unique_checks);
-
-            async move {
-                for check in unique_checks.as_ref() {
-                    let column_index = check.column_index;
-                    let row_val = row.get_value(column_index).unwrap();
-                    if check
-                        .values
-                        .binary_search_by(|v| compare_values_for_sort(v, row_val).unwrap())
-                        .is_ok()
-                    {
-                        return Err(ValueError::DuplicateEntryOnUniqueField(
-                            format!("{:?}", row_val),
-                            column_defs[column_index].name.to_string(),
-                        )
-                        .into());
-                    }
-                }
-                Ok(())
-            }
-        })
-        .await
-}
-
-fn fetch_all_unique_column_indexes(column_defs: &[ColumnDef]) -> Vec<usize> {
-    let mut column_indexes = vec![];
-    for (i, col) in column_defs.iter().enumerate() {
-        if col
-            .options
-            .iter()
-            .any(|opt_def| matches!(opt_def.option, ColumnOption::Unique { .. }))
-        {
-            column_indexes.push(i);
-        }
-    }
-
-    column_indexes
-}
-
-fn fetch_specified_unique_column_indexes(
-    table_column_defs: &[ColumnDef],
-    specified_columns: &[Ident],
-) -> Vec<usize> {
-    let mut column_indexes = vec![];
-    for (i, table_col) in table_column_defs.iter().enumerate() {
-        if table_col
-            .options
-            .iter()
-            .any(|opt_def| match opt_def.option {
-                ColumnOption::Unique { .. } => specified_columns
-                    .iter()
-                    .any(|specified_col| specified_col.value == table_col.name.value),
-                _ => false,
-            })
-        {
-            column_indexes.push(i);
-        }
-    }
-
-    column_indexes
+    schema: &Schema,
+    if_not_exists: bool,
+) -> Result<()> {
+    validate_column_unique_option(&schema.column_defs)?;
+    validate_table_if_not_exists(storage, &schema.table_name, if_not_exists).await
 }
 
 #[derive(Debug)]
-struct UniqueCheck<'a> {
+struct UniqueConstraint<'a> {
     column_index: usize,
-    values: Vec<&'a Value>,
+    column_def: &'a ColumnDef,
+    keys: HashSet<UniqueKey>,
 }
 
-fn create_unique_checks<'a, U: 'static + Debug, F>(
-    table_column_defs: &[ColumnDef],
-    unique_column_indexes: &[usize],
-    items: &'a [U],
-    item_to_row: F,
-) -> Result<Vec<UniqueCheck<'a>>>
-where
-    F: Fn(&U) -> &Row,
-{
-    let item_len = items.len();
-    let mut checks = Vec::with_capacity(unique_column_indexes.len());
-    for &column_index in unique_column_indexes {
-        let mut values: Vec<&'a Value> = Vec::with_capacity(item_len);
-        for item in items {
-            let new_val = item_to_row(item).get_value(column_index).unwrap();
-            match values.binary_search_by(|v| compare_values_for_sort(v, new_val).unwrap()) {
-                Ok(_) => {
-                    // The input values are duplicate.
-                    return Err(ValueError::DuplicateEntryOnUniqueField(
-                        format!("{:?}", new_val),
-                        table_column_defs[column_index].name.to_string(),
-                    )
-                    .into());
-                }
-                Err(idx) => values.insert(idx, new_val),
-            }
+impl<'a> UniqueConstraint<'a> {
+    fn new(column_index: usize, column_def: &'a ColumnDef) -> Self {
+        Self {
+            column_index,
+            column_def,
+            keys: HashSet::new(),
+        }
+    }
+
+    fn add(self, value: &Value) -> Result<Self> {
+        let new_key = self.check(value)?;
+        if new_key == UniqueKey::Null {
+            return Ok(self);
         }
 
-        checks.push(UniqueCheck {
-            column_index,
-            values,
-        });
+        let keys = self.keys.update(new_key);
+
+        Ok(Self {
+            column_index: self.column_index,
+            column_def: self.column_def,
+            keys,
+        })
     }
 
-    Ok(checks)
+    fn check(&self, value: &Value) -> Result<UniqueKey> {
+        let new_key = match value.try_into() {
+            Ok(key) => key,
+            Err(_) => {
+                let column_def = self.column_def;
+                return Err(ValidateError::ConflictOnUniqueColumnDataType(
+                    column_def.name.to_string(),
+                    column_def.data_type.to_string(),
+                )
+                .into());
+            }
+        };
+
+        if new_key != UniqueKey::Null && self.keys.contains(&new_key) {
+            // The input values are duplicate.
+            return Err(ValidateError::DuplicateEntryOnUniqueField(
+                format!("{:?}", value),
+                self.column_def.name.to_string(),
+            )
+            .into());
+        }
+
+        Ok(new_key)
+    }
 }
 
-// This function tries to implement efficient value sort of the same column
-// (as same data type). The return ordering has no meaning for the value
-// comparison. It is only used to find the specified value efficiently
-// (for function `binary_search`). And it assumes no value is Float NAN.
-// This function should be updated when adding new Value.
-fn compare_values_for_sort(lhs: &Value, rhs: &Value) -> Option<Ordering> {
-    if let Some(ordering) = lhs.partial_cmp(rhs) {
-        return Some(ordering);
+fn create_unique_constraints<'a, 'b>(
+    unique_columns: &[(usize, &'a ColumnDef)],
+    row_iter: impl Iterator<Item = &'b Row> + Clone,
+) -> Result<Vector<UniqueConstraint<'a>>> {
+    unique_columns
+        .iter()
+        .try_fold(Vector::new(), |constraints, &col| {
+            let col_idx = col.0;
+            let col_def = col.1;
+            let new_constraint = UniqueConstraint::new(col_idx, col_def);
+            let new_constraint = row_iter
+                .clone()
+                .try_fold(new_constraint, |constraint, row| {
+                    let val = row
+                        .get_value(col_idx)
+                        .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+                    constraint.add(val)
+                })?;
+            Ok(constraints.push(new_constraint))
+        })
+}
+
+fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, &ColumnDef)> {
+    column_defs
+        .iter()
+        .enumerate()
+        .filter(|(_i, col)| {
+            col.options
+                .iter()
+                .any(|opt_def| matches!(opt_def.option, ColumnOption::Unique { .. }))
+        })
+        .collect()
+}
+
+fn fetch_specified_unique_columns<'a>(
+    column_defs: &'a [ColumnDef],
+    specified_columns: &[Ident],
+) -> Vec<(usize, &'a ColumnDef)> {
+    column_defs
+        .iter()
+        .enumerate()
+        .filter(|(_i, table_col)| {
+            table_col
+                .options
+                .iter()
+                .any(|opt_def| match opt_def.option {
+                    ColumnOption::Unique { .. } => specified_columns
+                        .iter()
+                        .any(|specified_col| specified_col.value == table_col.name.value),
+                    _ => false,
+                })
+        })
+        .collect()
+}
+
+fn validate_column_unique_option(column_defs: &[ColumnDef]) -> Result<()> {
+    let found = column_defs.iter().find(|col| match col.data_type {
+        DataType::Float(_) => col
+            .options
+            .iter()
+            .any(|opt| matches!(opt.option, ColumnOption::Unique { .. })),
+        _ => false,
+    });
+
+    if let Some(col) = found {
+        return Err(ValidateError::UnsupportedDataTypeForUniqueColumn(
+            col.name.to_string(),
+            col.data_type.to_string(),
+        )
+        .into());
     }
 
-    match (lhs, rhs) {
-        (Value::OptBool(Some(_)), Value::OptBool(None))
-        | (Value::OptI64(Some(_)), Value::OptI64(None))
-        | (Value::OptF64(Some(_)), Value::OptF64(None))
-        | (Value::OptStr(Some(_)), Value::OptStr(None)) => Some(Ordering::Greater),
-        (Value::OptBool(None), Value::OptBool(Some(_)))
-        | (Value::OptI64(None), Value::OptI64(Some(_)))
-        | (Value::OptF64(None), Value::OptF64(Some(_)))
-        | (Value::OptStr(None), Value::OptStr(Some(_))) => Some(Ordering::Less),
-        (Value::Empty, Value::Empty) => Some(Ordering::Equal),
-        (_, Value::Empty) => Some(Ordering::Greater),
-        (Value::Empty, _) => Some(Ordering::Less),
-        _ => None,
+    Ok(())
+}
+
+async fn validate_table_if_not_exists<'a, T: 'static + Debug>(
+    storage: &impl Store<T>,
+    table_name: &str,
+    if_not_exists: bool,
+) -> Result<()> {
+    if if_not_exists || storage.fetch_schema(table_name).await?.is_none() {
+        return Ok(());
     }
+
+    Err(ValidateError::TableAlreadyExists.into())
+}
+
+async fn validate_unique<T: 'static + Debug>(
+    storage: &impl Store<T>,
+    table_name: &str,
+    column_validation: ColumnValidation,
+    row_iter: impl Iterator<Item = &Row> + Clone,
+) -> Result<()> {
+    let Schema { column_defs, .. } = storage
+        .fetch_schema(table_name)
+        .await?
+        .ok_or(ValidateError::TableNotExists)?;
+
+    let unique_columns = match column_validation {
+        ColumnValidation::All => fetch_all_unique_columns(&column_defs),
+        ColumnValidation::SpecifiedColumns(columns) => {
+            fetch_specified_unique_columns(&column_defs, &columns)
+        }
+    };
+
+    let unique_constraints: Vec<_> = create_unique_constraints(&unique_columns, row_iter)?.into();
+    if unique_constraints.is_empty() {
+        return Ok(());
+    }
+
+    let unique_constraints = Rc::new(unique_constraints);
+    storage.scan_data(table_name).await?.try_for_each(|result| {
+        let (_, row) = result?;
+        Rc::clone(&unique_constraints)
+            .iter()
+            .try_for_each(|constraint| {
+                let col_idx = constraint.column_index;
+                let val = row
+                    .get_value(col_idx)
+                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+                constraint.check(val)?;
+                Ok(())
+            })
+    })
 }

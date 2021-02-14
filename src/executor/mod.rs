@@ -21,3 +21,4 @@ pub use join::JoinError;
 pub use limit::LimitError;
 pub use select::SelectError;
 pub use update::UpdateError;
+pub use validate::{UniqueKey, ValidateError};

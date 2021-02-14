@@ -18,7 +18,7 @@ test_case!(create_table, async move {
             num INTEGER,
             name TEXT
         )"#,
-            Err(ExecuteError::TableAlreadyExists.into()),
+            Err(ValidateError::TableAlreadyExists.into()),
         ),
         (
             r#"
