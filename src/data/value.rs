@@ -472,7 +472,7 @@ impl Value {
 
 #[cfg(test)]
 mod tests {
-    use super::Value;
+    use super::*;
 
     #[test]
     fn eq() {
@@ -495,5 +495,21 @@ mod tests {
         assert_eq!(Value::OptStr(None), Value::OptStr(None));
 
         assert_eq!(Value::Empty, Value::Empty);
+    }
+
+    #[test]
+    fn float_cannot_be_unique() {
+        assert_eq!(
+            TryInto::<UniqueKey>::try_into(Value::F64(1.0)),
+            Err(ValueError::FloatCannotBeUnique.into())
+        );
+        assert_eq!(
+            TryInto::<UniqueKey>::try_into(Value::OptF64(Some(1.0))),
+            Err(ValueError::FloatCannotBeUnique.into())
+        );
+        assert_eq!(
+            TryInto::<UniqueKey>::try_into(Value::OptF64(None)),
+            Err(ValueError::FloatCannotBeUnique.into())
+        );
     }
 }

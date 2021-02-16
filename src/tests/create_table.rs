@@ -13,15 +13,6 @@ test_case!(create_table, async move {
         ),
         (
             r#"
-        CREATE TABLE CreateTable1 (
-            id INTEGER NULL,
-            num INTEGER,
-            name TEXT
-        )"#,
-            Err(ValidateError::TableAlreadyExists.into()),
-        ),
-        (
-            r#"
         CREATE TABLE IF NOT EXISTS CreateTable2 (
             id INTEGER NULL,
             num INTEGER,

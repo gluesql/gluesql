@@ -125,8 +125,7 @@ fn create_unique_constraints<'a, 'b>(
     unique_columns
         .iter()
         .try_fold(Vector::new(), |constraints, &col| {
-            let col_idx = col.0;
-            let col_def = col.1;
+            let (col_idx, col_def) = col;
             let new_constraint = UniqueConstraint::new(col_idx, col_def);
             let new_constraint = row_iter
                 .clone()
