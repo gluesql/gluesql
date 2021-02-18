@@ -117,18 +117,6 @@ CREATE TABLE TestC (
             .into(),
             "UPDATE TestC SET id = 1",
         ),
-        (
-            ValidateError::TableAlreadyExists.into(),
-            "CREATE TABLE TestA (id INTEGER, num INTEGER, name TEXT)",
-        ),
-        (
-            ValidateError::UnsupportedDataTypeForUniqueColumn(
-                "ratio".to_owned(),
-                "FLOAT".to_owned(),
-            )
-            .into(),
-            "CREATE TABLE TestD (id INTEGER, ratio FLOAT UNIQUE)",
-        ),
     ];
 
     for (error, sql) in error_cases.into_iter() {

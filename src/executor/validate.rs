@@ -1,17 +1,17 @@
 use im_rc::HashSet;
 use serde::Serialize;
-use sqlparser::ast::{ColumnDef, ColumnOption, DataType, Ident};
+use sqlparser::ast::{ColumnDef, ColumnOption, Ident};
 use std::{convert::TryInto, fmt::Debug, rc::Rc};
 use thiserror::Error as ThisError;
 
-use crate::data::{Row, Schema, Value};
+use crate::data::{Row, Value};
 use crate::result::Result;
 use crate::store::Store;
 use crate::utils::Vector;
 
 pub enum ColumnValidation {
-    All,
-    SpecifiedColumns(Vec<Ident>),
+    All(Rc<[ColumnDef]>),
+    SpecifiedColumns(Rc<[ColumnDef]>, Vec<Ident>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -27,20 +27,8 @@ pub enum ValidateError {
     #[error("conflict! storage row has no column on index {0}")]
     ConflictOnStorageColumnIndex(usize),
 
-    #[error("conflict! column '{0}' of data type '{1}' conflicts with unique constraint")]
-    ConflictOnUniqueColumnDataType(String, String),
-
     #[error("duplicate entry '{0}' for unique column '{1}'")]
     DuplicateEntryOnUniqueField(String, String),
-
-    #[error("table already exists")]
-    TableAlreadyExists,
-
-    #[error("table does not exist")]
-    TableNotExists,
-
-    #[error("column '{0}' of data type '{1}' is unsupported for unique constraint")]
-    UnsupportedDataTypeForUniqueColumn(String, String),
 }
 
 pub async fn validate_rows<T: 'static + Debug>(
@@ -52,27 +40,18 @@ pub async fn validate_rows<T: 'static + Debug>(
     validate_unique(storage, table_name, column_validation, row_iter).await
 }
 
-pub async fn validate_table<T: 'static + Debug>(
-    storage: &impl Store<T>,
-    schema: &Schema,
-    if_not_exists: bool,
-) -> Result<()> {
-    validate_column_unique_option(&schema.column_defs)?;
-    validate_table_if_not_exists(storage, &schema.table_name, if_not_exists).await
-}
-
 #[derive(Debug)]
-struct UniqueConstraint<'a> {
+struct UniqueConstraint {
     column_index: usize,
-    column_def: &'a ColumnDef,
+    column_name: String,
     keys: HashSet<UniqueKey>,
 }
 
-impl<'a> UniqueConstraint<'a> {
-    fn new(column_index: usize, column_def: &'a ColumnDef) -> Self {
+impl UniqueConstraint {
+    fn new(column_index: usize, column_name: String) -> Self {
         Self {
             column_index,
-            column_def,
+            column_name,
             keys: HashSet::new(),
         }
     }
@@ -87,29 +66,18 @@ impl<'a> UniqueConstraint<'a> {
 
         Ok(Self {
             column_index: self.column_index,
-            column_def: self.column_def,
+            column_name: self.column_name,
             keys,
         })
     }
 
     fn check(&self, value: &Value) -> Result<UniqueKey> {
-        let new_key = match value.try_into() {
-            Ok(key) => key,
-            Err(_) => {
-                let column_def = self.column_def;
-                return Err(ValidateError::ConflictOnUniqueColumnDataType(
-                    column_def.name.to_string(),
-                    column_def.data_type.to_string(),
-                )
-                .into());
-            }
-        };
-
+        let new_key = value.try_into()?;
         if new_key != UniqueKey::Null && self.keys.contains(&new_key) {
             // The input values are duplicate.
             return Err(ValidateError::DuplicateEntryOnUniqueField(
                 format!("{:?}", value),
-                self.column_def.name.to_string(),
+                self.column_name.to_owned(),
             )
             .into());
         }
@@ -118,15 +86,15 @@ impl<'a> UniqueConstraint<'a> {
     }
 }
 
-fn create_unique_constraints<'a, 'b>(
-    unique_columns: &[(usize, &'a ColumnDef)],
-    row_iter: impl Iterator<Item = &'b Row> + Clone,
-) -> Result<Vector<UniqueConstraint<'a>>> {
+fn create_unique_constraints<'a>(
+    unique_columns: Vec<(usize, String)>,
+    row_iter: impl Iterator<Item = &'a Row> + Clone,
+) -> Result<Vector<UniqueConstraint>> {
     unique_columns
-        .iter()
-        .try_fold(Vector::new(), |constraints, &col| {
-            let (col_idx, col_def) = col;
-            let new_constraint = UniqueConstraint::new(col_idx, col_def);
+        .into_iter()
+        .try_fold(Vector::new(), |constraints, col| {
+            let (col_idx, col_name) = col;
+            let new_constraint = UniqueConstraint::new(col_idx, col_name);
             let new_constraint = row_iter
                 .clone()
                 .try_fold(new_constraint, |constraint, row| {
@@ -139,27 +107,33 @@ fn create_unique_constraints<'a, 'b>(
         })
 }
 
-fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, &ColumnDef)> {
+fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
-        .filter(|(_i, col)| {
-            col.options
+        .filter_map(|(i, col)| {
+            if col
+                .options
                 .iter()
                 .any(|opt_def| matches!(opt_def.option, ColumnOption::Unique { .. }))
+            {
+                Some((i, col.name.value.to_owned()))
+            } else {
+                None
+            }
         })
         .collect()
 }
 
-fn fetch_specified_unique_columns<'a>(
-    column_defs: &'a [ColumnDef],
+fn fetch_specified_unique_columns(
+    all_column_defs: &[ColumnDef],
     specified_columns: &[Ident],
-) -> Vec<(usize, &'a ColumnDef)> {
-    column_defs
+) -> Vec<(usize, String)> {
+    all_column_defs
         .iter()
         .enumerate()
-        .filter(|(_i, table_col)| {
-            table_col
+        .filter_map(|(i, table_col)| {
+            if table_col
                 .options
                 .iter()
                 .any(|opt_def| match opt_def.option {
@@ -168,40 +142,13 @@ fn fetch_specified_unique_columns<'a>(
                         .any(|specified_col| specified_col.value == table_col.name.value),
                     _ => false,
                 })
+            {
+                Some((i, table_col.name.value.to_owned()))
+            } else {
+                None
+            }
         })
         .collect()
-}
-
-fn validate_column_unique_option(column_defs: &[ColumnDef]) -> Result<()> {
-    let found = column_defs.iter().find(|col| match col.data_type {
-        DataType::Float(_) => col
-            .options
-            .iter()
-            .any(|opt| matches!(opt.option, ColumnOption::Unique { .. })),
-        _ => false,
-    });
-
-    if let Some(col) = found {
-        return Err(ValidateError::UnsupportedDataTypeForUniqueColumn(
-            col.name.to_string(),
-            col.data_type.to_string(),
-        )
-        .into());
-    }
-
-    Ok(())
-}
-
-async fn validate_table_if_not_exists<'a, T: 'static + Debug>(
-    storage: &impl Store<T>,
-    table_name: &str,
-    if_not_exists: bool,
-) -> Result<()> {
-    if if_not_exists || storage.fetch_schema(table_name).await?.is_none() {
-        return Ok(());
-    }
-
-    Err(ValidateError::TableAlreadyExists.into())
 }
 
 async fn validate_unique<T: 'static + Debug>(
@@ -210,19 +157,14 @@ async fn validate_unique<T: 'static + Debug>(
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
-    let Schema { column_defs, .. } = storage
-        .fetch_schema(table_name)
-        .await?
-        .ok_or(ValidateError::TableNotExists)?;
-
     let unique_columns = match column_validation {
-        ColumnValidation::All => fetch_all_unique_columns(&column_defs),
-        ColumnValidation::SpecifiedColumns(columns) => {
-            fetch_specified_unique_columns(&column_defs, &columns)
+        ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
+        ColumnValidation::SpecifiedColumns(all_column_defs, specified_columns) => {
+            fetch_specified_unique_columns(&all_column_defs, &specified_columns)
         }
     };
 
-    let unique_constraints: Vec<_> = create_unique_constraints(&unique_columns, row_iter)?.into();
+    let unique_constraints: Vec<_> = create_unique_constraints(unique_columns, row_iter)?.into();
     if unique_constraints.is_empty() {
         return Ok(());
     }

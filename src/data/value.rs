@@ -49,7 +49,7 @@ pub enum ValueError {
     UnaryMinusOnNonNumeric,
 
     #[error("floating columns cannot be set to unique constraint")]
-    FloatCannotBeUnique,
+    ConflictOnFloatWithUniqueConstraint,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -242,23 +242,7 @@ impl TryInto<UniqueKey> for &Value {
             I64(v) | OptI64(Some(v)) => Ok(UniqueKey::I64(*v)),
             Str(v) | OptStr(Some(v)) => Ok(UniqueKey::Str(v.clone())),
             Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(UniqueKey::Null),
-            F64(_) | OptF64(_) => Err(ValueError::FloatCannotBeUnique.into()),
-        }
-    }
-}
-
-impl TryInto<UniqueKey> for Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<UniqueKey> {
-        use Value::*;
-
-        match self {
-            Bool(v) | OptBool(Some(v)) => Ok(UniqueKey::Bool(v)),
-            I64(v) | OptI64(Some(v)) => Ok(UniqueKey::I64(v)),
-            Str(v) | OptStr(Some(v)) => Ok(UniqueKey::Str(v)),
-            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(UniqueKey::Null),
-            F64(_) | OptF64(_) => Err(ValueError::FloatCannotBeUnique.into()),
+            F64(_) | OptF64(_) => Err(ValueError::ConflictOnFloatWithUniqueConstraint.into()),
         }
     }
 }
@@ -472,7 +456,7 @@ impl Value {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::Value;
 
     #[test]
     fn eq() {
@@ -495,21 +479,5 @@ mod tests {
         assert_eq!(Value::OptStr(None), Value::OptStr(None));
 
         assert_eq!(Value::Empty, Value::Empty);
-    }
-
-    #[test]
-    fn float_cannot_be_unique() {
-        assert_eq!(
-            TryInto::<UniqueKey>::try_into(Value::F64(1.0)),
-            Err(ValueError::FloatCannotBeUnique.into())
-        );
-        assert_eq!(
-            TryInto::<UniqueKey>::try_into(Value::OptF64(Some(1.0))),
-            Err(ValueError::FloatCannotBeUnique.into())
-        );
-        assert_eq!(
-            TryInto::<UniqueKey>::try_into(Value::OptF64(None)),
-            Err(ValueError::FloatCannotBeUnique.into())
-        );
     }
 }

@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error;
 
-use sqlparser::ast::{Assignment, Ident};
+use sqlparser::ast::{Assignment, ColumnDef, Ident};
 
 use super::context::FilterContext;
 use super::evaluate::{evaluate, Evaluated};
@@ -28,7 +28,7 @@ pub struct Update<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
     table_name: &'a str,
     fields: &'a [Assignment],
-    columns: Rc<[Ident]>,
+    column_defs: &'a [ColumnDef],
 }
 
 impl<'a, T: 'static + Debug> Update<'a, T> {
@@ -36,12 +36,15 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         storage: &'a dyn Store<T>,
         table_name: &'a str,
         fields: &'a [Assignment],
-        columns: Rc<[Ident]>,
+        column_defs: &'a [ColumnDef],
     ) -> Result<Self> {
         for assignment in fields.iter() {
             let Assignment { id, .. } = assignment;
 
-            if columns.iter().all(|column| column.value != id.value) {
+            if column_defs
+                .iter()
+                .all(|col_def| col_def.name.value != id.value)
+            {
                 return Err(UpdateError::ColumnNotFound(id.value.to_string()).into());
             }
         }
@@ -50,28 +53,28 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
             storage,
             table_name,
             fields,
-            columns,
+            column_defs,
         })
     }
 
-    async fn find(&self, row: &Row, column: &Ident) -> Result<Option<Value>> {
-        let context =
-            FilterContext::new(self.table_name, Rc::clone(&self.columns), Some(row), None);
+    async fn find(&self, row: &Row, column_def: &ColumnDef) -> Result<Option<Value>> {
+        let all_columns = Rc::from(self.all_columns());
+        let context = FilterContext::new(self.table_name, Rc::clone(&all_columns), Some(row), None);
         let context = Some(Rc::new(context));
 
         match self
             .fields
             .iter()
-            .find(|assignment| assignment.id.value == column.value)
+            .find(|assignment| assignment.id.value == column_def.name.value)
         {
             None => Ok(None),
             Some(assignment) => {
                 let Assignment { id, value } = &assignment;
 
                 let index = self
-                    .columns
+                    .column_defs
                     .iter()
-                    .position(|column| column.value == id.value)
+                    .position(|col_def| col_def.name.value == id.value)
                     .ok_or(UpdateError::Unreachable)?;
 
                 let evaluated = evaluate(self.storage, context, None, value, false).await?;
@@ -95,18 +98,18 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         let Row(values) = &row;
 
         let values = values.clone().into_iter().enumerate().map(|(i, value)| {
-            self.columns
+            self.column_defs
                 .get(i)
-                .map(|column| (column, value))
+                .map(|col_def| (col_def, value))
                 .ok_or_else(|| UpdateError::ConflictOnSchema.into())
         });
 
         stream::iter(values)
-            .and_then(|(column, value)| {
+            .and_then(|(col_def, value)| {
                 let row = &row;
 
                 async move {
-                    self.find(row, column)
+                    self.find(row, col_def)
                         .await
                         .transpose()
                         .unwrap_or(Ok(value))
@@ -115,6 +118,13 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
             .try_collect::<Vec<_>>()
             .await
             .map(Row)
+    }
+
+    pub fn all_columns(&self) -> Vec<Ident> {
+        self.column_defs
+            .iter()
+            .map(|col_def| col_def.name.clone())
+            .collect()
     }
 
     pub fn columns_to_update(&self) -> Vec<Ident> {
