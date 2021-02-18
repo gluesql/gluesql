@@ -45,7 +45,7 @@ impl<'a> Table<'a> {
     }
 }
 
-pub fn get_name<'a>(table_name: &'a ObjectName) -> Result<&'a String> {
+pub fn get_name(table_name: &ObjectName) -> Result<&String> {
     let ObjectName(idents) = table_name;
 
     idents

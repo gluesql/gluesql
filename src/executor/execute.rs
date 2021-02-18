@@ -6,17 +6,19 @@ use thiserror::Error as ThisError;
 
 #[cfg(feature = "alter-table")]
 use sqlparser::ast::AlterTableOperation;
-use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
+use sqlparser::ast::{ColumnDef, Ident, ObjectType, SetExpr, Statement, Values};
 
 use crate::data::{get_name, Row, Schema};
 use crate::parse_sql::Query;
 use crate::result::{Error, MutResult, Result};
 use crate::store::{AlterTable, Store, StoreMut};
 
+use super::create_table::validate_table;
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
+use super::validate::{validate_rows, ColumnValidation};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -35,8 +37,6 @@ pub enum ExecuteError {
 
     #[error("table does not exist")]
     TableNotExists,
-    #[error("table already exists")]
-    TableAlreadyExists,
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -79,20 +79,25 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             schema,
             if_not_exists,
         } => {
-            if try_into!(storage, storage.fetch_schema(&schema.table_name).await).is_some() {
-                return if if_not_exists {
-                    Ok((storage, Payload::Create))
-                } else {
-                    Err((storage, ExecuteError::TableAlreadyExists.into()))
-                };
-            }
+            let validated = validate_table(&storage, &schema, if_not_exists).await;
+            try_into!(storage, validated);
 
             storage
                 .insert_schema(&schema)
                 .await
                 .map(|(storage, _)| (storage, Payload::Create))
         }
-        Prepared::Insert(table_name, rows) => {
+        Prepared::Insert(table_name, column_defs, rows) => {
+            let column_defs = Rc::from(column_defs);
+            let validated = validate_rows(
+                &storage,
+                &table_name,
+                ColumnValidation::All(Rc::clone(&column_defs)),
+                rows.iter(),
+            )
+            .await;
+            try_into!(storage, validated);
+
             let num_rows = rows.len();
 
             storage
@@ -108,7 +113,17 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .await
                 .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
         }
-        Prepared::Update(rows) => {
+        Prepared::Update(table_name, all_column_defs, columns_to_update, rows) => {
+            let all_column_defs = Rc::from(all_column_defs);
+            let validated = validate_rows(
+                &storage,
+                &table_name,
+                ColumnValidation::SpecifiedColumns(Rc::clone(&all_column_defs), columns_to_update),
+                rows.iter().map(|r| &r.1),
+            )
+            .await;
+            try_into!(storage, validated);
+
             let num_rows = rows.len();
 
             storage
@@ -182,9 +197,9 @@ enum Prepared<'a, T> {
         schema: Schema,
         if_not_exists: bool,
     },
-    Insert(&'a str, Vec<Row>),
+    Insert(&'a str, Vec<ColumnDef>, Vec<Row>),
     Delete(Vec<T>),
-    Update(Vec<(T, Row)>),
+    Update(&'a str, Vec<ColumnDef>, Vec<Ident>, Vec<(T, Row)>),
     Select {
         labels: Vec<String>,
         rows: Vec<Row>,
@@ -268,7 +283,7 @@ async fn prepare<'a, T: 'static + Debug>(
                 }
             };
 
-            Ok(Prepared::Insert(table_name, rows))
+            Ok(Prepared::Insert(table_name, column_defs, rows))
         }
         Statement::Update {
             table_name,
@@ -276,11 +291,16 @@ async fn prepare<'a, T: 'static + Debug>(
             assignments,
         } => {
             let table_name = get_name(table_name)?;
-            let columns = Rc::from(fetch_columns(storage, table_name).await?);
-            let update = Update::new(storage, table_name, assignments, Rc::clone(&columns))?;
+            let Schema { column_defs, .. } = storage
+                .fetch_schema(table_name)
+                .await?
+                .ok_or(ExecuteError::TableNotExists)?;
+            let update = Update::new(storage, table_name, assignments, &column_defs)?;
             let filter = Filter::new(storage, selection.as_ref(), None, None);
 
-            fetch(storage, table_name, columns, filter)
+            let all_columns = Rc::from(update.all_columns());
+            let columns_to_update = update.columns_to_update();
+            fetch(storage, table_name, Rc::clone(&all_columns), filter)
                 .await?
                 .and_then(|item| {
                     let update = &update;
@@ -294,7 +314,7 @@ async fn prepare<'a, T: 'static + Debug>(
                 })
                 .try_collect::<Vec<_>>()
                 .await
-                .map(Prepared::Update)
+                .map(|rows| Prepared::Update(table_name, column_defs, columns_to_update, rows))
         }
         Statement::Delete {
             table_name,

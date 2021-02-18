@@ -18,7 +18,7 @@ test_case!(create_table, async move {
             num INTEGER,
             name TEXT
         )"#,
-            Err(ExecuteError::TableAlreadyExists.into()),
+            Err(CreateTableError::TableAlreadyExists.into()),
         ),
         (
             r#"
@@ -37,6 +37,18 @@ test_case!(create_table, async move {
             name TEXT
         )"#,
             Ok(Payload::Create),
+        ),
+        (
+            r#"
+        CREATE TABLE CreateTable3 (
+            id INTEGER,
+            ratio FLOAT UNIQUE
+        )"#,
+            Err(CreateTableError::UnsupportedDataTypeForUniqueColumn(
+                "ratio".to_owned(),
+                "FLOAT".to_owned(),
+            )
+            .into()),
         ),
     ];
 
