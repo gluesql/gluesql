@@ -8,3 +8,6 @@ license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webassembly"]
+
+[output.html]
+git-repository-url = "https://github.com/gluesql/gluesql"

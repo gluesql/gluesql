@@ -8,3 +8,8 @@
 - Kyran Gostelow - [KyGost](https://github.com/KyGost)
 - [zhangchunzhong](https://github.com/zhangchunzhong)
 - [yejihan-dev](https://github.com/yejihan-dev)
+- [silathdiir](https://github.com/silathdiir)
+- [haoxins](https://github.com/haoxins)
+- [MichaelMcDonnell](https://github.com/MichaelMcDonnell)
+- [Atul9](https://github.com/Atul9)
+- [noproto](https://github.com/noproto)
