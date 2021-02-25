@@ -248,12 +248,12 @@ impl TryInto<UniqueKey> for &Value {
 }
 
 trait BoolToValue: Sized {
-    fn as_value(self, v1: Value, v2: Value) -> Value;
+    fn into_value(self, v1: Value, v2: Value) -> Value;
 }
 
 impl BoolToValue for bool {
     #[inline]
-    fn as_value(self, v1: Value, v2: Value) -> Value {
+    fn into_value(self, v1: Value, v2: Value) -> Value {
         if self {
             v1
         } else {
@@ -279,14 +279,14 @@ impl Value {
         match (data_type, literal) {
             (DataType::Int, AstValue::Number(v)) => v
                 .parse()
-                .map(|v| nullable.as_value(Value::OptI64(Some(v)), Value::I64(v)))
+                .map(|v| nullable.into_value(Value::OptI64(Some(v)), Value::I64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             (DataType::Float(_), AstValue::Number(v)) => v
                 .parse()
-                .map(|v| nullable.as_value(Value::OptF64(Some(v)), Value::F64(v)))
+                .map(|v| nullable.into_value(Value::OptF64(Some(v)), Value::F64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             (DataType::Boolean, AstValue::Boolean(v)) => {
-                Ok(nullable.as_value(Value::OptBool(Some(*v)), Value::Bool(*v)))
+                Ok(nullable.into_value(Value::OptBool(Some(*v)), Value::Bool(*v)))
             }
             (DataType::Int, AstValue::Null) => nullable.as_result(
                 Value::OptI64(None),
