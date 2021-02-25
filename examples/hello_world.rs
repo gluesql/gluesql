@@ -1,3 +1,4 @@
+#[cfg(feature = "sled-storage")]
 use gluesql::{parse, Glue, Payload, SledStorage, Value};
 
 fn main() {
