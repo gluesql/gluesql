@@ -106,10 +106,10 @@ pub async fn check_expr<T: 'static + Debug>(
                 _ => Err(FilterError::Unimplemented.into()),
             }
         }
-        Expr::UnaryOp { op, expr } => match op {
-            UnaryOperator::Not => check(&expr).await.map(|v| !v),
-            _ => Err(FilterError::Unimplemented.into()),
-        },
+        Expr::UnaryOp {
+            op: UnaryOperator::Not,
+            expr,
+        } => check(&expr).await.map(|v| !v),
         Expr::Nested(expr) => check(&expr).await,
         Expr::InList {
             expr,
