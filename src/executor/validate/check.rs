@@ -1,15 +1,31 @@
-use im_rc::HashSet;
-use serde::Serialize;
-use sqlparser::ast::{ColumnDef, DataType, ColumnOption, Ident};
-use std::{convert::TryInto, fmt::Debug, rc::Rc};
-use thiserror::Error as ThisError;
+use {
+    im_rc::HashSet,
+    sqlparser::ast::DataType,
+    std::{
+        fmt::Debug,
+        rc::Rc,
+    },
+    crate::{
+        data::Row,
+        result::Result,
+        store::Store,
+    },
+    super::{
+        ColumnValidation,
+        ValidateError,
+        fetch::{
+            fetch_all_unique_columns,
+            fetch_all_columns_of_type,
+            specified_columns_only,
+        },
+        constraint::{
+            create_constraints,
+            Constraint,
+        },
+    },
+};
 
-use crate::data::{Row, Value};
-use crate::result::Result;
-use crate::store::Store;
-use crate::utils::Vector;
-
-async fn validate_unique<T: 'static + Debug>(
+pub async fn validate_unique<T: 'static + Debug>(
     storage: &impl Store<T>,
     table_name: &str,
     column_validation: ColumnValidation,
@@ -17,42 +33,29 @@ async fn validate_unique<T: 'static + Debug>(
 ) -> Result<()> {
     let unique_columns = match column_validation {
         ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
-        ColumnValidation::SpecifiedColumns(all_column_defs, specified_columns) => {
+        ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
             specified_columns_only(fetch_all_unique_columns(&column_defs), &specified_columns)
         }
     };
 
-    let unique_constraints: Vec<_> = create_unique_constraints(unique_columns, row_iter)?.into();
-    if unique_constraints.is_empty() {
+    let constraints: Vec<Constraint> = create_constraints(unique_columns, row_iter, Constraint::UniqueConstraint { column_index: 0, column_name: "".to_string(), keys: HashSet::new() })?.into();
+    if constraints.is_empty() {
         return Ok(());
     }
 
-    let unique_constraints = Rc::new(unique_constraints);
-    storage.scan_data(table_name).await?.try_for_each(|result| {
-        let (_, row) = result?;
-        Rc::clone(&unique_constraints)
-            .iter()
-            .try_for_each(|constraint| {
-                let col_idx = constraint.column_index;
-                let val = row
-                    .get_value(col_idx)
-                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
-                constraint.check(val)?;
-                Ok(())
-            })
-    })
+    throw_or_pass(storage, table_name, constraints).await
 }
 
-async fn validate_type<T: 'static + Debug>(
+pub async fn validate_type<T: 'static + Debug>(
     storage: &impl Store<T>,
     table_name: &str,
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
-    validate_specific_type(storage, table_name, column_validation, row_iter, DataType::Boolean)?;
-    validate_specific_type(storage, table_name, column_validation, row_iter, DataType::Int)?;
-    validate_specific_type(storage, table_name, column_validation, row_iter, DataType::Float)?;
-    validate_specific_type(storage, table_name, column_validation, row_iter, DataType::Text)?;
+    validate_specific_type(storage, table_name, column_validation.clone(), row_iter.clone(), DataType::Boolean).await?;
+    validate_specific_type(storage, table_name, column_validation.clone(), row_iter.clone(), DataType::Int).await?;
+    validate_specific_type(storage, table_name, column_validation.clone(), row_iter.clone(), DataType::Float(None)).await?;
+    validate_specific_type(storage, table_name, column_validation.clone(), row_iter.clone(), DataType::Text).await?;
     Ok(())
 }
 
@@ -61,19 +64,27 @@ async fn validate_specific_type<T: 'static + Debug>(
     table_name: &str,
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,
-    type: DataType
+    data_type: DataType
 ) -> Result<()> {
     let columns = match column_validation {
-        ColumnValidation::All(column_defs) => fetch_all_columns_of_type(&column_defs, type),
+        ColumnValidation::All(column_defs) => fetch_all_columns_of_type(&column_defs, data_type),
         ColumnValidation::SpecifiedColumns(all_column_defs, specified_columns) => {
-            specified_columns_only(fetch_all_columns_of_type(&all_column_defs, type), &specified_columns)
+            specified_columns_only(fetch_all_columns_of_type(&all_column_defs, data_type), &specified_columns)
         }
     };
 
-    let constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
+    let constraints: Vec<Constraint> = create_constraints(columns, row_iter, Constraint::TypeConstraint { column_index: 0, column_name: "".to_string() })?.into();
     if constraints.is_empty() {
         return Ok(());
     }
+
+    throw_or_pass(storage, table_name, constraints).await
+}
+
+async fn throw_or_pass<T: 'static + Debug>(storage: &impl Store<T>,
+    table_name: &str,
+    constraints: Vec<Constraint>
+    ) -> Result<()> {
 
     let constraints = Rc::new(constraints);
     storage.scan_data(table_name).await?.try_for_each(|result| {
@@ -81,7 +92,7 @@ async fn validate_specific_type<T: 'static + Debug>(
         Rc::clone(&constraints)
             .iter()
             .try_for_each(|constraint| {
-                let col_idx = constraint.column_index;
+                let col_idx = match constraint {Constraint::UniqueConstraint {column_index, ..} | Constraint::TypeConstraint {column_index, ..} => column_index}.to_owned();
                 let val = row
                     .get_value(col_idx)
                     .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;

@@ -46,10 +46,6 @@ test_case!(error, async move {
             RowError::TooManyValues.into(),
             "INSERT INTO TableA VALUES (100), (100, 200);",
         ),
-        (
-            UpdateError::ConflictOnSchema.into(),
-            "INSERT INTO TableA (id) VALUES (\"1\")"
-        ),
         #[cfg(feature = "alter-table")]
         (
             ExecuteError::UnsupportedAlterTableOperation(
@@ -68,5 +64,16 @@ test_case!(error, async move {
     test!(
         Err(ValueError::SqlTypeNotSupported.into()),
         "INSERT INTO TableB (id) VALUES (0);"
+    );
+
+    run!("CREATE TABLE TableA (id INTEGER UNIQUE);");
+    run!("INSERT INTO TableA (id) VALUES (1);");
+    test!(
+        Err(ValidateError::DuplicateEntryOnUniqueField("1".to_string(), "id".to_string()).into()),
+        "INSERT INTO TableA (id) VALUES (1)"
+    );
+    test!(
+        Err(ValidateError::IncompatibleTypeOnTypedField("A".to_string(), "id".to_string()).into()),
+        "INSERT INTO TableA (id) VALUES (\"A\")"
     );
 });
