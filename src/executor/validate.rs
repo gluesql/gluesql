@@ -1,6 +1,6 @@
 use im_rc::HashSet;
 use serde::Serialize;
-use sqlparser::ast::{ColumnDef, ColumnOption, Ident};
+use sqlparser::ast::{ColumnDef, DataType, ColumnOption, Ident};
 use std::{convert::TryInto, fmt::Debug, rc::Rc};
 use thiserror::Error as ThisError;
 
@@ -37,17 +37,26 @@ pub async fn validate_rows<T: 'static + Debug>(
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
-    validate_unique(storage, table_name, column_validation, row_iter).await
+    validate_unique(storage, table_name, column_validation, row_iter).await?;
+    validate_type(storage, table_name, column_validation, row_iter).await?;
+    Ok(())
 }
 
 #[derive(Debug)]
-struct UniqueConstraint {
-    column_index: usize,
-    column_name: String,
-    keys: HashSet<UniqueKey>,
+pub enum Constraint {
+    UniqueConstraint {
+        column_index: usize,
+        column_name: String,
+        keys: HashSet<UniqueKey>,
+    },
+    TypeConstraint {
+        column_index: usize,
+        column_name: String,
+        keys: HashSet<UniqueKey>,
+    },
 }
 
-impl UniqueConstraint {
+impl Constraint {
     fn new(column_index: usize, column_name: String) -> Self {
         Self {
             column_index,
@@ -86,9 +95,10 @@ impl UniqueConstraint {
     }
 }
 
-fn create_unique_constraints<'a>(
-    unique_columns: Vec<(usize, String)>,
+fn create_constraints<'a>(
+    columns: Vec<(usize, String)>,
     row_iter: impl Iterator<Item = &'a Row> + Clone,
+    constraint: Constraint,
 ) -> Result<Vector<UniqueConstraint>> {
     unique_columns
         .into_iter()
@@ -111,13 +121,13 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
-        .filter_map(|(i, col)| {
-            if col
+        .filter_map(|(i, table_col)| {
+            if table_col
                 .options
                 .iter()
                 .any(|opt_def| matches!(opt_def.option, ColumnOption::Unique { .. }))
             {
-                Some((i, col.name.value.to_owned()))
+                Some((i, table_col.name.value.to_owned()))
             } else {
                 None
             }
@@ -125,24 +135,47 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
         .collect()
 }
 
-fn fetch_specified_unique_columns(
-    all_column_defs: &[ColumnDef],
-    specified_columns: &[Ident],
-) -> Vec<(usize, String)> {
-    all_column_defs
+fn fetch_all_columns_of_type(column_defs: &[ColumnDef], type: DataType) -> Vec<(usize, String)> {
+    column_defs
         .iter()
         .enumerate()
         .filter_map(|(i, table_col)| {
-            if table_col
-                .options
-                .iter()
-                .any(|opt_def| match opt_def.option {
-                    ColumnOption::Unique { .. } => specified_columns
-                        .iter()
-                        .any(|specified_col| specified_col.value == table_col.name.value),
-                    _ => false,
-                })
-            {
+            if matches!(table_col.data_type, type) {
+                Some((i, table_col.name.value.to_owned()))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn fetch_specified_columns_of_type(
+    all_column_defs: &[ColumnDef],
+    specified_columns: &[Ident],
+) -> Vec<(usize, String)> {
+    column_defs
+        .iter()
+        .enumerate()
+        .filter_map(|(i, table_col)| {
+            if matches!(table_col.data_type, type) && specified_columns.any(|specified_col| specified_col.value == table_col.name.value) {
+                Some((i, table_col.name.value.to_owned()))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+// KG: Made this so that code isn't repeated... Perhaps this is inefficient though?
+fn specified_columns_only(
+    matched_columns: Vec<(usize, String)>,
+    specified_columns: &[Ident],
+) -> Vec<(usize, String)> {
+    matched_columns
+        .iter()
+        .enumerate()
+        .filter_map(|(i, table_col)| {
+            if specified_columns.any(|specified_col| specified_col.value == table_col.name.value) {
                 Some((i, table_col.name.value.to_owned()))
             } else {
                 None
@@ -160,7 +193,7 @@ async fn validate_unique<T: 'static + Debug>(
     let unique_columns = match column_validation {
         ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
         ColumnValidation::SpecifiedColumns(all_column_defs, specified_columns) => {
-            fetch_specified_unique_columns(&all_column_defs, &specified_columns)
+            specified_columns_only(fetch_all_unique_columns(&column_defs), &specified_columns)
         }
     };
 
@@ -173,6 +206,54 @@ async fn validate_unique<T: 'static + Debug>(
     storage.scan_data(table_name).await?.try_for_each(|result| {
         let (_, row) = result?;
         Rc::clone(&unique_constraints)
+            .iter()
+            .try_for_each(|constraint| {
+                let col_idx = constraint.column_index;
+                let val = row
+                    .get_value(col_idx)
+                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+                constraint.check(val)?;
+                Ok(())
+            })
+    })
+}
+
+async fn validate_type<T: 'static + Debug>(
+    storage: &impl Store<T>,
+    table_name: &str,
+    column_validation: ColumnValidation,
+    row_iter: impl Iterator<Item = &Row> + Clone,
+) -> Result<()> {
+    validate_specific_type(storage, table_name, column_validation, row_iter, DataType::Boolean)?;
+    validate_specific_type(storage, table_name, column_validation, row_iter, DataType::Int)?;
+    validate_specific_type(storage, table_name, column_validation, row_iter, DataType::Float)?;
+    validate_specific_type(storage, table_name, column_validation, row_iter, DataType::Text)?;
+    Ok(())
+}
+
+async fn validate_specific_type<T: 'static + Debug>(
+    storage: &impl Store<T>,
+    table_name: &str,
+    column_validation: ColumnValidation,
+    row_iter: impl Iterator<Item = &Row> + Clone,
+    type: DataType
+) -> Result<()> {
+    let columns = match column_validation {
+        ColumnValidation::All(column_defs) => fetch_all_columns_of_type(&column_defs, type),
+        ColumnValidation::SpecifiedColumns(all_column_defs, specified_columns) => {
+            specified_columns_only(fetch_all_columns_of_type(&all_column_defs, type), &specified_columns)
+        }
+    };
+
+    let constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
+    if constraints.is_empty() {
+        return Ok(());
+    }
+
+    let constraints = Rc::new(constraints);
+    storage.scan_data(table_name).await?.try_for_each(|result| {
+        let (_, row) = result?;
+        Rc::clone(&constraints)
             .iter()
             .try_for_each(|constraint| {
                 let col_idx = constraint.column_index;

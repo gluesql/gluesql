@@ -46,6 +46,10 @@ test_case!(error, async move {
             RowError::TooManyValues.into(),
             "INSERT INTO TableA VALUES (100), (100, 200);",
         ),
+        (
+            UpdateError::ConflictOnSchema.into(),
+            "INSERT INTO TableA (id) VALUES (\"1\")"
+        ),
         #[cfg(feature = "alter-table")]
         (
             ExecuteError::UnsupportedAlterTableOperation(
