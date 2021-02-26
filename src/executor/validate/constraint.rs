@@ -18,87 +18,65 @@ use {
     },
 };
 
-#[derive(Debug, Clone)]
-pub enum Constraint {
-    UniqueConstraint {
-        column_index: usize,
-        column_name: String,
-        keys: HashSet<UniqueKey>,
-    },
-    TypeConstraint {
-        column_index: usize,
-        column_name: String,
-    },
+
+#[derive(Debug)]
+pub struct UniqueConstraint {
+    pub column_index: usize,
+    pub column_name: String,
+    pub keys: HashSet<UniqueKey>,
 }
 
-impl Constraint {
-    pub fn new(constraint: Constraint, column_index: usize, column_name: String) -> Self {
-        match constraint {
-            Constraint::UniqueConstraint {..} => Constraint::UniqueConstraint {
-                column_index,
-                column_name,
-                keys: HashSet::new(),
-            },
-            Constraint::TypeConstraint {..} => Constraint::TypeConstraint {
-                column_index,
-                column_name,
-            },
+impl UniqueConstraint {
+    pub fn new(column_index: usize, column_name: String) -> Self {
+        Self {
+            column_index,
+            column_name,
+            keys: HashSet::new(),
         }
     }
 
     pub fn add(self, value: &Value) -> Result<Self> {
-        Ok(match self {
-            Constraint::UniqueConstraint {ref column_index, ref column_name, ref keys} => {
-                let new_key = self.check(value)?;
-                if new_key == UniqueKey::Null {self}else{
-                    let column_index = column_index.to_owned();
-                    let column_name = column_name.to_owned();
-                    let keys = keys.update(new_key);
-                    Constraint::UniqueConstraint {
-                        column_index,
-                        column_name,
-                        keys
-                    }
-                    
-                }
-            },
-            _ => self,
+        let new_key = self.check(value)?;
+        if new_key == UniqueKey::Null {
+            return Ok(self);
+        }
+
+        let keys = self.keys.update(new_key);
+
+        Ok(Self {
+            column_index: self.column_index,
+            column_name: self.column_name,
+            keys,
         })
     }
 
     pub fn check(&self, value: &Value) -> Result<UniqueKey> {
-        Ok(match self {
-            Constraint::UniqueConstraint {column_name, keys, ..} => {
-                let new_key = value.try_into()?;
-                if new_key != UniqueKey::Null && keys.contains(&new_key) {
-                    // The input values are duplicate.
-                    return Err(ValidateError::DuplicateEntryOnUniqueField(
-                        format!("{:?}", value),
-                        column_name.to_owned()
-                    )
-                    .into());
-                }
-                new_key
-            },
-            _ => UniqueKey::Null
-        })
+        let new_key = value.try_into()?;
+        if new_key != UniqueKey::Null && self.keys.contains(&new_key) {
+            // The input values are duplicate.
+            return Err(ValidateError::DuplicateEntryOnUniqueField(
+                format!("{:?}", value),
+                self.column_name.to_owned(),
+            )
+            .into());
+        }
+
+        Ok(new_key)
     }
 }
 
-pub fn create_constraints<'a>(
-    columns: Vec<(usize, String)>,
+pub fn create_unique_constraints<'a>(
+    unique_columns: Vec<(usize, String)>,
     row_iter: impl Iterator<Item = &'a Row> + Clone,
-    constraint: Constraint,
-) -> Result<Vector<Constraint>> {
-    columns
+) -> Result<Vector<UniqueConstraint>> {
+    unique_columns
         .into_iter()
         .try_fold(Vector::new(), |constraints, col| {
             let (col_idx, col_name) = col;
-            let new_constraint = Constraint::new(constraint.clone(), col_idx, col_name);
+            let new_constraint = UniqueConstraint::new(col_idx, col_name);
             let new_constraint = row_iter
                 .clone()
                 .try_fold(new_constraint, |constraint, row| {
-                    println!("constraint: {:?}, row: {:?}", constraint, row);
                     let val = row
                         .get_value(col_idx)
                         .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;

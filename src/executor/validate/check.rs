@@ -19,8 +19,8 @@ use {
             specified_columns_only,
         },
         constraint::{
-            create_constraints,
-            Constraint,
+            create_unique_constraints,
+            UniqueConstraint,
         },
     },
 };
@@ -38,16 +38,25 @@ pub async fn validate_unique<T: 'static + Debug>(
         }
     };
 
-    println!("unique columns: {:?}", columns);
-
-    let constraints: Vec<Constraint> = create_constraints(columns, row_iter, Constraint::UniqueConstraint { column_index: 0, column_name: "".to_string(), keys: HashSet::new() })?.into();
-    if constraints.is_empty() {
+    let unique_constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
+    if unique_constraints.is_empty() {
         return Ok(());
     }
 
-    println!("unique constraints: {:?}", constraints);
-
-    throw_or_pass(storage, table_name, constraints).await
+    let unique_constraints = Rc::new(unique_constraints);
+    storage.scan_data(table_name).await?.try_for_each(|result| {
+        let (_, row) = result?;
+        Rc::clone(&unique_constraints)
+            .iter()
+            .try_for_each(|constraint| {
+                let col_idx = constraint.column_index;
+                let val = row
+                    .get_value(col_idx)
+                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+                constraint.check(val)?;
+                Ok(())
+            })
+    })
 }
 
 pub async fn validate_type<T: 'static + Debug>(
@@ -77,35 +86,22 @@ async fn validate_specific_type<T: 'static + Debug>(
         }
     };
 
-    println!("type {:?} columns: {:?}", data_type, columns);
-
-    let constraints: Vec<Constraint> = create_constraints(columns, row_iter, Constraint::TypeConstraint { column_index: 0, column_name: "".to_string() })?.into();
-    if constraints.is_empty() {
+    if columns.is_empty() {
         return Ok(());
     }
 
-    println!("type {:?} constraints: {:?}", data_type, constraints);
+    println!("type {:?} columns: {:?}", data_type, columns);
 
-    throw_or_pass(storage, table_name, constraints).await
-}
-
-async fn throw_or_pass<T: 'static + Debug>(storage: &impl Store<T>,
-    table_name: &str,
-    constraints: Vec<Constraint>
-    ) -> Result<()> {
-
-    let constraints = Rc::new(constraints);
-    storage.scan_data(table_name).await?.try_for_each(|result| {
-        let (_, row) = result?;
-        Rc::clone(&constraints)
-            .iter()
-            .try_for_each(|constraint| {
-                let col_idx = match constraint {Constraint::UniqueConstraint {column_index, ..} | Constraint::TypeConstraint {column_index, ..} => column_index}.to_owned();
-                let val = row
-                    .get_value(col_idx)
-                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
-                constraint.check(val)?;
-                Ok(())
-            })
-    })
+    for column in columns.into_iter() {
+        for row in row_iter.clone() {
+            match row.get_value(column.0) {
+                Some(column_type) => if !matches!(column_type, data_type) {
+                    
+                    return Err(ValidateError::IncompatibleTypeOnTypedField(data_type.to_string(), column.1).into());
+                } else {println!("Col type: {:?} Dat type: {:?}", column_type, data_type);},
+                None => (),
+            }
+       };
+    };
+    Ok(())
 }
