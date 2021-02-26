@@ -25,20 +25,6 @@ pub fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String
         .collect()
 }
 
-pub fn fetch_all_columns_of_type(column_defs: &[ColumnDef], data_type: DataType) -> Vec<(usize, String)> {
-    column_defs
-        .iter()
-        .enumerate()
-        .filter_map(|(i, table_col)| {
-            if table_col.data_type == data_type {
-                Some((i, table_col.name.value.to_owned()))
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
 // KG: Made this so that code isn't repeated... Perhaps this is inefficient though?
 pub fn specified_columns_only(
     matched_columns: Vec<(usize, String)>,

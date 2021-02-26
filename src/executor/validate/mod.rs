@@ -1,6 +1,7 @@
 mod constraint;
 mod fetch;
 mod check;
+mod confirm_types;
 
 use {
 	std::{
@@ -18,8 +19,8 @@ use {
 	},
 	check::{
 		validate_unique,
-		validate_type,
 	},
+	confirm_types::confirm_types,
 	serde::Serialize,
 
     thiserror::Error as ThisError,
@@ -41,8 +42,8 @@ pub enum ValidateError {
     #[error("duplicate entry '{0}' for unique column '{1}'")]
     DuplicateEntryOnUniqueField(String, String),
 
-    #[error("incompatible type '{0}' used for typed column '{1}'")]
-    IncompatibleTypeOnTypedField(String, String),
+    #[error("incompatible type {0} used for typed column '{1}' ({2})")]
+    IncompatibleTypeOnTypedField(String, String, String),
 }
 
 #[derive(Clone)]
@@ -58,6 +59,6 @@ pub async fn validate_rows<T: 'static + Debug>(
     row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
     validate_unique(storage, table_name, column_validation.clone(), row_iter.clone()).await?;
-    validate_type(storage, table_name, column_validation.clone(), row_iter.clone()).await?;
+    confirm_types(storage, table_name, column_validation.clone(), row_iter.clone()).await?;
     Ok(())
 }
