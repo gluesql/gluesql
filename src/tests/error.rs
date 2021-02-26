@@ -66,14 +66,14 @@ test_case!(error, async move {
         "INSERT INTO TableB (id) VALUES (0);"
     );
 
-    run!("CREATE TABLE TableA (id INTEGER UNIQUE);");
-    run!("INSERT INTO TableA (id) VALUES (1);");
+    run!("CREATE TABLE TableC (id INTEGER UNIQUE);");
+    run!("INSERT INTO TableC (id) VALUES (1);");
     test!(
-        Err(ValidateError::DuplicateEntryOnUniqueField("1".to_string(), "id".to_string()).into()),
-        "INSERT INTO TableA (id) VALUES (1)"
+        Err(ValidateError::DuplicateEntryOnUniqueField("I64(1)".to_string(), "id".to_string()).into()),
+        "INSERT INTO TableC (id) VALUES (1)"
     );
     test!(
         Err(ValidateError::IncompatibleTypeOnTypedField("A".to_string(), "id".to_string()).into()),
-        "INSERT INTO TableA (id) VALUES (\"A\")"
+        "INSERT INTO TableC (id) VALUES (\"A\")"
     );
 });

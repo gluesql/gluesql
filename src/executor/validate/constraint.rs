@@ -98,6 +98,7 @@ pub fn create_constraints<'a>(
             let new_constraint = row_iter
                 .clone()
                 .try_fold(new_constraint, |constraint, row| {
+                    println!("constraint: {:?}, row: {:?}", constraint, row);
                     let val = row
                         .get_value(col_idx)
                         .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;

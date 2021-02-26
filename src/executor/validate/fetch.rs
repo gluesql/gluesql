@@ -25,12 +25,12 @@ pub fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String
         .collect()
 }
 
-pub fn fetch_all_columns_of_type(column_defs: &[ColumnDef], _data_type: DataType) -> Vec<(usize, String)> {
+pub fn fetch_all_columns_of_type(column_defs: &[ColumnDef], data_type: DataType) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
         .filter_map(|(i, table_col)| {
-            if matches!(&table_col.data_type, _data_type) {
+            if table_col.data_type == data_type {
                 Some((i, table_col.name.value.to_owned()))
             } else {
                 None

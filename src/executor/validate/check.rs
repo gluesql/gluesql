@@ -31,17 +31,21 @@ pub async fn validate_unique<T: 'static + Debug>(
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
-    let unique_columns = match column_validation {
+    let columns = match column_validation {
         ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
         ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
             specified_columns_only(fetch_all_unique_columns(&column_defs), &specified_columns)
         }
     };
 
-    let constraints: Vec<Constraint> = create_constraints(unique_columns, row_iter, Constraint::UniqueConstraint { column_index: 0, column_name: "".to_string(), keys: HashSet::new() })?.into();
+    println!("unique columns: {:?}", columns);
+
+    let constraints: Vec<Constraint> = create_constraints(columns, row_iter, Constraint::UniqueConstraint { column_index: 0, column_name: "".to_string(), keys: HashSet::new() })?.into();
     if constraints.is_empty() {
         return Ok(());
     }
+
+    println!("unique constraints: {:?}", constraints);
 
     throw_or_pass(storage, table_name, constraints).await
 }
@@ -67,16 +71,20 @@ async fn validate_specific_type<T: 'static + Debug>(
     data_type: DataType
 ) -> Result<()> {
     let columns = match column_validation {
-        ColumnValidation::All(column_defs) => fetch_all_columns_of_type(&column_defs, data_type),
+        ColumnValidation::All(column_defs) => fetch_all_columns_of_type(&column_defs, data_type.clone()),
         ColumnValidation::SpecifiedColumns(all_column_defs, specified_columns) => {
-            specified_columns_only(fetch_all_columns_of_type(&all_column_defs, data_type), &specified_columns)
+            specified_columns_only(fetch_all_columns_of_type(&all_column_defs, data_type.clone()), &specified_columns)
         }
     };
+
+    println!("type {:?} columns: {:?}", data_type, columns);
 
     let constraints: Vec<Constraint> = create_constraints(columns, row_iter, Constraint::TypeConstraint { column_index: 0, column_name: "".to_string() })?.into();
     if constraints.is_empty() {
         return Ok(());
     }
+
+    println!("type {:?} constraints: {:?}", data_type, constraints);
 
     throw_or_pass(storage, table_name, constraints).await
 }
