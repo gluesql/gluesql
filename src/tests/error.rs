@@ -69,7 +69,10 @@ test_case!(error, async move {
     run!("CREATE TABLE TableC (id INTEGER UNIQUE);");
     run!("INSERT INTO TableC (id) VALUES (1);");
     test!(
-        Err(ValidateError::DuplicateEntryOnUniqueField("I64(1)".to_string(), "id".to_string()).into()),
+        Err(
+            ValidateError::DuplicateEntryOnUniqueField("I64(1)".to_string(), "id".to_string())
+                .into()
+        ),
         "INSERT INTO TableC (id) VALUES (1)"
     );
 
@@ -77,7 +80,12 @@ test_case!(error, async move {
     run!("INSERT INTO TableD (id, b) VALUES (1, \"aaa\");");
     run!("UPDATE TableD SET b = \"bbb\";");
     test!(
-        Err(ValidateError::IncompatibleTypeOnTypedField("Str(\"A\")".to_string(), "id".to_string(), "INT".to_string()).into()),
+        Err(ValidateError::IncompatibleTypeOnTypedField(
+            "Str(\"A\")".to_string(),
+            "id".to_string(),
+            "INT".to_string()
+        )
+        .into()),
         "INSERT INTO TableC (id) VALUES (\"A\")"
     );
 });

@@ -1,11 +1,4 @@
-use {
-    sqlparser::ast::{
-        ColumnDef,
-        DataType,
-        ColumnOption,
-        Ident
-    },
-};
+use sqlparser::ast::{ColumnDef, ColumnOption, Ident};
 
 pub fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
     column_defs
@@ -26,6 +19,7 @@ pub fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String
 }
 
 // KG: Made this so that code isn't repeated... Perhaps this is inefficient though?
+// KG: Unsure if we should keep this, I like how it works, code-wise and may be good if ever anything else needs specified columns.
 pub fn specified_columns_only(
     matched_columns: Vec<(usize, String)>,
     specified_columns: &[Ident],
@@ -34,7 +28,10 @@ pub fn specified_columns_only(
         .iter()
         .enumerate()
         .filter_map(|(i, table_col)| {
-            if specified_columns.iter().any(|specified_col| specified_col.value == table_col.1) {
+            if specified_columns
+                .iter()
+                .any(|specified_col| specified_col.value == table_col.1)
+            {
                 Some((i, table_col.1.clone()))
             } else {
                 None

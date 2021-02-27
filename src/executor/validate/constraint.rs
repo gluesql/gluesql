@@ -1,23 +1,13 @@
 use {
-    im_rc::HashSet,
-    std::{
-        convert::TryInto,
-        fmt::Debug,
-    },
+    super::{UniqueKey, ValidateError},
     crate::{
-        data::{
-            Row,
-            Value
-        },
+        data::{Row, Value},
         result::Result,
         utils::Vector,
     },
-    super::{
-        ValidateError,
-        UniqueKey,
-    },
+    im_rc::HashSet,
+    std::{convert::TryInto, fmt::Debug},
 };
-
 
 #[derive(Debug)]
 pub struct UniqueConstraint {
