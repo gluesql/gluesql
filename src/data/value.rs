@@ -200,6 +200,23 @@ impl TryFrom<&AstValue> for Value {
     }
 }
 
+impl TryInto<AstValue> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<AstValue> {
+        let new_self = self.into_non_optional();
+
+        Ok(match new_self {
+            Value::Bool(value) => AstValue::Boolean(value),
+            Value::I64(value) => AstValue::Number(value.to_string()),
+            Value::F64(value) => AstValue::Number(value.to_string()),
+            Value::Str(value) => AstValue::SingleQuotedString(value),
+            Value::Empty => AstValue::Null,
+            _ => panic!("Unreachable"),
+        })
+    }
+}
+
 impl TryInto<GroupKey> for &Value {
     type Error = Error;
 
@@ -264,6 +281,19 @@ impl BoolToValue for bool {
 }
 
 impl Value {
+    fn into_non_optional(self) -> Value {
+        use Value::*;
+
+        match self {
+            OptBool(Some(v)) => Bool(v),
+            OptI64(Some(v)) => I64(v),
+            OptF64(Some(v)) => F64(v),
+            OptStr(Some(v)) => Str(v),
+            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Empty,
+            other => other,
+        }
+    }
+
     pub fn from_expr(data_type: &DataType, nullable: bool, expr: &Expr) -> Result<Self> {
         match expr {
             Expr::Value(literal) => Value::from_data_type(&data_type, nullable, literal),

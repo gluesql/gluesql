@@ -1,13 +1,16 @@
-use std::cmp::Ordering;
-use std::convert::{TryFrom, TryInto};
-
-use sqlparser::ast::{DataType, Value as AstValue};
-
-use crate::data;
-use crate::data::Value;
-use crate::result::{Error, Result};
-
-use super::EvaluateError;
+use {
+    super::{functions, EvaluateError},
+    crate::{
+        data,
+        data::Value,
+        result::{Error, Result},
+    },
+    sqlparser::ast::{DataType, Value as AstValue},
+    std::{
+        cmp::Ordering,
+        convert::{TryFrom, TryInto},
+    },
+};
 
 /// `LiteralRef`, `Literal` and `StringRef` are used when it is not possible to specify what kind of `Value`
 /// can be applied.
@@ -345,18 +348,14 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn cast(&self, data_type: &DataType) -> Result<Evaluated<'a>> {
-        use Evaluated::*;
-
-        let cast_literal = |value| literal_cast(value, data_type).map(Evaluated::Literal);
-        let cast_value = |_| Err(EvaluateError::UnimplementedCast.into());
-
-        match self {
-            LiteralRef(v) => cast_literal(v),
-            Literal(v) => cast_literal(&v),
-            ValueRef(v) => cast_value(v),
-            Value(v) => cast_value(&v),
-            StringRef(v) => cast_literal(&AstValue::SingleQuotedString(v.to_string())),
-        }
+        let literal: AstValue = match self {
+            Evaluated::LiteralRef(value) => value.to_owned().to_owned(),
+            Evaluated::Literal(value) => value.to_owned(),
+            Evaluated::StringRef(value) => AstValue::SingleQuotedString(value.to_string()),
+            Evaluated::Value(value) => TryInto::try_into(value.to_owned())?,
+            Evaluated::ValueRef(value) => TryInto::try_into(value.to_owned().to_owned())?,
+        };
+        functions::cast::cast(literal, data_type).map(Evaluated::Literal)
     }
 }
 
@@ -427,27 +426,5 @@ fn literal_minus(v: &AstValue) -> Result<AstValue> {
             .map_err(|_| EvaluateError::LiteralUnaryMinusOnNonNumeric.into()),
         AstValue::Null => Ok(AstValue::Null),
         _ => Err(EvaluateError::LiteralUnaryMinusOnNonNumeric.into()),
-    }
-}
-
-fn literal_cast(value: &AstValue, data_type: &DataType) -> Result<AstValue> {
-    match (data_type, value) {
-        (DataType::Int, AstValue::Number(value)) => Ok(AstValue::Number(
-            value
-                .parse::<f64>()
-                .map_err(|_| EvaluateError::UnreachableImpossibleCast)?
-                .trunc()
-                .to_string(),
-        )),
-        (DataType::Float(_), AstValue::Number(value)) => Ok(AstValue::Number(value.to_string())),
-        (DataType::Text, AstValue::Number(value)) => {
-            Ok(AstValue::SingleQuotedString(value.to_string()))
-        }
-        (DataType::Int, AstValue::SingleQuotedString(value))
-        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
-            Ok(AstValue::Number(value.to_string()))
-        }
-        (_, AstValue::Null) => Ok(AstValue::Null),
-        _ => Err(EvaluateError::UnimplementedCast.into()),
     }
 }

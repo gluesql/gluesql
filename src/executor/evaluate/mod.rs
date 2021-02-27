@@ -1,5 +1,6 @@
 mod error;
 mod evaluated;
+mod functions;
 
 use {
     super::{context::FilterContext, select::select},

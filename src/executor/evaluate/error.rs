@@ -16,6 +16,9 @@ pub enum EvaluateError {
     #[error("unary minus operation on non-numeric")]
     LiteralUnaryMinusOnNonNumeric,
 
+    #[error("impossible cast")]
+    ImpossibleCast,
+
     #[error("unreachable impossible cast")]
     UnreachableImpossibleCast,
 
