@@ -7,6 +7,7 @@
 - [Examples](./examples.md)
   - [Hello World](./hello_world.md)
   - [Multi-threaded with SledStorage](./sled_multi_threaded.md)
+  - [Load from file](./load_from_file.md)
 - [Internal](./internal.md)
   - [Type Errors](./type_errors.md)
 
