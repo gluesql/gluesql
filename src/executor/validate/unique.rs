@@ -1,17 +1,26 @@
 use {
-    super::{UniqueKey, ValidateError},
+    super::{ColumnValidation, ValidateError},
     crate::{
         data::{Row, Value},
         result::Result,
+        store::Store,
         utils::Vector,
     },
     im_rc::HashSet,
     sqlparser::ast::{ColumnDef, ColumnOption, Ident},
-    std::{convert::TryInto, fmt::Debug},
+    std::{convert::TryInto, fmt::Debug, rc::Rc},
 };
 
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum UniqueKey {
+    Bool(bool),
+    I64(i64),
+    Str(String),
+    Null,
+}
+
 #[derive(Debug)]
-pub struct UniqueConstraint {
+struct UniqueConstraint {
     pub column_index: usize,
     pub column_name: String,
     pub keys: HashSet<UniqueKey>,
@@ -56,7 +65,41 @@ impl UniqueConstraint {
     }
 }
 
-pub fn create_unique_constraints<'a>(
+pub async fn validate_unique<T: 'static + Debug>(
+    storage: &impl Store<T>,
+    table_name: &str,
+    column_validation: ColumnValidation,
+    row_iter: impl Iterator<Item = &Row> + Clone,
+) -> Result<()> {
+    let columns = match column_validation {
+        ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
+        ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
+            specified_columns_only(fetch_all_unique_columns(&column_defs), &specified_columns)
+        }
+    };
+
+    let unique_constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
+    if unique_constraints.is_empty() {
+        return Ok(());
+    }
+
+    let unique_constraints = Rc::new(unique_constraints);
+    storage.scan_data(table_name).await?.try_for_each(|result| {
+        let (_, row) = result?;
+        Rc::clone(&unique_constraints)
+            .iter()
+            .try_for_each(|constraint| {
+                let col_idx = constraint.column_index;
+                let val = row
+                    .get_value(col_idx)
+                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+                constraint.check(val)?;
+                Ok(())
+            })
+    })
+}
+
+fn create_unique_constraints<'a>(
     unique_columns: Vec<(usize, String)>,
     row_iter: impl Iterator<Item = &'a Row> + Clone,
 ) -> Result<Vector<UniqueConstraint>> {
@@ -77,7 +120,7 @@ pub fn create_unique_constraints<'a>(
         })
 }
 
-pub fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
+fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
@@ -97,7 +140,7 @@ pub fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String
 
 // KG: Made this so that code isn't repeated... Perhaps this is inefficient though?
 // KG: Unsure if we should keep this, I like how it works, code-wise and may be good if ever anything else needs specified columns.
-pub fn specified_columns_only(
+fn specified_columns_only(
     matched_columns: Vec<(usize, String)>,
     specified_columns: &[Ident],
 ) -> Vec<(usize, String)> {
