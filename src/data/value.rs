@@ -189,11 +189,12 @@ impl TryFrom<&AstValue> for Value {
 
     fn try_from(literal: &AstValue) -> Result<Self> {
         match literal {
+            AstValue::Boolean(v) => Ok(Value::Bool(*v)),
             AstValue::Number(v) => v
                 .parse::<i64>()
                 .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            AstValue::Boolean(v) => Ok(Value::Bool(*v)),
+            AstValue::SingleQuotedString(v) => Ok(Value::Str(v.to_string())),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }

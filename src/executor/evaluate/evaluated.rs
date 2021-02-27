@@ -432,12 +432,21 @@ fn literal_minus(v: &AstValue) -> Result<AstValue> {
 
 fn literal_cast(value: &AstValue, data_type: &DataType) -> Result<AstValue> {
     match (data_type, value) {
+        (DataType::Int, AstValue::Number(value)) => Ok(AstValue::Number(
+            value
+                .parse::<f64>()
+                .map_err(|_| EvaluateError::UnreachableImpossibleCast)?
+                .trunc()
+                .to_string(),
+        )),
+        (DataType::Float(_), AstValue::Number(value)) => Ok(AstValue::Number(value.to_string())),
         (DataType::Text, AstValue::Number(value)) => {
             Ok(AstValue::SingleQuotedString(value.to_string()))
         }
-        (DataType::Int, AstValue::SingleQuotedString(value)) => Ok(AstValue::Number(
-            value.parse().map_err(|_| EvaluateError::ImpossibleCast)?,
-        )),
+        (DataType::Int, AstValue::SingleQuotedString(value))
+        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
+            Ok(AstValue::Number(value.to_string()))
+        }
         (_, AstValue::Null) => Ok(AstValue::Null),
         _ => Err(EvaluateError::UnimplementedCast.into()),
     }
