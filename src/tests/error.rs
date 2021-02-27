@@ -75,10 +75,6 @@ test_case!(error, async move {
         ),
         "INSERT INTO TableC (id) VALUES (1)"
     );
-
-    run!("CREATE TABLE TableD (id INTEGER UNIQUE, b TEXT);");
-    run!("INSERT INTO TableD (id, b) VALUES (1, \"aaa\");");
-    run!("UPDATE TableD SET b = \"bbb\";");
     test!(
         Err(ValidateError::IncompatibleTypeOnTypedField(
             "Str(\"A\")".to_string(),
