@@ -1,14 +1,14 @@
+mod confirm;
 mod constraint;
 mod fetch;
-mod validate;
 
 use {
     crate::{data::Row, result::Result, store::Store},
+    confirm::{confirm_types, confirm_unique},
     serde::Serialize,
     sqlparser::ast::{ColumnDef, Ident},
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
-    validate::{validate_types, validate_unique},
 };
 
 #[derive(ThisError, Debug, PartialEq, Serialize)]
@@ -43,14 +43,14 @@ pub async fn validate_rows<T: 'static + Debug>(
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
-    validate_unique(
+    confirm_unique(
         storage,
         table_name,
         column_validation.clone(),
         row_iter.clone(),
     )
     .await?;
-    validate_types(
+    confirm_types(
         storage,
         table_name,
         column_validation.clone(),

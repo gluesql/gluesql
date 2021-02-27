@@ -13,7 +13,7 @@ use {
     std::{fmt::Debug, rc::Rc},
 };
 
-pub async fn validate_unique<T: 'static + Debug>(
+pub async fn confirm_unique<T: 'static + Debug>(
     storage: &impl Store<T>,
     table_name: &str,
     column_validation: ColumnValidation,
@@ -47,7 +47,7 @@ pub async fn validate_unique<T: 'static + Debug>(
     })
 }
 
-pub async fn validate_types<T: 'static + Debug>(
+pub async fn confirm_types<T: 'static + Debug>(
     _storage: &impl Store<T>,
     _table_name: &str,
     column_validation: ColumnValidation,
