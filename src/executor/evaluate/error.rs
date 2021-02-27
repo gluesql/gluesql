@@ -16,6 +16,12 @@ pub enum EvaluateError {
     #[error("unary minus operation on non-numeric")]
     LiteralUnaryMinusOnNonNumeric,
 
+    #[error("impossible cast")]
+    ImpossibleCast,
+
+    #[error("unimplemented cast")]
+    UnimplementedCast,
+
     #[error("function is not supported: {0}")]
     FunctionNotSupported(String),
 

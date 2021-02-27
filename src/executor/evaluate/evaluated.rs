@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::convert::{TryFrom, TryInto};
 
-use sqlparser::ast::Value as AstValue;
+use sqlparser::ast::{DataType, Value as AstValue};
 
 use crate::data;
 use crate::data::Value;
@@ -343,6 +343,21 @@ impl<'a> Evaluated<'a> {
             StringRef(_) => unreachable(),
         }
     }
+
+    pub fn cast(&self, data_type: &DataType) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
+
+        let cast_literal = |value| literal_cast(value, data_type).map(Evaluated::Literal);
+        let cast_value = |_| Err(EvaluateError::UnimplementedCast.into());
+
+        match self {
+            LiteralRef(v) => cast_literal(v),
+            Literal(v) => cast_literal(&v),
+            ValueRef(v) => cast_value(v),
+            Value(v) => cast_value(&v),
+            StringRef(v) => cast_literal(&AstValue::SingleQuotedString(v.to_string())),
+        }
+    }
 }
 
 macro_rules! literal_binary_op {
@@ -412,5 +427,18 @@ fn literal_minus(v: &AstValue) -> Result<AstValue> {
             .map_err(|_| EvaluateError::LiteralUnaryMinusOnNonNumeric.into()),
         AstValue::Null => Ok(AstValue::Null),
         _ => Err(EvaluateError::LiteralUnaryMinusOnNonNumeric.into()),
+    }
+}
+
+fn literal_cast(value: &AstValue, data_type: &DataType) -> Result<AstValue> {
+    match (data_type, value) {
+        (DataType::Text, AstValue::Number(value)) => {
+            Ok(AstValue::SingleQuotedString(value.to_string()))
+        }
+        (DataType::Int, AstValue::SingleQuotedString(value)) => Ok(AstValue::Number(
+            value.parse().map_err(|_| EvaluateError::ImpossibleCast)?,
+        )),
+        (_, AstValue::Null) => Ok(AstValue::Null),
+        _ => Err(EvaluateError::UnimplementedCast.into()),
     }
 }

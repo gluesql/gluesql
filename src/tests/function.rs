@@ -54,6 +54,13 @@ test_case!(function, async move {
             Err(EvaluateError::FunctionRequiresStringValue("LOWER".to_owned()).into()),
         ),
         (
+            r#"SELECT CAST("1" AS INTEGER) AS cast FROM Item LIMIT 1"#,
+            Ok(select!(
+                cast Value::I64;
+                1
+            )),
+        ),
+        (
             "SELECT WHATEVER(1) FROM Item",
             Err(EvaluateError::FunctionNotSupported("WHATEVER".to_owned()).into()),
         ),

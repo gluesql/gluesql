@@ -1,23 +1,21 @@
 mod error;
 mod evaluated;
 
-use async_recursion::async_recursion;
-use futures::stream::{StreamExt, TryStreamExt};
-use im_rc::HashMap;
-use std::convert::TryInto;
-use std::fmt::Debug;
-use std::rc::Rc;
+use {
+    super::{context::FilterContext, select::select},
+    crate::{
+        data::{get_name, Value},
+        result::Result,
+        store::Store,
+    },
+    async_recursion::async_recursion,
+    futures::stream::{StreamExt, TryStreamExt},
+    im_rc::HashMap,
+    sqlparser::ast::{BinaryOperator, Expr, Function, UnaryOperator, Value as AstValue},
+    std::{convert::TryInto, fmt::Debug, rc::Rc},
+};
 
-use sqlparser::ast::{BinaryOperator, Expr, Function, UnaryOperator, Value as AstValue};
-
-use super::context::FilterContext;
-use super::select::select;
-use crate::data::{get_name, Value};
-use crate::result::Result;
-use crate::store::Store;
-
-pub use error::EvaluateError;
-pub use evaluated::Evaluated;
+pub use {error::EvaluateError, evaluated::Evaluated};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, T: 'static + Debug>(
@@ -113,6 +111,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 evaluate_function(storage, context, aggregated, func, use_empty).await
             }
         },
+        Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
         _ => Err(EvaluateError::Unimplemented.into()),
     }
 }
