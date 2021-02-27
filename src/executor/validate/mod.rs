@@ -46,13 +46,13 @@ pub async fn validate_rows<T: 'static + Debug>(
         row_iter.clone(),
     )
     .await?;
-    validate_types(column_validation.clone(), row_iter.clone()).await?;
+    validate_types(column_validation.clone(), row_iter.clone())?;
     Ok(())
 }
 
-async fn validate_types(
+fn validate_types<'a>(
     column_validation: ColumnValidation,
-    row_iter: impl Iterator<Item = &Row> + Clone,
+    row_iter: impl Iterator<Item = &'a Row> + Clone,
 ) -> Result<()> {
     let columns = match column_validation {
         ColumnValidation::All(columns) => columns,

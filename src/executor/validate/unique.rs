@@ -21,13 +21,13 @@ pub enum UniqueKey {
 
 #[derive(Debug)]
 struct UniqueConstraint {
-    pub column_index: usize,
-    pub column_name: String,
-    pub keys: HashSet<UniqueKey>,
+    column_index: usize,
+    column_name: String,
+    keys: HashSet<UniqueKey>,
 }
 
 impl UniqueConstraint {
-    pub fn new(column_index: usize, column_name: String) -> Self {
+    fn new(column_index: usize, column_name: String) -> Self {
         Self {
             column_index,
             column_name,
@@ -35,7 +35,7 @@ impl UniqueConstraint {
         }
     }
 
-    pub fn add(self, value: &Value) -> Result<Self> {
+    fn add(self, value: &Value) -> Result<Self> {
         let new_key = self.check(value)?;
         if new_key == UniqueKey::Null {
             return Ok(self);
@@ -50,7 +50,7 @@ impl UniqueConstraint {
         })
     }
 
-    pub fn check(&self, value: &Value) -> Result<UniqueKey> {
+    fn check(&self, value: &Value) -> Result<UniqueKey> {
         let new_key = value.try_into()?;
         if new_key != UniqueKey::Null && self.keys.contains(&new_key) {
             // The input values are duplicate.
@@ -74,7 +74,7 @@ pub async fn validate_unique<T: 'static + Debug>(
     let columns = match column_validation {
         ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
         ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
-            specified_columns_only(fetch_all_unique_columns(&column_defs), &specified_columns)
+            fetch_specified_unique_columns(&column_defs, &specified_columns)
         }
     };
 
@@ -138,21 +138,25 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
         .collect()
 }
 
-// KG: Made this so that code isn't repeated... Perhaps this is inefficient though?
-// KG: Unsure if we should keep this, I like how it works, code-wise and may be good if ever anything else needs specified columns.
-fn specified_columns_only(
-    matched_columns: Vec<(usize, String)>,
+fn fetch_specified_unique_columns(
+    all_column_defs: &[ColumnDef],
     specified_columns: &[Ident],
 ) -> Vec<(usize, String)> {
-    matched_columns
+    all_column_defs
         .iter()
         .enumerate()
         .filter_map(|(i, table_col)| {
-            if specified_columns
+            if table_col
+                .options
                 .iter()
-                .any(|specified_col| specified_col.value == table_col.1)
+                .any(|opt_def| match opt_def.option {
+                    ColumnOption::Unique { .. } => specified_columns
+                        .iter()
+                        .any(|specified_col| specified_col.value == table_col.name.value),
+                    _ => false,
+                })
             {
-                Some((i, table_col.1.clone()))
+                Some((i, table_col.name.value.to_owned()))
             } else {
                 None
             }
