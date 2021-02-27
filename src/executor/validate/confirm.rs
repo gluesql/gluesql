@@ -58,7 +58,7 @@ pub async fn confirm_types<T: 'static + Debug>(
         ColumnValidation::SpecifiedColumns(columns, ..) => columns,
     };
     for row in row_iter.clone() {
-        for (index, column) in columns.into_iter().enumerate() {
+        for (index, column) in columns.iter().enumerate() {
             let result: Result<()> = match row.get_value(index) {
                 Some(row_data) => match (column.data_type.clone(), row_data) {
                     (DataType::Boolean, Value::Bool(_))
