@@ -19,9 +19,7 @@ pub fn cast(value: AstValue, data_type: &DataType) -> Result<AstValue> {
                 .to_string(),
         )),
         (DataType::Int, AstValue::SingleQuotedString(value))
-        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
-            Ok(AstValue::Number(value))
-        }
+        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => Ok(AstValue::Number(value)),
         (DataType::Int, AstValue::Boolean(value))
         | (DataType::Float(_), AstValue::Boolean(value)) => Ok(AstValue::Number(
             (if value { "1" } else { "0" }).to_string(),
@@ -30,9 +28,7 @@ pub fn cast(value: AstValue, data_type: &DataType) -> Result<AstValue> {
         (DataType::Text, AstValue::Boolean(value)) => Ok(AstValue::SingleQuotedString(
             (if value { "TRUE" } else { "FALSE" }).to_string(),
         )),
-        (DataType::Text, AstValue::Number(value)) => {
-            Ok(AstValue::SingleQuotedString(value))
-        }
+        (DataType::Text, AstValue::Number(value)) => Ok(AstValue::SingleQuotedString(value)),
         (_, AstValue::Null) => Ok(AstValue::Null),
         _ => Err(EvaluateError::UnimplementedCast.into()),
     }
