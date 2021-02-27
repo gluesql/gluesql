@@ -288,6 +288,7 @@ impl Value {
             (DataType::Boolean, AstValue::Boolean(v)) => {
                 Ok(nullable.into_value(Value::OptBool(Some(*v)), Value::Bool(*v)))
             }
+            (DataType::Text, AstValue::SingleQuotedString(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Int, AstValue::Null) => nullable.as_result(
                 Value::OptI64(None),
                 ValueError::NullValueOnNotNullField.into(),
