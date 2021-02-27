@@ -59,29 +59,4 @@ test_case!(error, async move {
     for (error, sql) in test_cases.into_iter() {
         test!(Err(error), sql);
     }
-
-    run!("CREATE TABLE TableB (id BOOL);");
-    test!(
-        Err(ValueError::SqlTypeNotSupported.into()),
-        "INSERT INTO TableB (id) VALUES (0);"
-    );
-
-    run!("CREATE TABLE TableC (id INTEGER UNIQUE);");
-    run!("INSERT INTO TableC (id) VALUES (1);");
-    test!(
-        Err(
-            ValidateError::DuplicateEntryOnUniqueField("I64(1)".to_string(), "id".to_string())
-                .into()
-        ),
-        "INSERT INTO TableC (id) VALUES (1)"
-    );
-    test!(
-        Err(ValidateError::IncompatibleTypeOnTypedField(
-            "Str(\"A\")".to_string(),
-            "id".to_string(),
-            "INT".to_string()
-        )
-        .into()),
-        "INSERT INTO TableC (id) VALUES (\"A\")"
-    );
 });
