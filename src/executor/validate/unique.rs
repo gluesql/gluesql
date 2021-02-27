@@ -1,18 +1,15 @@
-use im_rc::HashSet;
-use serde::Serialize;
-use sqlparser::ast::{ColumnDef, ColumnOption, Ident};
-use std::{convert::TryInto, fmt::Debug, rc::Rc};
-use thiserror::Error as ThisError;
-
-use crate::data::{Row, Value};
-use crate::result::Result;
-use crate::store::Store;
-use crate::utils::Vector;
-
-pub enum ColumnValidation {
-    All(Rc<[ColumnDef]>),
-    SpecifiedColumns(Rc<[ColumnDef]>, Vec<Ident>),
-}
+use {
+    super::{ColumnValidation, ValidateError},
+    crate::{
+        data::{Row, Value},
+        result::Result,
+        store::Store,
+        utils::Vector,
+    },
+    im_rc::HashSet,
+    sqlparser::ast::{ColumnDef, ColumnOption, Ident},
+    std::{convert::TryInto, fmt::Debug, rc::Rc},
+};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UniqueKey {
@@ -20,24 +17,6 @@ pub enum UniqueKey {
     I64(i64),
     Str(String),
     Null,
-}
-
-#[derive(Debug, PartialEq, Serialize, ThisError)]
-pub enum ValidateError {
-    #[error("conflict! storage row has no column on index {0}")]
-    ConflictOnStorageColumnIndex(usize),
-
-    #[error("duplicate entry '{0}' for unique column '{1}'")]
-    DuplicateEntryOnUniqueField(String, String),
-}
-
-pub async fn validate_rows<T: 'static + Debug>(
-    storage: &impl Store<T>,
-    table_name: &str,
-    column_validation: ColumnValidation,
-    row_iter: impl Iterator<Item = &Row> + Clone,
-) -> Result<()> {
-    validate_unique(storage, table_name, column_validation, row_iter).await
 }
 
 #[derive(Debug)]
@@ -86,6 +65,40 @@ impl UniqueConstraint {
     }
 }
 
+pub async fn validate_unique<T: 'static + Debug>(
+    storage: &impl Store<T>,
+    table_name: &str,
+    column_validation: ColumnValidation,
+    row_iter: impl Iterator<Item = &Row> + Clone,
+) -> Result<()> {
+    let columns = match column_validation {
+        ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
+        ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
+            fetch_specified_unique_columns(&column_defs, &specified_columns)
+        }
+    };
+
+    let unique_constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
+    if unique_constraints.is_empty() {
+        return Ok(());
+    }
+
+    let unique_constraints = Rc::new(unique_constraints);
+    storage.scan_data(table_name).await?.try_for_each(|result| {
+        let (_, row) = result?;
+        Rc::clone(&unique_constraints)
+            .iter()
+            .try_for_each(|constraint| {
+                let col_idx = constraint.column_index;
+                let val = row
+                    .get_value(col_idx)
+                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+                constraint.check(val)?;
+                Ok(())
+            })
+    })
+}
+
 fn create_unique_constraints<'a>(
     unique_columns: Vec<(usize, String)>,
     row_iter: impl Iterator<Item = &'a Row> + Clone,
@@ -111,13 +124,13 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
-        .filter_map(|(i, col)| {
-            if col
+        .filter_map(|(i, table_col)| {
+            if table_col
                 .options
                 .iter()
                 .any(|opt_def| matches!(opt_def.option, ColumnOption::Unique { .. }))
             {
-                Some((i, col.name.value.to_owned()))
+                Some((i, table_col.name.value.to_owned()))
             } else {
                 None
             }
@@ -149,38 +162,4 @@ fn fetch_specified_unique_columns(
             }
         })
         .collect()
-}
-
-async fn validate_unique<T: 'static + Debug>(
-    storage: &impl Store<T>,
-    table_name: &str,
-    column_validation: ColumnValidation,
-    row_iter: impl Iterator<Item = &Row> + Clone,
-) -> Result<()> {
-    let unique_columns = match column_validation {
-        ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
-        ColumnValidation::SpecifiedColumns(all_column_defs, specified_columns) => {
-            fetch_specified_unique_columns(&all_column_defs, &specified_columns)
-        }
-    };
-
-    let unique_constraints: Vec<_> = create_unique_constraints(unique_columns, row_iter)?.into();
-    if unique_constraints.is_empty() {
-        return Ok(());
-    }
-
-    let unique_constraints = Rc::new(unique_constraints);
-    storage.scan_data(table_name).await?.try_for_each(|result| {
-        let (_, row) = result?;
-        Rc::clone(&unique_constraints)
-            .iter()
-            .try_for_each(|constraint| {
-                let col_idx = constraint.column_index;
-                let val = row
-                    .get_value(col_idx)
-                    .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
-                constraint.check(val)?;
-                Ok(())
-            })
-    })
 }
