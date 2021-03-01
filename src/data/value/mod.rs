@@ -2,57 +2,17 @@ use boolinator::Boolinator;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt::Debug;
-use thiserror::Error as ThisError;
 
 use sqlparser::ast::{DataType, Expr, Ident, Value as AstValue};
 
 use crate::result::Result;
 
 mod ast_value;
+mod error;
 mod group_key;
 mod unique_key;
 
-#[derive(ThisError, Serialize, Debug, PartialEq)]
-pub enum ValueError {
-    #[error("sql type not supported yet")]
-    SqlTypeNotSupported,
-
-    #[error("literal not supported yet")]
-    LiteralNotSupported,
-
-    #[error("ast expr not supported: {0}")]
-    ExprNotSupported(String),
-
-    #[error("failed to parse number")]
-    FailedToParseNumber,
-
-    #[error("add on non numeric value")]
-    AddOnNonNumeric,
-
-    #[error("subtract on non numeric value")]
-    SubtractOnNonNumeric,
-
-    #[error("multiply on non numeric value")]
-    MultiplyOnNonNumeric,
-
-    #[error("divide on non numeric value")]
-    DivideOnNonNumeric,
-
-    #[error("null value on not null field")]
-    NullValueOnNotNullField,
-
-    #[error("floating numbers cannot be grouped by")]
-    FloatCannotBeGroupedBy,
-
-    #[error("unary plus operation for non numeric value")]
-    UnaryPlusOnNonNumeric,
-
-    #[error("unary minus operation for non numeric value")]
-    UnaryMinusOnNonNumeric,
-
-    #[error("floating columns cannot be set to unique constraint")]
-    ConflictOnFloatWithUniqueConstraint,
-}
+pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {

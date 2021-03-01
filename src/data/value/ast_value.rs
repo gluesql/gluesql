@@ -1,5 +1,5 @@
 use {
-    super::{Value, ValueError},
+    super::{error::ValueError, Value},
     crate::result::{Error, Result},
     sqlparser::ast::Value as AstValue,
     std::{cmp::Ordering, convert::TryFrom},

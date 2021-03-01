@@ -1,5 +1,5 @@
 use {
-    super::{Value, ValueError},
+    super::{error::ValueError, Value},
     crate::{
         executor::UniqueKey,
         result::{Error, Result},
