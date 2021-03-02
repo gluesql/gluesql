@@ -1,5 +1,5 @@
 # GlueSQL project files
-data/
+/data/
 
 # Vim
 *.swp

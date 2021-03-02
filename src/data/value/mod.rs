@@ -1,56 +1,18 @@
 use boolinator::Boolinator;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use thiserror::Error as ThisError;
 
 use sqlparser::ast::{DataType, Expr, Ident, Value as AstValue};
 
-use crate::executor::{GroupKey, UniqueKey};
-use crate::result::{Error, Result};
+use crate::result::Result;
 
-#[derive(ThisError, Serialize, Debug, PartialEq)]
-pub enum ValueError {
-    #[error("sql type not supported yet")]
-    SqlTypeNotSupported,
+mod ast_value;
+mod error;
+mod group_key;
+mod unique_key;
 
-    #[error("literal not supported yet")]
-    LiteralNotSupported,
-
-    #[error("ast expr not supported: {0}")]
-    ExprNotSupported(String),
-
-    #[error("failed to parse number")]
-    FailedToParseNumber,
-
-    #[error("add on non numeric value")]
-    AddOnNonNumeric,
-
-    #[error("subtract on non numeric value")]
-    SubtractOnNonNumeric,
-
-    #[error("multiply on non numeric value")]
-    MultiplyOnNonNumeric,
-
-    #[error("divide on non numeric value")]
-    DivideOnNonNumeric,
-
-    #[error("null value on not null field")]
-    NullValueOnNotNullField,
-
-    #[error("floating numbers cannot be grouped by")]
-    FloatCannotBeGroupedBy,
-
-    #[error("unary plus operation for non numeric value")]
-    UnaryPlusOnNonNumeric,
-
-    #[error("unary minus operation for non numeric value")]
-    UnaryMinusOnNonNumeric,
-
-    #[error("floating columns cannot be set to unique constraint")]
-    ConflictOnFloatWithUniqueConstraint,
-}
+pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -94,38 +56,6 @@ impl PartialEq<Value> for Value {
     }
 }
 
-impl PartialEq<AstValue> for Value {
-    fn eq(&self, other: &AstValue) -> bool {
-        match (self, other) {
-            (Value::Bool(l), AstValue::Boolean(r))
-            | (Value::OptBool(Some(l)), AstValue::Boolean(r)) => l == r,
-            (Value::I64(l), AstValue::Number(r))
-            | (Value::OptI64(Some(l)), AstValue::Number(r)) => match r.parse::<i64>() {
-                Ok(r) => l == &r,
-                Err(_) => match r.parse::<f64>() {
-                    Ok(r) => (*l as f64) == r,
-                    Err(_) => false,
-                },
-            },
-            (Value::F64(l), AstValue::Number(r))
-            | (Value::OptF64(Some(l)), AstValue::Number(r)) => match r.parse::<f64>() {
-                Ok(r) => l == &r,
-                Err(_) => match r.parse::<i64>() {
-                    Ok(r) => *l == (r as f64),
-                    Err(_) => false,
-                },
-            },
-            (Value::Str(l), AstValue::SingleQuotedString(r))
-            | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => l == r,
-            (Value::OptBool(None), AstValue::Null)
-            | (Value::OptI64(None), AstValue::Null)
-            | (Value::OptF64(None), AstValue::Null)
-            | (Value::OptStr(None), AstValue::Null) => true,
-            _ => false,
-        }
-    }
-}
-
 impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
@@ -154,95 +84,6 @@ impl PartialOrd<Value> for Value {
             | (Value::Str(l), Value::OptStr(Some(r)))
             | (Value::OptStr(Some(l)), Value::OptStr(Some(r))) => Some(l.cmp(r)),
             _ => None,
-        }
-    }
-}
-
-impl PartialOrd<AstValue> for Value {
-    fn partial_cmp(&self, other: &AstValue) -> Option<Ordering> {
-        match (self, other) {
-            (Value::I64(l), AstValue::Number(r))
-            | (Value::OptI64(Some(l)), AstValue::Number(r)) => match r.parse::<i64>() {
-                Ok(r) => Some(l.cmp(&r)),
-                Err(_) => match r.parse::<f64>() {
-                    Ok(r) => (*l as f64).partial_cmp(&r),
-                    Err(_) => None,
-                },
-            },
-            (Value::F64(l), AstValue::Number(r))
-            | (Value::OptF64(Some(l)), AstValue::Number(r)) => match r.parse::<f64>() {
-                Ok(r) => l.partial_cmp(&r),
-                Err(_) => match r.parse::<i64>() {
-                    Ok(r) => l.partial_cmp(&(r as f64)),
-                    Err(_) => None,
-                },
-            },
-            (Value::Str(l), AstValue::SingleQuotedString(r))
-            | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
-            _ => None,
-        }
-    }
-}
-
-impl TryFrom<&AstValue> for Value {
-    type Error = Error;
-
-    fn try_from(literal: &AstValue) -> Result<Self> {
-        match literal {
-            AstValue::Number(v) => v
-                .parse::<i64>()
-                .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            AstValue::Boolean(v) => Ok(Value::Bool(*v)),
-            _ => Err(ValueError::SqlTypeNotSupported.into()),
-        }
-    }
-}
-
-impl TryInto<GroupKey> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<GroupKey> {
-        use Value::*;
-
-        match self {
-            Bool(v) | OptBool(Some(v)) => Ok(GroupKey::Bool(*v)),
-            I64(v) | OptI64(Some(v)) => Ok(GroupKey::I64(*v)),
-            Str(v) | OptStr(Some(v)) => Ok(GroupKey::Str(v.clone())),
-            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(GroupKey::Null),
-            F64(_) | OptF64(_) => Err(ValueError::FloatCannotBeGroupedBy.into()),
-        }
-    }
-}
-
-impl TryInto<GroupKey> for Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<GroupKey> {
-        use Value::*;
-
-        match self {
-            Bool(v) | OptBool(Some(v)) => Ok(GroupKey::Bool(v)),
-            I64(v) | OptI64(Some(v)) => Ok(GroupKey::I64(v)),
-            Str(v) | OptStr(Some(v)) => Ok(GroupKey::Str(v)),
-            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(GroupKey::Null),
-            F64(_) | OptF64(_) => Err(ValueError::FloatCannotBeGroupedBy.into()),
-        }
-    }
-}
-
-impl TryInto<UniqueKey> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<UniqueKey> {
-        use Value::*;
-
-        match self {
-            Bool(v) | OptBool(Some(v)) => Ok(UniqueKey::Bool(*v)),
-            I64(v) | OptI64(Some(v)) => Ok(UniqueKey::I64(*v)),
-            Str(v) | OptStr(Some(v)) => Ok(UniqueKey::Str(v.clone())),
-            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(UniqueKey::Null),
-            F64(_) | OptF64(_) => Err(ValueError::ConflictOnFloatWithUniqueConstraint.into()),
         }
     }
 }
