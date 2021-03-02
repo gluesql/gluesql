@@ -347,7 +347,7 @@ impl<'a> Evaluated<'a> {
         }
     }
 
-    pub fn cast(&self, data_type: &DataType) -> Result<Evaluated<'a>> {
+    pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         use Evaluated::*;
 
         let cast_literal =
@@ -357,10 +357,10 @@ impl<'a> Evaluated<'a> {
         // Decided: Due to the explicit call, we can abandon -Ref
         match self {
             StringRef(value) => cast_literal(&AstValue::SingleQuotedString(value.to_string())),
-            LiteralRef(value) => cast_literal(value.to_owned()),
-            Literal(value) => cast_literal(value),
-            ValueRef(value) => cast_value(value.to_owned()),
-            Value(value) => cast_value(value),
+            LiteralRef(value) => cast_literal(value),
+            Literal(value) => cast_literal(&value),
+            ValueRef(value) => cast_value(value),
+            Value(value) => cast_value(&value),
         }
     }
 }

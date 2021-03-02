@@ -93,10 +93,14 @@ test_case!(cast, async move {
             r#"SELECT CAST("$1" AS INTEGER) FROM Item LIMIT 1"#,
             Err(ValueError::FailedToParseNumber.into()),
         ),
-        /*(Errors for a really weird reason
+        (
             r#"SELECT CAST("BLEH" AS BOOLEAN) FROM Item LIMIT 1"#,
-            Err(DataError::ImpossibleCast.into()),
-        ),*/
+            Err(EvaluateError::ImpossibleCast.into()),
+        ),
+        (
+            r#"SELECT CAST(number AS BOOLEAN) FROM Item LIMIT 1"#,
+            Err(ValueError::ImpossibleCast.into()),
+        ),
     ];
     for (sql, expected) in test_cases.into_iter() {
         test!(expected, sql);
