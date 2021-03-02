@@ -12,6 +12,7 @@ mod group_key;
 mod unique_key;
 
 pub use ast_value::cast_ast_value;
+pub use ast_value::is_same_as_data_type_ast_value;
 pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -188,7 +189,8 @@ impl Value {
                 0 => Ok(Value::Bool(false)),
                 _ => Err(ValueError::ImpossibleCast),
             }?),
-            (DataType::Boolean, Value::F64(value)) => {
+            (DataType::Boolean, Value::F64(value)) =>
+            {
                 #[allow(clippy::float_cmp)]
                 if *value == 1.0 {
                     Ok(Value::Bool(true))

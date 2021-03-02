@@ -350,19 +350,35 @@ impl<'a> Evaluated<'a> {
     pub fn cast(&self, data_type: &DataType) -> Result<Evaluated<'a>> {
         use Evaluated::*;
 
-        // TODO: Different references, avoid StringRef -> AstValue
+        let cast_literal = |value: &AstValue| {
+            data::cast_ast_value(value.to_owned(), data_type).map(Evaluated::Literal)
+        };
+        let cast_value = |value: &data::Value| value.cast(data_type).map(Evaluated::Value);
+
+        // TODO: Avoid StringRef -> AstValue (?)
         match self {
             LiteralRef(value) => {
-                data::cast_ast_value(value.to_owned().to_owned(), data_type).map(Evaluated::Literal)
+                if data::is_same_as_data_type_ast_value(value, data_type) {
+                    Ok(LiteralRef(value))
+                } else {
+                    cast_literal(value.to_owned())
+                }
             }
-            Literal(value) => {
-                data::cast_ast_value(value.to_owned(), data_type).map(Evaluated::Literal)
+            Literal(value) => cast_literal(value),
+            ValueRef(value) => {
+                if value.is_same_as_data_type(data_type) {
+                    Ok(ValueRef(value))
+                } else {
+                    cast_value(value.to_owned())
+                }
             }
-            ValueRef(value) => value.cast(data_type).map(Evaluated::Value),
-            Value(value) => value.cast(data_type).map(Evaluated::Value),
+            Value(value) => cast_value(value),
             StringRef(value) => {
-                data::cast_ast_value(AstValue::SingleQuotedString(value.to_string()), data_type)
-                    .map(Evaluated::Literal)
+                if matches!(data_type, DataType::Text) {
+                    Ok(StringRef(value))
+                } else {
+                    cast_literal(&AstValue::SingleQuotedString(value.to_string()))
+                }
             }
         }
     }
