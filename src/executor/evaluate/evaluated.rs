@@ -351,7 +351,7 @@ impl<'a> Evaluated<'a> {
         use Evaluated::*;
 
         let cast_literal =
-            |value: &AstValue| cast_ast_value(value.to_owned(), data_type).map(Evaluated::Literal);
+            |value: &AstValue| cast_ast_value(value, data_type).map(Evaluated::Literal);
         let cast_value = |value: &data::Value| value.cast(data_type).map(Evaluated::Value);
 
         // Decided: Due to the explicit call, we can abandon -Ref
@@ -435,7 +435,7 @@ fn literal_minus(v: &AstValue) -> Result<AstValue> {
     }
 }
 
-pub fn cast_ast_value(value: AstValue, data_type: &DataType) -> Result<AstValue> {
+pub fn cast_ast_value(value: &AstValue, data_type: &DataType) -> Result<AstValue> {
     match (data_type, value) {
         (DataType::Boolean, AstValue::SingleQuotedString(value))
         | (DataType::Boolean, AstValue::Number(value)) => Ok(match value.to_uppercase().as_str() {
@@ -451,16 +451,20 @@ pub fn cast_ast_value(value: AstValue, data_type: &DataType) -> Result<AstValue>
                 .to_string(),
         )),
         (DataType::Int, AstValue::SingleQuotedString(value))
-        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => Ok(AstValue::Number(value)),
+        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
+            Ok(AstValue::Number(value.to_string()))
+        }
         (DataType::Int, AstValue::Boolean(value))
         | (DataType::Float(_), AstValue::Boolean(value)) => Ok(AstValue::Number(
-            (if value { "1" } else { "0" }).to_string(),
+            (if *value { "1" } else { "0" }).to_string(),
         )),
-        (DataType::Float(_), AstValue::Number(value)) => Ok(AstValue::Number(value)),
+        (DataType::Float(_), AstValue::Number(value)) => Ok(AstValue::Number(value.to_string())),
         (DataType::Text, AstValue::Boolean(value)) => Ok(AstValue::SingleQuotedString(
-            (if value { "TRUE" } else { "FALSE" }).to_string(),
+            (if *value { "TRUE" } else { "FALSE" }).to_string(),
         )),
-        (DataType::Text, AstValue::Number(value)) => Ok(AstValue::SingleQuotedString(value)),
+        (DataType::Text, AstValue::Number(value)) => {
+            Ok(AstValue::SingleQuotedString(value.to_string()))
+        }
         (_, AstValue::Null) => Ok(AstValue::Null),
         _ => Err(EvaluateError::UnimplementedCast.into()),
     }
