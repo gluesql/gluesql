@@ -80,13 +80,12 @@ impl TryFrom<&AstValue> for Value {
 }
 
 pub fn is_same_as_data_type_ast_value(value: &&AstValue, data_type: &DataType) -> bool {
-    let is_same = matches!(
+    if !matches!(
         (data_type, value),
         (DataType::Boolean, AstValue::Boolean(_))
             | (DataType::Text, AstValue::SingleQuotedString(_))
             | (DataType::Float(_), AstValue::Number(_))
-    );
-    if !is_same {
+    ) {
         if let (DataType::Int, AstValue::Number(value)) = (data_type, value) {
             matches!(value.find('.'), None) // YUCK!
         } else {

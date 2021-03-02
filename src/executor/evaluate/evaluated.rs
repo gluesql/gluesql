@@ -356,30 +356,13 @@ impl<'a> Evaluated<'a> {
         let cast_value = |value: &data::Value| value.cast(data_type).map(Evaluated::Value);
 
         // TODO: Avoid StringRef -> AstValue (?)
+        // Decided: Due to the explicit call, we can abandon -Ref
         match self {
-            LiteralRef(value) => {
-                if data::is_same_as_data_type_ast_value(value, data_type) {
-                    Ok(LiteralRef(value))
-                } else {
-                    cast_literal(value.to_owned())
-                }
-            }
+            StringRef(value) => cast_literal(&AstValue::SingleQuotedString(value.to_string())),
+            LiteralRef(value) => cast_literal(value.to_owned()),
             Literal(value) => cast_literal(value),
-            ValueRef(value) => {
-                if value.is_same_as_data_type(data_type) {
-                    Ok(ValueRef(value))
-                } else {
-                    cast_value(value.to_owned())
-                }
-            }
+            ValueRef(value) => cast_value(value.to_owned()),
             Value(value) => cast_value(value),
-            StringRef(value) => {
-                if matches!(data_type, DataType::Text) {
-                    Ok(StringRef(value))
-                } else {
-                    cast_literal(&AstValue::SingleQuotedString(value.to_string()))
-                }
-            }
         }
     }
 }
