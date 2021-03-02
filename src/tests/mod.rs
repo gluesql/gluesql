@@ -17,7 +17,7 @@ pub mod nullable;
 pub mod ordering;
 pub mod sql_types;
 pub mod synthesize;
-pub mod unique;
+pub mod validate;
 
 mod tester;
 
@@ -77,7 +77,8 @@ macro_rules! generate_tests {
         glue!(ordering, ordering::ordering);
         glue!(sql_types, sql_types::sql_types);
         glue!(synthesize, synthesize::synthesize);
-        glue!(unique, unique::unique);
+        glue!(validate_unique, validate::unique::unique);
+        glue!(validate_types, validate::types::types);
 
         generate_alter_table_tests!();
     };

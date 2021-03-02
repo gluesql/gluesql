@@ -302,6 +302,24 @@ impl Value {
         }
     }
 
+    pub fn is_same_as_data_type(&self, data_type: &DataType) -> bool {
+        matches!(
+            (data_type, self),
+            (DataType::Boolean, Value::Bool(_))
+                | (DataType::Boolean, Value::OptBool(Some(_)))
+                | (DataType::Text, Value::Str(_))
+                | (DataType::Text, Value::OptStr(Some(_)))
+                | (DataType::Int, Value::I64(_))
+                | (DataType::Int, Value::OptI64(Some(_)))
+                | (DataType::Float(_), Value::F64(_))
+                | (DataType::Float(_), Value::OptF64(Some(_)))
+                | (_, Value::OptBool(None))
+                | (_, Value::OptStr(None))
+                | (_, Value::OptI64(None))
+                | (_, Value::OptF64(None))
+        )
+    }
+
     pub fn from_data_type(
         data_type: &DataType,
         nullable: bool,
@@ -318,6 +336,9 @@ impl Value {
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             (DataType::Boolean, AstValue::Boolean(v)) => {
                 Ok(nullable.into_value(Value::OptBool(Some(*v)), Value::Bool(*v)))
+            }
+            (DataType::Text, AstValue::SingleQuotedString(v)) => {
+                Ok(nullable.into_value(Value::OptStr(Some(v.clone())), Value::Str(v.clone())))
             }
             (DataType::Int, AstValue::Null) => nullable.as_result(
                 Value::OptI64(None),

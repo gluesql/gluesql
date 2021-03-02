@@ -59,10 +59,4 @@ test_case!(error, async move {
     for (error, sql) in test_cases.into_iter() {
         test!(Err(error), sql);
     }
-
-    run!("CREATE TABLE TableB (id BOOL);");
-    test!(
-        Err(ValueError::SqlTypeNotSupported.into()),
-        "INSERT INTO TableB (id) VALUES (0);"
-    );
 });
