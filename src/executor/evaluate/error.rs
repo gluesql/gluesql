@@ -51,9 +51,6 @@ pub enum EvaluateError {
     #[error("impossible cast")]
     ImpossibleCast,
 
-    #[error("unreachable impossible cast")]
-    UnreachableImpossibleCast,
-
     #[error("unimplemented cast")]
     UnimplementedCast,
 }
