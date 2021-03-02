@@ -1,6 +1,6 @@
 use {
     crate::{
-        data::{DataError, RowError, TableError, ValueError},
+        data::{RowError, TableError, ValueError},
         executor::{
             AggregateError, BlendError, CreateTableError, EvaluateError, ExecuteError, FetchError,
             FilterError, JoinError, LimitError, SelectError, UpdateError, ValidateError,
@@ -51,8 +51,6 @@ pub enum Error {
     Validate(#[from] ValidateError),
     #[error(transparent)]
     Value(#[from] ValueError),
-    #[error(transparent)]
-    Data(#[from] DataError),
     #[error(transparent)]
     CreateTable(#[from] CreateTableError),
 }

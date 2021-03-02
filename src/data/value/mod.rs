@@ -1,5 +1,4 @@
 use {
-    super::DataError,
     crate::result::Result,
     boolinator::Boolinator,
     serde::{Deserialize, Serialize},
@@ -181,12 +180,12 @@ impl Value {
             (DataType::Boolean, Value::Str(value)) => Ok(match value.to_uppercase().as_str() {
                 "TRUE" => Ok(Value::Bool(true)),
                 "FALSE" => Ok(Value::Bool(false)),
-                _ => Err(DataError::ImpossibleCast),
+                _ => Err(ValueError::ImpossibleCast),
             }?),
             (DataType::Boolean, Value::I64(value)) => Ok(match value {
                 1 => Ok(Value::Bool(true)),
                 0 => Ok(Value::Bool(false)),
-                _ => Err(DataError::ImpossibleCast),
+                _ => Err(ValueError::ImpossibleCast),
             }?),
             (DataType::Boolean, Value::F64(value)) =>
             {
@@ -196,7 +195,7 @@ impl Value {
                 } else if *value == 0.0 {
                     Ok(Value::Bool(false))
                 } else {
-                    Err(DataError::ImpossibleCast.into())
+                    Err(ValueError::ImpossibleCast.into())
                 }
             }
             // Integer
@@ -204,7 +203,7 @@ impl Value {
             (DataType::Int, Value::Str(value)) => Ok(Value::I64(
                 value
                     .parse::<i64>()
-                    .map_err(|_| DataError::ImpossibleCast)?,
+                    .map_err(|_| ValueError::ImpossibleCast)?,
             )),
             (DataType::Int, Value::Bool(value)) => Ok(Value::I64(if *value { 1 } else { 0 })),
             // Float
@@ -215,7 +214,7 @@ impl Value {
             (DataType::Float(_), Value::Str(value)) => Ok(Value::F64(
                 value
                     .parse::<f64>()
-                    .map_err(|_| DataError::ImpossibleCast)?,
+                    .map_err(|_| ValueError::ImpossibleCast)?,
             )),
             (DataType::Text, Value::Bool(value)) => Ok(Value::Str(
                 (if *value { "TRUE" } else { "FALSE" }).to_string(),
@@ -223,7 +222,7 @@ impl Value {
             // Text
             (DataType::Text, Value::I64(value)) => Ok(Value::Str(value.to_string())),
             (DataType::Text, Value::F64(value)) => Ok(Value::Str(value.to_string())),
-            _ => Err(DataError::UnimplementedCast.into()),
+            _ => Err(ValueError::UnimplementedCast.into()),
         }
     }
 
