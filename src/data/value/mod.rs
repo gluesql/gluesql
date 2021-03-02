@@ -189,10 +189,9 @@ impl Value {
             }?),
             (DataType::Boolean, Value::F64(value)) =>
             {
-                #[allow(clippy::float_cmp)]
-                if *value == 1.0 {
+                if value.eq(&1.0) {
                     Ok(Value::Bool(true))
-                } else if *value == 0.0 {
+                } else if value.eq(&0.0) {
                     Ok(Value::Bool(false))
                 } else {
                     Err(ValueError::ImpossibleCast.into())
