@@ -187,8 +187,7 @@ impl Value {
                 0 => Ok(Value::Bool(false)),
                 _ => Err(ValueError::ImpossibleCast),
             }?),
-            (DataType::Boolean, Value::F64(value)) =>
-            {
+            (DataType::Boolean, Value::F64(value)) => {
                 if value.eq(&1.0) {
                     Ok(Value::Bool(true))
                 } else if value.eq(&0.0) {
