@@ -46,7 +46,4 @@ pub enum ValueError {
 
     #[error("unimplemented cast")]
     UnimplementedCast,
-
-    #[error("unreachable impossible cast")]
-    UnreachableImpossibleCast,    
 }
