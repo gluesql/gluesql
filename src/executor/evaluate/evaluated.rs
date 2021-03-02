@@ -1,5 +1,5 @@
 use {
-    super::{functions, EvaluateError},
+    super::EvaluateError,
     crate::{
         data,
         data::Value,
@@ -348,14 +348,23 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn cast(&self, data_type: &DataType) -> Result<Evaluated<'a>> {
-        let literal: AstValue = match self {
-            Evaluated::LiteralRef(value) => value.to_owned().to_owned(),
-            Evaluated::Literal(value) => value.to_owned(),
-            Evaluated::StringRef(value) => AstValue::SingleQuotedString(value.to_string()),
-            Evaluated::Value(value) => TryInto::try_into(value.to_owned())?,
-            Evaluated::ValueRef(value) => TryInto::try_into(value.to_owned().to_owned())?,
-        };
-        functions::cast::cast(literal, data_type).map(Evaluated::Literal)
+        use Evaluated::*;
+
+        // TODO: Different references, avoid StringRef -> AstValue
+        match self {
+            LiteralRef(value) => {
+                data::cast_ast_value(value.to_owned().to_owned(), data_type).map(Evaluated::Literal)
+            }
+            Literal(value) => {
+                data::cast_ast_value(value.to_owned(), data_type).map(Evaluated::Literal)
+            }
+            ValueRef(value) => value.cast(data_type).map(Evaluated::Value),
+            Value(value) => value.cast(data_type).map(Evaluated::Value),
+            StringRef(value) => {
+                data::cast_ast_value(AstValue::SingleQuotedString(value.to_string()), data_type)
+                    .map(Evaluated::Literal)
+            }
+        }
     }
 }
 

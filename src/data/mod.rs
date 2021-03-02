@@ -6,4 +6,4 @@ mod value;
 pub use row::{Row, RowError};
 pub use schema::Schema;
 pub use table::{get_name, Table, TableError};
-pub use value::{Value, ValueError};
+pub use value::{cast_ast_value, Value, ValueError};

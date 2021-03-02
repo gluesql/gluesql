@@ -79,6 +79,13 @@ test_case!(cast, async move {
             )),
         ),
         (
+            r#"SELECT CAST(1 AS FLOAT) AS cast FROM Item LIMIT 1"#,
+            Ok(select!(
+                cast I64; // Ideally should be F64
+                1
+            )),
+        ),
+        (
             r#"SELECT CAST("ABC" AS INTEGER) FROM Item LIMIT 1"#,
             Err(ValueError::FailedToParseNumber.into()),
         ),
@@ -88,15 +95,8 @@ test_case!(cast, async move {
         ),
         (
             r#"SELECT CAST("BLEH" AS BOOLEAN) FROM Item LIMIT 1"#,
-            Err(EvaluateError::ImpossibleCast.into()),
+            Err(ValueError::ImpossibleCast.into()),
         ),
-        /*( Known and ignored test case error
-            r#"SELECT CAST(1 AS FLOAT) AS cast FROM Item LIMIT 1"#,
-            Ok(select!(
-                cast F64;
-                1.0
-            )),
-        ),*/
     ];
     for (sql, expected) in test_cases.into_iter() {
         test!(expected, sql);
