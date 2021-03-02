@@ -19,6 +19,12 @@ pub enum EvaluateError {
     #[error("function requires string value: {0}")]
     FunctionRequiresStringValue(String),
 
+    #[error("function requires string value: {0}")]
+    FunctionRequiresIntegerValue(String),
+
+    #[error("function requires usize value: {0}")]
+    FunctionRequiresUSizeValue(String),
+
     #[error(
         "number of function parameters not matching (expected: {expected:?}, found: {found:?})"
     )]
