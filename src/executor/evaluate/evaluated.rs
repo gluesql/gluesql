@@ -5,7 +5,7 @@ use {
         data::Value,
         result::{Error, Result},
     },
-    sqlparser::ast::Value as AstValue,
+    sqlparser::ast::{DataType, Value as AstValue},
     std::{
         cmp::Ordering,
         convert::{TryFrom, TryInto},
@@ -219,6 +219,25 @@ macro_rules! unary_op {
     };
 }
 
+macro_rules! general_op {
+    ($name:ident, $type:ty, $literal:expr, $value:expr) => {
+        pub fn $name(self, other: $type) -> Result<Evaluated<'a>> {
+            let literal_op = $literal;
+            let value_op = $value;
+
+            match self {
+                StringRef(value) => {
+                    literal_op(&AstValue::SingleQuotedString(value.to_string()), other)
+                }
+                LiteralRef(value) => literal_op(value, other),
+                Literal(value) => literal_op(&value, other),
+                ValueRef(value) => value_op(value, other),
+                Value(value) => value_op(&value, other),
+            }
+        }
+    };
+}
+
 impl<'a> Evaluated<'a> {
     binary_op!(add, +);
     binary_op!(subtract, -);
@@ -226,6 +245,46 @@ impl<'a> Evaluated<'a> {
     binary_op!(divide, /);
     unary_op!(unary_plus, +);
     unary_op!(unary_minus, -);
+    general_op!(
+        cast,
+        &DataType,
+        |value: &AstValue, data_type: &DataType| match (data_type, value) {
+            (DataType::Boolean, AstValue::SingleQuotedString(value))
+            | (DataType::Boolean, AstValue::Number(value)) =>
+                Ok(match value.to_uppercase().as_str() {
+                    "TRUE" | "1" => Ok(AstValue::Boolean(true)),
+                    "FALSE" | "0" => Ok(AstValue::Boolean(false)),
+                    _ => Err(EvaluateError::ImpossibleCast),
+                }?),
+            (DataType::Int, AstValue::Number(value)) => Ok(AstValue::Number(
+                value
+                    .parse::<f64>()
+                    .map_err(|_| EvaluateError::UnreachableImpossibleCast)?
+                    .trunc()
+                    .to_string(),
+            )),
+            (DataType::Int, AstValue::SingleQuotedString(value))
+            | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
+                Ok(AstValue::Number(value.to_string()))
+            }
+            (DataType::Int, AstValue::Boolean(value))
+            | (DataType::Float(_), AstValue::Boolean(value)) => Ok(AstValue::Number(
+                (if *value { "1" } else { "0" }).to_string(),
+            )),
+            (DataType::Float(_), AstValue::Number(value)) =>
+                Ok(AstValue::Number(value.to_string())),
+            (DataType::Text, AstValue::Boolean(value)) => Ok(AstValue::SingleQuotedString(
+                (if *value { "TRUE" } else { "FALSE" }).to_string(),
+            )),
+            (DataType::Text, AstValue::Number(value)) => {
+                Ok(AstValue::SingleQuotedString(value.to_string()))
+            }
+            (_, AstValue::Null) => Ok(AstValue::Null),
+            _ => Err(EvaluateError::UnimplementedCast.into()),
+        }
+        .map(Evaluated::Literal),
+        |value: &data::Value, data_type: &DataType| value.cast(data_type).map(Evaluated::Value)
+    );
 
     pub fn is_some(&self) -> bool {
         match self {
@@ -235,56 +294,5 @@ impl<'a> Evaluated<'a> {
             Evaluated::LiteralRef(v) => v != &&AstValue::Null,
             Evaluated::StringRef(_v) => true,
         }
-    }
-    pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
-        use Evaluated::*;
-
-        let cast_literal =
-            |value: &AstValue| cast_ast_value(value, data_type).map(Evaluated::Literal);
-        let cast_value = |value: &data::Value| value.cast(data_type).map(Evaluated::Value);
-
-        // Decided: Due to the explicit call, we can abandon -Ref
-        match self {
-            StringRef(value) => cast_literal(&AstValue::SingleQuotedString(value.to_string())),
-            LiteralRef(value) => cast_literal(value),
-            Literal(value) => cast_literal(&value),
-            ValueRef(value) => cast_value(value),
-            Value(value) => cast_value(&value),
-        }
-    }
-}
-
-pub fn cast_ast_value(value: &AstValue, data_type: &DataType) -> Result<AstValue> {
-    match (data_type, value) {
-        (DataType::Boolean, AstValue::SingleQuotedString(value))
-        | (DataType::Boolean, AstValue::Number(value)) => Ok(match value.to_uppercase().as_str() {
-            "TRUE" | "1" => Ok(AstValue::Boolean(true)),
-            "FALSE" | "0" => Ok(AstValue::Boolean(false)),
-            _ => Err(EvaluateError::ImpossibleCast),
-        }?),
-        (DataType::Int, AstValue::Number(value)) => Ok(AstValue::Number(
-            value
-                .parse::<f64>()
-                .map_err(|_| EvaluateError::UnreachableImpossibleCast)?
-                .trunc()
-                .to_string(),
-        )),
-        (DataType::Int, AstValue::SingleQuotedString(value))
-        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
-            Ok(AstValue::Number(value.to_string()))
-        }
-        (DataType::Int, AstValue::Boolean(value))
-        | (DataType::Float(_), AstValue::Boolean(value)) => Ok(AstValue::Number(
-            (if *value { "1" } else { "0" }).to_string(),
-        )),
-        (DataType::Float(_), AstValue::Number(value)) => Ok(AstValue::Number(value.to_string())),
-        (DataType::Text, AstValue::Boolean(value)) => Ok(AstValue::SingleQuotedString(
-            (if *value { "TRUE" } else { "FALSE" }).to_string(),
-        )),
-        (DataType::Text, AstValue::Number(value)) => {
-            Ok(AstValue::SingleQuotedString(value.to_string()))
-        }
-        (_, AstValue::Null) => Ok(AstValue::Null),
-        _ => Err(EvaluateError::UnimplementedCast.into()),
     }
 }
