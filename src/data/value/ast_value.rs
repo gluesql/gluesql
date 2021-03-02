@@ -73,6 +73,7 @@ impl TryFrom<&AstValue> for Value {
                 .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             AstValue::Boolean(v) => Ok(Value::Bool(*v)),
+            AstValue::SingleQuotedString(v) => Ok(Value::Str(v.to_string())),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }

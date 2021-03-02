@@ -1,13 +1,16 @@
-use std::cmp::Ordering;
-use std::convert::{TryFrom, TryInto};
-
-use sqlparser::ast::Value as AstValue;
-
-use crate::data;
-use crate::data::Value;
-use crate::result::{Error, Result};
-
-use super::EvaluateError;
+use {
+    super::EvaluateError,
+    crate::{
+        data,
+        data::Value,
+        result::{Error, Result},
+    },
+    sqlparser::ast::{DataType, Value as AstValue},
+    std::{
+        cmp::Ordering,
+        convert::{TryFrom, TryInto},
+    },
+};
 
 /// `LiteralRef`, `Literal` and `StringRef` are used when it is not possible to specify what kind of `Value`
 /// can be applied.
@@ -343,6 +346,23 @@ impl<'a> Evaluated<'a> {
             StringRef(_) => unreachable(),
         }
     }
+
+    pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
+        use Evaluated::*;
+
+        let cast_literal =
+            |value: &AstValue| cast_ast_value(value, data_type).map(Evaluated::Literal);
+        let cast_value = |value: &data::Value| value.cast(data_type).map(Evaluated::Value);
+
+        // Decided: Due to the explicit call, we can abandon -Ref
+        match self {
+            StringRef(value) => cast_literal(&AstValue::SingleQuotedString(value.to_string())),
+            LiteralRef(value) => cast_literal(value),
+            Literal(value) => cast_literal(&value),
+            ValueRef(value) => cast_value(value),
+            Value(value) => cast_value(&value),
+        }
+    }
 }
 
 macro_rules! literal_binary_op {
@@ -412,5 +432,40 @@ fn literal_minus(v: &AstValue) -> Result<AstValue> {
             .map_err(|_| EvaluateError::LiteralUnaryMinusOnNonNumeric.into()),
         AstValue::Null => Ok(AstValue::Null),
         _ => Err(EvaluateError::LiteralUnaryMinusOnNonNumeric.into()),
+    }
+}
+
+pub fn cast_ast_value(value: &AstValue, data_type: &DataType) -> Result<AstValue> {
+    match (data_type, value) {
+        (DataType::Boolean, AstValue::SingleQuotedString(value))
+        | (DataType::Boolean, AstValue::Number(value)) => Ok(match value.to_uppercase().as_str() {
+            "TRUE" | "1" => Ok(AstValue::Boolean(true)),
+            "FALSE" | "0" => Ok(AstValue::Boolean(false)),
+            _ => Err(EvaluateError::ImpossibleCast),
+        }?),
+        (DataType::Int, AstValue::Number(value)) => Ok(AstValue::Number(
+            value
+                .parse::<f64>()
+                .map_err(|_| EvaluateError::UnreachableImpossibleCast)?
+                .trunc()
+                .to_string(),
+        )),
+        (DataType::Int, AstValue::SingleQuotedString(value))
+        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
+            Ok(AstValue::Number(value.to_string()))
+        }
+        (DataType::Int, AstValue::Boolean(value))
+        | (DataType::Float(_), AstValue::Boolean(value)) => Ok(AstValue::Number(
+            (if *value { "1" } else { "0" }).to_string(),
+        )),
+        (DataType::Float(_), AstValue::Number(value)) => Ok(AstValue::Number(value.to_string())),
+        (DataType::Text, AstValue::Boolean(value)) => Ok(AstValue::SingleQuotedString(
+            (if *value { "TRUE" } else { "FALSE" }).to_string(),
+        )),
+        (DataType::Text, AstValue::Number(value)) => {
+            Ok(AstValue::SingleQuotedString(value.to_string()))
+        }
+        (_, AstValue::Null) => Ok(AstValue::Null),
+        _ => Err(EvaluateError::UnimplementedCast.into()),
     }
 }

@@ -1,11 +1,10 @@
-use boolinator::Boolinator;
-use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::fmt::Debug;
-
-use sqlparser::ast::{DataType, Expr, Ident, Value as AstValue};
-
-use crate::result::Result;
+use {
+    crate::result::Result,
+    boolinator::Boolinator,
+    serde::{Deserialize, Serialize},
+    sqlparser::ast::{DataType, Expr, Ident, Value as AstValue},
+    std::{cmp::Ordering, fmt::Debug},
+};
 
 mod ast_value;
 mod error;
@@ -167,6 +166,61 @@ impl Value {
                 ValueError::NullValueOnNotNullField.into(),
             ),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
+        }
+    }
+
+    pub fn cast(&self, data_type: &DataType) -> Result<Self> {
+        match (data_type, self) {
+            // Same as
+            (DataType::Boolean, Value::Bool(_))
+            | (DataType::Int, Value::I64(_))
+            | (DataType::Float(_), Value::F64(_))
+            | (DataType::Text, Value::Str(_)) => Ok(self.clone()),
+            // Boolean
+            (DataType::Boolean, Value::Str(value)) => Ok(match value.to_uppercase().as_str() {
+                "TRUE" => Ok(Value::Bool(true)),
+                "FALSE" => Ok(Value::Bool(false)),
+                _ => Err(ValueError::ImpossibleCast),
+            }?),
+            (DataType::Boolean, Value::I64(value)) => Ok(match value {
+                1 => Ok(Value::Bool(true)),
+                0 => Ok(Value::Bool(false)),
+                _ => Err(ValueError::ImpossibleCast),
+            }?),
+            (DataType::Boolean, Value::F64(value)) => {
+                if value.eq(&1.0) {
+                    Ok(Value::Bool(true))
+                } else if value.eq(&0.0) {
+                    Ok(Value::Bool(false))
+                } else {
+                    Err(ValueError::ImpossibleCast.into())
+                }
+            }
+            // Integer
+            (DataType::Int, Value::F64(value)) => Ok(Value::I64(value.trunc() as i64)),
+            (DataType::Int, Value::Str(value)) => Ok(Value::I64(
+                value
+                    .parse::<i64>()
+                    .map_err(|_| ValueError::ImpossibleCast)?,
+            )),
+            (DataType::Int, Value::Bool(value)) => Ok(Value::I64(if *value { 1 } else { 0 })),
+            // Float
+            (DataType::Float(_), Value::Bool(value)) => {
+                Ok(Value::F64(if *value { 1.0 } else { 0.0 }))
+            }
+            (DataType::Float(_), Value::I64(value)) => Ok(Value::F64((*value as f64).trunc())),
+            (DataType::Float(_), Value::Str(value)) => Ok(Value::F64(
+                value
+                    .parse::<f64>()
+                    .map_err(|_| ValueError::ImpossibleCast)?,
+            )),
+            (DataType::Text, Value::Bool(value)) => Ok(Value::Str(
+                (if *value { "TRUE" } else { "FALSE" }).to_string(),
+            )),
+            // Text
+            (DataType::Text, Value::I64(value)) => Ok(Value::Str(value.to_string())),
+            (DataType::Text, Value::F64(value)) => Ok(Value::Str(value.to_string())),
+            _ => Err(ValueError::UnimplementedCast.into()),
         }
     }
 

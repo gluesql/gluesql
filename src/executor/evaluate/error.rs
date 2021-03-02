@@ -47,4 +47,13 @@ pub enum EvaluateError {
 
     #[error("unimplemented")]
     Unimplemented,
+
+    #[error("impossible cast")]
+    ImpossibleCast,
+
+    #[error("unimplemented cast")]
+    UnimplementedCast,
+
+    #[error("unreachable impossible cast")]
+    UnreachableImpossibleCast,
 }

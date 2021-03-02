@@ -1,10 +1,13 @@
-use serde::Serialize;
-use thiserror::Error as ThisError;
-
-use crate::data::{RowError, TableError, ValueError};
-use crate::executor::{
-    AggregateError, BlendError, CreateTableError, EvaluateError, ExecuteError, FetchError,
-    FilterError, JoinError, LimitError, SelectError, UpdateError, ValidateError,
+use {
+    crate::{
+        data::{RowError, TableError, ValueError},
+        executor::{
+            AggregateError, BlendError, CreateTableError, EvaluateError, ExecuteError, FetchError,
+            FilterError, JoinError, LimitError, SelectError, UpdateError, ValidateError,
+        },
+    },
+    serde::Serialize,
+    thiserror::Error as ThisError,
 };
 
 #[cfg(feature = "alter-table")]

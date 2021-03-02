@@ -40,4 +40,10 @@ pub enum ValueError {
 
     #[error("floating columns cannot be set to unique constraint")]
     ConflictOnFloatWithUniqueConstraint,
+
+    #[error("impossible cast")]
+    ImpossibleCast,
+
+    #[error("unimplemented cast")]
+    UnimplementedCast,
 }

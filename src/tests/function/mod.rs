@@ -1,3 +1,5 @@
+pub mod cast;
+
 use crate::*;
 
 test_case!(function, async move {
