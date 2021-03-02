@@ -95,11 +95,11 @@ test_case!(filter, async move {
 
     let error_sqls = vec![
         (
-            EvaluateError::LiteralUnaryPlusOnNonNumeric.into(),
+            EvaluateError::LiteralUnaryOperationOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE +'abcd' > 1.0",
         ),
         (
-            EvaluateError::LiteralUnaryMinusOnNonNumeric.into(),
+            EvaluateError::LiteralUnaryOperationOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE -'abcd' < 1.0",
         ),
         (

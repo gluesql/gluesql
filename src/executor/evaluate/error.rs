@@ -10,11 +10,8 @@ pub enum EvaluateError {
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
 
-    #[error("unary plus operation on non-numeric")]
-    LiteralUnaryPlusOnNonNumeric,
-
-    #[error("unary minus operation on non-numeric")]
-    LiteralUnaryMinusOnNonNumeric,
+    #[error("unary operation on non-numeric")]
+    LiteralUnaryOperationOnNonNumeric,
 
     #[error("function is not supported: {0}")]
     FunctionNotSupported(String),
