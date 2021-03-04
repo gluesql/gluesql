@@ -170,9 +170,16 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 if name == "LEFT" {
                     string.get(..number)
                 } else {
-                    let start_pos = if number > string.len() {0} else {string.len() - number};
+                    let start_pos = if number > string.len() {
+                        0
+                    } else {
+                        string.len() - number
+                    };
                     string.get(start_pos..)
-                }.or(Some(&string)).unwrap().to_string()
+                }
+                .or(Some(&string))
+                .unwrap()
+                .to_string()
             };
 
             if args.len() != 2 {
@@ -183,24 +190,19 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 .into());
             }
 
-            let expr: Value = eval(&args[1]).await?.try_into()?;
             let string = match eval(&args[0]).await?.try_into()? {
                 Value::Str(string) | Value::OptStr(Some(string)) => Ok(string),
                 _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_string())),
             }?;
-            let number = match expr {
+            let number = match eval(&args[1]).await?.try_into()? {
                 Value::I64(number) | Value::OptI64(Some(number)) => usize::try_from(number)
-                    .map_err(|_| {
-                        EvaluateError::FunctionRequiresUSizeValue(name.to_string()).into()
-                    }),
+                    .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_string())), // Unlikely to occur hence the imperfect error
                 _ => Err(EvaluateError::FunctionRequiresIntegerValue(
                     name.to_string(),
                 )),
             }?;
 
-            Ok(Evaluated::Value(Value::Str(
-                convert(string, number),
-            )))
+            Ok(Evaluated::Value(Value::Str(convert(string, number))))
         }
         name => Err(EvaluateError::FunctionNotSupported(name.to_owned()).into()),
     }
