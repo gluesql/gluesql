@@ -37,5 +37,7 @@ jobs:
         run:
           cd gluesql.github.io &&
           git add book &&
-          git commit -m "Update book!" &&
-          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          git diff-index --quiet HEAD || (
+            git commit -m "Update book!" &&
+            git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          )
