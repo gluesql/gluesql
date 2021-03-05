@@ -6,7 +6,7 @@ use {
     sqlparser::ast::{ColumnDef, Ident},
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
-    unique::validate_unique,
+    unique::{validate_increment, validate_unique},
 };
 
 pub use unique::UniqueKey;
@@ -40,6 +40,13 @@ pub async fn validate_rows<T: 'static + Debug>(
     row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
     validate_unique(
+        storage,
+        table_name,
+        column_validation.clone(),
+        row_iter.clone(),
+    )
+    .await?;
+    validate_increment(
         storage,
         table_name,
         column_validation.clone(),

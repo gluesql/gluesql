@@ -75,6 +75,8 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
     let prepared = try_into!(storage, prepared);
 
     match prepared {
+        //- Modification
+        //-- Tables
         Prepared::Create {
             schema,
             if_not_exists,
@@ -87,70 +89,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .await
                 .map(|(storage, _)| (storage, Payload::Create))
         }
-        Prepared::Insert(table_name, column_defs, rows) => {
-            let column_defs = Rc::from(column_defs);
-            let validated = validate_rows(
-                &storage,
-                &table_name,
-                ColumnValidation::All(Rc::clone(&column_defs)),
-                rows.iter(),
-            )
-            .await;
-            try_into!(storage, validated);
-
-            let num_rows = rows.len();
-
-            storage
-                .insert_data(table_name, rows)
-                .await
-                .map(|(storage, _)| (storage, Payload::Insert(num_rows)))
-        }
-        Prepared::Delete(keys) => {
-            let num_rows = keys.len();
-
-            storage
-                .delete_data(keys)
-                .await
-                .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
-        }
-        Prepared::Update(table_name, all_column_defs, columns_to_update, rows) => {
-            let all_column_defs = Rc::from(all_column_defs);
-            let validated = validate_rows(
-                &storage,
-                &table_name,
-                ColumnValidation::SpecifiedColumns(Rc::clone(&all_column_defs), columns_to_update),
-                rows.iter().map(|r| &r.1),
-            )
-            .await;
-            try_into!(storage, validated);
-
-            let num_rows = rows.len();
-
-            storage
-                .update_data(rows)
-                .await
-                .map(|(storage, _)| (storage, Payload::Update(num_rows)))
-        }
-        Prepared::DropTable {
-            schema_names,
-            if_exists,
-        } => stream::iter(schema_names.into_iter().map(Ok::<&str, (U, Error)>))
-            .try_fold(storage, |storage, table_name| async move {
-                let schema = try_into!(storage, storage.fetch_schema(table_name).await);
-
-                if !if_exists {
-                    try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
-                }
-
-                storage
-                    .delete_schema(table_name)
-                    .await
-                    .map(|(storage, _)| storage)
-            })
-            .await
-            .map(|storage| (storage, Payload::DropTable)),
-        Prepared::Select { labels, rows } => Ok((storage, Payload::Select { labels, rows })),
-
         #[cfg(feature = "alter-table")]
         Prepared::AlterTable(table_name, operation) => {
             let result = match operation {
@@ -189,6 +127,71 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
 
             result.map(|(storage, _)| (storage, Payload::AlterTable))
         }
+        Prepared::DropTable {
+            schema_names,
+            if_exists,
+        } => stream::iter(schema_names.into_iter().map(Ok::<&str, (U, Error)>))
+            .try_fold(storage, |storage, table_name| async move {
+                let schema = try_into!(storage, storage.fetch_schema(table_name).await);
+
+                if !if_exists {
+                    try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
+                }
+
+                storage
+                    .delete_schema(table_name)
+                    .await
+                    .map(|(storage, _)| storage)
+            })
+            .await
+            .map(|storage| (storage, Payload::DropTable)),
+        //-- Rows
+        Prepared::Insert(table_name, column_defs, rows) => {
+            let column_defs = Rc::from(column_defs);
+            let validated = validate_rows(
+                &storage,
+                &table_name,
+                ColumnValidation::All(Rc::clone(&column_defs)),
+                rows.iter(),
+            )
+            .await;
+            try_into!(storage, validated);
+
+            let num_rows = rows.len();
+
+            storage
+                .insert_data(table_name, rows)
+                .await
+                .map(|(storage, _)| (storage, Payload::Insert(num_rows)))
+        }
+        Prepared::Update(table_name, all_column_defs, columns_to_update, rows) => {
+            let all_column_defs = Rc::from(all_column_defs);
+            let validated = validate_rows(
+                &storage,
+                &table_name,
+                ColumnValidation::SpecifiedColumns(Rc::clone(&all_column_defs), columns_to_update),
+                rows.iter().map(|r| &r.1),
+            )
+            .await;
+            try_into!(storage, validated);
+
+            let num_rows = rows.len();
+
+            storage
+                .update_data(rows)
+                .await
+                .map(|(storage, _)| (storage, Payload::Update(num_rows)))
+        }
+        Prepared::Delete(keys) => {
+            let num_rows = keys.len();
+
+            storage
+                .delete_data(keys)
+                .await
+                .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
+        }
+        //- Selection
+        Prepared::Select { labels, rows } => Ok((storage, Payload::Select { labels, rows })),
     }
 }
 

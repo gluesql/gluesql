@@ -7,7 +7,7 @@ use {
         utils::Vector,
     },
     im_rc::HashSet,
-    sqlparser::ast::{ColumnDef, ColumnOption, Ident},
+    sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident},
     std::{convert::TryInto, fmt::Debug, rc::Rc},
 };
 
@@ -72,10 +72,20 @@ pub async fn validate_unique<T: 'static + Debug>(
     row_iter: impl Iterator<Item = &Row> + Clone,
 ) -> Result<()> {
     let columns = match column_validation {
-        ColumnValidation::All(column_defs) => fetch_all_unique_columns(&column_defs),
-        ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => {
-            fetch_specified_unique_columns(&column_defs, &specified_columns)
+        ColumnValidation::All(column_defs) => {
+            fetch_matches(&column_defs, &|opt_def: &ColumnOptionDef, _| {
+                matches!(opt_def.option, ColumnOption::Unique { .. })
+            })
         }
+        ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => fetch_matches(
+            &column_defs,
+            &|opt_def: &ColumnOptionDef, table_col: &ColumnDef| match opt_def.option {
+                ColumnOption::Unique { .. } => (&specified_columns)
+                    .iter()
+                    .any(|specified_col| specified_col.value == table_col.name.value),
+                _ => false,
+            },
+        ),
     };
 
     let unique_constraints: Vec<_> = create_unique_constraints(columns, row_iter)?.into();
@@ -99,6 +109,35 @@ pub async fn validate_unique<T: 'static + Debug>(
     })
 }
 
+pub async fn validate_increment<T: 'static + Debug>(
+    storage: &impl Store<T>,
+    table_name: &str,
+    column_validation: ColumnValidation,
+    row_iter: impl Iterator<Item = &Row> + Clone,
+) -> Result<()> {
+    let match_name = "AUTO_INCREMENT".to_string();
+    let columns = match column_validation {
+        ColumnValidation::All(column_defs)
+        | ColumnValidation::SpecifiedColumns(column_defs, ..) => {
+            fetch_matches(&column_defs, &|opt_def: &ColumnOptionDef, _| {
+                matches!(
+                    &opt_def.name,
+                    Some(Ident {
+                        value: match_name,
+                        ..
+                    })
+                )
+            })
+        }
+    };
+    for row in row_iter {
+        for (index, name) in columns.clone() {
+            println!("{:?}", row.get_value(index));
+        }
+    }
+    Ok(())
+}
+
 fn create_unique_constraints<'a>(
     unique_columns: Vec<(usize, String)>,
     row_iter: impl Iterator<Item = &'a Row> + Clone,
@@ -120,7 +159,10 @@ fn create_unique_constraints<'a>(
         })
 }
 
-fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
+fn fetch_matches(
+    column_defs: &[ColumnDef],
+    matches: &dyn Fn(&ColumnOptionDef, &ColumnDef) -> bool,
+) -> Vec<(usize, String)> {
     column_defs
         .iter()
         .enumerate()
@@ -128,33 +170,7 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
             if table_col
                 .options
                 .iter()
-                .any(|opt_def| matches!(opt_def.option, ColumnOption::Unique { .. }))
-            {
-                Some((i, table_col.name.value.to_owned()))
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
-fn fetch_specified_unique_columns(
-    all_column_defs: &[ColumnDef],
-    specified_columns: &[Ident],
-) -> Vec<(usize, String)> {
-    all_column_defs
-        .iter()
-        .enumerate()
-        .filter_map(|(i, table_col)| {
-            if table_col
-                .options
-                .iter()
-                .any(|opt_def| match opt_def.option {
-                    ColumnOption::Unique { .. } => specified_columns
-                        .iter()
-                        .any(|specified_col| specified_col.value == table_col.name.value),
-                    _ => false,
-                })
+                .any(|column_defs| matches(column_defs, table_col))
             {
                 Some((i, table_col.name.value.to_owned()))
             } else {

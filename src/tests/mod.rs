@@ -4,6 +4,7 @@ pub mod alter_table;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
+pub mod column_options;
 pub mod create_table;
 pub mod default;
 pub mod drop_table;
@@ -66,6 +67,10 @@ macro_rules! generate_tests {
         glue!(drop_table, drop_table::drop_table);
         glue!(error, error::error);
         glue!(filter, filter::filter);
+        glue!(
+            auto_increment,
+            column_options::auto_increment::auto_increment
+        );
         glue!(function, function::function);
         glue!(function_cast, function::cast::cast);
         glue!(join, join::join);
