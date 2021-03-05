@@ -2,7 +2,7 @@ use {
     super::EvaluateError,
     crate::{
         data,
-        data::Value,
+        data::value::{TryFromLiteral, Value},
         result::{Error, Result},
     },
     sqlparser::ast::{DataType, Value as AstValue},
@@ -230,9 +230,8 @@ impl<'a> Evaluated<'a> {
     unary_op!(unary_minus, -);
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
-        let cast_literal =
-            |value: &AstValue| cast_ast_value(value, data_type).map(Evaluated::Literal);
-        let cast_value = |value: &data::Value| value.cast(data_type).map(Evaluated::Value);
+        let cast_literal = |literal: &AstValue| Value::try_from_literal(data_type, literal);
+        let cast_value = |value: &data::Value| value.cast(data_type);
 
         match self {
             StringRef(value) => cast_literal(&AstValue::SingleQuotedString(value.to_string())),
@@ -241,6 +240,7 @@ impl<'a> Evaluated<'a> {
             ValueRef(value) => cast_value(value),
             Value(value) => cast_value(&value),
         }
+        .map(Evaluated::Value)
     }
 
     pub fn is_some(&self) -> bool {
@@ -251,46 +251,5 @@ impl<'a> Evaluated<'a> {
             Evaluated::LiteralRef(v) => v != &&AstValue::Null,
             Evaluated::StringRef(_v) => true,
         }
-    }
-}
-
-fn cast_ast_value(value: &AstValue, data_type: &DataType) -> Result<AstValue> {
-    match (data_type, value) {
-        (DataType::Boolean, AstValue::SingleQuotedString(value))
-        | (DataType::Boolean, AstValue::Number(value, false)) => {
-            Ok(match value.to_uppercase().as_str() {
-                "TRUE" | "1" => Ok(AstValue::Boolean(true)),
-                "FALSE" | "0" => Ok(AstValue::Boolean(false)),
-                _ => Err(EvaluateError::ImpossibleCast),
-            }?)
-        }
-        (DataType::Int, AstValue::Number(value, false)) => Ok(AstValue::Number(
-            value
-                .parse::<f64>()
-                .map_err(|_| EvaluateError::UnreachableImpossibleCast)?
-                .trunc()
-                .to_string(),
-            false,
-        )),
-        (DataType::Int, AstValue::SingleQuotedString(value))
-        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
-            Ok(AstValue::Number(value.to_string(), false))
-        }
-        (DataType::Int, AstValue::Boolean(value))
-        | (DataType::Float(_), AstValue::Boolean(value)) => Ok(AstValue::Number(
-            (if *value { "1" } else { "0" }).to_string(),
-            false,
-        )),
-        (DataType::Float(_), AstValue::Number(value, false)) => {
-            Ok(AstValue::Number(value.to_string(), false))
-        }
-        (DataType::Text, AstValue::Boolean(value)) => Ok(AstValue::SingleQuotedString(
-            (if *value { "TRUE" } else { "FALSE" }).to_string(),
-        )),
-        (DataType::Text, AstValue::Number(value, false)) => {
-            Ok(AstValue::SingleQuotedString(value.to_string()))
-        }
-        (_, AstValue::Null) => Ok(AstValue::Null),
-        _ => Err(EvaluateError::UnimplementedCast.into()),
     }
 }

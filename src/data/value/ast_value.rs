@@ -1,7 +1,7 @@
 use {
     super::{error::ValueError, Value},
     crate::result::{Error, Result},
-    sqlparser::ast::Value as AstValue,
+    sqlparser::ast::{DataType, Value as AstValue},
     std::{cmp::Ordering, convert::TryFrom},
 };
 
@@ -75,6 +75,63 @@ impl TryFrom<&AstValue> for Value {
             AstValue::Boolean(v) => Ok(Value::Bool(*v)),
             AstValue::SingleQuotedString(v) => Ok(Value::Str(v.to_string())),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
+        }
+    }
+}
+
+pub trait TryFromLiteral {
+    fn try_from_literal(data_type: &DataType, literal: &AstValue) -> Result<Value>;
+}
+
+impl TryFromLiteral for Value {
+    fn try_from_literal(data_type: &DataType, literal: &AstValue) -> Result<Value> {
+        match (data_type, literal) {
+            (DataType::Boolean, AstValue::SingleQuotedString(v))
+            | (DataType::Boolean, AstValue::Number(v, false)) => match v.to_uppercase().as_str() {
+                "TRUE" | "1" => Ok(Value::Bool(true)),
+                "FALSE" | "0" => Ok(Value::Bool(false)),
+                _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
+            },
+            (DataType::Boolean, AstValue::Null) => Ok(Value::OptBool(None)),
+            (DataType::Int, AstValue::SingleQuotedString(v)) => v
+                .parse::<i64>()
+                .map(Value::I64)
+                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
+            (DataType::Int, AstValue::Number(v, false)) => v
+                .parse::<f64>()
+                .map_err(|_| {
+                    ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
+                })
+                .map(|v| Value::I64(v.trunc() as i64)),
+            (DataType::Int, AstValue::Boolean(v)) => {
+                let v = if *v { 1 } else { 0 };
+
+                Ok(Value::I64(v))
+            }
+            (DataType::Int, AstValue::Null) => Ok(Value::OptI64(None)),
+            (DataType::Float(_), AstValue::SingleQuotedString(v))
+            | (DataType::Float(_), AstValue::Number(v, false)) => v
+                .parse::<f64>()
+                .map(Value::F64)
+                .map_err(|_| ValueError::LiteralCastToFloatFailed(v.to_string()).into()),
+            (DataType::Float(_), AstValue::Boolean(v)) => {
+                let v = if *v { 1.0 } else { 0.0 };
+
+                Ok(Value::F64(v))
+            }
+            (DataType::Float(_), AstValue::Null) => Ok(Value::OptF64(None)),
+            (DataType::Text, AstValue::Number(v, false)) => Ok(Value::Str(v.to_string())),
+            (DataType::Text, AstValue::Boolean(v)) => {
+                let v = if *v { "TRUE" } else { "FALSE" };
+
+                Ok(Value::Str(v.to_owned()))
+            }
+            (DataType::Text, AstValue::Null) => Ok(Value::OptStr(None)),
+            _ => Err(ValueError::UnimplementedLiteralCast {
+                data_type: data_type.to_string(),
+                literal: literal.to_string(),
+            }
+            .into()),
         }
     }
 }
