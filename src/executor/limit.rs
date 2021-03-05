@@ -21,7 +21,7 @@ impl Limit {
     pub fn new(limit: Option<&Expr>, offset: Option<&Offset>) -> Result<Self> {
         let parse = |expr: &Expr| -> Result<usize> {
             match expr {
-                Expr::Value(AstValue::Number(v)) => {
+                Expr::Value(AstValue::Number(v, false)) => {
                     v.parse().map_err(|_| LimitError::Unreachable.into())
                 }
                 _ => Err(LimitError::Unreachable.into()),

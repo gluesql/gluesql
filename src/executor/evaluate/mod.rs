@@ -11,7 +11,9 @@ use {
     async_recursion::async_recursion,
     futures::stream::{StreamExt, TryStreamExt},
     im_rc::HashMap,
-    sqlparser::ast::{BinaryOperator, Expr, Function, UnaryOperator, Value as AstValue},
+    sqlparser::ast::{
+        BinaryOperator, Expr, Function, FunctionArg, UnaryOperator, Value as AstValue,
+    },
     std::{convert::TryInto, fmt::Debug, rc::Rc},
 };
 
@@ -34,7 +36,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
     match expr {
         Expr::Value(value) => match value {
-            AstValue::Number(_)
+            AstValue::Number(_, false)
             | AstValue::Boolean(_)
             | AstValue::SingleQuotedString(_)
             | AstValue::Null => Ok(Evaluated::LiteralRef(value)),
@@ -130,6 +132,15 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         evaluate(storage, context, aggregated, expr, use_empty)
     };
 
+    let get_arg_expr = |arg: &'a FunctionArg| -> Result<&'a Expr> {
+        match arg {
+            FunctionArg::Unnamed(expr) => Ok(expr),
+            FunctionArg::Named { name, .. } => {
+                Err(EvaluateError::UnreachableFunctionArg(name.to_string()).into())
+            }
+        }
+    };
+
     let Function { name, args, .. } = func;
 
     match get_name(name)?.to_uppercase().as_str() {
@@ -142,15 +153,18 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
 
-            if args.len() != 1 {
-                return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
-                    expected: 1,
-                    found: args.len(),
+            let arg = match args.len() {
+                1 => &args[0],
+                found => {
+                    return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+                        expected: 1,
+                        found,
+                    }
+                    .into());
                 }
-                .into());
-            }
+            };
 
-            let expr = &args[0];
+            let expr = get_arg_expr(arg)?;
             let value: Value = match eval(expr).await?.try_into()? {
                 Value::Str(s) => Value::Str(convert(s)),
                 Value::OptStr(s) => Value::OptStr(s.map(convert)),

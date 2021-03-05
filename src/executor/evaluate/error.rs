@@ -53,4 +53,7 @@ pub enum EvaluateError {
 
     #[error("unreachable impossible cast")]
     UnreachableImpossibleCast,
+
+    #[error("unreachable named function argument: {0}")]
+    UnreachableFunctionArg(String),
 }
