@@ -165,6 +165,7 @@ async fn fetch_joined<'a, T: 'static + Debug>(
         JoinConstraint::Natural => {
             return Err(JoinError::NaturalOnJoinNotSupported.into());
         }
+        JoinConstraint::None => None,
     };
 
     let rows = storage

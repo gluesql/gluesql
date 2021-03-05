@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::rc::Rc;
 
-use sqlparser::ast::{Expr, Function, SelectItem};
+use sqlparser::ast::{Expr, Function, FunctionArg, SelectItem};
 
 use super::context::{AggregateContext, BlendContext, FilterContext};
 use super::evaluate::{evaluate, Evaluated};
@@ -191,8 +191,15 @@ fn aggregate<'a>(
         }
         _ => Err(AggregateError::OnlyIdentifierAllowed),
     };
-    let get_first_value = |args: &[Expr]| {
-        let expr = args.get(0).ok_or(AggregateError::Unreachable)?;
+    let get_first_arg_expr =
+        |args: &'a [FunctionArg]| match args.get(0).ok_or(AggregateError::Unreachable)? {
+            FunctionArg::Unnamed(expr) => Ok(expr),
+            FunctionArg::Named { name, .. } => Err(AggregateError::UnreachableNamedFunctionArg(
+                name.to_string(),
+            )),
+        };
+    let get_first_value = |args: &'a [FunctionArg]| {
+        let expr = get_first_arg_expr(args)?;
 
         get_value(expr)
     };
@@ -213,7 +220,7 @@ fn aggregate<'a>(
 
             match get_name(name)?.to_uppercase().as_str() {
                 "COUNT" => {
-                    let expr = args.get(0).ok_or(AggregateError::Unreachable)?;
+                    let expr = get_first_arg_expr(args)?;
                     let value = Value::I64(match expr {
                         Expr::Wildcard => 1,
                         _ => {

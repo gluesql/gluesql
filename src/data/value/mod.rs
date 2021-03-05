@@ -135,11 +135,11 @@ impl Value {
         literal: &AstValue,
     ) -> Result<Self> {
         match (data_type, literal) {
-            (DataType::Int, AstValue::Number(v)) => v
+            (DataType::Int, AstValue::Number(v, false)) => v
                 .parse()
                 .map(|v| nullable.into_value(Value::OptI64(Some(v)), Value::I64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (DataType::Float(_), AstValue::Number(v)) => v
+            (DataType::Float(_), AstValue::Number(v, false)) => v
                 .parse()
                 .map(|v| nullable.into_value(Value::OptF64(Some(v)), Value::F64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
@@ -226,20 +226,20 @@ impl Value {
 
     pub fn clone_by(&self, literal: &AstValue) -> Result<Self> {
         match (self, literal) {
-            (Value::I64(_), AstValue::Number(v)) => v
+            (Value::I64(_), AstValue::Number(v, false)) => v
                 .parse()
                 .map(Value::I64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (Value::OptI64(_), AstValue::Number(v)) => v
+            (Value::OptI64(_), AstValue::Number(v, false)) => v
                 .parse()
                 .map(|v| Value::OptI64(Some(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             (Value::OptI64(_), AstValue::Null) => Ok(Value::OptI64(None)),
-            (Value::F64(_), AstValue::Number(v)) => v
+            (Value::F64(_), AstValue::Number(v, false)) => v
                 .parse()
                 .map(Value::F64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (Value::OptF64(_), AstValue::Number(v)) => v
+            (Value::OptF64(_), AstValue::Number(v, false)) => v
                 .parse()
                 .map(|v| Value::OptF64(Some(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
