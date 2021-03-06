@@ -67,7 +67,8 @@ macro_rules! generate_tests {
         glue!(error, error::error);
         glue!(filter, filter::filter);
         glue!(function, function::function);
-        glue!(function_cast, function::cast::cast);
+        glue!(function_cast_literal, function::cast::cast_literal);
+        glue!(function_cast_value, function::cast::cast_value);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);

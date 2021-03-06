@@ -11,6 +11,7 @@ mod error;
 mod group_key;
 mod unique_key;
 
+pub use ast_value::TryFromLiteral;
 pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
