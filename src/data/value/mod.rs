@@ -174,20 +174,37 @@ impl Value {
         match (data_type, self) {
             // Same as
             (DataType::Boolean, Value::Bool(_))
+            | (DataType::Boolean, Value::OptBool(_))
+            | (DataType::Text, Value::Str(_))
+            | (DataType::Text, Value::OptStr(_))
             | (DataType::Int, Value::I64(_))
+            | (DataType::Int, Value::OptI64(_))
             | (DataType::Float(_), Value::F64(_))
-            | (DataType::Text, Value::Str(_)) => Ok(self.clone()),
+            | (DataType::Float(_), Value::OptF64(_)) => Ok(self.clone()),
+
             // Boolean
-            (DataType::Boolean, Value::Str(value)) => Ok(match value.to_uppercase().as_str() {
+            (DataType::Boolean, Value::Str(value)) => match value.to_uppercase().as_str() {
                 "TRUE" => Ok(Value::Bool(true)),
                 "FALSE" => Ok(Value::Bool(false)),
-                _ => Err(ValueError::ImpossibleCast),
-            }?),
-            (DataType::Boolean, Value::I64(value)) => Ok(match value {
+                _ => Err(ValueError::ImpossibleCast.into()),
+            },
+            (DataType::Boolean, Value::OptStr(Some(value))) => {
+                match value.to_uppercase().as_str() {
+                    "TRUE" => Ok(Value::OptBool(Some(true))),
+                    "FALSE" => Ok(Value::OptBool(Some(false))),
+                    _ => Err(ValueError::ImpossibleCast.into()),
+                }
+            }
+            (DataType::Boolean, Value::I64(value)) => match value {
                 1 => Ok(Value::Bool(true)),
                 0 => Ok(Value::Bool(false)),
-                _ => Err(ValueError::ImpossibleCast),
-            }?),
+                _ => Err(ValueError::ImpossibleCast.into()),
+            },
+            (DataType::Boolean, Value::OptI64(Some(value))) => match value {
+                1 => Ok(Value::OptBool(Some(true))),
+                0 => Ok(Value::OptBool(Some(false))),
+                _ => Err(ValueError::ImpossibleCast.into()),
+            },
             (DataType::Boolean, Value::F64(value)) => {
                 if value.eq(&1.0) {
                     Ok(Value::Bool(true))
@@ -197,30 +214,84 @@ impl Value {
                     Err(ValueError::ImpossibleCast.into())
                 }
             }
+            (DataType::Boolean, Value::OptF64(Some(value))) => {
+                if value.eq(&1.0) {
+                    Ok(Value::OptBool(Some(true)))
+                } else if value.eq(&0.0) {
+                    Ok(Value::OptBool(Some(false)))
+                } else {
+                    Err(ValueError::ImpossibleCast.into())
+                }
+            }
+            (DataType::Boolean, Value::OptI64(None))
+            | (DataType::Boolean, Value::OptF64(None))
+            | (DataType::Boolean, Value::OptStr(None)) => Ok(Value::OptBool(None)),
+
             // Integer
-            (DataType::Int, Value::F64(value)) => Ok(Value::I64(value.trunc() as i64)),
-            (DataType::Int, Value::Str(value)) => Ok(Value::I64(
-                value
-                    .parse::<i64>()
-                    .map_err(|_| ValueError::ImpossibleCast)?,
-            )),
             (DataType::Int, Value::Bool(value)) => Ok(Value::I64(if *value { 1 } else { 0 })),
+            (DataType::Int, Value::OptBool(Some(value))) => {
+                Ok(Value::OptI64(Some(if *value { 1 } else { 0 })))
+            }
+            (DataType::Int, Value::F64(value)) => Ok(Value::I64(value.trunc() as i64)),
+            (DataType::Int, Value::OptF64(Some(value))) => {
+                Ok(Value::OptI64(Some(value.trunc() as i64)))
+            }
+            (DataType::Int, Value::Str(value)) => value
+                .parse::<i64>()
+                .map(Value::I64)
+                .map_err(|_| ValueError::ImpossibleCast.into()),
+            (DataType::Int, Value::OptStr(Some(value))) => value
+                .parse::<i64>()
+                .map(Some)
+                .map(Value::OptI64)
+                .map_err(|_| ValueError::ImpossibleCast.into()),
+            (DataType::Int, Value::OptBool(None))
+            | (DataType::Int, Value::OptF64(None))
+            | (DataType::Int, Value::OptStr(None)) => Ok(Value::OptI64(None)),
+
             // Float
             (DataType::Float(_), Value::Bool(value)) => {
                 Ok(Value::F64(if *value { 1.0 } else { 0.0 }))
             }
+            (DataType::Float(_), Value::OptBool(Some(value))) => {
+                Ok(Value::OptF64(Some(if *value { 1.0 } else { 0.0 })))
+            }
             (DataType::Float(_), Value::I64(value)) => Ok(Value::F64((*value as f64).trunc())),
-            (DataType::Float(_), Value::Str(value)) => Ok(Value::F64(
-                value
-                    .parse::<f64>()
-                    .map_err(|_| ValueError::ImpossibleCast)?,
-            )),
+            (DataType::Float(_), Value::OptI64(Some(value))) => {
+                Ok(Value::OptF64(Some((*value as f64).trunc())))
+            }
+            (DataType::Float(_), Value::Str(value)) => value
+                .parse::<f64>()
+                .map(Value::F64)
+                .map_err(|_| ValueError::ImpossibleCast.into()),
+            (DataType::Float(_), Value::OptStr(Some(value))) => value
+                .parse::<f64>()
+                .map(Some)
+                .map(Value::OptF64)
+                .map_err(|_| ValueError::ImpossibleCast.into()),
+            (DataType::Float(_), Value::OptBool(None))
+            | (DataType::Float(_), Value::OptI64(None))
+            | (DataType::Float(_), Value::OptStr(None)) => Ok(Value::OptF64(None)),
+
+            // Text
             (DataType::Text, Value::Bool(value)) => Ok(Value::Str(
                 (if *value { "TRUE" } else { "FALSE" }).to_string(),
             )),
-            // Text
+            (DataType::Text, Value::OptBool(Some(value))) => Ok(Value::OptStr(Some(
+                (if *value { "TRUE" } else { "FALSE" }).to_string(),
+            ))),
             (DataType::Text, Value::I64(value)) => Ok(Value::Str(value.to_string())),
+            (DataType::Text, Value::OptI64(Some(value))) => {
+                Ok(Value::OptStr(Some(value.to_string())))
+            }
             (DataType::Text, Value::F64(value)) => Ok(Value::Str(value.to_string())),
+            (DataType::Text, Value::OptF64(Some(value))) => {
+                Ok(Value::OptStr(Some(value.to_string())))
+            }
+            (DataType::Text, Value::OptBool(None))
+            | (DataType::Text, Value::OptI64(None))
+            | (DataType::Text, Value::OptF64(None)) => Ok(Value::OptStr(None)),
+
             _ => Err(ValueError::UnimplementedCast.into()),
         }
     }
@@ -396,5 +467,82 @@ mod tests {
         assert_eq!(Value::OptStr(None), Value::OptStr(None));
 
         assert_eq!(Value::Empty, Value::Empty);
+    }
+
+    #[test]
+    fn cast() {
+        use {sqlparser::ast::DataType::*, Value::*};
+
+        macro_rules! cast {
+            ($input: expr => $data_type: expr, $output: expr) => {
+                assert_eq!($input.cast(&$data_type), Ok($output));
+            };
+        }
+
+        // Same as
+        cast!(Bool(true)                    => Boolean      , Bool(true));
+        cast!(OptBool(Some(true))           => Boolean      , OptBool(Some(true)));
+        cast!(Str("a".to_owned())           => Text         , Str("a".to_owned()));
+        cast!(OptStr(Some("a".to_owned()))  => Text         , OptStr(Some("a".to_owned())));
+        cast!(I64(1)                        => Int          , I64(1));
+        cast!(OptI64(Some(1))               => Int          , OptI64(Some(1)));
+        cast!(F64(1.0)                      => Float(None)  , F64(1.0));
+        cast!(OptF64(Some(1.0))             => Float(None)  , OptF64(Some(1.0)));
+
+        // Boolean
+        cast!(Str("TRUE".to_owned())            => Boolean, Bool(true));
+        cast!(Str("FALSE".to_owned())           => Boolean, Bool(false));
+        cast!(OptStr(Some("TRUE".to_owned()))   => Boolean, OptBool(Some(true)));
+        cast!(OptStr(Some("FALSE".to_owned()))  => Boolean, OptBool(Some(false)));
+        cast!(I64(1)                            => Boolean, Bool(true));
+        cast!(I64(0)                            => Boolean, Bool(false));
+        cast!(OptI64(Some(1))                   => Boolean, OptBool(Some(true)));
+        cast!(OptI64(Some(0))                   => Boolean, OptBool(Some(false)));
+        cast!(F64(1.0)                          => Boolean, Bool(true));
+        cast!(F64(0.0)                          => Boolean, Bool(false));
+        cast!(OptF64(Some(1.0))                 => Boolean, OptBool(Some(true)));
+        cast!(OptF64(Some(0.0))                 => Boolean, OptBool(Some(false)));
+        cast!(OptI64(None)                      => Boolean, OptBool(None));
+        cast!(OptF64(None)                      => Boolean, OptBool(None));
+        cast!(OptStr(None)                      => Boolean, OptBool(None));
+
+        // Integer
+        cast!(Bool(true)                    => Int, I64(1));
+        cast!(Bool(false)                   => Int, I64(0));
+        cast!(OptBool(Some(true))           => Int, OptI64(Some(1)));
+        cast!(OptBool(Some(false))          => Int, OptI64(Some(0)));
+        cast!(F64(1.1)                      => Int, I64(1));
+        cast!(OptF64(Some(1.1))             => Int, OptI64(Some(1)));
+        cast!(Str("11".to_owned())          => Int, I64(11));
+        cast!(OptStr(Some("11".to_owned())) => Int, OptI64(Some(11)));
+        cast!(OptBool(None)                 => Int, OptI64(None));
+        cast!(OptF64(None)                  => Int, OptI64(None));
+        cast!(OptStr(None)                  => Int, OptI64(None));
+
+        // Float
+        cast!(Bool(true)                    => Float(None), F64(1.0));
+        cast!(Bool(false)                   => Float(None), F64(0.0));
+        cast!(OptBool(Some(true))           => Float(None), OptF64(Some(1.0)));
+        cast!(OptBool(Some(false))          => Float(None), OptF64(Some(0.0)));
+        cast!(I64(1)                        => Float(None), F64(1.0));
+        cast!(OptI64(Some(1))               => Float(None), OptF64(Some(1.0)));
+        cast!(Str("11".to_owned())          => Float(None), F64(11.0));
+        cast!(OptStr(Some("11".to_owned())) => Float(None), OptF64(Some(11.0)));
+        cast!(OptBool(None)                 => Float(None), OptF64(None));
+        cast!(OptI64(None)                  => Float(None), OptF64(None));
+        cast!(OptStr(None)                  => Float(None), OptF64(None));
+
+        // Text
+        cast!(Bool(true)            => Text, Str("TRUE".to_owned()));
+        cast!(Bool(false)           => Text, Str("FALSE".to_owned()));
+        cast!(OptBool(Some(true))   => Text, OptStr(Some("TRUE".to_owned())));
+        cast!(OptBool(Some(false))  => Text, OptStr(Some("FALSE".to_owned())));
+        cast!(I64(11)               => Text, Str("11".to_owned()));
+        cast!(OptI64(Some(11))      => Text, OptStr(Some("11".to_owned())));
+        cast!(F64(1.0)              => Text, Str("1".to_owned()));
+        cast!(OptF64(Some(1.0))     => Text, OptStr(Some("1".to_owned())));
+        cast!(OptBool(None)         => Text, OptStr(None));
+        cast!(OptI64(None)          => Text, OptStr(None));
+        cast!(OptF64(None)          => Text, OptStr(None));
     }
 }
