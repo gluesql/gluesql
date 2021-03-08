@@ -192,11 +192,13 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             let string = match eval(&args[0]).await?.try_into()? {
                 Value::Str(string) | Value::OptStr(Some(string)) => Ok(string),
+                Value::OptStr(None) => Ok("".to_string()),
                 _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_string())),
             }?;
             let number = match eval(&args[1]).await?.try_into()? {
                 Value::I64(number) | Value::OptI64(Some(number)) => usize::try_from(number)
                     .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_string())), // Unlikely to occur hence the imperfect error
+                Value::OptI64(None) => Ok(0),
                 _ => Err(EvaluateError::FunctionRequiresIntegerValue(
                     name.to_string(),
                 )),
