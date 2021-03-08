@@ -11,7 +11,9 @@ use {
     async_recursion::async_recursion,
     futures::stream::{StreamExt, TryStreamExt},
     im_rc::HashMap,
-    sqlparser::ast::{BinaryOperator, Expr, Function, UnaryOperator, Value as AstValue},
+    sqlparser::ast::{
+        BinaryOperator, Expr, Function, FunctionArg, UnaryOperator, Value as AstValue,
+    },
     std::{
         convert::{TryFrom, TryInto},
         fmt::Debug,
@@ -194,20 +196,23 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 .to_string()
             };
 
-            if args.len() != 2 {
-                return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
-                    expected: 2,
-                    found: args.len(),
+            match args.len() {
+                2 => (),
+                found => {
+                    return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+                        expected: 2,
+                        found,
+                    }
+                    .into())
                 }
-                .into());
             }
 
-            let string = match eval(&args[0]).await?.try_into()? {
+            let string = match eval(get_arg_expr(&args[0])?).await?.try_into()? {
                 Value::Str(string) | Value::OptStr(Some(string)) => Ok(string),
                 Value::OptStr(None) => Ok("".to_string()),
                 _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_string())),
             }?;
-            let number = match eval(&args[1]).await?.try_into()? {
+            let number = match eval(get_arg_expr(&args[1])?).await?.try_into()? {
                 Value::I64(number) | Value::OptI64(Some(number)) => usize::try_from(number)
                     .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_string())), // Unlikely to occur hence the imperfect error
                 Value::OptI64(None) => Ok(0),
