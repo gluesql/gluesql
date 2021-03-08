@@ -2,7 +2,7 @@ use {
     super::EvaluateError,
     crate::{
         data,
-        data::Value,
+        data::value::{TryFromLiteral, Value},
         result::{Error, Result},
     },
     sqlparser::ast::{DataType, Value as AstValue},
@@ -112,21 +112,23 @@ impl<'a> PartialOrd for Evaluated<'a> {
 
 fn literal_partial_cmp(l: &AstValue, r: &AstValue) -> Option<Ordering> {
     match (l, r) {
-        (AstValue::Number(l), AstValue::Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
-            (Ok(l), Ok(r)) => Some(l.cmp(&r)),
-            (_, Ok(r)) => match l.parse::<f64>() {
-                Ok(l) => l.partial_cmp(&(r as f64)),
-                _ => None,
-            },
-            (Ok(l), _) => match r.parse::<f64>() {
-                Ok(r) => (l as f64).partial_cmp(&r),
-                _ => None,
-            },
-            _ => match (l.parse::<f64>(), r.parse::<f64>()) {
-                (Ok(l), Ok(r)) => l.partial_cmp(&r),
-                _ => None,
-            },
-        },
+        (AstValue::Number(l, false), AstValue::Number(r, false)) => {
+            match (l.parse::<i64>(), r.parse::<i64>()) {
+                (Ok(l), Ok(r)) => Some(l.cmp(&r)),
+                (_, Ok(r)) => match l.parse::<f64>() {
+                    Ok(l) => l.partial_cmp(&(r as f64)),
+                    _ => None,
+                },
+                (Ok(l), _) => match r.parse::<f64>() {
+                    Ok(r) => (l as f64).partial_cmp(&r),
+                    _ => None,
+                },
+                _ => match (l.parse::<f64>(), r.parse::<f64>()) {
+                    (Ok(l), Ok(r)) => l.partial_cmp(&r),
+                    _ => None,
+                },
+            }
+        }
         (AstValue::SingleQuotedString(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
         _ => None,
     }
@@ -150,22 +152,22 @@ macro_rules! binary_op {
     ($name:ident, $op:tt) => {
         pub fn $name(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
             let literal_binary_op = |l: &&AstValue, r: &&AstValue| match (l, r) {
-                (AstValue::Number(l), AstValue::Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
-                    (Ok(l), Ok(r)) => Ok(AstValue::Number((l $op r).to_string())),
+                (AstValue::Number(l, false), AstValue::Number(r, false)) => match (l.parse::<i64>(), r.parse::<i64>()) {
+                    (Ok(l), Ok(r)) => Ok(AstValue::Number((l $op r).to_string(), false)),
                     (Ok(l), _) => match r.parse::<f64>() {
-                        Ok(r) => Ok(AstValue::Number(((l as f64) $op r).to_string())),
+                        Ok(r) => Ok(AstValue::Number(((l as f64) $op r).to_string(), false)),
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
                     (_, Ok(r)) => match l.parse::<f64>() {
-                        Ok(l) => Ok(AstValue::Number((l $op (r as f64)).to_string())),
+                        Ok(l) => Ok(AstValue::Number((l $op (r as f64)).to_string(), false)),
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
                     (_, _) => match (l.parse::<f64>(), r.parse::<f64>()) {
-                        (Ok(l), Ok(r)) => Ok(AstValue::Number((l $op r).to_string())),
+                        (Ok(l), Ok(r)) => Ok(AstValue::Number((l $op r).to_string(), false)),
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
                 },
-                (AstValue::Null, AstValue::Number(_)) | (AstValue::Number(_), AstValue::Null) => {
+                (AstValue::Null, AstValue::Number(_, false)) | (AstValue::Number(_, false), AstValue::Null) => {
                     Ok(AstValue::Null)
                 }
                 _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
@@ -197,11 +199,11 @@ macro_rules! unary_op {
     ($name:ident, $op:tt) => {
         pub fn $name(&self) -> Result<Evaluated<'a>> {
             let literal_unary_op = |v: &&AstValue| match v {
-                AstValue::Number(v) => v
+                AstValue::Number(v, false) => v
                     .parse::<i64>()
                     .map_or_else(
-                        |_| v.parse::<f64>().map(|v| AstValue::Number((0.0 $op v).to_string())),
-                        |v| Ok(AstValue::Number((0 $op v).to_string())),
+                        |_| v.parse::<f64>().map(|v| AstValue::Number((0.0 $op v).to_string(), false)),
+                        |v| Ok(AstValue::Number((0 $op v).to_string(), false)),
                     )
                     .map_err(|_| EvaluateError::LiteralUnaryOperationOnNonNumeric.into()),
                 AstValue::Null => Ok(AstValue::Null),
@@ -228,9 +230,8 @@ impl<'a> Evaluated<'a> {
     unary_op!(unary_minus, -);
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
-        let cast_literal =
-            |value: &AstValue| cast_ast_value(value, data_type).map(Evaluated::Literal);
-        let cast_value = |value: &data::Value| value.cast(data_type).map(Evaluated::Value);
+        let cast_literal = |literal: &AstValue| Value::try_from_literal(data_type, literal);
+        let cast_value = |value: &data::Value| value.cast(data_type);
 
         match self {
             StringRef(value) => cast_literal(&AstValue::SingleQuotedString(value.to_string())),
@@ -239,6 +240,7 @@ impl<'a> Evaluated<'a> {
             ValueRef(value) => cast_value(value),
             Value(value) => cast_value(&value),
         }
+        .map(Evaluated::Value)
     }
 
     pub fn is_some(&self) -> bool {
@@ -249,40 +251,5 @@ impl<'a> Evaluated<'a> {
             Evaluated::LiteralRef(v) => v != &&AstValue::Null,
             Evaluated::StringRef(_v) => true,
         }
-    }
-}
-
-fn cast_ast_value(value: &AstValue, data_type: &DataType) -> Result<AstValue> {
-    match (data_type, value) {
-        (DataType::Boolean, AstValue::SingleQuotedString(value))
-        | (DataType::Boolean, AstValue::Number(value)) => Ok(match value.to_uppercase().as_str() {
-            "TRUE" | "1" => Ok(AstValue::Boolean(true)),
-            "FALSE" | "0" => Ok(AstValue::Boolean(false)),
-            _ => Err(EvaluateError::ImpossibleCast),
-        }?),
-        (DataType::Int, AstValue::Number(value)) => Ok(AstValue::Number(
-            value
-                .parse::<f64>()
-                .map_err(|_| EvaluateError::UnreachableImpossibleCast)?
-                .trunc()
-                .to_string(),
-        )),
-        (DataType::Int, AstValue::SingleQuotedString(value))
-        | (DataType::Float(_), AstValue::SingleQuotedString(value)) => {
-            Ok(AstValue::Number(value.to_string()))
-        }
-        (DataType::Int, AstValue::Boolean(value))
-        | (DataType::Float(_), AstValue::Boolean(value)) => Ok(AstValue::Number(
-            (if *value { "1" } else { "0" }).to_string(),
-        )),
-        (DataType::Float(_), AstValue::Number(value)) => Ok(AstValue::Number(value.to_string())),
-        (DataType::Text, AstValue::Boolean(value)) => Ok(AstValue::SingleQuotedString(
-            (if *value { "TRUE" } else { "FALSE" }).to_string(),
-        )),
-        (DataType::Text, AstValue::Number(value)) => {
-            Ok(AstValue::SingleQuotedString(value.to_string()))
-        }
-        (_, AstValue::Null) => Ok(AstValue::Null),
-        _ => Err(EvaluateError::UnimplementedCast.into()),
     }
 }
