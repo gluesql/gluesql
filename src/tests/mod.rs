@@ -2,6 +2,7 @@ pub mod aggregate;
 #[cfg(feature = "alter-table")]
 pub mod alter_table;
 pub mod arithmetic;
+pub mod auto_increment;
 pub mod basic;
 pub mod blend;
 pub mod create_table;
@@ -63,6 +64,8 @@ macro_rules! generate_tests {
         glue!(blend, blend::blend);
         glue!(create_table, create_table::create_table);
         glue!(default, default::default);
+        #[cfg(feature = "sled-storage")]
+        glue!(auto_increment, auto_increment::auto_increment);
         glue!(drop_table, drop_table::drop_table);
         glue!(error, error::error);
         glue!(filter, filter::filter);

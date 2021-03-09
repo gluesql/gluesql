@@ -21,6 +21,7 @@ pub async fn validate_table<T: 'static + Debug>(
     schema: &Schema,
     if_not_exists: bool,
 ) -> Result<()> {
+    println!("{:?}", schema.column_defs);
     validate_column_unique_option(&schema.column_defs)?;
     validate_table_if_not_exists(storage, &schema.table_name, if_not_exists).await
 }

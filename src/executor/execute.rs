@@ -55,7 +55,7 @@ pub enum Payload {
     AlterTable,
 }
 
-pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + Clone>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
@@ -71,7 +71,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
     }
 
     let Query(query) = query;
-    let prepared = prepare(&storage, query).await;
+    let prepared = prepare(storage.clone(), query).await;
     let prepared = try_into!(storage, prepared);
 
     match prepared {
@@ -215,10 +215,11 @@ enum Prepared<'a, T> {
 
 // looks like... false positive
 #[allow(clippy::needless_lifetimes)]
-async fn prepare<'a, T: 'static + Debug>(
-    storage: &impl Store<T>,
+async fn prepare<'a, T: 'static + Debug, U: Store<T> + StoreMut<T> + Clone>(
+    store: U,
     sql_query: &'a Statement,
 ) -> Result<Prepared<'a, T>> {
+    let storage = &store;
     match sql_query {
         Statement::CreateTable {
             name,
@@ -257,7 +258,9 @@ async fn prepare<'a, T: 'static + Debug>(
             let rows = match &source.body {
                 SetExpr::Values(Values(values_list)) => values_list
                     .iter()
-                    .map(|values| Row::new(&column_defs, columns, values))
+                    .map(|values| {
+                        Row::new(&column_defs, columns, values, table_name, store.clone())
+                    })
                     .collect::<Result<_>>()?,
                 SetExpr::Select(select_query) => {
                     select(
