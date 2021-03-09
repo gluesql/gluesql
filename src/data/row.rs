@@ -2,7 +2,11 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Ident};
+use sqlparser::{
+    ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Ident, Value as AstValue},
+    dialect::keywords::Keyword,
+    tokenizer::{Token, Word},
+};
 
 use crate::data::Value;
 use crate::result::Result;
@@ -67,17 +71,44 @@ impl Row {
                     })
                     .next();
 
+                let mut nullable = options
+                    .iter()
+                    .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
+
+                let generates = options.iter().any(|ColumnOptionDef { option, .. }| {
+                    matches!(option, ColumnOption::DialectSpecific(tokens)
+                    if match tokens[..] {
+                        [Token::Word(Word {
+                            keyword: Keyword::AUTO_INCREMENT,
+                            ..
+                        }), ..]
+                        | [Token::Word(Word {
+                            keyword: Keyword::AUTOINCREMENT,
+                            ..
+                        }), ..] => true, // Doubled due to OR in paterns being experimental; TODO: keyword: Keyword::AUTO_INCREMENT | Keyword::AUTOINCREMENT
+                        _ => false,
+                    })
+                });
+
+                let empty_expr = Expr::Value(AstValue::Null);
+
                 let expr = match (i, default) {
                     (Some(i), _) => values
                         .get(i)
                         .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
                     (None, Some(expr)) => Ok(expr),
-                    (None, _) => Err(RowError::LackOfRequiredColumn(name.clone())),
+                    (None, None) => {
+                        if
+                        /*nullable ||*/
+                        generates {
+                            // TODO: Do this a better way
+                            nullable = true;
+                            Ok(&empty_expr)
+                        } else {
+                            Err(RowError::LackOfRequiredColumn(name.clone()))
+                        }
+                    }
                 }?;
-
-                let nullable = options
-                    .iter()
-                    .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
 
                 Value::from_expr(&data_type, nullable, expr)
             })

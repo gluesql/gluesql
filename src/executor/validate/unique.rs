@@ -7,7 +7,11 @@ use {
         utils::Vector,
     },
     im_rc::HashSet,
-    sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident},
+    sqlparser::{
+        ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident},
+        dialect::keywords::Keyword,
+        tokenizer::{Token, Word},
+    },
     std::{convert::TryInto, fmt::Debug, rc::Rc},
 };
 
@@ -114,28 +118,44 @@ pub async fn validate_increment<T: 'static + Debug>(
     table_name: &str,
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,
-) -> Result<()> {
+) -> Result<Option<Vec<Row>>> {
     let match_name = "AUTO_INCREMENT".to_string();
     let columns = match column_validation {
         ColumnValidation::All(column_defs)
         | ColumnValidation::SpecifiedColumns(column_defs, ..) => {
             fetch_matches(&column_defs, &|opt_def: &ColumnOptionDef, _| {
                 matches!(
-                    &opt_def.name,
-                    Some(Ident {
-                        value: match_name,
-                        ..
-                    })
+                    &opt_def.option,
+                    ColumnOption::DialectSpecific(tokens)
+                        if match tokens[..] {
+                            [Token::Word(Word {
+                                keyword: Keyword::AUTO_INCREMENT,
+                                ..
+                            }), ..]
+                            | [Token::Word(Word {
+                                keyword: Keyword::AUTOINCREMENT,
+                                ..
+                            }), ..] => true, // Doubled due to OR in paterns being experimental; TODO: keyword: Keyword::AUTO_INCREMENT | Keyword::AUTOINCREMENT
+                            _ => false,
+                        }
                 )
             })
         }
     };
-    for row in row_iter {
-        for (index, name) in columns.clone() {
-            println!("{:?}", row.get_value(index));
-        }
+    if columns.len() == 0 {
+        return Ok(None);
     }
-    Ok(())
+    let mut rows: Vec<Row> = vec![];
+    row_iter.for_each(|row| {
+        let mut row = row.0.clone();
+        for (index, name) in columns.clone() {
+            row[index] = Value::I64(1); // TODO: tree.get() & tree.set()
+            println!("{:?}", row[index]);
+        }
+        rows.push(Row(row));
+    });
+    // KG: .map -> .collect wasn't happy
+    Ok(Some(rows))
 }
 
 fn create_unique_constraints<'a>(

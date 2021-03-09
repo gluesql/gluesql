@@ -1,42 +1,39 @@
 use crate::*;
 
 test_case!(auto_increment, async move {
-    run!(
-        r#"
-        CREATE TABLE table (
-            id INTEGER CONSTRAINT AUTO_INCREMENT PRIMARY KEY,
-            name TEXT NOT NULL,
-        )"#
-    );
-    run!(
-        r#"
-        INSERT INTO table (name) VALUES ('bleh'), ('blo'), ('blee')"#
-    );
+    use Value::*;
+
     let test_cases = vec![
-        /*(
-            r#"
-        CREATE TABLE table (
-            id INTEGER PRIMARY KEY AUTO_INCREMENT
-        )"#,
-            Err(CreateTableError::TableAlreadyExists.into()),
-        ),*/
-        /*(
-            r#"
-        CREATE TABLE table1 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT
-        )"#,
-            Err(CreateTableError::TableAlreadyExists.into()),
-        ),*/
         (
-            r#"
-        CREATE TABLE table1 (
-            id INTEGER PRIMARY KEY UNIQUE CONSTRAINT AUTO_INCREMENT NOT NULL
-        )"#,
-            Err(CreateTableError::TableAlreadyExists.into()),
+            "CREATE TABLE Test (id INTEGER AUTO_INCREMENT NOT NULL, name TEXT)",
+            Payload::Create,
+        ),
+        (
+            r#"INSERT INTO Test (name) VALUES ('test1')"#,
+            Payload::Insert(1),
+        ),
+        (
+            r#"SELECT * FROM Test"#,
+            select!(
+            id  | name
+            I64 | Str;
+            1    "test1".to_owned()),
+        ),
+        (
+            r#"INSERT INTO Test (name) VALUES ('test2')"#,
+            Payload::Insert(1),
+        ),
+        (
+            r#"SELECT * FROM Test"#,
+            select!(
+            id  | name
+            I64 | Str;
+            1    "test1".to_owned();
+            2    "test2".to_owned()),
         ),
     ];
 
     for (sql, expected) in test_cases.into_iter() {
-        test!(expected, sql);
+        test!(Ok(expected), sql);
     }
 });

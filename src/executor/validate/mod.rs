@@ -38,7 +38,7 @@ pub async fn validate_rows<T: 'static + Debug>(
     table_name: &str,
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,
-) -> Result<()> {
+) -> Result<Option<Vec<Row>>> {
     validate_unique(
         storage,
         table_name,
@@ -46,7 +46,7 @@ pub async fn validate_rows<T: 'static + Debug>(
         row_iter.clone(),
     )
     .await?;
-    validate_increment(
+    let rows = validate_increment(
         storage,
         table_name,
         column_validation.clone(),
@@ -54,7 +54,7 @@ pub async fn validate_rows<T: 'static + Debug>(
     )
     .await?;
     validate_types(column_validation.clone(), row_iter.clone())?;
-    Ok(())
+    Ok(rows)
 }
 
 fn validate_types<'a>(

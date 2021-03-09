@@ -155,7 +155,12 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 rows.iter(),
             )
             .await;
-            try_into!(storage, validated);
+
+            let rows = if let Some(validated_rows) = try_into!(storage, validated) {
+                validated_rows
+            } else {
+                rows
+            };
 
             let num_rows = rows.len();
 
