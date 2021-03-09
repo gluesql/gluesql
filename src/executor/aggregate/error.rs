@@ -18,4 +18,7 @@ pub enum AggregateError {
 
     #[error("unreachable")]
     Unreachable,
+
+    #[error("unreachable named function arg: {0}")]
+    UnreachableNamedFunctionArg(String),
 }

@@ -72,7 +72,8 @@ macro_rules! generate_tests {
             column_options::auto_increment::auto_increment
         );
         glue!(function, function::function);
-        glue!(function_cast, function::cast::cast);
+        glue!(function_cast_literal, function::cast::cast_literal);
+        glue!(function_cast_value, function::cast::cast_value);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);

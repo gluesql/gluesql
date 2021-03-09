@@ -61,6 +61,7 @@ test_case!(join, async move {
     }
 
     let select_sqls = [
+        (75, "SELECT * FROM Item JOIN Player"),
         (
             15,
             "SELECT * FROM Item LEFT JOIN Player ON Player.id = Item.player_id;",

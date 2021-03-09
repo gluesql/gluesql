@@ -95,9 +95,9 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 AlterTableOperation::RenameTable {
                     table_name: new_table_name,
                 } => {
-                    storage
-                        .rename_schema(table_name, &new_table_name.value)
-                        .await
+                    let new_table_name = try_into!(storage, get_name(new_table_name));
+
+                    storage.rename_schema(table_name, new_table_name).await
                 }
                 AlterTableOperation::RenameColumn {
                     old_column_name,
@@ -249,6 +249,7 @@ async fn prepare<'a, T: 'static + Debug>(
             table_name,
             columns,
             source,
+            ..
         } => {
             let table_name = get_name(table_name)?;
             let Schema { column_defs, .. } = storage
@@ -265,7 +266,7 @@ async fn prepare<'a, T: 'static + Debug>(
                     select(
                         storage,
                         &sqlparser::ast::Query {
-                            ctes: vec![],
+                            with: None,
                             body: SetExpr::Select(select_query.clone()),
                             order_by: vec![],
                             limit: None,

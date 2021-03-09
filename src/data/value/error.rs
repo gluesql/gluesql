@@ -41,9 +41,26 @@ pub enum ValueError {
     #[error("floating columns cannot be set to unique constraint")]
     ConflictOnFloatWithUniqueConstraint,
 
+    // Cast errors from value to value
     #[error("impossible cast")]
     ImpossibleCast,
 
     #[error("unimplemented cast")]
     UnimplementedCast,
+
+    // Cast errors from literal to value
+    #[error("literal cast failed from text to integer: {0}")]
+    LiteralCastFromTextToIntegerFailed(String),
+
+    #[error("literal cast failed from text to float: {0}")]
+    LiteralCastToFloatFailed(String),
+
+    #[error("literal cast failed to boolean: {0}")]
+    LiteralCastToBooleanFailed(String),
+
+    #[error("unreachable literal cast from number to integer: {0}")]
+    UnreachableLiteralCastFromNumberToInteger(String),
+
+    #[error("unimplemented literal cast: {literal} as {data_type}")]
+    UnimplementedLiteralCast { data_type: String, literal: String },
 }
