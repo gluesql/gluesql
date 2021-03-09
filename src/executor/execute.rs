@@ -55,7 +55,7 @@ pub enum Payload {
     AlterTable,
 }
 
-pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + Clone>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
@@ -71,15 +71,20 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
     }
 
     let Query(query) = query;
-    let prepared = prepare(&storage, query).await;
-    let prepared = try_into!(storage, prepared);
 
-    match prepared {
-        Prepared::Create {
-            schema,
+    match query {
+        Statement::CreateTable {
+            name,
+            columns,
             if_not_exists,
+            ..
         } => {
-            let validated = validate_table(&storage, &schema, if_not_exists).await;
+            let schema = Schema {
+                table_name: try_into!(storage, get_name(name)).clone(),
+                column_defs: columns.clone(),
+            };
+
+            let validated = validate_table(&storage, &schema, *if_not_exists).await;
             try_into!(storage, validated);
 
             storage
@@ -87,7 +92,68 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .await
                 .map(|(storage, _)| (storage, Payload::Create))
         }
-        Prepared::Insert(table_name, column_defs, rows) => {
+        Statement::Query(query) => {
+            let (labels, rows) = try_into!(
+                storage.clone(),
+                select_with_labels(&storage, &query, None, true).await
+            );
+            let rows = try_into!(storage, rows.try_collect::<Vec<_>>().await);
+
+            Ok((storage, Payload::Select { labels, rows }))
+        }
+        Statement::Insert {
+            table_name,
+            columns,
+            source,
+            ..
+        } => {
+            let table_name = try_into!(storage, get_name(table_name));
+            let Schema { column_defs, .. } = try_into!(
+                storage,
+                try_into!(storage, storage.fetch_schema(table_name).await)
+                    .ok_or(ExecuteError::TableNotExists)
+            );
+
+            let rows = match &source.body {
+                SetExpr::Values(Values(values_list)) => try_into!(
+                    storage,
+                    values_list
+                        .iter()
+                        .map(|values| Row::new(&column_defs, columns, values))
+                        .collect::<Result<_>>()
+                ),
+                SetExpr::Select(select_query) => {
+                    try_into!(
+                        storage.clone(),
+                        try_into!(
+                            storage.clone(),
+                            select(
+                                &storage,
+                                &sqlparser::ast::Query {
+                                    with: None,
+                                    body: SetExpr::Select(select_query.clone()),
+                                    order_by: vec![],
+                                    limit: None,
+                                    offset: None,
+                                    fetch: None,
+                                },
+                                None,
+                            )
+                            .await
+                        )
+                        .try_collect::<Vec<_>>()
+                        .await
+                    )
+                }
+                set_expr => {
+                    return Err((
+                        storage,
+                        ExecuteError::UnreachableUnsupportedInsertValueType(set_expr.to_string())
+                            .into(),
+                    ));
+                }
+            };
+
             let column_defs = Rc::from(column_defs);
             let validated = validate_rows(
                 &storage,
@@ -105,16 +171,44 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .await
                 .map(|(storage, _)| (storage, Payload::Insert(num_rows)))
         }
-        Prepared::Delete(keys) => {
-            let num_rows = keys.len();
+        Statement::Update {
+            table_name,
+            selection,
+            assignments,
+        } => {
+            let table_name = try_into!(storage, get_name(table_name));
+            let Schema { column_defs, .. } = try_into!(
+                storage,
+                try_into!(storage, storage.fetch_schema(table_name).await)
+                    .ok_or(ExecuteError::TableNotExists)
+            );
+            let update = try_into!(
+                storage,
+                Update::new(&storage, table_name, assignments, &column_defs)
+            );
+            let filter = Filter::new(&storage, selection.as_ref(), None, None);
 
-            storage
-                .delete_data(keys)
+            let all_columns = Rc::from(update.all_columns());
+            let columns_to_update = update.columns_to_update();
+            let rows = try_into!(
+                storage.clone(),
+                try_into!(
+                    storage.clone(),
+                    fetch(&storage, table_name, Rc::clone(&all_columns), filter).await
+                )
+                .and_then(|item| {
+                    let update = &update;
+                    let (_, key, row) = item;
+                    async move {
+                        let row = update.apply(row).await?;
+                        Ok((key, row))
+                    }
+                })
+                .try_collect::<Vec<_>>()
                 .await
-                .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
-        }
-        Prepared::Update(table_name, all_column_defs, columns_to_update, rows) => {
-            let all_column_defs = Rc::from(all_column_defs);
+            );
+
+            let all_column_defs = Rc::from(column_defs);
             let validated = validate_rows(
                 &storage,
                 &table_name,
@@ -123,19 +217,61 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             )
             .await;
             try_into!(storage, validated);
-
             let num_rows = rows.len();
-
             storage
                 .update_data(rows)
                 .await
                 .map(|(storage, _)| (storage, Payload::Update(num_rows)))
         }
-        Prepared::DropTable {
-            schema_names,
+        Statement::Delete {
+            table_name,
+            selection,
+        } => {
+            let table_name = try_into!(storage, get_name(&table_name));
+            let columns = Rc::from(try_into!(
+                storage,
+                fetch_columns(&storage, table_name).await
+            ));
+            let filter = Filter::new(&storage, selection.as_ref(), None, None);
+
+            let keys = try_into!(
+                storage.clone(),
+                try_into!(
+                    storage.clone(),
+                    fetch(&storage, table_name, columns, filter).await
+                )
+                .map_ok(|(_, key, _)| key)
+                .try_collect::<Vec<_>>()
+                .await
+            );
+
+            let num_rows = keys.len();
+
+            storage
+                .delete_data(keys)
+                .await
+                .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
+        }
+        Statement::Drop {
+            object_type,
+            names,
             if_exists,
-        } => stream::iter(schema_names.into_iter().map(Ok::<&str, (U, Error)>))
-            .try_fold(storage, |storage, table_name| async move {
+            ..
+        } => {
+            if object_type != &ObjectType::Table {
+                return Err((storage, ExecuteError::DropTypeNotSupported.into()));
+            }
+
+            let schema_names: Vec<Result<&String>> = names
+                .iter()
+                .map(|name| get_name(name))
+                .collect::<Vec<Result<&String>>>();
+
+            stream::iter(schema_names.into_iter().map(|name| match name {
+                Ok(name) => Ok(name.as_str()),
+                Err(err) => Err((storage.clone(), err)),
+            }))
+            .try_fold(storage.clone(), |storage, table_name| async move {
                 let schema = try_into!(storage, storage.fetch_schema(table_name).await);
 
                 if !if_exists {
@@ -148,11 +284,13 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                     .map(|(storage, _)| storage)
             })
             .await
-            .map(|storage| (storage, Payload::DropTable)),
-        Prepared::Select { labels, rows } => Ok((storage, Payload::Select { labels, rows })),
+            .map(|storage| (storage, Payload::DropTable))
+        }
 
         #[cfg(feature = "alter-table")]
-        Prepared::AlterTable(table_name, operation) => {
+        Statement::AlterTable { name, operation } => {
+            let table_name = try_into!(storage, get_name(name));
+
             let result = match operation {
                 AlterTableOperation::RenameTable {
                     table_name: new_table_name,
@@ -189,177 +327,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
 
             result.map(|(storage, _)| (storage, Payload::AlterTable))
         }
-    }
-}
 
-enum Prepared<'a, T> {
-    Create {
-        schema: Schema,
-        if_not_exists: bool,
-    },
-    Insert(&'a str, Vec<ColumnDef>, Vec<Row>),
-    Delete(Vec<T>),
-    Update(&'a str, Vec<ColumnDef>, Vec<Ident>, Vec<(T, Row)>),
-    Select {
-        labels: Vec<String>,
-        rows: Vec<Row>,
-    },
-    DropTable {
-        schema_names: Vec<&'a str>,
-        if_exists: bool,
-    },
-
-    #[cfg(feature = "alter-table")]
-    AlterTable(&'a str, &'a AlterTableOperation),
-}
-
-// looks like... false positive
-#[allow(clippy::needless_lifetimes)]
-async fn prepare<'a, T: 'static + Debug>(
-    storage: &impl Store<T>,
-    sql_query: &'a Statement,
-) -> Result<Prepared<'a, T>> {
-    match sql_query {
-        Statement::CreateTable {
-            name,
-            columns,
-            if_not_exists,
-            ..
-        } => {
-            let schema = Schema {
-                table_name: get_name(name)?.clone(),
-                column_defs: columns.clone(),
-            };
-
-            Ok(Prepared::Create {
-                schema,
-                if_not_exists: *if_not_exists,
-            })
-        }
-        Statement::Query(query) => {
-            let (labels, rows) = select_with_labels(storage, &query, None, true).await?;
-            let rows = rows.try_collect::<Vec<_>>().await?;
-
-            Ok(Prepared::Select { labels, rows })
-        }
-        Statement::Insert {
-            table_name,
-            columns,
-            source,
-            ..
-        } => {
-            let table_name = get_name(table_name)?;
-            let Schema { column_defs, .. } = storage
-                .fetch_schema(table_name)
-                .await?
-                .ok_or(ExecuteError::TableNotExists)?;
-
-            let rows = match &source.body {
-                SetExpr::Values(Values(values_list)) => values_list
-                    .iter()
-                    .map(|values| Row::new(&column_defs, columns, values))
-                    .collect::<Result<_>>()?,
-                SetExpr::Select(select_query) => {
-                    select(
-                        storage,
-                        &sqlparser::ast::Query {
-                            with: None,
-                            body: SetExpr::Select(select_query.clone()),
-                            order_by: vec![],
-                            limit: None,
-                            offset: None,
-                            fetch: None,
-                        },
-                        None,
-                    )
-                    .await?
-                    .try_collect::<Vec<_>>()
-                    .await?
-                }
-                set_expr => {
-                    return Err(ExecuteError::UnreachableUnsupportedInsertValueType(
-                        set_expr.to_string(),
-                    )
-                    .into());
-                }
-            };
-
-            Ok(Prepared::Insert(table_name, column_defs, rows))
-        }
-        Statement::Update {
-            table_name,
-            selection,
-            assignments,
-        } => {
-            let table_name = get_name(table_name)?;
-            let Schema { column_defs, .. } = storage
-                .fetch_schema(table_name)
-                .await?
-                .ok_or(ExecuteError::TableNotExists)?;
-            let update = Update::new(storage, table_name, assignments, &column_defs)?;
-            let filter = Filter::new(storage, selection.as_ref(), None, None);
-
-            let all_columns = Rc::from(update.all_columns());
-            let columns_to_update = update.columns_to_update();
-            fetch(storage, table_name, Rc::clone(&all_columns), filter)
-                .await?
-                .and_then(|item| {
-                    let update = &update;
-                    let (_, key, row) = item;
-
-                    async move {
-                        let row = update.apply(row).await?;
-
-                        Ok((key, row))
-                    }
-                })
-                .try_collect::<Vec<_>>()
-                .await
-                .map(|rows| Prepared::Update(table_name, column_defs, columns_to_update, rows))
-        }
-        Statement::Delete {
-            table_name,
-            selection,
-        } => {
-            let table_name = get_name(table_name)?;
-            let columns = Rc::from(fetch_columns(storage, table_name).await?);
-            let filter = Filter::new(storage, selection.as_ref(), None, None);
-
-            fetch(storage, table_name, columns, filter)
-                .await?
-                .map_ok(|(_, key, _)| key)
-                .try_collect::<Vec<_>>()
-                .await
-                .map(Prepared::Delete)
-        }
-        Statement::Drop {
-            object_type,
-            names,
-            if_exists,
-            ..
-        } => {
-            if object_type != &ObjectType::Table {
-                return Err(ExecuteError::DropTypeNotSupported.into());
-            }
-
-            let names = names
-                .iter()
-                .map(|name| get_name(name).map(|n| n.as_str()))
-                .collect::<Result<_>>()?;
-
-            Ok(Prepared::DropTable {
-                schema_names: names,
-                if_exists: *if_exists,
-            })
-        }
-
-        #[cfg(feature = "alter-table")]
-        Statement::AlterTable { name, operation } => {
-            let table_name = get_name(name)?;
-
-            Ok(Prepared::AlterTable(table_name, operation))
-        }
-
-        _ => Err(ExecuteError::QueryNotSupported.into()),
+        _ => Err((storage, ExecuteError::QueryNotSupported.into())),
     }
 }
