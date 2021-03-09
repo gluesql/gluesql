@@ -6,11 +6,11 @@ use thiserror::Error as ThisError;
 
 #[cfg(feature = "alter-table")]
 use sqlparser::ast::AlterTableOperation;
-use sqlparser::ast::{ColumnDef, Ident, ObjectType, SetExpr, Statement, Values};
+use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
 
 use crate::data::{get_name, Row, Schema};
 use crate::parse_sql::Query;
-use crate::result::{Error, MutResult, Result};
+use crate::result::{MutResult, Result};
 use crate::store::{AlterTable, Store, StoreMut};
 
 use super::create_table::validate_table;
@@ -73,6 +73,8 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
     let Query(query) = query;
 
     match query {
+        //- Modification
+        //-- Tables
         Statement::CreateTable {
             name,
             columns,
@@ -92,15 +94,83 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                 .await
                 .map(|(storage, _)| (storage, Payload::Create))
         }
-        Statement::Query(query) => {
-            let (labels, rows) = try_into!(
-                storage.clone(),
-                select_with_labels(&storage, &query, None, true).await
-            );
-            let rows = try_into!(storage, rows.try_collect::<Vec<_>>().await);
+        Statement::Drop {
+            object_type,
+            names,
+            if_exists,
+            ..
+        } => {
+            if object_type != &ObjectType::Table {
+                return Err((storage, ExecuteError::DropTypeNotSupported.into()));
+            }
 
-            Ok((storage, Payload::Select { labels, rows }))
+            let schema_names: Vec<Result<&String>> = names
+                .iter()
+                .map(|name| get_name(name))
+                .collect::<Vec<Result<&String>>>();
+
+            stream::iter(schema_names.into_iter().map(|name| match name {
+                Ok(name) => Ok(name.as_str()),
+                Err(err) => Err((storage.clone(), err)),
+            }))
+            .try_fold(storage.clone(), |storage, table_name| async move {
+                let schema = try_into!(storage, storage.fetch_schema(table_name).await);
+
+                if !if_exists {
+                    try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
+                }
+
+                storage
+                    .delete_schema(table_name)
+                    .await
+                    .map(|(storage, _)| storage)
+            })
+            .await
+            .map(|storage| (storage, Payload::DropTable))
         }
+
+        #[cfg(feature = "alter-table")]
+        Statement::AlterTable { name, operation } => {
+            let table_name = try_into!(storage, get_name(name));
+
+            let result = match operation {
+                AlterTableOperation::RenameTable {
+                    table_name: new_table_name,
+                } => {
+                    let new_table_name = try_into!(storage, get_name(new_table_name));
+
+                    storage.rename_schema(table_name, new_table_name).await
+                }
+                AlterTableOperation::RenameColumn {
+                    old_column_name,
+                    new_column_name,
+                } => {
+                    storage
+                        .rename_column(table_name, &old_column_name.value, &new_column_name.value)
+                        .await
+                }
+                AlterTableOperation::AddColumn { column_def } => {
+                    storage.add_column(table_name, column_def).await
+                }
+                AlterTableOperation::DropColumn {
+                    column_name,
+                    if_exists,
+                    ..
+                } => {
+                    storage
+                        .drop_column(table_name, &column_name.value, *if_exists)
+                        .await
+                }
+                _ => Err((
+                    storage,
+                    ExecuteError::UnsupportedAlterTableOperation(operation.to_string()).into(),
+                )),
+            };
+
+            result.map(|(storage, _)| (storage, Payload::AlterTable))
+        }
+
+        //-- Rows
         Statement::Insert {
             table_name,
             columns,
@@ -252,82 +322,17 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                 .await
                 .map(|(storage, _)| (storage, Payload::Delete(num_rows)))
         }
-        Statement::Drop {
-            object_type,
-            names,
-            if_exists,
-            ..
-        } => {
-            if object_type != &ObjectType::Table {
-                return Err((storage, ExecuteError::DropTypeNotSupported.into()));
-            }
 
-            let schema_names: Vec<Result<&String>> = names
-                .iter()
-                .map(|name| get_name(name))
-                .collect::<Vec<Result<&String>>>();
+        //- Selection
+        Statement::Query(query) => {
+            let (labels, rows) = try_into!(
+                storage.clone(),
+                select_with_labels(&storage, &query, None, true).await
+            );
+            let rows = try_into!(storage, rows.try_collect::<Vec<_>>().await);
 
-            stream::iter(schema_names.into_iter().map(|name| match name {
-                Ok(name) => Ok(name.as_str()),
-                Err(err) => Err((storage.clone(), err)),
-            }))
-            .try_fold(storage.clone(), |storage, table_name| async move {
-                let schema = try_into!(storage, storage.fetch_schema(table_name).await);
-
-                if !if_exists {
-                    try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
-                }
-
-                storage
-                    .delete_schema(table_name)
-                    .await
-                    .map(|(storage, _)| storage)
-            })
-            .await
-            .map(|storage| (storage, Payload::DropTable))
+            Ok((storage, Payload::Select { labels, rows }))
         }
-
-        #[cfg(feature = "alter-table")]
-        Statement::AlterTable { name, operation } => {
-            let table_name = try_into!(storage, get_name(name));
-
-            let result = match operation {
-                AlterTableOperation::RenameTable {
-                    table_name: new_table_name,
-                } => {
-                    let new_table_name = try_into!(storage, get_name(new_table_name));
-
-                    storage.rename_schema(table_name, new_table_name).await
-                }
-                AlterTableOperation::RenameColumn {
-                    old_column_name,
-                    new_column_name,
-                } => {
-                    storage
-                        .rename_column(table_name, &old_column_name.value, &new_column_name.value)
-                        .await
-                }
-                AlterTableOperation::AddColumn { column_def } => {
-                    storage.add_column(table_name, column_def).await
-                }
-                AlterTableOperation::DropColumn {
-                    column_name,
-                    if_exists,
-                    ..
-                } => {
-                    storage
-                        .drop_column(table_name, &column_name.value, *if_exists)
-                        .await
-                }
-                _ => Err((
-                    storage,
-                    ExecuteError::UnsupportedAlterTableOperation(operation.to_string()).into(),
-                )),
-            };
-
-            result.map(|(storage, _)| (storage, Payload::AlterTable))
-        }
-
         _ => Err((storage, ExecuteError::QueryNotSupported.into())),
     }
 }
