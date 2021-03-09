@@ -104,12 +104,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                 return Err((storage, ExecuteError::DropTypeNotSupported.into()));
             }
 
-            let schema_names: Vec<Result<&String>> = names
-                .iter()
-                .map(|name| get_name(name))
-                .collect::<Vec<Result<&String>>>();
-
-            stream::iter(schema_names.into_iter().map(|name| match name {
+            stream::iter(names.iter().map(|name| match get_name(name) {
                 Ok(name) => Ok(name.as_str()),
                 Err(err) => Err((storage.clone(), err)),
             }))
