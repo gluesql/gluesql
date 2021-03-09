@@ -44,20 +44,20 @@ test_case!(left_right, async move {
             r#"SELECT LEFT(name, 3) AS test FROM Item"#,
             Ok(select!(
                 "test"
-                Str;
-                "Blo".to_owned();
-                "B".to_owned();
-                "Ste".to_owned()
+                OptStr;
+                Some("Blo".to_owned());
+                Some("B".to_owned());
+                Some("Ste".to_owned())
             )),
         ),
         (
             r#"SELECT RIGHT(name, 10) AS test FROM Item"#,
             Ok(select!(
                 "test"
-                Str;
-                "op mc blee".to_owned();
-                "B".to_owned();
-                "d$ folken!".to_owned()
+                OptStr;
+                Some("op mc blee".to_owned());
+                Some("B".to_owned());
+                Some("d$ folken!".to_owned())
             )),
         ),
         // TODO Concatenation
@@ -65,7 +65,7 @@ test_case!(left_right, async move {
             r#"SELECT LEFT((name + 'bobbert'), 10) AS test FROM Item"#,
             Ok(select!(
                 "test"
-                Str;
+                OptStr;
                 "Blop mc blee".to_owned();
                 "Bbobbert".to_owned();
                 "Steven the".to_owned()
@@ -75,16 +75,16 @@ test_case!(left_right, async move {
             r#"SELECT LEFT('blue', 10) AS test FROM SingleItem"#,
             Ok(select!(
                 "test"
-                Str;
-                "blue".to_owned()
+                OptStr;
+                Some("blue".to_owned())
             )),
         ),
         (
             r#"SELECT LEFT("blunder", 3) AS test FROM SingleItem"#,
             Ok(select!(
                 "test"
-                Str;
-                "blu".to_owned()
+                OptStr;
+                Some("blu".to_owned())
             )),
         ),
         (
@@ -115,8 +115,8 @@ test_case!(left_right, async move {
             r#"SELECT LEFT(name, 1) AS test FROM NullableName"#,
             Ok(select!(
                 "test"
-                Str;
-                "n".to_owned()
+                OptStr;
+                Some("n".to_owned())
             )),
         ),
         // TODO: Cast cannot handle
@@ -124,16 +124,16 @@ test_case!(left_right, async move {
             r#"SELECT LEFT('Words', CAST(NULL AS INTEGER)) AS test FROM SingleItem"#,
             Ok(select!(
                 "Words"
-                Str;
-                "blu".to_owned()
+                OptStr;
+                Some("blu".to_owned())
             )),
         ),
         (
             r#"SELECT LEFT(CAST(NULL AS TEXT), 10) AS test FROM SingleItem"#,
             Ok(select!(
                 ""
-                Str;
-                "blu".to_owned()
+                OptStr;
+                Some("blu".to_owned())
             )),
         ),*/
         (
