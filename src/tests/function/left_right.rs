@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(left_right, async move {
-    use Value::Str;
+    use Value::{OptStr, Str};
     let test_cases = vec![
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
@@ -91,24 +91,24 @@ test_case!(left_right, async move {
             r#"SELECT LEFT(name, 3) AS test FROM NullName"#,
             Ok(select!(
                 "test"
-                Str;
-                "".to_owned()
+                OptStr;
+                None
             )),
         ),
         (
             r#"SELECT LEFT('Words', number) AS test FROM NullNumber"#,
             Ok(select!(
                 "test"
-                Str;
-                "".to_owned()
+                OptStr;
+                None
             )),
         ),
         (
             r#"SELECT LEFT(name, number) AS test FROM NullNumber INNER JOIN NullName ON 1 = 1"#,
             Ok(select!(
                 "test"
-                Str;
-                "".to_owned()
+                OptStr;
+                None
             )),
         ),
         (

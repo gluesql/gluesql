@@ -180,6 +180,8 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Ok(Evaluated::Value(value))
         }
         name @ "LEFT" | name @ "RIGHT" => {
+            let return_wrap = |value| Ok(Evaluated::Value(Value::OptStr(value)));
+
             let convert = |string: String, number: usize| {
                 if name == "LEFT" {
                     string.get(..number)
@@ -192,8 +194,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     string.get(start_pos..)
                 }
                 .or(Some(&string))
-                .unwrap()
-                .to_string()
+                .map(|value| value.to_string())
             };
 
             match args.len() {
@@ -209,19 +210,19 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             let string = match eval(get_arg_expr(&args[0])?).await?.try_into()? {
                 Value::Str(string) | Value::OptStr(Some(string)) => Ok(string),
-                Value::OptStr(None) => Ok("".to_string()),
+                Value::OptStr(None) => return return_wrap(None),
                 _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_string())),
             }?;
             let number = match eval(get_arg_expr(&args[1])?).await?.try_into()? {
                 Value::I64(number) | Value::OptI64(Some(number)) => usize::try_from(number)
                     .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_string())), // Unlikely to occur hence the imperfect error
-                Value::OptI64(None) => Ok(0),
+                Value::OptI64(None) => return return_wrap(None),
                 _ => Err(EvaluateError::FunctionRequiresIntegerValue(
                     name.to_string(),
                 )),
             }?;
 
-            Ok(Evaluated::Value(Value::Str(convert(string, number))))
+            return_wrap(convert(string, number))
         }
         name => Err(EvaluateError::FunctionNotSupported(name.to_owned()).into()),
     }
