@@ -53,7 +53,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
                 match (context.get_value(&ident.value), use_empty) {
                     (Some(value), _) => Ok(value.clone()),
-                    (None, true) => Ok(Value::Empty),
+                    (None, true) => Ok(Value::Null),
                     (None, false) => {
                         Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
                     }
@@ -73,7 +73,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             match (context.get_alias_value(table_alias, column), use_empty) {
                 (Some(value), _) => Ok(value.clone()),
-                (None, true) => Ok(Value::Empty),
+                (None, true) => Ok(Value::Null),
                 (None, false) => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
             }
             .map(Evaluated::Value)

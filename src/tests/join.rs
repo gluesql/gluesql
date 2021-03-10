@@ -183,7 +183,7 @@ test_case!(blend, async move {
         run!(insert_sql);
     }
 
-    use Value::{Empty, Str, I64};
+    use Value::{Null, Str, I64};
 
     let sql = "
         SELECT p.id, i.id
@@ -196,9 +196,9 @@ test_case!(blend, async move {
         id     | id;
         I64(1)   I64(101);
         I64(2)   I64(102);
-        I64(3)   Empty;
+        I64(3)   Null;
         I64(4)   I64(103);
-        I64(5)   Empty
+        I64(5)   Null
     );
     assert_eq!(expected, found);
 
@@ -213,9 +213,9 @@ test_case!(blend, async move {
         id     | player_id;
         I64(1)   I64(1);
         I64(2)   I64(2);
-        I64(3)   Empty;
+        I64(3)   Null;
         I64(4)   I64(4);
-        I64(5)   Empty
+        I64(5)   Null
     );
     assert_eq!(expected, found);
 
@@ -230,9 +230,9 @@ test_case!(blend, async move {
         id       | quantity | player_id;
         I64(101)   I64(1)     I64(1);
         I64(102)   I64(4)     I64(2);
-        Empty      Empty      Empty;
+        Null       Null       Null;
         I64(103)   I64(9)     I64(4);
-        Empty      Empty      Empty
+        Null       Null       Null
     );
     assert_eq!(expected, found);
 
@@ -247,9 +247,9 @@ test_case!(blend, async move {
         id     | name                      | id       | quantity | player_id;
         I64(1)   Str("Taehoon".to_owned())   I64(101)   I64(1)     I64(1);
         I64(2)   Str("Mike".to_owned())      I64(102)   I64(4)     I64(2);
-        I64(3)   Str("Jorno".to_owned())     Empty      Empty      Empty;
+        I64(3)   Str("Jorno".to_owned())     Null       Null       Null;
         I64(4)   Str("Berry".to_owned())     I64(103)   I64(9)     I64(4);
-        I64(5)   Str("Hwan".to_owned())      Empty      Empty      Empty
+        I64(5)   Str("Hwan".to_owned())      Null       Null       Null
     );
     assert_eq!(expected, found);
 });

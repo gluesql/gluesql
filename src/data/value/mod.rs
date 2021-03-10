@@ -24,7 +24,7 @@ pub enum Value {
     OptI64(Option<i64>),
     OptF64(Option<f64>),
     OptStr(Option<String>),
-    Empty,
+    Null,
 }
 
 impl PartialEq<Value> for Value {
@@ -50,7 +50,7 @@ impl PartialEq<Value> for Value {
             | (Value::OptI64(None), Value::OptI64(None))
             | (Value::OptF64(None), Value::OptF64(None))
             | (Value::OptStr(None), Value::OptStr(None))
-            | (Value::Empty, Value::Empty) => true,
+            | (Value::Null, Value::Null) => true,
             _ => false,
         }
     }
@@ -414,7 +414,7 @@ impl Value {
 
         !matches!(
             self,
-            Empty | OptBool(None) | OptI64(None) | OptF64(None) | OptStr(None)
+            Null | OptBool(None) | OptI64(None) | OptF64(None) | OptStr(None)
         )
     }
 
@@ -466,7 +466,7 @@ mod tests {
         assert_eq!(Value::OptStr(Some(glue())), Value::Str(glue()));
         assert_eq!(Value::OptStr(None), Value::OptStr(None));
 
-        assert_eq!(Value::Empty, Value::Empty);
+        assert_eq!(Value::Null, Value::Null);
     }
 
     #[test]
