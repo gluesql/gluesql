@@ -44,15 +44,14 @@ test_case!(aggregate, async move {
         ),
         (
             "SELECT SUM(age), MAX(age), MIN(age) FROM Item",
-            select!(
-                "SUM(age)" | "MAX(age)" | "MIN(age)"
-                OptI64     | OptI64     | OptI64;
-                None         Some(90)     Some(3)
+            select_with_empty!(
+                "SUM(age)" | "MAX(age)" | "MIN(age)";
+                Null         I64(90)     I64(3)
             ),
         ),
         (
             "SELECT SUM(age) + SUM(quantity) FROM Item",
-            select!("SUM(age) + SUM(quantity)"; OptI64; None),
+            select_with_empty!("SUM(age) + SUM(quantity)"; Null),
         ),
         (
             "SELECT COUNT(age), COUNT(quantity) FROM Item",
@@ -124,14 +123,13 @@ test_case!(group_by, async move {
         ),
         (
             "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city",
-            select!(
-                "SUM(quantity)" | "COUNT(*)" | city
-                OptI64          | I64        | Str;
-                Some(21)          2            "Seoul".to_owned();
-                Some(0)           1            "Dhaka".to_owned();
-                None              1            "Beijing".to_owned();
-                Some(30)          1            "Daejeon".to_owned();
-                Some(24)          1            "Seattle".to_owned()
+            select_with_empty!(
+                "SUM(quantity)" | "COUNT(*)" | city;
+                I64(21)           I64(2)       Str("Seoul".to_owned());
+                I64(0)            I64(1)       Str("Dhaka".to_owned());
+                Null              I64(1)       Str("Beijing".to_owned());
+                I64(30)           I64(1)       Str("Daejeon".to_owned());
+                I64(24)           I64(1)       Str("Seattle".to_owned())
             ),
         ),
         (
@@ -158,8 +156,8 @@ test_case!(group_by, async move {
             "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1",
             select!(
                 "SUM(quantity)" | "COUNT(*)" | city
-                OptI64          | I64        | Str;
-                Some(21)          2            "Seoul".to_owned()
+                I64          | I64        | Str;
+                21             2            "Seoul".to_owned()
             ),
         ),
     ];

@@ -1,7 +1,8 @@
 use crate::*;
 
 test_case!(left_right, async move {
-    use Value::OptStr;
+    use Value::{Null, Str};
+
     let test_cases = vec![
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
@@ -44,20 +45,20 @@ test_case!(left_right, async move {
             r#"SELECT LEFT(name, 3) AS test FROM Item"#,
             Ok(select!(
                 "test"
-                OptStr;
-                Some("Blo".to_owned());
-                Some("B".to_owned());
-                Some("Ste".to_owned())
+                Str;
+                "Blo".to_owned();
+                "B".to_owned();
+                "Ste".to_owned()
             )),
         ),
         (
             r#"SELECT RIGHT(name, 10) AS test FROM Item"#,
             Ok(select!(
                 "test"
-                OptStr;
-                Some("op mc blee".to_owned());
-                Some("B".to_owned());
-                Some("d$ folken!".to_owned())
+                Str;
+                "op mc blee".to_owned();
+                "B".to_owned();
+                "d$ folken!".to_owned()
             )),
         ),
         // TODO Concatenation
@@ -75,48 +76,36 @@ test_case!(left_right, async move {
             r#"SELECT LEFT('blue', 10) AS test FROM SingleItem"#,
             Ok(select!(
                 "test"
-                OptStr;
-                Some("blue".to_owned())
+                Str;
+                "blue".to_owned()
             )),
         ),
         (
             r#"SELECT LEFT("blunder", 3) AS test FROM SingleItem"#,
             Ok(select!(
                 "test"
-                OptStr;
-                Some("blu".to_owned())
+                Str;
+                "blu".to_owned()
             )),
         ),
         (
             r#"SELECT LEFT(name, 3) AS test FROM NullName"#,
-            Ok(select!(
-                "test"
-                OptStr;
-                None
-            )),
+            Ok(select_with_empty!(test; Null)),
         ),
         (
             r#"SELECT LEFT('Words', number) AS test FROM NullNumber"#,
-            Ok(select!(
-                "test"
-                OptStr;
-                None
-            )),
+            Ok(select_with_empty!(test; Null)),
         ),
         (
             r#"SELECT LEFT(name, number) AS test FROM NullNumber INNER JOIN NullName ON 1 = 1"#,
-            Ok(select!(
-                "test"
-                OptStr;
-                None
-            )),
+            Ok(select_with_empty!(test; Null)),
         ),
         (
             r#"SELECT LEFT(name, 1) AS test FROM NullableName"#,
             Ok(select!(
                 "test"
-                OptStr;
-                Some("n".to_owned())
+                Str;
+                "n".to_owned()
             )),
         ),
         // TODO: Cast cannot handle

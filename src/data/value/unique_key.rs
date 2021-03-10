@@ -14,11 +14,11 @@ impl TryInto<UniqueKey> for &Value {
         use Value::*;
 
         match self {
-            Bool(v) | OptBool(Some(v)) => Ok(UniqueKey::Bool(*v)),
-            I64(v) | OptI64(Some(v)) => Ok(UniqueKey::I64(*v)),
-            Str(v) | OptStr(Some(v)) => Ok(UniqueKey::Str(v.clone())),
-            Null | OptBool(None) | OptI64(None) | OptStr(None) => Ok(UniqueKey::Null),
-            F64(_) | OptF64(_) => Err(ValueError::ConflictOnFloatWithUniqueConstraint.into()),
+            Bool(v) => Ok(UniqueKey::Bool(*v)),
+            I64(v) => Ok(UniqueKey::I64(*v)),
+            Str(v) => Ok(UniqueKey::Str(v.clone())),
+            Null => Ok(UniqueKey::Null),
+            F64(_) => Err(ValueError::ConflictOnFloatWithUniqueConstraint.into()),
         }
     }
 }

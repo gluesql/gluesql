@@ -8,30 +8,23 @@ use {
 impl PartialEq<AstValue> for Value {
     fn eq(&self, other: &AstValue) -> bool {
         match (self, other) {
-            (Value::Bool(l), AstValue::Boolean(r))
-            | (Value::OptBool(Some(l)), AstValue::Boolean(r)) => l == r,
-            (Value::I64(l), AstValue::Number(r, false))
-            | (Value::OptI64(Some(l)), AstValue::Number(r, false)) => match r.parse::<i64>() {
+            (Value::Bool(l), AstValue::Boolean(r)) => l == r,
+            (Value::I64(l), AstValue::Number(r, false)) => match r.parse::<i64>() {
                 Ok(r) => l == &r,
                 Err(_) => match r.parse::<f64>() {
                     Ok(r) => (*l as f64) == r,
                     Err(_) => false,
                 },
             },
-            (Value::F64(l), AstValue::Number(r, false))
-            | (Value::OptF64(Some(l)), AstValue::Number(r, false)) => match r.parse::<f64>() {
+            (Value::F64(l), AstValue::Number(r, false)) => match r.parse::<f64>() {
                 Ok(r) => l == &r,
                 Err(_) => match r.parse::<i64>() {
                     Ok(r) => *l == (r as f64),
                     Err(_) => false,
                 },
             },
-            (Value::Str(l), AstValue::SingleQuotedString(r))
-            | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => l == r,
-            (Value::OptBool(None), AstValue::Null)
-            | (Value::OptI64(None), AstValue::Null)
-            | (Value::OptF64(None), AstValue::Null)
-            | (Value::OptStr(None), AstValue::Null) => true,
+            (Value::Str(l), AstValue::SingleQuotedString(r)) => l == r,
+            (Value::Null, AstValue::Null) => true,
             _ => false,
         }
     }
@@ -40,24 +33,21 @@ impl PartialEq<AstValue> for Value {
 impl PartialOrd<AstValue> for Value {
     fn partial_cmp(&self, other: &AstValue) -> Option<Ordering> {
         match (self, other) {
-            (Value::I64(l), AstValue::Number(r, false))
-            | (Value::OptI64(Some(l)), AstValue::Number(r, false)) => match r.parse::<i64>() {
+            (Value::I64(l), AstValue::Number(r, false)) => match r.parse::<i64>() {
                 Ok(r) => Some(l.cmp(&r)),
                 Err(_) => match r.parse::<f64>() {
                     Ok(r) => (*l as f64).partial_cmp(&r),
                     Err(_) => None,
                 },
             },
-            (Value::F64(l), AstValue::Number(r, false))
-            | (Value::OptF64(Some(l)), AstValue::Number(r, false)) => match r.parse::<f64>() {
+            (Value::F64(l), AstValue::Number(r, false)) => match r.parse::<f64>() {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => match r.parse::<i64>() {
                     Ok(r) => l.partial_cmp(&(r as f64)),
                     Err(_) => None,
                 },
             },
-            (Value::Str(l), AstValue::SingleQuotedString(r))
-            | (Value::OptStr(Some(l)), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
+            (Value::Str(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -92,7 +82,6 @@ impl TryFromLiteral for Value {
                 "FALSE" | "0" => Ok(Value::Bool(false)),
                 _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
             },
-            (DataType::Boolean, AstValue::Null) => Ok(Value::OptBool(None)),
             (DataType::Int, AstValue::SingleQuotedString(v)) => v
                 .parse::<i64>()
                 .map(Value::I64)
@@ -108,7 +97,6 @@ impl TryFromLiteral for Value {
 
                 Ok(Value::I64(v))
             }
-            (DataType::Int, AstValue::Null) => Ok(Value::OptI64(None)),
             (DataType::Float(_), AstValue::SingleQuotedString(v))
             | (DataType::Float(_), AstValue::Number(v, false)) => v
                 .parse::<f64>()
@@ -119,14 +107,16 @@ impl TryFromLiteral for Value {
 
                 Ok(Value::F64(v))
             }
-            (DataType::Float(_), AstValue::Null) => Ok(Value::OptF64(None)),
             (DataType::Text, AstValue::Number(v, false)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, AstValue::Boolean(v)) => {
                 let v = if *v { "TRUE" } else { "FALSE" };
 
                 Ok(Value::Str(v.to_owned()))
             }
-            (DataType::Text, AstValue::Null) => Ok(Value::OptStr(None)),
+            (DataType::Boolean, AstValue::Null)
+            | (DataType::Int, AstValue::Null)
+            | (DataType::Float(_), AstValue::Null)
+            | (DataType::Text, AstValue::Null) => Ok(Value::Null),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.to_string(),
                 literal: literal.to_string(),

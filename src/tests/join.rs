@@ -191,7 +191,6 @@ test_case!(blend, async move {
         LEFT JOIN Item i
         ON p.id = i.player_id
     ";
-    let found = run!(sql);
     let expected = select_with_empty!(
         id     | id;
         I64(1)   I64(101);
@@ -200,7 +199,7 @@ test_case!(blend, async move {
         I64(4)   I64(103);
         I64(5)   Null
     );
-    assert_eq!(expected, found);
+    test!(Ok(expected), sql);
 
     let sql = "
         SELECT p.id, player_id
@@ -208,7 +207,6 @@ test_case!(blend, async move {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = run!(sql);
     let expected = select_with_empty!(
         id     | player_id;
         I64(1)   I64(1);
@@ -217,7 +215,7 @@ test_case!(blend, async move {
         I64(4)   I64(4);
         I64(5)   Null
     );
-    assert_eq!(expected, found);
+    test!(Ok(expected), sql);
 
     let sql = "
         SELECT Item.*
@@ -225,7 +223,6 @@ test_case!(blend, async move {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = run!(sql);
     let expected = select_with_empty!(
         id       | quantity | player_id;
         I64(101)   I64(1)     I64(1);
@@ -234,7 +231,7 @@ test_case!(blend, async move {
         I64(103)   I64(9)     I64(4);
         Null       Null       Null
     );
-    assert_eq!(expected, found);
+    test!(Ok(expected), sql);
 
     let sql = "
         SELECT *
@@ -242,7 +239,6 @@ test_case!(blend, async move {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let found = run!(sql);
     let expected = select_with_empty!(
         id     | name                      | id       | quantity | player_id;
         I64(1)   Str("Taehoon".to_owned())   I64(101)   I64(1)     I64(1);
@@ -251,5 +247,5 @@ test_case!(blend, async move {
         I64(4)   Str("Berry".to_owned())     I64(103)   I64(9)     I64(4);
         I64(5)   Str("Hwan".to_owned())      Null       Null       Null
     );
-    assert_eq!(expected, found);
+    test!(Ok(expected), sql);
 });

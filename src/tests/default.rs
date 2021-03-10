@@ -24,14 +24,13 @@ test_case!(default, async move {
         ),
         (
             "SELECT * FROM Test;",
-            select!(
-                id  | num | flag
-                I64 | I64 | OptBool;
-                8     80    Some(true);
-                1     10    Some(false);
-                2     20    Some(false);
-                1     30    None;
-                1     40    Some(true)
+            select_with_empty!(
+                id     | num     | flag;
+                I64(8)   I64(80)   Bool(true);
+                I64(1)   I64(10)   Bool(false);
+                I64(2)   I64(20)   Bool(false);
+                I64(1)   I64(30)   Null;
+                I64(1)   I64(40)   Bool(true)
             ),
         ),
     ];

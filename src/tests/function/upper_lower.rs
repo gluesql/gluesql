@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(upper_lower, async move {
-    use Value::{OptStr, Str};
+    use Value::{Null, Str};
 
     let test_cases = vec![
         (
@@ -46,12 +46,11 @@ test_case!(upper_lower, async move {
         ),
         (
             "SELECT LOWER(opt_name), UPPER(opt_name) FROM Item;",
-            Ok(select!(
-                "LOWER(opt_name)"       | "UPPER(opt_name)"
-                OptStr                  | OptStr;
-                Some("efgi".to_owned())   Some("EFGI".to_owned());
-                None                      None;
-                Some("efgi".to_owned())   Some("EFGI".to_owned())
+            Ok(select_with_empty!(
+                "LOWER(opt_name)"      | "UPPER(opt_name)";
+                Str("efgi".to_owned())   Str("EFGI".to_owned());
+                Null                     Null;
+                Str("efgi".to_owned())   Str("EFGI".to_owned())
             )),
         ),
         (
