@@ -191,7 +191,7 @@ test_case!(blend, async move {
         LEFT JOIN Item i
         ON p.id = i.player_id
     ";
-    let expected = select_with_empty!(
+    let expected = select_with_null!(
         id     | id;
         I64(1)   I64(101);
         I64(2)   I64(102);
@@ -207,7 +207,7 @@ test_case!(blend, async move {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let expected = select_with_empty!(
+    let expected = select_with_null!(
         id     | player_id;
         I64(1)   I64(1);
         I64(2)   I64(2);
@@ -223,7 +223,7 @@ test_case!(blend, async move {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let expected = select_with_empty!(
+    let expected = select_with_null!(
         id       | quantity | player_id;
         I64(101)   I64(1)     I64(1);
         I64(102)   I64(4)     I64(2);
@@ -239,7 +239,7 @@ test_case!(blend, async move {
         LEFT JOIN Item
         ON p.id = player_id
     ";
-    let expected = select_with_empty!(
+    let expected = select_with_null!(
         id     | name                      | id       | quantity | player_id;
         I64(1)   Str("Taehoon".to_owned())   I64(101)   I64(1)     I64(1);
         I64(2)   Str("Mike".to_owned())      I64(102)   I64(4)     I64(2);

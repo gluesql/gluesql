@@ -60,7 +60,7 @@ test_case!(add_drop, async move {
         ),
         (
             "SELECT * FROM Foo;",
-            Ok(select_with_empty!(
+            Ok(select_with_null!(
                 id     | amount  | opt;
                 I64(1)   I64(10)   Null;
                 I64(2)   I64(10)   Null
@@ -72,7 +72,7 @@ test_case!(add_drop, async move {
         ),
         (
             "SELECT * FROM Foo;",
-            Ok(select_with_empty!(
+            Ok(select_with_null!(
                 id     | amount  | opt  | opt2;
                 I64(1)   I64(10)   Null   Bool(true);
                 I64(2)   I64(10)   Null   Bool(true)
@@ -96,7 +96,7 @@ test_case!(add_drop, async move {
         ),
         (
             "SELECT * FROM Foo;",
-            Ok(select_with_empty!(
+            Ok(select_with_null!(
                 id     | opt  | opt2;
                 I64(1)   Null   Bool(true);
                 I64(2)   Null   Bool(true)
@@ -108,7 +108,7 @@ test_case!(add_drop, async move {
         ),
         (
             "SELECT * FROM Foo;",
-            Ok(select_with_empty!(
+            Ok(select_with_null!(
                 id     | opt;
                 I64(1)   Null;
                 I64(2)   Null

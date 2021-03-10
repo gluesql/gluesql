@@ -24,7 +24,7 @@ test_case!(default, async move {
         ),
         (
             "SELECT * FROM Test;",
-            select_with_empty!(
+            select_with_null!(
                 id     | num     | flag;
                 I64(8)   I64(80)   Bool(true);
                 I64(1)   I64(10)   Bool(false);

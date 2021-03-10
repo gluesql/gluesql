@@ -44,14 +44,14 @@ test_case!(aggregate, async move {
         ),
         (
             "SELECT SUM(age), MAX(age), MIN(age) FROM Item",
-            select_with_empty!(
+            select_with_null!(
                 "SUM(age)" | "MAX(age)" | "MIN(age)";
                 Null         I64(90)     I64(3)
             ),
         ),
         (
             "SELECT SUM(age) + SUM(quantity) FROM Item",
-            select_with_empty!("SUM(age) + SUM(quantity)"; Null),
+            select_with_null!("SUM(age) + SUM(quantity)"; Null),
         ),
         (
             "SELECT COUNT(age), COUNT(quantity) FROM Item",
@@ -123,7 +123,7 @@ test_case!(group_by, async move {
         ),
         (
             "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city",
-            select_with_empty!(
+            select_with_null!(
                 "SUM(quantity)" | "COUNT(*)" | city;
                 I64(21)           I64(2)       Str("Seoul".to_owned());
                 I64(0)            I64(1)       Str("Dhaka".to_owned());

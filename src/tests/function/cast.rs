@@ -24,7 +24,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(NULL AS BOOLEAN) AS cast FROM Item"#,
-            Ok(select_with_empty!(cast; Null)),
+            Ok(select_with_null!(cast; Null)),
         ),
         (
             r#"SELECT CAST("1" AS INTEGER) AS cast FROM Item"#,
@@ -44,7 +44,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(NULL AS INTEGER) AS cast FROM Item"#,
-            Ok(select_with_empty!(cast; Null)),
+            Ok(select_with_null!(cast; Null)),
         ),
         (
             r#"SELECT CAST("1.1" AS FLOAT) AS cast FROM Item"#,
@@ -64,7 +64,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(NULL AS FLOAT) AS cast FROM Item"#,
-            Ok(select_with_empty!(cast; Null)),
+            Ok(select_with_null!(cast; Null)),
         ),
         (
             r#"SELECT CAST(1 AS TEXT) AS cast FROM Item"#,
@@ -80,7 +80,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(NULL AS TEXT) AS cast FROM Item"#,
-            Ok(select_with_empty!(cast; Null)),
+            Ok(select_with_null!(cast; Null)),
         ),
         (
             r#"SELECT CAST(NULL AS NULL) FROM Item"#,
@@ -131,7 +131,7 @@ test_case!(cast_value, async move {
         ),
         (
             r#"SELECT CAST(ratio AS INTEGER) AS cast FROM Item"#,
-            Ok(select_with_empty!(cast; Null)),
+            Ok(select_with_null!(cast; Null)),
         ),
         (
             r#"SELECT CAST(number AS BOOLEAN) FROM Item"#,

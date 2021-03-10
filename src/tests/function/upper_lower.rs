@@ -46,7 +46,7 @@ test_case!(upper_lower, async move {
         ),
         (
             "SELECT LOWER(opt_name), UPPER(opt_name) FROM Item;",
-            Ok(select_with_empty!(
+            Ok(select_with_null!(
                 "LOWER(opt_name)"      | "UPPER(opt_name)";
                 Str("efgi".to_owned())   Str("EFGI".to_owned());
                 Null                     Null;

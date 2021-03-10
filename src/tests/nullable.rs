@@ -23,7 +23,7 @@ CREATE TABLE Test (
     let test_cases = vec![
         (
             "SELECT id, num, name FROM Test",
-            select_with_empty!(
+            select_with_null!(
                 id     | num    | name;
                 Null     I64(2)   Str("Hello".to_owned());
                 I64(1)   I64(9)   Str("World".to_owned());
@@ -32,21 +32,21 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE id = NULL AND name = \'Hello\'",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id IS NULL",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id IS NOT NULL",
-            select_with_empty!(
+            select_with_null!(
                 id     | num;
                 I64(1)   I64(9);
                 I64(3)   I64(4)
@@ -54,14 +54,14 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE id + 1 IS NULL",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id + 1 IS NOT NULL",
-            select_with_empty!(
+            select_with_null!(
                 id     | num;
                 I64(1)   I64(9);
                 I64(3)   I64(4)
@@ -73,7 +73,7 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE 100 IS NOT NULL",
-            select_with_empty!(
+            select_with_null!(
                 id     | num;
                 Null     I64(2);
                 I64(1)   I64(9);
@@ -86,7 +86,7 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE 8 + 3 IS NOT NULL",
-            select_with_empty!(
+            select_with_null!(
                 id     | num;
                 Null     I64(2);
                 I64(1)   I64(9);
@@ -95,7 +95,7 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE NULL IS NULL",
-            select_with_empty!(
+            select_with_null!(
                 id     | num;
                 Null     I64(2);
                 I64(1)   I64(9);
@@ -112,7 +112,7 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE \"NULL\" IS NOT NULL",
-            select_with_empty!(
+            select_with_null!(
                 id     | num;
                 Null     I64(2);
                 I64(1)   I64(9);
@@ -121,63 +121,63 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE id = NULL + 1;",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id = 1 + NULL;",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id = NULL - 1;",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id = 1 - NULL;",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id = NULL * 1;",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id = 1 * NULL;",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id = NULL / 1;",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id = 1 / NULL;",
-            select_with_empty!(
+            select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
             "SELECT id + 1, 1 + id, id - 1, 1 - id, id * 1, 1 * id, id / 1, 1 / id FROM Test WHERE id = NULL;",
-            select_with_empty!(
+            select_with_null!(
                 "id + 1" | "1 + id" | "id - 1" | "1 - id" | "id * 1" | "1 * id" | "id / 1" | "1 / id";
                 Null       Null       Null       Null       Null       Null       Null       Null
             ),

@@ -90,15 +90,15 @@ test_case!(left_right, async move {
         ),
         (
             r#"SELECT LEFT(name, 3) AS test FROM NullName"#,
-            Ok(select_with_empty!(test; Null)),
+            Ok(select_with_null!(test; Null)),
         ),
         (
             r#"SELECT LEFT('Words', number) AS test FROM NullNumber"#,
-            Ok(select_with_empty!(test; Null)),
+            Ok(select_with_null!(test; Null)),
         ),
         (
             r#"SELECT LEFT(name, number) AS test FROM NullNumber INNER JOIN NullName ON 1 = 1"#,
-            Ok(select_with_empty!(test; Null)),
+            Ok(select_with_null!(test; Null)),
         ),
         (
             r#"SELECT LEFT(name, 1) AS test FROM NullableName"#,
