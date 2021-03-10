@@ -1,12 +1,15 @@
 use crate::*;
 
 test_case!(upper_lower, async move {
-    use Value::Str;
+    use Value::{OptStr, Str};
 
     let test_cases = vec![
-        ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
-            r#"INSERT INTO Item VALUES ("abcd"), ("Abcd"), ("ABCD")"#,
+            "CREATE TABLE Item (name TEXT, opt_name TEXT NULL)",
+            Ok(Payload::Create),
+        ),
+        (
+            r#"INSERT INTO Item VALUES ("abcd", "efgi"), ("Abcd", NULL), ("ABCD", "EfGi")"#,
             Ok(Payload::Insert(3)),
         ),
         (
@@ -39,6 +42,16 @@ test_case!(upper_lower, async move {
                 lower             | upper
                 Str               | Str;
                 "abcd".to_owned()   "ABCD".to_owned()
+            )),
+        ),
+        (
+            "SELECT LOWER(opt_name), UPPER(opt_name) FROM Item;",
+            Ok(select!(
+                "LOWER(opt_name)"       | "UPPER(opt_name)"
+                OptStr                  | OptStr;
+                Some("efgi".to_owned())   Some("EFGI".to_owned());
+                None                      None;
+                Some("efgi".to_owned())   Some("EFGI".to_owned())
             )),
         ),
         (
