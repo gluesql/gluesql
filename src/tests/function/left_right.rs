@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(left_right, async move {
-    use Value::{OptStr, Str};
+    use Value::OptStr;
     let test_cases = vec![
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
