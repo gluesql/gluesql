@@ -5,7 +5,7 @@ use {
         data::value::{TryFromLiteral, Value},
         result::{Error, Result},
     },
-    sqlparser::ast::{DataType, Value as AstValue},
+    sqlparser::ast::{DataType, Value as Literal},
     std::{
         cmp::Ordering,
         convert::{TryFrom, TryInto},
@@ -33,8 +33,8 @@ use {
 /// e.g. `LiteralRef` + `ValueRef`, `LiteralRef` * `Value`, ...
 #[derive(std::fmt::Debug)]
 pub enum Evaluated<'a> {
-    LiteralRef(&'a AstValue),
-    Literal(AstValue),
+    LiteralRef(&'a Literal),
+    Literal(Literal),
     StringRef(&'a str),
     ValueRef(&'a Value),
     Value(Value),
@@ -42,8 +42,8 @@ pub enum Evaluated<'a> {
 
 impl<'a> PartialEq for Evaluated<'a> {
     fn eq(&self, other: &Evaluated<'a>) -> bool {
-        let eq_ast = |l: &AstValue, r| match l {
-            AstValue::SingleQuotedString(l) => l == r,
+        let eq_ast = |l: &Literal, r| match l {
+            Literal::SingleQuotedString(l) => l == r,
             _ => false,
         };
 
@@ -110,9 +110,9 @@ impl<'a> PartialOrd for Evaluated<'a> {
     }
 }
 
-fn literal_partial_cmp(l: &AstValue, r: &AstValue) -> Option<Ordering> {
+fn literal_partial_cmp(l: &Literal, r: &Literal) -> Option<Ordering> {
     match (l, r) {
-        (AstValue::Number(l, false), AstValue::Number(r, false)) => {
+        (Literal::Number(l, false), Literal::Number(r, false)) => {
             match (l.parse::<i64>(), r.parse::<i64>()) {
                 (Ok(l), Ok(r)) => Some(l.cmp(&r)),
                 (_, Ok(r)) => match l.parse::<f64>() {
@@ -129,7 +129,7 @@ fn literal_partial_cmp(l: &AstValue, r: &AstValue) -> Option<Ordering> {
                 },
             }
         }
-        (AstValue::SingleQuotedString(l), AstValue::SingleQuotedString(r)) => Some(l.cmp(r)),
+        (Literal::SingleQuotedString(l), Literal::SingleQuotedString(r)) => Some(l.cmp(r)),
         _ => None,
     }
 }
@@ -151,24 +151,24 @@ impl TryInto<Value> for Evaluated<'_> {
 macro_rules! binary_op {
     ($name:ident, $op:tt) => {
         pub fn $name(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
-            let literal_binary_op = |l: &&AstValue, r: &&AstValue| match (l, r) {
-                (AstValue::Number(l, false), AstValue::Number(r, false)) => match (l.parse::<i64>(), r.parse::<i64>()) {
-                    (Ok(l), Ok(r)) => Ok(AstValue::Number((l $op r).to_string(), false)),
+            let literal_binary_op = |l: &&Literal, r: &&Literal| match (l, r) {
+                (Literal::Number(l, false), Literal::Number(r, false)) => match (l.parse::<i64>(), r.parse::<i64>()) {
+                    (Ok(l), Ok(r)) => Ok(Literal::Number((l $op r).to_string(), false)),
                     (Ok(l), _) => match r.parse::<f64>() {
-                        Ok(r) => Ok(AstValue::Number(((l as f64) $op r).to_string(), false)),
+                        Ok(r) => Ok(Literal::Number(((l as f64) $op r).to_string(), false)),
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
                     (_, Ok(r)) => match l.parse::<f64>() {
-                        Ok(l) => Ok(AstValue::Number((l $op (r as f64)).to_string(), false)),
+                        Ok(l) => Ok(Literal::Number((l $op (r as f64)).to_string(), false)),
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
                     (_, _) => match (l.parse::<f64>(), r.parse::<f64>()) {
-                        (Ok(l), Ok(r)) => Ok(AstValue::Number((l $op r).to_string(), false)),
+                        (Ok(l), Ok(r)) => Ok(Literal::Number((l $op r).to_string(), false)),
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
                 },
-                (AstValue::Null, AstValue::Number(_, false)) | (AstValue::Number(_, false), AstValue::Null) => {
-                    Ok(AstValue::Null)
+                (Literal::Null, Literal::Number(_, false)) | (Literal::Number(_, false), Literal::Null) => {
+                    Ok(Literal::Null)
                 }
                 _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
             };
@@ -198,15 +198,15 @@ macro_rules! binary_op {
 macro_rules! unary_op {
     ($name:ident, $op:tt) => {
         pub fn $name(&self) -> Result<Evaluated<'a>> {
-            let literal_unary_op = |v: &&AstValue| match v {
-                AstValue::Number(v, false) => v
+            let literal_unary_op = |v: &&Literal| match v {
+                Literal::Number(v, false) => v
                     .parse::<i64>()
                     .map_or_else(
-                        |_| v.parse::<f64>().map(|v| AstValue::Number((0.0 $op v).to_string(), false)),
-                        |v| Ok(AstValue::Number((0 $op v).to_string(), false)),
+                        |_| v.parse::<f64>().map(|v| Literal::Number((0.0 $op v).to_string(), false)),
+                        |v| Ok(Literal::Number((0 $op v).to_string(), false)),
                     )
                     .map_err(|_| EvaluateError::LiteralUnaryOperationOnNonNumeric.into()),
-                AstValue::Null => Ok(AstValue::Null),
+                Literal::Null => Ok(Literal::Null),
                 _ => Err(EvaluateError::LiteralUnaryOperationOnNonNumeric.into()),
             };
 
@@ -230,11 +230,11 @@ impl<'a> Evaluated<'a> {
     unary_op!(unary_minus, -);
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
-        let cast_literal = |literal: &AstValue| Value::try_from_literal(data_type, literal);
+        let cast_literal = |literal: &Literal| Value::try_from_literal(data_type, literal);
         let cast_value = |value: &data::Value| value.cast(data_type);
 
         match self {
-            StringRef(value) => cast_literal(&AstValue::SingleQuotedString(value.to_string())),
+            StringRef(value) => cast_literal(&Literal::SingleQuotedString(value.to_string())),
             LiteralRef(value) => cast_literal(value),
             Literal(value) => cast_literal(&value),
             ValueRef(value) => cast_value(value),
@@ -247,8 +247,8 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::ValueRef(v) => v.is_some(),
             Evaluated::Value(v) => v.is_some(),
-            Evaluated::Literal(v) => v != &AstValue::Null,
-            Evaluated::LiteralRef(v) => v != &&AstValue::Null,
+            Evaluated::Literal(v) => v != &Literal::Null,
+            Evaluated::LiteralRef(v) => v != &&Literal::Null,
             Evaluated::StringRef(_v) => true,
         }
     }

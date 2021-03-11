@@ -23,54 +23,48 @@ CREATE TABLE Test (
     let test_cases = vec![
         (
             "SELECT id, num, name FROM Test",
-            select!(
-                id      | num | name
-                OptI64  | I64 | Str;
-                None      2     "Hello".to_owned();
-                Some(1)   9     "World".to_owned();
-                Some(3)   4     "Great".to_owned()
+            select_with_null!(
+                id     | num    | name;
+                Null     I64(2)   Str("Hello".to_owned());
+                I64(1)   I64(9)   Str("World".to_owned());
+                I64(3)   I64(4)   Str("Great".to_owned())
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL AND name = \'Hello\'",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE id IS NULL AND name = \'Hello\'",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id IS NULL",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id IS NOT NULL",
-            select!(
-                id      | num
-                OptI64  | I64;
-                Some(1)   9;
-                Some(3)   4
+            select_with_null!(
+                id     | num;
+                I64(1)   I64(9);
+                I64(3)   I64(4)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id + 1 IS NULL",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE id + 1 IS NOT NULL",
-            select!(
-                id      | num
-                OptI64  | I64;
-                Some(1)   9;
-                Some(3)   4
+            select_with_null!(
+                id     | num;
+                I64(1)   I64(9);
+                I64(3)   I64(4)
             ),
         ),
         (
@@ -79,12 +73,11 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE 100 IS NOT NULL",
-            select!(
-                id      | num
-                OptI64  | I64;
-                None      2;
-                Some(1)   9;
-                Some(3)   4
+            select_with_null!(
+                id     | num;
+                Null     I64(2);
+                I64(1)   I64(9);
+                I64(3)   I64(4)
             ),
         ),
         (
@@ -93,22 +86,20 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE 8 + 3 IS NOT NULL",
-            select!(
-                id      | num
-                OptI64  | I64;
-                None      2;
-                Some(1)   9;
-                Some(3)   4
+            select_with_null!(
+                id     | num;
+                Null     I64(2);
+                I64(1)   I64(9);
+                I64(3)   I64(4)
             ),
         ),
         (
             "SELECT id, num FROM Test WHERE NULL IS NULL",
-            select!(
-                id      | num
-                OptI64  | I64;
-                None      2;
-                Some(1)   9;
-                Some(3)   4
+            select_with_null!(
+                id     | num;
+                Null     I64(2);
+                I64(1)   I64(9);
+                I64(3)   I64(4)
             ),
         ),
         (
@@ -121,84 +112,74 @@ CREATE TABLE Test (
         ),
         (
             "SELECT id, num FROM Test WHERE \"NULL\" IS NOT NULL",
-            select!(
-                id      | num
-                OptI64  | I64;
-                None      2;
-                Some(1)   9;
-                Some(3)   4
+            select_with_null!(
+                id     | num;
+                Null     I64(2);
+                I64(1)   I64(9);
+                I64(3)   I64(4)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL + 1;",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE id + 1 IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = 1 + NULL;",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE 1 + id IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL - 1;",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE id - 1 IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = 1 - NULL;",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE 1 - id IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL * 1;",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE id * 1 IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = 1 * NULL;",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE 1 * id IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL / 1;",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE id / 1 IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = 1 / NULL;",
-            select!(
-                id     | num
-                OptI64 | I64;
-                None     2
+            "SELECT id, num FROM Test WHERE 1 / id IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2)
             ),
         ),
         (
-            "SELECT id + 1, 1 + id, id - 1, 1 - id, id * 1, 1 * id, id / 1, 1 / id FROM Test WHERE id = NULL;",
-            select!(
+            "SELECT id + 1, 1 + id, id - 1, 1 - id, id * 1, 1 * id, id / 1, 1 / id FROM Test WHERE id IS NULL;",
+            select_with_null!(
                 "id + 1" | "1 + id" | "id - 1" | "1 - id" | "id * 1" | "1 * id" | "id / 1" | "1 / id";
-                OptI64   | OptI64   | OptI64   | OptI64   | OptI64   | OptI64   | OptI64   | OptI64;
-                None       None       None       None       None       None       None       None
+                Null       Null       Null       Null       Null       Null       Null       Null
             ),
         ),
     ];
@@ -210,24 +191,15 @@ CREATE TABLE Test (
     run!("UPDATE Test SET id = 2");
 
     let test_cases = vec![
-        (
-            "SELECT id FROM Test",
-            Ok(select!(
-                id
-                OptI64;
-                Some(2);
-                Some(2);
-                Some(2)
-            )),
-        ),
+        ("SELECT id FROM Test", Ok(select!(id I64; 2; 2; 2))),
         (
             "SELECT id, num FROM Test",
             Ok(select!(
-                id      | num
-                OptI64  | I64;
-                Some(2) 2;
-                Some(2) 9;
-                Some(2) 4
+                id  | num
+                I64 | I64;
+                2     2;
+                2     9;
+                2     4
             )),
         ),
         (
