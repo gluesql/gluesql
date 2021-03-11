@@ -95,7 +95,7 @@ CREATE TABLE TestC (
         ),
         (
             ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::OptI64(Some(2))),
+                format!("{:?}", Value::I64(2)),
                 "id".to_owned(),
             )
             .into(),
@@ -103,7 +103,7 @@ CREATE TABLE TestC (
         ),
         (
             ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::OptI64(Some(3))),
+                format!("{:?}", Value::I64(3)),
                 "id".to_owned(),
             )
             .into(),
@@ -111,7 +111,7 @@ CREATE TABLE TestC (
         ),
         (
             ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::OptI64(Some(1))),
+                format!("{:?}", Value::I64(1)),
                 "id".to_owned(),
             )
             .into(),

@@ -9,7 +9,7 @@ pub enum GroupKey {
     I64(i64),
     Bool(bool),
     Str(String),
-    Null,
+    None,
 }
 
 impl TryFrom<&Evaluated<'_>> for GroupKey {

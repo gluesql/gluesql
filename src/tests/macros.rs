@@ -46,7 +46,7 @@ macro_rules! concat_with {
 }
 
 #[macro_export]
-macro_rules! select_with_empty {
+macro_rules! select_with_null {
     ( $( $c: tt )|* ; $( $v: expr )* ) => (
         Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
@@ -60,13 +60,13 @@ macro_rules! select_with_empty {
 
         Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
-            rows: concat_with_empty!(rows ; $( $( $v2 )* );*),
+            rows: concat_with_null!(rows ; $( $( $v2 )* );*),
         }
     });
 }
 
 #[macro_export]
-macro_rules! concat_with_empty {
+macro_rules! concat_with_null {
     ( $rows: ident ; $( $v: expr )* ) => ({
         $rows.push(Row(vec![$( $v ),*]));
 
@@ -75,6 +75,6 @@ macro_rules! concat_with_empty {
     ( $rows: ident ; $( $v: expr )* ; $( $( $v2: expr )* );* ) => ({
         $rows.push(Row(vec![$( $v ),*]));
 
-        concat_with_empty!($rows ; $( $( $v2 )* );* )
+        concat_with_null!($rows ; $( $( $v2 )* );* )
     });
 }

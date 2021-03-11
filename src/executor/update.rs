@@ -8,6 +8,7 @@ use sqlparser::ast::{Assignment, ColumnDef, Ident};
 
 use super::context::FilterContext;
 use super::evaluate::{evaluate, Evaluated};
+use crate::data::value::TryFromLiteral;
 use crate::data::{Row, Value};
 use crate::result::Result;
 use crate::store::Store;
@@ -19,9 +20,6 @@ pub enum UpdateError {
 
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
-
-    #[error("unreachable")]
-    Unreachable,
 }
 
 pub struct Update<'a, T: 'static + Debug> {
@@ -69,22 +67,12 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         {
             None => Ok(None),
             Some(assignment) => {
-                let Assignment { id, value } = &assignment;
+                let Assignment { value, .. } = &assignment;
+                let ColumnDef { data_type, .. } = column_def;
 
-                let index = self
-                    .column_defs
-                    .iter()
-                    .position(|col_def| col_def.name.value == id.value)
-                    .ok_or(UpdateError::Unreachable)?;
-
-                let evaluated = evaluate(self.storage, context, None, value, false).await?;
-
-                let Row(values) = &row;
-                let value = &values[index];
-
-                match evaluated {
-                    Evaluated::LiteralRef(v) => value.clone_by(v),
-                    Evaluated::Literal(v) => value.clone_by(&v),
+                match evaluate(self.storage, context, None, value, false).await? {
+                    Evaluated::LiteralRef(v) => Value::try_from_literal(data_type, v),
+                    Evaluated::Literal(v) => Value::try_from_literal(data_type, &v),
                     Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
                     Evaluated::ValueRef(v) => Ok(v.clone()),
                     Evaluated::Value(v) => Ok(v),

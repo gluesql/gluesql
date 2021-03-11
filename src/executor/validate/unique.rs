@@ -6,6 +6,7 @@ use {
         store::Store,
         utils::Vector,
     },
+    boolinator::Boolinator,
     im_rc::HashSet,
     sqlparser::ast::{ColumnDef, ColumnOption, Ident},
     std::{convert::TryInto, fmt::Debug, rc::Rc},
@@ -16,7 +17,6 @@ pub enum UniqueKey {
     Bool(bool),
     I64(i64),
     Str(String),
-    Null,
 }
 
 #[derive(Debug)]
@@ -36,10 +36,12 @@ impl UniqueConstraint {
     }
 
     fn add(self, value: &Value) -> Result<Self> {
-        let new_key = self.check(value)?;
-        if new_key == UniqueKey::Null {
-            return Ok(self);
-        }
+        let new_key = match self.check(value)? {
+            Some(new_key) => new_key,
+            None => {
+                return Ok(self);
+            }
+        };
 
         let keys = self.keys.update(new_key);
 
@@ -50,18 +52,20 @@ impl UniqueConstraint {
         })
     }
 
-    fn check(&self, value: &Value) -> Result<UniqueKey> {
-        let new_key = value.try_into()?;
-        if new_key != UniqueKey::Null && self.keys.contains(&new_key) {
-            // The input values are duplicate.
-            return Err(ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", value),
-                self.column_name.to_owned(),
-            )
-            .into());
+    fn check(&self, value: &Value) -> Result<Option<UniqueKey>> {
+        match value.try_into()? {
+            Some(new_key) => (!self.keys.contains(&new_key)).as_result_from(
+                || Some(new_key),
+                || {
+                    ValidateError::DuplicateEntryOnUniqueField(
+                        format!("{:?}", value),
+                        self.column_name.to_owned(),
+                    )
+                    .into()
+                },
+            ),
+            None => Ok(None),
         }
-
-        Ok(new_key)
     }
 }
 
@@ -93,7 +97,9 @@ pub async fn validate_unique<T: 'static + Debug>(
                 let val = row
                     .get_value(col_idx)
                     .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
+
                 constraint.check(val)?;
+
                 Ok(())
             })
     })

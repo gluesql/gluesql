@@ -12,9 +12,13 @@ use {
     futures::stream::{StreamExt, TryStreamExt},
     im_rc::HashMap,
     sqlparser::ast::{
-        BinaryOperator, Expr, Function, FunctionArg, UnaryOperator, Value as AstValue,
+        BinaryOperator, Expr, Function, FunctionArg, UnaryOperator, Value as Literal,
     },
-    std::{convert::TryInto, fmt::Debug, rc::Rc},
+    std::{
+        convert::{TryFrom, TryInto},
+        fmt::Debug,
+        rc::Rc,
+    },
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
@@ -36,10 +40,10 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
     match expr {
         Expr::Value(value) => match value {
-            AstValue::Number(_, false)
-            | AstValue::Boolean(_)
-            | AstValue::SingleQuotedString(_)
-            | AstValue::Null => Ok(Evaluated::LiteralRef(value)),
+            Literal::Number(_, false)
+            | Literal::Boolean(_)
+            | Literal::SingleQuotedString(_)
+            | Literal::Null => Ok(Evaluated::LiteralRef(value)),
             _ => Err(EvaluateError::Unimplemented.into()),
         },
         Expr::Identifier(ident) => match ident.quote_style {
@@ -49,7 +53,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
                 match (context.get_value(&ident.value), use_empty) {
                     (Some(value), _) => Ok(value.clone()),
-                    (None, true) => Ok(Value::Empty),
+                    (None, true) => Ok(Value::Null),
                     (None, false) => {
                         Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
                     }
@@ -69,7 +73,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             match (context.get_alias_value(table_alias, column), use_empty) {
                 (Some(value), _) => Ok(value.clone()),
-                (None, true) => Ok(Value::Empty),
+                (None, true) => Ok(Value::Null),
                 (None, false) => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
             }
             .map(Evaluated::Value)
@@ -167,13 +171,62 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             let expr = get_arg_expr(arg)?;
             let value: Value = match eval(expr).await?.try_into()? {
                 Value::Str(s) => Value::Str(convert(s)),
-                Value::OptStr(s) => Value::OptStr(s.map(convert)),
+                Value::Null => Value::Null,
                 _ => {
                     return Err(EvaluateError::FunctionRequiresStringValue(name.to_string()).into());
                 }
             };
 
             Ok(Evaluated::Value(value))
+        }
+        name @ "LEFT" | name @ "RIGHT" => {
+            match args.len() {
+                2 => (),
+                found => {
+                    return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+                        expected: 2,
+                        found,
+                    }
+                    .into())
+                }
+            }
+
+            let string = match eval(get_arg_expr(&args[0])?).await?.try_into()? {
+                Value::Str(string) => Ok(string),
+                Value::Null => {
+                    return Ok(Evaluated::Value(Value::Null));
+                }
+                _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_string())),
+            }?;
+
+            let number = match eval(get_arg_expr(&args[1])?).await?.try_into()? {
+                Value::I64(number) => usize::try_from(number)
+                    .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_string())), // Unlikely to occur hence the imperfect error
+                Value::Null => {
+                    return Ok(Evaluated::Value(Value::Null));
+                }
+                _ => Err(EvaluateError::FunctionRequiresIntegerValue(
+                    name.to_string(),
+                )),
+            }?;
+
+            let converted = {
+                if name == "LEFT" {
+                    string.get(..number)
+                } else {
+                    let start_pos = if number > string.len() {
+                        0
+                    } else {
+                        string.len() - number
+                    };
+
+                    string.get(start_pos..)
+                }
+                .map(|value| value.to_string())
+                .unwrap_or(string)
+            };
+
+            Ok(Evaluated::Value(Value::Str(converted)))
         }
         name => Err(EvaluateError::FunctionNotSupported(name.to_owned()).into()),
     }

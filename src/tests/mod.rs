@@ -66,7 +66,8 @@ macro_rules! generate_tests {
         glue!(drop_table, drop_table::drop_table);
         glue!(error, error::error);
         glue!(filter, filter::filter);
-        glue!(function, function::function);
+        glue!(function_upper_lower, function::upper_lower::upper_lower);
+        glue!(function_left_right, function::left_right::left_right);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
         glue!(join, join::join);

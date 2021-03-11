@@ -7,18 +7,22 @@ use {
     std::convert::TryInto,
 };
 
-impl TryInto<UniqueKey> for &Value {
+impl TryInto<Option<UniqueKey>> for &Value {
     type Error = Error;
 
-    fn try_into(self) -> Result<UniqueKey> {
+    fn try_into(self) -> Result<Option<UniqueKey>> {
         use Value::*;
 
-        match self {
-            Bool(v) | OptBool(Some(v)) => Ok(UniqueKey::Bool(*v)),
-            I64(v) | OptI64(Some(v)) => Ok(UniqueKey::I64(*v)),
-            Str(v) | OptStr(Some(v)) => Ok(UniqueKey::Str(v.clone())),
-            Empty | OptBool(None) | OptI64(None) | OptStr(None) => Ok(UniqueKey::Null),
-            F64(_) | OptF64(_) => Err(ValueError::ConflictOnFloatWithUniqueConstraint.into()),
-        }
+        let unique_key = match self {
+            Bool(v) => Some(UniqueKey::Bool(*v)),
+            I64(v) => Some(UniqueKey::I64(*v)),
+            Str(v) => Some(UniqueKey::Str(v.clone())),
+            Null => None,
+            F64(_) => {
+                return Err(ValueError::ConflictOnFloatWithUniqueConstraint.into());
+            }
+        };
+
+        Ok(unique_key)
     }
 }
