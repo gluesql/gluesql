@@ -12,7 +12,7 @@ use {
     futures::stream::{StreamExt, TryStreamExt},
     im_rc::HashMap,
     sqlparser::ast::{
-        BinaryOperator, Expr, Function, FunctionArg, UnaryOperator, Value as AstValue,
+        BinaryOperator, Expr, Function, FunctionArg, UnaryOperator, Value as Literal,
     },
     std::{
         convert::{TryFrom, TryInto},
@@ -40,10 +40,10 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
     match expr {
         Expr::Value(value) => match value {
-            AstValue::Number(_, false)
-            | AstValue::Boolean(_)
-            | AstValue::SingleQuotedString(_)
-            | AstValue::Null => Ok(Evaluated::LiteralRef(value)),
+            Literal::Number(_, false)
+            | Literal::Boolean(_)
+            | Literal::SingleQuotedString(_)
+            | Literal::Null => Ok(Evaluated::LiteralRef(value)),
             _ => Err(EvaluateError::Unimplemented.into()),
         },
         Expr::Identifier(ident) => match ident.quote_style {
