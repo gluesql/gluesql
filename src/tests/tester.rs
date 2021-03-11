@@ -8,7 +8,7 @@ use crate::parse_sql::parse;
 use crate::result::Result;
 use crate::store::{AlterTable, Store, StoreMut};
 
-pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + Clone>(
+pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
 ) -> Result<Payload> {
@@ -57,7 +57,7 @@ macro_rules! test_case {
         pub async fn $name<T, U>(mut tester: impl tests::Tester<T, U>)
         where
             T: 'static + std::fmt::Debug,
-            U: Store<T> + StoreMut<T> + AlterTable + Clone,
+            U: Store<T> + StoreMut<T> + AlterTable,
         {
             use std::rc::Rc;
 
