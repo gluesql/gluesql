@@ -27,7 +27,7 @@ impl<'a> State<'a> {
     pub fn new() -> Self {
         State {
             index: 0,
-            group: Rc::new(vec![GroupKey::Null]),
+            group: Rc::new(vec![GroupKey::None]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
