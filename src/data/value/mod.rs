@@ -2,17 +2,17 @@ use {
     crate::result::Result,
     boolinator::Boolinator,
     serde::{Deserialize, Serialize},
-    sqlparser::ast::{DataType, Expr, Ident, Value as AstValue},
+    sqlparser::ast::{DataType, Expr, Ident, Value as Literal},
     std::{cmp::Ordering, fmt::Debug},
 };
 
-mod ast_value;
 mod error;
 mod group_key;
+mod literal;
 mod unique_key;
 
-pub use ast_value::TryFromLiteral;
 pub use error::ValueError;
+pub use literal::TryFromLiteral;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -87,26 +87,22 @@ impl Value {
         )
     }
 
-    pub fn from_data_type(
-        data_type: &DataType,
-        nullable: bool,
-        literal: &AstValue,
-    ) -> Result<Self> {
+    pub fn from_data_type(data_type: &DataType, nullable: bool, literal: &Literal) -> Result<Self> {
         match (data_type, literal) {
-            (DataType::Int, AstValue::Number(v, false)) => v
+            (DataType::Int, Literal::Number(v, false)) => v
                 .parse()
                 .map(Value::I64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (DataType::Float(_), AstValue::Number(v, false)) => v
+            (DataType::Float(_), Literal::Number(v, false)) => v
                 .parse()
                 .map(Value::F64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (DataType::Boolean, AstValue::Boolean(v)) => Ok(Value::Bool(*v)),
-            (DataType::Text, AstValue::SingleQuotedString(v)) => Ok(Value::Str(v.clone())),
-            (DataType::Int, AstValue::Null)
-            | (DataType::Float(_), AstValue::Null)
-            | (DataType::Boolean, AstValue::Null)
-            | (DataType::Text, AstValue::Null) => {
+            (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
+            (DataType::Text, Literal::SingleQuotedString(v)) => Ok(Value::Str(v.clone())),
+            (DataType::Int, Literal::Null)
+            | (DataType::Float(_), Literal::Null)
+            | (DataType::Boolean, Literal::Null)
+            | (DataType::Text, Literal::Null) => {
                 nullable.as_result(Value::Null, ValueError::NullValueOnNotNullField.into())
             }
             _ => Err(ValueError::SqlTypeNotSupported.into()),
@@ -177,26 +173,26 @@ impl Value {
         }
     }
 
-    pub fn clone_by(&self, literal: &AstValue) -> Result<Self> {
+    pub fn clone_by(&self, literal: &Literal) -> Result<Self> {
         match (self, literal) {
-            (Value::I64(_), AstValue::Number(v, false)) => v
+            (Value::I64(_), Literal::Number(v, false)) => v
                 .parse()
                 .map(Value::I64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (Value::F64(_), AstValue::Number(v, false)) => v
+            (Value::F64(_), Literal::Number(v, false)) => v
                 .parse()
                 .map(Value::F64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (Value::Str(_), AstValue::SingleQuotedString(v))
-            | (Value::Null, AstValue::SingleQuotedString(v)) => Ok(Value::Str(v.clone())),
-            (Value::Bool(_), AstValue::Boolean(v)) | (Value::Null, AstValue::Boolean(v)) => {
+            (Value::Str(_), Literal::SingleQuotedString(v))
+            | (Value::Null, Literal::SingleQuotedString(v)) => Ok(Value::Str(v.clone())),
+            (Value::Bool(_), Literal::Boolean(v)) | (Value::Null, Literal::Boolean(v)) => {
                 Ok(Value::Bool(*v))
             }
-            (Value::Null, AstValue::Number(v, false)) => v
+            (Value::Null, Literal::Number(v, false)) => v
                 .parse::<i64>()
                 .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (_, AstValue::Null) => Ok(Value::Null),
+            (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::LiteralNotSupported.into()),
         }
     }

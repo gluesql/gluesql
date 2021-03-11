@@ -5,7 +5,7 @@ use boolinator::Boolinator;
 use std::iter::once;
 use std::str;
 
-use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident, Value as AstValue};
+use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident, Value as Literal};
 
 use super::{error::err_into, fetch_schema, SledStorage};
 use crate::utils::Vector;
@@ -160,7 +160,7 @@ impl AlterTable for SledStorage {
             (Some(value), _) => try_self!(self, value),
             (None, true) => try_self!(
                 self,
-                Value::from_data_type(&data_type, nullable, &AstValue::Null)
+                Value::from_data_type(&data_type, nullable, &Literal::Null)
             ),
             (None, false) => {
                 return Err((
