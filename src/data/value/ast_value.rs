@@ -24,7 +24,6 @@ impl PartialEq<AstValue> for Value {
                 },
             },
             (Value::Str(l), AstValue::SingleQuotedString(r)) => l == r,
-            (Value::Null, AstValue::Null) => true,
             _ => false,
         }
     }

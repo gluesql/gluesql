@@ -31,7 +31,7 @@ CREATE TABLE Test (
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL AND name = \'Hello\'",
+            "SELECT id, num FROM Test WHERE id IS NULL AND name = \'Hello\'",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
@@ -120,63 +120,63 @@ CREATE TABLE Test (
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL + 1;",
+            "SELECT id, num FROM Test WHERE id + 1 IS NULL;",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = 1 + NULL;",
+            "SELECT id, num FROM Test WHERE 1 + id IS NULL;",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL - 1;",
+            "SELECT id, num FROM Test WHERE id - 1 IS NULL;",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = 1 - NULL;",
+            "SELECT id, num FROM Test WHERE 1 - id IS NULL;",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL * 1;",
+            "SELECT id, num FROM Test WHERE id * 1 IS NULL;",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = 1 * NULL;",
+            "SELECT id, num FROM Test WHERE 1 * id IS NULL;",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = NULL / 1;",
+            "SELECT id, num FROM Test WHERE id / 1 IS NULL;",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id = 1 / NULL;",
+            "SELECT id, num FROM Test WHERE 1 / id IS NULL;",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
             ),
         ),
         (
-            "SELECT id + 1, 1 + id, id - 1, 1 - id, id * 1, 1 * id, id / 1, 1 / id FROM Test WHERE id = NULL;",
+            "SELECT id + 1, 1 + id, id - 1, 1 - id, id * 1, 1 * id, id / 1, 1 / id FROM Test WHERE id IS NULL;",
             select_with_null!(
                 "id + 1" | "1 + id" | "id - 1" | "1 - id" | "id * 1" | "1 * id" | "id / 1" | "1 / id";
                 Null       Null       Null       Null       Null       Null       Null       Null
