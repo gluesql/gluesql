@@ -55,7 +55,7 @@ pub enum Payload {
     AlterTable,
 }
 
-pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + Clone>(
+pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
@@ -104,24 +104,22 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                 return Err((storage, ExecuteError::DropTypeNotSupported.into()));
             }
 
-            stream::iter(names.iter().map(|name| match get_name(name) {
-                Ok(name) => Ok(name.as_str()),
-                Err(err) => Err((storage.clone(), err)),
-            }))
-            .try_fold(storage.clone(), |storage, table_name| async move {
-                let schema = try_into!(storage, storage.fetch_schema(table_name).await);
+            stream::iter(names.iter().map(Ok))
+                .try_fold(storage, |storage, table_name| async move {
+                    let table_name = try_into!(storage, get_name(table_name));
+                    let schema = try_into!(storage, storage.fetch_schema(table_name).await);
 
-                if !if_exists {
-                    try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
-                }
+                    if !if_exists {
+                        try_into!(storage, schema.ok_or(ExecuteError::TableNotExists));
+                    }
 
-                storage
-                    .delete_schema(table_name)
-                    .await
-                    .map(|(storage, _)| storage)
-            })
-            .await
-            .map(|storage| (storage, Payload::DropTable))
+                    match storage.delete_schema(table_name).await {
+                        Ok((storage, _)) => Ok(storage),
+                        Err(error) => Err(error),
+                    }
+                })
+                .await
+                .map(|storage| (storage, Payload::DropTable))
         }
 
         #[cfg(feature = "alter-table")]
@@ -188,27 +186,21 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                         .collect::<Result<_>>()
                 ),
                 SetExpr::Select(select_query) => {
-                    try_into!(
-                        storage.clone(),
-                        try_into!(
-                            storage.clone(),
-                            select(
-                                &storage,
-                                &sqlparser::ast::Query {
-                                    with: None,
-                                    body: SetExpr::Select(select_query.clone()),
-                                    order_by: vec![],
-                                    limit: None,
-                                    offset: None,
-                                    fetch: None,
-                                },
-                                None,
-                            )
-                            .await
-                        )
-                        .try_collect::<Vec<_>>()
-                        .await
-                    )
+                    let query = sqlparser::ast::Query {
+                        with: None,
+                        body: SetExpr::Select(select_query.clone()),
+                        order_by: vec![],
+                        limit: None,
+                        offset: None,
+                        fetch: None,
+                    };
+                    let select = || async {
+                        match select(&storage, &query, None).await {
+                            Ok(result) => Ok(result.try_collect::<Vec<_>>().await),
+                            Err(err) => Err(err),
+                        }
+                    };
+                    try_into!(storage, try_into!(storage, select().await))
                 }
                 set_expr => {
                     return Err((
@@ -255,23 +247,23 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
 
             let all_columns = Rc::from(update.all_columns());
             let columns_to_update = update.columns_to_update();
-            let rows = try_into!(
-                storage.clone(),
-                try_into!(
-                    storage.clone(),
-                    fetch(&storage, table_name, Rc::clone(&all_columns), filter).await
-                )
-                .and_then(|item| {
-                    let update = &update;
-                    let (_, key, row) = item;
-                    async move {
-                        let row = update.apply(row).await?;
-                        Ok((key, row))
-                    }
-                })
-                .try_collect::<Vec<_>>()
-                .await
-            );
+            let fetch = || async {
+                match fetch(&storage, table_name, Rc::clone(&all_columns), filter).await {
+                    Ok(result) => Ok(result
+                        .and_then(|item| {
+                            let update = &update;
+                            let (_, key, row) = item;
+                            async move {
+                                let row = update.apply(row).await?;
+                                Ok((key, row))
+                            }
+                        })
+                        .try_collect::<Vec<_>>()
+                        .await),
+                    Err(err) => Err(err),
+                }
+            };
+            let rows = try_into!(storage, try_into!(storage, fetch().await));
 
             let all_column_defs = Rc::from(column_defs);
             let validated = validate_rows(
@@ -299,16 +291,16 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
             ));
             let filter = Filter::new(&storage, selection.as_ref(), None, None);
 
-            let keys = try_into!(
-                storage.clone(),
-                try_into!(
-                    storage.clone(),
-                    fetch(&storage, table_name, columns, filter).await
-                )
-                .map_ok(|(_, key, _)| key)
-                .try_collect::<Vec<_>>()
-                .await
-            );
+            let fetch = || async {
+                match fetch(&storage, table_name, columns, filter).await {
+                    Ok(result) => Ok(result
+                        .map_ok(|(_, key, _)| key)
+                        .try_collect::<Vec<_>>()
+                        .await),
+                    Err(err) => Err(err),
+                }
+            };
+            let keys = try_into!(storage, try_into!(storage, fetch().await));
 
             let num_rows = keys.len();
 
@@ -320,11 +312,15 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
 
         //- Selection
         Statement::Query(query) => {
-            let (labels, rows) = try_into!(
-                storage.clone(),
-                select_with_labels(&storage, &query, None, true).await
-            );
-            let rows = try_into!(storage, rows.try_collect::<Vec<_>>().await);
+            let select_with_labels = || async {
+                match select_with_labels(&storage, &query, None, true).await {
+                    Ok((labels, rows)) => Ok((labels, rows.try_collect::<Vec<_>>().await)),
+                    Err(err) => Err(err),
+                }
+            };
+
+            let (labels, rows) = try_into!(storage, select_with_labels().await);
+            let rows = try_into!(storage, rows);
 
             Ok((storage, Payload::Select { labels, rows }))
         }
