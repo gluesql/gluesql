@@ -66,6 +66,10 @@ macro_rules! generate_tests {
         glue!(drop_table, drop_table::drop_table);
         glue!(error, error::error);
         glue!(filter, filter::filter);
+        glue!(
+            auto_increment,
+            column_options::auto_increment::auto_increment
+        );
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_left_right, function::left_right::left_right);
         glue!(function_cast_literal, function::cast::cast_literal);
