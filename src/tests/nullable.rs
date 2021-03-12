@@ -116,6 +116,15 @@ CREATE TABLE Test (
             ),
         ),
         (
+            "SELECT id, num FROM Test WHERE (NULL + NULL) IS NULL;",
+            select_with_null!(
+                id   | num;
+                Null   I64(2);
+                I64(1)   I64(9);
+                I64(3)   I64(4)
+            ),
+        ),
+        (
             "SELECT id, num FROM Test WHERE \"NULL\" IS NULL",
             select!(id | num),
         ),

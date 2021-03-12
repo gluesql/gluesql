@@ -36,20 +36,23 @@ pub enum EvaluateError {
     #[error("unsupported compound identifier {0}")]
     UnsupportedCompoundIdentifier(String),
 
-    #[error("unreachable condition base")]
-    UnreachableConditionBase,
+    #[error("unsupported literal binary arithmetic between {0} and {1}")]
+    UnsupportedLiteralBinaryArithmetic(String, String),
 
-    #[error("unreachable evaluated arithmetic")]
-    UnreachableEvaluatedArithmetic,
+    #[error("unsupported evaluated binary arithmetic between {0} and {1}")]
+    UnsupportedEvaluatedBinaryArithmetic(String, String),
+
+    #[error("unsupported evaluated unary arithmetic of {0}")]
+    UnsupportedEvaluatedUnaryArithmetic(String),
+
+    #[error("unimplemented")]
+    Unimplemented,
 
     #[error("unreachable literal arithmetic")]
     UnreachableLiteralArithmetic,
 
     #[error("unreachable empty context")]
     UnreachableEmptyContext,
-
-    #[error("unimplemented")]
-    Unimplemented,
 
     #[error("unreachable named function argument: {0}")]
     UnreachableFunctionArg(String),
