@@ -16,38 +16,32 @@ use {
 pub fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     rows: Vec<Row>,
-    column_defs: &Vec<ColumnDef>,
+    column_defs: &[ColumnDef],
     table_name: &str,
 ) -> MutResult<U, Vec<Row>> {
-    let auto_increment_columns: Vec<(usize, &ColumnDef)> = column_defs
-        .iter()
-        .enumerate()
-        .filter(|(_, ColumnDef { options, .. })| {
-            match options.iter().find_map(|ColumnOptionDef { option, .. }| {
-                if matches!(option, ColumnOption::DialectSpecific(tokens)
-                if match tokens[..] {
-                    [Token::Word(Word {
+    let auto_increment_columns: Vec<(usize, &ColumnDef)> =
+        column_defs
+            .iter()
+            .enumerate()
+            .filter(|(_, ColumnDef { options, .. })| {
+                options.iter().find_map(|ColumnOptionDef { option, .. }| {
+                if matches!(option, ColumnOption::DialectSpecific(tokens) if matches!(tokens[..], [Token::Word(Word {
                         keyword: Keyword::AUTO_INCREMENT,
                         ..
                     }), ..]
                     | [Token::Word(Word {
                         keyword: Keyword::AUTOINCREMENT,
                         ..
-                    }), ..] => true, // Doubled due to OR in paterns being experimental; TODO: keyword: Keyword::AUTO_INCREMENT | Keyword::AUTOINCREMENT
-                    _ => false,
-                }) {
+                    }), ..])) {
                     Some(true)
                 } else {
                     None
                 }
-            }) {
-                Some(value) => value,
-                None => false,
-            }
-        })
-        .collect();
+            }).unwrap_or(false)
+            })
+            .collect();
 
-    if auto_increment_columns.len() > 0 {
+    if !auto_increment_columns.is_empty() {
         let mut new_rows: Vec<Row> = vec![];
         let storage = rows.into_iter().fold(storage, |storage, row| {
             let mut row = row.0;
