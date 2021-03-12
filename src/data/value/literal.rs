@@ -63,6 +63,7 @@ impl TryFrom<&Literal> for Value {
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::SingleQuotedString(v) => Ok(Value::Str(v.to_string())),
+            Literal::Null => Ok(Value::Null),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
