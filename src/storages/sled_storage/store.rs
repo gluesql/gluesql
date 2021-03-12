@@ -32,7 +32,7 @@ impl Store<IVec> for SledStorage {
             .tree
             .get(f!("generator/{table_name}/{column_name}").as_bytes())
             .map_err(err_into)?
-            .ok_or(err_into(sled::Error::Unsupported("bleh".to_string())))?;
+            .ok_or_else(|| err_into(sled::Error::Unsupported("Generator unset".to_string())))?;
         let value = bincode::deserialize(&value).map_err(err_into)?;
         Ok(value)
     }

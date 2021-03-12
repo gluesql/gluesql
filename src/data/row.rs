@@ -79,17 +79,22 @@ impl Row {
                             ColumnOption::Default(expr) => Some(expr),
                             #[cfg(feature = "auto-increment")]
                             ColumnOption::DialectSpecific(tokens)
-                                if match tokens[..] {
-                                    [Token::Word(Word {
-                                        keyword: Keyword::AUTO_INCREMENT,
+                                if matches!(
+                                    tokens[..],
+                                    [
+                                        Token::Word(Word {
+                                            keyword: Keyword::AUTO_INCREMENT,
+                                            ..
+                                        }),
                                         ..
-                                    }), ..]
-                                    | [Token::Word(Word {
-                                        keyword: Keyword::AUTOINCREMENT,
+                                    ] | [
+                                        Token::Word(Word {
+                                            keyword: Keyword::AUTOINCREMENT,
+                                            ..
+                                        }),
                                         ..
-                                    }), ..] => true, // Doubled due to OR in paterns being experimental; TODO: keyword: Keyword::AUTO_INCREMENT | Keyword::AUTOINCREMENT
-                                    _ => false,
-                                } =>
+                                    ]
+                                ) =>
                             {
                                 nullable = true;
                                 Some(&null_expr)
