@@ -151,7 +151,7 @@ impl TryInto<Value> for Evaluated<'_> {
 macro_rules! binary_op {
     ($name:ident, $op:tt) => {
         pub fn $name(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
-            let literal_binary_op = |l: &&Literal, r: &&Literal| match (l, r) {
+            let literal_binary_op = |l: &Literal, r: &Literal| match (l, r) {
                 (Literal::Number(l, false), Literal::Number(r, false)) => match (l.parse::<i64>(), r.parse::<i64>()) {
                     (Ok(l), Ok(r)) => Ok(Literal::Number((l $op r).to_string(), false)),
                     (Ok(l), _) => match r.parse::<f64>() {
@@ -166,30 +166,34 @@ macro_rules! binary_op {
                         (Ok(l), Ok(r)) => Ok(Literal::Number((l $op r).to_string(), false)),
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
-                },
+                }.map(Evaluated::Literal),
                 (Literal::Null, Literal::Number(_, false)) | (Literal::Number(_, false), Literal::Null) => {
-                    Ok(Literal::Null)
+                    Ok(Evaluated::Literal(Literal::Null))
                 }
                 _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
             };
 
+            let value_binary_op = |l: &data::Value, r: &data::Value| {
+                l.$name(r).map(Evaluated::Value)
+            };
+
             match (self, other) {
-                (LiteralRef(l), LiteralRef(r)) => literal_binary_op(l, r).map(Evaluated::Literal),
-                (LiteralRef(l), Literal(r)) => literal_binary_op(l, &r).map(Evaluated::Literal),
-                (LiteralRef(l), ValueRef(r)) => (r.clone_by(l)?).$name(r).map(Evaluated::Value),
-                (LiteralRef(l), Value(r)) => (r.clone_by(l)?).$name(r).map(Evaluated::Value),
-                (Literal(l), LiteralRef(r)) => literal_binary_op(&l, r).map(Evaluated::Literal),
-                (Literal(l), Literal(r)) => literal_binary_op(&l, &r).map(Evaluated::Literal),
-                (Literal(l), ValueRef(r)) => (r.clone_by(&l)?).$name(r).map(Evaluated::Value),
-                (Literal(l), Value(r)) => (r.clone_by(&l)?).$name(r).map(Evaluated::Value),
-                (ValueRef(l), LiteralRef(r)) => l.$name(&l.clone_by(r)?).map(Evaluated::Value),
-                (ValueRef(l), Literal(r)) => l.$name(&l.clone_by(&r)?).map(Evaluated::Value),
-                (ValueRef(l), ValueRef(r)) => l.$name(r).map(Evaluated::Value),
-                (ValueRef(l), Value(r)) => l.$name(&r).map(Evaluated::Value),
-                (Value(l), LiteralRef(r)) => (&l).$name(&&l.clone_by(r)?).map(Evaluated::Value),
-                (Value(l), Literal(r)) => (&l).$name(&&l.clone_by(&r)?).map(Evaluated::Value),
-                (Value(l), ValueRef(r)) => (&l).$name(r).map(Evaluated::Value),
-                (Value(l), Value(r)) => (&l).$name(&r).map(Evaluated::Value),
+                (LiteralRef(l), LiteralRef(r)) => literal_binary_op(l, r),
+                (LiteralRef(l), Literal(r))    => literal_binary_op(l, &r),
+                (LiteralRef(l), ValueRef(r))   => value_binary_op(&data::Value::try_from(*l)?, r),
+                (LiteralRef(l), Value(r))      => value_binary_op(&data::Value::try_from(*l)?, r),
+                (Literal(l),    LiteralRef(r)) => literal_binary_op(&l, r),
+                (Literal(l),    Literal(r))    => literal_binary_op(&l, &r),
+                (Literal(l),    ValueRef(r))   => value_binary_op(&data::Value::try_from(l)?, r),
+                (Literal(l),    Value(r))      => value_binary_op(&data::Value::try_from(l)?, r),
+                (ValueRef(l),   LiteralRef(r)) => value_binary_op(l, &data::Value::try_from(*r)?),
+                (ValueRef(l),   Literal(r))    => value_binary_op(l, &data::Value::try_from(r)?),
+                (ValueRef(l),   ValueRef(r))   => value_binary_op(l, r),
+                (ValueRef(l),   Value(r))      => value_binary_op(l, r),
+                (Value(l),      LiteralRef(r)) => value_binary_op(l, &data::Value::try_from(*r)?),
+                (Value(l),      Literal(r))    => value_binary_op(l, &data::Value::try_from(r)?),
+                (Value(l),      ValueRef(r))   => value_binary_op(l, r),
+                (Value(l),      Value(r))      => value_binary_op(l, r),
                 _ => Err(EvaluateError::UnreachableEvaluatedArithmetic.into()),
             }
         }
