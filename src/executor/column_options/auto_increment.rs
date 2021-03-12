@@ -19,27 +19,22 @@ pub fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     column_defs: &[ColumnDef],
     table_name: &str,
 ) -> MutResult<U, Vec<Row>> {
-    let auto_increment_columns: Vec<(usize, &ColumnDef)> =
-        column_defs
-            .iter()
-            .enumerate()
-            .filter(|(_, ColumnDef { options, .. })| {
-                options.iter().find_map(|ColumnOptionDef { option, .. }| {
-                if matches!(option, ColumnOption::DialectSpecific(tokens) if matches!(tokens[..], [Token::Word(Word {
-                        keyword: Keyword::AUTO_INCREMENT,
-                        ..
-                    }), ..]
-                    | [Token::Word(Word {
-                        keyword: Keyword::AUTOINCREMENT,
-                        ..
-                    }), ..])) {
-                    Some(true)
-                } else {
-                    None
-                }
-            }).unwrap_or(false)
-            })
-            .collect();
+    let auto_increment_columns: Vec<(usize, &ColumnDef)> = column_defs
+        .iter()
+        .enumerate()
+        .filter(|(_, ColumnDef { options, .. })| {
+            options
+                .iter()
+                .find_map(|ColumnOptionDef { option, .. }| {
+                    if is_auto_increment(option) {
+                        Some(true)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or(false)
+        })
+        .collect();
 
     if !auto_increment_columns.is_empty() {
         let mut new_rows: Vec<Row> = vec![];
@@ -80,4 +75,28 @@ pub fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     } else {
         Ok((storage, rows))
     }
+}
+
+fn is_auto_increment(option: &ColumnOption) -> bool {
+    matches!(
+        option,
+        ColumnOption::DialectSpecific(tokens)
+        if matches!(
+            tokens[..],
+            [
+                Token::Word(Word {
+                    keyword: Keyword::AUTO_INCREMENT,
+                    ..
+                }),
+                ..
+            ]
+            | [
+                Token::Word(Word {
+                    keyword: Keyword::AUTOINCREMENT,
+                    ..
+                }),
+                ..
+            ]
+        )
+    )
 }
