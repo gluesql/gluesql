@@ -20,6 +20,9 @@ use super::select::{select, select_with_labels};
 use super::update::Update;
 use super::validate::{validate_rows, ColumnValidation};
 
+#[cfg(feature = "auto-increment")]
+use super::column_options::auto_increment;
+
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
     #[error("query not supported")]
@@ -186,7 +189,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             source,
             ..
         } => {
-            let (rows, table_name) = try_block!(storage, {
+            let (rows, column_defs, table_name) = try_block!(storage, {
                 let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
@@ -220,7 +223,13 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                         .into());
                     }
                 };
+                Ok((rows, column_defs, table_name))
+            });
 
+            #[cfg(feature = "auto-increment")]
+            let (storage, rows) = auto_increment::run(storage, rows, &column_defs, table_name)?;
+
+            let (rows, table_name) = try_block!(storage, {
                 let column_defs = Rc::from(column_defs);
                 validate_rows(
                     &storage,

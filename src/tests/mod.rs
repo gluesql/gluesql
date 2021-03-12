@@ -4,6 +4,8 @@ pub mod alter_table;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
+#[cfg(feature = "auto-increment")]
+pub mod column_options;
 pub mod create_table;
 pub mod default;
 pub mod drop_table;
@@ -33,7 +35,6 @@ macro_rules! generate_alter_table_tests {
         glue!(alter_table_add_drop, alter_table::add_drop);
     };
 }
-
 #[cfg(not(feature = "alter-table"))]
 #[macro_export]
 macro_rules! generate_alter_table_tests {
@@ -66,6 +67,7 @@ macro_rules! generate_tests {
         glue!(drop_table, drop_table::drop_table);
         glue!(error, error::error);
         glue!(filter, filter::filter);
+        #[cfg(feature = "auto-increment")]
         glue!(
             auto_increment,
             column_options::auto_increment::auto_increment

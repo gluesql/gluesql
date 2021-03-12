@@ -1,5 +1,6 @@
 mod aggregate;
 mod blend;
+mod column_options;
 mod context;
 mod create_table;
 mod evaluate;
