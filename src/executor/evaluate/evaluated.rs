@@ -167,10 +167,17 @@ macro_rules! binary_op {
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
                 }.map(Evaluated::Literal),
-                (Literal::Null, Literal::Number(_, false)) | (Literal::Number(_, false), Literal::Null) => {
+                (Literal::Null, Literal::Number(_, false))
+                | (Literal::Number(_, false), Literal::Null)
+                | (Literal::Null, Literal::Null) => {
                     Ok(Evaluated::Literal(Literal::Null))
                 }
-                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+                _ => Err(
+                    EvaluateError::UnsupportedLiteralBinaryArithmetic(
+                        l.to_string(),
+                        r.to_string()
+                    ).into()
+                ),
             };
 
             let value_binary_op = |l: &data::Value, r: &data::Value| {
@@ -194,11 +201,17 @@ macro_rules! binary_op {
                 (Value(l),      Literal(r))    => value_binary_op(l, &data::Value::try_from(r)?),
                 (Value(l),      ValueRef(r))   => value_binary_op(l, r),
                 (Value(l),      Value(r))      => value_binary_op(l, r),
-                _ => Err(EvaluateError::UnreachableEvaluatedArithmetic.into()),
+                _ => Err(
+                    EvaluateError::UnsupportedEvaluatedBinaryArithmetic(
+                        format!("{:?}", self),
+                        format!("{:?}", other),
+                    ).into()
+                ),
             }
         }
     };
 }
+
 macro_rules! unary_op {
     ($name:ident, $op:tt) => {
         pub fn $name(&self) -> Result<Evaluated<'a>> {
@@ -219,7 +232,9 @@ macro_rules! unary_op {
                 Literal(v) => literal_unary_op(&v).map(Evaluated::Literal),
                 ValueRef(v) => v.$name().map(Evaluated::Value),
                 Value(v) => (&v).$name().map(Evaluated::Value),
-                _ => Err(EvaluateError::UnreachableEvaluatedArithmetic.into()),
+                _ => Err(
+                    EvaluateError::UnsupportedEvaluatedUnaryArithmetic(format!("{:?}", self)).into()
+                ),
             }
         }
     };
