@@ -8,22 +8,40 @@ use sqlparser::ast::{Expr, Query};
 pub enum Condition {
     /// Represents an expression of the type `column_name = value`
     /// For example: `country = "France"`
-    Equals { column_name: String, value: Value },
+    Equals {
+        column_name: String,
+        value: Value,
+    },
     /// Represents an expression of the type `column_name != value` or `column_name <> value`
     /// For example: `stock != 0` or `stock <> 0`
-    NotEquals { column_name: String, value: Value },
+    NotEquals {
+        column_name: String,
+        value: Value,
+    },
     /// Represents an expression of the type `column_name > value`
     /// For example: `price > 50`
-    GreaterThan { column_name: String, value: Value },
+    GreaterThan {
+        column_name: String,
+        value: Value,
+    },
     /// Represents an expression of the type `column_name >= value`
     /// For example: `price >= 40`
-    GreaterThanOrEquals { column_name: String, value: Value },
+    GreaterThanOrEquals {
+        column_name: String,
+        value: Value,
+    },
     /// Represents an expression of the type `column_name < value`
     /// For example: `price < 60`
-    LessThan { column_name: String, value: Value },
+    LessThan {
+        column_name: String,
+        value: Value,
+    },
     /// Represents an expression of the type `column_name <= value`
     /// For example: `price <= 35`
-    LessThanOrEquals { column_name: String, value: Value },
+    LessThanOrEquals {
+        column_name: String,
+        value: Value,
+    },
     /// Represents an expression of the type `column_name BETWEEN min AND max`
     /// For example: `price BETWEEN 20 AND 30`
     Between {
@@ -34,26 +52,26 @@ pub enum Condition {
     /// Represents an expression of the type `column_name IS NULL`
     /// For example: `price IS NULL`
     IsNull {
-        column_name: String
+        column_name: String,
     },
     /// Represents an expression of the type `column_name IS NOT NULL`
     /// For example: `price IS NOT NULL`
     /// It's better to keep it as a condition instead of a `Not(Null(column_name))` as it allows for specific optimizations in the backend.
     IsNotNull {
-        column_name: String
+        column_name: String,
     },
     /// Represents an expression of the type `column_name IS IN (values...)`
     /// For example: `country IS IN ("France", "Switzerland")`
     InList {
         column_name: String,
-        list_elem: Vec<Value>
+        list_elem: Vec<Value>,
     },
     CompareColumns {
-        column_left: String
+        column_left: String,
     },
     /// Represents an expression of a Subquery, following this pattern: `(SELECT ...)`
     ExistsSubquery {
-        query: Box<Query>
+        query: Box<Query>,
     },
     /// An condition that always return true.
     /// For example `1 = 1`
@@ -81,4 +99,14 @@ pub enum Link {
     /// It is true if the internal condition is false.
     /// For example: `NOT country = "France"`
     Not(Box<Link>),
+}
+
+impl Condition {
+    pub fn from_bool(value: bool) -> Condition {
+        if value {
+            Condition::True
+        } else {
+            Condition::False
+        }
+    }
 }

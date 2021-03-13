@@ -2,7 +2,7 @@ mod conditions;
 mod row;
 mod schema;
 mod table;
-mod value;
+pub mod value;
 
 pub use {
     conditions::{Condition, Link},

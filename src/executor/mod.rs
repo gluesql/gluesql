@@ -15,7 +15,7 @@ mod validate;
 
 pub use aggregate::{AggregateError, GroupKey};
 pub use blend::BlendError;
-pub use converter::convert_where_query;
+pub use converter::{convert_where_query, ConvertError};
 pub use create_table::CreateTableError;
 pub use evaluate::EvaluateError;
 pub use execute::{execute, ExecuteError, Payload};

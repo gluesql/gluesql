@@ -2,8 +2,9 @@ use {
     crate::{
         data::{RowError, TableError, ValueError},
         executor::{
-            AggregateError, BlendError, CreateTableError, EvaluateError, ExecuteError, FetchError,
-            FilterError, JoinError, LimitError, SelectError, UpdateError, ValidateError,
+            AggregateError, BlendError, ConvertError, CreateTableError, EvaluateError,
+            ExecuteError, FetchError, FilterError, JoinError, LimitError, SelectError, UpdateError,
+            ValidateError,
         },
     },
     serde::Serialize,
@@ -59,6 +60,8 @@ pub enum Error {
     Value(#[from] ValueError),
     #[error(transparent)]
     CreateTable(#[from] CreateTableError),
+    #[error(transparent)]
+    Convert(#[from] ConvertError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -86,6 +89,7 @@ impl PartialEq for Error {
             (Validate(e), Validate(e2)) => e == e2,
             (Value(e), Value(e2)) => e == e2,
             (CreateTable(e), CreateTable(e2)) => e == e2,
+            (Convert(e), Convert(e2)) => e == e2,
             _ => false,
         }
     }
