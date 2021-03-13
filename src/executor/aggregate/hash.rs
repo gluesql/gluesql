@@ -21,7 +21,6 @@ impl TryFrom<&Evaluated<'_>> for GroupKey {
             Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
             Evaluated::ValueRef(v) => (*v).try_into(),
             Evaluated::Value(v) => v.try_into(),
-            Evaluated::StringRef(s) => Ok(GroupKey::Str(s.to_string())),
         }
     }
 }

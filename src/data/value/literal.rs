@@ -63,6 +63,7 @@ impl TryFrom<&Literal> for Value {
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::SingleQuotedString(v) => Ok(Value::Str(v.to_string())),
+            Literal::Null => Ok(Value::Null),
             _ => Err(ValueError::SqlTypeNotSupported.into()),
         }
     }
@@ -106,7 +107,8 @@ impl TryFromLiteral for Value {
 
                 Ok(Value::F64(v))
             }
-            (DataType::Text, Literal::Number(v, false)) => Ok(Value::Str(v.to_string())),
+            (DataType::Text, Literal::Number(v, false))
+            | (DataType::Text, Literal::SingleQuotedString(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Boolean(v)) => {
                 let v = if *v { "TRUE" } else { "FALSE" };
 

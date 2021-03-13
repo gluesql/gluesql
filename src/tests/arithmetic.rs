@@ -80,6 +80,11 @@ test_case!(arithmetic, async move {
             UpdateError::ColumnNotFound("aaa".to_owned()).into(),
             "UPDATE Arith SET aaa = 1",
         ),
+        (
+            EvaluateError::UnsupportedLiteralBinaryArithmetic("true".to_owned(), "1".to_owned())
+                .into(),
+            "SELECT * FROM Arith WHERE TRUE + 1 = 1",
+        ),
     ];
 
     for (error, sql) in test_cases.into_iter() {

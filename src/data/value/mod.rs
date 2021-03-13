@@ -173,30 +173,6 @@ impl Value {
         }
     }
 
-    pub fn clone_by(&self, literal: &Literal) -> Result<Self> {
-        match (self, literal) {
-            (Value::I64(_), Literal::Number(v, false)) => v
-                .parse()
-                .map(Value::I64)
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (Value::F64(_), Literal::Number(v, false)) => v
-                .parse()
-                .map(Value::F64)
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (Value::Str(_), Literal::SingleQuotedString(v))
-            | (Value::Null, Literal::SingleQuotedString(v)) => Ok(Value::Str(v.clone())),
-            (Value::Bool(_), Literal::Boolean(v)) | (Value::Null, Literal::Boolean(v)) => {
-                Ok(Value::Bool(*v))
-            }
-            (Value::Null, Literal::Number(v, false)) => v
-                .parse::<i64>()
-                .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (_, Literal::Null) => Ok(Value::Null),
-            _ => Err(ValueError::LiteralNotSupported.into()),
-        }
-    }
-
     pub fn add(&self, other: &Value) -> Result<Value> {
         use Value::*;
 

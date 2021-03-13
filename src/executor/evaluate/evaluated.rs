@@ -13,7 +13,7 @@ use {
     Evaluated::*,
 };
 
-/// `LiteralRef`, `Literal` and `StringRef` are used when it is not possible to specify what kind of `Value`
+/// `LiteralRef` and `Literal` are used when it is not possible to specify what kind of `Value`
 /// can be applied.
 ///
 /// * `1 + 1` is converted into `LiteralRef + LiteralRef`, `LiteralRef` of `1` can
@@ -21,9 +21,6 @@ use {
 ///
 /// * Specifing column `id`, it is converted into `ValueRef` because `id` can be specified from table
 /// schema.
-///
-/// * `"hello"` is converted into `StringRef`, similar with `LiteralRef` but it is for storing
-/// string value.
 ///
 /// * Evaluated result of `1 + 1` becomes `Literal`, not `LiteralRef` because executor has
 /// ownership of `1 + 1`.
@@ -35,40 +32,22 @@ use {
 pub enum Evaluated<'a> {
     LiteralRef(&'a Literal),
     Literal(Literal),
-    StringRef(&'a str),
     ValueRef(&'a Value),
     Value(Value),
 }
 
 impl<'a> PartialEq for Evaluated<'a> {
     fn eq(&self, other: &Evaluated<'a>) -> bool {
-        let eq_ast = |l: &Literal, r| match l {
-            Literal::SingleQuotedString(l) => l == r,
-            _ => false,
-        };
-
-        let eq_val = |l: &Value, r| match l {
-            Value::Str(l) => l == r,
-            _ => false,
-        };
-
         match (self, other) {
             (LiteralRef(l), LiteralRef(r)) => l == r,
-            (LiteralRef(l), StringRef(r)) => eq_ast(l, r),
             (LiteralRef(l), ValueRef(r)) => r == l,
             (LiteralRef(l), Value(r)) => &r == l,
             (LiteralRef(l), Literal(r)) => *l == r,
-            (StringRef(l), LiteralRef(r)) => eq_ast(r, l),
-            (StringRef(l), StringRef(r)) => l == r,
-            (StringRef(l), ValueRef(r)) => eq_val(r, l),
-            (StringRef(l), Value(r)) => eq_val(&r, l),
             (ValueRef(l), LiteralRef(r)) => l == r,
             (ValueRef(l), Literal(r)) => l == &r,
-            (ValueRef(l), StringRef(r)) => eq_val(l, r),
             (ValueRef(l), ValueRef(r)) => l == r,
             (ValueRef(l), Value(r)) => l == &r,
             (Value(l), LiteralRef(r)) => &l == r,
-            (Value(l), StringRef(r)) => eq_val(&l, r),
             (Value(l), ValueRef(r)) => &l == r,
             (Value(l), Value(r)) => l == r,
             (Value(l), Literal(r)) => l == r,
@@ -76,7 +55,6 @@ impl<'a> PartialEq for Evaluated<'a> {
             (Literal(l), LiteralRef(r)) => &l == r,
             (Literal(l), ValueRef(r)) => r == &l,
             (Literal(l), Value(r)) => r == l,
-            _ => false,
         }
     }
 }
@@ -96,16 +74,10 @@ impl<'a> PartialOrd for Evaluated<'a> {
             (ValueRef(l), ValueRef(r)) => l.partial_cmp(r),
             (Value(l), Literal(r)) => l.partial_cmp(r),
             (Value(l), Value(r)) => l.partial_cmp(r),
-            (StringRef(l), StringRef(r)) => l.partial_cmp(r),
             (ValueRef(l), Literal(r)) => l.partial_cmp(&r),
             (ValueRef(l), Value(r)) => l.partial_cmp(&r),
             (Value(l), LiteralRef(r)) => l.partial_cmp(*r),
             (Value(l), ValueRef(r)) => l.partial_cmp(*r),
-            (ValueRef(data::Value::Str(l)), StringRef(r)) => (&l.as_str()).partial_cmp(r),
-            (Value(data::Value::Str(l)), StringRef(r)) => (&l.as_str()).partial_cmp(r),
-            (StringRef(l), ValueRef(data::Value::Str(r))) => l.partial_cmp(&r.as_str()),
-            (StringRef(l), Value(data::Value::Str(r))) => l.partial_cmp(&r.as_str()),
-            _ => None,
         }
     }
 }
@@ -141,7 +113,6 @@ impl TryInto<Value> for Evaluated<'_> {
         match self {
             Evaluated::LiteralRef(v) => Value::try_from(v),
             Evaluated::Literal(v) => Value::try_from(&v),
-            Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
             Evaluated::ValueRef(v) => Ok(v.clone()),
             Evaluated::Value(v) => Ok(v),
         }
@@ -151,7 +122,7 @@ impl TryInto<Value> for Evaluated<'_> {
 macro_rules! binary_op {
     ($name:ident, $op:tt) => {
         pub fn $name(&self, other: &Evaluated<'a>) -> Result<Evaluated<'a>> {
-            let literal_binary_op = |l: &&Literal, r: &&Literal| match (l, r) {
+            let literal_binary_op = |l: &Literal, r: &Literal| match (l, r) {
                 (Literal::Number(l, false), Literal::Number(r, false)) => match (l.parse::<i64>(), r.parse::<i64>()) {
                     (Ok(l), Ok(r)) => Ok(Literal::Number((l $op r).to_string(), false)),
                     (Ok(l), _) => match r.parse::<f64>() {
@@ -166,35 +137,46 @@ macro_rules! binary_op {
                         (Ok(l), Ok(r)) => Ok(Literal::Number((l $op r).to_string(), false)),
                         _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                     },
-                },
-                (Literal::Null, Literal::Number(_, false)) | (Literal::Number(_, false), Literal::Null) => {
-                    Ok(Literal::Null)
+                }.map(Evaluated::Literal),
+                (Literal::Null, Literal::Number(_, false))
+                | (Literal::Number(_, false), Literal::Null)
+                | (Literal::Null, Literal::Null) => {
+                    Ok(Evaluated::Literal(Literal::Null))
                 }
-                _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
+                _ => Err(
+                    EvaluateError::UnsupportedLiteralBinaryArithmetic(
+                        l.to_string(),
+                        r.to_string()
+                    ).into()
+                ),
+            };
+
+            let value_binary_op = |l: &data::Value, r: &data::Value| {
+                l.$name(r).map(Evaluated::Value)
             };
 
             match (self, other) {
-                (LiteralRef(l), LiteralRef(r)) => literal_binary_op(l, r).map(Evaluated::Literal),
-                (LiteralRef(l), Literal(r)) => literal_binary_op(l, &r).map(Evaluated::Literal),
-                (LiteralRef(l), ValueRef(r)) => (r.clone_by(l)?).$name(r).map(Evaluated::Value),
-                (LiteralRef(l), Value(r)) => (r.clone_by(l)?).$name(r).map(Evaluated::Value),
-                (Literal(l), LiteralRef(r)) => literal_binary_op(&l, r).map(Evaluated::Literal),
-                (Literal(l), Literal(r)) => literal_binary_op(&l, &r).map(Evaluated::Literal),
-                (Literal(l), ValueRef(r)) => (r.clone_by(&l)?).$name(r).map(Evaluated::Value),
-                (Literal(l), Value(r)) => (r.clone_by(&l)?).$name(r).map(Evaluated::Value),
-                (ValueRef(l), LiteralRef(r)) => l.$name(&l.clone_by(r)?).map(Evaluated::Value),
-                (ValueRef(l), Literal(r)) => l.$name(&l.clone_by(&r)?).map(Evaluated::Value),
-                (ValueRef(l), ValueRef(r)) => l.$name(r).map(Evaluated::Value),
-                (ValueRef(l), Value(r)) => l.$name(&r).map(Evaluated::Value),
-                (Value(l), LiteralRef(r)) => (&l).$name(&&l.clone_by(r)?).map(Evaluated::Value),
-                (Value(l), Literal(r)) => (&l).$name(&&l.clone_by(&r)?).map(Evaluated::Value),
-                (Value(l), ValueRef(r)) => (&l).$name(r).map(Evaluated::Value),
-                (Value(l), Value(r)) => (&l).$name(&r).map(Evaluated::Value),
-                _ => Err(EvaluateError::UnreachableEvaluatedArithmetic.into()),
+                (LiteralRef(l), LiteralRef(r)) => literal_binary_op(l, r),
+                (LiteralRef(l), Literal(r))    => literal_binary_op(l, &r),
+                (LiteralRef(l), ValueRef(r))   => value_binary_op(&data::Value::try_from(*l)?, r),
+                (LiteralRef(l), Value(r))      => value_binary_op(&data::Value::try_from(*l)?, r),
+                (Literal(l),    LiteralRef(r)) => literal_binary_op(&l, r),
+                (Literal(l),    Literal(r))    => literal_binary_op(&l, &r),
+                (Literal(l),    ValueRef(r))   => value_binary_op(&data::Value::try_from(l)?, r),
+                (Literal(l),    Value(r))      => value_binary_op(&data::Value::try_from(l)?, r),
+                (ValueRef(l),   LiteralRef(r)) => value_binary_op(l, &data::Value::try_from(*r)?),
+                (ValueRef(l),   Literal(r))    => value_binary_op(l, &data::Value::try_from(r)?),
+                (ValueRef(l),   ValueRef(r))   => value_binary_op(l, r),
+                (ValueRef(l),   Value(r))      => value_binary_op(l, r),
+                (Value(l),      LiteralRef(r)) => value_binary_op(l, &data::Value::try_from(*r)?),
+                (Value(l),      Literal(r))    => value_binary_op(l, &data::Value::try_from(r)?),
+                (Value(l),      ValueRef(r))   => value_binary_op(l, r),
+                (Value(l),      Value(r))      => value_binary_op(l, r),
             }
         }
     };
 }
+
 macro_rules! unary_op {
     ($name:ident, $op:tt) => {
         pub fn $name(&self) -> Result<Evaluated<'a>> {
@@ -215,7 +197,6 @@ macro_rules! unary_op {
                 Literal(v) => literal_unary_op(&v).map(Evaluated::Literal),
                 ValueRef(v) => v.$name().map(Evaluated::Value),
                 Value(v) => (&v).$name().map(Evaluated::Value),
-                _ => Err(EvaluateError::UnreachableEvaluatedArithmetic.into()),
             }
         }
     };
@@ -234,7 +215,6 @@ impl<'a> Evaluated<'a> {
         let cast_value = |value: &data::Value| value.cast(data_type);
 
         match self {
-            StringRef(value) => cast_literal(&Literal::SingleQuotedString(value.to_string())),
             LiteralRef(value) => cast_literal(value),
             Literal(value) => cast_literal(&value),
             ValueRef(value) => cast_value(value),
@@ -249,7 +229,6 @@ impl<'a> Evaluated<'a> {
             Evaluated::Value(v) => v.is_some(),
             Evaluated::Literal(v) => v != &Literal::Null,
             Evaluated::LiteralRef(v) => v != &&Literal::Null,
-            Evaluated::StringRef(_v) => true,
         }
     }
 }
