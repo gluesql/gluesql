@@ -59,18 +59,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
-    #[allow(unused_macros)]
-    macro_rules! try_into {
-        ($storage: expr, $expr: expr) => {
-            match $expr {
-                Err(e) => {
-                    return Err(($storage, e.into()));
-                }
-                Ok(v) => v,
-            }
-        };
-    }
-
     macro_rules! try_block {
         ($storage: expr, $block: block) => {{
             match (|| async { $block })().await {
@@ -80,6 +68,18 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 Ok(v) => v,
             }
         }};
+    }
+
+    #[cfg(feature = "alter-table")]
+    macro_rules! try_into {
+        ($storage: expr, $expr: expr) => {
+            match $expr {
+                Err(e) => {
+                    return Err(($storage, e.into()));
+                }
+                Ok(v) => v,
+            }
+        };
     }
 
     let Query(query) = query;
@@ -137,7 +137,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 .await
                 .map(|storage| (storage, Payload::DropTable))
         }
-
         #[cfg(feature = "alter-table")]
         Statement::AlterTable { name, operation } => {
             let table_name = try_into!(storage, get_name(name));
@@ -297,12 +296,11 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 let columns = Rc::from(fetch_columns(&storage, table_name).await?);
                 let filter = Filter::new(&storage, selection.as_ref(), None, None);
 
-                let keys = fetch(&storage, table_name, columns, filter)
+                fetch(&storage, table_name, columns, filter)
                     .await?
                     .map_ok(|(_, key, _)| key)
                     .try_collect::<Vec<_>>()
-                    .await?;
-                Ok(keys)
+                    .await
             });
 
             let num_keys = keys.len();
