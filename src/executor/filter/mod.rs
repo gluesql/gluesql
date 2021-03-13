@@ -17,7 +17,7 @@ use crate::result::Result;
 use crate::store::Store;
 
 #[cfg(feature = "index")]
-mod index;
+pub mod index;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum FilterError {
@@ -52,25 +52,16 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
             Some(expr) => {
                 let context = self.context.as_ref().map(Rc::clone);
                 let context = FilterContext::concat(context, Some(blend_context));
-
-                #[cfg(feature = "index")]
-                let result = index::check_expr(self.storage, context, expr);
-
-                #[cfg(not(feature = "index"))]
                 let context_option = Some(context).map(Rc::new);
-                #[cfg(not(feature = "index"))]
                 let aggregated = self.aggregated.as_ref().map(Rc::clone);
-                #[cfg(not(feature = "index"))]
-                let result = check_expr(self.storage, context_option, aggregated, expr).await;
 
-                result
+                check_expr(self.storage, context_option, aggregated, expr).await
             }
             None => Ok(true),
         }
     }
 }
 
-#[cfg(not(feature = "index"))]
 #[async_recursion(?Send)]
 pub async fn check_expr<T: 'static + Debug>(
     storage: &dyn Store<T>,

@@ -9,6 +9,7 @@ use sled::IVec;
 use super::{error::err_into, SledStorage};
 use crate::{Condition, Index, IndexError, MutResult, Row, RowIter, Schema, Value};
 use fstrings::*;
+use std::fmt::Debug;
 
 #[async_trait(?Send)]
 impl Index for SledStorage {
@@ -25,11 +26,29 @@ impl Index for SledStorage {
         Ok((self, ()))
     }
 
+    async fn get_by_key<T: Debug>(&self, table_name: &str, key: IVec) -> Result<Row> {
+        let prefix = format!("data/{}/", table_name);
+        let prefix = prefix.into_bytes().into_iter();
+        let concat = |values: Vec<Vec<u8>>| {
+            values.into_iter().fold(prefix, |result, value| {
+                let value = value
+                    .iter()
+                    .fold(String::from(""), |result, value| f!("{result}{value}"));
+                f!("{result}/{value}")
+            })
+        };
+        let key = concat(key);
+
+        let (_, row) = self.tree.get(key)?;
+        let row = bincode::deserialize(&row).map_err(err_into)?;
+        Ok(row)
+    }
+
     async fn get_indexed_keys<T>(
-        self,
+        &self,
         condition: Condition,
         table_name: &str,
-    ) -> MutResult<Self, Vec<IVec>> {
+    ) -> Result<Vec<IVec>> {
         let ((min, max), column_name) = match condition {
             Condition::Equals { column_name, value } => ((Some(value), Some(value)), column_name),
             Condition::GreaterThanOrEquals { column_name, value } => {
@@ -41,10 +60,9 @@ impl Index for SledStorage {
             //GreaterThan => ??,
             //LessThan => ??,
             _ => {
-                return Err((
-                    self,
+                return Err(
                     IndexError::Unimplemented(String::from("Unimplemented condition")).into(),
-                ))
+                )
             }
         };
 
@@ -83,19 +101,17 @@ impl Index for SledStorage {
         let (min, max) = (concat(min), concat(max));
         let (min, max) = (min.into_bytes().into_iter(), max.into_bytes().into_iter());
         let (min, max): (IVec, IVec) = (prefix.chain(min).collect(), prefix.chain(max).collect());
-        Ok((
-            self,
-            self.tree
-                .range(Range {
-                    start: min,
-                    end: max,
-                })
-                .filter_map(|item| {
-                    item.map(|(key, primary_key)| primary_key)
-                        .map_err(err_into)
-                        .ok()
-                })
-                .collect::<Vec<IVec>>(),
-        ))
+        Ok(self
+            .tree
+            .range(Range {
+                start: min,
+                end: max,
+            })
+            .filter_map(|item| {
+                item.map(|(key, primary_key)| primary_key)
+                    .map_err(err_into)
+                    .ok()
+            })
+            .collect::<Vec<IVec>>())
     }
 }

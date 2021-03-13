@@ -8,10 +8,11 @@ use thiserror::Error as ThisError;
 use sqlparser::ast::{ColumnDef, Ident};
 
 use super::context::BlendContext;
+use super::filter::index;
 use super::filter::Filter;
 use crate::data::Row;
 use crate::result::{Error, Result};
-use crate::store::Store;
+use crate::store::{Index, Store};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum FetchError {
@@ -19,8 +20,8 @@ pub enum FetchError {
     TableNotFound(String),
 }
 
-pub async fn fetch_columns<T: 'static + Debug>(
-    storage: &dyn Store<T>,
+pub async fn fetch_columns<T: 'static + Debug, U: Store<T> + Index>(
+    storage: &U,
     table_name: &str,
 ) -> Result<Vec<Ident>> {
     Ok(storage
@@ -39,8 +40,12 @@ pub async fn fetch<'a, T: 'static + Debug>(
     columns: Rc<[Ident]>,
     filter: Filter<'a, T>,
 ) -> Result<impl TryStream<Ok = (Rc<[Ident]>, T, Row), Error = Error> + 'a> {
-    let filter = Rc::new(filter);
+    #[cfg(feature = "index")]
+    let rows = index::fetch(storage, table_name, columns, filter);
 
+    #[cfg(not(feature = "index"))]
+    let filter = Rc::new(filter);
+    #[cfg(not(feature = "index"))]
     let rows = storage
         .scan_data(table_name)
         .await
