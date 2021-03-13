@@ -6,9 +6,9 @@ use std::rc::Rc;
 use crate::executor::{execute, Payload};
 use crate::parse_sql::parse;
 use crate::result::Result;
-use crate::store::{AlterTable, Store, StoreMut};
+use crate::store::{AlterTable, AutoIncrement, Store, StoreMut};
 
-pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + AutoIncrement>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
 ) -> Result<Payload> {
@@ -45,7 +45,7 @@ pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 /// Actual test cases are in [/src/tests/](https://github.com/gluesql/gluesql/blob/main/src/tests/),
 /// not in `/tests/`.
 #[async_trait]
-pub trait Tester<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable> {
+pub trait Tester<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + AutoIncrement> {
     fn new(namespace: &str) -> Self;
 
     fn get_cell(&mut self) -> Rc<RefCell<Option<U>>>;
@@ -57,7 +57,7 @@ macro_rules! test_case {
         pub async fn $name<T, U>(mut tester: impl tests::Tester<T, U>)
         where
             T: 'static + std::fmt::Debug,
-            U: Store<T> + StoreMut<T> + AlterTable,
+            U: Store<T> + StoreMut<T> + AlterTable + AutoIncrement,
         {
             use std::rc::Rc;
 

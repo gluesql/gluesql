@@ -5,10 +5,7 @@ use sled::{
 };
 
 use super::{err_into, error::StorageError, SledStorage};
-#[cfg(feature = "auto-increment")]
-use crate::data::Value;
 use crate::{MutResult, Row, Schema, StoreMut};
-use fstrings::*;
 
 macro_rules! try_into {
     ($self: expr, $expr: expr) => {
@@ -108,24 +105,6 @@ impl StoreMut<IVec> for SledStorage {
                 tree.remove(key)?;
             }
 
-            Ok(())
-        })
-    }
-
-    #[cfg(feature = "auto-increment")]
-    async fn set_generator(
-        self,
-        table_name: &str,
-        column_name: &str,
-        value: Value,
-    ) -> MutResult<Self, ()> {
-        transaction!(self, |tree| {
-            let key = f!("generator/{table_name}/{column_name}");
-            let key = key.as_bytes();
-            let value = bincode::serialize(&value)
-                .map_err(err_into)
-                .map_err(ConflictableTransactionError::Abort)?;
-            tree.insert(key, value)?;
             Ok(())
         })
     }

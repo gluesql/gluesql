@@ -11,7 +11,7 @@ use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
 use crate::data::{get_name, Row, Schema};
 use crate::parse_sql::Query;
 use crate::result::{MutResult, Result};
-use crate::store::{AlterTable, Store, StoreMut};
+use crate::store::{AlterTable, AutoIncrement, Store, StoreMut};
 
 use super::create_table::validate_table;
 use super::fetch::{fetch, fetch_columns};
@@ -58,7 +58,7 @@ pub enum Payload {
     AlterTable,
 }
 
-pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + AutoIncrement>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {

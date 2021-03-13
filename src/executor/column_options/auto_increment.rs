@@ -1,8 +1,9 @@
+#![cfg(feature = "auto-increment")]
 use {
     crate::{
         data::{Row, Value},
         result::MutResult,
-        store::{AlterTable, Store, StoreMut},
+        store::{AlterTable, AutoIncrement, Store, StoreMut},
     },
     futures::executor,
     sqlparser::{
@@ -13,7 +14,7 @@ use {
     std::fmt::Debug,
 };
 
-pub fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + AutoIncrement>(
     storage: U,
     rows: Vec<Row>,
     column_defs: &[ColumnDef],
@@ -46,23 +47,16 @@ pub fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
                     .fold(storage, |storage, (index, column)| {
                         if matches!(row[*index], Value::Null) {
                             let name = &column.name.value;
-                            let generated =
-                                executor::block_on(storage.get_generator(table_name, name)).ok();
-                            let value = match generated {
-                                Some(Value::I64(value)) => value,
-                                _ => 1,
-                            };
 
-                            row[*index] = Value::I64(value);
-                            println!("Row: {:?}", row[*index]);
-
-                            match executor::block_on(storage.set_generator(
-                                table_name,
-                                name,
-                                Value::I64(value + 1),
-                            )) {
-                                Ok((storage, _)) => storage,
-                                Err((storage, _)) => storage,
+                            match executor::block_on(storage.generate_value(table_name, name)) {
+                                Ok((storage, value)) => {
+                                    row[*index] = value;
+                                    storage
+                                }
+                                Err((storage, e)) => {
+                                    println!("ERROR! {:?}", e);
+                                    storage
+                                }
                             }
                         } else {
                             storage

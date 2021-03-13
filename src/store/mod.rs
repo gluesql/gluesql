@@ -5,6 +5,13 @@ pub use alter_table::*;
 #[cfg(not(feature = "alter-table"))]
 pub trait AlterTable {}
 
+#[cfg(feature = "auto-increment")]
+mod auto_increment;
+#[cfg(feature = "auto-increment")]
+pub use auto_increment::AutoIncrement;
+#[cfg(not(feature = "auto-increment"))]
+pub trait AutoIncrement {}
+
 use async_trait::async_trait;
 use std::fmt::Debug;
 use std::marker::Sized;
@@ -12,10 +19,9 @@ use std::marker::Sized;
 use crate::data::{Row, Schema};
 use crate::result::{MutResult, Result};
 
-#[cfg(feature = "auto-increment")]
-use crate::data::Value;
-
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
+
+// TODO: Make the `U: Store<T> + StoreMut<T> + AlterTable + AutoIncrement` which appears everywhere dynamic so we don't have to change lots of things for each new trait.
 
 /// By implementing `Store` trait, you can run `SELECT` queries.
 #[async_trait(?Send)]
@@ -23,9 +29,6 @@ pub trait Store<T: Debug> {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter<T>>;
-
-    #[cfg(feature = "auto-increment")]
-    async fn get_generator(&self, table_name: &str, column_name: &str) -> Result<Value>;
 }
 
 /// `StoreMut` takes role of mutation, related to `INSERT`, `CREATE`, `DELETE`, `DROP` and
@@ -44,12 +47,4 @@ where
     async fn update_data(self, rows: Vec<(T, Row)>) -> MutResult<Self, ()>;
 
     async fn delete_data(self, keys: Vec<T>) -> MutResult<Self, ()>;
-
-    #[cfg(feature = "auto-increment")]
-    async fn set_generator(
-        self,
-        table_name: &str,
-        column_name: &str,
-        value: Value,
-    ) -> MutResult<Self, ()>;
 }
