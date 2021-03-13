@@ -47,25 +47,34 @@ fn scan<T: 'static + Debug, U: Store<T> + Index>(
 fn eval_link<T: 'static + Debug, U: Store<T> + Index>(
     link: Link,
     storage: &U,
-    table: &str,
+    table_name: &str,
+    columns: Rc<[Ident]>,
     all_keys: &KeyIter,
     all_rows: &RowIter<T>,
 ) -> KeyIter {
     match link {
-        Link::And(link_a, link_b) => eval_link(link_a, storage.clone(), table, all_keys)
-            .merge_join_by(eval_link(link_b, storage, table, all_keys))
-            .filter_map(|item| {
-                if let EitherOrBoth::Both(key) = item {
-                    Some(key)
-                } else {
-                    None
-                }
-            }),
-        Link::Or(link_a, link_b) => eval_link(link_a, storage.clone, table, all_keys)
-            .merge_join_by(eval_link(link_b, storage, table, all_keys))
+        Link::And(link_a, link_b) => {
+            eval_link(link_a, storage.clone(), table_name, columns, all_keys)
+                .merge_join_by(eval_link(link_b, storage, table_name, columns, all_keys))
+                .filter_map(|item| {
+                    if let EitherOrBoth::Both(key) = item {
+                        Some(key)
+                    } else {
+                        None
+                    }
+                })
+        }
+        Link::Or(link_a, link_b) => eval_link(link_a, storage.clone, table_name, columns, all_keys)
+            .merge_join_by(eval_link(link_b, storage, table_name, columns, all_keys))
             .map(|item| item.unwrap()),
         Link::Not(link) => all_keys
-            .merge_join_by(eval_link(link, storage.clone(), table, all_keys))
+            .merge_join_by(eval_link(
+                link,
+                storage.clone(),
+                table_name,
+                columns,
+                all_keys,
+            ))
             .filter_map(|item| {
                 if let EitherOrBoth::Left(key) = item {
                     Some(key)
@@ -73,31 +82,42 @@ fn eval_link<T: 'static + Debug, U: Store<T> + Index>(
                     None
                 }
             }),
-        Link::Condition(condition) => eval_condition(condition, storage, table, all_keys),
+        Link::Condition(condition) => {
+            eval_condition(condition, storage, table_name, columns, all_keys)
+        }
     }
 }
 
 fn eval_condition<T: 'static + Debug, U: Store<T> + Index>(
     condition: Condition,
     storage: &U,
-    table: &str,
+    table_name: &str,
+    columns: Rc<[Ident]>,
     all_keys: &KeyIter,
     all_rows: &RowIter<T>,
 ) -> KeyIter {
     if condition.column.is_indexed {
-        storage.get_indexed(condition, storage, table)
+        storage.get_indexed(condition, storage, table_name)
     } else {
         all_rows.filter_map(|key, row| {
             if match condition {
                 Condition::True => true,
                 Condition::False => false,
                 Condition::Equals { column_name, value } => {
-                    value == row.get_value(condition.column.index)
+                    value == row.get_value(get_column_index_by_name(columns, column_name))
                 }
-                Condition::GreaterThanOrEquals { column_name, value } => value >= condition.value,
-                Condition::LessThanOrEquals { column_name, value } => value <= condition.value,
-                Condition::GreaterThan { column_name, value } => value > condition.value,
-                Condition::LessThan { column_name, value } => value < condition.value,
+                Condition::GreaterThanOrEquals { column_name, value } => {
+                    value >= row.get_value(get_column_index_by_name(columns, column_name))
+                }
+                Condition::LessThanOrEquals { column_name, value } => {
+                    value <= row.get_value(get_column_index_by_name(columns, column_name))
+                }
+                Condition::GreaterThan { column_name, value } => {
+                    value > row.get_value(get_column_index_by_name(columns, column_name))
+                }
+                Condition::LessThan { column_name, value } => {
+                    value < row.get_value(get_column_index_by_name(columns, column_name))
+                }
                 _ => false,
             } {
                 Some(key)
@@ -106,4 +126,8 @@ fn eval_condition<T: 'static + Debug, U: Store<T> + Index>(
             }
         });
     }
+}
+
+fn get_column_index_by_name(columns: Rc<[Ident]>, name: &str) -> usize {
+    columns.iter().position(|column| column.name == name)
 }

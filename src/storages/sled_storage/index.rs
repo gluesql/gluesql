@@ -7,7 +7,7 @@ use std::str;
 use sled::IVec;
 
 use super::{error::err_into, SledStorage};
-use crate::{Condition, Index, IndexError, MutResult, Row, RowIter, Schema, Value};
+use crate::{Condition, Index, IndexError, MutResult, Result, Row, RowIter, Schema, Value};
 use fstrings::*;
 use std::fmt::Debug;
 
