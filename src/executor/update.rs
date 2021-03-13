@@ -73,7 +73,6 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                 match evaluate(self.storage, context, None, value, false).await? {
                     Evaluated::LiteralRef(v) => Value::try_from_literal(data_type, v),
                     Evaluated::Literal(v) => Value::try_from_literal(data_type, &v),
-                    Evaluated::StringRef(v) => Ok(Value::Str(v.to_string())),
                     Evaluated::ValueRef(v) => Ok(v.clone()),
                     Evaluated::Value(v) => Ok(v),
                 }

@@ -39,12 +39,6 @@ pub enum EvaluateError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedLiteralBinaryArithmetic(String, String),
 
-    #[error("unsupported evaluated binary arithmetic between {0} and {1}")]
-    UnsupportedEvaluatedBinaryArithmetic(String, String),
-
-    #[error("unsupported evaluated unary arithmetic of {0}")]
-    UnsupportedEvaluatedUnaryArithmetic(String),
-
     #[error("unimplemented")]
     Unimplemented,
 

@@ -85,19 +85,6 @@ test_case!(arithmetic, async move {
                 .into(),
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
         ),
-        (
-            EvaluateError::UnsupportedEvaluatedBinaryArithmetic(
-                r#"StringRef("asdf")"#.to_owned(),
-                r#"LiteralRef(Number("1", false))"#.to_owned(),
-            )
-            .into(),
-            r#"SELECT * FROM Arith WHERE "asdf" + 1 > 1"#,
-        ),
-        (
-            EvaluateError::UnsupportedEvaluatedUnaryArithmetic(r#"StringRef("asdf")"#.to_owned())
-                .into(),
-            r#"SELECT * FROM Arith WHERE -"asdf" = TRUE;"#,
-        ),
     ];
 
     for (error, sql) in test_cases.into_iter() {

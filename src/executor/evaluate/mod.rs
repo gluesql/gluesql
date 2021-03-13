@@ -47,7 +47,9 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             _ => Err(EvaluateError::Unimplemented.into()),
         },
         Expr::Identifier(ident) => match ident.quote_style {
-            Some(_) => Ok(Evaluated::StringRef(&ident.value)),
+            Some(_) => Ok(Evaluated::Literal(Literal::SingleQuotedString(
+                ident.value.to_string(),
+            ))),
             None => {
                 let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
 

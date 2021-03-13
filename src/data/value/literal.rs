@@ -107,7 +107,8 @@ impl TryFromLiteral for Value {
 
                 Ok(Value::F64(v))
             }
-            (DataType::Text, Literal::Number(v, false)) => Ok(Value::Str(v.to_string())),
+            (DataType::Text, Literal::Number(v, false))
+            | (DataType::Text, Literal::SingleQuotedString(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Boolean(v)) => {
                 let v = if *v { "TRUE" } else { "FALSE" };
 
