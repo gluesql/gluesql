@@ -1,8 +1,13 @@
+use crate::Condition;
 use crate::MutResult;
 use async_trait::async_trait;
 use serde::Serialize;
 use std::fmt::Debug;
 use thiserror::Error;
+
+use crate::data::Row;
+use crate::result::Result;
+use crate::RowIter;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum IndexError {
@@ -16,9 +21,11 @@ pub enum IndexError {
     UniqueIndexContainsDuplicates(String),
     #[error("The row {0} was not found")]
     RowNotFound(String),
+    #[error("Unimplemented: {0}")]
+    Unimplemented(String),
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 pub trait Index
 where
     Self: Sized,
@@ -35,4 +42,10 @@ where
 
     /// Drops one or more already created index(es)
     async fn drop(self, table_name: &str, row_names: Vec<&str>) -> MutResult<Self, ()>;
+
+    async fn get_indexed_keys<T: Debug>(
+        self,
+        condition: Condition,
+        table_name: &str,
+    ) -> MutResult<Self, Vec<IVec>>;
 }

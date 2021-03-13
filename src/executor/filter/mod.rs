@@ -15,7 +15,9 @@ use super::select::select;
 use crate::data::Value;
 use crate::result::Result;
 use crate::store::Store;
-use crate::{convert_where_query, Condition, Link};
+
+#[cfg(feature = "index")]
+mod index;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum FilterError {
@@ -50,31 +52,21 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
             Some(expr) => {
                 let context = self.context.as_ref().map(Rc::clone);
                 let context = FilterContext::concat(context, Some(blend_context));
-                let context = Some(context).map(Rc::new);
-                let aggregated = self.aggregated.as_ref().map(Rc::clone);
 
-                check_expr(self.storage, context, aggregated, expr).await
+                #[cfg(feature = "index")]
+                let result = index::check_expr(self.storage, context, expr);
+
+                #[cfg(not(feature = "index"))]
+                let context_option = Some(context).map(Rc::new);
+                #[cfg(not(feature = "index"))]
+                let aggregated = self.aggregated.as_ref().map(Rc::clone);
+                #[cfg(not(feature = "index"))]
+                let result = check_expr(self.storage, context_option, aggregated, expr).await;
+
+                result
             }
             None => Ok(true),
         }
-    }
-}
-
-//Doing this for the sake of testing
-//TODO: Replace this with a proper way to deal with feature flags.
-#[cfg(feature = "index")]
-#[async_recursion(?Send)]
-pub async fn check_expr<T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    filter_context: Option<Rc<FilterContext<'async_recursion>>>,
-    aggregated: Option<Rc<HashMap<&'async_recursion Function, Value>>>,
-    expr: &Expr,
-) -> Result<bool> {
-    match convert_where_query(expr) {
-        Ok(Link::Condition(Condition::True)) => Ok(true),
-        Ok(Link::Condition(Condition::False)) => Ok(false),
-        Ok(_) => Err(FilterError::Unimplemented.into()),
-        Err(error) => Err(error),
     }
 }
 

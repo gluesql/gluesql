@@ -21,26 +21,26 @@ macro_rules! condition_result {
 }
 
 /// Converts the SQL AST directly to a [crate::data::conditions::Link] type.
-pub async fn convert_where_query(where_expression: &Expr) -> Result<Link> {
+pub fn convert_where_query(where_expression: &Expr) -> Result<Link> {
     match where_expression {
         Expr::Value(_) | Expr::Wildcard => {
             // A where without any value is weird.
             Err(ConvertError::Unsupported.into())
         }
-        Expr::IsNull(expr) => {
-            let is_null = match evaluate(*expr.clone()).await? {
-                Evaluated::LiteralRef(Literal::Null)
-                | Evaluated::Literal(Literal::Null)
-                | Evaluated::ValueRef(Value::Null)
-                | Evaluated::Value(Value::Null) => true,
-                _ => false,
-            };
-            condition_result!(Condition::from_bool(is_null))
-        }
+        Expr::IsNull(expr) => match *expr.clone() {
+            Expr::Value(Literal::Null) => condition_result!(Condition::True),
+            Expr::Identifier(column_name) => condition_result!(Condition::IsNull {
+                column_name: column_name.value,
+            }),
+            _ => Err(ConvertError::Unimplemented(where_expression.to_string()).into()),
+        },
         Expr::IsNotNull(expr) => match *expr.clone() {
             Expr::Value(value) => {
-                condition_result!(Condition::from_bool(!matches!(value!(value), Value::Null)))
+                condition_result!(Condition::from_bool(!matches!(value, Literal::Null)))
             }
+            Expr::Identifier(column_name) => condition_result!(Condition::IsNotNull {
+                column_name: column_name.value,
+            }),
             _ => Err(ConvertError::Unimplemented(where_expression.to_string()).into()),
         },
         Expr::InList {
@@ -67,6 +67,35 @@ pub async fn convert_where_query(where_expression: &Expr) -> Result<Link> {
                     error
                 } else {
                     condition_result!(Condition::from_bool(result != *negated))
+                }
+            }
+            Expr::Identifier(column_name) => {
+                let mut error: Option<crate::result::Error> = None;
+                let list_elem = list
+                    .iter() // Doesn't stop at first error!
+                    .map(|expr| match expr {
+                        Expr::Value(value) => match Value::try_from(value) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                error = Some(err);
+                                Value::Null
+                            }
+                        },
+                        _ => {
+                            error = Some(
+                                ConvertError::Unimplemented(where_expression.to_string()).into(),
+                            );
+                            Value::Null
+                        }
+                    })
+                    .collect();
+                if let Some(error) = error {
+                    Err(error)
+                } else {
+                    condition_result!(Condition::InList {
+                        column_name: column_name.value,
+                        list_elem
+                    })
                 }
             }
             _ => Err(ConvertError::Unimplemented(where_expression.to_string()).into()),

@@ -1,9 +1,12 @@
 mod alter_table;
 mod error;
+mod index;
 mod store;
 mod store_mut;
 #[cfg(not(feature = "alter-table"))]
 impl crate::AlterTable for SledStorage {}
+#[cfg(not(feature = "index"))]
+impl crate::Index for SledStorage {}
 
 use sled::{self, Config, Db};
 use std::convert::TryFrom;
