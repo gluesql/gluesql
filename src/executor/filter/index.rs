@@ -4,7 +4,7 @@ use {
         convert_where_query, data::Row, Condition, Error, Index, Link, Result, RowIter, Store,
     },
     fstrings::*,
-    futures::stream::TryStream,
+    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     itertools::{EitherOrBoth, Itertools},
     sled::IVec,
     sqlparser::ast::Ident,
@@ -12,91 +12,133 @@ use {
     std::rc::Rc,
 };
 
-pub type KeyIter = Box<dyn Iterator<Item = IVec>>;
+pub type KeyIter<Key> = Box<dyn Iterator<Item = Key>>;
 
-pub async fn fetch<'a, T: 'static + Debug, U: Store<T> + Index>(
-    storage: &U,
+pub async fn fetch<'a, Key: 'static + Debug + Eq + Ord, Storage: Store<Key> + Index<Key>>(
+    storage: &'a Storage,
     table_name: &str,
     columns: Rc<[Ident]>,
-    filter: Filter<'a, T>,
-) -> Result<impl TryStream<Ok = (Rc<[Ident]>, T, Row), Error = Error> + 'a> {
+    filter: Filter<'a, Key>,
+) -> Result<impl TryStream<Ok = (Rc<[Ident]>, Key, Row), Error = Error> + 'a> {
     let where_query = filter.where_clause;
     let where_query = where_query.map(|where_query| convert_where_query(where_query));
     match where_query {
-        Some(Ok(Link::Condition(Condition::True))) | None => storage.scan_data(table_name),
-        Some(Ok(Link::Condition(Condition::False))) => Ok(false),
-        Some(Ok(other)) => scan(storage, table_name, columns, other),
+        Some(Ok(Link::Condition(Condition::True))) | None => {
+            scan(
+                storage,
+                table_name,
+                columns,
+                Link::Condition(Condition::True),
+            )
+            .await
+        } //storage.scan_data(table_name).await,
+        //Some(Ok(Link::Condition(Condition::False))) => Ok(false),
+        Some(Ok(other)) => scan(storage, table_name, columns, other).await,
         Some(Err(error)) => Err(error),
     }
 }
 
-fn scan<T: 'static + Debug, U: Store<T> + Index>(
-    storage: &U,
+async fn scan<Key: 'static + Debug + Eq + Ord, Storage: Store<Key> + Index<Key>>(
+    storage: &Storage,
     table_name: &str,
     columns: Rc<[Ident]>,
     link: Link,
-) -> Result<impl TryStream<Ok = (Rc<[Ident]>, T, Row), Error = Error>> {
-    // Todo: only do this if needed
-    let all_rows = storage.scan_data(table_name);
-    let all_keys = all_rows.map(|(key, _)| key);
-    let scan_keys = eval_link(link, storage.clone, table_name, &all_keys)
-        .map(|key| storage.get_by_key(table_name, key));
-    let scan_rows = scan_keys.map(|key| storage.get(key));
+) -> Result<impl TryStream<Ok = (Rc<[Ident]>, Key, Row), Error = Error>> {
+    let all_rows: RowIter<Key> = storage.scan_data(table_name).await?;
+    let all_keys: KeyIter<Key> = Box::new(
+        all_rows
+            .filter_map(|result| result.ok().map(|(key, _)| key))
+            .collect::<Vec<Key>>() // this seems unnecessary
+            .into_iter(),
+    );
+
+    let scan_keys = eval_link(
+        &link,
+        storage.clone(),
+        table_name,
+        columns,
+        &all_keys,
+        &all_rows,
+    )
+    .await;
+    let scan_rows = Box::new(
+        stream::iter(scan_keys)
+            .filter_map(|key| async {
+                Some((key, storage.get_by_key(table_name, key).await.ok()?))
+            }) // Probably shouldn'Key be doing this...
+            .collect(),
+    );
+
+    Ok(scan_rows)
 }
 
-fn eval_link<T: 'static + Debug, U: Store<T> + Index>(
-    link: Link,
-    storage: &U,
+async fn eval_link<Key: 'static + Debug + Eq + Ord, Storage: Store<Key> + Index<Key>>(
+    link: &Link,
+    storage: &Storage,
     table_name: &str,
     columns: Rc<[Ident]>,
-    all_keys: &KeyIter,
-    all_rows: &RowIter<T>,
-) -> KeyIter {
-    match link {
-        Link::And(link_a, link_b) => {
-            eval_link(link_a, storage.clone(), table_name, columns, all_keys)
-                .merge_join_by(eval_link(link_b, storage, table_name, columns, all_keys))
-                .filter_map(|item| {
-                    if let EitherOrBoth::Both(key) = item {
-                        Some(key)
-                    } else {
-                        None
-                    }
-                })
-        }
-        Link::Or(link_a, link_b) => eval_link(link_a, storage.clone, table_name, columns, all_keys)
-            .merge_join_by(eval_link(link_b, storage, table_name, columns, all_keys))
-            .map(|item| item.unwrap()),
-        Link::Not(link) => all_keys
-            .merge_join_by(eval_link(
-                link,
-                storage.clone(),
+    all_keys: &KeyIter<Key>,
+    all_rows: &RowIter<Key>,
+) -> Result<Box<KeyIter<Key>>> {
+    macro_rules! eval_link {
+        ($link:expr) => {
+            eval_link(
+                $link,
+                storage,
                 table_name,
-                columns,
+                columns.clone(),
                 all_keys,
-            ))
-            .filter_map(|item| {
-                if let EitherOrBoth::Left(key) = item {
-                    Some(key)
-                } else {
-                    None
-                }
-            }),
-        Link::Condition(condition) => {
-            eval_condition(condition, storage, table_name, columns, all_keys)
-        }
+                all_rows,
+            )
+            .await?
+        };
     }
+    macro_rules! merge {
+        ($l:expr, $r:expr, $f:expr) => {
+            Box::new(
+                $l.merge_join_by($r, |l, r| l.cmp(r))
+                    .filter_map($f)
+                    .collect::<Vec<Key>>()
+                    .into_iter(),
+            )
+        };
+    }
+
+    Ok(match link {
+        Link::And(link_l, link_r) => merge!(eval_link!(link_l), eval_link!(link_r), |item| item
+            .both()
+            .map(|(l, r)| l)),
+        Link::Or(link_l, link_r) => merge!(eval_link!(link_l), eval_link!(link_r), |item| if item
+            .is_right()
+        {
+            item.right()
+        } else {
+            item.left()
+        }),
+        Link::Not(link) => merge!(all_keys, eval_link!(link), |item| if item.is_left() {
+            item.left()
+        } else {
+            None
+        }),
+        Link::Condition(condition) => {
+            eval_condition(condition, storage, table_name, columns, all_keys, all_rows).await
+        }
+    })
 }
 
-fn eval_condition<T: 'static + Debug, U: Store<T> + Index>(
-    condition: Condition,
-    storage: &U,
+async fn eval_condition<
+    Key: 'static + Debug + Eq + Ord,
+    Storage: Store<Key> + Index<Key>,
+    KeyIter: Iterator<Item = Key> + Clone,
+>(
+    condition: &Condition,
+    storage: &Storage,
     table_name: &str,
     columns: Rc<[Ident]>,
     all_keys: &KeyIter,
-    all_rows: &RowIter<T>,
+    all_rows: &RowIter<Key>,
 ) -> KeyIter {
-    if condition.column.is_indexed {
+    if false {
         storage.get_indexed(condition, storage, table_name)
     } else {
         all_rows.filter_map(|key, row| {

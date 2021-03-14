@@ -12,7 +12,7 @@ use fstrings::*;
 use std::fmt::Debug;
 
 #[async_trait(?Send)]
-impl Index for SledStorage {
+impl Index<IVec> for SledStorage {
     async fn create(
         self,
         table_name: &str,
@@ -26,10 +26,10 @@ impl Index for SledStorage {
         Ok((self, ()))
     }
 
-    async fn get_by_key<T: Debug>(&self, table_name: &str, key: IVec) -> Result<Row> {
+    async fn get_by_key(&self, table_name: &str, key: IVec) -> Result<Row> {
         let prefix = format!("data/{}/", table_name);
         let prefix = prefix.into_bytes().into_iter();
-        let concat = |values: Vec<Vec<u8>>| {
+        let concat = |values: Vec<IVec>| {
             values.into_iter().fold(prefix, |result, value| {
                 let value = value
                     .iter()
@@ -44,11 +44,7 @@ impl Index for SledStorage {
         Ok(row)
     }
 
-    async fn get_indexed_keys<T>(
-        &self,
-        condition: Condition,
-        table_name: &str,
-    ) -> Result<Vec<IVec>> {
+    async fn get_indexed_keys(&self, condition: Condition, table_name: &str) -> Result<Vec<IVec>> {
         let ((min, max), column_name) = match condition {
             Condition::Equals { column_name, value } => ((Some(value), Some(value)), column_name),
             Condition::GreaterThanOrEquals { column_name, value } => {

@@ -20,7 +20,7 @@ pub enum FetchError {
     TableNotFound(String),
 }
 
-pub async fn fetch_columns<T: 'static + Debug, U: Store<T> + Index>(
+pub async fn fetch_columns<T: 'static + Debug + Eq + Ord, U: Store<T> + Index<T>>(
     storage: &U,
     table_name: &str,
 ) -> Result<Vec<Ident>> {
@@ -34,8 +34,8 @@ pub async fn fetch_columns<T: 'static + Debug, U: Store<T> + Index>(
         .collect::<Vec<Ident>>())
 }
 
-pub async fn fetch<'a, T: 'static + Debug>(
-    storage: &dyn Store<T>,
+pub async fn fetch<'a, T: 'static + Debug + Eq + Ord, U: Store<T> + Index<T>>(
+    storage: &'a U,
     table_name: &'a str,
     columns: Rc<[Ident]>,
     filter: Filter<'a, T>,

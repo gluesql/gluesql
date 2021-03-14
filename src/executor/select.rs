@@ -16,10 +16,10 @@ use super::fetch::fetch_columns;
 use super::filter::Filter;
 use super::join::Join;
 use super::limit::Limit;
+use crate::convert_where_query;
 use crate::data::{get_name, Row, Table};
 use crate::result::{Error, Result};
-use crate::store::Store;
-use crate::convert_where_query;
+use crate::store::{Index, Store};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum SelectError {
@@ -127,8 +127,8 @@ fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-pub async fn select_with_labels<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+pub async fn select_with_labels<'a, T: 'static + Debug + Eq + Ord, U: Store<T> + Index<T>>(
+    storage: &'a U,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
@@ -164,7 +164,6 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     if let Some(where_query) = where_clause {
         convert_where_query(where_query);
     }
-
 
     let TableWithJoins { relation, joins } = &table_with_joins;
     let table = Table::new(relation)?;
@@ -257,8 +256,8 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     Ok((labels, rows))
 }
 
-pub async fn select<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+pub async fn select<'a, T: 'static + Debug + Eq + Ord, U: Store<T> + Index<T>>(
+    storage: &'a U,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {

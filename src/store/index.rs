@@ -27,7 +27,7 @@ pub enum IndexError {
 }
 
 #[async_trait(?Send)]
-pub trait Index
+pub trait Index<T: Debug + Eq + Ord>
 where
     Self: Sized,
 {
@@ -44,11 +44,7 @@ where
     /// Drops one or more already created index(es)
     async fn drop(self, table_name: &str, row_names: Vec<&str>) -> MutResult<Self, ()>;
 
-    async fn get_by_key<T: Debug>(&self, table_name: &str, key: IVec) -> Result<Row>;
+    async fn get_by_key(&self, table_name: &str, key: T) -> Result<Row>;
 
-    async fn get_indexed_keys<T: Debug>(
-        &self,
-        condition: Condition,
-        table_name: &str,
-    ) -> Result<Vec<IVec>>;
+    async fn get_indexed_keys(&self, condition: Condition, table_name: &str) -> Result<Vec<T>>;
 }
