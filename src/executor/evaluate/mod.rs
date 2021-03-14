@@ -43,11 +43,11 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             Literal::Number(_, false)
             | Literal::Boolean(_)
             | Literal::SingleQuotedString(_)
-            | Literal::Null => Ok(Evaluated::LiteralRef(value)),
+            | Literal::Null => Ok(Evaluated::from(value)),
             _ => Err(EvaluateError::Unimplemented.into()),
         },
         Expr::Identifier(ident) => match ident.quote_style {
-            Some(_) => Ok(Evaluated::Literal(Literal::SingleQuotedString(
+            Some(_) => Ok(Evaluated::from(Literal::SingleQuotedString(
                 ident.value.to_string(),
             ))),
             None => {

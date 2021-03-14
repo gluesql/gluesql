@@ -18,18 +18,9 @@ use {
 
 use evaluated_ref::EvaluatedRef;
 
-/// `Literal`is used when it is not possible to specify what kind of `Value`
-/// can be applied.
-///
-/// * `1 + 1` is converted into `LiteralRef + LiteralRef`, `LiteralRef` of `1` can
-/// become `Value::I64` but it can be also `Value::F64`.
-///
-/// * Evaluated result of `1 + 1` becomes `Literal`, not `LiteralRef` because executor has
-/// ownership of `1 + 1`.
 #[derive(Clone)]
 pub enum Evaluated<'a> {
-    LiteralRef(&'a Literal),
-    Literal(Literal),
+    Literal(Cow<'a, Literal>),
     Value(Cow<'a, Value>),
 }
 
@@ -42,6 +33,18 @@ impl<'a> From<Value> for Evaluated<'a> {
 impl<'a> From<&'a Value> for Evaluated<'a> {
     fn from(value: &'a Value) -> Self {
         Evaluated::Value(Cow::Borrowed(value))
+    }
+}
+
+impl<'a> From<Literal> for Evaluated<'a> {
+    fn from(literal: Literal) -> Self {
+        Evaluated::Literal(Cow::Owned(literal))
+    }
+}
+
+impl<'a> From<&'a Literal> for Evaluated<'a> {
+    fn from(literal: &'a Literal) -> Self {
+        Evaluated::Literal(Cow::Borrowed(literal))
     }
 }
 
@@ -68,8 +71,7 @@ impl TryInto<Value> for Evaluated<'_> {
 
     fn try_into(self) -> Result<Value> {
         match self {
-            Evaluated::LiteralRef(v) => Value::try_from(v),
-            Evaluated::Literal(v) => Value::try_from(&v),
+            Evaluated::Literal(v) => Value::try_from(v.as_ref()),
             Evaluated::Value(v) => Ok(v.into_owned()),
         }
     }
@@ -85,12 +87,11 @@ impl<'a> Evaluated<'a> {
                     |_| Ok(self.to_owned()),
                 )
                 .map_err(|_| EvaluateError::LiteralUnaryOperationOnNonNumeric.into()),
-            Literal::Null => Ok(Evaluated::Literal(Literal::Null)),
+            Literal::Null => Ok(Evaluated::from(Literal::Null)),
             _ => Err(EvaluateError::LiteralUnaryOperationOnNonNumeric.into()),
         };
 
         match self {
-            LiteralRef(v) => unary_plus(v),
             Literal(v) => unary_plus(&v),
             Value(v) => v.unary_plus().map(Evaluated::from),
         }
@@ -113,8 +114,7 @@ impl<'a> Evaluated<'a> {
         };
 
         match self {
-            LiteralRef(v) => unary_minus(v).map(Evaluated::Literal),
-            Literal(v) => unary_minus(&v).map(Evaluated::Literal),
+            Literal(v) => unary_minus(&v).map(Evaluated::from),
             Value(v) => v.unary_minus().map(Evaluated::from),
         }
     }
@@ -152,7 +152,6 @@ impl<'a> Evaluated<'a> {
         let cast_value = |value: &data::Value| value.cast(data_type);
 
         match self {
-            LiteralRef(value) => cast_literal(value),
             Literal(value) => cast_literal(&value),
             Value(value) => cast_value(&value),
         }
@@ -162,8 +161,7 @@ impl<'a> Evaluated<'a> {
     pub fn is_some(&self) -> bool {
         match self {
             Evaluated::Value(v) => v.is_some(),
-            Evaluated::Literal(v) => v != &Literal::Null,
-            Evaluated::LiteralRef(v) => v != &&Literal::Null,
+            Evaluated::Literal(v) => v.as_ref() != &Literal::Null,
         }
     }
 }

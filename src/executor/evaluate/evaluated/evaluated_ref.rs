@@ -14,7 +14,6 @@ pub enum EvaluatedRef<'a> {
 impl<'a> From<&'a Evaluated<'a>> for EvaluatedRef<'a> {
     fn from(evaluated: &'a Evaluated<'a>) -> Self {
         match evaluated {
-            Evaluated::LiteralRef(v) => Literal(v),
             Evaluated::Literal(v) => Literal(v),
             Evaluated::Value(v) => Value(v),
         }
@@ -85,12 +84,12 @@ macro_rules! binary_op {
                             (Ok(l), Ok(r)) => Ok(Literal::Number((l $op r).to_string(), false)),
                             _ => Err(EvaluateError::UnreachableLiteralArithmetic.into()),
                         },
-                    }.map(Evaluated::Literal)
+                    }.map(Evaluated::from)
                 }
                 (Literal::Null, Literal::Number(_, false))
                 | (Literal::Number(_, false), Literal::Null)
                 | (Literal::Null, Literal::Null) => {
-                    Ok(Evaluated::Literal(Literal::Null))
+                    Ok(Evaluated::from(Literal::Null))
                 }
                 _ => Err(
                     EvaluateError::UnsupportedLiteralBinaryArithmetic(
