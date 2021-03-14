@@ -152,7 +152,7 @@ pub async fn check_expr<T: 'static + Debug>(
                     async move {
                         let value = row.take_first_value()?;
 
-                        (target == &Evaluated::ValueRef(&value))
+                        (target == &Evaluated::from(&value))
                             .as_some(Ok(!negated))
                             .transpose()
                     }

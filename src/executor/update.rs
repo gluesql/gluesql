@@ -71,10 +71,8 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                 let ColumnDef { data_type, .. } = column_def;
 
                 match evaluate(self.storage, context, None, value, false).await? {
-                    Evaluated::LiteralRef(v) => Value::try_from_literal(data_type, v),
-                    Evaluated::Literal(v) => Value::try_from_literal(data_type, &v),
-                    Evaluated::ValueRef(v) => Ok(v.clone()),
-                    Evaluated::Value(v) => Ok(v),
+                    Evaluated::Literal(v) => Value::try_from_literal(data_type, v.as_ref()),
+                    Evaluated::Value(v) => Ok(v.into_owned()),
                 }
                 .map(Some)
             }
