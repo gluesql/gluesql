@@ -19,8 +19,7 @@ impl TryFrom<&Evaluated<'_>> for GroupKey {
         match evaluated {
             Evaluated::LiteralRef(l) => Value::try_from(*l)?.try_into(),
             Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
-            Evaluated::ValueRef(v) => (*v).try_into(),
-            Evaluated::Value(v) => v.try_into(),
+            Evaluated::Value(v) => v.as_ref().try_into(),
         }
     }
 }

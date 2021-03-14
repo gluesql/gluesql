@@ -60,7 +60,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                         Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
                     }
                 }
-                .map(Evaluated::Value)
+                .map(Evaluated::from)
             }
         },
         Expr::Nested(expr) => eval(&expr).await,
@@ -78,11 +78,11 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 (None, true) => Ok(Value::Null),
                 (None, false) => Err(EvaluateError::ValueNotFound(column.to_string()).into()),
             }
-            .map(Evaluated::Value)
+            .map(Evaluated::from)
         }
         Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))
             .await?
-            .map_ok(|row| row.take_first_value().map(Evaluated::Value))
+            .map_ok(|row| row.take_first_value().map(Evaluated::from))
             .take(1)
             .collect::<Vec<_>>()
             .await
@@ -111,7 +111,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             }
         }
         Expr::Function(func) => match aggregated.as_ref().map(|aggr| aggr.get(func)).flatten() {
-            Some(value) => Ok(Evaluated::Value(value.clone())),
+            Some(value) => Ok(Evaluated::from(value.clone())),
             None => {
                 let context = context.as_ref().map(Rc::clone);
                 let aggregated = aggregated.as_ref().map(Rc::clone);
@@ -179,7 +179,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
 
-            Ok(Evaluated::Value(value))
+            Ok(Evaluated::from(value))
         }
         name @ "LEFT" | name @ "RIGHT" => {
             match args.len() {
@@ -196,7 +196,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             let string = match eval(get_arg_expr(&args[0])?).await?.try_into()? {
                 Value::Str(string) => Ok(string),
                 Value::Null => {
-                    return Ok(Evaluated::Value(Value::Null));
+                    return Ok(Evaluated::from(Value::Null));
                 }
                 _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_string())),
             }?;
@@ -205,7 +205,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 Value::I64(number) => usize::try_from(number)
                     .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_string())), // Unlikely to occur hence the imperfect error
                 Value::Null => {
-                    return Ok(Evaluated::Value(Value::Null));
+                    return Ok(Evaluated::from(Value::Null));
                 }
                 _ => Err(EvaluateError::FunctionRequiresIntegerValue(
                     name.to_string(),
@@ -228,7 +228,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 .unwrap_or(string)
             };
 
-            Ok(Evaluated::Value(Value::Str(converted)))
+            Ok(Evaluated::from(Value::Str(converted)))
         }
         name => Err(EvaluateError::FunctionNotSupported(name.to_owned()).into()),
     }

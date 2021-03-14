@@ -16,7 +16,6 @@ impl<'a> From<&'a Evaluated<'a>> for EvaluatedRef<'a> {
         match evaluated {
             Evaluated::LiteralRef(v) => Literal(v),
             Evaluated::Literal(v) => Literal(v),
-            Evaluated::ValueRef(v) => Value(v),
             Evaluated::Value(v) => Value(v),
         }
     }
@@ -102,7 +101,7 @@ macro_rules! binary_op {
             };
 
             let value_binary_op = |l: &data::Value, r: &data::Value| {
-                l.$name(r).map(Evaluated::Value)
+                l.$name(r).map(Evaluated::from)
             };
 
             match (self, other) {
