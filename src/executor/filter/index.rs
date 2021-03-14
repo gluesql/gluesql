@@ -57,19 +57,23 @@ async fn scan<Key: 'static + Debug + Eq + Ord, Storage: Store<Key> + Index<Key>>
         storage.clone(),
         table_name,
         columns,
-        &all_keys,
-        &all_rows,
+        all_keys,
+        all_rows,
     )
-    .await;
-    let scan_rows = Box::new(
-        stream::iter(scan_keys)
-            .filter_map(|key| async {
-                Some((key, storage.get_by_key(table_name, key).await.ok()?))
-            }) // Probably shouldn'Key be doing this...
-            .collect(),
-    );
+    .await?;
+    let scan_rows: Vec<(Rc<[Ident]>, Key, Row)> = stream::iter(scan_keys)
+        .filter_map(|key| async {
+            Some((
+                columns,
+                key,
+                storage.get_by_key(table_name, key).await.ok()?,
+            ))
+        })
+        .collect::<Vec<(Rc<[Ident]>, Key, Row)>>()
+        .await;
 
-    Ok(scan_rows)
+    let test = Ok(stream::iter(scan_rows));
+    test
 }
 
 async fn eval_link<Key: 'static + Debug + Eq + Ord, Storage: Store<Key> + Index<Key>>(
@@ -77,9 +81,9 @@ async fn eval_link<Key: 'static + Debug + Eq + Ord, Storage: Store<Key> + Index<
     storage: &Storage,
     table_name: &str,
     columns: Rc<[Ident]>,
-    all_keys: &KeyIter<Key>,
-    all_rows: &RowIter<Key>,
-) -> Result<Box<KeyIter<Key>>> {
+    all_keys: KeyIter<Key>,
+    all_rows: RowIter<Key>,
+) -> Result<KeyIter<Key>> {
     macro_rules! eval_link {
         ($link:expr) => {
             eval_link(
@@ -121,55 +125,71 @@ async fn eval_link<Key: 'static + Debug + Eq + Ord, Storage: Store<Key> + Index<
             None
         }),
         Link::Condition(condition) => {
-            eval_condition(condition, storage, table_name, columns, all_keys, all_rows).await
+            eval_condition(condition, storage, table_name, columns, all_keys, all_rows).await?
         }
     })
 }
 
-async fn eval_condition<
-    Key: 'static + Debug + Eq + Ord,
-    Storage: Store<Key> + Index<Key>,
-    KeyIter: Iterator<Item = Key> + Clone,
->(
+async fn eval_condition<'a, Key: 'static + Debug + Eq + Ord, Storage: Store<Key> + Index<Key>>(
     condition: &Condition,
     storage: &Storage,
     table_name: &str,
     columns: Rc<[Ident]>,
-    all_keys: &KeyIter,
-    all_rows: &RowIter<Key>,
-) -> KeyIter {
+    all_keys: KeyIter<Key>,
+    all_rows: RowIter<Key>,
+) -> Result<KeyIter<Key>> {
     if false {
-        storage.get_indexed(condition, storage, table_name)
+        Ok(Box::new(
+            storage
+                .get_indexed_keys(condition, table_name)
+                .await?
+                .into_iter(),
+        ))
     } else {
-        all_rows.filter_map(|key, row| {
-            if match condition {
-                Condition::True => true,
-                Condition::False => false,
-                Condition::Equals { column_name, value } => {
-                    value == row.get_value(get_column_index_by_name(columns, column_name))
+        Ok(Box::new(
+            all_rows
+                .filter_map(|result| {
+                    let (key, row) = result.ok()?;
+                    let get_value = |column_name| {
+                        row.get_value(get_column_index_by_name(columns, column_name)?)
+                    };
+                    macro_rules! compare {
+                ($value:ident, $op:tt, $column_name:ident) => {
+                    Some($value $op get_value($column_name)?)
                 }
-                Condition::GreaterThanOrEquals { column_name, value } => {
-                    value >= row.get_value(get_column_index_by_name(columns, column_name))
-                }
-                Condition::LessThanOrEquals { column_name, value } => {
-                    value <= row.get_value(get_column_index_by_name(columns, column_name))
-                }
-                Condition::GreaterThan { column_name, value } => {
-                    value > row.get_value(get_column_index_by_name(columns, column_name))
-                }
-                Condition::LessThan { column_name, value } => {
-                    value < row.get_value(get_column_index_by_name(columns, column_name))
-                }
-                _ => false,
-            } {
-                Some(key)
-            } else {
-                None
-            }
-        });
+            };
+                    let check = match condition {
+                        Condition::True => Some(true),
+                        Condition::False => Some(false),
+                        Condition::Equals { column_name, value } => {
+                            compare!(value, ==, column_name)
+                        }
+                        Condition::GreaterThanOrEquals { column_name, value } => {
+                            compare!(value, >=, column_name)
+                        }
+                        Condition::LessThanOrEquals { column_name, value } => {
+                            compare!(value, <=, column_name)
+                        }
+                        Condition::GreaterThan { column_name, value } => {
+                            compare!(value, >, column_name)
+                        }
+                        Condition::LessThan { column_name, value } => {
+                            compare!(value, <, column_name)
+                        }
+                        _ => None,
+                    };
+                    if matches!(check, Some(true)) {
+                        Some(key)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<Key>>()
+                .into_iter(),
+        ))
     }
 }
 
-fn get_column_index_by_name(columns: Rc<[Ident]>, name: &str) -> usize {
-    columns.iter().position(|column| column.name == name)
+fn get_column_index_by_name(columns: Rc<[Ident]>, name: &str) -> Option<usize> {
+    columns.iter().position(|column| column.value == name)
 }

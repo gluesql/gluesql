@@ -44,7 +44,7 @@ impl Index<IVec> for SledStorage {
         Ok(row)
     }
 
-    async fn get_indexed_keys(&self, condition: Condition, table_name: &str) -> Result<Vec<IVec>> {
+    async fn get_indexed_keys(&self, condition: &Condition, table_name: &str) -> Result<Vec<IVec>> {
         let ((min, max), column_name) = match condition {
             Condition::Equals { column_name, value } => ((Some(value), Some(value)), column_name),
             Condition::GreaterThanOrEquals { column_name, value } => {
