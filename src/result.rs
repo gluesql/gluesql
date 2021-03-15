@@ -1,6 +1,6 @@
 use {
     crate::{
-        data::{RowError, TableError, ValueError},
+        data::{LiteralError, RowError, TableError, ValueError},
         executor::{
             AggregateError, BlendError, CreateTableError, EvaluateError, ExecuteError, FetchError,
             FilterError, JoinError, LimitError, SelectError, UpdateError, ValidateError,
@@ -52,6 +52,8 @@ pub enum Error {
     #[error(transparent)]
     Value(#[from] ValueError),
     #[error(transparent)]
+    Literal(#[from] LiteralError),
+    #[error(transparent)]
     CreateTable(#[from] CreateTableError),
 }
 
@@ -79,6 +81,7 @@ impl PartialEq for Error {
             (Table(e), Table(e2)) => e == e2,
             (Validate(e), Validate(e2)) => e == e2,
             (Value(e), Value(e2)) => e == e2,
+            (Literal(e), Literal(e2)) => e == e2,
             (CreateTable(e), CreateTable(e2)) => e == e2,
             _ => false,
         }

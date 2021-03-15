@@ -86,7 +86,7 @@ test_case!(cast_literal, async move {
             r#"SELECT CAST(NULL AS NULL) FROM Item"#,
             Err(ValueError::UnimplementedLiteralCast {
                 data_type: "NULL".to_owned(),
-                literal: "NULL".to_owned(),
+                literal: format!("{:?}", data::Literal::Null),
             }
             .into()),
         ),

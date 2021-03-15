@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, std::borrow::Cow};
 
 test_case!(arithmetic, async move {
     run!(
@@ -81,8 +81,11 @@ test_case!(arithmetic, async move {
             "UPDATE Arith SET aaa = 1",
         ),
         (
-            EvaluateError::UnsupportedLiteralBinaryArithmetic("true".to_owned(), "1".to_owned())
-                .into(),
+            LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", data::Literal::Boolean(true)),
+                format!("{:?}", data::Literal::Number(Cow::Owned("1".to_owned()))),
+            )
+            .into(),
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
         ),
     ];
