@@ -46,6 +46,10 @@ test_case!(error, async move {
             RowError::TooManyValues.into(),
             "INSERT INTO TableA VALUES (100), (100, 200);",
         ),
+        (
+            LiteralError::UnsupportedLiteralType(r#"X'123'"#.to_owned()).into(),
+            "SELECT * FROM TableA Where id = X'123';",
+        ),
         #[cfg(feature = "alter-table")]
         (
             ExecuteError::UnsupportedAlterTableOperation(

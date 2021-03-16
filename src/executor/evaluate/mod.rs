@@ -4,17 +4,16 @@ mod evaluated;
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        data::{get_name, Value},
+        data::{get_name, Literal, Value},
         result::Result,
         store::Store,
     },
     async_recursion::async_recursion,
     futures::stream::{StreamExt, TryStreamExt},
     im_rc::HashMap,
-    sqlparser::ast::{
-        BinaryOperator, Expr, Function, FunctionArg, UnaryOperator, Value as Literal,
-    },
+    sqlparser::ast::{BinaryOperator, Expr, Function, FunctionArg, UnaryOperator},
     std::{
+        borrow::Cow,
         convert::{TryFrom, TryInto},
         fmt::Debug,
         rc::Rc,
@@ -39,17 +38,9 @@ pub async fn evaluate<'a, T: 'static + Debug>(
     };
 
     match expr {
-        Expr::Value(value) => match value {
-            Literal::Number(_, false)
-            | Literal::Boolean(_)
-            | Literal::SingleQuotedString(_)
-            | Literal::Null => Ok(Evaluated::from(value)),
-            _ => Err(EvaluateError::Unimplemented.into()),
-        },
+        Expr::Value(value) => Literal::try_from(value).map(Evaluated::Literal),
         Expr::Identifier(ident) => match ident.quote_style {
-            Some(_) => Ok(Evaluated::from(Literal::SingleQuotedString(
-                ident.value.to_string(),
-            ))),
+            Some(_) => Ok(Literal::Text(Cow::Borrowed(&ident.value))).map(Evaluated::Literal),
             None => {
                 let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
 
