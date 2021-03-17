@@ -2,14 +2,8 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum ValueError {
-    #[error("sql type not supported yet")]
-    SqlTypeNotSupported,
-
-    #[error("literal not supported yet")]
-    LiteralNotSupported,
-
-    #[error("ast expr not supported: {0}")]
-    ExprNotSupported(String),
+    #[error("literal: {literal} is incompatible with data type: {data_type}")]
+    IncompatibleLiteralForDataType { data_type: String, literal: String },
 
     #[error("failed to parse number")]
     FailedToParseNumber,
@@ -37,6 +31,9 @@ pub enum ValueError {
 
     #[error("unary minus operation for non numeric value")]
     UnaryMinusOnNonNumeric,
+
+    #[error("unreachable failure on parsing number")]
+    UnreachableNumberParsing,
 
     #[error("floating columns cannot be set to unique constraint")]
     ConflictOnFloatWithUniqueConstraint,

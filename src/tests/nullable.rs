@@ -230,7 +230,7 @@ CREATE TABLE Test (
             )),
         ),
         (
-            "INSERT INTO Test VALUES (1, NULL)",
+            r#"INSERT INTO Test VALUES (1, NULL, "ok")"#,
             Err(ValueError::NullValueOnNotNullField.into()),
         ),
     ];
