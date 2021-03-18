@@ -18,7 +18,7 @@ use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
-use super::validate::{validate_rows, ColumnValidation};
+use super::validate::{validate_types, validate_unique, ColumnValidation};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -191,6 +191,8 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                     .fetch_schema(table_name)
                     .await?
                     .ok_or(ExecuteError::TableNotExists)?;
+                let column_defs = Rc::from(column_defs);
+                let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
 
                 let rows = match &source.body {
                     SetExpr::Values(Values(values_list)) => values_list
@@ -207,10 +209,14 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                             fetch: None,
                         };
 
-                        select(&storage, &query(), None)
+                        let rows = select(&storage, &query(), None)
                             .await?
                             .try_collect::<Vec<_>>()
-                            .await?
+                            .await?;
+
+                        validate_types(&column_validation, rows.iter())?;
+
+                        rows
                     }
                     set_expr => {
                         return Err(ExecuteError::UnreachableUnsupportedInsertValueType(
@@ -220,14 +226,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                     }
                 };
 
-                let column_defs = Rc::from(column_defs);
-                validate_rows(
-                    &storage,
-                    &table_name,
-                    ColumnValidation::All(Rc::clone(&column_defs)),
-                    rows.iter(),
-                )
-                .await?;
+                validate_unique(&storage, &table_name, column_validation, rows.iter()).await?;
 
                 Ok((rows, table_name))
             });
@@ -268,17 +267,16 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                     .try_collect::<Vec<_>>()
                     .await?;
 
-                let all_column_defs = Rc::from(column_defs);
-                validate_rows(
+                let column_validation =
+                    ColumnValidation::SpecifiedColumns(Rc::from(column_defs), columns_to_update);
+                validate_unique(
                     &storage,
                     &table_name,
-                    ColumnValidation::SpecifiedColumns(
-                        Rc::clone(&all_column_defs),
-                        columns_to_update,
-                    ),
+                    column_validation,
                     rows.iter().map(|r| &r.1),
                 )
                 .await?;
+
                 Ok(rows)
             });
             let num_rows = rows.len();
