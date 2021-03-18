@@ -89,11 +89,38 @@ impl TryFrom<Literal<'_>> for Value {
 
 pub trait TryFromLiteral {
     fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value>;
+
+    fn try_cast_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value>;
 }
 
 impl TryFromLiteral for Value {
     fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
+            (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
+            (DataType::Int, Literal::Number(v)) => v
+                .parse::<i64>()
+                .map(Value::I64)
+                .map_err(|_| ValueError::FailedToParseNumber.into()),
+            (DataType::Float(_), Literal::Number(v)) => v
+                .parse::<f64>()
+                .map(Value::F64)
+                .map_err(|_| ValueError::UnreachableNumberParsing.into()),
+            (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
+            (DataType::Boolean, Literal::Null)
+            | (DataType::Int, Literal::Null)
+            | (DataType::Float(_), Literal::Null)
+            | (DataType::Text, Literal::Null) => Ok(Value::Null),
+            _ => Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: data_type.to_string(),
+                literal: format!("{:?}", literal),
+            }
+            .into()),
+        }
+    }
+
+    fn try_cast_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
+        match (data_type, literal) {
+            (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
             (DataType::Boolean, Literal::Text(v)) | (DataType::Boolean, Literal::Number(v)) => {
                 match v.to_uppercase().as_str() {
                     "TRUE" | "1" => Ok(Value::Bool(true)),

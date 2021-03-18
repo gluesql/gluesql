@@ -1,21 +1,24 @@
-use crate::*;
+use {crate::*, std::borrow::Cow};
 
 test_case!(types, async move {
     run!("CREATE TABLE TableB (id BOOL);");
-    test!(
-        Err(ValueError::SqlTypeNotSupported.into()),
-        "INSERT INTO TableB (id) VALUES (0);"
-    );
-
-    run!("CREATE TABLE TableC (id INTEGER UNIQUE);");
-    run!("INSERT INTO TableC (id) VALUES (1);");
+    run!("CREATE TABLE TableC (uid INTEGER UNIQUE);");
+    run!("INSERT INTO TableC (uid) VALUES (1);");
     test!(
         Err(ValidateError::IncompatibleTypeOnTypedField {
-            attempted_value: "Str(\"A\")".to_string(),
-            column_name: "id".to_string(),
-            column_type: "INT".to_string()
+            attempted_value: format!("{:?}", Value::I64(1)),
+            column_name: "id".to_owned(),
+            column_type: "BOOL".to_owned(),
         }
         .into()),
-        "INSERT INTO TableC (id) VALUES (\"A\")"
+        "INSERT INTO TableB SELECT uid FROM TableC;"
+    );
+    test!(
+        Err(ValueError::IncompatibleLiteralForDataType {
+            data_type: "INT".to_owned(),
+            literal: format!("{:?}", data::Literal::Text(Cow::Owned("A".to_owned()))),
+        }
+        .into()),
+        "INSERT INTO TableC (uid) VALUES (\"A\")"
     );
 });
