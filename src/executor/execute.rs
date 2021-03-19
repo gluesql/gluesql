@@ -18,7 +18,7 @@ use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
-use super::validate::{validate_types, validate_unique, ColumnValidation};
+use super::validate::{validate_unique, ColumnValidation};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -209,14 +209,19 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                             fetch: None,
                         };
 
-                        let rows = select(&storage, &query(), None)
+                        select(&storage, &query(), None)
                             .await?
+                            .and_then(|row| {
+                                let column_defs = Rc::clone(&column_defs);
+
+                                async move {
+                                    row.validate(&column_defs)?;
+
+                                    Ok(row)
+                                }
+                            })
                             .try_collect::<Vec<_>>()
-                            .await?;
-
-                        validate_types(&column_validation, rows.iter())?;
-
-                        rows
+                            .await?
                     }
                     set_expr => {
                         return Err(ExecuteError::UnreachableUnsupportedInsertValueType(

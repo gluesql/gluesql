@@ -1,24 +1,63 @@
-use {crate::*, std::borrow::Cow};
+use {crate::*, sqlparser::ast::DataType, std::borrow::Cow};
 
 test_case!(types, async move {
-    run!("CREATE TABLE TableB (id BOOL);");
-    run!("CREATE TABLE TableC (uid INTEGER UNIQUE);");
-    run!("INSERT INTO TableC (uid) VALUES (1);");
-    test!(
-        Err(ValidateError::IncompatibleTypeOnTypedField {
-            attempted_value: format!("{:?}", Value::I64(1)),
-            column_name: "id".to_owned(),
-            column_type: "BOOL".to_owned(),
-        }
-        .into()),
-        "INSERT INTO TableB SELECT uid FROM TableC;"
-    );
-    test!(
-        Err(ValueError::IncompatibleLiteralForDataType {
-            data_type: "INT".to_owned(),
-            literal: format!("{:?}", data::Literal::Text(Cow::Owned("A".to_owned()))),
-        }
-        .into()),
-        "INSERT INTO TableC (uid) VALUES (\"A\")"
-    );
+    run!("CREATE TABLE TableB (id BOOLEAN);");
+    run!("CREATE TABLE TableC (uid INTEGER, null_val INTEGER NULL);");
+    run!("INSERT INTO TableB VALUES (FALSE);");
+    run!("INSERT INTO TableC VALUES (1, NULL);");
+
+    let test_cases = vec![
+        (
+            "INSERT INTO TableB SELECT uid FROM TableC;",
+            Err(ValueError::IncompatibleDataType {
+                data_type: DataType::Boolean.to_string(),
+                value: format!("{:?}", Value::I64(1)),
+            }
+            .into()),
+        ),
+        (
+            "INSERT INTO TableC (uid) VALUES (\"A\")",
+            Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: DataType::Int.to_string(),
+                literal: format!("{:?}", data::Literal::Text(Cow::Owned("A".to_owned()))),
+            }
+            .into()),
+        ),
+        (
+            "INSERT INTO TableC VALUES (NULL, 30);",
+            Err(ValueError::NullValueOnNotNullField.into()),
+        ),
+        (
+            "INSERT INTO TableC SELECT null_val FROM TableC;",
+            Err(ValueError::NullValueOnNotNullField.into()),
+        ),
+        (
+            "UPDATE TableC SET uid = TRUE;",
+            Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: DataType::Int.to_string(),
+                literal: format!("{:?}", data::Literal::Boolean(true)),
+            }
+            .into()),
+        ),
+        (
+            "UPDATE TableC SET uid = (SELECT id FROM TableB LIMIT 1) WHERE uid = 1",
+            Err(ValueError::IncompatibleDataType {
+                data_type: DataType::Int.to_string(),
+                value: format!("{:?}", Value::Bool(false)),
+            }
+            .into()),
+        ),
+        (
+            "UPDATE TableC SET uid = NULL;",
+            Err(ValueError::NullValueOnNotNullField.into()),
+        ),
+        (
+            "UPDATE TableC SET uid = (SELECT null_val FROM TableC);",
+            Err(ValueError::NullValueOnNotNullField.into()),
+        ),
+    ];
+
+    for (sql, expected) in test_cases.into_iter() {
+        test!(expected, sql);
+    }
 });
