@@ -1,5 +1,5 @@
 use {
-    super::AlterError,
+    super::{validate, AlterError},
     crate::{
         data::get_name,
         result::MutResult,
@@ -44,6 +44,8 @@ pub async fn alter_table<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTa
                 .await
         }
         AlterTableOperation::AddColumn { column_def } => {
+            try_into!(storage, validate(column_def));
+
             storage.add_column(table_name, column_def).await
         }
         AlterTableOperation::DropColumn {

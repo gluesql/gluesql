@@ -3,6 +3,9 @@ mod alter_table;
 mod create_table;
 mod drop;
 mod error;
+mod validate;
+
+use validate::validate;
 
 #[cfg(feature = "alter-table")]
 pub use alter_table::alter_table;

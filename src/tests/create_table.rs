@@ -39,6 +39,14 @@ test_case!(create_table, async move {
             Ok(Payload::Create),
         ),
         (
+            "CREATE TABLE Gluery (id SOMEWHAT);",
+            Err(AlterError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
+        ),
+        (
+            "CREATE TABLE Gluery (id INTEGER CHECK (true));",
+            Err(AlterError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
+        ),
+        (
             r#"
         CREATE TABLE CreateTable3 (
             id INTEGER,
