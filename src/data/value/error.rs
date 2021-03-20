@@ -5,6 +5,12 @@ pub enum ValueError {
     #[error("literal: {literal} is incompatible with data type: {data_type}")]
     IncompatibleLiteralForDataType { data_type: String, literal: String },
 
+    #[error("incompatible data type, data type: {data_type}, value: {value}")]
+    IncompatibleDataType { data_type: String, value: String },
+
+    #[error("null value on not null field")]
+    NullValueOnNotNullField,
+
     #[error("failed to parse number")]
     FailedToParseNumber,
 
@@ -19,9 +25,6 @@ pub enum ValueError {
 
     #[error("divide on non numeric value")]
     DivideOnNonNumeric,
-
-    #[error("null value on not null field")]
-    NullValueOnNotNullField,
 
     #[error("floating numbers cannot be grouped by")]
     FloatCannotBeGroupedBy,

@@ -69,15 +69,13 @@ impl Value {
         let literal = Literal::try_from(expr)?;
         let value = Value::try_from_literal(&data_type, &literal)?;
 
-        if !nullable && matches!(value, Value::Null) {
-            return Err(ValueError::NullValueOnNotNullField.into());
-        }
+        value.validate_null(nullable)?;
 
         Ok(value)
     }
 
-    pub fn is_same_as_data_type(&self, data_type: &DataType) -> bool {
-        matches!(
+    pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
+        let valid = matches!(
             (data_type, self),
             (DataType::Boolean, Value::Bool(_))
                 | (DataType::Int, Value::I64(_))
@@ -87,7 +85,25 @@ impl Value {
                 | (DataType::Int, Value::Null)
                 | (DataType::Float(_), Value::Null)
                 | (DataType::Text, Value::Null)
-        )
+        );
+
+        if !valid {
+            return Err(ValueError::IncompatibleDataType {
+                data_type: data_type.to_string(),
+                value: format!("{:?}", self),
+            }
+            .into());
+        }
+
+        Ok(())
+    }
+
+    pub fn validate_null(&self, nullable: bool) -> Result<()> {
+        if !nullable && matches!(self, Value::Null) {
+            return Err(ValueError::NullValueOnNotNullField.into());
+        }
+
+        Ok(())
     }
 
     pub fn cast(&self, data_type: &DataType) -> Result<Self> {
