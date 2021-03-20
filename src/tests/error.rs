@@ -52,7 +52,7 @@ test_case!(error, async move {
         ),
         #[cfg(feature = "alter-table")]
         (
-            ExecuteError::UnsupportedAlterTableOperation(
+            AlterError::UnsupportedAlterTableOperation(
                 r#"ADD CONSTRAINT "hey" PRIMARY KEY (asdf)"#.to_owned(),
             )
             .into(),
