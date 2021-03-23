@@ -18,7 +18,7 @@ test_case!(create_table, async move {
             num INTEGER,
             name TEXT
         )"#,
-            Err(CreateTableError::TableAlreadyExists.into()),
+            Err(AlterError::TableAlreadyExists("CreateTable1".to_owned()).into()),
         ),
         (
             r#"
@@ -37,6 +37,14 @@ test_case!(create_table, async move {
             name TEXT
         )"#,
             Ok(Payload::Create),
+        ),
+        (
+            "CREATE TABLE Gluery (id SOMEWHAT);",
+            Err(AlterError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
+        ),
+        (
+            "CREATE TABLE Gluery (id INTEGER CHECK (true));",
+            Err(AlterError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
         ),
         (
             r#"
@@ -44,7 +52,7 @@ test_case!(create_table, async move {
             id INTEGER,
             ratio FLOAT UNIQUE
         )"#,
-            Err(CreateTableError::UnsupportedDataTypeForUniqueColumn(
+            Err(AlterError::UnsupportedDataTypeForUniqueColumn(
                 "ratio".to_owned(),
                 "FLOAT".to_owned(),
             )

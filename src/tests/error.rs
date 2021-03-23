@@ -7,6 +7,14 @@ test_case!(error, async move {
     let test_cases = vec![
         (ExecuteError::QueryNotSupported.into(), "COMMIT;"),
         (
+            ExecuteError::TableNotExists.into(),
+            "INSERT INTO Nothing VALUES (1);",
+        ),
+        (
+            ExecuteError::TableNotExists.into(),
+            "UPDATE Nothing SET a = 1;",
+        ),
+        (
             FetchError::TableNotFound("Nothing".to_owned()).into(),
             "SELECT * FROM Nothing;",
         ),
@@ -52,7 +60,7 @@ test_case!(error, async move {
         ),
         #[cfg(feature = "alter-table")]
         (
-            ExecuteError::UnsupportedAlterTableOperation(
+            AlterError::UnsupportedAlterTableOperation(
                 r#"ADD CONSTRAINT "hey" PRIMARY KEY (asdf)"#.to_owned(),
             )
             .into(),
