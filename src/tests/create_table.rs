@@ -32,11 +32,13 @@ test_case!(create_table, async move {
         (
             r#"
         CREATE TABLE IF NOT EXISTS CreateTable2 (
-            id INTEGER NULL,
-            num INTEGER,
-            name TEXT
+            id2 INTEGER NULL,
         )"#,
             Ok(Payload::Create),
+        ),
+        (
+            r#"INSERT INTO CreateTable2 VALUES (NULL, 1, "1");"#,
+            Ok(Payload::Insert(1)),
         ),
         (
             "CREATE TABLE Gluery (id SOMEWHAT);",
