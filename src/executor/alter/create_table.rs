@@ -25,11 +25,16 @@ pub async fn create_table<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterT
             validate(column_def)?;
         }
 
-        if !if_not_exists && storage.fetch_schema(&schema.table_name).await?.is_some() {
-            return Err(AlterError::TableAlreadyExists(schema.table_name.to_owned()).into());
+        match (
+            storage.fetch_schema(&schema.table_name).await?,
+            if_not_exists,
+        ) {
+            (None, _) => Ok(Some(schema)),
+            (Some(_), true) => Ok(None),
+            (Some(_), false) => {
+                Err(AlterError::TableAlreadyExists(schema.table_name.to_owned()).into())
+            }
         }
-
-        Ok(schema)
     })()
     .await;
 
@@ -40,5 +45,9 @@ pub async fn create_table<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterT
         }
     };
 
-    storage.insert_schema(&schema).await
+    if let Some(schema) = schema {
+        storage.insert_schema(&schema).await
+    } else {
+        Ok((storage, ()))
+    }
 }
