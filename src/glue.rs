@@ -33,15 +33,22 @@ impl Glue {
         }
     }
 
-    pub fn select_as_string(&mut self, query: &Query) -> Result<(Vec<String>, Vec<Vec<String>>)> {
+    pub fn select_as_string(&mut self, query: &Query) -> Result<Vec<Vec<String>>> {
         // TODO: Make this more efficient by converting earlier
         match self.execute(query) {
-            Ok(Payload::Select { labels, rows }) => Ok((
-                labels,
-                rows.into_iter()
-                    .map(|row| row.0.into_iter().map(|value| value.into()).collect())
-                    .collect(),
-            )),
+            Ok(Payload::Select { labels, rows }) => Ok(vec![labels] // Gross
+                .into_iter()
+                .chain(
+                    rows.into_iter()
+                        .map(|row| {
+                            row.0
+                                .into_iter()
+                                .map(|value| value.into())
+                                .collect::<Vec<String>>()
+                        })
+                        .collect::<Vec<Vec<String>>>(),
+                )
+                .collect()),
             _ => Err(ExecuteError::QueryNotSupported.into()),
         }
     }
@@ -80,13 +87,11 @@ mod tests {
         );
         assert_eq!(
             glue.select_as_string(&parse("SELECT * FROM api_test").unwrap()[0]),
-            Ok((
+            Ok(vec![
                 vec![String::from("id"), String::from("name")],
-                vec![
-                    vec![String::from("1"), String::from("test1")],
-                    vec![String::from("2"), String::from("test2")]
-                ]
-            ))
+                vec![String::from("1"), String::from("test1")],
+                vec![String::from("2"), String::from("test2")]
+            ])
         );
         std::fs::remove_dir_all(&path);
     }
