@@ -99,6 +99,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
             source,
             ..
         } => {
+            #[allow(unused_variables)]
             let (rows, column_defs, table_name) = try_block!(storage, {
                 let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage

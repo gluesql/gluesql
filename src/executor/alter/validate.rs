@@ -28,6 +28,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
 
     // column option
     if let Some(option) = options.iter().find(|ColumnOptionDef { option, .. }| {
+        #[allow(clippy::let_and_return)]
         let result = !matches!(
             option,
             ColumnOption::Null
@@ -35,6 +36,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
                 | ColumnOption::Default(_)
                 | ColumnOption::Unique { .. }
         );
+        #[allow(clippy::let_and_return)]
         #[cfg(feature = "auto-increment")]
         let result = result
             && !matches!(option,
@@ -55,6 +57,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
                         ..
                     ]
                 ));
+        #[allow(clippy::let_and_return)]
         result
     }) {
         return Err(AlterError::UnsupportedColumnOption(option.to_string()).into());

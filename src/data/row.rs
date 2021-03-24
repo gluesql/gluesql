@@ -58,20 +58,20 @@ impl Row {
 
                 #[cfg(feature = "auto-increment")]
                 if column_def.is_auto_incremented() {
-                    Ok(Value::Null)
-                } else {
-                    let default = column_def.get_default();
-                    let expr = match (i, default) {
-                        (Some(i), _) => values
-                            .get(i)
-                            .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
-                        (None, Some(expr)) => Ok(expr),
-                        (None, _) => Err(RowError::LackOfRequiredColumn(name.clone())),
-                    }?;
-                    let nullable = column_def.is_nullable();
-
-                    Value::from_expr(&data_type, nullable, expr)
+                    return Ok(Value::Null);
                 }
+
+                let default = column_def.get_default();
+                let expr = match (i, default) {
+                    (Some(i), _) => values
+                        .get(i)
+                        .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
+                    (None, Some(expr)) => Ok(expr),
+                    (None, _) => Err(RowError::LackOfRequiredColumn(name.clone())),
+                }?;
+                let nullable = column_def.is_nullable();
+
+                Value::from_expr(&data_type, nullable, expr)
             })
             .collect::<Result<_>>()
             .map(Self)
