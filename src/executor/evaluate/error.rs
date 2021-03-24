@@ -10,9 +10,6 @@ pub enum EvaluateError {
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
 
-    #[error("unary operation on non-numeric")]
-    LiteralUnaryOperationOnNonNumeric,
-
     #[error("function is not supported: {0}")]
     FunctionNotSupported(String),
 
@@ -36,20 +33,11 @@ pub enum EvaluateError {
     #[error("unsupported compound identifier {0}")]
     UnsupportedCompoundIdentifier(String),
 
-    #[error("unreachable condition base")]
-    UnreachableConditionBase,
-
-    #[error("unreachable evaluated arithmetic")]
-    UnreachableEvaluatedArithmetic,
-
-    #[error("unreachable literal arithmetic")]
-    UnreachableLiteralArithmetic,
+    #[error("unimplemented")]
+    Unimplemented,
 
     #[error("unreachable empty context")]
     UnreachableEmptyContext,
-
-    #[error("unimplemented")]
-    Unimplemented,
 
     #[error("unreachable named function argument: {0}")]
     UnreachableFunctionArg(String),

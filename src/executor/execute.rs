@@ -62,7 +62,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
-    #[allow(unused_macros)]
     macro_rules! try_into {
         ($storage: expr, $expr: expr) => {
             match $expr {
@@ -140,7 +139,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                 .await
                 .map(|storage| (storage, Payload::DropTable))
         }
-
         #[cfg(feature = "alter-table")]
         Statement::AlterTable { name, operation } => {
             let table_name = try_into!(storage, get_name(name));
@@ -238,7 +236,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                     rows.iter(),
                 )
                 .await?;
-
                 Ok((rows, table_name))
             });
 
@@ -313,7 +310,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                     .await?;
                 Ok(keys)
             });
-
             let num_keys = keys.len();
 
             storage

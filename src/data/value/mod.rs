@@ -1,9 +1,10 @@
 use {
+    super::Literal,
     crate::result::Result,
     boolinator::Boolinator,
     serde::{Deserialize, Serialize},
-    sqlparser::ast::{DataType, Expr, Ident, Value as Literal},
-    std::{cmp::Ordering, fmt::Debug},
+    sqlparser::ast::{DataType, Expr, Ident},
+    std::{cmp::Ordering, convert::TryFrom, fmt::Debug},
 };
 
 mod error;
@@ -67,7 +68,9 @@ impl BoolToValue for bool {
 impl Value {
     pub fn from_expr(data_type: &DataType, nullable: bool, expr: &Expr) -> Result<Self> {
         match expr {
-            Expr::Value(literal) => Value::from_data_type(&data_type, nullable, literal),
+            Expr::Value(literal) => {
+                Value::from_data_type(&data_type, nullable, Literal::try_from(literal)?)
+            }
             Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
             _ => Err(ValueError::ExprNotSupported(expr.to_string()).into()),
         }
@@ -87,18 +90,22 @@ impl Value {
         )
     }
 
-    pub fn from_data_type(data_type: &DataType, nullable: bool, literal: &Literal) -> Result<Self> {
+    pub fn from_data_type(
+        data_type: &DataType,
+        nullable: bool,
+        literal: Literal<'_>,
+    ) -> Result<Self> {
         match (data_type, literal) {
-            (DataType::Int, Literal::Number(v, false)) => v
+            (DataType::Int, Literal::Number(v)) => v
                 .parse()
                 .map(Value::I64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (DataType::Float(_), Literal::Number(v, false)) => v
+            (DataType::Float(_), Literal::Number(v)) => v
                 .parse()
                 .map(Value::F64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
-            (DataType::Text, Literal::SingleQuotedString(v)) => Ok(Value::Str(v.clone())),
+            (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(v)),
+            (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.into_owned())),
             (DataType::Int, Literal::Null)
             | (DataType::Float(_), Literal::Null)
             | (DataType::Boolean, Literal::Null)
@@ -170,30 +177,6 @@ impl Value {
             (DataType::Text, Value::F64(value)) => Ok(Value::Str(value.to_string())),
 
             _ => Err(ValueError::UnimplementedCast.into()),
-        }
-    }
-
-    pub fn clone_by(&self, literal: &Literal) -> Result<Self> {
-        match (self, literal) {
-            (Value::I64(_), Literal::Number(v, false)) => v
-                .parse()
-                .map(Value::I64)
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (Value::F64(_), Literal::Number(v, false)) => v
-                .parse()
-                .map(Value::F64)
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (Value::Str(_), Literal::SingleQuotedString(v))
-            | (Value::Null, Literal::SingleQuotedString(v)) => Ok(Value::Str(v.clone())),
-            (Value::Bool(_), Literal::Boolean(v)) | (Value::Null, Literal::Boolean(v)) => {
-                Ok(Value::Bool(*v))
-            }
-            (Value::Null, Literal::Number(v, false)) => v
-                .parse::<i64>()
-                .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (_, Literal::Null) => Ok(Value::Null),
-            _ => Err(ValueError::LiteralNotSupported.into()),
         }
     }
 

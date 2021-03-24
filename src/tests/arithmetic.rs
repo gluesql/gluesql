@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, std::borrow::Cow};
 
 test_case!(arithmetic, async move {
     run!(
@@ -79,6 +79,14 @@ test_case!(arithmetic, async move {
         (
             UpdateError::ColumnNotFound("aaa".to_owned()).into(),
             "UPDATE Arith SET aaa = 1",
+        ),
+        (
+            LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", data::Literal::Boolean(true)),
+                format!("{:?}", data::Literal::Number(Cow::Owned("1".to_owned()))),
+            )
+            .into(),
+            "SELECT * FROM Arith WHERE TRUE + 1 = 1",
         ),
     ];
 
