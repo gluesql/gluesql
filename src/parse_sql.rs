@@ -15,5 +15,5 @@ pub fn parse_single(sql: &str) -> Result<Query, ParserError> {
     parse(sql)?
         .into_iter()
         .next()
-        .ok_or(ParserError::ParserError(String::from("No Query")))
+        .ok_or_else(|| ParserError::ParserError(String::from("No Query")))
 }
