@@ -2,6 +2,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use gluesql::{parse, Glue, SledStorage};
 use std::convert::TryFrom;
 
+const ITEM_SIZE: u32 = 5000;
+
 // Generate benchmark tests
 pub fn bench_insert(c: &mut Criterion) {
     // Generate a new database
@@ -79,8 +81,8 @@ pub fn bench_select(c: &mut Criterion) {
             field_three TEXT
         );"
         .to_string();
-        // Insert 100k elements
-        for i in 0..100000 {
+
+        for i in 0..ITEM_SIZE {
             sqls += &*format!(
                 "INSERT INTO Testing \
             VALUES ({:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");",
@@ -100,7 +102,7 @@ pub fn bench_select(c: &mut Criterion) {
         b.iter(|| {
             let query_str = format!("SELECT * FROM Testing WHERE id = {}", id);
             id += 1;
-            if id >= 10000 {
+            if id >= ITEM_SIZE {
                 id = 1;
             }
             for query in parse(&query_str).unwrap() {
@@ -116,7 +118,7 @@ pub fn bench_select(c: &mut Criterion) {
                 id + 50
             );
             id += 1;
-            if id >= 10000 {
+            if id >= ITEM_SIZE {
                 id = 1;
             }
             for query in parse(&query_str).unwrap() {
@@ -160,8 +162,8 @@ pub fn bench_select_tainted(c: &mut Criterion) {
         );
         "
         .to_string();
-        // Insert 100k elements
-        for i in 0..100000 {
+
+        for i in 0..ITEM_SIZE {
             sqls += &*format!(
                 "INSERT INTO Testing \
             VALUES ({0:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");\
@@ -183,7 +185,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
         b.iter(|| {
             let query_str = format!("SELECT * FROM Testing WHERE id = {}", id);
             id += 1;
-            if id >= 10000 {
+            if id >= ITEM_SIZE {
                 id = 1;
             }
             for query in parse(&query_str).unwrap() {
@@ -199,7 +201,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
                 id + 50
             );
             id += 1;
-            if id >= 10000 {
+            if id >= ITEM_SIZE {
                 id = 1;
             }
             for query in parse(&query_str).unwrap() {
