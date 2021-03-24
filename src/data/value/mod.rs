@@ -1,10 +1,13 @@
 use {
     super::Literal,
     crate::result::Result,
-    into::TryInto,
     serde::{Deserialize, Serialize},
     sqlparser::ast::{DataType, Expr},
-    std::{cmp::Ordering, convert::TryFrom, fmt::Debug},
+    std::{
+        cmp::Ordering,
+        convert::{TryFrom, TryInto},
+        fmt::Debug,
+    },
 };
 
 mod error;
@@ -13,8 +16,7 @@ mod into;
 mod literal;
 mod unique_key;
 
-pub use error::ValueError;
-pub use literal::TryFromLiteral;
+pub use {error::ValueError, literal::TryFromLiteral};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -119,7 +121,7 @@ impl Value {
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Float(_), value) => value.try_into().map(Value::F64),
-            (DataType::Text, value) => value.try_into().map(Value::Str),
+            (DataType::Text, value) => Ok(Value::Str(value.into())),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
