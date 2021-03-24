@@ -9,7 +9,7 @@ use sqlparser::ast::{SetExpr, Statement, Values};
 use crate::data::{get_name, Row, Schema};
 use crate::parse_sql::Query;
 use crate::result::{MutResult, Result};
-use crate::store::{AlterTable, Store, StoreMut};
+use crate::store::{AlterTable, AutoIncrement, Store, StoreMut};
 
 #[cfg(feature = "alter-table")]
 use super::alter::alter_table;
@@ -19,6 +19,9 @@ use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
 use super::validate::{validate_unique, ColumnValidation};
+
+#[cfg(feature = "auto-increment")]
+use super::column_options::auto_increment;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -48,7 +51,7 @@ pub enum Payload {
     AlterTable,
 }
 
-pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + AutoIncrement>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
@@ -96,7 +99,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             source,
             ..
         } => {
-            let (rows, table_name) = try_block!(storage, {
+            let (rows, column_defs, table_name) = try_block!(storage, {
                 let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
@@ -144,8 +147,11 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
 
                 validate_unique(&storage, &table_name, column_validation, rows.iter()).await?;
 
-                Ok((rows, table_name))
+                Ok((rows, column_defs, table_name))
             });
+
+            #[cfg(feature = "auto-increment")]
+            let (storage, rows) = auto_increment::run(storage, rows, &column_defs, table_name)?;
 
             let num_rows = rows.len();
 

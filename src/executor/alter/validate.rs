@@ -4,6 +4,12 @@ use {
     sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, DataType},
 };
 
+#[cfg(feature = "auto-increment")]
+use sqlparser::{
+    dialect::keywords::Keyword,
+    tokenizer::{Token, Word},
+};
+
 pub fn validate(column_def: &ColumnDef) -> Result<()> {
     let ColumnDef {
         data_type,
@@ -22,13 +28,34 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
 
     // column option
     if let Some(option) = options.iter().find(|ColumnOptionDef { option, .. }| {
-        !matches!(
+        let result = !matches!(
             option,
             ColumnOption::Null
                 | ColumnOption::NotNull
                 | ColumnOption::Default(_)
                 | ColumnOption::Unique { .. }
-        )
+        );
+        #[cfg(feature = "auto-increment")]
+        let result = result
+            && !matches!(option,
+            ColumnOption::DialectSpecific(tokens)
+                if matches!(
+                    tokens[..],
+                    [
+                        Token::Word(Word {
+                            keyword: Keyword::AUTO_INCREMENT,
+                            ..
+                        }),
+                        ..
+                    ] | [
+                        Token::Word(Word {
+                            keyword: Keyword::AUTOINCREMENT,
+                            ..
+                        }),
+                        ..
+                    ]
+                ));
+        result
     }) {
         return Err(AlterError::UnsupportedColumnOption(option.to_string()).into());
     }
