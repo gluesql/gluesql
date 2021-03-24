@@ -44,17 +44,12 @@ impl AutoIncrement for SledStorage {
                 .map_err(err_into)
         );
 
-        let value = if let Some(value) = value {
-            bincode::deserialize(&value).ok()
-        } else {
-            None
-        };
-        let value = match value {
-            Some(Value::I64(value)) => value,
-            _ => 1,
-        };
-        let next_value = Value::I64(value + 1);
-        let value = Value::I64(value);
+        const ONE: Value = Value::I64(1);
+        let value = value
+            .map(|value| bincode::deserialize(&value).ok())
+            .flatten()
+            .unwrap_or(ONE);
+        let next_value = try_into!(self, value.add(&ONE));
 
         let (self, _) = transaction!(self, |tree| {
             let key = f!("generator/{table_name}/{column_name}");
