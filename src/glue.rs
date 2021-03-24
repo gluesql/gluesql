@@ -58,7 +58,7 @@ impl Glue {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{parse_sql::parse, Glue, Payload, Row, SledStorage, Value},
+        crate::{parse_sql::parse_single, Glue, Payload, Row, SledStorage, Value},
         std::convert::TryFrom,
     };
     #[test]
@@ -71,23 +71,23 @@ mod tests {
         let mut glue = Glue::new(sled);
         assert_eq!(
             glue.execute(
-                &parse(
+                &parse_single(
                     "CREATE TABLE api_test (id INTEGER PRIMARY KEY, name TEXT, nullable TEXT NULL, is BOOLEAN)"
                 )
-                .unwrap()[0],
+                .unwrap(),
             ),
             Ok(Payload::Create)
         );
         assert_eq!(
             glue.execute(
-                &parse("INSERT INTO api_test (id, name, nullable, is) VALUES (1, 'test1', 'not null', TRUE), (2, 'test2', NULL, FALSE)")
-                    .unwrap()[0]
+                &parse_single("INSERT INTO api_test (id, name, nullable, is) VALUES (1, 'test1', 'not null', TRUE), (2, 'test2', NULL, FALSE)")
+                    .unwrap()
             ),
             Ok(Payload::Insert(2))
         );
 
         assert_eq!(
-            glue.execute(&parse("SELECT id, name, is FROM api_test").unwrap()[0]), // Not selecting NULL because NULL != NULL. TODO: Expand this test so that NULL == NULL
+            glue.execute(&parse_single("SELECT id, name, is FROM api_test").unwrap()), // Not selecting NULL because NULL != NULL. TODO: Expand this test so that NULL == NULL
             Ok(Payload::Select {
                 labels: vec![String::from("id"), String::from("name"), String::from("is")],
                 rows: vec![
@@ -105,7 +105,7 @@ mod tests {
             })
         );
         assert_eq!(
-            glue.select_as_string(&parse("SELECT * FROM api_test").unwrap()[0]),
+            glue.select_as_string(&parse_single("SELECT * FROM api_test").unwrap()),
             Ok(vec![
                 vec![
                     String::from("id"),
