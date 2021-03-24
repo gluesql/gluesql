@@ -80,7 +80,23 @@ test_case!(add_drop, async move {
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
-            Err(ValueError::ExprNotSupported("(SELECT id FROM Bar LIMIT 1)".to_owned()).into()),
+            Err(LiteralError::UnsupportedExpr("(SELECT id FROM Bar LIMIT 1)".to_owned()).into()),
+        ),
+        (
+            "ALTER TABLE Foo ADD COLUMN something SOMEWHAT",
+            Err(AlterError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
+        ),
+        (
+            "ALTER TABLE Foo ADD COLUMN something INTEGER CHECK (true)",
+            Err(AlterError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
+        ),
+        (
+            "ALTER TABLE Foo ADD COLUMN something FLOAT UNIQUE",
+            Err(AlterError::UnsupportedDataTypeForUniqueColumn(
+                "something".to_owned(),
+                "FLOAT".to_owned(),
+            )
+            .into()),
         ),
         (
             "ALTER TABLE Foo DROP COLUMN IF EXISTS something;",

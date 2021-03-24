@@ -10,7 +10,7 @@ use sqlparser::{
 
 use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Ident, Value as Literal};
 
-use crate::data::Value;
+use crate::data::{schema::ColumnDefExt, Value};
 use crate::result::Result;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
@@ -53,10 +53,7 @@ impl Row {
             .enumerate()
             .map(|(i, column_def)| {
                 let ColumnDef {
-                    name,
-                    data_type,
-                    options,
-                    ..
+                    name, data_type, ..
                 } = column_def;
                 let name = name.to_string();
 
@@ -114,5 +111,26 @@ impl Row {
             })
             .collect::<Result<_>>()
             .map(Self)
+    }
+
+    pub fn validate(&self, column_defs: &[ColumnDef]) -> Result<()> {
+        let items = column_defs
+            .iter()
+            .enumerate()
+            .filter_map(|(index, column_def)| {
+                let value = self.get_value(index);
+
+                value.map(|v| (v, column_def))
+            });
+
+        for (value, column_def) in items {
+            let ColumnDef { data_type, .. } = column_def;
+            let nullable = column_def.is_nullable();
+
+            value.validate_type(data_type)?;
+            value.validate_null(nullable)?;
+        }
+
+        Ok(())
     }
 }

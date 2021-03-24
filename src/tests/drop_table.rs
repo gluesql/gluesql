@@ -30,7 +30,7 @@ CREATE TABLE DropTable (
         ("DROP TABLE DropTable;", Ok(Payload::DropTable)),
         (
             "DROP TABLE DropTable;",
-            Err(ExecuteError::TableNotExists.into()),
+            Err(AlterError::TableNotFound("DropTable".to_owned()).into()),
         ),
         (
             r#"
@@ -54,7 +54,7 @@ CREATE TABLE DropTable (
         ),
         (
             "DROP VIEW DropTable;",
-            Err(ExecuteError::DropTypeNotSupported.into()),
+            Err(AlterError::DropTypeNotSupported("VIEW".to_owned()).into()),
         ),
     ];
 

@@ -21,12 +21,12 @@ test_case!(migrate, async move {
 
     let error_cases = vec![
         (
-            ValueError::ExprNotSupported("3 * 2".to_owned()).into(),
+            LiteralError::UnsupportedExpr("3 * 2".to_owned()).into(),
             "INSERT INTO Test (id, num) VALUES (3 * 2, 1);",
         ),
         (
             ValueError::FailedToParseNumber.into(),
-            "INSERT INTO Test (id, num) VALUES (1.1, 1);",
+            r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
         ),
         (
             EvaluateError::UnsupportedCompoundIdentifier("Here.User.id".to_owned()).into(),

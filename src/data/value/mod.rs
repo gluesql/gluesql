@@ -1,9 +1,8 @@
 use {
     super::Literal,
     crate::result::Result,
-    boolinator::Boolinator,
     serde::{Deserialize, Serialize},
-    sqlparser::ast::{DataType, Expr, Ident},
+    sqlparser::ast::{DataType, Expr},
     std::{cmp::Ordering, convert::TryFrom, fmt::Debug},
 };
 
@@ -67,17 +66,16 @@ impl BoolToValue for bool {
 
 impl Value {
     pub fn from_expr(data_type: &DataType, nullable: bool, expr: &Expr) -> Result<Self> {
-        match expr {
-            Expr::Value(literal) => {
-                Value::from_data_type(&data_type, nullable, Literal::try_from(literal)?)
-            }
-            Expr::Identifier(Ident { value, .. }) => Ok(Value::Str(value.clone())),
-            _ => Err(ValueError::ExprNotSupported(expr.to_string()).into()),
-        }
+        let literal = Literal::try_from(expr)?;
+        let value = Value::try_from_literal(&data_type, &literal)?;
+
+        value.validate_null(nullable)?;
+
+        Ok(value)
     }
 
-    pub fn is_same_as_data_type(&self, data_type: &DataType) -> bool {
-        matches!(
+    pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
+        let valid = matches!(
             (data_type, self),
             (DataType::Boolean, Value::Bool(_))
                 | (DataType::Int, Value::I64(_))
@@ -87,33 +85,25 @@ impl Value {
                 | (DataType::Int, Value::Null)
                 | (DataType::Float(_), Value::Null)
                 | (DataType::Text, Value::Null)
-        )
+        );
+
+        if !valid {
+            return Err(ValueError::IncompatibleDataType {
+                data_type: data_type.to_string(),
+                value: format!("{:?}", self),
+            }
+            .into());
+        }
+
+        Ok(())
     }
 
-    pub fn from_data_type(
-        data_type: &DataType,
-        nullable: bool,
-        literal: Literal<'_>,
-    ) -> Result<Self> {
-        match (data_type, literal) {
-            (DataType::Int, Literal::Number(v)) => v
-                .parse()
-                .map(Value::I64)
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (DataType::Float(_), Literal::Number(v)) => v
-                .parse()
-                .map(Value::F64)
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(v)),
-            (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.into_owned())),
-            (DataType::Int, Literal::Null)
-            | (DataType::Float(_), Literal::Null)
-            | (DataType::Boolean, Literal::Null)
-            | (DataType::Text, Literal::Null) => {
-                nullable.as_result(Value::Null, ValueError::NullValueOnNotNullField.into())
-            }
-            _ => Err(ValueError::SqlTypeNotSupported.into()),
+    pub fn validate_null(&self, nullable: bool) -> Result<()> {
+        if !nullable && matches!(self, Value::Null) {
+            return Err(ValueError::NullValueOnNotNullField.into());
         }
+
+        Ok(())
     }
 
     pub fn cast(&self, data_type: &DataType) -> Result<Self> {

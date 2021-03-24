@@ -2,7 +2,7 @@ use {
     crate::{
         data::{LiteralError, RowError, TableError, ValueError},
         executor::{
-            AggregateError, BlendError, CreateTableError, EvaluateError, ExecuteError, FetchError,
+            AggregateError, AlterError, BlendError, EvaluateError, ExecuteError, FetchError,
             FilterError, JoinError, LimitError, SelectError, UpdateError, ValidateError,
         },
     },
@@ -25,6 +25,8 @@ pub enum Error {
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
+    #[error(transparent)]
+    Alter(#[from] AlterError),
     #[error(transparent)]
     Fetch(#[from] FetchError),
     #[error(transparent)]
@@ -53,8 +55,6 @@ pub enum Error {
     Value(#[from] ValueError),
     #[error(transparent)]
     Literal(#[from] LiteralError),
-    #[error(transparent)]
-    CreateTable(#[from] CreateTableError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -68,6 +68,7 @@ impl PartialEq for Error {
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
+            (Alter(e), Alter(e2)) => e == e2,
             (Fetch(e), Fetch(e2)) => e == e2,
             (Evaluate(e), Evaluate(e2)) => e == e2,
             (Select(e), Select(e2)) => e == e2,
@@ -82,7 +83,6 @@ impl PartialEq for Error {
             (Validate(e), Validate(e2)) => e == e2,
             (Value(e), Value(e2)) => e == e2,
             (Literal(e), Literal(e2)) => e == e2,
-            (CreateTable(e), CreateTable(e2)) => e == e2,
             _ => false,
         }
     }

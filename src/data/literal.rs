@@ -1,6 +1,6 @@
 use {
     crate::result::{Error, Result},
-    sqlparser::ast::Value as AstValue,
+    sqlparser::ast::{Expr, Ident, Value as AstValue},
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     Literal::*,
 };
@@ -9,8 +9,11 @@ use {serde::Serialize, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum LiteralError {
-    #[error("Unsupported literal type: {0}")]
+    #[error("unsupported literal type: {0}")]
     UnsupportedLiteralType(String),
+
+    #[error("unsupported expr: {0}")]
+    UnsupportedExpr(String),
 
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
@@ -48,6 +51,18 @@ impl<'a> TryFrom<&'a AstValue> for Literal<'a> {
         };
 
         Ok(literal)
+    }
+}
+
+impl<'a> TryFrom<&'a Expr> for Literal<'a> {
+    type Error = Error;
+
+    fn try_from(expr: &'a Expr) -> Result<Self> {
+        match expr {
+            Expr::Value(literal) => Literal::try_from(literal),
+            Expr::Identifier(Ident { value, .. }) => Ok(Literal::Text(Cow::Borrowed(value))),
+            _ => Err(LiteralError::UnsupportedExpr(expr.to_string()).into()),
+        }
     }
 }
 
