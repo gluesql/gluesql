@@ -16,7 +16,7 @@ You can use GlueSQL as an embedded SQL database. GlueSQL provides [sled](https:/
 In your `Cargo.toml`:
 ```toml
 [dependencies]
-gluesql = "0.4"
+gluesql = "0.5"
 ```
 
 ### Usage
@@ -46,11 +46,11 @@ fn main() {
 `sled-storage` is optional. So in `Cargo.toml`:
 ```toml
 [dependencies]
-gluesql = { version = "0.4", default-features = false, features = ["alter-table"] }
+gluesql = { version = "0.5", default-features = false, features = ["alter-table"] }
 
 # alter-table is optional.
 # If your DB does not have plan to support ALTER TABLE, then use this below.
-gluesql = { version = "0.4", default-features = false }
+gluesql = { version = "0.5", default-features = false }
 ```
 
 ### Usage
