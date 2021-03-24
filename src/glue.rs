@@ -1,5 +1,5 @@
 #[cfg(feature = "sled-storage")]
-use crate::{execute, storages::SledStorage, ExecuteError, Payload, Query, Result, Row};
+use crate::{execute, storages::SledStorage, ExecuteError, Payload, Query, Result};
 #[cfg(feature = "sled-storage")]
 use futures::executor::block_on;
 
@@ -47,6 +47,7 @@ impl Glue {
     }
 }
 
+#[cfg(feature = "sled-storage")]
 #[cfg(test)]
 mod tests {
     use crate::{parse_sql::parse, Glue, Payload, Row, SledStorage, Value};

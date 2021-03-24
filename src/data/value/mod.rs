@@ -116,10 +116,10 @@ impl Value {
             | (DataType::Text, Value::Str(_)) => Ok(self.clone()),
             (_, Value::Null) => Ok(Value::Null),
 
-            (DataType::Boolean, value) => value.try_into().map(|value| Value::Bool(value)),
-            (DataType::Int, value) => value.try_into().map(|value| Value::I64(value)),
-            (DataType::Float(_), value) => value.try_into().map(|value| Value::F64(value)),
-            (DataType::Text, value) => value.try_into().map(|value| Value::Str(value)),
+            (DataType::Boolean, value) => value.try_into().map(Value::Bool),
+            (DataType::Int, value) => value.try_into().map(Value::I64),
+            (DataType::Float(_), value) => value.try_into().map(Value::F64),
+            (DataType::Text, value) => value.try_into().map(Value::Str),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
