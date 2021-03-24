@@ -5,7 +5,6 @@ use {
 
 #[cfg(feature = "auto-increment")]
 use sqlparser::{
-    ast::{Ident, Value as Literal},
     dialect::keywords::Keyword,
     tokenizer::{Token, Word},
 };
