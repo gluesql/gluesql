@@ -9,7 +9,7 @@ use sqlparser::ast::{Assignment, ColumnDef, Ident};
 use super::context::FilterContext;
 use super::evaluate::{evaluate, Evaluated};
 use crate::data::value::TryFromLiteral;
-use crate::data::{schema::ColumnDefExt, Row, Value};
+use crate::data::{Row, Value};
 use crate::result::Result;
 use crate::store::Store;
 
@@ -69,19 +69,12 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
             Some(assignment) => {
                 let Assignment { value, .. } = &assignment;
                 let ColumnDef { data_type, .. } = column_def;
-                let nullable = column_def.is_nullable();
 
-                let value = match evaluate(self.storage, context, None, value, false).await? {
-                    Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
-                    Evaluated::Value(v) => {
-                        v.validate_type(data_type)?;
-                        v.into_owned()
-                    }
-                };
-
-                value.validate_null(nullable)?;
-
-                Ok(Some(value))
+                match evaluate(self.storage, context, None, value, false).await? {
+                    Evaluated::Literal(v) => Value::try_from_literal(data_type, &v),
+                    Evaluated::Value(v) => Ok(v.into_owned()),
+                }
+                .map(Some)
             }
         }
     }

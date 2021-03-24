@@ -1,4 +1,5 @@
 use {
+    super::{ColumnValidation, ValidateError},
     crate::{
         data::{Row, Value},
         result::Result,
@@ -7,25 +8,9 @@ use {
     },
     boolinator::Boolinator,
     im_rc::HashSet,
-    serde::Serialize,
     sqlparser::ast::{ColumnDef, ColumnOption, Ident},
     std::{convert::TryInto, fmt::Debug, rc::Rc},
-    thiserror::Error as ThisError,
 };
-
-#[derive(ThisError, Debug, PartialEq, Serialize)]
-pub enum ValidateError {
-    #[error("conflict! storage row has no column on index {0}")]
-    ConflictOnStorageColumnIndex(usize),
-
-    #[error("duplicate entry '{0}' for unique column '{1}'")]
-    DuplicateEntryOnUniqueField(String, String),
-}
-
-pub enum ColumnValidation {
-    All(Rc<[ColumnDef]>),
-    SpecifiedColumns(Rc<[ColumnDef]>, Vec<Ident>),
-}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UniqueKey {

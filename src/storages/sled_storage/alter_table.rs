@@ -5,11 +5,11 @@ use boolinator::Boolinator;
 use std::iter::once;
 use std::str;
 
-use sqlparser::ast::{ColumnDef, Ident};
+use sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Ident};
 
 use super::{error::err_into, fetch_schema, SledStorage};
 use crate::utils::Vector;
-use crate::{schema::ColumnDefExt, AlterTable, AlterTableError, MutResult, Row, Schema, Value};
+use crate::{AlterTable, AlterTableError, MutResult, Row, Schema, Value};
 
 macro_rules! try_self {
     ($self: expr, $expr: expr) => {
@@ -140,11 +140,24 @@ impl AlterTable for SledStorage {
             ));
         }
 
-        let ColumnDef { data_type, .. } = column_def;
-        let nullable = column_def.is_nullable();
-        let default = column_def.get_default();
+        let ColumnDef {
+            options, data_type, ..
+        } = column_def;
+
+        let nullable = options
+            .iter()
+            .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null);
+        let default = options
+            .iter()
+            .filter_map(|ColumnOptionDef { option, .. }| match option {
+                ColumnOption::Default(expr) => Some(expr),
+                _ => None,
+            })
+            .map(|expr| Value::from_expr(&data_type, nullable, expr))
+            .next();
+
         let value = match (default, nullable) {
-            (Some(expr), _) => try_self!(self, Value::from_expr(&data_type, nullable, expr)),
+            (Some(value), _) => try_self!(self, value),
             (None, true) => Value::Null,
             (None, false) => {
                 return Err((

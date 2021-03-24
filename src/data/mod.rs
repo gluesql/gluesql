@@ -1,6 +1,6 @@
 mod literal;
 mod row;
-pub mod schema;
+mod schema;
 mod table;
 pub mod value;
 

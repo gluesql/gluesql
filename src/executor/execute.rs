@@ -1,24 +1,24 @@
-use futures::stream::TryStreamExt;
+use futures::stream::{self, TryStreamExt};
 use serde::Serialize;
 use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error as ThisError;
 
-use sqlparser::ast::{SetExpr, Statement, Values};
+#[cfg(feature = "alter-table")]
+use sqlparser::ast::AlterTableOperation;
+use sqlparser::ast::{ObjectType, SetExpr, Statement, Values};
 
 use crate::data::{get_name, Row, Schema};
 use crate::parse_sql::Query;
 use crate::result::{MutResult, Result};
 use crate::store::{AlterTable, AutoIncrement, Store, StoreMut};
 
-#[cfg(feature = "alter-table")]
-use super::alter::alter_table;
-use super::alter::{create_table, drop};
+use super::create_table::validate_table;
 use super::fetch::{fetch, fetch_columns};
 use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
-use super::validate::{validate_unique, ColumnValidation};
+use super::validate::{validate_rows, ColumnValidation};
 
 #[cfg(feature = "auto-increment")]
 use super::column_options::auto_increment;
@@ -28,8 +28,15 @@ pub enum ExecuteError {
     #[error("query not supported")]
     QueryNotSupported,
 
+    #[error("drop type not supported")]
+    DropTypeNotSupported,
+
     #[error("unsupported insert value type: {0}")]
     UnreachableUnsupportedInsertValueType(String),
+
+    #[cfg(feature = "alter-table")]
+    #[error("unsupported alter table operation: {0}")]
+    UnsupportedAlterTableOperation(String),
 
     #[error("table does not exist")]
     TableNotExists,
@@ -87,21 +94,91 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
             columns,
             if_not_exists,
             ..
-        } => create_table(storage, name, columns, *if_not_exists)
-            .await
-            .map(|(storage, _)| (storage, Payload::Create)),
+        } => {
+            let schema = try_block!(storage, {
+                let schema = Schema {
+                    table_name: get_name(name)?.to_string(),
+                    column_defs: columns.clone(),
+                };
+
+                validate_table(&storage, &schema, *if_not_exists).await?;
+                Ok(schema)
+            });
+
+            storage
+                .insert_schema(&schema)
+                .await
+                .map(|(storage, _)| (storage, Payload::Create))
+        }
         Statement::Drop {
             object_type,
             names,
             if_exists,
             ..
-        } => drop(storage, object_type, names, *if_exists)
-            .await
-            .map(|(storage, _)| (storage, Payload::DropTable)),
+        } => {
+            if object_type != &ObjectType::Table {
+                return Err((storage, ExecuteError::DropTypeNotSupported.into()));
+            }
+
+            stream::iter(names.iter().map(Ok))
+                .try_fold(storage, |storage, table_name| async move {
+                    let schema = try_block!(storage, {
+                        let table_name = get_name(table_name)?;
+                        let schema = storage.fetch_schema(table_name).await?;
+
+                        if !if_exists {
+                            schema.ok_or(ExecuteError::TableNotExists)?;
+                        }
+                        Ok(table_name)
+                    });
+                    storage
+                        .delete_schema(schema)
+                        .await
+                        .map(|(storage, _)| storage)
+                })
+                .await
+                .map(|storage| (storage, Payload::DropTable))
+        }
         #[cfg(feature = "alter-table")]
-        Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
-            .await
-            .map(|(storage, _)| (storage, Payload::AlterTable)),
+        Statement::AlterTable { name, operation } => {
+            let table_name = try_into!(storage, get_name(name));
+
+            let result = match operation {
+                AlterTableOperation::RenameTable {
+                    table_name: new_table_name,
+                } => {
+                    let new_table_name = try_into!(storage, get_name(new_table_name));
+
+                    storage.rename_schema(table_name, new_table_name).await
+                }
+                AlterTableOperation::RenameColumn {
+                    old_column_name,
+                    new_column_name,
+                } => {
+                    storage
+                        .rename_column(table_name, &old_column_name.value, &new_column_name.value)
+                        .await
+                }
+                AlterTableOperation::AddColumn { column_def } => {
+                    storage.add_column(table_name, column_def).await
+                }
+                AlterTableOperation::DropColumn {
+                    column_name,
+                    if_exists,
+                    ..
+                } => {
+                    storage
+                        .drop_column(table_name, &column_name.value, *if_exists)
+                        .await
+                }
+                _ => Err((
+                    storage,
+                    ExecuteError::UnsupportedAlterTableOperation(operation.to_string()).into(),
+                )),
+            };
+
+            result.map(|(storage, _)| (storage, Payload::AlterTable))
+        }
 
         //-- Rows
         Statement::Insert {
@@ -116,8 +193,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                     .fetch_schema(table_name)
                     .await?
                     .ok_or(ExecuteError::TableNotExists)?;
-                let column_defs = Rc::from(column_defs);
-                let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
 
                 let rows = match &source.body {
                     SetExpr::Values(Values(values_list)) => values_list
@@ -136,15 +211,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
 
                         select(&storage, &query(), None)
                             .await?
-                            .and_then(|row| {
-                                let column_defs = Rc::clone(&column_defs);
-
-                                async move {
-                                    row.validate(&column_defs)?;
-
-                                    Ok(row)
-                                }
-                            })
                             .try_collect::<Vec<_>>()
                             .await?
                     }
@@ -209,16 +275,17 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                     .try_collect::<Vec<_>>()
                     .await?;
 
-                let column_validation =
-                    ColumnValidation::SpecifiedColumns(Rc::from(column_defs), columns_to_update);
-                validate_unique(
+                let all_column_defs = Rc::from(column_defs);
+                validate_rows(
                     &storage,
                     &table_name,
-                    column_validation,
+                    ColumnValidation::SpecifiedColumns(
+                        Rc::clone(&all_column_defs),
+                        columns_to_update,
+                    ),
                     rows.iter().map(|r| &r.1),
                 )
                 .await?;
-
                 Ok(rows)
             });
             let num_rows = rows.len();

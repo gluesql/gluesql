@@ -109,7 +109,7 @@ impl<'a> Evaluated<'a> {
     }
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
-        let cast_literal = |literal: &Literal| Value::try_cast_from_literal(data_type, literal);
+        let cast_literal = |literal: &Literal| Value::try_from_literal(data_type, literal);
         let cast_value = |value: &Value| value.cast(data_type);
 
         match self {

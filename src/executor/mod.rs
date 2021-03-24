@@ -1,8 +1,8 @@
 mod aggregate;
-mod alter;
 mod blend;
 mod column_options;
 mod context;
+mod create_table;
 mod evaluate;
 mod execute;
 mod fetch;
@@ -14,8 +14,8 @@ mod update;
 mod validate;
 
 pub use aggregate::{AggregateError, GroupKey};
-pub use alter::AlterError;
 pub use blend::BlendError;
+pub use create_table::CreateTableError;
 pub use evaluate::EvaluateError;
 pub use execute::{execute, ExecuteError, Payload};
 pub use fetch::FetchError;
