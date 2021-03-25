@@ -4,6 +4,7 @@ use {
     crate::{AutoIncrement, MutResult, Row, Value},
     async_trait::async_trait,
     fstrings::*,
+    futures::stream::{self, TryStreamExt},
     sqlparser::ast::ColumnDef,
 };
 
@@ -26,15 +27,11 @@ impl AutoIncrement for SledStorage {
         columns: Vec<(usize, &ColumnDef)>,
         rows: Vec<Row>,
     ) -> MutResult<Self, Vec<Row>> {
-        // FAIL: No-mut
-        let mut storage = self;
-        let mut rows = rows;
-        for column in columns.iter() {
-            let result = generate_column_values(storage, table_name, column, rows).await?;
-            storage = result.0;
-            rows = result.1;
-        }
-        Ok((storage, rows))
+        stream::iter(columns.iter().map(Ok))
+            .try_fold((self, rows), |(storage, rows), column| async move {
+                generate_column_values(storage, table_name, column, rows).await
+            })
+            .await
     }
 }
 
