@@ -1,14 +1,15 @@
-#[cfg(feature = "sled-storage")]
-use crate::{execute, storages::SledStorage, ExecuteError, Payload, Query, Result};
-#[cfg(feature = "sled-storage")]
-use futures::executor::block_on;
+#![cfg(feature = "sled-storage")]
+use {
+    crate::{execute, storages::SledStorage, ExecuteError, Payload, Query, Result},
+    futures::executor::block_on,
+};
 
-#[cfg(feature = "sled-storage")]
+mod value;
+
 pub struct Glue {
     storage: Option<SledStorage>,
 }
 
-#[cfg(feature = "sled-storage")]
 impl Glue {
     pub fn new(storage: SledStorage) -> Self {
         let storage = Some(storage);
@@ -43,7 +44,7 @@ impl Glue {
                         .map(|row| {
                             row.0
                                 .into_iter()
-                                .map(|value| value.into())
+                                .map(|value| (&value).into())
                                 .collect::<Vec<String>>()
                         })
                         .collect::<Vec<Vec<String>>>(),
@@ -54,7 +55,6 @@ impl Glue {
     }
 }
 
-#[cfg(feature = "sled-storage")]
 #[cfg(test)]
 mod tests {
     use {
@@ -127,5 +127,16 @@ mod tests {
                 ]
             ])
         );
+
+        use std::convert::TryInto;
+
+        let test_value: String = Value::Str(String::from("test")).into();
+        assert_eq!(test_value, String::from("test"));
+        let test_value: String = (&Value::Str(String::from("test"))).into();
+        assert_eq!(test_value, String::from("test"));
+        let test_value: Result<String, _> = Value::I64(1).try_into();
+        assert_eq!(test_value, Ok(String::from("1")));
+        let test_value: Result<String, _> = (&Value::I64(1)).try_into();
+        assert_eq!(test_value, Ok(String::from("1")));
     }
 }
