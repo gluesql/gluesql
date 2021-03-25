@@ -62,8 +62,8 @@ async fn generate_column_values(
     // FAIL: No-mut
     let mut rows = rows;
     let mut value = first_value;
-    for row_index in 0..rows.len() {
-        rows[row_index].0[column_index] = value.clone();
+    for row in &mut rows {
+        row.0[column_index] = value.clone();
         value = try_into!(storage, value.add(&ONE));
     }
 
