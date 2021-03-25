@@ -1,13 +1,7 @@
 use {
     super::AlterError,
-    crate::result::Result,
+    crate::{data::schema::ColumnOptionExt, result::Result},
     sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, DataType},
-};
-
-#[cfg(feature = "auto-increment")]
-use sqlparser::{
-    dialect::keywords::Keyword,
-    tokenizer::{Token, Word},
 };
 
 pub fn validate(column_def: &ColumnDef) -> Result<()> {
@@ -28,37 +22,13 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
 
     // column option
     if let Some(option) = options.iter().find(|ColumnOptionDef { option, .. }| {
-        #[allow(clippy::let_and_return)]
-        let result = !matches!(
+        !matches!(
             option,
             ColumnOption::Null
                 | ColumnOption::NotNull
                 | ColumnOption::Default(_)
                 | ColumnOption::Unique { .. }
-        );
-        #[allow(clippy::let_and_return)]
-        #[cfg(feature = "auto-increment")]
-        let result = result
-            && !matches!(option,
-            ColumnOption::DialectSpecific(tokens)
-                if matches!(
-                    tokens[..],
-                    [
-                        Token::Word(Word {
-                            keyword: Keyword::AUTO_INCREMENT,
-                            ..
-                        }),
-                        ..
-                    ] | [
-                        Token::Word(Word {
-                            keyword: Keyword::AUTOINCREMENT,
-                            ..
-                        }),
-                        ..
-                    ]
-                ));
-        #[allow(clippy::let_and_return)]
-        result
+        ) && !option.is_auto_increment()
     }) {
         return Err(AlterError::UnsupportedColumnOption(option.to_string()).into());
     }

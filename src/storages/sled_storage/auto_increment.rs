@@ -1,28 +1,12 @@
 #![cfg(feature = "auto-increment")]
 use {
-    super::{
-        error::{err_into, StorageError},
-        SledStorage,
-    },
+    super::{error::err_into, SledStorage},
     crate::{AutoIncrement, MutResult, Value},
     async_trait::async_trait,
     fstrings::*,
-    sled::transaction::{ConflictableTransactionError, TransactionError},
+    sled::Error,
 };
 
-macro_rules! transaction {
-    ($self: expr, $expr: expr) => {{
-        let result = $self.tree.transaction($expr).map_err(|e| match e {
-            TransactionError::Abort(e) => e,
-            TransactionError::Storage(e) => StorageError::Sled(e).into(),
-        });
-
-        match result {
-            Ok(_) => Ok(($self, ())),
-            Err(e) => Err(($self, e)),
-        }
-    }};
-}
 macro_rules! try_into {
     ($self: expr, $expr: expr) => {
         match $expr {
@@ -51,15 +35,10 @@ impl AutoIncrement for SledStorage {
             .unwrap_or(ONE);
         let next_value = try_into!(self, value.add(&ONE));
 
-        let (self, _) = transaction!(self, |tree| {
-            let key = f!("generator/{table_name}/{column_name}");
-            let key = key.as_bytes();
-            let next_value = bincode::serialize(&next_value)
-                .map_err(err_into)
-                .map_err(ConflictableTransactionError::Abort)?;
-            tree.insert(key, next_value)?;
-            Ok(())
-        })?;
+        let key = f!("generator/{table_name}/{column_name}");
+        let key = key.as_bytes();
+        let next_value = try_into!(self, bincode::serialize(&next_value).map_err(err_into));
+        try_into!(self, self.tree.insert(key, next_value).map_err(err_into));
 
         Ok((self, value))
     }

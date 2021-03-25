@@ -33,29 +33,9 @@ impl ColumnDefExt for ColumnDef {
 
     #[cfg(feature = "auto-increment")]
     fn is_auto_incremented(&self) -> bool {
-        self.options.iter().any(|option| {
-            matches!(option,
-            ColumnOptionDef{option, ..}
-                if matches!(option, ColumnOption::DialectSpecific(tokens)
-                    if matches!(
-                        tokens[..],
-                        [
-                            Token::Word(Word {
-                                keyword: Keyword::AUTO_INCREMENT,
-                                ..
-                            }),
-                            ..
-                        ] | [
-                            Token::Word(Word {
-                                keyword: Keyword::AUTOINCREMENT,
-                                ..
-                            }),
-                            ..
-                        ]
-                    )
-                )
-            )
-        })
+        self.options
+            .iter()
+            .any(|ColumnOptionDef { option, .. }| option.is_auto_increment())
     }
 
     fn get_default(&self) -> Option<&Expr> {
@@ -65,5 +45,41 @@ impl ColumnDefExt for ColumnDef {
                 ColumnOption::Default(expr) => Some(expr),
                 _ => None,
             })
+    }
+}
+
+pub trait ColumnOptionExt {
+    fn is_auto_increment(self) -> bool;
+}
+
+#[cfg(not(feature = "auto-increment"))]
+impl ColumnOptionExt for &ColumnOption {
+    fn is_auto_increment(self) -> bool {
+        false
+    }
+}
+
+#[cfg(feature = "auto-increment")]
+impl ColumnOptionExt for &ColumnOption {
+    fn is_auto_increment(self) -> bool {
+        matches!(self,
+        ColumnOption::DialectSpecific(tokens)
+            if matches!(
+                tokens[..],
+                [
+                    Token::Word(Word {
+                        keyword: Keyword::AUTO_INCREMENT,
+                        ..
+                    }),
+                    ..
+                ] | [
+                    Token::Word(Word {
+                        keyword: Keyword::AUTOINCREMENT,
+                        ..
+                    }),
+                    ..
+                ]
+            )
+        )
     }
 }
