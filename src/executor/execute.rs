@@ -1,24 +1,27 @@
-use futures::stream::TryStreamExt;
-use serde::Serialize;
-use std::fmt::Debug;
-use std::rc::Rc;
-use thiserror::Error as ThisError;
-
-use sqlparser::ast::{SetExpr, Statement, Values};
-
-use crate::data::{get_name, Row, Schema};
-use crate::parse_sql::Query;
-use crate::result::{MutResult, Result};
-use crate::store::{AlterTable, AutoIncrement, Store, StoreMut};
+use {
+    super::{
+        alter::{create_table, drop},
+        fetch::{fetch, fetch_columns},
+        filter::Filter,
+        select::{select, select_with_labels},
+        update::Update,
+        validate::{validate_unique, ColumnValidation},
+    },
+    crate::{
+        data::{get_name, Row, Schema},
+        parse_sql::Query,
+        result::{MutResult, Result},
+        store::{AlterTable, AutoIncrement, Store, StoreMut},
+    },
+    futures::stream::TryStreamExt,
+    serde::Serialize,
+    sqlparser::ast::{SetExpr, Statement, Values},
+    std::{fmt::Debug, rc::Rc},
+    thiserror::Error as ThisError,
+};
 
 #[cfg(feature = "alter-table")]
 use super::alter::alter_table;
-use super::alter::{create_table, drop};
-use super::fetch::{fetch, fetch_columns};
-use super::filter::Filter;
-use super::select::{select, select_with_labels};
-use super::update::Update;
-use super::validate::{validate_unique, ColumnValidation};
 
 #[cfg(feature = "auto-increment")]
 use super::column_options::auto_increment;
@@ -152,7 +155,8 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
             });
 
             #[cfg(feature = "auto-increment")]
-            let (storage, rows) = auto_increment::run(storage, rows, &column_defs, table_name)?;
+            let (storage, rows) =
+                auto_increment::run(storage, rows, &column_defs, table_name).await?;
 
             let num_rows = rows.len();
 
