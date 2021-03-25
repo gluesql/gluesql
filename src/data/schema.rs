@@ -49,19 +49,19 @@ impl ColumnDefExt for ColumnDef {
 }
 
 pub trait ColumnOptionExt {
-    fn is_auto_increment(self) -> bool;
+    fn is_auto_increment(&self) -> bool;
 }
 
 #[cfg(not(feature = "auto-increment"))]
-impl ColumnOptionExt for &ColumnOption {
-    fn is_auto_increment(self) -> bool {
+impl ColumnOptionExt for ColumnOption {
+    fn is_auto_increment(&self) -> bool {
         false
     }
 }
 
 #[cfg(feature = "auto-increment")]
-impl ColumnOptionExt for &ColumnOption {
-    fn is_auto_increment(self) -> bool {
+impl ColumnOptionExt for ColumnOption {
+    fn is_auto_increment(&self) -> bool {
         matches!(self,
         ColumnOption::DialectSpecific(tokens)
             if matches!(

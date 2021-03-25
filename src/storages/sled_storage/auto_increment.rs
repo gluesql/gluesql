@@ -4,7 +4,6 @@ use {
     crate::{AutoIncrement, MutResult, Value},
     async_trait::async_trait,
     fstrings::*,
-    sled::Error,
 };
 
 macro_rules! try_into {
