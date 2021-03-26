@@ -37,40 +37,36 @@ pub async fn run<
         .filter(|(_, column_def)| column_def.is_auto_incremented())
         .collect();
 
-    stream::iter(auto_increment_columns.iter().map(Ok))
-        .try_fold((storage, rows), |(storage, rows), column| async move {
-            generate_column_values(storage, table_name, column, rows).await // Ideally we would do one transaction per (current: AI columns * 2)
-        })
-        .await
-}
-
-async fn generate_column_values<
-    T: 'static + Debug,
-    Storage: Store<T> + StoreMut<T> + AlterTable + AutoIncrement,
->(
-    storage: Storage,
-    table_name: &str,
-    column: &(usize, &ColumnDef),
-    rows: Vec<Row>,
-) -> MutResult<Storage, Vec<Row>> {
-    let (column_index, column_name) = *column;
-    let column_name = column_name.name.value.as_str();
-
-    let start = try_into!(
-        storage,
-        storage.get_increment_value(table_name, column_name).await
-    );
-
     // FAIL: No-mut
-    let mut rows = rows;
-    let mut current = start;
-    for row in &mut rows {
-        row.0[column_index] = Value::I64(current.clone());
-        current += 1;
-    }
+    let rows_len = rows.len() as i64;
+    let (storage, column_values) = stream::iter(auto_increment_columns.iter().map(Ok))
+        .try_fold(
+            (storage, vec![]),
+            |(storage, mut column_values), column| async move {
+                let (column_index, column_name) = *column;
+                let column_name = column_name.name.value.as_str();
 
-    storage
-        .set_increment_value(table_name, column_name, current)
-        .await
-        .map(|(storage, _)| (storage, rows))
+                let start = try_into!(
+                    storage,
+                    storage.get_increment_value(table_name, column_name).await
+                );
+
+                column_values.push((column_index, start));
+
+                storage
+                    .set_increment_value(table_name, column_name, start + rows_len)
+                    .await
+                    .map(|(storage, _)| (storage, column_values))
+            },
+        )
+        .await?;
+    let mut rows = rows;
+    let mut column_values = column_values;
+    for row in &mut rows {
+        for column_value in &mut column_values {
+            row.0[column_value.0] = Value::I64(column_value.1);
+            column_value.1 += 1;
+        }
+    }
+    Ok((storage, rows))
 }
