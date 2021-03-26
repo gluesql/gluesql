@@ -1,8 +1,4 @@
-use {
-    crate::{result::MutResult, Row},
-    async_trait::async_trait,
-    sqlparser::ast::ColumnDef,
-};
+use {crate::result::MutResult, async_trait::async_trait, std::ops::Range};
 
 #[async_trait(?Send)]
 pub trait AutoIncrement
@@ -12,7 +8,7 @@ where
     async fn generate_values(
         self,
         table_name: &str,
-        columns: Vec<(usize, &ColumnDef)>,
-        rows: Vec<Row>,
-    ) -> MutResult<Self, Vec<Row>>;
+        column_name: &str,
+        size: usize,
+    ) -> MutResult<Self, Range<i64>>;
 }
