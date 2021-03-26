@@ -31,19 +31,18 @@ pub async fn run<
     column_defs: &[ColumnDef],
     table_name: &str,
 ) -> MutResult<Storage, Vec<Row>> {
-    let auto_increment_columns: Vec<(usize, &ColumnDef)> = column_defs
+    // FAIL: No-mut
+    let auto_increment_columns = column_defs
         .iter()
         .enumerate()
-        .filter(|(_, column_def)| column_def.is_auto_incremented())
-        .collect();
+        .filter(|(_, column_def)| column_def.is_auto_incremented());
 
-    // FAIL: No-mut
     let rows_len = rows.len() as i64;
-    let (storage, column_values) = stream::iter(auto_increment_columns.iter().map(Ok))
+    let (storage, column_values) = stream::iter(auto_increment_columns.map(Ok))
         .try_fold(
             (storage, vec![]),
             |(storage, mut column_values), column| async move {
-                let (column_index, column_name) = *column;
+                let (column_index, column_name) = column;
                 let column_name = column_name.name.value.as_str();
 
                 let start = try_into!(
@@ -60,6 +59,7 @@ pub async fn run<
             },
         )
         .await?;
+
     let mut rows = rows;
     let mut column_values = column_values;
     for row in &mut rows {
