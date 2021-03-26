@@ -11,6 +11,17 @@ use {
     std::fmt::Debug,
 };
 
+macro_rules! try_into {
+    ($self: expr, $expr: expr) => {
+        match $expr {
+            Err(e) => {
+                return Err(($self, e));
+            }
+            Ok(v) => v,
+        }
+    };
+}
+
 pub async fn run<
     T: 'static + Debug,
     Storage: Store<T> + StoreMut<T> + AlterTable + AutoIncrement,
@@ -45,16 +56,21 @@ async fn generate_column_values<
     let (column_index, column_name) = *column;
     let column_name = column_name.name.value.as_str();
 
-    let (storage, range) = storage
-        .generate_values(table_name, column_name, rows.len())
-        .await?;
+    let start = try_into!(
+        storage,
+        storage.get_increment_value(table_name, column_name).await
+    );
 
     // FAIL: No-mut
     let mut rows = rows;
-    let start = range.start;
-    for value in range {
-        rows[(value - start) as usize].0[column_index] = Value::I64(value);
+    let mut current = start;
+    for row in &mut rows {
+        row.0[column_index] = Value::I64(current.clone());
+        current += 1;
     }
 
-    Ok((storage, rows))
+    storage
+        .set_increment_value(table_name, column_name, current)
+        .await
+        .map(|(storage, _)| (storage, rows))
 }
