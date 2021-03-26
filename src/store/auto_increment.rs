@@ -1,7 +1,6 @@
 use {
     crate::result::{MutResult, Result},
     async_trait::async_trait,
-    std::ops::Range,
 };
 
 #[async_trait(?Send)]

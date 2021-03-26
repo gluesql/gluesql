@@ -4,7 +4,6 @@ use {
     crate::{AutoIncrement, MutResult, Result},
     async_trait::async_trait,
     fstrings::*,
-    std::ops::Range,
 };
 
 macro_rules! try_into {

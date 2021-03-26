@@ -39,7 +39,7 @@ pub async fn run<
 
     stream::iter(auto_increment_columns.iter().map(Ok))
         .try_fold((storage, rows), |(storage, rows), column| async move {
-            generate_column_values(storage, table_name, column, rows).await
+            generate_column_values(storage, table_name, column, rows).await // Ideally we would do one transaction per (current: AI columns * 2)
         })
         .await
 }
