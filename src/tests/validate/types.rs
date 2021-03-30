@@ -1,6 +1,6 @@
 use {crate::*, sqlparser::ast::DataType, std::borrow::Cow};
 
-test_case!(types, async move {
+test_case!(async move {
     run!("CREATE TABLE TableB (id BOOLEAN);");
     run!("CREATE TABLE TableC (uid INTEGER, null_val INTEGER NULL);");
     run!("INSERT INTO TableB VALUES (FALSE);");

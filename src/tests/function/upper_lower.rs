@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(upper_lower, async move {
+test_case!(async move {
     use Value::{Null, Str};
 
     let test_cases = vec![

@@ -52,7 +52,36 @@ pub trait Tester<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable> {
 }
 
 #[macro_export]
+macro_rules! build_suite {
+    ($suite: ident, $($module: ident),+) => {
+        $(pub mod $module;)+
+        #[macro_export]
+        macro_rules! $suite {
+            ($test: meta, $storage: ident) => {
+                macro_rules! wrap {
+                    ($name: ident) => {
+                        #[feature(concat_idents)]
+                        #[$test]
+                        // Once possible concat_idents!($ suite, $ name) would be nice (rustlang/rust#12249, rustlang/rust#29599)
+                        async fn $name() {
+                            let path = stringify!($name);
+                            let storage = $storage::new(path);
+
+                            $suite::$name::test(storage).await;
+                        }
+                    };
+                }
+                $(wrap!($module);)+
+            };
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! test_case {
+    ($content: expr) => {
+        test_case!(test, $content);
+    };
     ($name: ident, $content: expr) => {
         pub async fn $name<T, U>(mut tester: impl tests::Tester<T, U>)
         where

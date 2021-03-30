@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(unique, async move {
+test_case!(async move {
     run!(
         r#"
 CREATE TABLE TestA (
