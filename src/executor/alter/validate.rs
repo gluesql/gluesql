@@ -46,5 +46,18 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
         .into());
     }
 
+    #[cfg(feature = "auto-increment")]
+    if !matches!(data_type, DataType::Int)
+        && options
+            .iter()
+            .any(|ColumnOptionDef { option, .. }| option.is_auto_increment())
+    {
+        return Err(AlterError::UnsupportedDataTypeForAutoIncrementColumn(
+            name.to_string(),
+            data_type.to_string(),
+        )
+        .into());
+    }
+
     Ok(())
 }

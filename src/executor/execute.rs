@@ -69,6 +69,17 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
         }};
     }
 
+    macro_rules! try_into {
+        ($self: expr, $expr: expr) => {
+            match $expr {
+                Err(e) => {
+                    return Err(($self, e));
+                }
+                Ok(v) => v,
+            }
+        };
+    }
+
     let Query(query) = query;
 
     match query {
@@ -103,7 +114,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
             ..
         } => {
             #[allow(unused_variables)]
-            let (rows, column_defs, table_name) = try_block!(storage, {
+            let (rows, column_defs, column_validation, table_name) = try_block!(storage, {
                 let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
@@ -149,14 +160,16 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                     }
                 };
 
-                validate_unique(&storage, &table_name, column_validation, rows.iter()).await?;
-
-                Ok((rows, column_defs, table_name))
+                Ok((rows, column_defs, column_validation, table_name))
             });
 
             #[cfg(feature = "auto-increment")]
             let (storage, rows) =
                 auto_increment::run(storage, rows, &column_defs, table_name).await?;
+
+            try_into!(storage, {
+                validate_unique(&storage, &table_name, column_validation, rows.iter()).await
+            });
 
             let num_rows = rows.len();
 

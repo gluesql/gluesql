@@ -37,7 +37,8 @@ pub async fn run<
         .enumerate()
         .filter(|(_, column_def)| column_def.is_auto_incremented());
 
-    let rows_len = rows.len() as i64;
+    let borrow_rows = &rows;
+
     let (storage, column_values) = stream::iter(auto_increment_columns.map(Ok))
         .try_fold(
             (storage, vec![]),
@@ -52,8 +53,13 @@ pub async fn run<
 
                 column_values.push((column_index, start));
 
+                let rows_count = borrow_rows
+                    .iter()
+                    .filter(|row| matches!(row.get_value(column_index), Some(Value::Null)))
+                    .count() as i64;
+
                 storage
-                    .set_increment_value(table_name, column_name, start + rows_len)
+                    .set_increment_value(table_name, column_name, start + rows_count)
                     .await
                     .map(|(storage, _)| (storage, column_values))
             },
@@ -64,8 +70,11 @@ pub async fn run<
     let mut column_values = column_values;
     for row in &mut rows {
         for column_value in &mut column_values {
-            row.0[column_value.0] = Value::I64(column_value.1);
-            column_value.1 += 1;
+            if matches!(row.0[column_value.0], Value::Null) {
+                row.0[column_value.0] = Value::I64(column_value.1);
+
+                column_value.1 += 1;
+            }
         }
     }
     Ok((storage, rows))

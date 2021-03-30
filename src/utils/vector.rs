@@ -47,6 +47,7 @@ impl<T> From<Vec<T>> for Vector<T> {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<T> Into<Vec<T>> for Vector<T> {
     fn into(self) -> Vec<T> {
         self.0
