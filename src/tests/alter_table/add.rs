@@ -66,38 +66,6 @@ test_case!(async move {
             )
             .into()),
         ),
-        (
-            "ALTER TABLE Foo DROP COLUMN IF EXISTS something;",
-            Ok(Payload::AlterTable),
-        ),
-        (
-            "ALTER TABLE Foo DROP COLUMN something;",
-            Err(AlterTableError::DroppingColumnNotFound("something".to_owned()).into()),
-        ),
-        (
-            "ALTER TABLE Foo DROP COLUMN amount;",
-            Ok(Payload::AlterTable),
-        ),
-        (
-            "SELECT * FROM Foo;",
-            Ok(select_with_null!(
-                id     | opt  | opt2;
-                I64(1)   Null   Bool(true);
-                I64(2)   Null   Bool(true)
-            )),
-        ),
-        (
-            "ALTER TABLE Foo DROP COLUMN IF EXISTS opt2;",
-            Ok(Payload::AlterTable),
-        ),
-        (
-            "SELECT * FROM Foo;",
-            Ok(select_with_null!(
-                id     | opt;
-                I64(1)   Null;
-                I64(2)   Null
-            )),
-        ),
     ];
 
     for (sql, expected) in test_cases.into_iter() {
