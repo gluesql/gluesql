@@ -35,5 +35,3 @@ jobs:
       run: cargo test --features sled-storage --verbose
     - name: Run tests with all features
       run: cargo test --all-features --verbose
-    - name: Run benchmarks
-      run: cargo bench

@@ -3,16 +3,20 @@ use {
     crate::result::Result,
     serde::{Deserialize, Serialize},
     sqlparser::ast::{DataType, Expr},
-    std::{cmp::Ordering, convert::TryFrom, fmt::Debug},
+    std::{
+        cmp::Ordering,
+        convert::{TryFrom, TryInto},
+        fmt::Debug,
+    },
 };
 
 mod error;
 mod group_key;
+mod into;
 mod literal;
 mod unique_key;
 
-pub use error::ValueError;
-pub use literal::TryFromLiteral;
+pub use {error::ValueError, literal::TryFromLiteral};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -108,63 +112,16 @@ impl Value {
 
     pub fn cast(&self, data_type: &DataType) -> Result<Self> {
         match (data_type, self) {
-            // Same as
             (DataType::Boolean, Value::Bool(_))
             | (DataType::Int, Value::I64(_))
             | (DataType::Float(_), Value::F64(_))
             | (DataType::Text, Value::Str(_)) => Ok(self.clone()),
+            (_, Value::Null) => Ok(Value::Null),
 
-            // Null
-            (DataType::Boolean, Value::Null)
-            | (DataType::Int, Value::Null)
-            | (DataType::Float(_), Value::Null)
-            | (DataType::Text, Value::Null) => Ok(Value::Null),
-
-            // Boolean
-            (DataType::Boolean, Value::Str(value)) => match value.to_uppercase().as_str() {
-                "TRUE" => Ok(Value::Bool(true)),
-                "FALSE" => Ok(Value::Bool(false)),
-                _ => Err(ValueError::ImpossibleCast.into()),
-            },
-            (DataType::Boolean, Value::I64(value)) => match value {
-                1 => Ok(Value::Bool(true)),
-                0 => Ok(Value::Bool(false)),
-                _ => Err(ValueError::ImpossibleCast.into()),
-            },
-            (DataType::Boolean, Value::F64(value)) => {
-                if value.eq(&1.0) {
-                    Ok(Value::Bool(true))
-                } else if value.eq(&0.0) {
-                    Ok(Value::Bool(false))
-                } else {
-                    Err(ValueError::ImpossibleCast.into())
-                }
-            }
-
-            // Integer
-            (DataType::Int, Value::Bool(value)) => Ok(Value::I64(if *value { 1 } else { 0 })),
-            (DataType::Int, Value::F64(value)) => Ok(Value::I64(value.trunc() as i64)),
-            (DataType::Int, Value::Str(value)) => value
-                .parse::<i64>()
-                .map(Value::I64)
-                .map_err(|_| ValueError::ImpossibleCast.into()),
-
-            // Float
-            (DataType::Float(_), Value::Bool(value)) => {
-                Ok(Value::F64(if *value { 1.0 } else { 0.0 }))
-            }
-            (DataType::Float(_), Value::I64(value)) => Ok(Value::F64((*value as f64).trunc())),
-            (DataType::Float(_), Value::Str(value)) => value
-                .parse::<f64>()
-                .map(Value::F64)
-                .map_err(|_| ValueError::ImpossibleCast.into()),
-
-            // Text
-            (DataType::Text, Value::Bool(value)) => Ok(Value::Str(
-                (if *value { "TRUE" } else { "FALSE" }).to_string(),
-            )),
-            (DataType::Text, Value::I64(value)) => Ok(Value::Str(value.to_string())),
-            (DataType::Text, Value::F64(value)) => Ok(Value::Str(value.to_string())),
+            (DataType::Boolean, value) => value.try_into().map(Value::Bool),
+            (DataType::Int, value) => value.try_into().map(Value::I64),
+            (DataType::Float(_), value) => value.try_into().map(Value::F64),
+            (DataType::Text, value) => Ok(Value::Str(value.into())),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
