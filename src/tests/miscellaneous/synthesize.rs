@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(synthesize, async move {
+test_case!(async move {
     let create_sql = "
         CREATE TABLE TableA (
             id INTEGER,

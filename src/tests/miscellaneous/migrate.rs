@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(migrate, async move {
+test_case!(async move {
     run!(
         "
         CREATE TABLE Test (

@@ -97,53 +97,56 @@ test_case!(async move {
     }
 });
 
-test_case!(cast_value, async move {
-    // More test cases are in `gluesql::Value` unit tests.
+mod cast_value {
+    use crate::*;
+    test_case!(async move {
+        // More test cases are in `gluesql::Value` unit tests.
 
-    use Value::*;
+        use Value::*;
 
-    let test_cases = vec![
-        (
-            r#"
-            CREATE TABLE Item (
-                id INTEGER NULL,
-                flag BOOLEAN,
-                ratio FLOAT NULL,
-                number TEXT
-            )"#,
-            Ok(Payload::Create),
-        ),
-        (
-            r#"INSERT INTO Item VALUES (0, TRUE, NULL, "1")"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            r#"SELECT CAST(LOWER(number) AS INTEGER) AS cast FROM Item"#,
-            Ok(select!(cast I64; 1)),
-        ),
-        (
-            r#"SELECT CAST(id AS BOOLEAN) AS cast FROM Item"#,
-            Ok(select!(cast Bool; false)),
-        ),
-        (
-            r#"SELECT CAST(flag AS TEXT) AS cast FROM Item"#,
-            Ok(select!(cast Str; "TRUE".to_owned())),
-        ),
-        (
-            r#"SELECT CAST(ratio AS INTEGER) AS cast FROM Item"#,
-            Ok(select_with_null!(cast; Null)),
-        ),
-        (
-            r#"SELECT CAST(number AS BOOLEAN) FROM Item"#,
-            Err(ValueError::ImpossibleCast.into()),
-        ),
-        (
-            r#"SELECT CAST(number AS NULL) FROM Item"#,
-            Err(ValueError::UnimplementedCast.into()),
-        ),
-    ];
+        let test_cases = vec![
+            (
+                r#"
+                CREATE TABLE Item (
+                    id INTEGER NULL,
+                    flag BOOLEAN,
+                    ratio FLOAT NULL,
+                    number TEXT
+                )"#,
+                Ok(Payload::Create),
+            ),
+            (
+                r#"INSERT INTO Item VALUES (0, TRUE, NULL, "1")"#,
+                Ok(Payload::Insert(1)),
+            ),
+            (
+                r#"SELECT CAST(LOWER(number) AS INTEGER) AS cast FROM Item"#,
+                Ok(select!(cast I64; 1)),
+            ),
+            (
+                r#"SELECT CAST(id AS BOOLEAN) AS cast FROM Item"#,
+                Ok(select!(cast Bool; false)),
+            ),
+            (
+                r#"SELECT CAST(flag AS TEXT) AS cast FROM Item"#,
+                Ok(select!(cast Str; "TRUE".to_owned())),
+            ),
+            (
+                r#"SELECT CAST(ratio AS INTEGER) AS cast FROM Item"#,
+                Ok(select_with_null!(cast; Null)),
+            ),
+            (
+                r#"SELECT CAST(number AS BOOLEAN) FROM Item"#,
+                Err(ValueError::ImpossibleCast.into()),
+            ),
+            (
+                r#"SELECT CAST(number AS NULL) FROM Item"#,
+                Err(ValueError::UnimplementedCast.into()),
+            ),
+        ];
 
-    for (sql, expected) in test_cases.into_iter() {
-        test!(expected, sql);
-    }
-});
+        for (sql, expected) in test_cases.into_iter() {
+            test!(expected, sql);
+        }
+    });
+}

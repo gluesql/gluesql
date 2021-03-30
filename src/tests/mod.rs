@@ -1,12 +1,7 @@
-pub mod blend;
-pub mod default;
-pub mod error;
-pub mod migrate;
-pub mod nullable;
-pub mod synthesize;
-
+pub mod column_options;
 pub mod functions;
 pub mod generic;
+pub mod miscellaneous;
 pub mod validate;
 pub use functions::{aggregate, arithmetic};
 
@@ -20,17 +15,6 @@ pub use tester::*;
 #[macro_export]
 macro_rules! generate_tests {
     ($test: meta, $storage: ident) => {
-        generate_tests!($test, $storage,
-            blend: blend::blend,
-            default: default::default,
-            error: error::error,
-            //join_blend: join::blend,
-            migrate: migrate::migrate,
-            nullable: nullable::nullable,
-            nullable_text: nullable::nullable_text,
-            synthesize: synthesize::synthesize
-        );
-
         #[cfg(feature = "alter-table")]
         generate_tests!($test, $storage, alter_table);
 
@@ -39,19 +23,10 @@ macro_rules! generate_tests {
             functions,
             validate,
             aggregate,
-            arithmetic
+            arithmetic,
+            miscellaneous,
+            column_options
         );
-    };
-    ($test: meta, $storage: ident, $($name: ident: $func: expr),+) => {
-        $(
-            #[$test]
-            async fn $name() {
-                let path = stringify!($name);
-                let storage = $storage::new(path);
-
-                $func(storage).await;
-            }
-        )+
     };
     ($test: meta, $storage: ident, $($macro: ident),+) => {
         $(

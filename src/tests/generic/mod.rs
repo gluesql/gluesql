@@ -1,7 +1,6 @@
 use crate::build_suite;
 
 build_suite!(generic;
-    basic,
     create_table,
     drop_table,
     insert,

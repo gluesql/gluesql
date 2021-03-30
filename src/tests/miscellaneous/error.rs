@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(error, async move {
+test_case!(async move {
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
 
