@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(create_table, async move {
+test_case!(async move {
     let test_cases = vec![
         (
             r#"

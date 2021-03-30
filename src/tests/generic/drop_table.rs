@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(drop_table, async move {
+test_case!(async move {
     let create_sql = r#"
 CREATE TABLE DropTable (
     id INT,

@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(ordering, async move {
+test_case!(async move {
     run!(
         "
         CREATE TABLE Operator (

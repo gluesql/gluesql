@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(test, async move {
+test_case!(async move {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (

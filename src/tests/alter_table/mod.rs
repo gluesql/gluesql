@@ -1,3 +1,3 @@
-pub use crate::build_suite;
+use crate::build_suite;
 
-build_suite!(alter_table, rename, drop, add);
+build_suite!(alter_table; rename, drop, add);

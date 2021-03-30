@@ -1,6 +1,6 @@
 use crate::*;
 
-test_case!(sql_types, async move {
+test_case!(async move {
     run!(
         "
         CREATE TABLE Item (
