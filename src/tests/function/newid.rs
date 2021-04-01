@@ -12,7 +12,7 @@ test_case!(newid, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT id FROM test WHERE NEWID() > 0",
+            "SELECT id FROM test WHERE NEWID() > 0", // Unreliable result
             Ok(select!(
                 id
                 Value::I64;

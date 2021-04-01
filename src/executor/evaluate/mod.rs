@@ -224,8 +224,6 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         "NEWID" => {
             let id = storage
                 .generate_id()
-                .or(storage.generate_id())
-                .or(storage.generate_id())
                 .ok_or(EvaluateError::ValueNotFound(String::from(
                     "Could not generate an id",
                 )))?; // Try thrice
