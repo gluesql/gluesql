@@ -22,6 +22,11 @@ CREATE TABLE TestA (
     run!("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\"), (4, 7, \"Job\")");
     run!("INSERT INTO TestA (id, num, name) SELECT id, num, name FROM Test");
 
+    run!("CREATE TABLE TestB (id INTEGER);");
+    run!("INSERT INTO TestB (id) SELECT id FROM Test");
+
+    test!(Ok(select!(id I64; 1; 1; 3; 4)), "SELECT * FROM TestB");
+
     use Value::*;
 
     test!(

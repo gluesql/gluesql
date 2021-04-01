@@ -4,9 +4,9 @@ use {
     std::convert::TryInto,
 };
 
-impl Into<String> for &Value {
-    fn into(self) -> String {
-        match self {
+impl From<&Value> for String {
+    fn from(v: &Value) -> Self {
+        match v {
             Value::Str(value) => value.to_string(),
             Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_string(),
             Value::I64(value) => value.to_string(),

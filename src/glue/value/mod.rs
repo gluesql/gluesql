@@ -6,9 +6,9 @@ use {
     std::convert::TryInto,
 };
 
-impl Into<String> for Value {
-    fn into(self) -> String {
-        (&self).into()
+impl From<Value> for String {
+    fn from(v: Value) -> String {
+        (&v).into()
     }
 }
 
