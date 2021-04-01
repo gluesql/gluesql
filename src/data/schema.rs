@@ -72,12 +72,6 @@ impl ColumnOptionExt for ColumnOption {
                         ..
                     }),
                     ..
-                ] | [
-                    Token::Word(Word {
-                        keyword: Keyword::AUTOINCREMENT,
-                        ..
-                    }),
-                    ..
                 ]
             )
         )
