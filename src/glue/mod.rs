@@ -3,7 +3,7 @@ use {
     crate::{execute, storages::SledStorage, ExecuteError, Payload, Query, Result, Value},
     futures::executor::block_on,
     sqlparser::ast::{
-        Expr, Ident, ObjectName, Query as AstQuery, SetExpr, Statement, Value as Literal, Values,
+        Expr, Ident, ObjectName, Query as AstQuery, SetExpr, Statement, Value as AstValue, Values,
     },
 };
 
@@ -82,11 +82,11 @@ impl Glue {
                 row.into_iter()
                     .map(|cell| {
                         Expr::Value(match cell {
-                            Value::Null => Literal::Null,
-                            Value::Bool(value) => Literal::Boolean(value),
-                            Value::I64(value) => Literal::Number(value.to_string(), false),
-                            Value::F64(value) => Literal::Number(value.to_string(), false),
-                            Value::Str(value) => Literal::SingleQuotedString(value),
+                            Value::Null => AstValue::Null,
+                            Value::Bool(value) => AstValue::Boolean(value),
+                            Value::I64(value) => AstValue::Number(value.to_string(), false),
+                            Value::F64(value) => AstValue::Number(value.to_string(), false),
+                            Value::Str(value) => AstValue::SingleQuotedString(value),
                         })
                     })
                     .collect()
