@@ -65,6 +65,17 @@ impl Glue {
         rows: Vec<Vec<Value>>,
     ) -> Result<Payload> {
         // TODO: Make this more efficient and nicer by checking the way we execute
+        let table_name = ObjectName(vec![Ident {
+            value: table_name,
+            quote_style: None,
+        }]);
+        let columns = columns
+            .into_iter()
+            .map(|name| Ident {
+                value: name,
+                quote_style: None,
+            })
+            .collect();
         let sqlparser_rows: Vec<Vec<Expr>> = rows
             .into_iter()
             .map(|row| {
@@ -81,34 +92,25 @@ impl Glue {
                     .collect()
             })
             .collect();
+        let body = SetExpr::Values(Values(sqlparser_rows));
         let query = Query(Statement::Insert {
-            table_name: ObjectName(vec![Ident {
-                value: table_name,
-                quote_style: None,
-            }]),
-            columns: columns
-                .into_iter()
-                .map(|name| Ident {
-                    value: name,
-                    quote_style: None,
-                })
-                .collect(),
-            or: None,
-            table: false,
-            after_columns: vec![],
-            overwrite: false,
-            partitioned: None,
+            table_name, // !
+            columns,    // !
             source: Box::new(AstQuery {
-                with: None,
-                body: SetExpr::Values(Values(sqlparser_rows)),
+                body, // !
                 order_by: vec![],
+                with: None,
                 limit: None,
                 offset: None,
                 fetch: None,
             }),
+            after_columns: vec![],
+            table: false,
+            overwrite: false,
+            or: None,
+            partitioned: None,
         });
-        let result = self.execute(&query);
-        result
+        self.execute(&query)
     }
 }
 
