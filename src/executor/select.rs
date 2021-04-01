@@ -60,7 +60,7 @@ fn get_labels<'a>(
         Wildcard(I2),
         QualifiedWildcard(I3),
         Once(I4),
-    };
+    }
 
     let err = |e| Labeled::Err(once(Err(e)));
 
