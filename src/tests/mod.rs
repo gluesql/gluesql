@@ -70,6 +70,7 @@ macro_rules! generate_tests {
         glue!(function_left_right, function::left_right::left_right);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
+        glue!(function_newid, function::newid::newid);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
