@@ -1,7 +1,5 @@
-use std::{
-    convert::{From, Into},
-    vec::IntoIter,
-};
+use std::convert::From;
+use std::vec::IntoIter;
 
 pub struct Vector<T>(Vec<T>);
 
@@ -49,8 +47,8 @@ impl<T> From<Vec<T>> for Vector<T> {
     }
 }
 
-impl<T> Into<Vec<T>> for Vector<T> {
-    fn into(self) -> Vec<T> {
-        self.0
+impl<T> From<Vector<T>> for Vec<T> {
+    fn from(vector: Vector<T>) -> Self {
+        vector.0
     }
 }

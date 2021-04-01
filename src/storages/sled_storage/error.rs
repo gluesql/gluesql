@@ -17,11 +17,11 @@ pub enum StorageError {
     Str(#[from] str::Utf8Error),
 }
 
-impl Into<Error> for StorageError {
-    fn into(self) -> Error {
+impl From<StorageError> for Error {
+    fn from(e: StorageError) -> Error {
         use StorageError::*;
 
-        match self {
+        match e {
             Sled(e) => Error::Storage(Box::new(e)),
             Bincode(e) => Error::Storage(e),
             Str(e) => Error::Storage(Box::new(e)),
