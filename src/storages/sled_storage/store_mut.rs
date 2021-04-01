@@ -1,10 +1,7 @@
 use async_trait::async_trait;
-use sled::{
-    transaction::{ConflictableTransactionError, TransactionError},
-    IVec,
-};
+use sled::{transaction::ConflictableTransactionError, IVec};
 
-use super::{err_into, error::StorageError, SledStorage};
+use super::{err_into, SledStorage};
 use crate::{MutResult, Row, Schema, StoreMut};
 
 macro_rules! try_into {
@@ -20,10 +17,7 @@ macro_rules! try_into {
 
 macro_rules! transaction {
     ($self: expr, $expr: expr) => {{
-        let result = $self.tree.transaction($expr).map_err(|e| match e {
-            TransactionError::Abort(e) => e,
-            TransactionError::Storage(e) => StorageError::Sled(e).into(),
-        });
+        let result = $self.tree.transaction($expr).map_err(|error| error.into());
 
         match result {
             Ok(_) => Ok(($self, ())),

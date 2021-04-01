@@ -1,9 +1,7 @@
-use std::str;
-use thiserror::Error as ThisError;
+use {crate::Error, sled::transaction::TransactionError, std::str, thiserror::Error as ThisError};
 
 #[cfg(feature = "alter-table")]
 use crate::AlterTableError;
-use crate::Error;
 
 #[derive(ThisError, Debug)]
 pub enum StorageError {
@@ -30,6 +28,15 @@ impl Into<Error> for StorageError {
 
             #[cfg(feature = "alter-table")]
             AlterTable(e) => e.into(),
+        }
+    }
+}
+
+impl Into<Error> for TransactionError<Error> {
+    fn into(self) -> Error {
+        match self {
+            TransactionError::Abort(e) => e,
+            TransactionError::Storage(e) => StorageError::Sled(e).into(),
         }
     }
 }
