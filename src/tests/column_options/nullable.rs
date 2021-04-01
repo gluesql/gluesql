@@ -235,8 +235,9 @@ CREATE TABLE Test (
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {}
-    test!(expected, sql);
+    for (sql, expected) in test_cases.into_iter() {
+        test!(expected, sql);
+    }
 });
 
 test_case!(nullable_text, async move {

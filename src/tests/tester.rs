@@ -104,15 +104,6 @@ macro_rules! test_case {
             }
 
             #[allow(unused_macros)]
-            macro_rules! run_all {
-                ($all: expr) => {
-                    for query in $all.iter() {
-                        run!(query);
-                    }
-                };
-            }
-
-            #[allow(unused_macros)]
             macro_rules! count {
                 ($count: expr, $sql: expr) => {
                     match tests::run(Rc::clone(&cell), $sql).await.unwrap() {

@@ -2,7 +2,6 @@ pub mod column_options;
 pub mod functions;
 pub mod generic;
 pub mod miscellaneous;
-pub mod validate;
 pub use functions::{aggregate, arithmetic};
 
 #[cfg(feature = "alter-table")]
@@ -21,7 +20,6 @@ macro_rules! generate_tests {
         generate_tests!($test, $storage,
             generic,
             functions,
-            validate,
             aggregate,
             arithmetic,
             miscellaneous,
