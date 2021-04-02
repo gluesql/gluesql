@@ -12,10 +12,10 @@ use {
     crate::{
         data::{get_name, Row, Schema},
         parse_sql::Query,
-        result::{MutResult, Result},
+        result::MutResult,
         store::{AlterTable, Store, StoreMut},
     },
-    futures::stream::{self, StreamExt, TryStreamExt},
+    futures::stream::TryStreamExt,
     serde::Serialize,
     sqlparser::ast::{SetExpr, Statement, Values},
     std::{fmt::Debug, rc::Rc},
@@ -109,10 +109,12 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
 
                 let rows = match &source.body {
                     SetExpr::Values(Values(values_list)) => {
-                        stream::iter(values_list)
-                            .map(|values| Row::new(&storage, &column_defs, columns, values))
-                            .try_collect::<Vec<Row>>()
-                            .await?
+                        let mut output_rows: Vec<Row> = Vec::new();
+                        for values in values_list {
+                            output_rows
+                                .push(Row::new(&storage, &column_defs, columns, values).await?);
+                        }
+                        output_rows
                     }
                     SetExpr::Select(select_query) => {
                         let query = || sqlparser::ast::Query {

@@ -1,14 +1,12 @@
 use {
     crate::{
-        data::{schema::ColumnDefExt, Value},
+        data::{schema::ColumnDefExt, value::TryFromLiteral, Value},
         evaluate,
         result::Result,
         store::Store,
     },
-    futures::stream::{self, StreamExt},
     serde::{Deserialize, Serialize},
     sqlparser::ast::{ColumnDef, Expr, Ident},
-    std::convert::TryInto,
     std::fmt::Debug,
     thiserror::Error,
 };
@@ -49,48 +47,48 @@ impl Row {
         columns: &[Ident],
         values: &[Expr],
     ) -> Result<Self> {
+        // FAIL: No mut
         if values.len() > column_defs.len() {
             return Err(RowError::TooManyValues.into());
         }
 
-        stream::iter(column_defs)
-            .enumerate()
-            .map(|(index, column_def)| async {
-                let ColumnDef {
-                    name, data_type, ..
-                } = column_def;
-                let name = name.to_string();
+        let column_defs = column_defs.into_iter().enumerate();
+        let mut output_values: Vec<Value> = Vec::new();
+        for (index, column_def) in column_defs {
+            let ColumnDef {
+                name, data_type, ..
+            } = column_def;
+            let name = name.to_string();
 
-                let index = match columns.len() {
-                    0 => Some(index),
-                    _ => columns.iter().position(|target| target.value == name),
-                };
+            let index = match columns.len() {
+                0 => Some(index),
+                _ => columns.iter().position(|target| target.value == name),
+            };
 
-                let default = column_def.get_default();
-                let nullable = column_def.is_nullable();
-                let expr = match (index, default) {
-                    (Some(index), _) => values
-                        .get(index)
-                        .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
-                    (None, Some(expr)) => Ok(expr),
-                    (None, _) => {
-                        if nullable {
-                            return Ok(Value::Null);
-                        } else {
-                            Err(RowError::LackOfRequiredColumn(name.clone()))
-                        }
+            let default = column_def.get_default();
+            let nullable = column_def.is_nullable();
+            let expr = match (index, default) {
+                (Some(index), _) => values
+                    .get(index)
+                    .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
+                (None, Some(expr)) => Ok(expr),
+                (None, _) => {
+                    if nullable {
+                        output_values.push(Value::Null);
+                        continue;
+                    } else {
+                        Err(RowError::LackOfRequiredColumn(name.clone()))
                     }
-                }?;
+                }
+            }?;
 
-                let evaluation = evaluate(storage, None, None, expr, false).await?;
-                let value: Value = evaluation.try_into()?;
+            let evaluated = evaluate(storage, None, None, expr, false).await?;
+            let value: Value = Value::try_from_evaluated(data_type, evaluated)?;
 
-                value.validate_null(nullable)?;
-                Ok(value)
-            })
-            .collect::<Result<Vec<Value>>>()
-            .await
-            .map(Self)
+            value.validate_null(nullable)?;
+            output_values.push(value);
+        }
+        Ok(Row(output_values))
     }
 
     pub fn validate(&self, column_defs: &[ColumnDef]) -> Result<()> {
