@@ -15,7 +15,7 @@ test_case!(uuid, async move {
                 1
             )),
         ),
-        /*( Cannot test as INSERT is behaving poorly at the moment
+        /*( Cannot test, see #197
             "INSERT INTO test (id) VALUES (UUID()), (UUID()), (UUID()), (UUID()), (UUID())",
             Ok(Payload::Insert(5)), // Should error if UUID isn't working
         ),
@@ -24,7 +24,7 @@ test_case!(uuid, async move {
             Ok(Payload::Insert(1)), // Should error if UUID isn't working
         ),*/
 
-        /*( Cannot test as INSERT is behaving poorly at the moment
+        /*( Cannot test, see #197
             "CREATE TABLE test_default (id INT UNIQUE NOT NULL DEFAULT UUID())",
             Ok(Payload::Create),
         ),
