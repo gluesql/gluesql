@@ -20,8 +20,6 @@ pub trait Store<T: Debug> {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter<T>>;
-
-    fn generate_id(&self) -> Option<i64>;
 }
 
 /// `StoreMut` takes role of mutation, related to `INSERT`, `CREATE`, `DELETE`, `DROP` and

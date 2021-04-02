@@ -221,14 +221,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
-        "NEWID" => {
-            let id = storage
-                .generate_id()
-                .ok_or(EvaluateError::ValueNotFound(String::from(
-                    "Could not generate an id",
-                )))?; // Try thrice
-            Ok(Evaluated::from(Value::I64(id)))
-        }
+        "UUID" => Ok(Evaluated::from(Value::I64(fastrand::i64(..)))),
         name => Err(EvaluateError::FunctionNotSupported(name.to_owned()).into()),
     }
 }

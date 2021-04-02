@@ -3,18 +3,10 @@ use {
     crate::{Result, RowIter, Schema, Store},
     async_trait::async_trait,
     sled::IVec,
-    std::convert::TryFrom,
 };
 
 #[async_trait(?Send)]
 impl Store<IVec> for SledStorage {
-    fn generate_id(&self) -> Option<i64> {
-        self.tree
-            .generate_id()
-            .ok()
-            .map(|id| i64::try_from(id).ok())
-            .flatten()
-    }
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         fetch_schema(&self.tree, table_name).map(|(_, schema)| schema)
     }
