@@ -24,7 +24,7 @@ test_case!(insert, async move {
     for (sql, expected) in setup.into_iter() {
         test!(Ok(expected), sql);
     }
-    let test_cases = vec![
+    let insert_cases = vec![
         "INSERT INTO test VALUES (1, 'a');",
         "INSERT INTO test (a, b) VALUES (2, 'b');",
         "INSERT INTO test (a) VALUES (3);",
@@ -38,7 +38,21 @@ test_case!(insert, async move {
         "INSERT INTO test (b) SELECT UPPER('test') FROM select_into;",
     ];
 
-    for sql in test_cases.into_iter() {
+    for sql in insert_cases.into_iter() {
         test!(Ok(Payload::Insert(1)), sql);
+    }
+
+    let error_cases = vec![
+        (
+            "INSERT INTO test (a, b) VALUES (1, 'error', 'error')",
+            RowError::WrongNumberOfValues,
+        ),
+        (
+            "INSERT INTO test (a, b) VALUES (1, 'error'), (1, 'error', 'error')",
+            RowError::WrongNumberOfValues,
+        ),
+    ];
+    for (sql, expected) in error_cases.into_iter() {
+        test!(Err(expected.into()), sql);
     }
 });
