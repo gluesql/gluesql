@@ -5,19 +5,19 @@ use {
         alter::{create_table, drop},
         fetch::{fetch, fetch_columns},
         filter::Filter,
-        select::{select, select_with_labels},
+        select::select_with_labels,
         update::Update,
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        data::{get_name, Row, Schema},
+        data::{bulk_build_rows_expr, bulk_build_rows_row, get_name, Row, Schema},
         parse_sql::Query,
-        result::MutResult,
+        result::{MutResult, Result},
         store::{AlterTable, Store, StoreMut},
     },
     futures::stream::TryStreamExt,
     serde::Serialize,
-    sqlparser::ast::{SetExpr, Statement, Values},
+    sqlparser::ast::{Query as AstQuery, SetExpr, Statement, Values},
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
@@ -64,6 +64,16 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             }
         }};
     }
+    macro_rules! try_into {
+        ($storage: expr, $expr: expr) => {
+            match $expr {
+                Err(e) => {
+                    return Err(($storage, e));
+                }
+                Ok(v) => v,
+            }
+        };
+    }
 
     let Query(query) = query;
 
@@ -109,36 +119,29 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
 
                 let rows = match &source.body {
                     SetExpr::Values(Values(values_list)) => {
-                        let mut output_rows: Vec<Row> = Vec::new();
-                        for values in values_list {
-                            output_rows
-                                .push(Row::new(&storage, &column_defs, columns, values).await?);
-                        }
-                        output_rows
+                        bulk_build_rows_expr(
+                            &storage,
+                            &column_defs,
+                            columns,
+                            values_list.to_vec(),
+                            true,
+                            true,
+                        )
+                        .await?
                     }
                     SetExpr::Select(select_query) => {
-                        let query = || sqlparser::ast::Query {
+                        let query = Box::new(AstQuery {
                             with: None,
                             body: SetExpr::Select(select_query.clone()),
                             order_by: vec![],
                             limit: None,
                             offset: None,
                             fetch: None,
-                        };
-
-                        select(&storage, &query(), None)
+                        });
+                        let rows = select(&storage, &query).await?.1;
+                        bulk_build_rows_row(&storage, &column_defs, columns, rows, true, true)
                             .await?
-                            .and_then(|row| {
-                                let column_defs = Rc::clone(&column_defs);
-
-                                async move {
-                                    row.validate(&column_defs)?;
-
-                                    Ok(row)
-                                }
-                            })
-                            .try_collect::<Vec<_>>()
-                            .await?
+                        // TODO: Improve efficiency, this should happen much earlier than this.
                     }
                     set_expr => {
                         return Err(ExecuteError::UnreachableUnsupportedInsertValueType(
@@ -233,15 +236,20 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
 
         //- Selection
         Statement::Query(query) => {
-            let (labels, rows) = try_block!(storage, {
-                let (labels, rows) = select_with_labels(&storage, &query, None, true).await?;
-                let rows = rows.try_collect::<Vec<_>>().await?;
-
-                Ok((labels, rows))
-            });
+            let (labels, rows) = try_into!(storage, { select(&storage, query).await });
 
             Ok((storage, Payload::Select { labels, rows }))
         }
         _ => Err((storage, ExecuteError::QueryNotSupported.into())),
     }
+}
+
+async fn select<T: 'static + Debug>(
+    storage: &dyn Store<T>,
+    query: &AstQuery,
+) -> Result<(Vec<String>, Vec<Row>)> {
+    let (labels, rows) = select_with_labels(storage, query, None, true).await?;
+    let rows = rows.try_collect::<Vec<_>>().await?;
+
+    Ok((labels, rows))
 }
