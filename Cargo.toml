@@ -14,11 +14,13 @@ keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webass
 all-features = true
 
 [features]
-default = ["sled-storage", "alter-table"]
+default = ["sled-storage", "alter-table", "expanded-api"]
 
 # ALTER TABLE is optional.
 # You can include whether ALTER TABLE support or not for your custom database implementation.
 alter-table = []
+
+expanded-api = []
 
 # Who wants to make a custom storage engine,
 # default storage engine sled-storage is not required.
@@ -35,6 +37,7 @@ iter-enum = "0.2.4"
 itertools = "0.9.0"
 pin-project = "1.0.1"
 serde = { version = "1.0.117", features = ["derive"] }
+serde_json = "1.0"
 sqlparser = { version = "0.8.0", features = ["serde"] }
 thiserror = "1.0.21"
 
