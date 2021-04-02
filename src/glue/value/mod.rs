@@ -1,3 +1,4 @@
+#![cfg(feature = "expanded-api")]
 use {
     crate::{
         result::{Error, Result},
