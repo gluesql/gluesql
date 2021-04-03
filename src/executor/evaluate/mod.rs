@@ -18,6 +18,7 @@ use {
         fmt::Debug,
         rc::Rc,
     },
+    uuid::Uuid,
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated};
@@ -221,7 +222,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
-        "UUID" => Ok(Evaluated::from(Value::I64(fastrand::i64(..)))),
+        "RAND" => Ok(Evaluated::from(Value::F64(fastrand::f64()))),
+        "UUID" => Ok(Evaluated::from(Value::Str(
+            Uuid::new_v4().to_hyphenated().to_string(),
+        ))),
         name => Err(EvaluateError::FunctionNotSupported(name.to_owned()).into()),
     }
 }
