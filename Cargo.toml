@@ -14,14 +14,11 @@ keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webass
 all-features = true
 
 [features]
-default = ["sled-storage", "alter-table", "expanded-api", "auto-increment"]
+default = ["sled-storage", "alter-table"]
 
 # ALTER TABLE is optional.
 # You can include whether ALTER TABLE support or not for your custom database implementation.
 alter-table = []
-auto-increment = []
-
-expanded-api = ["serde_json"]
 
 # Who wants to make a custom storage engine,
 # default storage engine sled-storage is not required.
@@ -40,11 +37,6 @@ pin-project = "1.0.1"
 serde = { version = "1.0.117", features = ["derive"] }
 sqlparser = { version = "0.8.0", features = ["serde"] }
 thiserror = "1.0.21"
-fstrings = "0.2.3"
-
-# OPTIONAL DEPENDENCIES
-# dependencies for sled-storage
-serde_json = { version = "1.0.0", optional = true }
 
 # dependencies for sled-storage
 bincode = { version = "1.3.1", optional = true }

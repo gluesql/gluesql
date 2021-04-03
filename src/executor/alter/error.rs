@@ -27,7 +27,4 @@ pub enum AlterError {
 
     #[error("column '{0}' of data type '{1}' is unsupported for unique constraint")]
     UnsupportedDataTypeForUniqueColumn(String, String),
-
-    #[error("column '{0}' of data type '{1}' is unsupported for auto increment constraint, only INTEGER is allowed")]
-    UnsupportedDataTypeForAutoIncrementColumn(String, String),
 }

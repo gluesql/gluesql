@@ -1,4 +1,3 @@
-#![cfg(feature = "expanded-api")]
 use {
     crate::{
         result::{Error, Result},
@@ -8,8 +7,8 @@ use {
 };
 
 impl From<Value> for String {
-    fn from(value: Value) -> String {
-        (&value).into()
+    fn from(v: Value) -> String {
+        (&v).into()
     }
 }
 
@@ -29,17 +28,5 @@ impl TryInto<f64> for Value {
     type Error = Error;
     fn try_into(self) -> Result<f64> {
         (&self).try_into()
-    }
-}
-
-impl From<Value> for serde_json::value::Value {
-    fn from(value: Value) -> serde_json::value::Value {
-        match value {
-            Value::Bool(value) => value.into(),
-            Value::I64(value) => value.into(),
-            Value::F64(value) => value.into(),
-            Value::Str(value) => value.into(),
-            Value::Null => serde_json::value::Value::Null,
-        }
     }
 }

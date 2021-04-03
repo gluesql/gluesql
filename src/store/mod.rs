@@ -5,13 +5,6 @@ pub use alter_table::*;
 #[cfg(not(feature = "alter-table"))]
 pub trait AlterTable {}
 
-#[cfg(feature = "auto-increment")]
-mod auto_increment;
-#[cfg(feature = "auto-increment")]
-pub use auto_increment::AutoIncrement;
-#[cfg(not(feature = "auto-increment"))]
-pub trait AutoIncrement {}
-
 use async_trait::async_trait;
 use std::fmt::Debug;
 use std::marker::Sized;

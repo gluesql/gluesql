@@ -11,9 +11,6 @@ use {
     thiserror::Error,
 };
 
-#[cfg(feature = "auto-increment")]
-use sqlparser::ast::Value as Literal;
-
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum RowError {
     #[error("lack of required column: {0}")]
@@ -133,24 +130,6 @@ macro_rules! bulk_build_rows {
                 } else {
                     columns.iter().position(|target| target.value == name)
                 };
-
-                let expr = i.map(|i| values.get(i));
-
-                #[cfg(feature = "auto-increment")]
-                if matches!(expr, None | Some(Some(Expr::Value(Literal::Null))))
-                    && column_def.is_auto_incremented()
-                {
-                    return Ok(Value::Null);
-                }
-
-                let default = column_def.get_default();
-                let expr = match (expr, default) {
-                    (Some(expr), _) => {
-                        expr.ok_or_else(|| RowError::LackOfRequiredValue(name.clone()))
-                    }
-                    (None, Some(expr)) => Ok(expr),
-                    (None, _) => Err(RowError::LackOfRequiredColumn(name.clone())),
-                }?;
 
                 let nullable = column_def.is_nullable();
 

@@ -1,7 +1,6 @@
 mod aggregate;
 mod alter;
 mod blend;
-mod column_options;
 mod context;
 mod evaluate;
 mod execute;

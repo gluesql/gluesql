@@ -1,12 +1,9 @@
 mod alter_table;
-mod auto_increment;
 mod error;
 mod store;
 mod store_mut;
 #[cfg(not(feature = "alter-table"))]
 impl crate::AlterTable for SledStorage {}
-#[cfg(not(feature = "auto-increment"))]
-impl crate::AutoIncrement for SledStorage {}
 
 use sled::{self, Config, Db};
 use std::convert::TryFrom;

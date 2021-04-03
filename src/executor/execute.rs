@@ -13,7 +13,7 @@ use {
         data::{bulk_build_rows_expr, bulk_build_rows_row, get_name, Row, Schema},
         parse_sql::Query,
         result::{MutResult, Result},
-        store::{AlterTable, AutoIncrement, Store, StoreMut},
+        store::{AlterTable, Store, StoreMut},
     },
     futures::stream::TryStreamExt,
     serde::Serialize,
@@ -21,9 +21,6 @@ use {
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
-
-#[cfg(feature = "auto-increment")]
-use super::column_options::auto_increment;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -53,7 +50,7 @@ pub enum Payload {
     AlterTable,
 }
 
-pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable + AutoIncrement>(
+pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
     query: &Query,
 ) -> MutResult<U, Payload> {
@@ -72,17 +69,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
             match $expr {
                 Err(e) => {
                     return Err(($storage, e));
-                }
-                Ok(v) => v,
-            }
-        };
-    }
-
-    macro_rules! try_into {
-        ($self: expr, $expr: expr) => {
-            match $expr {
-                Err(e) => {
-                    return Err(($self, e));
                 }
                 Ok(v) => v,
             }
@@ -122,8 +108,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
             source,
             ..
         } => {
-            #[allow(unused_variables)]
-            let (rows, column_defs, column_validation, table_name) = try_block!(storage, {
+            let (rows, table_name) = try_block!(storage, {
                 let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
@@ -166,15 +151,9 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable 
                     }
                 };
 
-                Ok((rows, column_defs, column_validation, table_name))
-            });
+                validate_unique(&storage, &table_name, column_validation, rows.iter()).await?;
 
-            #[cfg(feature = "auto-increment")]
-            let (storage, rows) =
-                auto_increment::run(storage, rows, &column_defs, table_name).await?;
-
-            try_into!(storage, {
-                validate_unique(&storage, &table_name, column_validation, rows.iter()).await
+                Ok((rows, table_name))
             });
 
             let num_rows = rows.len();

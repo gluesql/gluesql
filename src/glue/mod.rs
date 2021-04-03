@@ -37,7 +37,6 @@ impl Glue {
         }
     }
 
-    #[cfg(feature = "expanded-api")]
     pub fn select_as_string(&mut self, query: &Query) -> Result<Vec<Vec<String>>> {
         // TODO: Make this more efficient and not affect database if not select by converting earlier
         if let Ok(Payload::Select { labels, rows }) = self.execute(query) {
@@ -59,31 +58,6 @@ impl Glue {
         }
     }
 
-    #[cfg(feature = "expanded-api")]
-    pub fn select_as_json(&mut self, query: &Query) -> Result<String> {
-        // TODO: Make this more efficient and not affect database if not select by converting earlier
-        if let Ok(Payload::Select { labels, rows }) = self.execute(query) {
-            let array = serde_json::value::Value::Array(
-                rows.into_iter()
-                    .map(|row| {
-                        serde_json::value::Value::Object(
-                            row.0
-                                .into_iter()
-                                .enumerate()
-                                .map(|(index, cell)| (labels[index].clone(), cell.into()))
-                                .collect::<serde_json::map::Map<String, serde_json::value::Value>>(
-                                ),
-                        )
-                    })
-                    .collect(),
-            );
-            Ok(array.to_string())
-        } else {
-            Err(ExecuteError::QueryNotSupported.into())
-        }
-    }
-
-    #[cfg(feature = "expanded-api")]
     pub fn insert_vec(
         &mut self,
         table_name: String,
@@ -189,7 +163,6 @@ mod tests {
                 ]
             })
         );
-        #[cfg(feature = "expanded-api")]
         assert_eq!(
             glue.select_as_string(&parse_single("SELECT * FROM api_test").unwrap()),
             Ok(vec![
@@ -214,14 +187,6 @@ mod tests {
             ])
         );
 
-        #[cfg(feature = "expanded-api")]
-        assert_eq!(
-            glue.select_as_json(&parse_single("SELECT * FROM api_test").unwrap()),
-            Ok(String::from(
-                r#"[{"id":1,"is":true,"name":"test1","nullable":"not null"},{"id":2,"is":false,"name":"test2","nullable":null}]"#
-            ))
-        );
-
         use std::convert::TryInto;
 
         let test_value: String = Value::Str(String::from("test")).into();
@@ -240,7 +205,6 @@ mod tests {
             Ok(Payload::Create)
         );
 
-        #[cfg(feature = "expanded-api")]
         assert_eq!(
             glue.insert_vec(
                 String::from("api_insert_vec"),
@@ -258,7 +222,6 @@ mod tests {
             })
         );
 
-        #[cfg(feature = "expanded-api")]
         assert_eq!(
             glue.insert_vec(
                 String::from("api_insert_vec"),

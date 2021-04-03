@@ -1,6 +1,6 @@
 use {
     super::AlterError,
-    crate::{data::schema::ColumnOptionExt, result::Result},
+    crate::result::Result,
     sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, DataType},
 };
 
@@ -28,7 +28,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
                 | ColumnOption::NotNull
                 | ColumnOption::Default(_)
                 | ColumnOption::Unique { .. }
-        ) && !option.is_auto_increment()
+        )
     }) {
         return Err(AlterError::UnsupportedColumnOption(option.to_string()).into());
     }
@@ -40,19 +40,6 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
             .any(|ColumnOptionDef { option, .. }| matches!(option, ColumnOption::Unique { .. }))
     {
         return Err(AlterError::UnsupportedDataTypeForUniqueColumn(
-            name.to_string(),
-            data_type.to_string(),
-        )
-        .into());
-    }
-
-    #[cfg(feature = "auto-increment")]
-    if !matches!(data_type, DataType::Int)
-        && options
-            .iter()
-            .any(|ColumnOptionDef { option, .. }| option.is_auto_increment())
-    {
-        return Err(AlterError::UnsupportedDataTypeForAutoIncrementColumn(
             name.to_string(),
             data_type.to_string(),
         )
