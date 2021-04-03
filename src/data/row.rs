@@ -1,11 +1,16 @@
-use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
-use thiserror::Error;
+use {
+    crate::{
+        data::{schema::ColumnDefExt, Value},
+        result::Result,
+    },
+    serde::{Deserialize, Serialize},
+    sqlparser::ast::{ColumnDef, Expr, Ident},
+    std::fmt::Debug,
+    thiserror::Error,
+};
 
-use sqlparser::ast::{ColumnDef, Expr, Ident};
-
-use crate::data::{schema::ColumnDefExt, Value};
-use crate::result::Result;
+#[cfg(feature = "auto-increment")]
+use sqlparser::ast::Value as Literal;
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum RowError {
@@ -56,14 +61,24 @@ impl Row {
                     _ => columns.iter().position(|target| target.value == name),
                 };
 
+                let expr = i.map(|i| values.get(i));
+
+                #[cfg(feature = "auto-increment")]
+                if matches!(expr, None | Some(Some(Expr::Value(Literal::Null))))
+                    && column_def.is_auto_incremented()
+                {
+                    return Ok(Value::Null);
+                }
+
                 let default = column_def.get_default();
-                let expr = match (i, default) {
-                    (Some(i), _) => values
-                        .get(i)
-                        .ok_or_else(|| RowError::LackOfRequiredValue(name.clone())),
+                let expr = match (expr, default) {
+                    (Some(expr), _) => {
+                        expr.ok_or_else(|| RowError::LackOfRequiredValue(name.clone()))
+                    }
                     (None, Some(expr)) => Ok(expr),
                     (None, _) => Err(RowError::LackOfRequiredColumn(name.clone())),
                 }?;
+
                 let nullable = column_def.is_nullable();
 
                 Value::from_expr(&data_type, nullable, expr)
