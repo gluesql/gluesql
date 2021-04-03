@@ -151,10 +151,6 @@ macro_rules! bulk_build_rows {
                         let found = row[index].clone();
                         let value = $processing_function(storage, found, data_type).await?;
 
-                        println!(
-                            "!!! DataType {:?} Column {:?} Value {:?}",
-                            data_type, name, value
-                        );
                         if do_validate {
                             value.validate_null(nullable)?;
                             value.validate_type(data_type)?;
