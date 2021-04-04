@@ -62,7 +62,7 @@ impl Glue {
     #[cfg(feature = "expanded-api")]
     pub fn select_as_json(&mut self, query: &Query) -> Result<String> {
         // TODO: Make this more efficient and not affect database if not select by converting earlier
-        if let Ok(Payload::Select { labels, rows }) = self.execute(query) {
+        if let Payload::Select { labels, rows } = self.execute(query)? {
             let array = serde_json::value::Value::Array(
                 rows.into_iter()
                     .map(|row| {
