@@ -11,6 +11,9 @@ use {
     thiserror::Error,
 };
 
+#[cfg(feature = "auto-increment")]
+use sqlparser::ast::Value as Literal;
+
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum RowError {
     #[error("lack of required column: {0}")]
@@ -132,6 +135,8 @@ macro_rules! bulk_build_rows {
                 };
 
                 let nullable = column_def.is_nullable();
+                #[cfg(feature = "auto-increment")]
+                let nullable = nullable || column_def.is_auto_incremented();
 
                 let default = column_def.get_default();
                 let failure_value = if do_default && default.is_some() {
