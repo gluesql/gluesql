@@ -3,6 +3,7 @@ use {
     crate::{
         data::Literal,
         result::{Error, Result},
+        Evaluated,
     },
     sqlparser::ast::DataType,
     std::{cmp::Ordering, convert::TryFrom},
@@ -88,12 +89,21 @@ impl TryFrom<Literal<'_>> for Value {
 }
 
 pub trait TryFromLiteral {
+    fn try_from_evaluated(data_type: &DataType, evaluated: Evaluated<'_>) -> Result<Value>;
+
     fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value>;
 
     fn try_cast_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value>;
 }
 
 impl TryFromLiteral for Value {
+    fn try_from_evaluated(data_type: &DataType, evaluated: Evaluated<'_>) -> Result<Value> {
+        match evaluated {
+            Evaluated::Literal(value) => Value::try_from_literal(data_type, &value),
+            Evaluated::Value(value) => Ok(value.into_owned()),
+        }
+    }
+
     fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),

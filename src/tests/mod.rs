@@ -12,6 +12,7 @@ pub mod drop_table;
 pub mod error;
 pub mod filter;
 pub mod function;
+pub mod insert;
 pub mod join;
 pub mod migrate;
 pub mod nested_select;
@@ -88,6 +89,7 @@ macro_rules! generate_tests {
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
+        glue!(insert, insert::insert);
 
         generate_alter_table_tests!();
     };

@@ -21,10 +21,6 @@ test_case!(migrate, async move {
 
     let error_cases = vec![
         (
-            LiteralError::UnsupportedExpr("3 * 2".to_owned()).into(),
-            "INSERT INTO Test (id, num) VALUES (3 * 2, 1);",
-        ),
-        (
             ValueError::FailedToParseNumber.into(),
             r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
         ),

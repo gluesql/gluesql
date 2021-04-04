@@ -47,11 +47,11 @@ test_case!(error, async move {
             "INSERT INTO TableA (id2) VALUES (1);",
         ),
         (
-            RowError::LackOfRequiredValue("id".to_owned()).into(),
+            RowError::WrongNumberOfValues.into(),
             "INSERT INTO TableA (id2, id) VALUES (100);",
         ),
         (
-            RowError::TooManyValues.into(),
+            RowError::WrongNumberOfValues.into(),
             "INSERT INTO TableA VALUES (100), (100, 200);",
         ),
         (

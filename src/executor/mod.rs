@@ -13,15 +13,17 @@ mod select;
 mod update;
 mod validate;
 
-pub use aggregate::{AggregateError, GroupKey};
-pub use alter::AlterError;
-pub use blend::BlendError;
-pub use evaluate::EvaluateError;
-pub use execute::{execute, ExecuteError, Payload};
-pub use fetch::FetchError;
-pub use filter::FilterError;
-pub use join::JoinError;
-pub use limit::LimitError;
-pub use select::SelectError;
-pub use update::UpdateError;
-pub use validate::{UniqueKey, ValidateError};
+pub use {
+    aggregate::{AggregateError, GroupKey},
+    alter::AlterError,
+    blend::BlendError,
+    evaluate::{evaluate, EvaluateError, Evaluated},
+    execute::{execute, ExecuteError, Payload},
+    fetch::FetchError,
+    filter::FilterError,
+    join::JoinError,
+    limit::LimitError,
+    select::SelectError,
+    update::UpdateError,
+    validate::{UniqueKey, ValidateError},
+};
