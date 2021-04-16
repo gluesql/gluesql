@@ -30,8 +30,8 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         Self { storage, fields }
     }
 
-    pub async fn apply(&self, context: Result<AggregateContext<'a>>) -> Result<Row> {
-        let AggregateContext { aggregated, next } = context?;
+    pub async fn apply(&self, context: AggregateContext<'a>) -> Result<Row> {
+        let AggregateContext { aggregated, next } = context;
         let values = self.blend(aggregated, next).await?;
 
         Ok(Row(values))
