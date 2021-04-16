@@ -8,8 +8,8 @@ use crate::data::{Row, Value};
 #[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
-    pub columns: Rc<[Ident]>,
-    pub row: Option<Row>,
+    columns: Rc<[Ident]>,
+    row: Option<Row>,
     next: Option<Rc<BlendContext<'a>>>,
 }
 

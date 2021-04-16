@@ -5,10 +5,10 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use thiserror::Error as ThisError;
 
-use sqlparser::ast::{ColumnDef, Ident};
+use sqlparser::ast::{ColumnDef, Expr, Ident};
 
-use super::context::BlendContext;
-use super::filter::Filter;
+use super::context::FilterContext;
+use super::filter::check_expr;
 use crate::data::Row;
 use crate::result::{Error, Result};
 use crate::store::Store;
@@ -34,30 +34,31 @@ pub async fn fetch_columns<T: 'static + Debug>(
 }
 
 pub async fn fetch<'a, T: 'static + Debug>(
-    storage: &dyn Store<T>,
+    storage: &'a dyn Store<T>,
     table_name: &'a str,
     columns: Rc<[Ident]>,
-    filter: Filter<'a, T>,
+    where_clause: Option<&'a Expr>,
 ) -> Result<impl TryStream<Ok = (Rc<[Ident]>, T, Row), Error = Error> + 'a> {
-    let filter = Rc::new(filter);
-
     let rows = storage
         .scan_data(table_name)
         .await
         .map(stream::iter)?
         .try_filter_map(move |(key, row)| {
             let columns = Rc::clone(&columns);
-            let filter = Rc::clone(&filter);
 
-            let context = Rc::new(BlendContext::new(table_name, columns, Some(row), None));
-
-            // TODO: remove two unwrap() uses.
             async move {
-                filter.check(Rc::clone(&context)).await.map(|pass| {
-                    let context = Rc::try_unwrap(context).unwrap();
+                let expr = match where_clause {
+                    None => {
+                        return Ok(Some((columns, key, row)));
+                    }
+                    Some(expr) => expr,
+                };
 
-                    pass.as_some((context.columns, key, context.row.unwrap()))
-                })
+                let context = FilterContext::new(table_name, Rc::clone(&columns), Some(&row), None);
+
+                check_expr(storage, Some(Rc::new(context)), None, expr)
+                    .await
+                    .map(|pass| pass.as_some((columns, key, row)))
             }
         });
 
