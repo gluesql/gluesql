@@ -243,7 +243,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         .and_then(move |aggregate_context| {
             let blend = Rc::clone(&blend);
 
-            async move { blend.apply(Ok(aggregate_context)).await }
+            async move { blend.apply(aggregate_context).await }
         });
 
     Ok((labels, rows))

@@ -15,7 +15,6 @@ use crate::store::{AlterTable, Store, StoreMut};
 use super::alter::alter_table;
 use super::alter::{create_table, drop};
 use super::fetch::{fetch, fetch_columns};
-use super::filter::Filter;
 use super::select::{select, select_with_labels};
 use super::update::Update;
 use super::validate::{validate_unique, ColumnValidation};
@@ -166,15 +165,15 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                     .await?
                     .ok_or(ExecuteError::TableNotExists)?;
                 let update = Update::new(&storage, table_name, assignments, &column_defs)?;
-                let filter = Filter::new(&storage, selection.as_ref(), None, None);
 
                 let all_columns = Rc::from(update.all_columns());
                 let columns_to_update = update.columns_to_update();
-                let rows = fetch(&storage, table_name, Rc::clone(&all_columns), filter)
+                let rows = fetch(&storage, table_name, all_columns, selection.as_ref())
                     .await?
                     .and_then(|item| {
                         let update = &update;
                         let (_, key, row) = item;
+
                         async move {
                             let row = update.apply(row).await?;
                             Ok((key, row))
@@ -208,9 +207,8 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             let keys = try_block!(storage, {
                 let table_name = get_name(&table_name)?;
                 let columns = Rc::from(fetch_columns(&storage, table_name).await?);
-                let filter = Filter::new(&storage, selection.as_ref(), None, None);
 
-                fetch(&storage, table_name, columns, filter)
+                fetch(&storage, table_name, columns, selection.as_ref())
                     .await?
                     .map_ok(|(_, key, _)| key)
                     .try_collect::<Vec<_>>()
