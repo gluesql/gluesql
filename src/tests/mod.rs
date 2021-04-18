@@ -4,6 +4,7 @@ pub mod alter_table;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
+pub mod concat;
 pub mod create_table;
 pub mod default;
 pub mod drop_table;
@@ -60,6 +61,7 @@ macro_rules! generate_tests {
         glue!(aggregate_group_by, aggregate::group_by);
         glue!(arithmetic, arithmetic::arithmetic);
         glue!(arithmetic_blend, arithmetic::blend);
+        glue!(concat, concat::concat);
         glue!(blend, blend::blend);
         glue!(create_table, create_table::create_table);
         glue!(default, default::default);

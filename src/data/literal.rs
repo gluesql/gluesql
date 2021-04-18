@@ -164,8 +164,52 @@ impl<'a> Literal<'a> {
         }
     }
 
+    pub fn concat(self, other: Literal<'_>) -> Self {
+        let convert = |literal| match literal {
+            Boolean(v) => Some(if v {
+                "TRUE".to_owned()
+            } else {
+                "FALSE".to_owned()
+            }),
+            Number(v) => Some(v.into_owned()),
+            Text(v) => Some(v.into_owned()),
+            Null => None,
+        };
+
+        match (convert(self), convert(other)) {
+            (Some(l), Some(r)) => Literal::Text(Cow::Owned(l + &r)),
+            _ => Literal::Null,
+        }
+    }
+
     binary_op!(add, +);
     binary_op!(subtract, -);
     binary_op!(multiply, *);
     binary_op!(divide, /);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Literal::*;
+    use std::borrow::Cow;
+
+    #[test]
+    fn concat() {
+        macro_rules! text {
+            ($text: expr) => {
+                Text(Cow::Owned($text.to_owned()))
+            };
+        }
+
+        let num = || Number(Cow::Owned("123".to_owned()));
+        let text = || text!("Foo");
+
+        assert_eq!(Boolean(true).concat(num()), text!("TRUE123"));
+        assert_eq!(Boolean(false).concat(text()), text!("FALSEFoo"));
+        assert_eq!(num().concat(num()), text!("123123"));
+        assert_eq!(text().concat(num()), text!("Foo123"));
+        matches!(text().concat(Null), Null);
+        matches!(Null.concat(Boolean(true)), Null);
+        matches!(Null.concat(Null), Null);
+    }
 }

@@ -89,6 +89,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 BinaryOperator::Minus => l.subtract(&r),
                 BinaryOperator::Multiply => l.multiply(&r),
                 BinaryOperator::Divide => l.divide(&r),
+                BinaryOperator::StringConcat => l.concat(r),
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
         }

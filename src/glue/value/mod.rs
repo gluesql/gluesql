@@ -6,12 +6,6 @@ use {
     std::convert::TryInto,
 };
 
-impl From<Value> for String {
-    fn from(v: Value) -> String {
-        (&v).into()
-    }
-}
-
 impl TryInto<bool> for Value {
     type Error = Error;
     fn try_into(self) -> Result<bool> {
