@@ -119,6 +119,23 @@ impl<'a> Evaluated<'a> {
         .map(Evaluated::from)
     }
 
+    pub fn concat(self, other: Evaluated) -> Result<Evaluated<'a>> {
+        let evaluated = match (self, other) {
+            (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.concat(r)),
+            (Evaluated::Literal(l), Evaluated::Value(r)) => {
+                Evaluated::from((&Value::try_from(l)?).concat(r.as_ref()))
+            }
+            (Evaluated::Value(l), Evaluated::Literal(r)) => {
+                Evaluated::from(l.as_ref().concat(&Value::try_from(r)?))
+            }
+            (Evaluated::Value(l), Evaluated::Value(r)) => {
+                Evaluated::from(l.as_ref().concat(r.as_ref()))
+            }
+        };
+
+        Ok(evaluated)
+    }
+
     pub fn is_some(&self) -> bool {
         match self {
             Evaluated::Value(v) => v.is_some(),

@@ -127,6 +127,13 @@ impl Value {
         }
     }
 
+    pub fn concat(&self, other: &Value) -> Value {
+        match (self, other) {
+            (Value::Null, _) | (_, Value::Null) => Value::Null,
+            _ => Value::Str(String::from(self) + &String::from(other)),
+        }
+    }
+
     pub fn add(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
@@ -264,5 +271,17 @@ mod tests {
         cast!(I64(11)       => Text, Str("11".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
         cast!(Null          => Text, Null);
+    }
+
+    #[test]
+    fn concat() {
+        let a = Str("A".to_owned());
+
+        assert_eq!(a.concat(&Str("B".to_owned())), Str("AB".to_owned()));
+        assert_eq!(a.concat(&Bool(true)), Str("ATRUE".to_owned()));
+        assert_eq!(a.concat(&I64(1)), Str("A1".to_owned()));
+        assert_eq!(a.concat(&F64(1.0)), Str("A1".to_owned()));
+        assert_eq!(I64(2).concat(&I64(1)), Str("21".to_owned()));
+        matches!(a.concat(&Null), Null);
     }
 }

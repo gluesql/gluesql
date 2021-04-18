@@ -16,6 +16,15 @@ impl From<&Value> for String {
     }
 }
 
+impl From<Value> for String {
+    fn from(v: Value) -> String {
+        match v {
+            Value::Str(value) => value,
+            _ => String::from(&v),
+        }
+    }
+}
+
 impl TryInto<bool> for &Value {
     type Error = Error;
     fn try_into(self) -> Result<bool> {
