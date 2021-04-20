@@ -140,7 +140,10 @@ impl Value {
         match (self, other) {
             (I64(a), I64(b)) => Ok(I64(a + b)),
             (F64(a), F64(b)) => Ok(F64(a + b)),
-            (Null, _) | (_, Null) => Ok(Null),
+            (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 + b)),
+            (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
+                Ok(Null)
+            }
             _ => Err(ValueError::AddOnNonNumeric.into()),
         }
     }
@@ -150,8 +153,12 @@ impl Value {
 
         match (self, other) {
             (I64(a), I64(b)) => Ok(I64(a - b)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 - b)),
+            (F64(a), I64(b)) => Ok(F64(a - *b as f64)),
             (F64(a), F64(b)) => Ok(F64(a - b)),
-            (Null, _) | (_, Null) => Ok(Null),
+            (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
+                Ok(Null)
+            }
             _ => Err(ValueError::SubtractOnNonNumeric.into()),
         }
     }
@@ -162,7 +169,10 @@ impl Value {
         match (self, other) {
             (I64(a), I64(b)) => Ok(I64(a * b)),
             (F64(a), F64(b)) => Ok(F64(a * b)),
-            (Null, _) | (_, Null) => Ok(Null),
+            (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 * b)),
+            (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
+                Ok(Null)
+            }
             _ => Err(ValueError::MultiplyOnNonNumeric.into()),
         }
     }
@@ -172,8 +182,12 @@ impl Value {
 
         match (self, other) {
             (I64(a), I64(b)) => Ok(I64(a / b)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 / b)),
+            (F64(a), I64(b)) => Ok(F64(a / *b as f64)),
             (F64(a), F64(b)) => Ok(F64(a / b)),
-            (Null, _) | (_, Null) => Ok(Null),
+            (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
+                Ok(Null)
+            }
             _ => Err(ValueError::DivideOnNonNumeric.into()),
         }
     }
@@ -217,6 +231,64 @@ mod tests {
         assert_eq!(I64(1), I64(1));
         assert_eq!(F64(6.11), F64(6.11));
         assert_eq!(Str("Glue".to_owned()), Str("Glue".to_owned()));
+    }
+
+    #[test]
+    fn arithmetic() {
+        macro_rules! test {
+            ($op: ident $a: expr, $b: expr => $c: expr) => {
+                assert_eq!($a.$op(&$b), Ok($c));
+            };
+        }
+
+        test!(add I64(1),   I64(2)   => I64(3));
+        test!(add I64(1),   F64(2.0) => F64(3.0));
+        test!(add F64(1.0), I64(2)   => F64(3.0));
+        test!(add F64(1.0), F64(2.0) => F64(3.0));
+
+        test!(subtract I64(3),   I64(2)   => I64(1));
+        test!(subtract I64(3),   F64(2.0) => F64(1.0));
+        test!(subtract F64(3.0), I64(2)   => F64(1.0));
+        test!(subtract F64(3.0), F64(2.0) => F64(1.0));
+
+        test!(multiply I64(3),   I64(2)   => I64(6));
+        test!(multiply I64(3),   F64(2.0) => F64(6.0));
+        test!(multiply F64(3.0), I64(2)   => F64(6.0));
+        test!(multiply F64(3.0), F64(2.0) => F64(6.0));
+
+        test!(divide I64(6),   I64(2)   => I64(3));
+        test!(divide I64(6),   F64(2.0) => F64(3.0));
+        test!(divide F64(6.0), I64(2)   => F64(3.0));
+        test!(divide F64(6.0), F64(2.0) => F64(3.0));
+
+        macro_rules! null_test {
+            ($op: ident $a: expr, $b: expr) => {
+                matches!($a.$op(&$b), Ok(Null));
+            };
+        }
+
+        null_test!(add      I64(1),   Null);
+        null_test!(add      F64(1.0), Null);
+        null_test!(subtract I64(1),   Null);
+        null_test!(subtract F64(1.0), Null);
+        null_test!(multiply I64(1),   Null);
+        null_test!(multiply F64(1.0), Null);
+        null_test!(divide   I64(1),   Null);
+        null_test!(divide   F64(1.0), Null);
+
+        null_test!(add      Null, I64(1));
+        null_test!(add      Null, F64(1.0));
+        null_test!(subtract Null, I64(1));
+        null_test!(subtract Null, F64(1.0));
+        null_test!(multiply Null, I64(1));
+        null_test!(multiply Null, F64(1.0));
+        null_test!(divide   Null, I64(1));
+        null_test!(divide   Null, F64(1.0));
+
+        null_test!(add      Null, Null);
+        null_test!(subtract Null, Null);
+        null_test!(multiply Null, Null);
+        null_test!(divide   Null, Null);
     }
 
     #[test]
