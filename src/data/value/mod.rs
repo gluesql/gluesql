@@ -144,7 +144,9 @@ impl Value {
             (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
                 Ok(Null)
             }
-            _ => Err(ValueError::AddOnNonNumeric.into()),
+            _ => Err(
+                ValueError::AddOnNonNumeric(format!("{:?}", self), format!("{:?}", other)).into(),
+            ),
         }
     }
 
@@ -159,7 +161,11 @@ impl Value {
             (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
                 Ok(Null)
             }
-            _ => Err(ValueError::SubtractOnNonNumeric.into()),
+            _ => Err(ValueError::SubtractOnNonNumeric(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
         }
     }
 
@@ -173,7 +179,11 @@ impl Value {
             (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
                 Ok(Null)
             }
-            _ => Err(ValueError::MultiplyOnNonNumeric.into()),
+            _ => Err(ValueError::MultiplyOnNonNumeric(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
         }
     }
 
@@ -188,7 +198,10 @@ impl Value {
             (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
                 Ok(Null)
             }
-            _ => Err(ValueError::DivideOnNonNumeric.into()),
+            _ => Err(
+                ValueError::DivideOnNonNumeric(format!("{:?}", self), format!("{:?}", other))
+                    .into(),
+            ),
         }
     }
 

@@ -14,17 +14,17 @@ pub enum ValueError {
     #[error("failed to parse number")]
     FailedToParseNumber,
 
-    #[error("add on non numeric value")]
-    AddOnNonNumeric,
+    #[error("add on non-numeric values: {0} + {1}")]
+    AddOnNonNumeric(String, String),
 
-    #[error("subtract on non numeric value")]
-    SubtractOnNonNumeric,
+    #[error("subtract on non-numeric values: {0} - {1}")]
+    SubtractOnNonNumeric(String, String),
 
-    #[error("multiply on non numeric value")]
-    MultiplyOnNonNumeric,
+    #[error("multiply on non-numeric values: {0} * {1}")]
+    MultiplyOnNonNumeric(String, String),
 
-    #[error("divide on non numeric value")]
-    DivideOnNonNumeric,
+    #[error("divide on non-numeric values: {0} / {1}")]
+    DivideOnNonNumeric(String, String),
 
     #[error("floating numbers cannot be grouped by")]
     FloatCannotBeGroupedBy,
