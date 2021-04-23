@@ -41,6 +41,16 @@ impl TryInto<Value> for Evaluated<'_> {
     }
 }
 
+impl TryInto<bool> for Evaluated<'_> {
+    type Error = Error;
+
+    fn try_into(self) -> Result<bool> {
+        let value: Value = self.try_into()?;
+
+        value.try_into()
+    }
+}
+
 impl<'a> PartialEq for Evaluated<'a> {
     fn eq(&self, other: &Evaluated<'a>) -> bool {
         match (self, other) {
@@ -136,10 +146,10 @@ impl<'a> Evaluated<'a> {
         Ok(evaluated)
     }
 
-    pub fn is_some(&self) -> bool {
+    pub fn is_null(&self) -> bool {
         match self {
-            Evaluated::Value(v) => v.is_some(),
-            Evaluated::Literal(v) => !matches!(v, &Literal::Null),
+            Evaluated::Value(v) => v.is_null(),
+            Evaluated::Literal(v) => matches!(v, &Literal::Null),
         }
     }
 }

@@ -224,10 +224,10 @@ fn aggregate<'a>(
                     let value = Value::I64(match expr {
                         Expr::Wildcard => 1,
                         _ => {
-                            if get_value(expr)?.is_some() {
-                                1
-                            } else {
+                            if get_value(expr)?.is_null() {
                                 0
+                            } else {
+                                1
                             }
                         }
                     });
