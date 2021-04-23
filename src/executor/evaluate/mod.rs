@@ -222,14 +222,14 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             Ok(Evaluated::from(Value::Bool(v)))
         }
         Expr::IsNull(expr) => {
-            let v = !eval(expr).await?.is_some();
+            let v = eval(expr).await?.is_null();
 
             Ok(Evaluated::from(Value::Bool(v)))
         }
         Expr::IsNotNull(expr) => {
-            let v = eval(expr).await?.is_some();
+            let v = eval(expr).await?.is_null();
 
-            Ok(Evaluated::from(Value::Bool(v)))
+            Ok(Evaluated::from(Value::Bool(!v)))
         }
         _ => Err(EvaluateError::Unimplemented.into()),
     }

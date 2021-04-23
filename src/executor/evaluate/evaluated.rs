@@ -146,10 +146,10 @@ impl<'a> Evaluated<'a> {
         Ok(evaluated)
     }
 
-    pub fn is_some(&self) -> bool {
+    pub fn is_null(&self) -> bool {
         match self {
-            Evaluated::Value(v) => v.is_some(),
-            Evaluated::Literal(v) => !matches!(v, &Literal::Null),
+            Evaluated::Value(v) => v.is_null(),
+            Evaluated::Literal(v) => matches!(v, &Literal::Null),
         }
     }
 }

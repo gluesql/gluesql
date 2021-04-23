@@ -205,10 +205,8 @@ impl Value {
         }
     }
 
-    pub fn is_some(&self) -> bool {
-        use Value::*;
-
-        !matches!(self, Null)
+    pub fn is_null(&self) -> bool {
+        matches!(self, Value::Null)
     }
 
     pub fn unary_plus(&self) -> Result<Value> {
