@@ -3,7 +3,7 @@ use {
         data::{LiteralError, RowError, TableError, ValueError},
         executor::{
             AggregateError, AlterError, BlendError, EvaluateError, ExecuteError, FetchError,
-            FilterError, JoinError, LimitError, SelectError, UpdateError, ValidateError,
+            JoinError, LimitError, SelectError, UpdateError, ValidateError,
         },
     },
     serde::Serialize,
@@ -42,8 +42,6 @@ pub enum Error {
     #[error(transparent)]
     Update(#[from] UpdateError),
     #[error(transparent)]
-    Filter(#[from] FilterError),
-    #[error(transparent)]
     Limit(#[from] LimitError),
     #[error(transparent)]
     Row(#[from] RowError),
@@ -76,7 +74,6 @@ impl PartialEq for Error {
             (Blend(e), Blend(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
-            (Filter(e), Filter(e2)) => e == e2,
             (Limit(e), Limit(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,

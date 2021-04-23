@@ -9,7 +9,8 @@ use {
         store::Store,
     },
     async_recursion::async_recursion,
-    futures::stream::{StreamExt, TryStreamExt},
+    boolinator::Boolinator,
+    futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
     sqlparser::ast::{BinaryOperator, Expr, Function, FunctionArg, UnaryOperator},
     std::{
@@ -84,12 +85,36 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             let l = eval(left).await?;
             let r = eval(right).await?;
 
+            macro_rules! cmp {
+                ($expr: expr) => {
+                    Ok(Evaluated::from(Value::Bool($expr)))
+                };
+            }
+
+            macro_rules! cond {
+                (l $op: tt r) => {{
+                    let l: bool = l.try_into()?;
+                    let r: bool = r.try_into()?;
+                    let v = l $op r;
+
+                    Ok(Evaluated::from(Value::Bool(v)))
+                }};
+            }
+
             match op {
                 BinaryOperator::Plus => l.add(&r),
                 BinaryOperator::Minus => l.subtract(&r),
                 BinaryOperator::Multiply => l.multiply(&r),
                 BinaryOperator::Divide => l.divide(&r),
                 BinaryOperator::StringConcat => l.concat(r),
+                BinaryOperator::Eq => cmp!(l == r),
+                BinaryOperator::NotEq => cmp!(l != r),
+                BinaryOperator::Lt => cmp!(l < r),
+                BinaryOperator::LtEq => cmp!(l <= r),
+                BinaryOperator::Gt => cmp!(l > r),
+                BinaryOperator::GtEq => cmp!(l >= r),
+                BinaryOperator::And => cond!(l && r),
+                BinaryOperator::Or => cond!(l || r),
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
         }
@@ -99,6 +124,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             match op {
                 UnaryOperator::Plus => v.unary_plus(),
                 UnaryOperator::Minus => v.unary_minus(),
+                UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
                 _ => Err(EvaluateError::Unimplemented.into()),
             }
         }
@@ -112,6 +138,99 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             }
         },
         Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
+        Expr::InList {
+            expr,
+            list,
+            negated,
+        } => {
+            let negated = *negated;
+            let target = eval(expr).await?;
+
+            stream::iter(list.iter())
+                .filter_map(|expr| {
+                    let target = &target;
+
+                    async move {
+                        eval(expr).await.map_or_else(
+                            |error| Some(Err(error)),
+                            |evaluated| (target == &evaluated).as_some(Ok(!negated)),
+                        )
+                    }
+                })
+                .take(1)
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .next()
+                .unwrap_or(Ok(negated))
+                .map(Value::Bool)
+                .map(Evaluated::from)
+        }
+        Expr::InSubquery {
+            expr,
+            subquery,
+            negated,
+        } => {
+            let target = eval(expr).await?;
+
+            select(storage, &subquery, context)
+                .await?
+                .try_filter_map(|row| {
+                    let target = &target;
+
+                    async move {
+                        let value = row.take_first_value()?;
+
+                        (target == &Evaluated::from(&value))
+                            .as_some(Ok(!negated))
+                            .transpose()
+                    }
+                })
+                .take(1)
+                .collect::<Vec<_>>()
+                .await
+                .into_iter()
+                .next()
+                .unwrap_or(Ok(*negated))
+                .map(Value::Bool)
+                .map(Evaluated::from)
+        }
+        Expr::Between {
+            expr,
+            negated,
+            low,
+            high,
+        } => {
+            let negated = *negated;
+            let target = eval(expr).await?;
+
+            let v = eval(low).await? <= target && target <= eval(high).await?;
+            let v = negated ^ v;
+
+            Ok(Evaluated::from(Value::Bool(v)))
+        }
+        Expr::Exists(query) => {
+            let v = select(storage, query, context)
+                .await?
+                .into_stream()
+                .take(1)
+                .try_collect::<Vec<_>>()
+                .await?
+                .get(0)
+                .is_some();
+
+            Ok(Evaluated::from(Value::Bool(v)))
+        }
+        Expr::IsNull(expr) => {
+            let v = !eval(expr).await?.is_some();
+
+            Ok(Evaluated::from(Value::Bool(v)))
+        }
+        Expr::IsNotNull(expr) => {
+            let v = eval(expr).await?.is_some();
+
+            Ok(Evaluated::from(Value::Bool(v)))
+        }
         _ => Err(EvaluateError::Unimplemented.into()),
     }
 }

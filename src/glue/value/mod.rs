@@ -6,12 +6,6 @@ use {
     std::convert::TryInto,
 };
 
-impl TryInto<bool> for Value {
-    type Error = Error;
-    fn try_into(self) -> Result<bool> {
-        (&self).try_into()
-    }
-}
 impl TryInto<i64> for Value {
     type Error = Error;
     fn try_into(self) -> Result<i64> {

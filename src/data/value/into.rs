@@ -27,6 +27,7 @@ impl From<Value> for String {
 
 impl TryInto<bool> for &Value {
     type Error = Error;
+
     fn try_into(self) -> Result<bool> {
         Ok(match self {
             Value::Bool(value) => *value,
@@ -53,8 +54,18 @@ impl TryInto<bool> for &Value {
         })
     }
 }
+
+impl TryInto<bool> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<bool> {
+        (&self).try_into()
+    }
+}
+
 impl TryInto<i64> for &Value {
     type Error = Error;
+
     fn try_into(self) -> Result<i64> {
         Ok(match self {
             Value::Bool(value) => {
@@ -73,8 +84,10 @@ impl TryInto<i64> for &Value {
         })
     }
 }
+
 impl TryInto<f64> for &Value {
     type Error = Error;
+
     fn try_into(self) -> Result<f64> {
         Ok(match self {
             Value::Bool(value) => {

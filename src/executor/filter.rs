@@ -1,26 +1,13 @@
-use async_recursion::async_recursion;
-use boolinator::Boolinator;
-use futures::stream::{self, StreamExt, TryStreamExt};
-use im_rc::HashMap;
-use serde::Serialize;
-use std::fmt::Debug;
-use std::rc::Rc;
-use thiserror::Error;
-
-use sqlparser::ast::{BinaryOperator, Expr, Function, UnaryOperator};
-
-use super::context::{BlendContext, FilterContext};
-use super::evaluate::{evaluate, Evaluated};
-use super::select::select;
-use crate::data::Value;
-use crate::result::Result;
-use crate::store::Store;
-
-#[derive(Error, Serialize, Debug, PartialEq)]
-pub enum FilterError {
-    #[error("unimplemented")]
-    Unimplemented,
-}
+use {
+    super::{
+        context::{BlendContext, FilterContext},
+        evaluate::evaluate,
+    },
+    crate::{data::Value, result::Result, store::Store},
+    im_rc::HashMap,
+    sqlparser::ast::{Expr, Function},
+    std::{convert::TryInto, fmt::Debug, rc::Rc},
+};
 
 pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
@@ -59,132 +46,13 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
     }
 }
 
-#[async_recursion(?Send)]
-pub async fn check_expr<T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    filter_context: Option<Rc<FilterContext<'async_recursion>>>,
-    aggregated: Option<Rc<HashMap<&'async_recursion Function, Value>>>,
-    expr: &Expr,
+pub async fn check_expr<'a, T: 'static + Debug>(
+    storage: &'a dyn Store<T>,
+    context: Option<Rc<FilterContext<'a>>>,
+    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
+    expr: &'a Expr,
 ) -> Result<bool> {
-    let evaluate = |expr: &'async_recursion Expr| {
-        let filter_context = filter_context.as_ref().map(Rc::clone);
-        let aggregated = aggregated.as_ref().map(Rc::clone);
-
-        evaluate(storage, filter_context, aggregated, expr, false)
-    };
-    let check = |expr| {
-        let filter_context = filter_context.as_ref().map(Rc::clone);
-        let aggregated = aggregated.as_ref().map(Rc::clone);
-
-        check_expr(storage, filter_context, aggregated, expr)
-    };
-
-    match expr {
-        Expr::BinaryOp { op, left, right } => {
-            let zip_evaluate = || async move {
-                let l = evaluate(left).await?;
-                let r = evaluate(right).await?;
-
-                Ok((l, r))
-            };
-            let zip_check = || async move {
-                let l = check(left).await?;
-                let r = check(right).await?;
-
-                Ok((l, r))
-            };
-
-            match op {
-                BinaryOperator::Eq => zip_evaluate().await.map(|(l, r)| l == r),
-                BinaryOperator::NotEq => zip_evaluate().await.map(|(l, r)| l != r),
-                BinaryOperator::And => zip_check().await.map(|(l, r)| l && r),
-                BinaryOperator::Or => zip_check().await.map(|(l, r)| l || r),
-                BinaryOperator::Lt => zip_evaluate().await.map(|(l, r)| l < r),
-                BinaryOperator::LtEq => zip_evaluate().await.map(|(l, r)| l <= r),
-                BinaryOperator::Gt => zip_evaluate().await.map(|(l, r)| l > r),
-                BinaryOperator::GtEq => zip_evaluate().await.map(|(l, r)| l >= r),
-                _ => Err(FilterError::Unimplemented.into()),
-            }
-        }
-        Expr::UnaryOp {
-            op: UnaryOperator::Not,
-            expr,
-        } => check(&expr).await.map(|v| !v),
-        Expr::Nested(expr) => check(&expr).await,
-        Expr::InList {
-            expr,
-            list,
-            negated,
-        } => {
-            let negated = *negated;
-            let target = evaluate(expr).await?;
-
-            stream::iter(list.iter())
-                .filter_map(|expr| {
-                    let target = &target;
-
-                    async move {
-                        evaluate(expr).await.map_or_else(
-                            |error| Some(Err(error)),
-                            |evaluated| (target == &evaluated).as_some(Ok(!negated)),
-                        )
-                    }
-                })
-                .take(1)
-                .collect::<Vec<_>>()
-                .await
-                .into_iter()
-                .next()
-                .unwrap_or(Ok(negated))
-        }
-        Expr::InSubquery {
-            expr,
-            subquery,
-            negated,
-        } => {
-            let target = evaluate(expr).await?;
-
-            select(storage, &subquery, filter_context)
-                .await?
-                .try_filter_map(|row| {
-                    let target = &target;
-
-                    async move {
-                        let value = row.take_first_value()?;
-
-                        (target == &Evaluated::from(&value))
-                            .as_some(Ok(!negated))
-                            .transpose()
-                    }
-                })
-                .take(1)
-                .collect::<Vec<_>>()
-                .await
-                .into_iter()
-                .next()
-                .unwrap_or(Ok(*negated))
-        }
-        Expr::Between {
-            expr,
-            negated,
-            low,
-            high,
-        } => {
-            let negated = *negated;
-            let target = evaluate(expr).await?;
-
-            Ok(negated ^ (evaluate(low).await? <= target && target <= evaluate(high).await?))
-        }
-        Expr::Exists(query) => Ok(select(storage, query, filter_context)
-            .await?
-            .into_stream()
-            .take(1)
-            .try_collect::<Vec<_>>()
-            .await?
-            .get(0)
-            .is_some()),
-        Expr::IsNull(expr) => Ok(!evaluate(expr).await?.is_some()),
-        Expr::IsNotNull(expr) => Ok(evaluate(expr).await?.is_some()),
-        _ => Err(FilterError::Unimplemented.into()),
-    }
+    evaluate(storage, context, aggregated, expr, false)
+        .await
+        .map(|evaluated| evaluated.try_into())?
 }
