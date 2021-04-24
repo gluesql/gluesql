@@ -1,7 +1,7 @@
 use {
+    super::error::EvaluateError,
     crate::{
-        data::value::TryFromLiteral,
-        data::{Literal, Value},
+        data::{value::TryFromLiteral, Literal, Value},
         result::{Error, Result},
     },
     sqlparser::ast::DataType,
@@ -45,9 +45,17 @@ impl TryInto<bool> for Evaluated<'_> {
     type Error = Error;
 
     fn try_into(self) -> Result<bool> {
-        let value: Value = self.try_into()?;
-
-        value.try_into()
+        match self {
+            Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
+            Evaluated::Literal(v) => {
+                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
+            }
+            Evaluated::Value(Cow::Owned(Value::Bool(v))) => Ok(v),
+            Evaluated::Value(Cow::Borrowed(Value::Bool(v))) => Ok(*v),
+            Evaluated::Value(v) => {
+                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
+            }
+        }
     }
 }
 
