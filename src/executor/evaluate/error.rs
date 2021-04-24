@@ -30,6 +30,9 @@ pub enum EvaluateError {
     #[error("value not found: {0}")]
     ValueNotFound(String),
 
+    #[error("only boolean value is accepted: {0}")]
+    BooleanTypeRequired(String),
+
     #[error("unsupported compound identifier {0}")]
     UnsupportedCompoundIdentifier(String),
 

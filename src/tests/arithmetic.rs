@@ -98,11 +98,23 @@ test_case!(arithmetic, async move {
         ),
         (
             LiteralError::UnsupportedBinaryArithmetic(
-                format!("{:?}", data::Literal::Boolean(true)),
-                format!("{:?}", data::Literal::Number(Cow::Owned("1".to_owned()))),
+                format!("{:?}", Literal::Boolean(true)),
+                format!("{:?}", Literal::Number(Cow::Owned("1".to_owned()))),
             )
             .into(),
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
+        ),
+        (
+            EvaluateError::BooleanTypeRequired(format!(
+                "{:?}",
+                Literal::Text(Cow::Owned("hello".to_owned()))
+            ))
+            .into(),
+            r#"SELECT * FROM Arith WHERE TRUE AND "hello""#,
+        ),
+        (
+            EvaluateError::BooleanTypeRequired(format!("{:?}", Value::Str("A".to_owned()))).into(),
+            "SELECT * FROM Arith WHERE name AND id",
         ),
     ];
 
