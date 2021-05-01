@@ -1,10 +1,7 @@
 #![cfg(feature = "sled-storage")]
 use {
-    crate::{execute, storages::SledStorage, ExecuteError, Payload, Query, Result, Value},
+    crate::{execute, storages::SledStorage, ExecuteError, Payload, Query, Result},
     futures::executor::block_on,
-    sqlparser::ast::{
-        Expr, Ident, ObjectName, Query as AstQuery, SetExpr, Statement, Value as AstValue, Values,
-    },
 };
 
 mod value;
@@ -57,61 +54,6 @@ impl Glue {
             Err(ExecuteError::QueryNotSupported.into())
         }
     }
-
-    pub fn insert_vec(
-        &mut self,
-        table_name: String,
-        columns: Vec<String>,
-        rows: Vec<Vec<Value>>,
-    ) -> Result<Payload> {
-        // TODO: Make this more efficient and nicer by checking the way we execute
-        let table_name = ObjectName(vec![Ident {
-            value: table_name,
-            quote_style: None,
-        }]);
-        let columns = columns
-            .into_iter()
-            .map(|name| Ident {
-                value: name,
-                quote_style: None,
-            })
-            .collect();
-        let sqlparser_rows: Vec<Vec<Expr>> = rows
-            .into_iter()
-            .map(|row| {
-                row.into_iter()
-                    .map(|cell| {
-                        Expr::Value(match cell {
-                            Value::Null => AstValue::Null,
-                            Value::Bool(value) => AstValue::Boolean(value),
-                            Value::I64(value) => AstValue::Number(value.to_string(), false),
-                            Value::F64(value) => AstValue::Number(value.to_string(), false),
-                            Value::Str(value) => AstValue::SingleQuotedString(value),
-                        })
-                    })
-                    .collect()
-            })
-            .collect();
-        let body = SetExpr::Values(Values(sqlparser_rows));
-        let query = Query(Statement::Insert {
-            table_name, // !
-            columns,    // !
-            source: Box::new(AstQuery {
-                body, // !
-                order_by: vec![],
-                with: None,
-                limit: None,
-                offset: None,
-                fetch: None,
-            }),
-            after_columns: vec![],
-            table: false,
-            overwrite: false,
-            or: None,
-            partitioned: None,
-        });
-        self.execute(&query)
-    }
 }
 
 #[cfg(test)]
@@ -120,6 +62,7 @@ mod tests {
         crate::{parse_sql::parse_single, Glue, Payload, Row, SledStorage, Value},
         std::convert::TryFrom,
     };
+
     #[test]
     fn eq() {
         let config = sled::Config::default()
@@ -197,58 +140,5 @@ mod tests {
         assert_eq!(test_value, Ok(String::from("1")));
         let test_value: Result<String, _> = (&Value::I64(1)).try_into();
         assert_eq!(test_value, Ok(String::from("1")));
-
-        assert_eq!(
-            glue.execute(
-                &parse_single("CREATE TABLE api_insert_vec (name TEXT, rating FLOAT)").unwrap()
-            ),
-            Ok(Payload::Create)
-        );
-
-        assert_eq!(
-            glue.insert_vec(
-                String::from("api_insert_vec"),
-                vec![String::from("name"), String::from("rating")],
-                vec![vec![Value::Str(String::from("test")), Value::F64(1.2)]]
-            ),
-            Ok(Payload::Insert(1))
-        );
-
-        assert_eq!(
-            glue.execute(&parse_single("SELECT * FROM api_insert_vec").unwrap()),
-            Ok(Payload::Select {
-                labels: vec![String::from("name"), String::from("rating")],
-                rows: vec![Row(vec![Value::Str(String::from("test")), Value::F64(1.2)])]
-            })
-        );
-
-        assert_eq!(
-            glue.insert_vec(
-                String::from("api_insert_vec"),
-                vec![String::from("name"), String::from("rating")],
-                vec![
-                    vec![Value::Str(String::from("test2")), Value::F64(1.3)],
-                    vec![Value::Str(String::from("test3")), Value::F64(1.0)],
-                    vec![Value::Str(String::from("test4")), Value::F64(100000.94)]
-                ]
-            ),
-            Ok(Payload::Insert(3))
-        );
-
-        assert_eq!(
-            glue.execute(&parse_single("SELECT * FROM api_insert_vec").unwrap()),
-            Ok(Payload::Select {
-                labels: vec![String::from("name"), String::from("rating")],
-                rows: vec![
-                    Row(vec![Value::Str(String::from("test")), Value::F64(1.2)]),
-                    Row(vec![Value::Str(String::from("test2")), Value::F64(1.3)]),
-                    Row(vec![Value::Str(String::from("test3")), Value::F64(1.0)]),
-                    Row(vec![
-                        Value::Str(String::from("test4")),
-                        Value::F64(100000.94)
-                    ])
-                ]
-            })
-        );
     }
 }
