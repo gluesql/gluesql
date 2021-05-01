@@ -4,7 +4,7 @@ mod evaluated;
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        data::{get_name, Literal, Value},
+        data::{get_name, value::TryFromLiteral, Literal, Value},
         result::Result,
         store::Store,
     },
@@ -12,7 +12,7 @@ use {
     boolinator::Boolinator,
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    sqlparser::ast::{BinaryOperator, Expr, Function, FunctionArg, UnaryOperator},
+    sqlparser::ast::{BinaryOperator, DataType, Expr, Function, FunctionArg, UnaryOperator},
     std::{
         borrow::Cow,
         convert::{TryFrom, TryInto},
@@ -39,7 +39,15 @@ pub async fn evaluate<'a, T: 'static + Debug>(
     };
 
     match expr {
-        Expr::Value(value) => Literal::try_from(value).map(Evaluated::Literal),
+        Expr::Value(ast_value) => Literal::try_from(ast_value).map(Evaluated::Literal),
+        Expr::TypedString {
+            data_type: DataType::Date,
+            value,
+        } => {
+            let literal = Literal::Text(Cow::Borrowed(value));
+
+            Value::try_from_literal(&DataType::Date, &literal).map(Evaluated::from)
+        }
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Literal::Text(Cow::Borrowed(&ident.value))).map(Evaluated::Literal),
             None => {

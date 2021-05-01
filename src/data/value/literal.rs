@@ -4,6 +4,7 @@ use {
         data::Literal,
         result::{Error, Result},
     },
+    chrono::NaiveDate,
     sqlparser::ast::DataType,
     std::{cmp::Ordering, convert::TryFrom},
 };
@@ -27,6 +28,10 @@ impl PartialEq<Literal<'_>> for Value {
                 },
             },
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
+            (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
+                Ok(r) => l == &r,
+                Err(_) => false,
+            },
             _ => false,
         }
     }
@@ -50,6 +55,10 @@ impl PartialOrd<Literal<'_>> for Value {
                 },
             },
             (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
+            (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
+                Ok(r) => l.partial_cmp(&r),
+                Err(_) => None,
+            },
             _ => None,
         }
     }
@@ -106,10 +115,15 @@ impl TryFromLiteral for Value {
                 .map(Value::F64)
                 .map_err(|_| ValueError::UnreachableNumberParsing.into()),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
+            (DataType::Date, Literal::Text(v)) => v
+                .parse::<NaiveDate>()
+                .map(Value::Date)
+                .map_err(|_| ValueError::FailedToParseDate(v.to_string()).into()),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
             | (DataType::Float(_), Literal::Null)
-            | (DataType::Text, Literal::Null) => Ok(Value::Null),
+            | (DataType::Text, Literal::Null)
+            | (DataType::Date, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.to_string(),
                 literal: format!("{:?}", literal),

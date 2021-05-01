@@ -1,6 +1,7 @@
 use {
     super::Literal,
     crate::result::Result,
+    chrono::NaiveDate,
     serde::{Deserialize, Serialize},
     sqlparser::ast::{DataType, Expr},
     std::{
@@ -24,6 +25,7 @@ pub enum Value {
     I64(i64),
     F64(f64),
     Str(String),
+    Date(NaiveDate),
     Null,
 }
 
@@ -34,6 +36,7 @@ impl PartialEq<Value> for Value {
             (Value::I64(l), Value::I64(r)) => l == r,
             (Value::F64(l), Value::F64(r)) => l == r,
             (Value::Str(l), Value::Str(r)) => l == r,
+            (Value::Date(l), Value::Date(r)) => l == r,
             _ => false,
         }
     }
@@ -48,6 +51,7 @@ impl PartialOrd<Value> for Value {
             (Value::F64(l), Value::I64(r)) => l.partial_cmp(&(*r as f64)),
             (Value::F64(l), Value::F64(r)) => l.partial_cmp(r),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
+            (Value::Date(l), Value::Date(r)) => l.partial_cmp(r),
             _ => None,
         }
     }
@@ -85,10 +89,12 @@ impl Value {
                 | (DataType::Int, Value::I64(_))
                 | (DataType::Float(_), Value::F64(_))
                 | (DataType::Text, Value::Str(_))
+                | (DataType::Date, Value::Date(_))
                 | (DataType::Boolean, Value::Null)
                 | (DataType::Int, Value::Null)
                 | (DataType::Float(_), Value::Null)
                 | (DataType::Text, Value::Null)
+                | (DataType::Date, Value::Null)
         );
 
         if !valid {
@@ -304,7 +310,7 @@ mod tests {
 
     #[test]
     fn cast() {
-        use sqlparser::ast::DataType::*;
+        use {crate::Value, chrono::NaiveDate, sqlparser::ast::DataType::*};
 
         macro_rules! cast {
             ($input: expr => $data_type: expr, $expected: expr) => {
@@ -353,6 +359,9 @@ mod tests {
         cast!(Bool(false)   => Text, Str("FALSE".to_owned()));
         cast!(I64(11)       => Text, Str("11".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
+
+        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
+        cast!(date          => Text, Str("2021-05-01".to_owned()));
         cast!(Null          => Text, Null);
     }
 

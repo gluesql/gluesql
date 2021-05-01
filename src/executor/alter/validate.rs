@@ -15,7 +15,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
     // data type
     if !matches!(
         data_type,
-        DataType::Boolean | DataType::Int | DataType::Float(_) | DataType::Text
+        DataType::Boolean | DataType::Int | DataType::Float(_) | DataType::Text | DataType::Date
     ) {
         return Err(AlterError::UnsupportedDataType(data_type.to_string()).into());
     }

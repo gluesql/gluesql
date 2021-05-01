@@ -1,14 +1,19 @@
-use std::convert::{TryFrom, TryInto};
-
-use crate::data::Value;
-use crate::executor::evaluate::Evaluated;
-use crate::result::{Error, Result};
+use {
+    crate::{
+        data::Value,
+        executor::evaluate::Evaluated,
+        result::{Error, Result},
+    },
+    chrono::NaiveDate,
+    std::convert::{TryFrom, TryInto},
+};
 
 #[derive(PartialEq, Eq, Hash, Clone, std::fmt::Debug)]
 pub enum GroupKey {
     I64(i64),
     Bool(bool),
     Str(String),
+    Date(NaiveDate),
     None,
 }
 
