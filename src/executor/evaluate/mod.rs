@@ -12,7 +12,7 @@ use {
     boolinator::Boolinator,
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    sqlparser::ast::{BinaryOperator, DataType, Expr, Function, FunctionArg, UnaryOperator},
+    sqlparser::ast::{BinaryOperator, Expr, Function, FunctionArg, UnaryOperator},
     std::{
         borrow::Cow,
         convert::{TryFrom, TryInto},
@@ -40,13 +40,10 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
     match expr {
         Expr::Value(ast_value) => Literal::try_from(ast_value).map(Evaluated::Literal),
-        Expr::TypedString {
-            data_type: DataType::Date,
-            value,
-        } => {
+        Expr::TypedString { data_type, value } => {
             let literal = Literal::Text(Cow::Borrowed(value));
 
-            Value::try_from_literal(&DataType::Date, &literal).map(Evaluated::from)
+            Value::try_from_literal(&data_type, &literal).map(Evaluated::from)
         }
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Literal::Text(Cow::Borrowed(&ident.value))).map(Evaluated::Literal),

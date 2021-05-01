@@ -19,6 +19,7 @@ pub mod nullable;
 pub mod ordering;
 pub mod sql_types;
 pub mod synthesize;
+pub mod timestamp;
 pub mod validate;
 
 mod tester;
@@ -82,6 +83,7 @@ macro_rules! generate_tests {
         glue!(ordering, ordering::ordering);
         glue!(sql_types, sql_types::sql_types);
         glue!(date, date::date);
+        glue!(timestamp, timestamp::timestamp);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);

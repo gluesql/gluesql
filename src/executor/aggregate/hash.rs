@@ -4,7 +4,7 @@ use {
         executor::evaluate::Evaluated,
         result::{Error, Result},
     },
-    chrono::NaiveDate,
+    chrono::{NaiveDate, NaiveDateTime},
     std::convert::{TryFrom, TryInto},
 };
 
@@ -14,6 +14,7 @@ pub enum GroupKey {
     Bool(bool),
     Str(String),
     Date(NaiveDate),
+    Timestamp(NaiveDateTime),
     None,
 }
 

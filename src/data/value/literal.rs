@@ -4,7 +4,7 @@ use {
         data::Literal,
         result::{Error, Result},
     },
-    chrono::NaiveDate,
+    chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime},
     sqlparser::ast::DataType,
     std::{cmp::Ordering, convert::TryFrom},
 };
@@ -32,6 +32,10 @@ impl PartialEq<Literal<'_>> for Value {
                 Ok(r) => l == &r,
                 Err(_) => false,
             },
+            (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
+                Ok(r) => l == &r,
+                Err(_) => false,
+            },
             _ => false,
         }
     }
@@ -56,6 +60,10 @@ impl PartialOrd<Literal<'_>> for Value {
             },
             (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
+                Ok(r) => l.partial_cmp(&r),
+                Err(_) => None,
+            },
+            (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => None,
             },
@@ -119,11 +127,15 @@ impl TryFromLiteral for Value {
                 .parse::<NaiveDate>()
                 .map(Value::Date)
                 .map_err(|_| ValueError::FailedToParseDate(v.to_string()).into()),
+            (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
+                .map(Value::Timestamp)
+                .map_err(|_| ValueError::FailedToParseTimestamp(v.to_string()).into()),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
             | (DataType::Float(_), Literal::Null)
             | (DataType::Text, Literal::Null)
-            | (DataType::Date, Literal::Null) => Ok(Value::Null),
+            | (DataType::Date, Literal::Null)
+            | (DataType::Timestamp, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.to_string(),
                 literal: format!("{:?}", literal),
@@ -184,5 +196,17 @@ impl TryFromLiteral for Value {
             }
             .into()),
         }
+    }
+}
+
+fn parse_timestamp(v: &str) -> Result<NaiveDateTime> {
+    if let Ok(v) = v.parse::<DateTime<Utc>>() {
+        Ok(v.naive_utc())
+    } else if let Ok(v) = v.parse::<NaiveDateTime>() {
+        Ok(v)
+    } else if let Ok(v) = v.parse::<NaiveDate>() {
+        Ok(v.and_hms(0, 0, 0))
+    } else {
+        Err(ValueError::FailedToParseTimestamp(v.to_string()).into())
     }
 }
