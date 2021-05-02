@@ -4,7 +4,7 @@ mod evaluated;
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        data::{get_name, Literal, Value},
+        data::{get_name, value::TryFromLiteral, Literal, Value},
         result::Result,
         store::Store,
     },
@@ -39,7 +39,12 @@ pub async fn evaluate<'a, T: 'static + Debug>(
     };
 
     match expr {
-        Expr::Value(value) => Literal::try_from(value).map(Evaluated::Literal),
+        Expr::Value(ast_value) => Literal::try_from(ast_value).map(Evaluated::Literal),
+        Expr::TypedString { data_type, value } => {
+            let literal = Literal::Text(Cow::Borrowed(value));
+
+            Value::try_from_literal(&data_type, &literal).map(Evaluated::from)
+        }
         Expr::Identifier(ident) => match ident.quote_style {
             Some(_) => Ok(Literal::Text(Cow::Borrowed(&ident.value))).map(Evaluated::Literal),
             None => {

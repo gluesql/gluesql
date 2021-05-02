@@ -14,6 +14,12 @@ pub enum ValueError {
     #[error("failed to parse number")]
     FailedToParseNumber,
 
+    #[error("failed to parse date: {0}")]
+    FailedToParseDate(String),
+
+    #[error("failed to parse timestamp: {0}")]
+    FailedToParseTimestamp(String),
+
     #[error("add on non-numeric values: {0} + {1}")]
     AddOnNonNumeric(String, String),
 

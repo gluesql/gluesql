@@ -1,6 +1,7 @@
 use {
     super::{Value, ValueError},
     crate::result::{Error, Result},
+    chrono::{NaiveDate, NaiveDateTime},
     std::convert::TryInto,
 };
 
@@ -11,6 +12,8 @@ impl From<&Value> for String {
             Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_string(),
             Value::I64(value) => value.to_string(),
             Value::F64(value) => value.to_string(),
+            Value::Date(value) => value.to_string(),
+            Value::Timestamp(value) => value.to_string(),
             Value::Null => String::from("NULL"),
         }
     }
@@ -50,7 +53,9 @@ impl TryInto<bool> for &Value {
                 "FALSE" => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
-            Value::Null => return Err(ValueError::ImpossibleCast.into()),
+            Value::Date(_) | Value::Timestamp(_) | Value::Null => {
+                return Err(ValueError::ImpossibleCast.into())
+            }
         })
     }
 }
@@ -80,7 +85,9 @@ impl TryInto<i64> for &Value {
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
-            Value::Null => return Err(ValueError::ImpossibleCast.into()),
+            Value::Date(_) | Value::Timestamp(_) | Value::Null => {
+                return Err(ValueError::ImpossibleCast.into())
+            }
         })
     }
 }
@@ -102,7 +109,33 @@ impl TryInto<f64> for &Value {
             Value::Str(value) => value
                 .parse::<f64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
-            Value::Null => return Err(ValueError::ImpossibleCast.into()),
+            Value::Date(_) | Value::Timestamp(_) | Value::Null => {
+                return Err(ValueError::ImpossibleCast.into())
+            }
+        })
+    }
+}
+
+impl TryInto<NaiveDate> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<NaiveDate> {
+        Ok(match self {
+            Value::Date(value) => *value,
+            Value::Timestamp(value) => value.date(),
+            _ => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
+impl TryInto<NaiveDateTime> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<NaiveDateTime> {
+        Ok(match self {
+            Value::Date(value) => value.and_hms(0, 0, 0),
+            Value::Timestamp(value) => *value,
+            _ => return Err(ValueError::ImpossibleCast.into()),
         })
     }
 }

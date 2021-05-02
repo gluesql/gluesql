@@ -1,6 +1,7 @@
 use {
     super::Literal,
     crate::result::Result,
+    chrono::{NaiveDate, NaiveDateTime},
     serde::{Deserialize, Serialize},
     sqlparser::ast::{DataType, Expr},
     std::{
@@ -24,6 +25,8 @@ pub enum Value {
     I64(i64),
     F64(f64),
     Str(String),
+    Date(NaiveDate),
+    Timestamp(NaiveDateTime),
     Null,
 }
 
@@ -34,6 +37,10 @@ impl PartialEq<Value> for Value {
             (Value::I64(l), Value::I64(r)) => l == r,
             (Value::F64(l), Value::F64(r)) => l == r,
             (Value::Str(l), Value::Str(r)) => l == r,
+            (Value::Date(l), Value::Date(r)) => l == r,
+            (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
+            (Value::Timestamp(l), Value::Date(r)) => l == &r.and_hms(0, 0, 0),
+            (Value::Timestamp(l), Value::Timestamp(r)) => l == r,
             _ => false,
         }
     }
@@ -48,6 +55,10 @@ impl PartialOrd<Value> for Value {
             (Value::F64(l), Value::I64(r)) => l.partial_cmp(&(*r as f64)),
             (Value::F64(l), Value::F64(r)) => l.partial_cmp(r),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
+            (Value::Date(l), Value::Date(r)) => l.partial_cmp(r),
+            (Value::Date(l), Value::Timestamp(r)) => l.and_hms(0, 0, 0).partial_cmp(r),
+            (Value::Timestamp(l), Value::Date(r)) => l.partial_cmp(&r.and_hms(0, 0, 0)),
+            (Value::Timestamp(l), Value::Timestamp(r)) => l.partial_cmp(r),
             _ => None,
         }
     }
@@ -85,10 +96,14 @@ impl Value {
                 | (DataType::Int, Value::I64(_))
                 | (DataType::Float(_), Value::F64(_))
                 | (DataType::Text, Value::Str(_))
+                | (DataType::Date, Value::Date(_))
+                | (DataType::Timestamp, Value::Timestamp(_))
                 | (DataType::Boolean, Value::Null)
                 | (DataType::Int, Value::Null)
                 | (DataType::Float(_), Value::Null)
                 | (DataType::Text, Value::Null)
+                | (DataType::Date, Value::Null)
+                | (DataType::Timestamp, Value::Null)
         );
 
         if !valid {
@@ -115,13 +130,18 @@ impl Value {
             (DataType::Boolean, Value::Bool(_))
             | (DataType::Int, Value::I64(_))
             | (DataType::Float(_), Value::F64(_))
-            | (DataType::Text, Value::Str(_)) => Ok(self.clone()),
+            | (DataType::Text, Value::Str(_))
+            | (DataType::Date, Value::Date(_))
+            | (DataType::Timestamp, Value::Timestamp(_)) => Ok(self.clone()),
+
             (_, Value::Null) => Ok(Value::Null),
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Float(_), value) => value.try_into().map(Value::F64),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
+            (DataType::Date, value) => value.try_into().map(Value::Date),
+            (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
@@ -237,11 +257,31 @@ mod tests {
 
     #[test]
     fn eq() {
+        use chrono::NaiveDateTime;
+
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
         assert_eq!(I64(1), I64(1));
         assert_eq!(F64(6.11), F64(6.11));
         assert_eq!(Str("Glue".to_owned()), Str("Glue".to_owned()));
+
+        let date = Date("2020-05-01".parse().unwrap());
+        let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
+
+        assert_eq!(date, timestamp);
+        assert_eq!(timestamp, date);
+    }
+
+    #[test]
+    fn cmp() {
+        use chrono::NaiveDate;
+        use std::cmp::Ordering;
+
+        let date = Date(NaiveDate::from_ymd(2020, 5, 1));
+        let timestamp = Timestamp(NaiveDate::from_ymd(2020, 3, 1).and_hms(0, 0, 0));
+
+        assert_eq!(date.partial_cmp(&timestamp), Some(Ordering::Greater));
+        assert_eq!(timestamp.partial_cmp(&date), Some(Ordering::Less));
     }
 
     #[test]
@@ -304,7 +344,7 @@ mod tests {
 
     #[test]
     fn cast() {
-        use sqlparser::ast::DataType::*;
+        use {crate::Value, chrono::NaiveDate, sqlparser::ast::DataType::*};
 
         macro_rules! cast {
             ($input: expr => $data_type: expr, $expected: expr) => {
@@ -353,7 +393,27 @@ mod tests {
         cast!(Bool(false)   => Text, Str("FALSE".to_owned()));
         cast!(I64(11)       => Text, Str("11".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
+
+        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
+        cast!(date          => Text, Str("2021-05-01".to_owned()));
+
+        let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
+        cast!(timestamp     => Text, Str("2021-05-01 12:34:50".to_owned()));
         cast!(Null          => Text, Null);
+
+        // Date
+        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
+        let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
+
+        cast!(timestamp => Date, date);
+        cast!(Null      => Date, Null);
+
+        // Timestamp
+        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
+        let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(0, 0, 0));
+
+        cast!(date => Timestamp, timestamp);
+        cast!(Null => Timestamp, Null);
     }
 
     #[test]

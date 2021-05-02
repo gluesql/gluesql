@@ -17,6 +17,8 @@ impl TryInto<Option<UniqueKey>> for &Value {
             Bool(v) => Some(UniqueKey::Bool(*v)),
             I64(v) => Some(UniqueKey::I64(*v)),
             Str(v) => Some(UniqueKey::Str(v.clone())),
+            Date(v) => Some(UniqueKey::Date(*v)),
+            Timestamp(v) => Some(UniqueKey::Timestamp(*v)),
             Null => None,
             F64(_) => {
                 return Err(ValueError::ConflictOnFloatWithUniqueConstraint.into());

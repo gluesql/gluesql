@@ -61,6 +61,7 @@
 //! After you implement `Tester` trait, the only thing you need to do is calling `generate_tests!` macro.
 
 // re-export
+pub use chrono;
 pub use sqlparser as parser;
 
 mod executor;
