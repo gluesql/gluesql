@@ -1,24 +1,26 @@
-use boolinator::Boolinator;
-use futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt};
-use iter_enum::Iterator;
-use serde::Serialize;
-use std::fmt::Debug;
-use std::iter::once;
-use std::rc::Rc;
-use thiserror::Error as ThisError;
-
-use sqlparser::ast::{Expr, Ident, Query, SelectItem, SetExpr, TableWithJoins};
-
-use super::aggregate::Aggregate;
-use super::blend::Blend;
-use super::context::{BlendContext, FilterContext};
-use super::fetch::fetch_columns;
-use super::filter::Filter;
-use super::join::Join;
-use super::limit::Limit;
-use crate::data::{get_name, Row, Table};
-use crate::result::{Error, Result};
-use crate::store::Store;
+use {
+    super::{
+        aggregate::Aggregate,
+        blend::Blend,
+        context::{BlendContext, FilterContext},
+        fetch::fetch_columns,
+        filter::Filter,
+        join::Join,
+        limit::Limit,
+    },
+    crate::{
+        data::{get_name, Row, Table},
+        result::{Error, Result},
+        store::Store,
+    },
+    boolinator::Boolinator,
+    futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
+    iter_enum::Iterator,
+    serde::Serialize,
+    sqlparser::ast::{Expr, Ident, Query, SelectItem, SetExpr, TableWithJoins},
+    std::{fmt::Debug, iter::once, rc::Rc},
+    thiserror::Error as ThisError,
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum SelectError {
@@ -228,13 +230,9 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
                     .await
                     .map(|pass| pass.as_some(blend_context))
             }
-        })
-        .enumerate()
-        .filter_map(move |(i, item)| {
-            let limit = Rc::clone(&limit);
-
-            async move { limit.check(i).as_some(item) }
         });
+
+    let rows = limit.apply(rows);
 
     let rows = aggregate
         .apply(rows)
