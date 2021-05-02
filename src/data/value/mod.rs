@@ -35,6 +35,8 @@ impl PartialEq<Value> for Value {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => l == r,
             (Value::I64(l), Value::I64(r)) => l == r,
+            (Value::I64(l), Value::F64(r)) => &(*l as f64) == r,
+            (Value::F64(l), Value::I64(r)) => l == &(*r as f64),
             (Value::F64(l), Value::F64(r)) => l == r,
             (Value::Str(l), Value::Str(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
@@ -262,6 +264,8 @@ mod tests {
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
         assert_eq!(I64(1), I64(1));
+        assert_eq!(I64(1), F64(1.0));
+        assert_eq!(F64(1.0), I64(1));
         assert_eq!(F64(6.11), F64(6.11));
         assert_eq!(Str("Glue".to_owned()), Str("Glue".to_owned()));
 
