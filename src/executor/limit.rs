@@ -1,12 +1,14 @@
-use serde::Serialize;
-use std::fmt::Debug;
-use thiserror::Error;
+use {
+    super::context::BlendContext,
+    crate::result::Result,
+    futures::stream::{Stream, StreamExt},
+    serde::Serialize,
+    sqlparser::ast::{Expr, Offset, Value as Literal},
+    std::{fmt::Debug, pin::Pin, rc::Rc},
+    thiserror::Error as ThisError,
+};
 
-use sqlparser::ast::{Expr, Offset, Value as Literal};
-
-use crate::result::Result;
-
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum LimitError {
     #[error("Unreachable")]
     Unreachable,
@@ -36,12 +38,15 @@ impl Limit {
         Ok(Self { limit, offset })
     }
 
-    pub fn check(&self, i: usize) -> bool {
+    pub fn apply<'a>(
+        &self,
+        rows: impl Stream<Item = Result<Rc<BlendContext<'a>>>> + 'a,
+    ) -> Pin<Box<dyn Stream<Item = Result<Rc<BlendContext<'a>>>> + 'a>> {
         match (self.offset, self.limit) {
-            (Some(offset), Some(limit)) => i >= offset && i < offset + limit,
-            (Some(offset), None) => i >= offset,
-            (None, Some(limit)) => i < limit,
-            (None, None) => true,
+            (Some(offset), Some(limit)) => Box::pin(rows.skip(offset).take(limit)),
+            (Some(offset), None) => Box::pin(rows.skip(offset)),
+            (None, Some(limit)) => Box::pin(rows.take(limit)),
+            (None, None) => Box::pin(rows),
         }
     }
 }
