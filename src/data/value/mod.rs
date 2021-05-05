@@ -2,6 +2,7 @@ use {
     super::{Interval, Literal},
     crate::result::Result,
     chrono::{NaiveDate, NaiveDateTime},
+    core::ops::Sub,
     serde::{Deserialize, Serialize},
     sqlparser::ast::{DataType, Expr},
     std::{
@@ -168,6 +169,7 @@ impl Value {
     }
 
     pub fn subtract(&self, other: &Value) -> Result<Value> {
+        use super::Interval as I;
         use Value::*;
 
         match (self, other) {
@@ -175,6 +177,14 @@ impl Value {
             (I64(a), F64(b)) => Ok(F64(*a as f64 - b)),
             (F64(a), I64(b)) => Ok(F64(a - *b as f64)),
             (F64(a), F64(b)) => Ok(F64(a - b)),
+            (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
+            (Timestamp(a), Timestamp(b)) => a
+                .sub(*b)
+                .num_microseconds()
+                .ok_or_else(|| {
+                    ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
+                })
+                .map(|v| Interval(I::microseconds(v))),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
             (Null, I64(_))
             | (Null, F64(_))
@@ -318,6 +328,8 @@ mod tests {
 
     #[test]
     fn arithmetic() {
+        use chrono::NaiveDate;
+
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
                 assert_eq!($a.$op(&$b), Ok($c));
@@ -340,6 +352,18 @@ mod tests {
         test!(subtract I64(3),   F64(2.0) => F64(1.0));
         test!(subtract F64(3.0), I64(2)   => F64(1.0));
         test!(subtract F64(3.0), F64(2.0) => F64(1.0));
+        test!(subtract
+            Date(NaiveDate::from_ymd(2021, 11, 11)),
+            Date(NaiveDate::from_ymd(2021, 6, 11))
+            =>
+            Interval(Interval::days(153))
+        );
+        test!(subtract
+            Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms(15, 0, 0)),
+            Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms(12, 0, 0))
+            =>
+            Interval(Interval::hours(3))
+        );
         test!(subtract mon!(1),  mon!(2)  => mon!(-1));
 
         test!(multiply I64(3),   I64(2)   => I64(6));

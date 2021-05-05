@@ -94,8 +94,8 @@ impl Interval {
         Interval::Microsecond(minutes as i64 * MINUTE)
     }
 
-    pub fn seconds(seconds: i32) -> Self {
-        Interval::Microsecond(seconds as i64 * SECOND)
+    pub fn seconds(seconds: i64) -> Self {
+        Interval::Microsecond(seconds * SECOND)
     }
 
     pub fn microseconds(microseconds: i64) -> Self {

@@ -87,6 +87,17 @@ INSERT INTO DateLog VALUES
     );
 
     test!(
+        Ok(select!(
+            id  | date_sub
+            I64 | Interval;
+            1     data::Interval::days(-263);
+            2     data::Interval::days(11_595);
+            3     data::Interval::days(0)
+        )),
+        "SELECT id, date1 - date2 AS date_sub FROM DateLog;"
+    );
+
+    test!(
         Err(ValueError::FailedToParseDate("12345-678".to_owned()).into()),
         r#"INSERT INTO DateLog VALUES (1, "12345-678", "2021-05-01")"#
     );

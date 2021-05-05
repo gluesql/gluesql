@@ -87,6 +87,17 @@ INSERT INTO TimestampLog VALUES
     );
 
     test!(
+        Ok(select!(
+            id  | timestamp_sub
+            I64 | Interval;
+            1     data::Interval::seconds(-22_682_209);
+            2     data::Interval::seconds(1_001_908_740);
+            3     data::Interval::seconds(0)
+        )),
+        "SELECT id, t1 - t2 AS timestamp_sub FROM TimestampLog;"
+    );
+
+    test!(
         Err(ValueError::FailedToParseTimestamp("12345-678".to_owned()).into()),
         r#"INSERT INTO TimestampLog VALUES (1, "12345-678", "2021-05-01")"#
     );
