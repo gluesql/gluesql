@@ -19,6 +19,7 @@ impl TryInto<GroupKey> for &Value {
             Str(v) => Ok(GroupKey::Str(v.clone())),
             Date(v) => Ok(GroupKey::Date(*v)),
             Timestamp(v) => Ok(GroupKey::Timestamp(*v)),
+            Interval(v) => Ok(GroupKey::Interval(*v)),
             Null => Ok(GroupKey::None),
             F64(_) => Err(ValueError::FloatCannotBeGroupedBy.into()),
         }
@@ -37,6 +38,7 @@ impl TryInto<GroupKey> for Value {
             Str(v) => Ok(GroupKey::Str(v)),
             Date(v) => Ok(GroupKey::Date(v)),
             Timestamp(v) => Ok(GroupKey::Timestamp(v)),
+            Interval(v) => Ok(GroupKey::Interval(v)),
             Null => Ok(GroupKey::None),
             F64(_) => Err(ValueError::FloatCannotBeGroupedBy.into()),
         }

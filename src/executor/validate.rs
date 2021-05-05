@@ -1,6 +1,6 @@
 use {
     crate::{
-        data::{Row, Value},
+        data::{Interval, Row, Value},
         result::Result,
         store::Store,
         utils::Vector,
@@ -35,6 +35,7 @@ pub enum UniqueKey {
     Str(String),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
+    Interval(Interval),
 }
 
 #[derive(Debug)]

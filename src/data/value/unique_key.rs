@@ -19,6 +19,7 @@ impl TryInto<Option<UniqueKey>> for &Value {
             Str(v) => Some(UniqueKey::Str(v.clone())),
             Date(v) => Some(UniqueKey::Date(*v)),
             Timestamp(v) => Some(UniqueKey::Timestamp(*v)),
+            Interval(v) => Some(UniqueKey::Interval(*v)),
             Null => None,
             F64(_) => {
                 return Err(ValueError::ConflictOnFloatWithUniqueConstraint.into());

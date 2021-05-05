@@ -36,6 +36,7 @@ impl PartialEq<Literal<'_>> for Value {
                 Ok(r) => l == &r,
                 Err(_) => false,
             },
+            (Value::Interval(l), Literal::Interval(r)) => l == r,
             _ => false,
         }
     }
@@ -67,6 +68,7 @@ impl PartialOrd<Literal<'_>> for Value {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => None,
             },
+            (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(&r),
             _ => None,
         }
     }
@@ -83,6 +85,7 @@ impl TryFrom<&Literal<'_>> for Value {
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
+            Literal::Interval(v) => Ok(Value::Interval(*v)),
             Literal::Null => Ok(Value::Null),
         }
     }
@@ -99,6 +102,7 @@ impl TryFrom<Literal<'_>> for Value {
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(v)),
             Literal::Text(v) => Ok(Value::Str(v.into_owned())),
+            Literal::Interval(v) => Ok(Value::Interval(v)),
             Literal::Null => Ok(Value::Null),
         }
     }
@@ -130,12 +134,14 @@ impl TryFromLiteral for Value {
             (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
                 .map(Value::Timestamp)
                 .map_err(|_| ValueError::FailedToParseTimestamp(v.to_string()).into()),
+            (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
             | (DataType::Float(_), Literal::Null)
             | (DataType::Text, Literal::Null)
             | (DataType::Date, Literal::Null)
-            | (DataType::Timestamp, Literal::Null) => Ok(Value::Null),
+            | (DataType::Timestamp, Literal::Null)
+            | (DataType::Interval, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.to_string(),
                 literal: format!("{:?}", literal),

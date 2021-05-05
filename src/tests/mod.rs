@@ -12,6 +12,7 @@ pub mod drop_table;
 pub mod error;
 pub mod filter;
 pub mod function;
+pub mod interval;
 pub mod join;
 pub mod migrate;
 pub mod nested_select;
@@ -84,6 +85,7 @@ macro_rules! generate_tests {
         glue!(sql_types, sql_types::sql_types);
         glue!(date, date::date);
         glue!(timestamp, timestamp::timestamp);
+        glue!(interval, interval::interval);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);

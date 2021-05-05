@@ -14,6 +14,7 @@ impl From<&Value> for String {
             Value::F64(value) => value.to_string(),
             Value::Date(value) => value.to_string(),
             Value::Timestamp(value) => value.to_string(),
+            Value::Interval(value) => value.into(),
             Value::Null => String::from("NULL"),
         }
     }
@@ -53,7 +54,7 @@ impl TryInto<bool> for &Value {
                 "FALSE" => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
-            Value::Date(_) | Value::Timestamp(_) | Value::Null => {
+            Value::Date(_) | Value::Timestamp(_) | Value::Interval(_) | Value::Null => {
                 return Err(ValueError::ImpossibleCast.into())
             }
         })
@@ -85,7 +86,7 @@ impl TryInto<i64> for &Value {
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
-            Value::Date(_) | Value::Timestamp(_) | Value::Null => {
+            Value::Date(_) | Value::Timestamp(_) | Value::Interval(_) | Value::Null => {
                 return Err(ValueError::ImpossibleCast.into())
             }
         })
@@ -109,7 +110,7 @@ impl TryInto<f64> for &Value {
             Value::Str(value) => value
                 .parse::<f64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
-            Value::Date(_) | Value::Timestamp(_) | Value::Null => {
+            Value::Date(_) | Value::Timestamp(_) | Value::Interval(_) | Value::Null => {
                 return Err(ValueError::ImpossibleCast.into())
             }
         })
