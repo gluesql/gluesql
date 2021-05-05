@@ -421,15 +421,19 @@ mod tests {
 
         test!(multiply I64(3),   I64(2)   => I64(6));
         test!(multiply I64(3),   F64(2.0) => F64(6.0));
+        test!(multiply I64(3),   mon!(3)  => mon!(9));
         test!(multiply F64(3.0), I64(2)   => F64(6.0));
         test!(multiply F64(3.0), F64(2.0) => F64(6.0));
+        test!(multiply F64(3.0), mon!(3)  => mon!(9));
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
         test!(divide I64(6),   I64(2)   => I64(3));
         test!(divide I64(6),   F64(2.0) => F64(3.0));
+        test!(divide I64(6),   mon!(2)  => mon!(3));
         test!(divide F64(6.0), I64(2)   => F64(3.0));
         test!(divide F64(6.0), F64(2.0) => F64(3.0));
+        test!(divide F64(6.0), mon!(2)  => mon!(3));
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
