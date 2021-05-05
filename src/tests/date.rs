@@ -86,15 +86,23 @@ INSERT INTO DateLog VALUES
         r#"SELECT * FROM DateLog WHERE "1999-01-03" < DATE "2000-01-01";"#
     );
 
+    let days = |n| data::Interval::days(n);
+    let timestamp = |y, m, d| chrono::NaiveDate::from_ymd(y, m, d).and_hms(0, 0, 0);
+
     test!(
         Ok(select!(
-            id  | date_sub
-            I64 | Interval;
-            1     data::Interval::days(-263);
-            2     data::Interval::days(11_595);
-            3     data::Interval::days(0)
+            id  | date_sub     | sub                    | add
+            I64 | Interval     | Timestamp              | Timestamp;
+            1     days(-263)     timestamp(2020, 6, 10)   timestamp(2021, 4, 1);
+            2     days(11_595)   timestamp(2020, 9, 29)   timestamp(1989, 2, 1);
+            3     days(0)        timestamp(2021, 4, 30)   timestamp(2021, 6, 1)
         )),
-        "SELECT id, date1 - date2 AS date_sub FROM DateLog;"
+        r#"SELECT
+            id,
+            date1 - date2 AS date_sub,
+            date1 - INTERVAL "1" DAY as sub,
+            date2 + INTERVAL "1" MONTH as add
+        FROM DateLog;"#
     );
 
     test!(

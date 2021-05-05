@@ -154,12 +154,15 @@ impl Value {
             (I64(a), I64(b)) => Ok(I64(a + b)),
             (F64(a), F64(b)) => Ok(F64(a + b)),
             (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 + b)),
+            (Date(a), Interval(b)) | (Interval(b), Date(a)) => b.add_date(a).map(Timestamp),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
             (Null, I64(_))
             | (Null, F64(_))
+            | (Null, Date(_))
             | (Null, Interval(_))
             | (I64(_), Null)
             | (F64(_), Null)
+            | (Date(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(
@@ -178,6 +181,7 @@ impl Value {
             (F64(a), I64(b)) => Ok(F64(a - *b as f64)),
             (F64(a), F64(b)) => Ok(F64(a - b)),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
+            (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
             (Timestamp(a), Timestamp(b)) => a
                 .sub(*b)
                 .num_microseconds()
@@ -188,9 +192,11 @@ impl Value {
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
             (Null, I64(_))
             | (Null, F64(_))
+            | (Null, Date(_))
             | (Null, Interval(_))
             | (I64(_), Null)
             | (F64(_), Null)
+            | (Date(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::SubtractOnNonNumeric(
@@ -342,10 +348,24 @@ mod tests {
             };
         }
 
+        let date = |y, m, d| NaiveDate::from_ymd(y, m, d);
+
         test!(add I64(1),   I64(2)   => I64(3));
         test!(add I64(1),   F64(2.0) => F64(3.0));
         test!(add F64(1.0), I64(2)   => F64(3.0));
         test!(add F64(1.0), F64(2.0) => F64(3.0));
+        test!(add
+            Date(date(2021, 11, 11)),
+            mon!(14)
+            =>
+            Timestamp(date(2023, 1, 11).and_hms(0, 0, 0))
+        );
+        test!(add
+            Interval(Interval::hours(3)),
+            Date(date(2021, 11, 11))
+            =>
+            Timestamp(date(2021, 11, 11).and_hms(3, 0, 0))
+        );
         test!(add mon!(1),  mon!(2)  => mon!(3));
 
         test!(subtract I64(3),   I64(2)   => I64(1));
@@ -357,6 +377,12 @@ mod tests {
             Date(NaiveDate::from_ymd(2021, 6, 11))
             =>
             Interval(Interval::days(153))
+        );
+        test!(subtract
+            Date(NaiveDate::from_ymd(2021, 1, 1)),
+            Interval(Interval::days(365))
+            =>
+            Timestamp(NaiveDate::from_ymd(2020, 1, 2).and_hms(0, 0, 0))
         );
         test!(subtract
             Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms(15, 0, 0)),
@@ -386,11 +412,15 @@ mod tests {
             };
         }
 
+        let date = || Date(NaiveDate::from_ymd(1989, 3, 1));
+
         null_test!(add      I64(1),   Null);
         null_test!(add      F64(1.0), Null);
+        null_test!(add      date(),   Null);
         null_test!(add      mon!(1),  Null);
         null_test!(subtract I64(1),   Null);
         null_test!(subtract F64(1.0), Null);
+        null_test!(subtract date(),   Null);
         null_test!(subtract mon!(1),  Null);
         null_test!(multiply I64(1),   Null);
         null_test!(multiply F64(1.0), Null);
@@ -402,8 +432,10 @@ mod tests {
         null_test!(add      Null, I64(1));
         null_test!(add      Null, F64(1.0));
         null_test!(add      Null, mon!(1));
+        null_test!(add      Null, date());
         null_test!(subtract Null, I64(1));
         null_test!(subtract Null, F64(1.0));
+        null_test!(subtract Null, date());
         null_test!(subtract Null, mon!(1));
         null_test!(multiply Null, I64(1));
         null_test!(multiply Null, F64(1.0));

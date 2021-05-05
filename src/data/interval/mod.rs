@@ -3,7 +3,7 @@ mod primitive;
 
 use {
     crate::result::Result,
-    chrono::{NaiveTime, Timelike},
+    chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::str::FromStr,
     rust_decimal::{prelude::ToPrimitive, Decimal},
     serde::{Deserialize, Serialize},
@@ -71,6 +71,42 @@ impl Interval {
             (Month(l), Month(r)) => Ok(Month(l - r)),
             (Microsecond(l), Microsecond(r)) => Ok(Microsecond(l - r)),
             _ => Err(IntervalError::SubtractBetweenYearToMonthAndHourToSecond.into()),
+        }
+    }
+
+    pub fn add_date(&self, date: &NaiveDate) -> Result<NaiveDateTime> {
+        match self {
+            Interval::Month(n) => {
+                let month = date.month() as i32 + n;
+
+                let year = date.year() + month / 12;
+                let month = month % 12;
+
+                date.and_hms(0, 0, 0)
+                    .with_year(year)
+                    .map(|d| d.with_month(month as u32))
+                    .flatten()
+                    .ok_or_else(|| IntervalError::DateOverflow { year, month }.into())
+            }
+            Interval::Microsecond(n) => Ok(date.and_hms(0, 0, 0) + Duration::microseconds(*n)),
+        }
+    }
+
+    pub fn subtract_from_date(&self, date: &NaiveDate) -> Result<NaiveDateTime> {
+        match self {
+            Interval::Month(n) => {
+                let months = date.year() * 12 + date.month() as i32 - n;
+
+                let year = months / 12;
+                let month = months % 12;
+
+                date.and_hms(0, 0, 0)
+                    .with_year(year)
+                    .map(|d| d.with_month(month as u32))
+                    .flatten()
+                    .ok_or_else(|| IntervalError::DateOverflow { year, month }.into())
+            }
+            Interval::Microsecond(n) => Ok(date.and_hms(0, 0, 0) - Duration::microseconds(*n)),
         }
     }
 
@@ -205,11 +241,12 @@ impl Interval {
 
 #[cfg(test)]
 mod tests {
-    use super::Interval;
+    use super::{Interval, IntervalError};
     use sqlparser::ast::DateTimeField;
 
     #[test]
     fn arithmetic() {
+        use chrono::NaiveDate;
         use Interval::*;
 
         macro_rules! test {
@@ -218,8 +255,54 @@ mod tests {
             };
         }
 
+        let date = |y, m, d| NaiveDate::from_ymd(y, m, d);
+
         assert_eq!(Month(1).unary_minus(), Month(-1));
         assert_eq!(Microsecond(1).unary_minus(), Microsecond(-1));
+        assert_eq!(
+            Month(2).add_date(&date(2021, 11, 11)),
+            Ok(date(2022, 1, 11).and_hms(0, 0, 0))
+        );
+        assert_eq!(
+            Interval::hours(30).add_date(&date(2021, 11, 11)),
+            Ok(date(2021, 11, 12).and_hms(6, 0, 0))
+        );
+        assert_eq!(
+            Interval::years(999_999).add_date(&date(2021, 11, 11)),
+            Err(IntervalError::DateOverflow {
+                year: 1_002_020,
+                month: 11,
+            }
+            .into())
+        );
+        assert_eq!(
+            Interval::years(999_999).add_date(&date(2021, 11, 11)),
+            Err(IntervalError::DateOverflow {
+                year: 1_002_020,
+                month: 11,
+            }
+            .into())
+        );
+        assert_eq!(
+            Month(2).subtract_from_date(&date(2021, 11, 11)),
+            Ok(date(2021, 9, 11).and_hms(0, 0, 0))
+        );
+        assert_eq!(
+            Month(14).subtract_from_date(&date(2021, 11, 11)),
+            Ok(date(2020, 9, 11).and_hms(0, 0, 0))
+        );
+        assert_eq!(
+            Interval::hours(30).subtract_from_date(&date(2021, 11, 11)),
+            Ok(date(2021, 11, 9).and_hms(18, 0, 0))
+        );
+        assert_eq!(
+            Interval::years(999_999).subtract_from_date(&date(2021, 11, 11)),
+            Err(IntervalError::DateOverflow {
+                year: -997977,
+                month: -1,
+            }
+            .into())
+        );
 
         test!(add      Month(1), Month(2) => Month(3));
         test!(subtract Month(1), Month(2) => Month(-1));

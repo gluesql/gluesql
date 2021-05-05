@@ -32,6 +32,9 @@ pub enum IntervalError {
     #[error("failed to parse DAY TO SECOND (day hh:mm:ss, ex. 1 12:34:55): {0}")]
     FailedToParseDayToSecond(String),
 
+    #[error("date overflow: {year}-{month}")]
+    DateOverflow { year: i32, month: i32 },
+
     #[error("unreachable")]
     Unreachable,
 }
