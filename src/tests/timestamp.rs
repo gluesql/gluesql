@@ -98,6 +98,21 @@ INSERT INTO TimestampLog VALUES
     );
 
     test!(
+        Ok(select!(
+            id  | sub                            | add
+            I64 | Timestamp                      | Timestamp;
+            1     t!("2020-06-10T11:23:11")        t!("2021-04-01T00:00:00");
+            2     t!("2020-09-29T19:00:00")        t!("1989-01-31T15:01:00");
+            3     t!("2021-04-30T00:00:00.1234")   t!("2021-06-01T00:00:00.1234")
+        )),
+        r#"SELECT
+            id,
+            t1 - INTERVAL "1" DAY AS sub,
+            t2 + INTERVAL "1" MONTH AS add
+        FROM TimestampLog;"#
+    );
+
+    test!(
         Err(ValueError::FailedToParseTimestamp("12345-678".to_owned()).into()),
         r#"INSERT INTO TimestampLog VALUES (1, "12345-678", "2021-05-01")"#
     );

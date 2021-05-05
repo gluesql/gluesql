@@ -89,6 +89,7 @@ impl Value {
                 | (DataType::Text, Value::Str(_))
                 | (DataType::Date, Value::Date(_))
                 | (DataType::Timestamp, Value::Timestamp(_))
+                | (DataType::Interval, Value::Interval(_))
                 | (DataType::Boolean, Value::Null)
                 | (DataType::Int, Value::Null)
                 | (DataType::Float(_), Value::Null)
@@ -155,14 +156,19 @@ impl Value {
             (F64(a), F64(b)) => Ok(F64(a + b)),
             (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 + b)),
             (Date(a), Interval(b)) | (Interval(b), Date(a)) => b.add_date(a).map(Timestamp),
+            (Timestamp(a), Interval(b)) | (Interval(b), Timestamp(a)) => {
+                b.add_timestamp(a).map(Timestamp)
+            }
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
             (Null, I64(_))
             | (Null, F64(_))
             | (Null, Date(_))
+            | (Null, Timestamp(_))
             | (Null, Interval(_))
             | (I64(_), Null)
             | (F64(_), Null)
             | (Date(_), Null)
+            | (Timestamp(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(
@@ -182,6 +188,7 @@ impl Value {
             (F64(a), F64(b)) => Ok(F64(a - b)),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
             (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
+            (Timestamp(a), Interval(b)) => b.subtract_from_timestamp(a).map(Timestamp),
             (Timestamp(a), Timestamp(b)) => a
                 .sub(*b)
                 .num_microseconds()
@@ -193,10 +200,12 @@ impl Value {
             (Null, I64(_))
             | (Null, F64(_))
             | (Null, Date(_))
+            | (Null, Timestamp(_))
             | (Null, Interval(_))
             | (I64(_), Null)
             | (F64(_), Null)
             | (Date(_), Null)
+            | (Timestamp(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::SubtractOnNonNumeric(
@@ -366,6 +375,18 @@ mod tests {
             =>
             Timestamp(date(2021, 11, 11).and_hms(3, 0, 0))
         );
+        test!(add
+            Timestamp(date(2021, 11, 11).and_hms(0, 0, 0)),
+            mon!(14)
+            =>
+            Timestamp(date(2023, 1, 11).and_hms(0, 0, 0))
+        );
+        test!(add
+            Interval(Interval::hours(3)),
+            Timestamp(date(2021, 11, 11).and_hms(0, 0, 0))
+            =>
+            Timestamp(date(2021, 11, 11).and_hms(3, 0, 0))
+        );
         test!(add mon!(1),  mon!(2)  => mon!(3));
 
         test!(subtract I64(3),   I64(2)   => I64(1));
@@ -390,6 +411,12 @@ mod tests {
             =>
             Interval(Interval::hours(3))
         );
+        test!(subtract
+            Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms(0, 3, 0)),
+            Interval(Interval::days(365))
+            =>
+            Timestamp(NaiveDate::from_ymd(2020, 1, 2).and_hms(0, 3, 0))
+        );
         test!(subtract mon!(1),  mon!(2)  => mon!(-1));
 
         test!(multiply I64(3),   I64(2)   => I64(6));
@@ -413,14 +440,17 @@ mod tests {
         }
 
         let date = || Date(NaiveDate::from_ymd(1989, 3, 1));
+        let ts = || Timestamp(NaiveDate::from_ymd(1989, 1, 1).and_hms(0, 0, 0));
 
         null_test!(add      I64(1),   Null);
         null_test!(add      F64(1.0), Null);
         null_test!(add      date(),   Null);
+        null_test!(add      ts(),     Null);
         null_test!(add      mon!(1),  Null);
         null_test!(subtract I64(1),   Null);
         null_test!(subtract F64(1.0), Null);
         null_test!(subtract date(),   Null);
+        null_test!(subtract ts(),     Null);
         null_test!(subtract mon!(1),  Null);
         null_test!(multiply I64(1),   Null);
         null_test!(multiply F64(1.0), Null);
@@ -433,9 +463,11 @@ mod tests {
         null_test!(add      Null, F64(1.0));
         null_test!(add      Null, mon!(1));
         null_test!(add      Null, date());
+        null_test!(add      Null, ts());
         null_test!(subtract Null, I64(1));
         null_test!(subtract Null, F64(1.0));
         null_test!(subtract Null, date());
+        null_test!(subtract Null, ts());
         null_test!(subtract Null, mon!(1));
         null_test!(multiply Null, I64(1));
         null_test!(multiply Null, F64(1.0));

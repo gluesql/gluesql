@@ -100,8 +100,8 @@ INSERT INTO DateLog VALUES
         r#"SELECT
             id,
             date1 - date2 AS date_sub,
-            date1 - INTERVAL "1" DAY as sub,
-            date2 + INTERVAL "1" MONTH as add
+            date1 - INTERVAL "1" DAY AS sub,
+            date2 + INTERVAL "1" MONTH AS add
         FROM DateLog;"#
     );
 
