@@ -1,17 +1,19 @@
-use futures::stream::{self, TryStreamExt};
-use serde::Serialize;
-use std::fmt::Debug;
-use std::rc::Rc;
-use thiserror::Error;
-
-use sqlparser::ast::{Assignment, ColumnDef, Ident};
-
-use super::context::FilterContext;
-use super::evaluate::{evaluate, Evaluated};
-use crate::data::value::TryFromLiteral;
-use crate::data::{schema::ColumnDefExt, Row, Value};
-use crate::result::Result;
-use crate::store::Store;
+use {
+    super::{
+        context::FilterContext,
+        evaluate::{evaluate, Evaluated},
+    },
+    crate::{
+        data::{schema::ColumnDefExt, Row, Value},
+        result::Result,
+        store::Store,
+    },
+    futures::stream::{self, TryStreamExt},
+    serde::Serialize,
+    sqlparser::ast::{Assignment, ColumnDef, Ident},
+    std::{fmt::Debug, rc::Rc},
+    thiserror::Error,
+};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum UpdateError {

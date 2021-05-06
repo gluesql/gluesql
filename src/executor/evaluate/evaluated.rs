@@ -1,7 +1,7 @@
 use {
     super::error::EvaluateError,
     crate::{
-        data::{value::TryFromLiteral, Literal, Value},
+        data::{Literal, Value},
         result::{Error, Result},
     },
     sqlparser::ast::DataType,
