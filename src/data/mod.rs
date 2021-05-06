@@ -1,10 +1,13 @@
+mod interval;
 mod literal;
 mod row;
-pub mod schema;
 mod table;
+
+pub mod schema;
 pub mod value;
 
 pub use {
+    interval::{Interval, IntervalError},
     literal::{Literal, LiteralError},
     row::{Row, RowError},
     schema::Schema,

@@ -1,6 +1,6 @@
 use {
     crate::{
-        data::Value,
+        data::{Interval, Value},
         executor::evaluate::Evaluated,
         result::{Error, Result},
     },
@@ -15,6 +15,7 @@ pub enum GroupKey {
     Str(String),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
+    Interval(Interval),
     None,
 }
 

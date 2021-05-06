@@ -69,4 +69,7 @@ pub enum ValueError {
 
     #[error("unimplemented literal cast: {literal} as {data_type}")]
     UnimplementedLiteralCast { data_type: String, literal: String },
+
+    #[error("unreachable integer overflow: {0}")]
+    UnreachableIntegerOverflow(String),
 }

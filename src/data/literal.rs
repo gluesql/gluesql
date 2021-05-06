@@ -1,11 +1,11 @@
 use {
     crate::result::{Error, Result},
+    serde::Serialize,
     sqlparser::ast::{Expr, Ident, Value as AstValue},
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
+    thiserror::Error,
     Literal::*,
 };
-
-use {serde::Serialize, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum LiteralError {
@@ -33,6 +33,7 @@ pub enum Literal<'a> {
     Boolean(bool),
     Number(Cow<'a, String>),
     Text(Cow<'a, String>),
+    Interval(super::Interval),
     Null,
 }
 
@@ -44,6 +45,16 @@ impl<'a> TryFrom<&'a AstValue> for Literal<'a> {
             AstValue::Boolean(v) => Boolean(*v),
             AstValue::Number(v, false) => Number(Cow::Borrowed(v)),
             AstValue::SingleQuotedString(v) => Text(Cow::Borrowed(v)),
+            AstValue::Interval {
+                value,
+                leading_field,
+                last_field,
+                ..
+            } => Interval(super::Interval::try_from_literal(
+                value,
+                leading_field.as_ref(),
+                last_field.as_ref(),
+            )?),
             AstValue::Null => Null,
             _ => {
                 return Err(LiteralError::UnsupportedLiteralType(ast_value.to_string()).into());
@@ -60,6 +71,7 @@ impl<'a> TryFrom<&'a Expr> for Literal<'a> {
     fn try_from(expr: &'a Expr) -> Result<Self> {
         match expr {
             Expr::Value(literal) => Literal::try_from(literal),
+            // TODO: Expr::TypedString support
             Expr::Identifier(Ident { value, .. }) => Ok(Literal::Text(Cow::Borrowed(value))),
             _ => Err(LiteralError::UnsupportedExpr(expr.to_string()).into()),
         }
@@ -71,6 +83,7 @@ impl PartialEq<Literal<'_>> for Literal<'_> {
         match (self, other) {
             (Boolean(l), Boolean(r)) => l == r,
             (Number(l), Number(r)) | (Text(l), Text(r)) => l == r,
+            (Interval(l), Interval(r)) => l == r,
             _ => false,
         }
     }
@@ -96,44 +109,8 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
                 },
             },
             (Text(l), Text(r)) => Some(l.cmp(r)),
+            (Interval(l), Interval(r)) => l.partial_cmp(r),
             _ => None,
-        }
-    }
-}
-
-macro_rules! binary_op {
-    ($name:ident, $op:tt) => {
-        pub fn $name<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
-            match (self, other) {
-                (Number(l), Number(r)) => {
-                    match (l.parse::<i64>(), r.parse::<i64>()) {
-                        (Ok(l), Ok(r)) => Ok((l $op r).to_string()),
-                        (Ok(l), _) => match r.parse::<f64>() {
-                            Ok(r) => Ok(((l as f64) $op r).to_string()),
-                            _ => Err(LiteralError::UnreachableBinaryArithmetic.into()),
-                        },
-                        (_, Ok(r)) => match l.parse::<f64>() {
-                            Ok(l) => Ok((l $op (r as f64)).to_string()),
-                            _ => Err(LiteralError::UnreachableBinaryArithmetic.into()),
-                        },
-                        (_, _) => match (l.parse::<f64>(), r.parse::<f64>()) {
-                            (Ok(l), Ok(r)) => Ok((l $op r).to_string()),
-                            _ => Err(LiteralError::UnreachableBinaryArithmetic.into()),
-                        },
-                    }.map(|v| Number(Cow::Owned(v)))
-                }
-                (Null, Number(_))
-                | (Number(_), Null)
-                | (Null, Null) => {
-                    Ok(Literal::Null)
-                }
-                _ => Err(
-                    LiteralError::UnsupportedBinaryArithmetic(
-                        format!("{:?}", self),
-                        format!("{:?}", other),
-                    ).into()
-                ),
-            }
         }
     }
 }
@@ -146,6 +123,7 @@ impl<'a> Literal<'a> {
                 .map(|_| self.to_owned())
                 .or_else(|_| v.parse::<f64>().map(|_| self.to_owned()))
                 .map_err(|_| LiteralError::UnreachableUnaryOperation.into()),
+            Interval(v) => Ok(Interval(*v)),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
@@ -159,6 +137,7 @@ impl<'a> Literal<'a> {
                 .or_else(|_| v.parse::<f64>().map(|v| (-v).to_string()))
                 .map(|v| Number(Cow::Owned(v)))
                 .map_err(|_| LiteralError::UnreachableUnaryOperation.into()),
+            Interval(v) => Ok(Interval(v.unary_minus())),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
@@ -173,6 +152,7 @@ impl<'a> Literal<'a> {
             }),
             Number(v) => Some(v.into_owned()),
             Text(v) => Some(v.into_owned()),
+            Interval(v) => Some(v.into()),
             Null => None,
         };
 
@@ -182,16 +162,151 @@ impl<'a> Literal<'a> {
         }
     }
 
-    binary_op!(add, +);
-    binary_op!(subtract, -);
-    binary_op!(multiply, *);
-    binary_op!(divide, /);
+    pub fn add<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
+                    Ok(Number(Cow::Owned((l + r).to_string())))
+                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
+                    Ok(Number(Cow::Owned((l + r).to_string())))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Interval(l), Interval(r)) => l.add(r).map(Interval),
+            (Null, Number(_))
+            | (Null, Interval(_))
+            | (Number(_), Null)
+            | (Interval(_), Null)
+            | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
+    pub fn subtract<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
+                    Ok(Number(Cow::Owned((l - r).to_string())))
+                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
+                    Ok(Number(Cow::Owned((l - r).to_string())))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Interval(l), Interval(r)) => l.subtract(r).map(Interval),
+            (Null, Number(_))
+            | (Null, Interval(_))
+            | (Number(_), Null)
+            | (Interval(_), Null)
+            | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
+    pub fn multiply<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
+                    Ok(Number(Cow::Owned((l * r).to_string())))
+                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
+                    Ok(Number(Cow::Owned((l * r).to_string())))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Number(l), Interval(r)) | (Interval(r), Number(l)) => {
+                if let Ok(l) = l.parse::<i64>() {
+                    Ok(Interval(l * *r))
+                } else if let Ok(l) = l.parse::<f64>() {
+                    Ok(Interval(l * *r))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Null, Number(_))
+            | (Null, Interval(_))
+            | (Number(_), Null)
+            | (Interval(_), Null)
+            | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
+    pub fn divide<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
+                    Ok(Number(Cow::Owned((l / r).to_string())))
+                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
+                    Ok(Number(Cow::Owned((l / r).to_string())))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Number(l), Interval(r)) => {
+                if let Ok(l) = l.parse::<i64>() {
+                    Ok(Interval(l / *r))
+                } else if let Ok(l) = l.parse::<f64>() {
+                    Ok(Interval(l / *r))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Interval(l), Number(r)) => {
+                if let Ok(r) = r.parse::<i64>() {
+                    Ok(Interval(*l / r))
+                } else if let Ok(r) = r.parse::<f64>() {
+                    Ok(Interval(*l / r))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Null, Number(_))
+            | (Null, Interval(_))
+            | (Number(_), Null)
+            | (Interval(_), Null)
+            | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Literal::*;
     use std::borrow::Cow;
+
+    #[test]
+    fn arithmetic() {
+        use crate::data::Interval as I;
+
+        let mon = |n| Interval(I::months(n));
+        let num = |n: i32| Number(Cow::Owned(n.to_string()));
+
+        assert_eq!(mon(1).add(&mon(2)), Ok(mon(3)));
+        assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
+        assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
+        assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
+        assert_eq!(mon(14).divide(&num(3)), Ok(mon(4)));
+        assert_eq!(num(27).divide(&mon(9)), Ok(mon(3)));
+    }
 
     #[test]
     fn concat() {
