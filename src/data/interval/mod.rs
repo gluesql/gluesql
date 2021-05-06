@@ -216,11 +216,10 @@ impl Interval {
                 match (nums.get(0), nums.get(1)) {
                     (Some(days), Some(time)) => {
                         let days = parse_integer(days)?;
-                        let time = NaiveTime::from_str(&format!("{}:00", time)).unwrap();
-                        let minutes = time.hour() * 60 + time.minute();
+                        let time = format!("{}:00", time);
 
                         Interval::days(days)
-                            .add(&Interval::minutes(minutes as i32))
+                            .add(&parse_time(&time)?)
                             .map(|interval| sign() * interval)
                     }
                     _ => Err(IntervalError::FailedToParseDayToMinute(value.to_owned()).into()),
