@@ -18,7 +18,7 @@ mod into;
 mod literal;
 mod unique_key;
 
-pub use {error::ValueError, literal::TryFromLiteral};
+pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {

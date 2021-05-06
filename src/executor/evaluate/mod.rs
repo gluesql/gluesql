@@ -4,7 +4,7 @@ mod evaluated;
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        data::{get_name, value::TryFromLiteral, Literal, Value},
+        data::{get_name, Literal, Value},
         result::Result,
         store::Store,
     },
