@@ -14,7 +14,7 @@ impl From<&Value> for String {
             Value::F64(value) => value.to_string(),
             Value::Date(value) => value.to_string(),
             Value::Timestamp(value) => value.to_string(),
-            Value::Interval(value) => value.into(),
+            Value::Interval(value) => String::from(value),
             Value::Null => String::from("NULL"),
         }
     }

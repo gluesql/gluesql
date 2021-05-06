@@ -1,5 +1,6 @@
 mod error;
 mod primitive;
+mod string;
 
 use {
     crate::result::Result,
@@ -26,18 +27,6 @@ impl PartialOrd<Interval> for Interval {
             (Interval::Microsecond(l), Interval::Microsecond(r)) => Some(l.cmp(r)),
             _ => None,
         }
-    }
-}
-
-impl From<&Interval> for String {
-    fn from(interval: &Interval) -> Self {
-        format!("{:?}", interval)
-    }
-}
-
-impl From<Interval> for String {
-    fn from(interval: Interval) -> Self {
-        interval.into()
     }
 }
 
@@ -140,6 +129,10 @@ impl Interval {
 
     pub fn seconds(seconds: i64) -> Self {
         Interval::Microsecond(seconds * SECOND)
+    }
+
+    pub fn milliseconds(milliseconds: i64) -> Self {
+        Interval::Microsecond(milliseconds * 1_000)
     }
 
     pub fn microseconds(microseconds: i64) -> Self {
