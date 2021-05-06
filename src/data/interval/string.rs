@@ -95,19 +95,19 @@ impl From<&Interval> for String {
                     (0, 0, 0, _, _) if microsecond != 0 => f!(MICRO "{}.{}"),
 
                     // MINUTE TO ..
-                    (0, 0, _, _, 0) if second != 0 => f!(MINUTE TO SECOND "{:02}:{:02}"),
-                    (0, 0, _, _, _) if microsecond != 0 => f!(MINUTE TO MICRO "{:02}:{:02}.{}"),
+                    (0, 0, _, _, 0) => f!(MINUTE TO SECOND "{:02}:{:02}"),
+                    (0, 0, _, _, _) => f!(MINUTE TO MICRO  "{:02}:{:02}.{}"),
 
                     // HOUR TO ..
-                    (0, _, _, 0, 0) if minute != 0 => f!(HOUR TO MINUTE "{:02}:{:02}"),
-                    (0, _, _, _, 0) if second != 0 => f!(HOUR TO SECOND "{:02}:{:02}:{:02}"),
-                    (0, _, _, _, _) if microsecond != 0 => f!(HOUR TO MICRO "{:02}:{:02}:{:02}.{}"),
+                    (0, _, _, 0, 0) => f!(HOUR TO MINUTE "{:02}:{:02}"),
+                    (0, _, _, _, 0) => f!(HOUR TO SECOND "{:02}:{:02}:{:02}"),
+                    (0, _, _, _, _) => f!(HOUR TO MICRO  "{:02}:{:02}:{:02}.{}"),
 
                     // DAY TO ..
-                    (_, _, 0, 0, 0) if hour != 0 => f!(DAY TO HOUR "{} {}"),
-                    (_, _, _, 0, 0) if minute != 0 => f!(DAY TO MINUTE "{} {:02}:{:02}"),
-                    (_, _, _, _, 0) if second != 0 => f!(DAY TO SECOND "{} {:02}:{:02}:{:02}"),
-                    (_, _, _, _, _) => f!(DAY TO MICRO "{} {:02}:{:02}:{:02}.{}"),
+                    (_, _, 0, 0, 0) => f!(DAY TO HOUR   "{} {}"),
+                    (_, _, _, 0, 0) => f!(DAY TO MINUTE "{} {:02}:{:02}"),
+                    (_, _, _, _, 0) => f!(DAY TO SECOND "{} {:02}:{:02}:{:02}"),
+                    (_, _, _, _, _) => f!(DAY TO MICRO  "{} {:02}:{:02}:{:02}.{}"),
                 }
             }
         }

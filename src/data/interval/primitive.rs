@@ -3,6 +3,25 @@ use {
     std::ops::{Div, Mul},
 };
 
+impl Mul<i32> for Interval {
+    type Output = Self;
+
+    fn mul(self, rhs: i32) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month((v * rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(v * rhs as i64),
+        }
+    }
+}
+
+impl Mul<Interval> for i32 {
+    type Output = Interval;
+
+    fn mul(self, rhs: Interval) -> Interval {
+        rhs * self
+    }
+}
+
 impl Mul<i64> for Interval {
     type Output = Self;
 
@@ -93,13 +112,15 @@ mod tests {
     fn arithmetic() {
         use Interval::*;
 
-        assert_eq!(Month(2) * 3, Month(6));
-        assert_eq!(Month(6), Month(3) * 2);
+        assert_eq!(Month(2) * 3_i32, Month(6));
+        assert_eq!(2_i32 * Month(3), Month(6));
+        assert_eq!(Month(2) * 3_i64, Month(6));
+        assert_eq!(2_i64 * Month(3), Month(6));
         assert_eq!(Month(2) * 3.0, Month(6));
-        assert_eq!(Month(6), Month(3) * 2.0);
+        assert_eq!(2.0 * Month(3), Month(6));
         assert_eq!(Month(6) / 3, Month(2));
-        assert_eq!(Month(3), Month(6) / 2);
+        assert_eq!(6 / Month(2), Month(3));
         assert_eq!(Month(8) / 4.0, Month(2));
-        assert_eq!(Month(4), Month(8) / 2.0);
+        assert_eq!(8.0 / Month(4), Month(2));
     }
 }

@@ -146,6 +146,8 @@ impl Interval {
     ) -> Result<Self> {
         use DateTimeField::*;
 
+        let sign = || if value.get(0..1) == Some(&"-") { -1 } else { 1 };
+
         let parse_integer = |v: &str| {
             v.parse::<i32>()
                 .map_err(|_| IntervalError::FailedToParseInteger(value.to_owned()).into())
@@ -161,15 +163,18 @@ impl Interval {
                 .map(Interval::Microsecond)
         };
 
-        let parse_time = |value| {
-            let time = NaiveTime::from_str(value)
+        let parse_time = |v: &str| {
+            let sign = if v.get(0..1) == Some(&"-") { -1 } else { 1 };
+            let v = v.trim_start_matches('-');
+            let time = NaiveTime::from_str(v)
                 .map_err(|_| IntervalError::FailedToParseTime(value.to_owned()))?;
+
             let msec = time.hour() as i64 * HOUR
                 + time.minute() as i64 * MINUTE
                 + time.second() as i64 * SECOND
                 + time.nanosecond() as i64 / 1000;
 
-            Ok(Interval::Microsecond(msec))
+            Ok(Interval::Microsecond(sign as i64 * msec))
         };
 
         match (leading_field, last_field) {
@@ -181,28 +186,32 @@ impl Interval {
             (Some(Second), None) => parse_decimal(SECOND),
             (Some(Year), Some(Month)) => {
                 let nums = value
+                    .trim_start_matches('-')
                     .split('-')
                     .map(parse_integer)
                     .collect::<Result<Vec<_>>>()?;
 
                 match (nums.get(0), nums.get(1)) {
-                    (Some(years), Some(months)) => Ok(Interval::months(12 * years + months)),
+                    (Some(years), Some(months)) => {
+                        Ok(Interval::months(sign() * (12 * years + months)))
+                    }
                     _ => Err(IntervalError::FailedToParseYearToMonth(value.to_owned()).into()),
                 }
             }
             (Some(Day), Some(Hour)) => {
                 let nums = value
+                    .trim_start_matches('-')
                     .split(' ')
                     .map(parse_integer)
                     .collect::<Result<Vec<_>>>()?;
 
                 match (nums.get(0), nums.get(1)) {
-                    (Some(days), Some(hours)) => Ok(Interval::hours(24 * days + hours)),
+                    (Some(days), Some(hours)) => Ok(Interval::hours(sign() * (24 * days + hours))),
                     _ => Err(IntervalError::FailedToParseDayToHour(value.to_owned()).into()),
                 }
             }
             (Some(Day), Some(Minute)) => {
-                let nums = value.split(' ').collect::<Vec<_>>();
+                let nums = value.trim_start_matches('-').split(' ').collect::<Vec<_>>();
 
                 match (nums.get(0), nums.get(1)) {
                     (Some(days), Some(time)) => {
@@ -210,26 +219,34 @@ impl Interval {
                         let time = NaiveTime::from_str(&format!("{}:00", time)).unwrap();
                         let minutes = time.hour() * 60 + time.minute();
 
-                        Interval::days(days).add(&Interval::minutes(minutes as i32))
+                        Interval::days(days)
+                            .add(&Interval::minutes(minutes as i32))
+                            .map(|interval| sign() * interval)
                     }
                     _ => Err(IntervalError::FailedToParseDayToMinute(value.to_owned()).into()),
                 }
             }
             (Some(Day), Some(Second)) => {
-                let nums = value.split(' ').collect::<Vec<_>>();
+                let nums = value.trim_start_matches('-').split(' ').collect::<Vec<_>>();
 
                 match (nums.get(0), nums.get(1)) {
                     (Some(days), Some(time)) => {
                         let days = parse_integer(days)?;
 
-                        Interval::days(days).add(&parse_time(&time)?)
+                        Interval::days(days)
+                            .add(&parse_time(&time)?)
+                            .map(|interval| sign() * interval)
                     }
                     _ => Err(IntervalError::FailedToParseDayToSecond(value.to_owned()).into()),
                 }
             }
             (Some(Hour), Some(Minute)) => parse_time(&format!("{}:00", value)),
             (Some(Hour), Some(Second)) => parse_time(value),
-            (Some(Minute), Some(Second)) => parse_time(&format!("00:{}", value)),
+            (Some(Minute), Some(Second)) => {
+                let time = value.trim_start_matches('-');
+
+                parse_time(&format!("00:{}", time)).map(|v| sign() * v)
+            }
             (Some(from), Some(to)) => Err(IntervalError::UnsupportedRange(
                 format!("{:?}", from),
                 format!("{:?}", to),
@@ -374,7 +391,9 @@ mod tests {
         test!("-35",  Minute => -35, minutes);
         test!("10.5", Minute => 630, seconds);
         test!("10",   Second => 10,  seconds);
+        test!("-10",  Second => -10, seconds);
         test!("10.5", Second => 10_500_000, microseconds);
+        test!("-1.5", Second => -1_500_000, microseconds);
 
         test!("10-2", Year to Month => 122, months);
         test!("2 12", Day to Hour => 60, hours);
@@ -386,5 +405,16 @@ mod tests {
         test!("12:34:56", Hour to Second => (12 * 60 + 34) * 60 + 56, seconds);
         test!("12:34:56.1234", Hour to Second => ((12 * 60 + 34) * 60 + 56) * 1_000_000 + 123_400, microseconds);
         test!("34:56.1234", Minute to Second => (34 * 60 + 56) * 1_000_000 + 123_400, microseconds);
+
+        test!("-1-4", Year to Month => -16, months);
+        test!("-2 10", Day to Hour => -58, hours);
+        test!("-1 00:01", Day to Minute => -(24 * 60 + 1), minutes);
+        test!("-1 00:00:01", Day to Second => -(24 * 3600 + 1), seconds);
+        test!("-1 00:00:01.1", Day to Second => -((24 * 3600 + 1) * 1000 + 100), milliseconds);
+        test!("-21:10", Hour to Minute => -(21 * 60 + 10), minutes);
+        test!("-05:12:03", Hour to Second => -(5 * 3600 + 12 * 60 + 3), seconds);
+        test!("-03:59:22.372", Hour to Second => -((3 * 3600 + 59 * 60 + 22) * 1000 + 372), milliseconds);
+        test!("-09:33", Minute to Second => -(9 * 60 + 33), seconds);
+        test!("-09:33.192", Minute to Second => -((9 * 60 + 33) * 1000 + 192), milliseconds);
     }
 }
