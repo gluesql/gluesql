@@ -161,10 +161,8 @@ impl Value {
             (F64(a), F64(b)) => Ok(F64(a + b)),
             (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 + b)),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
-            (Date(a), Interval(b)) | (Interval(b), Date(a)) => b.add_date(a).map(Timestamp),
-            (Timestamp(a), Interval(b)) | (Interval(b), Timestamp(a)) => {
-                b.add_timestamp(a).map(Timestamp)
-            }
+            (Date(a), Interval(b)) => b.add_date(a).map(Timestamp),
+            (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
             (Null, I64(_))
@@ -397,12 +395,6 @@ mod tests {
             Timestamp(date(2023, 1, 11).and_hms(0, 0, 0))
         );
         test!(add
-            Interval(Interval::hours(3)),
-            Date(date(2021, 11, 11))
-            =>
-            Timestamp(date(2021, 11, 11).and_hms(3, 0, 0))
-        );
-        test!(add
             Date(date(2021, 5, 7)),
             Time(time(12, 0, 0))
             =>
@@ -413,12 +405,6 @@ mod tests {
             mon!(14)
             =>
             Timestamp(date(2023, 1, 11).and_hms(0, 0, 0))
-        );
-        test!(add
-            Interval(Interval::hours(3)),
-            Timestamp(date(2021, 11, 11).and_hms(0, 0, 0))
-            =>
-            Timestamp(date(2021, 11, 11).and_hms(3, 0, 0))
         );
         test!(add
             Time(time(1, 4, 6)),
