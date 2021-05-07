@@ -6,7 +6,7 @@ use {
         utils::Vector,
     },
     boolinator::Boolinator,
-    chrono::{NaiveDate, NaiveDateTime},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
     serde::Serialize,
     sqlparser::ast::{ColumnDef, ColumnOption, Ident},
@@ -35,6 +35,7 @@ pub enum UniqueKey {
     Str(String),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
+    Time(NaiveTime),
     Interval(Interval),
 }
 

@@ -4,7 +4,7 @@ use {
         data::Literal,
         result::{Error, Result},
     },
-    chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime},
+    chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
     sqlparser::ast::DataType,
     std::{cmp::Ordering, convert::TryFrom},
 };
@@ -33,6 +33,10 @@ impl PartialEq<Literal<'_>> for Value {
                 Err(_) => false,
             },
             (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
+                Ok(r) => l == &r,
+                Err(_) => false,
+            },
+            (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
                 Ok(r) => l == &r,
                 Err(_) => false,
             },
@@ -65,6 +69,10 @@ impl PartialOrd<Literal<'_>> for Value {
                 Err(_) => None,
             },
             (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
+                Ok(r) => l.partial_cmp(&r),
+                Err(_) => None,
+            },
+            (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => None,
             },
@@ -128,6 +136,9 @@ impl Value {
             (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
                 .map(Value::Timestamp)
                 .map_err(|_| ValueError::FailedToParseTimestamp(v.to_string()).into()),
+            (DataType::Time, Literal::Text(v)) => parse_time(v)
+                .map(Value::Time)
+                .map_err(|_| ValueError::FailedToParseTime(v.to_string()).into()),
             (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
@@ -135,6 +146,7 @@ impl Value {
             | (DataType::Text, Literal::Null)
             | (DataType::Date, Literal::Null)
             | (DataType::Timestamp, Literal::Null)
+            | (DataType::Time, Literal::Null)
             | (DataType::Interval, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.to_string(),
@@ -209,4 +221,35 @@ fn parse_timestamp(v: &str) -> Result<NaiveDateTime> {
     } else {
         Err(ValueError::FailedToParseTimestamp(v.to_string()).into())
     }
+}
+
+fn parse_time(v: &str) -> Result<NaiveTime> {
+    if let Ok(v) = v.parse::<NaiveTime>() {
+        return Ok(v);
+    }
+
+    let forms = [
+        "%P %I:%M",
+        "%P %l:%M",
+        "%P %I:%M:%S",
+        "%P %l:%M:%S",
+        "%P %I:%M:%S%.f",
+        "%P %l:%M:%S%.f",
+        "%I:%M %P",
+        "%l:%M %P",
+        "%I:%M:%S %P",
+        "%l:%M:%S %P",
+        "%I:%M:%S%.f %P",
+        "%l:%M:%S%.f %P",
+    ];
+
+    let v = v.to_uppercase();
+
+    for form in forms.iter() {
+        if let Ok(v) = NaiveTime::parse_from_str(&v, form) {
+            return Ok(v);
+        }
+    }
+
+    Err(ValueError::FailedToParseTime(v).into())
 }
