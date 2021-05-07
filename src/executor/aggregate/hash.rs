@@ -4,17 +4,21 @@ use {
         executor::evaluate::Evaluated,
         result::{Error, Result},
     },
-    chrono::{NaiveDate, NaiveDateTime},
-    std::convert::{TryFrom, TryInto},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    std::{
+        convert::{TryFrom, TryInto},
+        fmt::Debug,
+    },
 };
 
-#[derive(PartialEq, Eq, Hash, Clone, std::fmt::Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum GroupKey {
     I64(i64),
     Bool(bool),
     Str(String),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
+    Time(NaiveTime),
     Interval(Interval),
     None,
 }

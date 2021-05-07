@@ -107,6 +107,28 @@ impl Interval {
         }
     }
 
+    pub fn add_time(&self, time: &NaiveTime) -> Result<NaiveTime> {
+        match self {
+            Interval::Month(_) => Err(IntervalError::AddYearOrMonthToTime {
+                time: time.to_string(),
+                interval: String::from(self),
+            }
+            .into()),
+            Interval::Microsecond(n) => Ok(*time + Duration::microseconds(*n)),
+        }
+    }
+
+    pub fn subtract_from_time(&self, time: &NaiveTime) -> Result<NaiveTime> {
+        match self {
+            Interval::Month(_) => Err(IntervalError::SubtractYearOrMonthToTime {
+                time: time.to_string(),
+                interval: String::from(self),
+            }
+            .into()),
+            Interval::Microsecond(n) => Ok(*time - Duration::microseconds(*n)),
+        }
+    }
+
     pub fn years(years: i32) -> Self {
         Interval::Month(12 * years)
     }
@@ -263,7 +285,7 @@ mod tests {
 
     #[test]
     fn arithmetic() {
-        use chrono::NaiveDate;
+        use chrono::{NaiveDate, NaiveTime};
         use Interval::*;
 
         macro_rules! test {
@@ -273,9 +295,12 @@ mod tests {
         }
 
         let date = |y, m, d| NaiveDate::from_ymd(y, m, d);
+        let time = |h, m, s| NaiveTime::from_hms(h, m, s);
 
         assert_eq!(Month(1).unary_minus(), Month(-1));
         assert_eq!(Microsecond(1).unary_minus(), Microsecond(-1));
+
+        // date
         assert_eq!(
             Month(2).add_date(&date(2021, 11, 11)),
             Ok(date(2022, 1, 11).and_hms(0, 0, 0))
@@ -312,6 +337,8 @@ mod tests {
             }
             .into())
         );
+
+        // timestamp
         assert_eq!(
             Interval::minutes(2).add_timestamp(&date(2021, 11, 11).and_hms(12, 3, 1)),
             Ok(date(2021, 11, 11).and_hms(12, 5, 1))
@@ -345,6 +372,40 @@ mod tests {
             Err(IntervalError::DateOverflow {
                 year: -997977,
                 month: -1,
+            }
+            .into())
+        );
+
+        // time
+        assert_eq!(
+            Interval::minutes(30).add_time(&time(23, 0, 1)),
+            Ok(time(23, 30, 1))
+        );
+        assert_eq!(
+            Interval::hours(20).add_time(&time(5, 30, 0)),
+            Ok(time(1, 30, 0))
+        );
+        assert_eq!(
+            Interval::years(1).add_time(&time(23, 0, 1)),
+            Err(IntervalError::AddYearOrMonthToTime {
+                time: time(23, 0, 1).to_string(),
+                interval: String::from(Interval::years(1)),
+            }
+            .into())
+        );
+        assert_eq!(
+            Interval::minutes(30).subtract_from_time(&time(23, 0, 1)),
+            Ok(time(22, 30, 1))
+        );
+        assert_eq!(
+            Interval::hours(20).subtract_from_time(&time(5, 30, 0)),
+            Ok(time(9, 30, 0))
+        );
+        assert_eq!(
+            Interval::months(3).subtract_from_time(&time(23, 0, 1)),
+            Err(IntervalError::SubtractYearOrMonthToTime {
+                time: time(23, 0, 1).to_string(),
+                interval: String::from(Interval::months(3)),
             }
             .into())
         );

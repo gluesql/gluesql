@@ -21,6 +21,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
             | DataType::Text
             | DataType::Date
             | DataType::Timestamp
+            | DataType::Time
             | DataType::Interval
     ) {
         return Err(AlterError::UnsupportedDataType(data_type.to_string()).into());

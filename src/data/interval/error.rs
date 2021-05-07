@@ -11,6 +11,12 @@ pub enum IntervalError {
     #[error("cannot subtract between YEAR TO MONTH and HOUR TO SECOND")]
     SubtractBetweenYearToMonthAndHourToSecond,
 
+    #[error("cannot add year or month to TIME: {time} + {interval}")]
+    AddYearOrMonthToTime { time: String, interval: String },
+
+    #[error("cannot subtract year or month to TIME: {time} - {interval}")]
+    SubtractYearOrMonthToTime { time: String, interval: String },
+
     #[error("failed to parse integer: {0}")]
     FailedToParseInteger(String),
 

@@ -1,7 +1,7 @@
 use {
     super::{Interval, Literal},
     crate::result::Result,
-    chrono::{NaiveDate, NaiveDateTime},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
     sqlparser::ast::{DataType, Expr},
@@ -28,6 +28,7 @@ pub enum Value {
     Str(String),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
+    Time(NaiveTime),
     Interval(Interval),
     Null,
 }
@@ -45,6 +46,7 @@ impl PartialEq<Value> for Value {
             (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
             (Value::Timestamp(l), Value::Date(r)) => l == &r.and_hms(0, 0, 0),
             (Value::Timestamp(l), Value::Timestamp(r)) => l == r,
+            (Value::Time(l), Value::Time(r)) => l == r,
             (Value::Interval(l), Value::Interval(r)) => l == r,
             _ => false,
         }
@@ -64,6 +66,7 @@ impl PartialOrd<Value> for Value {
             (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),
             (Value::Timestamp(l), Value::Date(r)) => Some(l.cmp(&r.and_hms(0, 0, 0))),
             (Value::Timestamp(l), Value::Timestamp(r)) => Some(l.cmp(r)),
+            (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
             _ => None,
         }
@@ -96,6 +99,7 @@ impl Value {
                 | (DataType::Text, Value::Null)
                 | (DataType::Date, Value::Null)
                 | (DataType::Timestamp, Value::Null)
+                | (DataType::Time, Value::Null)
                 | (DataType::Interval, Value::Null)
         );
 
@@ -126,6 +130,7 @@ impl Value {
             | (DataType::Text, Value::Str(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
+            | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_)) => Ok(self.clone()),
 
             (_, Value::Null) => Ok(Value::Null),
@@ -155,10 +160,12 @@ impl Value {
             (I64(a), I64(b)) => Ok(I64(a + b)),
             (F64(a), F64(b)) => Ok(F64(a + b)),
             (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 + b)),
+            (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
             (Date(a), Interval(b)) | (Interval(b), Date(a)) => b.add_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) | (Interval(b), Timestamp(a)) => {
                 b.add_timestamp(a).map(Timestamp)
             }
+            (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
             (Null, I64(_))
             | (Null, F64(_))
@@ -169,6 +176,7 @@ impl Value {
             | (F64(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
+            | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(
@@ -196,16 +204,26 @@ impl Value {
                     ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
                 })
                 .map(|v| Interval(I::microseconds(v))),
+            (Time(a), Time(b)) => a
+                .sub(*b)
+                .num_microseconds()
+                .ok_or_else(|| {
+                    ValueError::UnreachableIntegerOverflow(format!("{:?} - {:?}", a, b)).into()
+                })
+                .map(|v| Interval(I::microseconds(v))),
+            (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
             (Null, I64(_))
             | (Null, F64(_))
             | (Null, Date(_))
             | (Null, Timestamp(_))
+            | (Null, Time(_))
             | (Null, Interval(_))
             | (I64(_), Null)
             | (F64(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
+            | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::SubtractOnNonNumeric(
@@ -302,7 +320,7 @@ mod tests {
     #[test]
     fn eq() {
         use super::Interval;
-        use chrono::NaiveDateTime;
+        use chrono::{NaiveDateTime, NaiveTime};
 
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
@@ -312,6 +330,10 @@ mod tests {
         assert_eq!(F64(6.11), F64(6.11));
         assert_eq!(Str("Glue".to_owned()), Str("Glue".to_owned()));
         assert_eq!(Interval::Month(1), Interval::Month(1));
+        assert_eq!(
+            Time(NaiveTime::from_hms(12, 30, 11)),
+            Time(NaiveTime::from_hms(12, 30, 11))
+        );
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
@@ -322,7 +344,7 @@ mod tests {
 
     #[test]
     fn cmp() {
-        use chrono::NaiveDate;
+        use chrono::{NaiveDate, NaiveTime};
         use std::cmp::Ordering;
 
         let date = Date(NaiveDate::from_ymd(2020, 5, 1));
@@ -331,6 +353,10 @@ mod tests {
         assert_eq!(date.partial_cmp(&timestamp), Some(Ordering::Greater));
         assert_eq!(timestamp.partial_cmp(&date), Some(Ordering::Less));
 
+        assert_eq!(
+            Time(NaiveTime::from_hms(23, 0, 1)).partial_cmp(&Time(NaiveTime::from_hms(10, 59, 59))),
+            Some(Ordering::Greater)
+        );
         assert_eq!(
             Interval::Month(1).partial_cmp(&Interval::Month(2)),
             Some(Ordering::Less)
@@ -343,7 +369,7 @@ mod tests {
 
     #[test]
     fn arithmetic() {
-        use chrono::NaiveDate;
+        use chrono::{NaiveDate, NaiveTime};
 
         macro_rules! test {
             ($op: ident $a: expr, $b: expr => $c: expr) => {
@@ -357,6 +383,7 @@ mod tests {
             };
         }
 
+        let time = |h, m, s| NaiveTime::from_hms(h, m, s);
         let date = |y, m, d| NaiveDate::from_ymd(y, m, d);
 
         test!(add I64(1),   I64(2)   => I64(3));
@@ -376,6 +403,12 @@ mod tests {
             Timestamp(date(2021, 11, 11).and_hms(3, 0, 0))
         );
         test!(add
+            Date(date(2021, 5, 7)),
+            Time(time(12, 0, 0))
+            =>
+            Timestamp(date(2021, 5, 7).and_hms(12, 0, 0))
+        );
+        test!(add
             Timestamp(date(2021, 11, 11).and_hms(0, 0, 0)),
             mon!(14)
             =>
@@ -386,6 +419,18 @@ mod tests {
             Timestamp(date(2021, 11, 11).and_hms(0, 0, 0))
             =>
             Timestamp(date(2021, 11, 11).and_hms(3, 0, 0))
+        );
+        test!(add
+            Time(time(1, 4, 6)),
+            Interval(Interval::hours(20))
+            =>
+            Time(time(21, 4, 6))
+        );
+        test!(add
+            Time(time(23, 10, 0)),
+            Interval(Interval::hours(5))
+            =>
+            Time(time(4, 10, 0))
         );
         test!(add mon!(1),  mon!(2)  => mon!(3));
 
@@ -417,6 +462,18 @@ mod tests {
             =>
             Timestamp(NaiveDate::from_ymd(2020, 1, 2).and_hms(0, 3, 0))
         );
+        test!(subtract
+            Time(time(1, 4, 6)),
+            Interval(Interval::hours(20))
+            =>
+            Time(time(5, 4, 6))
+        );
+        test!(subtract
+            Time(time(23, 10, 0)),
+            Interval(Interval::hours(5))
+            =>
+            Time(time(18, 10, 0))
+        );
         test!(subtract mon!(1),  mon!(2)  => mon!(-1));
 
         test!(multiply I64(3),   I64(2)   => I64(6));
@@ -444,17 +501,20 @@ mod tests {
         }
 
         let date = || Date(NaiveDate::from_ymd(1989, 3, 1));
+        let time = || Time(NaiveTime::from_hms(6, 1, 1));
         let ts = || Timestamp(NaiveDate::from_ymd(1989, 1, 1).and_hms(0, 0, 0));
 
         null_test!(add      I64(1),   Null);
         null_test!(add      F64(1.0), Null);
         null_test!(add      date(),   Null);
         null_test!(add      ts(),     Null);
+        null_test!(add      time(),   Null);
         null_test!(add      mon!(1),  Null);
         null_test!(subtract I64(1),   Null);
         null_test!(subtract F64(1.0), Null);
         null_test!(subtract date(),   Null);
         null_test!(subtract ts(),     Null);
+        null_test!(subtract time(),   Null);
         null_test!(subtract mon!(1),  Null);
         null_test!(multiply I64(1),   Null);
         null_test!(multiply F64(1.0), Null);
@@ -472,6 +532,7 @@ mod tests {
         null_test!(subtract Null, F64(1.0));
         null_test!(subtract Null, date());
         null_test!(subtract Null, ts());
+        null_test!(subtract Null, time());
         null_test!(subtract Null, mon!(1));
         null_test!(multiply Null, I64(1));
         null_test!(multiply Null, F64(1.0));
