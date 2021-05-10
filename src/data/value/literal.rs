@@ -213,14 +213,22 @@ impl Value {
 
 fn parse_timestamp(v: &str) -> Result<NaiveDateTime> {
     if let Ok(v) = v.parse::<DateTime<Utc>>() {
-        Ok(v.naive_utc())
+        return Ok(v.naive_utc());
     } else if let Ok(v) = v.parse::<NaiveDateTime>() {
-        Ok(v)
+        return Ok(v);
     } else if let Ok(v) = v.parse::<NaiveDate>() {
-        Ok(v.and_hms(0, 0, 0))
-    } else {
-        Err(ValueError::FailedToParseTimestamp(v.to_string()).into())
+        return Ok(v.and_hms(0, 0, 0));
     }
+
+    let forms = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S%.f"];
+
+    for form in forms.iter() {
+        if let Ok(v) = NaiveDateTime::parse_from_str(&v, form) {
+            return Ok(v);
+        }
+    }
+
+    Err(ValueError::FailedToParseTimestamp(v.to_string()).into())
 }
 
 fn parse_time(v: &str) -> Result<NaiveTime> {
@@ -252,4 +260,64 @@ fn parse_time(v: &str) -> Result<NaiveTime> {
     }
 
     Err(ValueError::FailedToParseTime(v).into())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn timestamp() {
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+
+        macro_rules! test (
+            ($timestamp: literal, $result: expr) => {
+                assert_eq!(super::parse_timestamp($timestamp), Ok($result));
+            }
+        );
+
+        test!("2022-12-20T10:00:00Z", timestamp(2022, 12, 20, 10, 0, 0, 0));
+        test!(
+            "2022-12-20T10:00:00.132Z",
+            timestamp(2022, 12, 20, 10, 0, 0, 132)
+        );
+        test!(
+            "2022-12-20T10:00:00.132+09:00",
+            timestamp(2022, 12, 20, 1, 0, 0, 132)
+        );
+        test!("2022-11-21", timestamp(2022, 11, 21, 0, 0, 0, 0));
+        test!("2022-12-20T10:00:00", timestamp(2022, 12, 20, 10, 0, 0, 0));
+        test!("2022-12-20 10:00:00Z", timestamp(2022, 12, 20, 10, 0, 0, 0));
+        test!("2022-12-20 10:00:00", timestamp(2022, 12, 20, 10, 0, 0, 0));
+        test!(
+            "2022-12-20 10:00:00.987",
+            timestamp(2022, 12, 20, 10, 0, 0, 987)
+        );
+    }
+
+    #[test]
+    fn time() {
+        let time = |h, m, s, ms| chrono::NaiveTime::from_hms_milli(h, m, s, ms);
+
+        macro_rules! test (
+            ($time: literal, $result: expr) => {
+                assert_eq!(super::parse_time($time), Ok($result));
+            }
+        );
+
+        test!("12:00:35", time(12, 0, 35, 0));
+        test!("12:00:35.917", time(12, 0, 35, 917));
+        test!("AM 08:00", time(8, 0, 0, 0));
+        test!("PM 8:00", time(20, 0, 0, 0));
+        test!("AM 09:30:37", time(9, 30, 37, 0));
+        test!("PM 3:30:37", time(15, 30, 37, 0));
+        test!("PM 03:30:37.123", time(15, 30, 37, 123));
+        test!("AM 9:30:37.917", time(9, 30, 37, 917));
+        test!("08:00 AM", time(8, 0, 0, 0));
+        test!("8:00 PM", time(20, 0, 0, 0));
+        test!("09:30:37 AM", time(9, 30, 37, 0));
+        test!("3:30:37 PM", time(15, 30, 37, 0));
+        test!("03:30:37.123 PM", time(15, 30, 37, 123));
+        test!("9:30:37.917 AM", time(9, 30, 37, 917));
+    }
 }
