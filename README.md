@@ -16,7 +16,7 @@ You can use GlueSQL as an embedded SQL database. GlueSQL provides [sled](https:/
 In your `Cargo.toml`:
 ```toml
 [dependencies]
-gluesql = "0.5"
+gluesql = "0.6"
 ```
 
 ### Usage
@@ -46,11 +46,11 @@ fn main() {
 `sled-storage` is optional. So in `Cargo.toml`:
 ```toml
 [dependencies]
-gluesql = { version = "0.5", default-features = false, features = ["alter-table"] }
+gluesql = { version = "0.6", default-features = false, features = ["alter-table"] }
 
 # alter-table is optional.
 # If your DB does not have plan to support ALTER TABLE, then use this below.
-gluesql = { version = "0.5", default-features = false }
+gluesql = { version = "0.6", default-features = false }
 ```
 
 ### Usage
@@ -82,17 +82,29 @@ pub trait AlterTable where Self: Sized {
 }
 ```
 
-### Examples - [GlueSQL-js](https://github.com/gluesql/gluesql-js)
+## Use Cases
+### [GlueSQL-js](https://github.com/gluesql/gluesql-js)
+https://github.com/gluesql/gluesql-js  
 Use SQL in web browsers!
 GlueSQL-js provides 3 storage options,
 * in-memory
 * localStorage
-* sessionStorage.
+* sessionStorage
+
+### [GlueSQL Sheets](https://sheets.gluesql.com)
+https://sheets.gluesql.com  
+Turn **Google Sheets** into a SQL database!  
+It uses Google Sheets as a storage.  
+Data is stored and updated from Google Sheets.
+
+### Other expected use cases
+* Add SQL layer to NoSQL databases: Redis, CouchDB...
+* Build new SQL database management system
 
 ## SQL Features
 GlueSQL currently supports a limited subset of queries. It's being actively developed.
 
-* `CREATE` with 4 types: `INTEGER`, `FLOAT`, `BOOLEAN`, `TEXT` with an optional `NULL` attribute.
+* `CREATE TABLE` with 8 types: `INTEGER`, `FLOAT`, `BOOLEAN`, `TEXT`, `DATE`, `TIMESTAMP`, `TIME` and `INTERVAL`.
 * `ALTER TABLE` with 4 operations: `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
 * `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `DROP TABLE`
 * `GROUP BY`, `HAVING`
@@ -100,13 +112,9 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 
 You can see tests for the currently supported queries in [src/tests/*](https://github.com/gluesql/gluesql/tree/main/src/tests).
 
-### Other expected use cases
-* Run SQL in web browsers - [gluesql-js](https://github.com/gluesql/gluesql-js)
-It would be cool to make a state management library using `gluesql-js`.
-* Add SQL layer to NoSQL databases: Redis, CouchDB...
-* Build new SQL database management system
-
 ## Contribution
-GlueSQL is still in the very early stages of development. Please feel free to contribute however you'd like!
-The only thing you need to be aware of is...
-- Except for `src/glue.rs`, `src/tests/` and `src/utils/`, using the `mut` keyword is discouraged.
+There are a few simple rules to follow.
+- No `mut` keywords in `src/executor` and `src/data`.
+- Iterator should not be evaluated in the middle of execution layer.
+- Every error must have corresponding integration test cases to generate.  
+(except for `Unreachable-` and `Conflict-` error types)
