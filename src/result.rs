@@ -5,6 +5,7 @@ use {
             AggregateError, AlterError, BlendError, EvaluateError, ExecuteError, FetchError,
             JoinError, LimitError, SelectError, UpdateError, ValidateError,
         },
+        translate::TranslateError,
     },
     serde::Serialize,
     thiserror::Error as ThisError,
@@ -15,13 +16,16 @@ use crate::store::AlterTableError;
 
 #[derive(ThisError, Serialize, Debug)]
 pub enum Error {
-    #[cfg(feature = "alter-table")]
-    #[error(transparent)]
-    AlterTable(#[from] AlterTableError),
-
     #[error(transparent)]
     #[serde(with = "stringify")]
     Storage(#[from] Box<dyn std::error::Error>),
+
+    #[error(transparent)]
+    Translate(#[from] TranslateError),
+
+    #[cfg(feature = "alter-table")]
+    #[error(transparent)]
+    AlterTable(#[from] AlterTableError),
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
@@ -65,6 +69,7 @@ impl PartialEq for Error {
         use Error::*;
 
         match (self, other) {
+            (Translate(e), Translate(e2)) => e == e2,
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
