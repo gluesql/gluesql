@@ -3,12 +3,11 @@ mod primitive;
 mod string;
 
 use {
-    crate::result::Result,
+    crate::{ast::DateTimeField, result::Result},
     chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::str::FromStr,
     rust_decimal::{prelude::ToPrimitive, Decimal},
     serde::{Deserialize, Serialize},
-    sqlparser::ast::DateTimeField,
     std::{cmp::Ordering, fmt::Debug},
 };
 
@@ -281,7 +280,7 @@ impl Interval {
 #[cfg(test)]
 mod tests {
     use super::{Interval, IntervalError};
-    use sqlparser::ast::DateTimeField;
+    use crate::ast::DateTimeField;
 
     #[test]
     fn arithmetic() {

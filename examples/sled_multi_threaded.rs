@@ -1,7 +1,7 @@
 #[cfg(feature = "sled-storage")]
 mod sled_multi_threaded {
     use {
-        gluesql::{parse, Glue, Payload, SledStorage, Value},
+        gluesql::{Glue, Payload, SledStorage, Value},
         std::thread,
     };
 
@@ -13,10 +13,8 @@ mod sled_multi_threaded {
           DELETE FROM greet;
         ";
 
-        let parsed_queries = parse(queries).expect("Parsing failed");
-        for query in parsed_queries {
-            glue.execute(&query).expect("Execution failed");
-        }
+        glue.execute(queries).unwrap();
+
         /*
             SledStorage supports cloning, using this we can create copies of the storage for new threads;
               all we need to do is wrap it in glue again.
@@ -24,21 +22,17 @@ mod sled_multi_threaded {
         let foo_storage = storage.clone();
         let foo_thread = thread::spawn(move || {
             let mut glue = Glue::new(foo_storage);
-            let queries = "INSERT INTO greet (name) VALUES (\"Foo\")";
-            let parsed_queries = parse(queries).expect("Parsing failed");
-            for query in parsed_queries {
-                glue.execute(&query).expect("Execution failed");
-            }
+            let query = "INSERT INTO greet (name) VALUES (\"Foo\")";
+
+            glue.execute(query).unwrap();
         });
 
         let world_storage = storage.clone();
         let world_thread = thread::spawn(move || {
             let mut glue = Glue::new(world_storage);
-            let queries = "INSERT INTO greet (name) VALUES (\"World\")";
-            let parsed_queries = parse(queries).expect("Parsing failed");
-            for query in parsed_queries {
-                glue.execute(&query).expect("Execution failed");
-            }
+            let query = "INSERT INTO greet (name) VALUES (\"World\")";
+
+            glue.execute(query).unwrap();
         });
 
         world_thread
@@ -49,13 +43,8 @@ mod sled_multi_threaded {
             .join()
             .expect("Something went wrong in the foo thread");
 
-        let queries = "
-          SELECT name FROM greet
-        ";
-
-        let parsed_query = &parse(queries).expect("Failed to parse query")[0];
-
-        let result = glue.execute(&parsed_query).expect("Failed to execute");
+        let query = "SELECT name FROM greet";
+        let result = glue.execute(query).unwrap();
 
         let rows = match result {
             Payload::Select { labels: _, rows } => rows,
@@ -74,7 +63,10 @@ mod sled_multi_threaded {
     }
 }
 
+#[cfg(feature = "sled-storage")]
 fn main() {
-    #[cfg(feature = "sled-storage")]
     sled_multi_threaded::run();
 }
+
+#[cfg(not(feature = "sled-storage"))]
+fn main() {}

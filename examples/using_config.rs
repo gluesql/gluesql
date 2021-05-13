@@ -1,8 +1,8 @@
 #[cfg(feature = "sled-storage")]
-use std::convert::TryFrom;
-
-#[cfg(feature = "sled-storage")]
-use gluesql::{parse, sled, Glue, SledStorage};
+use {
+    gluesql::{sled, Glue, SledStorage},
+    std::convert::TryFrom,
+};
 
 #[cfg(feature = "sled-storage")]
 fn main() {
@@ -22,9 +22,7 @@ fn main() {
         DROP TABLE Glue;
     ";
 
-    for query in parse(sqls).unwrap() {
-        glue.execute(&query).unwrap();
-    }
+    glue.execute(sqls).unwrap();
 }
 
 #[cfg(not(feature = "sled-storage"))]

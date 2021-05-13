@@ -3,9 +3,13 @@ use {
         context::{BlendContext, FilterContext},
         evaluate::evaluate,
     },
-    crate::{data::Value, result::Result, store::Store},
+    crate::{
+        ast::{Expr, Function},
+        data::Value,
+        result::Result,
+        store::Store,
+    },
     im_rc::HashMap,
-    sqlparser::ast::{Expr, Function},
     std::{convert::TryInto, fmt::Debug, rc::Rc},
 };
 

@@ -6,13 +6,21 @@ use {
         operator::{translate_binary_operator, translate_unary_operator},
         translate_idents, translate_query, TranslateError,
     },
-    crate::{ast::Expr, result::Result},
+    crate::{
+        ast::{AstLiteral, Expr},
+        result::Result,
+    },
     sqlparser::ast::Expr as SqlExpr,
 };
 
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     match sql_expr {
-        SqlExpr::Identifier(ident) => Ok(Expr::Identifier(ident.value.to_owned())),
+        SqlExpr::Identifier(ident) => match ident.quote_style {
+            Some(_) => Ok(Expr::Literal(AstLiteral::QuotedString(
+                ident.value.to_owned(),
+            ))),
+            None => Ok(Expr::Identifier(ident.value.to_owned())),
+        },
         SqlExpr::Wildcard => Ok(Expr::Wildcard),
         SqlExpr::QualifiedWildcard(idents) => Ok(Expr::QualifiedWildcard(translate_idents(idents))),
         SqlExpr::CompoundIdentifier(idents) => {

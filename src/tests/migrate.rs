@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    ast::{AstLiteral, BinaryOperator, Expr},
+    *,
+};
 
 test_case!(migrate, async move {
     run!(
@@ -21,7 +24,15 @@ test_case!(migrate, async move {
 
     let error_cases = vec![
         (
-            LiteralError::UnsupportedExpr("3 * 2".to_owned()).into(),
+            LiteralError::UnsupportedExpr(format!(
+                "{:?}",
+                Expr::BinaryOp {
+                    left: Box::new(Expr::Literal(AstLiteral::Number("3".to_owned()))),
+                    op: BinaryOperator::Multiply,
+                    right: Box::new(Expr::Literal(AstLiteral::Number("2".to_owned()))),
+                }
+            ))
+            .into(),
             "INSERT INTO Test (id, num) VALUES (3 * 2, 1);",
         ),
         (
@@ -29,15 +40,24 @@ test_case!(migrate, async move {
             r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
         ),
         (
-            EvaluateError::UnsupportedCompoundIdentifier("Here.User.id".to_owned()).into(),
+            EvaluateError::UnsupportedCompoundIdentifier(format!(
+                "{:?}",
+                Expr::CompoundIdentifier(vec![
+                    "Here".to_owned(),
+                    "User".to_owned(),
+                    "id".to_owned()
+                ])
+            ))
+            .into(),
             "SELECT * FROM Test WHERE Here.User.id = 1",
         ),
         (
-            JoinError::NaturalOnJoinNotSupported.into(),
+            TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into(),
             "SELECT * FROM Test NATURAL JOIN Test",
         ),
         (
-            TableError::TableFactorNotSupported.into(),
+            TranslateError::UnsupportedQueryTableFactor("(SELECT * FROM Test) AS A".to_owned())
+                .into(),
             "SELECT * FROM (SELECT * FROM Test) as A;",
         ),
     ];

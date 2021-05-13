@@ -1,5 +1,6 @@
 use {
     crate::{
+        ast::{ColumnDef, ColumnOption},
         data::{Interval, Row, Value},
         result::Result,
         store::Store,
@@ -9,7 +10,6 @@ use {
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
     serde::Serialize,
-    sqlparser::ast::{ColumnDef, ColumnOption, Ident},
     std::{convert::TryInto, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
@@ -25,7 +25,7 @@ pub enum ValidateError {
 
 pub enum ColumnValidation {
     All(Rc<[ColumnDef]>),
-    SpecifiedColumns(Rc<[ColumnDef]>, Vec<Ident>),
+    SpecifiedColumns(Rc<[ColumnDef]>, Vec<String>),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -156,7 +156,7 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
                 .iter()
                 .any(|opt_def| matches!(opt_def.option, ColumnOption::Unique { .. }))
             {
-                Some((i, table_col.name.value.to_owned()))
+                Some((i, table_col.name.to_owned()))
             } else {
                 None
             }
@@ -166,7 +166,7 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
 
 fn fetch_specified_unique_columns(
     all_column_defs: &[ColumnDef],
-    specified_columns: &[Ident],
+    specified_columns: &[String],
 ) -> Vec<(usize, String)> {
     all_column_defs
         .iter()
@@ -178,11 +178,11 @@ fn fetch_specified_unique_columns(
                 .any(|opt_def| match opt_def.option {
                     ColumnOption::Unique { .. } => specified_columns
                         .iter()
-                        .any(|specified_col| specified_col.value == table_col.name.value),
+                        .any(|specified_col| specified_col == &table_col.name),
                     _ => false,
                 })
             {
-                Some((i, table_col.name.value.to_owned()))
+                Some((i, table_col.name.to_owned()))
             } else {
                 None
             }

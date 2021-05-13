@@ -4,13 +4,13 @@ use {
         evaluate::{evaluate, Evaluated},
     },
     crate::{
+        ast::{Assignment, ColumnDef},
         data::{schema::ColumnDefExt, Row, Value},
         result::Result,
         store::Store,
     },
     futures::stream::{self, TryStreamExt},
     serde::Serialize,
-    sqlparser::ast::{Assignment, ColumnDef, Ident},
     std::{fmt::Debug, rc::Rc},
     thiserror::Error,
 };
@@ -41,11 +41,8 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         for assignment in fields.iter() {
             let Assignment { id, .. } = assignment;
 
-            if column_defs
-                .iter()
-                .all(|col_def| col_def.name.value != id.value)
-            {
-                return Err(UpdateError::ColumnNotFound(id.value.to_string()).into());
+            if column_defs.iter().all(|col_def| &col_def.name != id) {
+                return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
             }
         }
 
@@ -65,7 +62,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
         match self
             .fields
             .iter()
-            .find(|assignment| assignment.id.value == column_def.name.value)
+            .find(|assignment| assignment.id == column_def.name)
         {
             None => Ok(None),
             Some(assignment) => {
@@ -114,17 +111,17 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
             .map(Row)
     }
 
-    pub fn all_columns(&self) -> Vec<Ident> {
+    pub fn all_columns(&self) -> Vec<String> {
         self.column_defs
             .iter()
-            .map(|col_def| col_def.name.clone())
+            .map(|col_def| col_def.name.to_owned())
             .collect()
     }
 
-    pub fn columns_to_update(&self) -> Vec<Ident> {
+    pub fn columns_to_update(&self) -> Vec<String> {
         self.fields
             .iter()
-            .map(|assignment| assignment.id.clone())
+            .map(|assignment| assignment.id.to_owned())
             .collect()
     }
 }

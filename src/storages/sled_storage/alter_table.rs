@@ -1,15 +1,15 @@
 #![cfg(feature = "alter-table")]
 
-use async_trait::async_trait;
-use boolinator::Boolinator;
-use std::iter::once;
-use std::str;
-
-use sqlparser::ast::{ColumnDef, Ident};
-
-use super::{error::err_into, fetch_schema, SledStorage};
-use crate::utils::Vector;
-use crate::{schema::ColumnDefExt, AlterTable, AlterTableError, MutResult, Row, Schema, Value};
+use {
+    super::{error::err_into, fetch_schema, SledStorage},
+    crate::{
+        ast::ColumnDef, schema::ColumnDefExt, utils::Vector, AlterTable, AlterTableError,
+        MutResult, Row, Schema, Value,
+    },
+    async_trait::async_trait,
+    boolinator::Boolinator,
+    std::{iter::once, str},
+};
 
 macro_rules! try_self {
     ($self: expr, $expr: expr) => {
@@ -87,24 +87,17 @@ impl AlterTable for SledStorage {
 
         let i = column_defs
             .iter()
-            .position(|column_def| column_def.name.value == old_column_name)
+            .position(|column_def| column_def.name == old_column_name)
             .ok_or(AlterTableError::RenamingColumnNotFound);
         let i = try_into!(self, i);
 
         let ColumnDef {
-            name: Ident { quote_style, .. },
-            data_type,
-            collation,
-            options,
+            data_type, options, ..
         } = column_defs[i].clone();
 
         let column_def = ColumnDef {
-            name: Ident {
-                quote_style,
-                value: new_column_name.to_string(),
-            },
+            name: new_column_name.to_owned(),
             data_type,
-            collation,
             options,
         };
         let column_defs = Vector::from(column_defs).update(i, column_def).into();
@@ -130,9 +123,9 @@ impl AlterTable for SledStorage {
 
         if column_defs
             .iter()
-            .any(|ColumnDef { name, .. }| name.value == column_def.name.value)
+            .any(|ColumnDef { name, .. }| name == &column_def.name)
         {
-            let adding_column = column_def.name.value.to_string();
+            let adding_column = column_def.name.to_owned();
 
             return Err((
                 self,
@@ -149,7 +142,7 @@ impl AlterTable for SledStorage {
             (None, false) => {
                 return Err((
                     self,
-                    AlterTableError::DefaultValueRequired(column_def.to_string()).into(),
+                    AlterTableError::DefaultValueRequired(format!("{:?}", column_def)).into(),
                 ));
             }
         };
@@ -198,7 +191,7 @@ impl AlterTable for SledStorage {
 
         let index = column_defs
             .iter()
-            .position(|ColumnDef { name, .. }| name.value == column_name);
+            .position(|ColumnDef { name, .. }| name == column_name);
 
         let index = match (index, if_exists) {
             (Some(index), _) => index,

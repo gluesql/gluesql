@@ -1,16 +1,14 @@
-use std::fmt::Debug;
-use std::rc::Rc;
-
-use sqlparser::ast::Ident;
-
-use super::BlendContext;
-use crate::data::{Row, Value};
+use {
+    super::BlendContext,
+    crate::data::{Row, Value},
+    std::{fmt::Debug, rc::Rc},
+};
 
 #[derive(Debug)]
 enum Content<'a> {
     Some {
         table_alias: &'a str,
-        columns: Rc<[Ident]>,
+        columns: Rc<[String]>,
         row: Option<&'a Row>,
     },
     None,
@@ -26,7 +24,7 @@ pub struct FilterContext<'a> {
 impl<'a> FilterContext<'a> {
     pub fn new(
         table_alias: &'a str,
-        columns: Rc<[Ident]>,
+        columns: Rc<[String]>,
         row: Option<&'a Row>,
         next: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
@@ -56,7 +54,7 @@ impl<'a> FilterContext<'a> {
         if let Content::Some { columns, row, .. } = &self.content {
             let value = columns
                 .iter()
-                .position(|column| column.value == target)
+                .position(|column| column == target)
                 .map(|index| row.and_then(|row| row.get_value(index)));
 
             if let Some(value) = value {
@@ -89,7 +87,7 @@ impl<'a> FilterContext<'a> {
 
                 columns
                     .iter()
-                    .position(|column| column.value == target)
+                    .position(|column| column == target)
                     .map(|index| row.and_then(|row| row.get_value(index)))
             };
 

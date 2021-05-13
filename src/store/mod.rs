@@ -5,12 +5,14 @@ pub use alter_table::*;
 #[cfg(not(feature = "alter-table"))]
 pub trait AlterTable {}
 
-use async_trait::async_trait;
-use std::fmt::Debug;
-use std::marker::Sized;
-
-use crate::data::{Row, Schema};
-use crate::result::{MutResult, Result};
+use {
+    crate::{
+        data::{Row, Schema},
+        result::{MutResult, Result},
+    },
+    async_trait::async_trait,
+    std::{fmt::Debug, marker::Sized},
+};
 
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
 

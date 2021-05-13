@@ -1,11 +1,11 @@
 use {
-    super::{validate, AlterError},
+    super::validate,
     crate::{
+        ast::{AlterTableOperation, ObjectName},
         data::get_name,
         result::MutResult,
         store::{AlterTable, Store, StoreMut},
     },
-    sqlparser::ast::{AlterTableOperation, ObjectName},
     std::fmt::Debug,
 };
 
@@ -40,7 +40,7 @@ pub async fn alter_table<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTa
             new_column_name,
         } => {
             storage
-                .rename_column(table_name, &old_column_name.value, &new_column_name.value)
+                .rename_column(table_name, old_column_name, new_column_name)
                 .await
         }
         AlterTableOperation::AddColumn { column_def } => {
@@ -51,15 +51,10 @@ pub async fn alter_table<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTa
         AlterTableOperation::DropColumn {
             column_name,
             if_exists,
-            ..
         } => {
             storage
-                .drop_column(table_name, &column_name.value, *if_exists)
+                .drop_column(table_name, column_name, *if_exists)
                 .await
         }
-        _ => Err((
-            storage,
-            AlterError::UnsupportedAlterTableOperation(operation.to_string()).into(),
-        )),
     }
 }

@@ -1,34 +1,30 @@
-use futures::stream::TryStreamExt;
-use serde::Serialize;
-use std::fmt::Debug;
-use std::rc::Rc;
-use thiserror::Error as ThisError;
-
-use sqlparser::ast::{SetExpr, Statement, Values};
-
-use crate::data::{get_name, Row, Schema};
-use crate::parse_sql::Query;
-use crate::result::{MutResult, Result};
-use crate::store::{AlterTable, Store, StoreMut};
+use {
+    super::{
+        alter::{create_table, drop},
+        fetch::{fetch, fetch_columns},
+        select::{select, select_with_labels},
+        update::Update,
+        validate::{validate_unique, ColumnValidation},
+    },
+    crate::{
+        ast::{Query, SetExpr, Statement, Values},
+        data::{get_name, Row, Schema},
+        result::{MutResult, Result},
+        store::{AlterTable, Store, StoreMut},
+    },
+    futures::stream::TryStreamExt,
+    serde::Serialize,
+    std::{fmt::Debug, rc::Rc},
+    thiserror::Error as ThisError,
+};
 
 #[cfg(feature = "alter-table")]
 use super::alter::alter_table;
-use super::alter::{create_table, drop};
-use super::fetch::{fetch, fetch_columns};
-use super::select::{select, select_with_labels};
-use super::update::Update;
-use super::validate::{validate_unique, ColumnValidation};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
-    #[error("query not supported")]
-    QueryNotSupported,
-
-    #[error("unsupported insert value type: {0}")]
-    UnreachableUnsupportedInsertValueType(String),
-
-    #[error("table does not exist")]
-    TableNotExists,
+    #[error("table not found: {0}")]
+    TableNotFound(String),
 }
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -49,7 +45,7 @@ pub enum Payload {
 
 pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     storage: U,
-    query: &Query,
+    statement: &Statement,
 ) -> MutResult<U, Payload> {
     macro_rules! try_block {
         ($storage: expr, $block: block) => {{
@@ -62,9 +58,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
         }};
     }
 
-    let Query(query) = query;
-
-    match query {
+    match statement {
         //- Modification
         //-- Tables
         Statement::CreateTable {
@@ -75,12 +69,9 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
         } => create_table(storage, name, columns, *if_not_exists)
             .await
             .map(|(storage, _)| (storage, Payload::Create)),
-        Statement::Drop {
-            object_type,
-            names,
-            if_exists,
-            ..
-        } => drop(storage, object_type, names, *if_exists)
+        Statement::DropTable {
+            names, if_exists, ..
+        } => drop(storage, names, *if_exists)
             .await
             .map(|(storage, _)| (storage, Payload::DropTable)),
         #[cfg(feature = "alter-table")]
@@ -100,7 +91,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
                     .await?
-                    .ok_or(ExecuteError::TableNotExists)?;
+                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
                 let column_defs = Rc::from(column_defs);
                 let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
 
@@ -110,13 +101,10 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                         .map(|values| Row::new(&column_defs, columns, values))
                         .collect::<Result<Vec<Row>>>()?,
                     SetExpr::Select(select_query) => {
-                        let query = || sqlparser::ast::Query {
-                            with: None,
+                        let query = || Query {
                             body: SetExpr::Select(select_query.clone()),
-                            order_by: vec![],
                             limit: None,
                             offset: None,
-                            fetch: None,
                         };
 
                         select(&storage, &query(), None)
@@ -132,12 +120,6 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                             })
                             .try_collect::<Vec<_>>()
                             .await?
-                    }
-                    set_expr => {
-                        return Err(ExecuteError::UnreachableUnsupportedInsertValueType(
-                            set_expr.to_string(),
-                        )
-                        .into());
                     }
                 };
 
@@ -163,7 +145,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
                     .await?
-                    .ok_or(ExecuteError::TableNotExists)?;
+                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
                 let update = Update::new(&storage, table_name, assignments, &column_defs)?;
 
                 let all_columns = Rc::from(update.all_columns());
@@ -234,6 +216,5 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
 
             Ok((storage, Payload::Select { labels, rows }))
         }
-        _ => Err((storage, ExecuteError::QueryNotSupported.into())),
     }
 }

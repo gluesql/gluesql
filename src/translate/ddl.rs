@@ -1,17 +1,22 @@
 use {
-    super::{
-        data_type::translate_data_type, expr::translate_expr, translate_object_name, TranslateError,
-    },
+    super::{data_type::translate_data_type, expr::translate_expr, TranslateError},
     crate::{
-        ast::{AlterTableOperation, ColumnDef, ColumnOption, ColumnOptionDef},
+        ast::{ColumnDef, ColumnOption, ColumnOptionDef},
         result::Result,
     },
     sqlparser::ast::{
-        AlterTableOperation as SqlAlterTableOperation, ColumnDef as SqlColumnDef,
-        ColumnOption as SqlColumnOption, ColumnOptionDef as SqlColumnOptionDef,
+        ColumnDef as SqlColumnDef, ColumnOption as SqlColumnOption,
+        ColumnOptionDef as SqlColumnOptionDef,
     },
 };
 
+#[cfg(feature = "alter-table")]
+use {
+    super::translate_object_name, crate::ast::AlterTableOperation,
+    sqlparser::ast::AlterTableOperation as SqlAlterTableOperation,
+};
+
+#[cfg(feature = "alter-table")]
 pub fn translate_alter_table_operation(
     sql_alter_table_operation: &SqlAlterTableOperation,
 ) -> Result<AlterTableOperation> {
@@ -50,14 +55,13 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
     let SqlColumnDef {
         name,
         data_type,
-        collation,
         options,
+        ..
     } = sql_column_def;
 
     Ok(ColumnDef {
         name: name.value.to_owned(),
         data_type: translate_data_type(data_type)?,
-        collation: collation.as_ref().map(translate_object_name),
         options: options
             .iter()
             .map(translate_column_option_def)

@@ -25,7 +25,6 @@ pub enum AlterTableOperation {
 pub struct ColumnDef {
     pub name: String,
     pub data_type: DataType,
-    pub collation: Option<ObjectName>,
     pub options: Vec<ColumnOptionDef>,
 }
 

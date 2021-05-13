@@ -54,7 +54,7 @@ CREATE TABLE DropTable (
         ),
         (
             "DROP VIEW DropTable;",
-            Err(AlterError::DropTypeNotSupported("VIEW".to_owned()).into()),
+            Err(TranslateError::UnsupportedStatement("DROP VIEW DropTable".to_owned()).into()),
         ),
     ];
 

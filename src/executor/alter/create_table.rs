@@ -1,11 +1,11 @@
 use {
     super::{validate, AlterError},
     crate::{
+        ast::{ColumnDef, ObjectName},
         data::{get_name, Schema},
         result::MutResult,
         store::{AlterTable, Store, StoreMut},
     },
-    sqlparser::ast::{ColumnDef, ObjectName},
     std::fmt::Debug,
 };
 

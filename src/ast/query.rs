@@ -28,10 +28,8 @@ pub struct Select {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SelectItem {
-    /// Any expression, not followed by `[ AS ] alias`
-    UnnamedExpr(Expr),
-    /// An expression, followed by `[ AS ] alias`
-    ExprWithAlias { expr: Expr, alias: String },
+    /// An expression
+    Expr { expr: Expr, label: String },
     /// `alias.*` or even `schema.table.*`
     QualifiedWildcard(ObjectName),
     /// An unqualified `*`

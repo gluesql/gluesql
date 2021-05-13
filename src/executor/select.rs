@@ -9,6 +9,7 @@ use {
         limit::Limit,
     },
     crate::{
+        ast::{Query, SelectItem, SetExpr, TableWithJoins},
         data::{get_name, Row, Table},
         result::{Error, Result},
         store::Store,
@@ -17,7 +18,6 @@ use {
     futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
     serde::Serialize,
-    sqlparser::ast::{Expr, Ident, Query, SelectItem, SetExpr, TableWithJoins},
     std::{fmt::Debug, iter::once, rc::Rc},
     thiserror::Error as ThisError,
 };
@@ -37,7 +37,7 @@ pub enum SelectError {
 async fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn Store<T>,
     table: Table<'a>,
-    columns: Rc<[Ident]>,
+    columns: Rc<[String]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
     let rows = storage.scan_data(table.get_name()).await?.map(move |data| {
         let (_, row) = data?;
@@ -53,8 +53,8 @@ async fn fetch_blended<'a, T: 'static + Debug>(
 fn get_labels<'a>(
     projection: &[SelectItem],
     table_alias: &str,
-    columns: &'a [Ident],
-    join_columns: &'a [(&String, Vec<Ident>)],
+    columns: &'a [String],
+    join_columns: &'a [(&String, Vec<String>)],
 ) -> Result<Vec<String>> {
     #[derive(Iterator)]
     enum Labeled<I1, I2, I3, I4> {
@@ -77,7 +77,7 @@ fn get_labels<'a>(
         };
     }
 
-    let to_labels = |columns: &'a [Ident]| columns.iter().map(|ident| ident.value.to_string());
+    let to_labels = |columns: &'a [String]| columns.iter().map(|ident| ident.to_owned());
 
     projection
         .iter()
@@ -110,20 +110,7 @@ fn get_labels<'a>(
 
                 Labeled::QualifiedWildcard(labels)
             }
-            SelectItem::UnnamedExpr(expr) => {
-                let label = match expr {
-                    Expr::CompoundIdentifier(idents) => try_into!(idents
-                        .last()
-                        .map(|ident| ident.value.to_string())
-                        .ok_or_else(|| SelectError::Unreachable.into())),
-                    _ => expr.to_string(),
-                };
-
-                Labeled::Once(once(Ok(label)))
-            }
-            SelectItem::ExprWithAlias { alias, .. } => {
-                Labeled::Once(once(Ok(alias.value.to_string())))
-            }
+            SelectItem::Expr { label, .. } => Labeled::Once(once(Ok(label.to_owned()))),
         })
         .collect::<Result<_>>()
 }

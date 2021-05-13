@@ -1,11 +1,9 @@
-use im_rc::HashMap;
-use std::fmt::Debug;
-use std::rc::Rc;
-
-use sqlparser::ast::Function;
-
-use super::BlendContext;
-use crate::data::Value;
+use {
+    super::BlendContext,
+    crate::{ast::Function, data::Value},
+    im_rc::HashMap,
+    std::{fmt::Debug, rc::Rc},
+};
 
 #[derive(Debug)]
 pub struct AggregateContext<'a> {

@@ -57,6 +57,7 @@ pub enum Statement {
         columns: Vec<ColumnDef>,
     },
     /// ALTER TABLE
+    #[cfg(feature = "alter-table")]
     AlterTable {
         /// Table name
         name: ObjectName,

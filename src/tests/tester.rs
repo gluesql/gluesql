@@ -1,39 +1,49 @@
-use async_trait::async_trait;
-use std::cell::RefCell;
-use std::fmt::Debug;
-use std::rc::Rc;
-
-use crate::executor::{execute, Payload};
-use crate::parse_sql::parse;
-use crate::result::Result;
-use crate::store::{AlterTable, Store, StoreMut};
+use {
+    crate::{
+        executor::{execute, Payload},
+        parse_sql::parse,
+        result::Result,
+        store::{AlterTable, Store, StoreMut},
+        translate::translate,
+    },
+    async_trait::async_trait,
+    std::{cell::RefCell, fmt::Debug, rc::Rc},
+};
 
 pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
 ) -> Result<Payload> {
-    println!("[Run] {}", sql);
+    let storage = cell.replace(None).unwrap();
 
-    let mut storage = cell.replace(None).unwrap();
+    macro_rules! try_run {
+        ($expr: expr) => {
+            match $expr {
+                Ok(v) => v,
+                Err(e) => {
+                    cell.replace(Some(storage));
 
-    let query = &parse(sql).unwrap()[0];
+                    return Err(e);
+                }
+            }
+        };
+    }
 
-    let result = match execute(storage, query).await {
-        Ok((s, payload)) => {
-            storage = s;
+    let parsed = try_run!(parse(sql));
+    let statement = try_run!(translate(&parsed[0]));
+
+    match execute(storage, &statement).await {
+        Ok((storage, payload)) => {
+            cell.replace(Some(storage));
 
             Ok(payload)
         }
-        Err((s, error)) => {
-            storage = s;
+        Err((storage, error)) => {
+            cell.replace(Some(storage));
 
             Err(error)
         }
-    };
-
-    cell.replace(Some(storage));
-
-    result
+    }
 }
 
 /// If you want to make your custom storage and want to run integrate tests,

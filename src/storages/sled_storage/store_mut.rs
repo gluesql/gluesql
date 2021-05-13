@@ -1,11 +1,12 @@
-use async_trait::async_trait;
-use sled::{
-    transaction::{ConflictableTransactionError, TransactionError},
-    IVec,
+use {
+    super::{err_into, error::StorageError, SledStorage},
+    crate::{MutResult, Row, Schema, StoreMut},
+    async_trait::async_trait,
+    sled::{
+        transaction::{ConflictableTransactionError, TransactionError},
+        IVec,
+    },
 };
-
-use super::{err_into, error::StorageError, SledStorage};
-use crate::{MutResult, Row, Schema, StoreMut};
 
 macro_rules! try_into {
     ($self: expr, $expr: expr) => {

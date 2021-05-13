@@ -8,10 +8,10 @@ use {
         result::Result,
     },
     sqlparser::ast::{
-        Join as SqlJoin, JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator,
-        Query as SqlQuery, Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
-        TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
-        TableWithJoins as SqlTableWithJoins,
+        Expr as SqlExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
+        JoinOperator as SqlJoinOperator, Query as SqlQuery, Select as SqlSelect,
+        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
+        TableFactor as SqlTableFactor, TableWithJoins as SqlTableWithJoins,
     },
 };
 
@@ -78,11 +78,24 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
 
 fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectItem> {
     match sql_select_item {
-        SqlSelectItem::UnnamedExpr(expr) => translate_expr(expr).map(SelectItem::UnnamedExpr),
+        SqlSelectItem::UnnamedExpr(expr) => {
+            let label = match expr {
+                SqlExpr::CompoundIdentifier(idents) => idents
+                    .last()
+                    .map(|ident| ident.value.to_owned())
+                    .unwrap_or_else(|| expr.to_string()),
+                _ => expr.to_string(),
+            };
+
+            Ok(SelectItem::Expr {
+                expr: translate_expr(expr)?,
+                label,
+            })
+        }
         SqlSelectItem::ExprWithAlias { expr, alias } => {
-            translate_expr(expr).map(|expr| SelectItem::ExprWithAlias {
+            translate_expr(expr).map(|expr| SelectItem::Expr {
                 expr,
-                alias: alias.value.to_owned(),
+                label: alias.value.to_owned(),
             })
         }
         SqlSelectItem::QualifiedWildcard(object_name) => Ok(SelectItem::QualifiedWildcard(
@@ -125,9 +138,12 @@ fn translate_join(sql_join: &SqlJoin) -> Result<Join> {
     let translate_constraint = |sql_join_constraint: &SqlJoinConstraint| match sql_join_constraint {
         SqlJoinConstraint::On(expr) => translate_expr(&expr).map(JoinConstraint::On),
         SqlJoinConstraint::None => Ok(JoinConstraint::None),
-        _ => Err(
-            TranslateError::UnsupportedJoinConstraint(format!("{:?}", sql_join_constraint)).into(),
-        ),
+        SqlJoinConstraint::Using(_) => {
+            Err(TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into())
+        }
+        SqlJoinConstraint::Natural => {
+            Err(TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into())
+        }
     };
 
     let join_operator = match sql_join_operator {

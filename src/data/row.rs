@@ -1,11 +1,13 @@
-use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
-use thiserror::Error;
-
-use sqlparser::ast::{ColumnDef, Expr, Ident};
-
-use crate::data::{schema::ColumnDefExt, Value};
-use crate::result::Result;
+use {
+    crate::{
+        ast::{ColumnDef, Expr},
+        data::{schema::ColumnDefExt, Value},
+        result::Result,
+    },
+    serde::{Deserialize, Serialize},
+    std::fmt::Debug,
+    thiserror::Error,
+};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum RowError {
@@ -37,7 +39,7 @@ impl Row {
             .ok_or_else(|| RowError::ConflictOnEmptyRow.into())
     }
 
-    pub fn new(column_defs: &[ColumnDef], columns: &[Ident], values: &[Expr]) -> Result<Self> {
+    pub fn new(column_defs: &[ColumnDef], columns: &[String], values: &[Expr]) -> Result<Self> {
         if values.len() > column_defs.len() {
             return Err(RowError::TooManyValues.into());
         }
@@ -53,7 +55,7 @@ impl Row {
 
                 let i = match columns.len() {
                     0 => Some(i),
-                    _ => columns.iter().position(|target| target.value == name),
+                    _ => columns.iter().position(|target| target == &name),
                 };
 
                 let default = column_def.get_default();

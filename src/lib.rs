@@ -20,6 +20,7 @@
 //!     let mut glue = Glue::new(storage);
 //!
 //!     let sqls = "
+//!         DROP TABLE IF EXISTS Glue;
 //!         CREATE TABLE Glue (id INTEGER);
 //!         INSERT INTO Glue VALUES (100);
 //!         INSERT INTO Glue VALUES (200);
@@ -27,9 +28,7 @@
 //!         DROP TABLE Glue;
 //!     ";
 //!
-//!     for query in parse(sqls).unwrap() {
-//!         glue.execute(&query).unwrap();
-//!     }
+//!     glue.execute(&sqls).unwrap();
 //! }
 //!
 //! #[cfg(not(feature = "sled-storage"))]
