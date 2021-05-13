@@ -53,6 +53,10 @@ mod tests {
         let mut glue = Glue::new(sled);
 
         assert_eq!(
+            glue.execute("DROP TABLE IF EXISTS api_test"),
+            Ok(Payload::DropTable)
+        );
+        assert_eq!(
             glue.execute("CREATE TABLE api_test (id INTEGER PRIMARY KEY, name TEXT, nullable TEXT NULL, is BOOLEAN)"),
             Ok(Payload::Create)
         );
