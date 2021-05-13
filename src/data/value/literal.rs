@@ -1,11 +1,11 @@
 use {
     super::{error::ValueError, Value},
     crate::{
+        ast::DataType,
         data::Literal,
         result::{Error, Result},
     },
     chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
-    sqlparser::ast::DataType,
     std::{cmp::Ordering, convert::TryFrom},
 };
 
@@ -124,7 +124,7 @@ impl Value {
                 .parse::<i64>()
                 .map(Value::I64)
                 .map_err(|_| ValueError::FailedToParseNumber.into()),
-            (DataType::Float(_), Literal::Number(v)) => v
+            (DataType::Float, Literal::Number(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
                 .map_err(|_| ValueError::UnreachableNumberParsing.into()),
@@ -142,14 +142,14 @@ impl Value {
             (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
-            | (DataType::Float(_), Literal::Null)
+            | (DataType::Float, Literal::Null)
             | (DataType::Text, Literal::Null)
             | (DataType::Date, Literal::Null)
             | (DataType::Timestamp, Literal::Null)
             | (DataType::Time, Literal::Null)
             | (DataType::Interval, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: data_type.to_string(),
+                data_type: format!("{:?}", data_type),
                 literal: format!("{:?}", literal),
             }
             .into()),
@@ -181,11 +181,11 @@ impl Value {
 
                 Ok(Value::I64(v))
             }
-            (DataType::Float(_), Literal::Text(v)) | (DataType::Float(_), Literal::Number(v)) => v
+            (DataType::Float, Literal::Text(v)) | (DataType::Float, Literal::Number(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
                 .map_err(|_| ValueError::LiteralCastToFloatFailed(v.to_string()).into()),
-            (DataType::Float(_), Literal::Boolean(v)) => {
+            (DataType::Float, Literal::Boolean(v)) => {
                 let v = if *v { 1.0 } else { 0.0 };
 
                 Ok(Value::F64(v))
@@ -200,10 +200,10 @@ impl Value {
             }
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
-            | (DataType::Float(_), Literal::Null)
+            | (DataType::Float, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::UnimplementedLiteralCast {
-                data_type: data_type.to_string(),
+                data_type: format!("{:?}", data_type),
                 literal: format!("{:?}", literal),
             }
             .into()),

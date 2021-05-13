@@ -1,17 +1,17 @@
-use boolinator::Boolinator;
-use futures::stream::{self, TryStream, TryStreamExt};
-use serde::Serialize;
-use std::fmt::Debug;
-use std::rc::Rc;
-use thiserror::Error as ThisError;
-
-use sqlparser::ast::{ColumnDef, Expr, Ident};
-
-use super::context::FilterContext;
-use super::filter::check_expr;
-use crate::data::Row;
-use crate::result::{Error, Result};
-use crate::store::Store;
+use {
+    super::{context::FilterContext, filter::check_expr},
+    crate::{
+        ast::{ColumnDef, Expr},
+        data::Row,
+        result::{Error, Result},
+        store::Store,
+    },
+    boolinator::Boolinator,
+    futures::stream::{self, TryStream, TryStreamExt},
+    serde::Serialize,
+    std::{fmt::Debug, rc::Rc},
+    thiserror::Error as ThisError,
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum FetchError {
@@ -22,7 +22,7 @@ pub enum FetchError {
 pub async fn fetch_columns<T: 'static + Debug>(
     storage: &dyn Store<T>,
     table_name: &str,
-) -> Result<Vec<Ident>> {
+) -> Result<Vec<String>> {
     Ok(storage
         .fetch_schema(table_name)
         .await?
@@ -30,15 +30,15 @@ pub async fn fetch_columns<T: 'static + Debug>(
         .column_defs
         .into_iter()
         .map(|ColumnDef { name, .. }| name)
-        .collect::<Vec<Ident>>())
+        .collect::<Vec<String>>())
 }
 
 pub async fn fetch<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     table_name: &'a str,
-    columns: Rc<[Ident]>,
+    columns: Rc<[String]>,
     where_clause: Option<&'a Expr>,
-) -> Result<impl TryStream<Ok = (Rc<[Ident]>, T, Row), Error = Error> + 'a> {
+) -> Result<impl TryStream<Ok = (Rc<[String]>, T, Row), Error = Error> + 'a> {
     let rows = storage
         .scan_data(table_name)
         .await

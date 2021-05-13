@@ -4,6 +4,7 @@ mod evaluated;
 use {
     super::{context::FilterContext, select::select},
     crate::{
+        ast::{BinaryOperator, Expr, Function, FunctionArg, UnaryOperator},
         data::{get_name, Literal, Value},
         result::Result,
         store::Store,
@@ -12,7 +13,6 @@ use {
     boolinator::Boolinator,
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    sqlparser::ast::{BinaryOperator, Expr, Function, FunctionArg, UnaryOperator},
     std::{
         borrow::Cow,
         convert::{TryFrom, TryInto},
@@ -39,35 +39,32 @@ pub async fn evaluate<'a, T: 'static + Debug>(
     };
 
     match expr {
-        Expr::Value(ast_value) => Literal::try_from(ast_value).map(Evaluated::Literal),
+        Expr::Literal(ast_literal) => Literal::try_from(ast_literal).map(Evaluated::Literal),
         Expr::TypedString { data_type, value } => {
             let literal = Literal::Text(Cow::Borrowed(value));
 
             Value::try_from_literal(&data_type, &literal).map(Evaluated::from)
         }
-        Expr::Identifier(ident) => match ident.quote_style {
-            Some(_) => Ok(Literal::Text(Cow::Borrowed(&ident.value))).map(Evaluated::Literal),
-            None => {
-                let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
+        Expr::Identifier(ident) => {
+            let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
 
-                match (context.get_value(&ident.value), use_empty) {
-                    (Some(value), _) => Ok(value.clone()),
-                    (None, true) => Ok(Value::Null),
-                    (None, false) => {
-                        Err(EvaluateError::ValueNotFound(ident.value.to_string()).into())
-                    }
-                }
-                .map(Evaluated::from)
+            match (context.get_value(&ident), use_empty) {
+                (Some(value), _) => Ok(value.clone()),
+                (None, true) => Ok(Value::Null),
+                (None, false) => Err(EvaluateError::ValueNotFound(ident.to_string()).into()),
             }
-        },
+            .map(Evaluated::from)
+        }
         Expr::Nested(expr) => eval(&expr).await,
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
-                return Err(EvaluateError::UnsupportedCompoundIdentifier(expr.to_string()).into());
+                return Err(
+                    EvaluateError::UnsupportedCompoundIdentifier(format!("{:?}", expr)).into(),
+                );
             }
 
-            let table_alias = &idents[0].value;
-            let column = &idents[1].value;
+            let table_alias = &idents[0];
+            let column = &idents[1];
             let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
 
             match (context.get_alias_value(table_alias, column), use_empty) {
@@ -120,7 +117,6 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 BinaryOperator::GtEq => cmp!(l >= r),
                 BinaryOperator::And => cond!(l && r),
                 BinaryOperator::Or => cond!(l || r),
-                _ => Err(EvaluateError::Unimplemented.into()),
             }
         }
         Expr::UnaryOp { op, expr } => {
@@ -130,7 +126,6 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 UnaryOperator::Plus => v.unary_plus(),
                 UnaryOperator::Minus => v.unary_minus(),
                 UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
-                _ => Err(EvaluateError::Unimplemented.into()),
             }
         }
         Expr::Function(func) => match aggregated.as_ref().map(|aggr| aggr.get(func)).flatten() {

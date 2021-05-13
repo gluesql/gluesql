@@ -1,7 +1,8 @@
 #[cfg(feature = "sled-storage")]
-use futures::executor::block_on;
-#[cfg(feature = "sled-storage")]
-use gluesql::{execute, parse, Glue, SledStorage};
+use {
+    futures::executor::block_on,
+    gluesql::{execute, parse, translate, Glue, SledStorage},
+};
 
 #[cfg(feature = "sled-storage")]
 fn immutable_api() {
@@ -14,11 +15,15 @@ fn immutable_api() {
         DROP TABLE Glue;
     ";
 
-    parse(sqls).unwrap().iter().fold(storage, |storage, query| {
-        let (storage, _) = block_on(execute(storage, query)).unwrap();
+    parse(sqls)
+        .unwrap()
+        .iter()
+        .fold(storage, |storage, parsed| {
+            let statement = translate(&parsed).unwrap();
+            let (storage, _) = block_on(execute(storage, &statement)).unwrap();
 
-        storage
-    });
+            storage
+        });
 }
 
 #[cfg(feature = "sled-storage")]
@@ -33,9 +38,7 @@ fn mutable_api() {
         DROP TABLE Glue;
     ";
 
-    for query in parse(sqls).unwrap() {
-        glue.execute(&query).unwrap();
-    }
+    glue.execute(sqls).unwrap();
 }
 
 fn main() {

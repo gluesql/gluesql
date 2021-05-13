@@ -1,34 +1,19 @@
-use boolinator::Boolinator;
-use futures::stream::{self, once, StreamExt, TryStream, TryStreamExt};
-use serde::Serialize;
-use std::fmt::Debug;
-use std::pin::Pin;
-use std::rc::Rc;
-use thiserror::Error as ThisError;
-
-use sqlparser::ast::{Ident, Join as AstJoin, JoinConstraint, JoinOperator};
-
-use super::context::{BlendContext, FilterContext};
-use super::filter::Filter;
-use crate::data::Table;
-use crate::result::{Error, Result};
-use crate::store::Store;
-use crate::utils::OrStream;
-
-#[derive(ThisError, Serialize, Debug, PartialEq)]
-pub enum JoinError {
-    #[error("unimplemented! join not supported")]
-    JoinTypeNotSupported,
-
-    #[error("unimplemented! using on join not supported")]
-    UsingOnJoinNotSupported,
-
-    #[error("unimplemented! natural on join not supported")]
-    NaturalOnJoinNotSupported,
-
-    #[error("umimplemented! failed to get table name")]
-    FailedToGetTableName,
-}
+use {
+    super::{
+        context::{BlendContext, FilterContext},
+        filter::Filter,
+    },
+    crate::{
+        ast::{Join as AstJoin, JoinConstraint, JoinOperator},
+        data::Table,
+        result::{Error, Result},
+        store::Store,
+        utils::OrStream,
+    },
+    boolinator::Boolinator,
+    futures::stream::{self, once, StreamExt, TryStream, TryStreamExt},
+    std::{fmt::Debug, pin::Pin, rc::Rc},
+};
 
 pub struct Join<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
@@ -56,7 +41,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
     pub async fn apply(
         &self,
         init_context: Result<BlendContext<'a>>,
-        join_columns: Rc<[Rc<[Ident]>]>,
+        join_columns: Rc<[Rc<[String]>]>,
     ) -> Result<Joined<'a>> {
         let init_context = init_context.map(Rc::new);
         let init_rows: Joined<'a> = Box::pin(stream::once(async { init_context }));
@@ -101,7 +86,7 @@ async fn join<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
-    columns: Rc<[Ident]>,
+    columns: Rc<[String]>,
     blend_context: Result<Rc<BlendContext<'a>>>,
 ) -> Result<Joined<'a>> {
     let AstJoin {
@@ -144,7 +129,6 @@ async fn join<'a, T: 'static + Debug>(
 
             rows
         }),
-        _ => Err(JoinError::JoinTypeNotSupported.into()),
     }
 }
 
@@ -152,19 +136,13 @@ async fn fetch_joined<'a, T: 'static + Debug>(
     storage: &'a dyn Store<T>,
     table_name: &'a str,
     table_alias: &'a str,
-    columns: Rc<[Ident]>,
+    columns: Rc<[String]>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     blend_context: Rc<BlendContext<'a>>,
     constraint: &'a JoinConstraint,
 ) -> Result<impl TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a> {
     let where_clause = match constraint {
         JoinConstraint::On(where_clause) => Some(where_clause),
-        JoinConstraint::Using(_) => {
-            return Err(JoinError::UsingOnJoinNotSupported.into());
-        }
-        JoinConstraint::Natural => {
-            return Err(JoinError::NaturalOnJoinNotSupported.into());
-        }
         JoinConstraint::None => None,
     };
 

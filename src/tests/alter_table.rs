@@ -1,6 +1,7 @@
 //! Tests in this file are only executed when feature = "alter-table" is enabled.
 
 use crate::*;
+use ast::*;
 use Value::*;
 
 test_case!(rename, async move {
@@ -40,7 +41,15 @@ test_case!(add_drop, async move {
         ("SELECT * FROM Foo;", Ok(select!(id; I64; 1; 2))),
         (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER",
-            Err(AlterTableError::DefaultValueRequired("amount INT".to_owned()).into()),
+            Err(AlterTableError::DefaultValueRequired(format!(
+                "{:?}",
+                ColumnDef {
+                    name: "amount".to_owned(),
+                    data_type: DataType::Int,
+                    options: vec![]
+                }
+            ))
+            .into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN id INTEGER",
@@ -80,21 +89,40 @@ test_case!(add_drop, async move {
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
-            Err(LiteralError::UnsupportedExpr("(SELECT id FROM Bar LIMIT 1)".to_owned()).into()),
+            Err(LiteralError::UnsupportedExpr(format!(
+                "{:?}",
+                Expr::Subquery(Box::new(ast::Query {
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![SelectItem::Expr {
+                            expr: Expr::Identifier("id".to_owned()),
+                            label: "id".to_owned(),
+                        }],
+                        from: vec![TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: ObjectName(vec!["Bar".to_owned()]),
+                                alias: None,
+                            },
+                            joins: vec![],
+                        }],
+                        selection: None,
+                        group_by: vec![],
+                        having: None,
+                    })),
+                    limit: Some(Expr::Literal(AstLiteral::Number("1".to_owned()))),
+                    offset: None,
+                }))
+            ))
+            .into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something SOMEWHAT",
-            Err(AlterError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
-        ),
-        (
-            "ALTER TABLE Foo ADD COLUMN something INTEGER CHECK (true)",
-            Err(AlterError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
+            Err(TranslateError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something FLOAT UNIQUE",
             Err(AlterError::UnsupportedDataTypeForUniqueColumn(
                 "something".to_owned(),
-                "FLOAT".to_owned(),
+                format!("{:?}", DataType::Float),
             )
             .into()),
         ),

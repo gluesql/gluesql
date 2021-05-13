@@ -1,6 +1,6 @@
 use {
+    crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr},
     serde::{Deserialize, Serialize},
-    sqlparser::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr},
 };
 
 #[derive(Clone, Serialize, Deserialize)]

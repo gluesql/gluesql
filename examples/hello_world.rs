@@ -1,6 +1,6 @@
 #[cfg(feature = "sled-storage")]
 mod hello_world {
-    use gluesql::{parse, Glue, Payload, SledStorage, Value};
+    use gluesql::{Glue, Payload, SledStorage, Value};
 
     pub fn run() {
         /*
@@ -25,10 +25,7 @@ mod hello_world {
           INSERT INTO greet VALUES (\"World\");
         ";
 
-        let parsed_queries = parse(queries).expect("Parsing failed");
-        for query in parsed_queries {
-            glue.execute(&query).expect("Execution failed");
-        }
+        glue.execute(queries).expect("Execution failed");
 
         /*
             Select inserted row
@@ -37,9 +34,7 @@ mod hello_world {
           SELECT name FROM greet
         ";
 
-        let parsed_query = &parse(queries).expect("Failed to parse query")[0];
-
-        let result = glue.execute(&parsed_query).expect("Failed to execute");
+        let result = glue.execute(queries).expect("Failed to execute");
 
         /*
             Query results are wrapped into a payload enum, on the basis of the query type
@@ -65,7 +60,10 @@ mod hello_world {
     }
 }
 
+#[cfg(feature = "sled-storage")]
 fn main() {
-    #[cfg(feature = "sled-storage")]
     hello_world::run();
 }
+
+#[cfg(not(feature = "sled-storage"))]
+fn main() {}

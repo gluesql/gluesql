@@ -1,18 +1,17 @@
-use serde::Serialize;
-use std::fmt::Debug;
-use thiserror::Error;
-
-use sqlparser::ast::{ObjectName, TableAlias, TableFactor};
-
-use crate::result::Result;
+use {
+    crate::{
+        ast::{ObjectName, TableAlias, TableFactor},
+        result::Result,
+    },
+    serde::Serialize,
+    std::fmt::Debug,
+    thiserror::Error,
+};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum TableError {
     #[error("unreachable")]
     Unreachable,
-
-    #[error("TableFactorNotSupported")]
-    TableFactorNotSupported,
 }
 
 pub struct Table<'a> {
@@ -23,13 +22,12 @@ pub struct Table<'a> {
 impl<'a> Table<'a> {
     pub fn new(table_factor: &'a TableFactor) -> Result<Self> {
         match table_factor {
-            TableFactor::Table { name, alias, .. } => {
+            TableFactor::Table { name, alias } => {
                 let name = get_name(name)?;
-                let alias = alias.as_ref().map(|TableAlias { name, .. }| &name.value);
+                let alias = alias.as_ref().map(|TableAlias { name, .. }| name);
 
                 Ok(Self { name, alias })
             }
-            _ => Err(TableError::TableFactorNotSupported.into()),
         }
     }
 
@@ -48,8 +46,5 @@ impl<'a> Table<'a> {
 pub fn get_name(table_name: &ObjectName) -> Result<&String> {
     let ObjectName(idents) = table_name;
 
-    idents
-        .last()
-        .map(|ident| &ident.value)
-        .ok_or_else(|| TableError::Unreachable.into())
+    idents.last().ok_or_else(|| TableError::Unreachable.into())
 }

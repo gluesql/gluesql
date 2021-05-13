@@ -1,10 +1,10 @@
 use {
     super::error::EvaluateError,
     crate::{
+        ast::DataType,
         data::{Literal, Value},
         result::{Error, Result},
     },
-    sqlparser::ast::DataType,
     std::{
         borrow::Cow,
         cmp::Ordering,

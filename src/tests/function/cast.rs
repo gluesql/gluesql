@@ -83,9 +83,9 @@ test_case!(cast_literal, async move {
             Ok(select_with_null!(cast; Null)),
         ),
         (
-            r#"SELECT CAST(NULL AS NULL) FROM Item"#,
+            r#"SELECT CAST(NULL AS INTERVAL) FROM Item"#,
             Err(ValueError::UnimplementedLiteralCast {
-                data_type: "NULL".to_owned(),
+                data_type: format!("{:?}", ast::DataType::Interval),
                 literal: format!("{:?}", data::Literal::Null),
             }
             .into()),
@@ -138,7 +138,7 @@ test_case!(cast_value, async move {
             Err(ValueError::ImpossibleCast.into()),
         ),
         (
-            r#"SELECT CAST(number AS NULL) FROM Item"#,
+            r#"SELECT CAST(number AS INTERVAL) FROM Item"#,
             Err(ValueError::UnimplementedCast.into()),
         ),
     ];

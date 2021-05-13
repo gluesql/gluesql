@@ -5,13 +5,43 @@ test_case!(error, async move {
     run!("INSERT INTO TableA (id) VALUES (1);");
 
     let test_cases = vec![
-        (ExecuteError::QueryNotSupported.into(), "COMMIT;"),
         (
-            ExecuteError::TableNotExists.into(),
+            TranslateError::UnsupportedStatement("COMMIT".to_owned()).into(),
+            "COMMIT;",
+        ),
+        (
+            TranslateError::UnsupportedUnaryOperator("!".to_owned()).into(),
+            "SELECT 2! FROM TableA;",
+        ),
+        (
+            TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
+            "SELECT 1 ^ 2 FROM TableA;",
+        ),
+        (
+            TranslateError::UnsupportedQuerySetExpr(
+                "SELECT * FROM TableA UNION SELECT * FROM TableA".to_owned(),
+            )
+            .into(),
+            "SELECT * FROM TableA UNION SELECT * FROM TableA;",
+        ),
+        #[cfg(feature = "alter-table")]
+        (
+            TranslateError::UnsupportedAlterTableOperation(
+                "ADD CONSTRAINT hello UNIQUE (id)".to_owned(),
+            )
+            .into(),
+            "ALTER TABLE TableA ADD CONSTRAINT hello UNIQUE (id)",
+        ),
+        (
+            TranslateError::UnsupportedExpr("1 COLLATE TableA".to_owned()).into(),
+            "SELECT 1 COLLATE TableA FROM TableA;",
+        ),
+        (
+            ExecuteError::TableNotFound("Nothing".to_owned()).into(),
             "INSERT INTO Nothing VALUES (1);",
         ),
         (
-            ExecuteError::TableNotExists.into(),
+            ExecuteError::TableNotFound("Nothing".to_owned()).into(),
             "UPDATE Nothing SET a = 1;",
         ),
         (
@@ -23,15 +53,18 @@ test_case!(error, async move {
             "SELECT * FROM TableA, TableB",
         ),
         (
-            TableError::TableFactorNotSupported.into(),
+            TranslateError::UnsupportedQueryTableFactor(
+                "(SELECT * FROM TableB) AS TableC".to_owned(),
+            )
+            .into(),
             "SELECT * FROM TableA JOIN (SELECT * FROM TableB) as TableC ON 1 = 1",
         ),
         (
-            JoinError::UsingOnJoinNotSupported.into(),
+            TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into(),
             "SELECT * FROM TableA JOIN TableA USING (id);",
         ),
         (
-            JoinError::JoinTypeNotSupported.into(),
+            TranslateError::UnsupportedJoinOperator("CrossJoin".to_owned()).into(),
             "SELECT * FROM TableA CROSS JOIN TableA as A;",
         ),
         (
@@ -55,12 +88,12 @@ test_case!(error, async move {
             "INSERT INTO TableA VALUES (100), (100, 200);",
         ),
         (
-            LiteralError::UnsupportedLiteralType(r#"X'123'"#.to_owned()).into(),
+            TranslateError::UnsupportedAstLiteral(r#"X'123'"#.to_owned()).into(),
             "SELECT * FROM TableA Where id = X'123';",
         ),
         #[cfg(feature = "alter-table")]
         (
-            AlterError::UnsupportedAlterTableOperation(
+            TranslateError::UnsupportedAlterTableOperation(
                 r#"ADD CONSTRAINT "hey" PRIMARY KEY (asdf)"#.to_owned(),
             )
             .into(),

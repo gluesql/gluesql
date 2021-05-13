@@ -1,18 +1,21 @@
-use futures::stream::{self, StreamExt, TryStreamExt};
-use im_rc::HashMap;
-use serde::Serialize;
-use std::convert::TryInto;
-use std::fmt::Debug;
-use std::rc::Rc;
-use thiserror::Error as ThisError;
-
-use sqlparser::ast::{Function, SelectItem};
-
-use super::context::{AggregateContext, BlendContext, FilterContext};
-use super::evaluate::evaluate;
-use crate::data::{get_name, Row, Value};
-use crate::result::{Error, Result};
-use crate::store::Store;
+use {
+    super::{
+        context::{AggregateContext, BlendContext, FilterContext},
+        evaluate::evaluate,
+    },
+    crate::{
+        ast::{Function, SelectItem},
+        data::{get_name, Row, Value},
+        result::{Error, Result},
+        store::Store,
+    },
+    futures::stream::{self, StreamExt, TryStreamExt},
+    im_rc::HashMap,
+    serde::Serialize,
+    std::convert::TryInto,
+    std::{fmt::Debug, rc::Rc},
+    thiserror::Error as ThisError,
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum BlendError {
@@ -68,7 +71,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                                 }
                             }
                         }
-                        SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
+                        SelectItem::Expr { expr, .. } => {
                             evaluate(self.storage, filter_context, aggregated, expr, true)
                                 .await
                                 .map(|evaluated| evaluated.try_into())?

@@ -1,7 +1,9 @@
 use {
-    crate::result::{Error, Result},
+    crate::{
+        ast::{AstLiteral, Expr},
+        result::{Error, Result},
+    },
     serde::Serialize,
-    sqlparser::ast::{Expr, Ident, Value as AstValue},
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
     Literal::*,
@@ -9,9 +11,6 @@ use {
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum LiteralError {
-    #[error("unsupported literal type: {0}")]
-    UnsupportedLiteralType(String),
-
     #[error("unsupported expr: {0}")]
     UnsupportedExpr(String),
 
@@ -37,15 +36,15 @@ pub enum Literal<'a> {
     Null,
 }
 
-impl<'a> TryFrom<&'a AstValue> for Literal<'a> {
+impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
     type Error = Error;
 
-    fn try_from(ast_value: &'a AstValue) -> Result<Self> {
-        let literal = match ast_value {
-            AstValue::Boolean(v) => Boolean(*v),
-            AstValue::Number(v, false) => Number(Cow::Borrowed(v)),
-            AstValue::SingleQuotedString(v) => Text(Cow::Borrowed(v)),
-            AstValue::Interval {
+    fn try_from(ast_literal: &'a AstLiteral) -> Result<Self> {
+        let literal = match ast_literal {
+            AstLiteral::Boolean(v) => Boolean(*v),
+            AstLiteral::Number(v) => Number(Cow::Borrowed(v)),
+            AstLiteral::QuotedString(v) => Text(Cow::Borrowed(v)),
+            AstLiteral::Interval {
                 value,
                 leading_field,
                 last_field,
@@ -55,10 +54,7 @@ impl<'a> TryFrom<&'a AstValue> for Literal<'a> {
                 leading_field.as_ref(),
                 last_field.as_ref(),
             )?),
-            AstValue::Null => Null,
-            _ => {
-                return Err(LiteralError::UnsupportedLiteralType(ast_value.to_string()).into());
-            }
+            AstLiteral::Null => Null,
         };
 
         Ok(literal)
@@ -70,10 +66,10 @@ impl<'a> TryFrom<&'a Expr> for Literal<'a> {
 
     fn try_from(expr: &'a Expr) -> Result<Self> {
         match expr {
-            Expr::Value(literal) => Literal::try_from(literal),
+            Expr::Literal(literal) => Literal::try_from(literal),
             // TODO: Expr::TypedString support
-            Expr::Identifier(Ident { value, .. }) => Ok(Literal::Text(Cow::Borrowed(value))),
-            _ => Err(LiteralError::UnsupportedExpr(expr.to_string()).into()),
+            Expr::Identifier(value) => Ok(Literal::Text(Cow::Borrowed(value))),
+            _ => Err(LiteralError::UnsupportedExpr(format!("{:?}", expr)).into()),
         }
     }
 }

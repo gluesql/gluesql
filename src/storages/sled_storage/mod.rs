@@ -5,11 +5,12 @@ mod store_mut;
 #[cfg(not(feature = "alter-table"))]
 impl crate::AlterTable for SledStorage {}
 
-use sled::{self, Config, Db};
-use std::convert::TryFrom;
-
-use crate::{Error, Result, Schema};
-use error::err_into;
+use {
+    crate::{Error, Result, Schema},
+    error::err_into,
+    sled::{self, Config, Db},
+    std::convert::TryFrom,
+};
 
 #[derive(Debug, Clone)]
 pub struct SledStorage {

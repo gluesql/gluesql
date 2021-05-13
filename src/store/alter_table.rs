@@ -1,11 +1,10 @@
-use async_trait::async_trait;
-use serde::Serialize;
-use std::fmt::Debug;
-use thiserror::Error;
-
-use sqlparser::ast::ColumnDef;
-
-use crate::result::MutResult;
+use {
+    crate::{ast::ColumnDef, result::MutResult},
+    async_trait::async_trait,
+    serde::Serialize,
+    std::fmt::Debug,
+    thiserror::Error,
+};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum AlterTableError {

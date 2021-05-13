@@ -3,8 +3,9 @@ use {
         data::{IntervalError, LiteralError, RowError, TableError, ValueError},
         executor::{
             AggregateError, AlterError, BlendError, EvaluateError, ExecuteError, FetchError,
-            JoinError, LimitError, SelectError, UpdateError, ValidateError,
+            LimitError, SelectError, UpdateError, ValidateError,
         },
+        translate::TranslateError,
     },
     serde::Serialize,
     thiserror::Error as ThisError,
@@ -15,13 +16,19 @@ use crate::store::AlterTableError;
 
 #[derive(ThisError, Serialize, Debug)]
 pub enum Error {
-    #[cfg(feature = "alter-table")]
-    #[error(transparent)]
-    AlterTable(#[from] AlterTableError),
-
     #[error(transparent)]
     #[serde(with = "stringify")]
     Storage(#[from] Box<dyn std::error::Error>),
+
+    #[error("parsing failed: {0}")]
+    Parser(String),
+
+    #[error(transparent)]
+    Translate(#[from] TranslateError),
+
+    #[cfg(feature = "alter-table")]
+    #[error(transparent)]
+    AlterTable(#[from] AlterTableError),
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
@@ -33,8 +40,6 @@ pub enum Error {
     Evaluate(#[from] EvaluateError),
     #[error(transparent)]
     Select(#[from] SelectError),
-    #[error(transparent)]
-    Join(#[from] JoinError),
     #[error(transparent)]
     Blend(#[from] BlendError),
     #[error(transparent)]
@@ -65,6 +70,8 @@ impl PartialEq for Error {
         use Error::*;
 
         match (self, other) {
+            (Parser(e), Parser(e2)) => e == e2,
+            (Translate(e), Translate(e2)) => e == e2,
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
@@ -72,7 +79,6 @@ impl PartialEq for Error {
             (Fetch(e), Fetch(e2)) => e == e2,
             (Evaluate(e), Evaluate(e2)) => e == e2,
             (Select(e), Select(e2)) => e == e2,
-            (Join(e), Join(e2)) => e == e2,
             (Blend(e), Blend(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,

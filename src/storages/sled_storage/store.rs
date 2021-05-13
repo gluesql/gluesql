@@ -1,8 +1,9 @@
-use async_trait::async_trait;
-use sled::IVec;
-
-use super::{err_into, fetch_schema, SledStorage};
-use crate::{Result, RowIter, Schema, Store};
+use {
+    super::{err_into, fetch_schema, SledStorage},
+    crate::{Result, RowIter, Schema, Store},
+    async_trait::async_trait,
+    sled::IVec,
+};
 
 #[async_trait(?Send)]
 impl Store<IVec> for SledStorage {

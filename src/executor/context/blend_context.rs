@@ -1,14 +1,12 @@
-use std::fmt::Debug;
-use std::rc::Rc;
-
-use sqlparser::ast::Ident;
-
-use crate::data::{Row, Value};
+use {
+    crate::data::{Row, Value},
+    std::{fmt::Debug, rc::Rc},
+};
 
 #[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
-    columns: Rc<[Ident]>,
+    columns: Rc<[String]>,
     row: Option<Row>,
     next: Option<Rc<BlendContext<'a>>>,
 }
@@ -16,7 +14,7 @@ pub struct BlendContext<'a> {
 impl<'a> BlendContext<'a> {
     pub fn new(
         table_alias: &'a str,
-        columns: Rc<[Ident]>,
+        columns: Rc<[String]>,
         row: Option<Row>,
         next: Option<Rc<BlendContext<'a>>>,
     ) -> Self {
@@ -32,7 +30,7 @@ impl<'a> BlendContext<'a> {
         let get_value = || {
             self.columns
                 .iter()
-                .position(|column| column.value == target)
+                .position(|column| column == target)
                 .map(|index| self.row.as_ref().and_then(|row| row.get_value(index)))
         };
 
@@ -53,7 +51,7 @@ impl<'a> BlendContext<'a> {
 
             self.columns
                 .iter()
-                .position(|column| column.value == target)
+                .position(|column| column == target)
                 .map(|index| self.row.as_ref().and_then(|row| row.get_value(index)))
         };
 

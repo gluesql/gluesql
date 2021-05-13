@@ -2,25 +2,25 @@ mod error;
 mod hash;
 mod state;
 
-use boolinator::Boolinator;
-use futures::stream::{self, StreamExt, TryStream, TryStreamExt};
-use std::convert::TryFrom;
-use std::fmt::Debug;
-use std::pin::Pin;
-use std::rc::Rc;
+use {
+    self::state::State,
+    super::{
+        context::{AggregateContext, BlendContext, FilterContext},
+        evaluate::{evaluate, Evaluated},
+        filter::check_expr,
+    },
+    crate::{
+        ast::{Expr, Function, FunctionArg, SelectItem},
+        data::{get_name, Value},
+        result::{Error, Result},
+        store::Store,
+    },
+    boolinator::Boolinator,
+    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    std::{convert::TryFrom, fmt::Debug, pin::Pin, rc::Rc},
+};
 
-use sqlparser::ast::{Expr, Function, FunctionArg, SelectItem};
-
-use super::context::{AggregateContext, BlendContext, FilterContext};
-use super::evaluate::{evaluate, Evaluated};
-use super::filter::check_expr;
-use crate::data::{get_name, Value};
-use crate::result::{Error, Result};
-use crate::store::Store;
-
-pub use error::AggregateError;
-pub use hash::GroupKey;
-use state::State;
+pub use {error::AggregateError, hash::GroupKey};
 
 pub struct Aggregate<'a, T: 'static + Debug> {
     storage: &'a dyn Store<T>,
@@ -93,9 +93,7 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
                     .fields
                     .iter()
                     .try_fold(state, |state, field| match field {
-                        SelectItem::UnnamedExpr(expr) | SelectItem::ExprWithAlias { expr, .. } => {
-                            aggregate(state, &blend_context, &expr)
-                        }
+                        SelectItem::Expr { expr, .. } => aggregate(state, &blend_context, &expr),
                         _ => Ok(state),
                     })?;
 
@@ -156,8 +154,7 @@ impl<'a, T: 'static + Debug> Aggregate<'a, T> {
         self.fields
             .iter()
             .map(|field| match field {
-                SelectItem::UnnamedExpr(expr) => check(expr),
-                SelectItem::ExprWithAlias { expr, .. } => check(expr),
+                SelectItem::Expr { expr, .. } => check(expr),
                 _ => Ok(false),
             })
             .collect::<Result<Vec<bool>>>()
@@ -173,17 +170,18 @@ fn aggregate<'a>(
     let aggr = |state, expr| aggregate(state, context, expr);
     let get_value = |expr: &Expr| match expr {
         Expr::Identifier(ident) => context
-            .get_value(&ident.value)
-            .ok_or_else(|| AggregateError::ValueNotFound(ident.value.to_string())),
+            .get_value(&ident)
+            .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
-                return Err(AggregateError::UnsupportedCompoundIdentifier(
-                    expr.to_string(),
-                ));
+                return Err(AggregateError::UnsupportedCompoundIdentifier(format!(
+                    "{:?}",
+                    expr
+                )));
             }
 
-            let table_alias = &idents[0].value;
-            let column = &idents[1].value;
+            let table_alias = &idents[0];
+            let column = &idents[1];
 
             context
                 .get_alias_value(table_alias, column)

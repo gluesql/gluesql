@@ -42,11 +42,11 @@ test_case!(create_table, async move {
         ),
         (
             "CREATE TABLE Gluery (id SOMEWHAT);",
-            Err(AlterError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
+            Err(TranslateError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
         ),
         (
             "CREATE TABLE Gluery (id INTEGER CHECK (true));",
-            Err(AlterError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
+            Err(TranslateError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
         ),
         (
             r#"
@@ -56,7 +56,7 @@ test_case!(create_table, async move {
         )"#,
             Err(AlterError::UnsupportedDataTypeForUniqueColumn(
                 "ratio".to_owned(),
-                "FLOAT".to_owned(),
+                format!("{:?}", ast::DataType::Float),
             )
             .into()),
         ),

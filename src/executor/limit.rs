@@ -1,9 +1,11 @@
 use {
     super::context::BlendContext,
-    crate::result::Result,
+    crate::{
+        ast::{AstLiteral, Expr},
+        result::Result,
+    },
     futures::stream::{Stream, StreamExt},
     serde::Serialize,
-    sqlparser::ast::{Expr, Offset, Value as Literal},
     std::{fmt::Debug, pin::Pin, rc::Rc},
     thiserror::Error as ThisError,
 };
@@ -20,20 +22,18 @@ pub struct Limit {
 }
 
 impl Limit {
-    pub fn new(limit: Option<&Expr>, offset: Option<&Offset>) -> Result<Self> {
+    pub fn new(limit: Option<&Expr>, offset: Option<&Expr>) -> Result<Self> {
         let parse = |expr: &Expr| -> Result<usize> {
             match expr {
-                Expr::Value(Literal::Number(v, false)) => {
+                Expr::Literal(AstLiteral::Number(v)) => {
                     v.parse().map_err(|_| LimitError::Unreachable.into())
                 }
                 _ => Err(LimitError::Unreachable.into()),
             }
         };
 
-        let limit = limit.map(|value| parse(value)).transpose()?;
-        let offset = offset
-            .map(|Offset { value, .. }| parse(value))
-            .transpose()?;
+        let limit = limit.map(parse).transpose()?;
+        let offset = offset.map(parse).transpose()?;
 
         Ok(Self { limit, offset })
     }

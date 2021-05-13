@@ -1,10 +1,12 @@
 use {
     super::{Interval, Literal},
-    crate::result::Result,
+    crate::{
+        ast::{DataType, Expr},
+        result::Result,
+    },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
-    sqlparser::ast::{DataType, Expr},
     std::{
         cmp::Ordering,
         convert::{TryFrom, TryInto},
@@ -76,7 +78,7 @@ impl PartialOrd<Value> for Value {
 impl Value {
     pub fn from_expr(data_type: &DataType, nullable: bool, expr: &Expr) -> Result<Self> {
         let literal = Literal::try_from(expr)?;
-        let value = Value::try_from_literal(&data_type, &literal)?;
+        let value = Value::try_from_literal(data_type, &literal)?;
 
         value.validate_null(nullable)?;
 
@@ -88,14 +90,14 @@ impl Value {
             (data_type, self),
             (DataType::Boolean, Value::Bool(_))
                 | (DataType::Int, Value::I64(_))
-                | (DataType::Float(_), Value::F64(_))
+                | (DataType::Float, Value::F64(_))
                 | (DataType::Text, Value::Str(_))
                 | (DataType::Date, Value::Date(_))
                 | (DataType::Timestamp, Value::Timestamp(_))
                 | (DataType::Interval, Value::Interval(_))
                 | (DataType::Boolean, Value::Null)
                 | (DataType::Int, Value::Null)
-                | (DataType::Float(_), Value::Null)
+                | (DataType::Float, Value::Null)
                 | (DataType::Text, Value::Null)
                 | (DataType::Date, Value::Null)
                 | (DataType::Timestamp, Value::Null)
@@ -105,7 +107,7 @@ impl Value {
 
         if !valid {
             return Err(ValueError::IncompatibleDataType {
-                data_type: data_type.to_string(),
+                data_type: format!("{:?}", data_type),
                 value: format!("{:?}", self),
             }
             .into());
@@ -126,7 +128,7 @@ impl Value {
         match (data_type, self) {
             (DataType::Boolean, Value::Bool(_))
             | (DataType::Int, Value::I64(_))
-            | (DataType::Float(_), Value::F64(_))
+            | (DataType::Float, Value::F64(_))
             | (DataType::Text, Value::Str(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
@@ -137,7 +139,7 @@ impl Value {
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
             (DataType::Int, value) => value.try_into().map(Value::I64),
-            (DataType::Float(_), value) => value.try_into().map(Value::F64),
+            (DataType::Float, value) => value.try_into().map(Value::F64),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
@@ -535,7 +537,10 @@ mod tests {
 
     #[test]
     fn cast() {
-        use {crate::Value, chrono::NaiveDate, sqlparser::ast::DataType::*};
+        use {
+            crate::{ast::DataType::*, Value},
+            chrono::NaiveDate,
+        };
 
         macro_rules! cast {
             ($input: expr => $data_type: expr, $expected: expr) => {
@@ -554,7 +559,7 @@ mod tests {
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(I64(1)                => Int          , I64(1));
-        cast!(F64(1.0)              => Float(None)  , F64(1.0));
+        cast!(F64(1.0)              => Float        , F64(1.0));
 
         // Boolean
         cast!(Str("TRUE".to_owned())    => Boolean, Bool(true));
@@ -573,11 +578,11 @@ mod tests {
         cast!(Null                  => Int, Null);
 
         // Float
-        cast!(Bool(true)            => Float(None), F64(1.0));
-        cast!(Bool(false)           => Float(None), F64(0.0));
-        cast!(I64(1)                => Float(None), F64(1.0));
-        cast!(Str("11".to_owned())  => Float(None), F64(11.0));
-        cast!(Null                  => Float(None), Null);
+        cast!(Bool(true)            => Float, F64(1.0));
+        cast!(Bool(false)           => Float, F64(0.0));
+        cast!(I64(1)                => Float, F64(1.0));
+        cast!(Str("11".to_owned())  => Float, F64(11.0));
+        cast!(Null                  => Float, Null);
 
         // Text
         cast!(Bool(true)    => Text, Str("TRUE".to_owned()));
