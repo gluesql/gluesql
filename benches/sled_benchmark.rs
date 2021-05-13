@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use gluesql::{parse, Glue, SledStorage};
+use gluesql::{Glue, SledStorage};
 use std::convert::TryFrom;
 
 const ITEM_SIZE: u32 = 5000;
@@ -32,9 +32,7 @@ pub fn bench_insert(c: &mut Criterion) {
         );
     ";
 
-    for query in parse(sqls).unwrap() {
-        glue.execute(&query).unwrap();
-    }
+    glue.execute(sqls).unwrap();
 
     // Prepare query out of scope, and copy it at the beginning
     let mut id = 0;
@@ -47,9 +45,8 @@ pub fn bench_insert(c: &mut Criterion) {
                 &id
             );
             id += 1;
-            for query in parse(&query_str).unwrap() {
-                glue.execute(&query).unwrap();
-            }
+
+            glue.execute(&query_str).unwrap();
         })
     });
 }
@@ -90,9 +87,7 @@ pub fn bench_select(c: &mut Criterion) {
             );
         }
 
-        for query in parse(&sqls).unwrap() {
-            glue.execute(&query).unwrap();
-        }
+        glue.execute(&sqls).unwrap();
     }
 
     // Prepare query out of scope, and copy it at the beginning
@@ -101,15 +96,16 @@ pub fn bench_select(c: &mut Criterion) {
     c.bench_function("select_one", |b| {
         b.iter(|| {
             let query_str = format!("SELECT * FROM Testing WHERE id = {}", id);
+
             id += 1;
             if id >= ITEM_SIZE {
                 id = 1;
             }
-            for query in parse(&query_str).unwrap() {
-                glue.execute(&query).unwrap();
-            }
+
+            glue.execute(&query_str).unwrap();
         })
     });
+
     c.bench_function("select_many", |b| {
         b.iter(|| {
             let query_str = format!(
@@ -117,13 +113,13 @@ pub fn bench_select(c: &mut Criterion) {
                 id,
                 id + 50
             );
+
             id += 1;
             if id >= ITEM_SIZE {
                 id = 1;
             }
-            for query in parse(&query_str).unwrap() {
-                glue.execute(&query).unwrap();
-            }
+
+            glue.execute(&query_str).unwrap();
         })
     });
 }
@@ -173,9 +169,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
             );
         }
 
-        for query in parse(&sqls).unwrap() {
-            glue.execute(&query).unwrap();
-        }
+        glue.execute(&sqls).unwrap();
     }
 
     // Prepare query out of scope, and copy it at the beginning
@@ -184,13 +178,13 @@ pub fn bench_select_tainted(c: &mut Criterion) {
     c.bench_function("select_one_tainted", |b| {
         b.iter(|| {
             let query_str = format!("SELECT * FROM Testing WHERE id = {}", id);
+
             id += 1;
             if id >= ITEM_SIZE {
                 id = 1;
             }
-            for query in parse(&query_str).unwrap() {
-                glue.execute(&query).unwrap();
-            }
+
+            glue.execute(&query_str).unwrap();
         })
     });
     c.bench_function("select_many_tainted", |b| {
@@ -200,13 +194,13 @@ pub fn bench_select_tainted(c: &mut Criterion) {
                 id,
                 id + 50
             );
+
             id += 1;
             if id >= ITEM_SIZE {
                 id = 1;
             }
-            for query in parse(&query_str).unwrap() {
-                glue.execute(&query).unwrap();
-            }
+
+            glue.execute(&query_str).unwrap();
         })
     });
 }
