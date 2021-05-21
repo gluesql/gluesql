@@ -2,6 +2,7 @@ use {
     crate::{
         executor::{execute, Payload},
         parse_sql::parse,
+        plan::plan,
         result::Result,
         store::{AlterTable, Store, StoreMut},
         translate::translate,
@@ -31,6 +32,7 @@ pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 
     let parsed = try_run!(parse(sql));
     let statement = try_run!(translate(&parsed[0]));
+    let statement = try_run!(plan(&storage, statement).await);
 
     match execute(storage, &statement).await {
         Ok((storage, payload)) => {

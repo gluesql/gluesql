@@ -63,12 +63,25 @@ pub enum Statement {
         name: ObjectName,
         operation: AlterTableOperation,
     },
-    /// DROP
+    /// DROP TABLE
     DropTable {
         /// An optional `IF EXISTS` clause. (Non-standard.)
         if_exists: bool,
         /// One or more objects to drop. (ANSI SQL requires exactly one.)
         names: Vec<ObjectName>,
+    },
+    /// CREATE INDEX
+    #[cfg(feature = "index")]
+    CreateIndex {
+        name: ObjectName,
+        table_name: ObjectName,
+        column: Expr,
+    },
+    /// DROP INDEX
+    #[cfg(feature = "index")]
+    DropIndex {
+        name: ObjectName,
+        table_name: ObjectName,
     },
 }
 

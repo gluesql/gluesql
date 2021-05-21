@@ -12,6 +12,8 @@ pub mod drop_table;
 pub mod error;
 pub mod filter;
 pub mod function;
+#[cfg(feature = "index")]
+pub mod index;
 pub mod join;
 pub mod migrate;
 pub mod nested_select;
@@ -87,6 +89,9 @@ macro_rules! generate_tests {
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
+
+        #[cfg(feature = "index")]
+        glue!(index, index::index);
 
         generate_alter_table_tests!();
     };

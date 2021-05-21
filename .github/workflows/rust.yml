@@ -21,6 +21,8 @@ jobs:
       run: cargo clippy --no-default-features -- -D warnings
     - name: Clippy (alter-table)
       run: cargo clippy --features alter-table -- -D warnings
+    - name: Clippy (index)
+      run: cargo clippy --features index -- -D warnings
     - name: Clippy (sled-storage)
       run: cargo clippy --features sled-storage -- -D warnings
     - name: Clippy (all)

@@ -19,7 +19,7 @@ pub enum SetExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Select {
     pub projection: Vec<SelectItem>,
-    pub from: Vec<TableWithJoins>,
+    pub from: TableWithJoins,
     /// WHERE
     pub selection: Option<Expr>,
     pub group_by: Vec<Expr>,
@@ -47,6 +47,8 @@ pub enum TableFactor {
     Table {
         name: ObjectName,
         alias: Option<TableAlias>,
+        /// Query execution plan result (index_name, index_value_expr)
+        index: Option<(String, Box<Expr>)>,
     },
 }
 

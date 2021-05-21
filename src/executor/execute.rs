@@ -41,6 +41,12 @@ pub enum Payload {
 
     #[cfg(feature = "alter-table")]
     AlterTable,
+
+    #[cfg(feature = "index")]
+    CreateIndex,
+
+    #[cfg(feature = "index")]
+    DropIndex,
 }
 
 pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
@@ -78,7 +84,38 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
         Statement::AlterTable { name, operation } => alter_table(storage, name, operation)
             .await
             .map(|(storage, _)| (storage, Payload::AlterTable)),
+        #[cfg(feature = "index")]
+        Statement::CreateIndex {
+            name,
+            table_name,
+            column,
+        } => {
+            let (table_name, index_name) = try_block!(storage, {
+                let index_name = get_name(name)?;
+                let table_name = get_name(table_name)?;
 
+                Ok((table_name, index_name))
+            });
+
+            storage
+                .create_index(table_name, index_name, column)
+                .await
+                .map(|(storage, _)| (storage, Payload::CreateIndex))
+        }
+        #[cfg(feature = "index")]
+        Statement::DropIndex { name, table_name } => {
+            let (table_name, index_name) = try_block!(storage, {
+                let index_name = get_name(name)?;
+                let table_name = get_name(table_name)?;
+
+                Ok((table_name, index_name))
+            });
+
+            storage
+                .drop_index(table_name, index_name)
+                .await
+                .map(|(storage, _)| (storage, Payload::DropIndex))
+        }
         //-- Rows
         Statement::Insert {
             table_name,
@@ -140,7 +177,7 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             selection,
             assignments,
         } => {
-            let rows = try_block!(storage, {
+            let (table_name, rows) = try_block!(storage, {
                 let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
@@ -174,11 +211,13 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
                 )
                 .await?;
 
-                Ok(rows)
+                Ok((table_name, rows))
             });
+
             let num_rows = rows.len();
+
             storage
-                .update_data(rows)
+                .update_data(table_name, rows)
                 .await
                 .map(|(storage, _)| (storage, Payload::Update(num_rows)))
         }
@@ -186,21 +225,23 @@ pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>
             table_name,
             selection,
         } => {
-            let keys = try_block!(storage, {
+            let (table_name, keys) = try_block!(storage, {
                 let table_name = get_name(&table_name)?;
                 let columns = Rc::from(fetch_columns(&storage, table_name).await?);
 
-                fetch(&storage, table_name, columns, selection.as_ref())
+                let keys = fetch(&storage, table_name, columns, selection.as_ref())
                     .await?
                     .map_ok(|(_, key, _)| key)
                     .try_collect::<Vec<_>>()
-                    .await
+                    .await?;
+
+                Ok((table_name, keys))
             });
 
             let num_keys = keys.len();
 
             storage
-                .delete_data(keys)
+                .delete_data(table_name, keys)
                 .await
                 .map(|(storage, _)| (storage, Payload::Delete(num_keys)))
         }

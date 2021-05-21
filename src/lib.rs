@@ -71,6 +71,7 @@ mod utils;
 
 pub mod ast;
 pub mod data;
+pub mod plan;
 pub mod result;
 pub mod store;
 pub mod tests;
@@ -79,6 +80,7 @@ pub mod translate;
 pub use data::*;
 pub use executor::*;
 pub use parse_sql::*;
+pub use plan::*;
 pub use result::*;
 pub use store::*;
 pub use translate::*;

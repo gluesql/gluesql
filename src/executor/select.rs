@@ -22,11 +22,11 @@ use {
     thiserror::Error as ThisError,
 };
 
+#[cfg(feature = "index")]
+use {super::evaluate::evaluate, crate::data::Value, std::convert::TryInto};
+
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum SelectError {
-    #[error("unimplemented! select on two or more than tables are not supported")]
-    TooManyTables,
-
     #[error("table alias not found: {0}")]
     TableAliasNotFound(String),
 
@@ -39,7 +39,33 @@ async fn fetch_blended<'a, T: 'static + Debug>(
     table: Table<'a>,
     columns: Rc<[String]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
-    let rows = storage.scan_data(table.get_name()).await?.map(move |data| {
+    let table_name = table.get_name();
+
+    #[cfg(feature = "index")]
+    let rows = {
+        #[derive(Iterator)]
+        enum Rows<I1, I2> {
+            FullScan(I1),
+            Indexed(I2),
+        }
+
+        match table.get_index() {
+            Some((index_name, index_expr_value)) => {
+                let evaluated = evaluate(storage, None, None, index_expr_value, false).await?;
+                let index_value: Value = evaluated.try_into()?;
+
+                storage
+                    .scan_indexed_data(table_name, index_name, index_value)
+                    .await
+                    .map(Rows::Indexed)?
+            }
+            None => storage.scan_data(table_name).await.map(Rows::FullScan)?,
+        }
+    };
+    #[cfg(not(feature = "index"))]
+    let rows = storage.scan_data(table_name).await?;
+
+    let rows = rows.map(move |data| {
         let (_, row) = data?;
         let row = Some(row);
         let columns = Rc::clone(&columns);
@@ -128,22 +154,13 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     }
 
     let (table_with_joins, where_clause, projection, group_by, having) = match &query.body {
-        SetExpr::Select(statement) => {
-            let tables = &statement.from;
-            let table_with_joins = match tables.len() {
-                1 => &tables[0],
-                0 => err!(SelectError::Unreachable),
-                _ => err!(SelectError::TooManyTables),
-            };
-
-            (
-                table_with_joins,
-                statement.selection.as_ref(),
-                statement.projection.as_ref(),
-                &statement.group_by,
-                statement.having.as_ref(),
-            )
-        }
+        SetExpr::Select(statement) => (
+            &statement.from,
+            statement.selection.as_ref(),
+            statement.projection.as_ref(),
+            &statement.group_by,
+            statement.having.as_ref(),
+        ),
         _ => err!(SelectError::Unreachable),
     };
 

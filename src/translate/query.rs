@@ -61,6 +61,10 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         ..
     } = sql_select;
 
+    if from.len() > 1 {
+        return Err(TranslateError::TooManyTables.into());
+    }
+
     Ok(Select {
         projection: projection
             .iter()
@@ -69,7 +73,8 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         from: from
             .iter()
             .map(translate_table_with_joins)
-            .collect::<Result<_>>()?,
+            .next()
+            .ok_or(TranslateError::LackOfTable)??,
         selection: selection.as_ref().map(translate_expr).transpose()?,
         group_by: group_by.iter().map(translate_expr).collect::<Result<_>>()?,
         having: having.as_ref().map(translate_expr).transpose()?,
@@ -124,6 +129,7 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                     name: name.value.to_owned(),
                     columns: translate_idents(columns),
                 }),
+            index: None, // query execution plan
         }),
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
     }

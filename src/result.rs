@@ -14,6 +14,9 @@ use {
 #[cfg(feature = "alter-table")]
 use crate::store::AlterTableError;
 
+#[cfg(feature = "index")]
+use crate::store::IndexError;
+
 #[derive(ThisError, Serialize, Debug)]
 pub enum Error {
     #[error(transparent)]
@@ -29,6 +32,10 @@ pub enum Error {
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
+
+    #[cfg(feature = "index")]
+    #[error(transparent)]
+    Index(#[from] IndexError),
 
     #[error(transparent)]
     Execute(#[from] ExecuteError),
@@ -74,6 +81,8 @@ impl PartialEq for Error {
             (Translate(e), Translate(e2)) => e == e2,
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
+            #[cfg(feature = "index")]
+            (Index(e), Index(e2)) => e == e2,
             (Execute(e), Execute(e2)) => e == e2,
             (Alter(e), Alter(e2)) => e == e2,
             (Fetch(e), Fetch(e2)) => e == e2,

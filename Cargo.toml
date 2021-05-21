@@ -14,11 +14,14 @@ keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webass
 all-features = true
 
 [features]
-default = ["sled-storage", "alter-table"]
+default = ["sled-storage", "alter-table", "index"]
 
 # ALTER TABLE is optional.
 # You can include whether ALTER TABLE support or not for your custom database implementation.
 alter-table = []
+
+# INDEX is also optional.
+index = []
 
 # Who wants to make a custom storage engine,
 # default storage engine sled-storage is not required.

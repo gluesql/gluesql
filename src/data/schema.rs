@@ -7,6 +7,7 @@ use {
 pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,
+    pub indexes: Vec<(String, Expr)>,
 }
 
 pub trait ColumnDefExt {

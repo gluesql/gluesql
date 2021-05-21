@@ -1,5 +1,6 @@
 mod error;
 mod evaluated;
+mod stateless;
 
 use {
     super::{context::FilterContext, select::select},
@@ -21,7 +22,7 @@ use {
     },
 };
 
-pub use {error::EvaluateError, evaluated::Evaluated};
+pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, T: 'static + Debug>(

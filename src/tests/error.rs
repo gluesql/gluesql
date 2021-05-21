@@ -49,9 +49,10 @@ test_case!(error, async move {
             "SELECT * FROM Nothing;",
         ),
         (
-            SelectError::TooManyTables.into(),
+            TranslateError::TooManyTables.into(),
             "SELECT * FROM TableA, TableB",
         ),
+        (TranslateError::LackOfTable.into(), "SELECT 1;"),
         (
             TranslateError::UnsupportedQueryTableFactor(
                 "(SELECT * FROM TableB) AS TableC".to_owned(),

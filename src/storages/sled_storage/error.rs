@@ -3,6 +3,10 @@ use thiserror::Error as ThisError;
 
 #[cfg(feature = "alter-table")]
 use crate::AlterTableError;
+
+#[cfg(feature = "index")]
+use crate::IndexError;
+
 use crate::Error;
 
 #[derive(ThisError, Debug)]
@@ -10,6 +14,10 @@ pub enum StorageError {
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
+
+    #[cfg(feature = "index")]
+    #[error(transparent)]
+    Index(#[from] IndexError),
 
     #[error(transparent)]
     Sled(#[from] sled::Error),
@@ -30,6 +38,9 @@ impl From<StorageError> for Error {
 
             #[cfg(feature = "alter-table")]
             AlterTable(e) => e.into(),
+
+            #[cfg(feature = "index")]
+            Index(e) => e.into(),
         }
     }
 }

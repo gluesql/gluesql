@@ -15,7 +15,7 @@ mod validate;
 pub use aggregate::{AggregateError, GroupKey};
 pub use alter::AlterError;
 pub use blend::BlendError;
-pub use evaluate::EvaluateError;
+pub use evaluate::{evaluate_stateless, EvaluateError};
 pub use execute::{execute, ExecuteError, Payload};
 pub use fetch::FetchError;
 pub use limit::LimitError;
