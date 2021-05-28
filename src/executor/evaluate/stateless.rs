@@ -1,31 +1,26 @@
 use {
-    super::{EvaluateError, Evaluated},
+    super::{expr, EvaluateError, Evaluated},
     crate::{
-        ast::{BinaryOperator, Expr, UnaryOperator},
-        data::{Literal, Row, Value},
+        ast::Expr,
+        data::{Row, Value},
         result::Result,
     },
     boolinator::Boolinator,
-    std::{
-        borrow::Cow,
-        convert::{TryFrom, TryInto},
-    },
+    std::borrow::Cow,
 };
 
 type Columns<'a> = &'a [String];
 
 pub fn evaluate_stateless<'a>(
-    context: Option<(Columns, &'a Row)>, // columns, row
+    context: Option<(Columns, &'a Row)>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| evaluate_stateless(context, expr);
 
     match expr {
-        Expr::Literal(ast_literal) => Literal::try_from(ast_literal).map(Evaluated::Literal),
+        Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
-            let literal = Literal::Text(Cow::Borrowed(value));
-
-            Value::try_from_literal(&data_type, &literal).map(Evaluated::from)
+            expr::typed_string(data_type, Cow::Borrowed(&value))
         }
         Expr::Identifier(ident) => {
             let (columns, row) = match context {
@@ -49,49 +44,15 @@ pub fn evaluate_stateless<'a>(
         }
         Expr::Nested(expr) => eval(&expr),
         Expr::BinaryOp { op, left, right } => {
-            let l = eval(left)?;
-            let r = eval(right)?;
+            let left = eval(left)?;
+            let right = eval(right)?;
 
-            macro_rules! cmp {
-                ($expr: expr) => {
-                    Ok(Evaluated::from(Value::Bool($expr)))
-                };
-            }
-
-            macro_rules! cond {
-                (l $op: tt r) => {{
-                    let l: bool = l.try_into()?;
-                    let r: bool = r.try_into()?;
-                    let v = l $op r;
-
-                    Ok(Evaluated::from(Value::Bool(v)))
-                }};
-            }
-
-            match op {
-                BinaryOperator::Plus => l.add(&r),
-                BinaryOperator::Minus => l.subtract(&r),
-                BinaryOperator::Multiply => l.multiply(&r),
-                BinaryOperator::Divide => l.divide(&r),
-                BinaryOperator::StringConcat => l.concat(r),
-                BinaryOperator::Eq => cmp!(l == r),
-                BinaryOperator::NotEq => cmp!(l != r),
-                BinaryOperator::Lt => cmp!(l < r),
-                BinaryOperator::LtEq => cmp!(l <= r),
-                BinaryOperator::Gt => cmp!(l > r),
-                BinaryOperator::GtEq => cmp!(l >= r),
-                BinaryOperator::And => cond!(l && r),
-                BinaryOperator::Or => cond!(l || r),
-            }
+            expr::binary_op(op, left, right)
         }
         Expr::UnaryOp { op, expr } => {
             let v = eval(expr)?;
 
-            match op {
-                UnaryOperator::Plus => v.unary_plus(),
-                UnaryOperator::Minus => v.unary_minus(),
-                UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
-            }
+            expr::unary_op(op, v)
         }
         Expr::Cast { expr, data_type } => eval(expr)?.cast(data_type),
         Expr::InList {
@@ -125,13 +86,11 @@ pub fn evaluate_stateless<'a>(
             low,
             high,
         } => {
-            let negated = *negated;
             let target = eval(expr)?;
+            let low = eval(low)?;
+            let high = eval(high)?;
 
-            let v = eval(low)? <= target && target <= eval(high)?;
-            let v = negated ^ v;
-
-            Ok(Evaluated::from(Value::Bool(v)))
+            expr::between(target, *negated, low, high)
         }
         Expr::IsNull(expr) => {
             let v = eval(expr)?.is_null();
@@ -143,8 +102,9 @@ pub fn evaluate_stateless<'a>(
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
-        _ => {
-            panic!();
+        Expr::Wildcard | Expr::QualifiedWildcard(_) => {
+            Err(EvaluateError::UnreachableWildcardExpr.into())
         }
+        _ => Err(EvaluateError::UnsupportedStatelessExpr(format!("{:#?}", expr)).into()),
     }
 }

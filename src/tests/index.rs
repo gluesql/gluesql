@@ -125,6 +125,15 @@ CREATE TABLE Test (
     );
 
     test!(
+        Err(EvaluateError::UnsupportedStatelessExpr(format!(
+            "{:#?}",
+            ast::Expr::CompoundIdentifier(vec!["a".to_owned(), "b".to_owned()])
+        ))
+        .into()),
+        "CREATE INDEX idx_wow On Test (a.b)"
+    );
+
+    test!(
         Err(IndexError::TableNotFound("Abc".to_owned()).into()),
         "CREATE INDEX idx_wow ON Abc (name)"
     );
