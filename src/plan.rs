@@ -1,7 +1,8 @@
 use {
     crate::{
         ast::{
-            BinaryOperator, Expr, Query, Select, SetExpr, Statement, TableFactor, TableWithJoins,
+            BinaryOperator, Expr, IndexItem, IndexOperator, Query, Select, SetExpr, Statement,
+            TableFactor, TableWithJoins,
         },
         data::{get_name, Schema},
         result::Result,
@@ -103,6 +104,7 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
         }),
         Planned::Found {
             index_name,
+            index_op,
             index_value_expr,
             selection,
         } => {
@@ -111,7 +113,11 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
                 TableFactor::Table { name, alias, .. } => (name, alias),
             };
 
-            let index = Some((index_name, index_value_expr));
+            let index = Some(IndexItem {
+                name: index_name,
+                op: index_op,
+                value_expr: index_value_expr,
+            });
             let from = TableWithJoins {
                 relation: TableFactor::Table { name, alias, index },
                 joins,
@@ -131,6 +137,7 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
 enum Planned {
     Found {
         index_name: String,
+        index_op: IndexOperator,
         index_value_expr: Box<Expr>,
         selection: Option<Expr>,
     },
@@ -141,11 +148,13 @@ fn plan_selection(indexes: &[(String, Expr)], selection: Expr) -> Planned {
     for (index_name, index_expr) in indexes.iter() {
         if let Searched::Found {
             index_value_expr,
+            index_op,
             selection,
         } = search_index(index_expr, &selection)
         {
             return Planned::Found {
                 index_name: index_name.to_owned(),
+                index_op,
                 index_value_expr,
                 selection,
             };
@@ -158,6 +167,7 @@ fn plan_selection(indexes: &[(String, Expr)], selection: Expr) -> Planned {
 enum Searched {
     Found {
         index_value_expr: Box<Expr>,
+        index_op: IndexOperator,
         selection: Option<Expr>,
     },
     NotFound,
@@ -166,25 +176,54 @@ enum Searched {
 fn search_index(index_expr: &Expr, selection: &Expr) -> Searched {
     match selection {
         Expr::BinaryOp {
+            op: BinaryOperator::Gt,
+            left,
+            right,
+        } => search_binary_op(index_expr, IndexOperator::Gt, left, right),
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::Lt,
+            right,
+        } => search_binary_op(index_expr, IndexOperator::Lt, left, right),
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::GtEq,
+            right,
+        } => search_binary_op(index_expr, IndexOperator::GtEq, left, right),
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::LtEq,
+            right,
+        } => search_binary_op(index_expr, IndexOperator::LtEq, left, right),
+        Expr::BinaryOp {
             left,
             op: BinaryOperator::Eq,
             right,
-        } => {
-            if index_expr == left.as_ref() && is_stateless(right.as_ref()) {
-                Searched::Found {
-                    index_value_expr: right.clone(),
-                    selection: None,
-                }
-            } else if index_expr == right.as_ref() && is_stateless(left.as_ref()) {
-                Searched::Found {
-                    index_value_expr: left.clone(),
-                    selection: None,
-                }
-            } else {
-                Searched::NotFound
-            }
-        }
+        } => search_binary_op(index_expr, IndexOperator::Eq, left, right),
         _ => Searched::NotFound,
+    }
+}
+
+fn search_binary_op(
+    index_expr: &Expr,
+    index_op: IndexOperator,
+    left: &Expr,
+    right: &Expr,
+) -> Searched {
+    if index_expr == left && is_stateless(right) {
+        Searched::Found {
+            index_value_expr: Box::new(right.clone()),
+            index_op,
+            selection: None,
+        }
+    } else if index_expr == right && is_stateless(left) {
+        Searched::Found {
+            index_value_expr: Box::new(left.clone()),
+            index_op: index_op.reverse(),
+            selection: None,
+        }
+    } else {
+        Searched::NotFound
     }
 }
 

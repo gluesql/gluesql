@@ -20,19 +20,6 @@ pub enum IndexError {
     #[error("conflict - scan failed - index value")]
     ConflictOnEmptyIndexValueScan,
 
-    #[error("conflict - scan failed - index data id")]
-    ConflictOnEmptyIndexDataIdScan,
-
     #[error("conflict - index sync - delete index data")]
     ConflictOnIndexDataDeleteSync,
 }
-
-/* TODO:
-pub enum IndexOperator {
-    Gt,
-    Lt,
-    GtEq,
-    LtEq,
-    Eq,
-}
-*/

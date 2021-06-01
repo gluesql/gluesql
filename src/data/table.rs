@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{Expr, ObjectName, TableAlias, TableFactor},
+        ast::{IndexItem, ObjectName, TableAlias, TableFactor},
         result::Result,
     },
     serde::Serialize,
@@ -14,13 +14,10 @@ pub enum TableError {
     Unreachable,
 }
 
-type IndexName = String;
-type IndexValueExpr = Expr;
-
 pub struct Table<'a> {
     name: &'a String,
     alias: Option<&'a String>,
-    index: Option<(&'a IndexName, &'a IndexValueExpr)>,
+    index: Option<&'a IndexItem>,
 }
 
 impl<'a> Table<'a> {
@@ -29,7 +26,7 @@ impl<'a> Table<'a> {
             TableFactor::Table { name, alias, index } => {
                 let name = get_name(name)?;
                 let alias = alias.as_ref().map(|TableAlias { name, .. }| name);
-                let index = index.as_ref().map(|(name, value)| (name, value.as_ref()));
+                let index = index.as_ref();
 
                 Ok(Self { name, alias, index })
             }
@@ -47,7 +44,7 @@ impl<'a> Table<'a> {
         }
     }
 
-    pub fn get_index(&self) -> Option<(&'a IndexName, &'a IndexValueExpr)> {
+    pub fn get_index(&self) -> Option<&'a IndexItem> {
         self.index
     }
 }

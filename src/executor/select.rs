@@ -23,7 +23,11 @@ use {
 };
 
 #[cfg(feature = "index")]
-use {super::evaluate::evaluate, crate::data::Value, std::convert::TryInto};
+use {
+    super::evaluate::evaluate,
+    crate::{ast::IndexItem, data::Value},
+    std::convert::TryInto,
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum SelectError {
@@ -50,12 +54,16 @@ async fn fetch_blended<'a, T: 'static + Debug>(
         }
 
         match table.get_index() {
-            Some((index_name, index_expr_value)) => {
-                let evaluated = evaluate(storage, None, None, index_expr_value, false).await?;
+            Some(IndexItem {
+                name: index_name,
+                op: index_op,
+                value_expr,
+            }) => {
+                let evaluated = evaluate(storage, None, None, value_expr, false).await?;
                 let index_value: Value = evaluated.try_into()?;
 
                 storage
-                    .scan_indexed_data(table_name, index_name, index_value)
+                    .scan_indexed_data(table_name, index_name, index_op, index_value)
                     .await
                     .map(Rows::Indexed)?
             }

@@ -8,7 +8,7 @@ pub trait AlterTable {}
 #[cfg(feature = "index")]
 mod index;
 #[cfg(feature = "index")]
-pub use index::*;
+pub use index::IndexError;
 
 use {
     crate::{
@@ -20,7 +20,10 @@ use {
 };
 
 #[cfg(feature = "index")]
-use crate::{ast::Expr, data::Value};
+use crate::{
+    ast::{Expr, IndexOperator},
+    data::Value,
+};
 
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
 
@@ -36,6 +39,7 @@ pub trait Store<T: Debug> {
         &self,
         table_name: &str,
         index_name: &str,
+        op: &IndexOperator,
         value: Value,
     ) -> Result<RowIter<T>>;
 }

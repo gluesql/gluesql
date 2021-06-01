@@ -43,12 +43,42 @@ pub struct TableWithJoins {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum IndexOperator {
+    Gt,
+    Lt,
+    GtEq,
+    LtEq,
+    Eq,
+}
+
+impl IndexOperator {
+    pub fn reverse(self) -> Self {
+        use IndexOperator::*;
+
+        match self {
+            Gt => Lt,
+            Lt => Gt,
+            GtEq => LtEq,
+            LtEq => GtEq,
+            Eq => Eq,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct IndexItem {
+    pub name: String,
+    pub op: IndexOperator,
+    pub value_expr: Box<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TableFactor {
     Table {
         name: ObjectName,
         alias: Option<TableAlias>,
-        /// Query execution plan result (index_name, index_value_expr)
-        index: Option<(String, Box<Expr>)>,
+        /// Query planner result
+        index: Option<IndexItem>,
     },
 }
 

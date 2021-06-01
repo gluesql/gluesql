@@ -130,7 +130,7 @@ impl<'a> IndexSync<'a> {
 fn insert_index_data(
     tree: &TransactionalTree,
     table_name: &str,
-    index_key: &str,
+    index_key: &[u8],
     data_key: &IVec,
 ) -> ConflictableTransactionResult<(), Error> {
     let index_data_id = {
@@ -140,7 +140,7 @@ fn insert_index_data(
             let id = tree.generate_id()?.to_be_bytes();
             let id = IVec::from(&id);
 
-            tree.insert(index_key.as_bytes(), &id)?;
+            tree.insert(index_key, &id)?;
 
             id
         }
@@ -156,7 +156,7 @@ fn insert_index_data(
 fn delete_index_data(
     tree: &TransactionalTree,
     table_name: &str,
-    index_key: &str,
+    index_key: &[u8],
     data_key: &IVec,
 ) -> ConflictableTransactionResult<(), Error> {
     let index_data_id = tree
@@ -191,17 +191,23 @@ fn evaluate_index_key(
     index_expr: &Expr,
     columns: &[String],
     row: &Row,
-) -> ConflictableTransactionResult<String, Error> {
+) -> ConflictableTransactionResult<Vec<u8>, Error> {
     let evaluated = evaluate_stateless(Some((columns, row)), index_expr)
         .map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated
         .try_into()
         .map_err(ConflictableTransactionError::Abort)?;
 
-    Ok(format!(
-        "index/{}/{}/{}",
-        table_name,
-        index_name,
-        String::from(value)
-    ))
+    Ok(build_index_key(table_name, index_name, value))
+}
+
+pub fn build_index_key_prefix(table_name: &str, index_name: &str) -> Vec<u8> {
+    format!("index/{}/{}/", table_name, index_name).into_bytes()
+}
+
+pub fn build_index_key(table_name: &str, index_name: &str, value: Value) -> Vec<u8> {
+    build_index_key_prefix(table_name, index_name)
+        .into_iter()
+        .chain(value.to_be_bytes().into_iter())
+        .collect::<Vec<_>>()
 }

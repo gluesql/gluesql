@@ -11,8 +11,8 @@ CREATE TABLE Test (
     );
 
     run!("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
-    run!("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
-    run!("INSERT INTO Test (id, num, name) VALUES (3, 7, \"Great\"), (4, 7, \"Job\")");
+    run!("INSERT INTO Test (id, num, name) VALUES (1, 17, \"World\")");
+    run!("INSERT INTO Test (id, num, name) VALUES (11, 7, \"Great\"), (4, 7, \"Job\")");
 
     test!(Ok(Payload::CreateIndex), "CREATE INDEX idx_id ON Test (id)");
     test!(
@@ -31,7 +31,91 @@ CREATE TABLE Test (
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned();
-            1     9     "World".to_owned()
+            1     17    "World".to_owned();
+            4     7     "Job".to_owned();
+            11    7     "Great".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE id < 20"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned();
+            1     17    "World".to_owned();
+            4     7     "Job".to_owned();
+            11    7     "Great".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE 20 > id"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned();
+            1     17    "World".to_owned();
+            4     7     "Job".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE id <= 4"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned();
+            1     17    "World".to_owned();
+            4     7     "Job".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE 4 >= id"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            4     7     "Job".to_owned();
+            11    7     "Great".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE id >= 4"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            4     7     "Job".to_owned();
+            11    7     "Great".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE 4 <= id"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            11    7     "Great".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE id > 4"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            11    7     "Great".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE 4 < id"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned();
+            1     17    "World".to_owned()
         )),
         "SELECT id, num, name FROM Test WHERE id = 1"
     );
@@ -40,15 +124,16 @@ CREATE TABLE Test (
         Ok(Payload::Insert(1)),
         "INSERT INTO Test (id, num, name) VALUES (1, 30, \"New one\")"
     );
+
     test!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned();
-            1     9     "World".to_owned();
+            1     17    "World".to_owned();
             1     30    "New one".to_owned()
         )),
-        "SELECT id, num, name FROM Test WHERE id = 1"
+        "SELECT id, num, name FROM Test WHERE 1 = id"
     );
 
     test!(
@@ -61,23 +146,49 @@ CREATE TABLE Test (
     );
 
     test!(
-        Ok(select!(
-            id  | num | name
-            I64 | I64 | Str;
-            1     9     "World".to_owned();
-            3     7     "Great".to_owned()
-        )),
+        Ok(Payload::Select {
+            labels: vec!["id".to_owned(), "num".to_owned(), "name".to_owned()],
+            rows: vec![]
+        }),
         "SELECT id, num, name FROM Test WHERE id + num = 10"
     );
 
-    test!(Ok(Payload::Delete(1)), "DELETE FROM Test WHERE id = 3");
     test!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
-            1     9     "World".to_owned()
+            1     2     "Hello".to_owned()
         )),
-        "SELECT id, num, name FROM Test WHERE id + num = 10"
+        "SELECT id, num, name FROM Test WHERE id + num < 11"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE 11 > id + num"
+    );
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     17    "World".to_owned();
+            11    7     "Great".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE id + num = 18"
+    );
+
+    test!(Ok(Payload::Delete(1)), "DELETE FROM Test WHERE id = 11");
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned()
+        )),
+        "SELECT id, num, name FROM Test WHERE id + num = 3"
     );
 
     test!(
@@ -89,10 +200,9 @@ CREATE TABLE Test (
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
-            2     9     "World".to_owned();
-            4     7     "Job".to_owned()
+            2     17    "World".to_owned()
         )),
-        "SELECT * FROM Test WHERE 11 = id + num"
+        "SELECT * FROM Test WHERE 19 = id + num"
     );
 
     test!(Ok(Payload::DropIndex), "DROP INDEX Test.idx_id2;");
@@ -100,10 +210,9 @@ CREATE TABLE Test (
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
-            2     9     "World".to_owned();
-            4     7     "Job".to_owned()
+            2     17    "World".to_owned()
         )),
-        "SELECT * FROM Test WHERE id + num = 11"
+        "SELECT * FROM Test WHERE id + num = 19"
     );
 
     test!(

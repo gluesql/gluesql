@@ -21,6 +21,13 @@ impl<T> Vector<T> {
         self
     }
 
+    #[cfg(all(feature = "index", feature = "sled-storage"))]
+    pub fn reverse(mut self) -> Self {
+        self.0.reverse();
+
+        self
+    }
+
     pub fn get(&self, i: usize) -> Option<&T> {
         self.0.get(i)
     }
