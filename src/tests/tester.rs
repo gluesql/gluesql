@@ -1,5 +1,6 @@
 use {
     crate::{
+        ast::IndexItem,
         executor::{execute, Payload},
         parse_sql::parse,
         plan::plan,
@@ -14,6 +15,7 @@ use {
 pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
+    indexes: Option<Vec<IndexItem>>,
 ) -> Result<Payload> {
     let storage = cell.replace(None).unwrap();
 
@@ -33,6 +35,17 @@ pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
     let parsed = try_run!(parse(sql));
     let statement = try_run!(translate(&parsed[0]));
     let statement = try_run!(plan(&storage, statement).await);
+
+    if let Some(indexes) = indexes {
+        let statement = format!("{:?}", statement);
+        let indexes = indexes.into_iter().map(|v| format!("{:?}", v));
+
+        for index in indexes {
+            if !statement.contains(&index) {
+                panic!("index does not exist: {}", index);
+            }
+        }
+    }
 
     match execute(storage, &statement).await {
         Ok((storage, payload)) => {
@@ -78,14 +91,14 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! run {
                 ($sql: expr) => {
-                    tests::run(Rc::clone(&cell), $sql).await.unwrap()
+                    tests::run(Rc::clone(&cell), $sql, None).await.unwrap()
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! count {
                 ($count: expr, $sql: expr) => {
-                    match tests::run(Rc::clone(&cell), $sql).await.unwrap() {
+                    match tests::run(Rc::clone(&cell), $sql, None).await.unwrap() {
                         Payload::Select { rows, .. } => assert_eq!($count, rows.len()),
                         Payload::Delete(num) => assert_eq!($count, num),
                         Payload::Update(num) => assert_eq!($count, num),
@@ -97,7 +110,16 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! test {
                 ($expected: expr, $sql: expr) => {
-                    let found = tests::run(Rc::clone(&cell), $sql).await;
+                    let found = tests::run(Rc::clone(&cell), $sql, None).await;
+
+                    test($expected, found);
+                };
+            }
+
+            #[allow(unused_macros)]
+            macro_rules! test_idx {
+                ($expected: expr, $indexes: expr, $sql: expr) => {
+                    let found = tests::run(Rc::clone(&cell), $sql, Some($indexes)).await;
 
                     test($expected, found);
                 };

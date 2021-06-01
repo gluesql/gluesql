@@ -7,13 +7,13 @@ mod function;
 mod operator;
 mod query;
 
-pub use error::TranslateError;
+pub use self::{error::TranslateError, expr::translate_expr};
 
 #[cfg(feature = "alter-table")]
 use ddl::translate_alter_table_operation;
 
 use {
-    self::{ddl::translate_column_def, expr::translate_expr, query::translate_query},
+    self::{ddl::translate_column_def, query::translate_query},
     crate::{
         ast::{Assignment, ObjectName, Statement},
         result::Result,

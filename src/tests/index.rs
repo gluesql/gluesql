@@ -24,9 +24,10 @@ CREATE TABLE Test (
         "CREATE INDEX idx_id2 ON Test (id + num)"
     );
 
+    use ast::IndexOperator::*;
     use Value::*;
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
@@ -35,10 +36,11 @@ CREATE TABLE Test (
             4     7     "Job".to_owned();
             11    7     "Great".to_owned()
         )),
+        idx!(idx_id, Lt, "20"),
         "SELECT id, num, name FROM Test WHERE id < 20"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
@@ -47,10 +49,11 @@ CREATE TABLE Test (
             4     7     "Job".to_owned();
             11    7     "Great".to_owned()
         )),
+        idx!(idx_id, Lt, "20"),
         "SELECT id, num, name FROM Test WHERE 20 > id"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
@@ -58,10 +61,11 @@ CREATE TABLE Test (
             1     17    "World".to_owned();
             4     7     "Job".to_owned()
         )),
+        idx!(idx_id, LtEq, "4"),
         "SELECT id, num, name FROM Test WHERE id <= 4"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
@@ -69,54 +73,60 @@ CREATE TABLE Test (
             1     17    "World".to_owned();
             4     7     "Job".to_owned()
         )),
+        idx!(idx_id, LtEq, "4"),
         "SELECT id, num, name FROM Test WHERE 4 >= id"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             4     7     "Job".to_owned();
             11    7     "Great".to_owned()
         )),
+        idx!(idx_id, GtEq, "4"),
         "SELECT id, num, name FROM Test WHERE id >= 4"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             4     7     "Job".to_owned();
             11    7     "Great".to_owned()
         )),
+        idx!(idx_id, GtEq, "4"),
         "SELECT id, num, name FROM Test WHERE 4 <= id"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             11    7     "Great".to_owned()
         )),
+        idx!(idx_id, Gt, "4"),
         "SELECT id, num, name FROM Test WHERE id > 4"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             11    7     "Great".to_owned()
         )),
+        idx!(idx_id, Gt, "4"),
         "SELECT id, num, name FROM Test WHERE 4 < id"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned();
             1     17    "World".to_owned()
         )),
+        idx!(idx_id, Eq, "1"),
         "SELECT id, num, name FROM Test WHERE id = 1"
     );
 
@@ -125,7 +135,7 @@ CREATE TABLE Test (
         "INSERT INTO Test (id, num, name) VALUES (1, 30, \"New one\")"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
@@ -133,61 +143,68 @@ CREATE TABLE Test (
             1     17    "World".to_owned();
             1     30    "New one".to_owned()
         )),
+        idx!(idx_id, Eq, "1"),
         "SELECT id, num, name FROM Test WHERE 1 = id"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     30    "New one".to_owned()
         )),
+        idx!(idx_name, Eq, r#""New one""#),
         r#"SELECT id, num, name FROM Test WHERE name = "New one""#
     );
 
-    test!(
+    test_idx!(
         Ok(Payload::Select {
             labels: vec!["id".to_owned(), "num".to_owned(), "name".to_owned()],
             rows: vec![]
         }),
+        idx!(idx_id2, Eq, "10"),
         "SELECT id, num, name FROM Test WHERE id + num = 10"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
+        idx!(idx_id2, Lt, "11"),
         "SELECT id, num, name FROM Test WHERE id + num < 11"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
+        idx!(idx_id2, Lt, "11"),
         "SELECT id, num, name FROM Test WHERE 11 > id + num"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     17    "World".to_owned();
             11    7     "Great".to_owned()
         )),
+        idx!(idx_id2, Eq, "18"),
         "SELECT id, num, name FROM Test WHERE id + num = 18"
     );
 
     test!(Ok(Payload::Delete(1)), "DELETE FROM Test WHERE id = 11");
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
+        idx!(idx_id2, Eq, "3"),
         "SELECT id, num, name FROM Test WHERE id + num = 3"
     );
 
@@ -196,12 +213,13 @@ CREATE TABLE Test (
         "UPDATE Test SET id = id + 1 WHERE id = 1;"
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             2     17    "World".to_owned()
         )),
+        idx!(idx_id2, Eq, "19"),
         "SELECT * FROM Test WHERE 19 = id + num"
     );
 
