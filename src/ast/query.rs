@@ -1,5 +1,5 @@
 use {
-    super::{Expr, ObjectName},
+    super::{Expr, IndexOperator, ObjectName},
     serde::{Deserialize, Serialize},
 };
 
@@ -43,33 +43,10 @@ pub struct TableWithJoins {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum IndexOperator {
-    Gt,
-    Lt,
-    GtEq,
-    LtEq,
-    Eq,
-}
-
-impl IndexOperator {
-    pub fn reverse(self) -> Self {
-        use IndexOperator::*;
-
-        match self {
-            Gt => Lt,
-            Lt => Gt,
-            GtEq => LtEq,
-            LtEq => GtEq,
-            Eq => Eq,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct IndexItem {
     pub name: String,
     pub op: IndexOperator,
-    pub value_expr: Box<Expr>,
+    pub value_expr: Expr,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

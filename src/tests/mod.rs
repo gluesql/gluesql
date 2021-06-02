@@ -91,7 +91,7 @@ macro_rules! generate_tests {
         glue!(validate_types, validate::types::types);
 
         #[cfg(feature = "index")]
-        glue!(index, index::index);
+        glue!(index_basic, index::basic);
 
         generate_alter_table_tests!();
     };

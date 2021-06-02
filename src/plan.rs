@@ -138,46 +138,62 @@ enum Planned {
     Found {
         index_name: String,
         index_op: IndexOperator,
-        index_value_expr: Box<Expr>,
+        index_value_expr: Expr,
         selection: Option<Expr>,
     },
     NotFound(Option<Expr>),
 }
 
-fn plan_selection(indexes: &[(String, Expr)], selection: Expr) -> Planned {
-    for (index_name, index_expr) in indexes.iter() {
-        if let Searched::Found {
-            index_value_expr,
-            index_op,
-            selection,
-        } = search_index(index_expr, &selection)
-        {
-            return Planned::Found {
+impl From<(&str, Searched)> for Planned {
+    fn from((index_name, searched): (&str, Searched)) -> Self {
+        match searched {
+            Searched::Found {
+                index_op,
+                index_value_expr,
+                selection,
+            } => Planned::Found {
                 index_name: index_name.to_owned(),
                 index_op,
                 index_value_expr,
                 selection,
-            };
+            },
+            Searched::NotFound(selection) => Planned::NotFound(selection),
         }
     }
+}
 
-    Planned::NotFound(Some(selection))
+fn plan_selection(indexes: &[(String, Expr)], selection: Expr) -> Planned {
+    indexes.iter().fold(
+        Planned::NotFound(Some(selection)),
+        |planned, (index_name, index_expr)| {
+            let selection = match planned {
+                Planned::Found { .. } | Planned::NotFound(None) => {
+                    return planned;
+                }
+                Planned::NotFound(Some(selection)) => selection,
+            };
+
+            let searched = search_index(index_expr, selection);
+
+            Planned::from((index_name.as_str(), searched))
+        },
+    )
 }
 
 enum Searched {
     Found {
-        index_value_expr: Box<Expr>,
+        index_value_expr: Expr,
         index_op: IndexOperator,
         selection: Option<Expr>,
     },
-    NotFound,
+    NotFound(Option<Expr>),
 }
 
-fn search_index(index_expr: &Expr, selection: &Expr) -> Searched {
+fn search_index(index_expr: &Expr, selection: Expr) -> Searched {
     match selection {
         Expr::BinaryOp {
-            op: BinaryOperator::Gt,
             left,
+            op: BinaryOperator::Gt,
             right,
         } => search_binary_op(index_expr, IndexOperator::Gt, left, right),
         Expr::BinaryOp {
@@ -200,30 +216,34 @@ fn search_index(index_expr: &Expr, selection: &Expr) -> Searched {
             op: BinaryOperator::Eq,
             right,
         } => search_binary_op(index_expr, IndexOperator::Eq, left, right),
-        _ => Searched::NotFound,
+        _ => Searched::NotFound(Some(selection)),
     }
 }
 
 fn search_binary_op(
     index_expr: &Expr,
     index_op: IndexOperator,
-    left: &Expr,
-    right: &Expr,
+    left: Box<Expr>,
+    right: Box<Expr>,
 ) -> Searched {
-    if index_expr == left && is_stateless(right) {
+    if index_expr == left.as_ref() && is_stateless(right.as_ref()) {
         Searched::Found {
-            index_value_expr: Box::new(right.clone()),
+            index_value_expr: *right,
             index_op,
             selection: None,
         }
-    } else if index_expr == right && is_stateless(left) {
+    } else if index_expr == right.as_ref() && is_stateless(left.as_ref()) {
         Searched::Found {
-            index_value_expr: Box::new(left.clone()),
+            index_value_expr: *left,
             index_op: index_op.reverse(),
             selection: None,
         }
     } else {
-        Searched::NotFound
+        Searched::NotFound(Some(Expr::BinaryOp {
+            left,
+            op: index_op.into(),
+            right,
+        }))
     }
 }
 

@@ -11,7 +11,7 @@ pub use data_type::DataType;
 pub use ddl::*;
 pub use expr::Expr;
 pub use function::{Function, FunctionArg};
-pub use operator::{BinaryOperator, UnaryOperator};
+pub use operator::*;
 pub use query::*;
 
 use serde::{Deserialize, Serialize};

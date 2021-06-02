@@ -11,7 +11,7 @@ macro_rules! idx {
         vec![ast::IndexItem {
             name: stringify!($name).to_owned(),
             op: $op,
-            value_expr: Box::new(translate_expr(&parse_expr($sql_expr).unwrap()).unwrap()),
+            value_expr: translate_expr(&parse_expr($sql_expr).unwrap()).unwrap(),
         }]
     };
 }
