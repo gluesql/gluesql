@@ -28,21 +28,6 @@ pub mod macros;
 
 pub use tester::*;
 
-#[cfg(feature = "alter-table")]
-#[macro_export]
-macro_rules! generate_alter_table_tests {
-    () => {
-        glue!(alter_table_rename, alter_table::rename);
-        glue!(alter_table_add_drop, alter_table::add_drop);
-    };
-}
-
-#[cfg(not(feature = "alter-table"))]
-#[macro_export]
-macro_rules! generate_alter_table_tests {
-    () => {};
-}
-
 #[macro_export]
 macro_rules! generate_tests {
     ($test: meta, $storage: ident) => {
@@ -91,8 +76,24 @@ macro_rules! generate_tests {
         glue!(validate_types, validate::types::types);
 
         #[cfg(feature = "index")]
-        glue!(index_basic, index::basic);
+        macro_rules! glue_index {
+            () => {
+                glue!(index_basic, index::basic);
+                glue!(index_and, index::and);
+            };
+        }
 
-        generate_alter_table_tests!();
+        #[cfg(feature = "alter-table")]
+        macro_rules! glue_alter_table {
+            () => {
+                glue!(alter_table_rename, alter_table::rename);
+                glue!(alter_table_add_drop, alter_table::add_drop);
+            };
+        }
+
+        #[cfg(feature = "index")]
+        glue_index!();
+        #[cfg(feature = "alter-table")]
+        glue_alter_table!();
     };
 }

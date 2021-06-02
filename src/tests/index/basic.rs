@@ -10,9 +10,17 @@ CREATE TABLE Test (
 )"#
     );
 
-    run!("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
-    run!("INSERT INTO Test (id, num, name) VALUES (1, 17, \"World\")");
-    run!("INSERT INTO Test (id, num, name) VALUES (11, 7, \"Great\"), (4, 7, \"Job\")");
+    run!(
+        r#"
+        INSERT INTO Test
+            (id, num, name)
+        VALUES
+            (1, 2, "Hello"),
+            (1, 17, "World"),
+            (11, 7, "Great"),
+            (4, 7, "Job");
+    "#
+    );
 
     test!(Ok(Payload::CreateIndex), "CREATE INDEX idx_id ON Test (id)");
     test!(
@@ -26,6 +34,18 @@ CREATE TABLE Test (
 
     use ast::IndexOperator::*;
     use Value::*;
+
+    test!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned();
+            1     17    "World".to_owned();
+            11    7     "Great".to_owned();
+            4     7     "Job".to_owned()
+        )),
+        "SELECT id, num, name FROM Test"
+    );
 
     test_idx!(
         Ok(select!(

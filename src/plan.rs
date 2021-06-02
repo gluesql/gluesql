@@ -8,6 +8,7 @@ use {
         result::Result,
         store::Store,
     },
+    boolinator::Boolinator,
     std::fmt::Debug,
 };
 
@@ -52,6 +53,17 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
     Ok(query)
 }
 
+struct Indexes(Vec<(String, Expr)>);
+
+impl Indexes {
+    fn find(&self, target: &Expr) -> Option<String> {
+        self.0
+            .iter()
+            .find(|(_, expr)| expr == target)
+            .map(|(index_name, _)| index_name.to_owned())
+    }
+}
+
 async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select) -> Result<Select> {
     let Select {
         projection,
@@ -69,7 +81,7 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
     let table_name = get_name(table_name)?;
 
     let indexes = match storage.fetch_schema(table_name).await? {
-        Some(Schema { indexes, .. }) => indexes,
+        Some(Schema { indexes, .. }) => Indexes(indexes),
         None => {
             return Ok(Select {
                 projection,
@@ -81,8 +93,8 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
         }
     };
 
-    let planned = match selection {
-        Some(expr) => plan_selection(&indexes, expr),
+    let selection = match selection {
+        Some(expr) => expr,
         None => {
             return Ok(Select {
                 projection,
@@ -94,15 +106,15 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
         }
     };
 
-    match planned {
-        Planned::NotFound(selection) => Ok(Select {
+    match search_index(&indexes, selection) {
+        Searched::NotFound(selection) => Ok(Select {
             projection,
             from,
-            selection,
+            selection: Some(selection),
             group_by,
             having,
         }),
-        Planned::Found {
+        Searched::Found {
             index_name,
             index_op,
             index_value_expr,
@@ -134,119 +146,144 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
     }
 }
 
-enum Planned {
+enum Searched {
     Found {
         index_name: String,
         index_op: IndexOperator,
         index_value_expr: Expr,
         selection: Option<Expr>,
     },
-    NotFound(Option<Expr>),
+    NotFound(Expr),
 }
 
-impl From<(&str, Searched)> for Planned {
-    fn from((index_name, searched): (&str, Searched)) -> Self {
-        match searched {
-            Searched::Found {
-                index_op,
-                index_value_expr,
-                selection,
-            } => Planned::Found {
-                index_name: index_name.to_owned(),
-                index_op,
-                index_value_expr,
-                selection,
-            },
-            Searched::NotFound(selection) => Planned::NotFound(selection),
-        }
-    }
-}
+fn search_index(indexes: &Indexes, selection: Expr) -> Searched {
+    match selection {
+        Expr::Nested(expr) => search_index(indexes, *expr),
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::And,
+            right,
+        } => {
+            let left = match search_index(indexes, *left) {
+                Searched::NotFound(selection) => selection,
+                Searched::Found {
+                    index_name,
+                    index_value_expr,
+                    index_op,
+                    selection,
+                } => {
+                    let selection = match selection {
+                        Some(expr) => Expr::BinaryOp {
+                            left: Box::new(expr),
+                            op: BinaryOperator::And,
+                            right,
+                        },
+                        None => *right,
+                    };
 
-fn plan_selection(indexes: &[(String, Expr)], selection: Expr) -> Planned {
-    indexes.iter().fold(
-        Planned::NotFound(Some(selection)),
-        |planned, (index_name, index_expr)| {
-            let selection = match planned {
-                Planned::Found { .. } | Planned::NotFound(None) => {
-                    return planned;
+                    return Searched::Found {
+                        index_name,
+                        index_op,
+                        index_value_expr,
+                        selection: Some(selection),
+                    };
                 }
-                Planned::NotFound(Some(selection)) => selection,
             };
 
-            let searched = search_index(index_expr, selection);
+            match search_index(indexes, *right) {
+                Searched::NotFound(expr) => Searched::NotFound(Expr::BinaryOp {
+                    left: Box::new(left),
+                    op: BinaryOperator::And,
+                    right: Box::new(expr),
+                }),
+                Searched::Found {
+                    index_name,
+                    index_op,
+                    index_value_expr,
+                    selection,
+                } => {
+                    let selection = match selection {
+                        Some(expr) => Expr::BinaryOp {
+                            left: Box::new(left),
+                            op: BinaryOperator::And,
+                            right: Box::new(expr),
+                        },
+                        None => left,
+                    };
 
-            Planned::from((index_name.as_str(), searched))
-        },
-    )
-}
-
-enum Searched {
-    Found {
-        index_value_expr: Expr,
-        index_op: IndexOperator,
-        selection: Option<Expr>,
-    },
-    NotFound(Option<Expr>),
-}
-
-fn search_index(index_expr: &Expr, selection: Expr) -> Searched {
-    match selection {
+                    Searched::Found {
+                        index_name,
+                        index_value_expr,
+                        index_op,
+                        selection: Some(selection),
+                    }
+                }
+            }
+        }
         Expr::BinaryOp {
             left,
             op: BinaryOperator::Gt,
             right,
-        } => search_binary_op(index_expr, IndexOperator::Gt, left, right),
+        } => search_index_op(indexes, IndexOperator::Gt, left, right),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::Lt,
             right,
-        } => search_binary_op(index_expr, IndexOperator::Lt, left, right),
+        } => search_index_op(indexes, IndexOperator::Lt, left, right),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::GtEq,
             right,
-        } => search_binary_op(index_expr, IndexOperator::GtEq, left, right),
+        } => search_index_op(indexes, IndexOperator::GtEq, left, right),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::LtEq,
             right,
-        } => search_binary_op(index_expr, IndexOperator::LtEq, left, right),
+        } => search_index_op(indexes, IndexOperator::LtEq, left, right),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::Eq,
             right,
-        } => search_binary_op(index_expr, IndexOperator::Eq, left, right),
-        _ => Searched::NotFound(Some(selection)),
+        } => search_index_op(indexes, IndexOperator::Eq, left, right),
+        _ => Searched::NotFound(selection),
     }
 }
 
-fn search_binary_op(
-    index_expr: &Expr,
+fn search_index_op(
+    indexes: &Indexes,
     index_op: IndexOperator,
     left: Box<Expr>,
     right: Box<Expr>,
 ) -> Searched {
-    if index_expr == left.as_ref() && is_stateless(right.as_ref()) {
+    if let Some(index_name) = indexes
+        .find(left.as_ref())
+        .and_then(|index_name| is_stateless(right.as_ref()).as_some(index_name))
+    {
         Searched::Found {
-            index_value_expr: *right,
+            index_name,
             index_op,
+            index_value_expr: *right,
             selection: None,
         }
-    } else if index_expr == right.as_ref() && is_stateless(left.as_ref()) {
+    } else if let Some(index_name) = indexes
+        .find(right.as_ref())
+        .and_then(|index_name| is_stateless(left.as_ref()).as_some(index_name))
+    {
         Searched::Found {
-            index_value_expr: *left,
+            index_name,
             index_op: index_op.reverse(),
+            index_value_expr: *left,
             selection: None,
         }
     } else {
-        Searched::NotFound(Some(Expr::BinaryOp {
+        Searched::NotFound(Expr::BinaryOp {
             left,
             op: index_op.into(),
             right,
-        }))
+        })
     }
 }
 
 fn is_stateless(expr: &Expr) -> bool {
-    matches!(expr, Expr::Literal(_))
+    matches!(expr, Expr::Literal(_) | Expr::TypedString { .. })
 }
