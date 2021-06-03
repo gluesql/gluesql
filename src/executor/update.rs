@@ -7,7 +7,7 @@ use {
         ast::{Assignment, ColumnDef},
         data::{schema::ColumnDefExt, Row, Value},
         result::Result,
-        store::Store,
+        store::GStore,
     },
     futures::stream::{self, TryStreamExt},
     serde::Serialize,
@@ -25,7 +25,7 @@ pub enum UpdateError {
 }
 
 pub struct Update<'a, T: 'static + Debug> {
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     table_name: &'a str,
     fields: &'a [Assignment],
     column_defs: &'a [ColumnDef],
@@ -33,7 +33,7 @@ pub struct Update<'a, T: 'static + Debug> {
 
 impl<'a, T: 'static + Debug> Update<'a, T> {
     pub fn new(
-        storage: &'a dyn Store<T>,
+        storage: &'a dyn GStore<T>,
         table_name: &'a str,
         fields: &'a [Assignment],
         column_defs: &'a [ColumnDef],

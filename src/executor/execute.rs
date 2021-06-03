@@ -10,7 +10,7 @@ use {
         ast::{Query, SetExpr, Statement, Values},
         data::{get_name, Row, Schema},
         result::{MutResult, Result},
-        store::{AlterTable, Store, StoreMut},
+        store::{GStore, GStoreMut},
     },
     futures::stream::TryStreamExt,
     serde::Serialize,
@@ -49,7 +49,7 @@ pub enum Payload {
     DropIndex,
 }
 
-pub async fn execute<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     statement: &Statement,
 ) -> MutResult<U, Payload> {

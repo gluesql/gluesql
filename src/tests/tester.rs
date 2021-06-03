@@ -5,14 +5,14 @@ use {
         parse_sql::parse,
         plan::plan,
         result::Result,
-        store::{AlterTable, Store, StoreMut},
+        store::{GStore, GStoreMut},
         translate::translate,
     },
     async_trait::async_trait,
     std::{cell::RefCell, fmt::Debug, rc::Rc},
 };
 
-pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
     indexes: Option<Vec<IndexItem>>,
@@ -70,7 +70,7 @@ pub async fn run<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
 /// Actual test cases are in [/src/tests/](https://github.com/gluesql/gluesql/blob/main/src/tests/),
 /// not in `/tests/`.
 #[async_trait]
-pub trait Tester<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable> {
+pub trait Tester<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> {
     fn new(namespace: &str) -> Self;
 
     fn get_cell(&mut self) -> Rc<RefCell<Option<U>>>;
@@ -82,7 +82,7 @@ macro_rules! test_case {
         pub async fn $name<T, U>(mut tester: impl tests::Tester<T, U>)
         where
             T: 'static + std::fmt::Debug,
-            U: Store<T> + StoreMut<T> + AlterTable,
+            U: GStore<T> + GStoreMut<T>,
         {
             use std::rc::Rc;
 

@@ -4,12 +4,12 @@ use {
         ast::{ColumnDef, ObjectName},
         data::{get_name, Schema},
         result::MutResult,
-        store::{AlterTable, Store, StoreMut},
+        store::{GStore, GStoreMut},
     },
     std::fmt::Debug,
 };
 
-pub async fn create_table<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn create_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     name: &ObjectName,
     column_defs: &[ColumnDef],

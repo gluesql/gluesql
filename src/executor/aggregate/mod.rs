@@ -13,7 +13,7 @@ use {
         ast::{Expr, Function, FunctionArg, SelectItem},
         data::{get_name, Value},
         result::{Error, Result},
-        store::Store,
+        store::GStore,
     },
     boolinator::Boolinator,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
@@ -23,7 +23,7 @@ use {
 pub use {error::AggregateError, hash::GroupKey};
 
 pub struct Aggregate<'a, T: 'static + Debug> {
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
@@ -35,7 +35,7 @@ type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item 
 
 impl<'a, T: 'static + Debug> Aggregate<'a, T> {
     pub fn new(
-        storage: &'a dyn Store<T>,
+        storage: &'a dyn GStore<T>,
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
         having: Option<&'a Expr>,

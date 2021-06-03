@@ -7,7 +7,7 @@ use {
         ast::{Function, SelectItem},
         data::{get_name, Row, Value},
         result::{Error, Result},
-        store::Store,
+        store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
@@ -24,12 +24,12 @@ pub enum BlendError {
 }
 
 pub struct Blend<'a, T: 'static + Debug> {
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     fields: &'a [SelectItem],
 }
 
 impl<'a, T: 'static + Debug> Blend<'a, T> {
-    pub fn new(storage: &'a dyn Store<T>, fields: &'a [SelectItem]) -> Self {
+    pub fn new(storage: &'a dyn GStore<T>, fields: &'a [SelectItem]) -> Self {
         Self { storage, fields }
     }
 

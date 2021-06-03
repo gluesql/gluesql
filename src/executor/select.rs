@@ -12,7 +12,7 @@ use {
         ast::{Query, SelectItem, SetExpr, TableWithJoins},
         data::{get_name, Row, Table},
         result::{Error, Result},
-        store::Store,
+        store::GStore,
     },
     boolinator::Boolinator,
     futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
@@ -39,7 +39,7 @@ pub enum SelectError {
 }
 
 async fn fetch_blended<'a, T: 'static + Debug>(
-    storage: &dyn Store<T>,
+    storage: &dyn GStore<T>,
     table: Table<'a>,
     columns: Rc<[String]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
@@ -150,7 +150,7 @@ fn get_labels<'a>(
 }
 
 pub async fn select_with_labels<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
@@ -260,7 +260,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
 }
 
 pub async fn select<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {

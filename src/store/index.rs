@@ -1,4 +1,15 @@
-use {serde::Serialize, std::fmt::Debug, thiserror::Error};
+use {
+    super::RowIter,
+    crate::{
+        ast::{Expr, IndexOperator},
+        data::Value,
+        result::{MutResult, Result},
+    },
+    async_trait::async_trait,
+    serde::Serialize,
+    std::fmt::Debug,
+    thiserror::Error,
+};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum IndexError {
@@ -22,4 +33,30 @@ pub enum IndexError {
 
     #[error("conflict - index sync - delete index data")]
     ConflictOnIndexDataDeleteSync,
+}
+
+#[async_trait(?Send)]
+pub trait Index<T: Debug> {
+    async fn scan_indexed_data(
+        &self,
+        table_name: &str,
+        index_name: &str,
+        op: &IndexOperator,
+        value: Value,
+    ) -> Result<RowIter<T>>;
+}
+
+#[async_trait(?Send)]
+pub trait IndexMut<T: Debug>
+where
+    Self: Sized,
+{
+    async fn create_index(
+        self,
+        table_name: &str,
+        index_name: &str,
+        column: &Expr,
+    ) -> MutResult<Self, ()>;
+
+    async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()>;
 }

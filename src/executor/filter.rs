@@ -7,14 +7,14 @@ use {
         ast::{Expr, Function},
         data::Value,
         result::Result,
-        store::Store,
+        store::GStore,
     },
     im_rc::HashMap,
     std::{convert::TryInto, fmt::Debug, rc::Rc},
 };
 
 pub struct Filter<'a, T: 'static + Debug> {
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     where_clause: Option<&'a Expr>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
@@ -22,7 +22,7 @@ pub struct Filter<'a, T: 'static + Debug> {
 
 impl<'a, T: 'static + Debug> Filter<'a, T> {
     pub fn new(
-        storage: &'a dyn Store<T>,
+        storage: &'a dyn GStore<T>,
         where_clause: Option<&'a Expr>,
         context: Option<Rc<FilterContext<'a>>>,
         aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
@@ -51,7 +51,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
 }
 
 pub async fn check_expr<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     expr: &'a Expr,

@@ -9,7 +9,7 @@ use {
         ast::{Expr, Function, FunctionArg},
         data::{get_name, Value},
         result::Result,
-        store::Store,
+        store::GStore,
     },
     async_recursion::async_recursion,
     boolinator::Boolinator,
@@ -27,7 +27,7 @@ pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_statele
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     expr: &'a Expr,
@@ -202,7 +202,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 }
 
 async fn evaluate_function<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     func: &'a Function,

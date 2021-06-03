@@ -4,7 +4,7 @@ use {
         ast::{ColumnDef, Expr},
         data::Row,
         result::{Error, Result},
-        store::Store,
+        store::GStore,
     },
     boolinator::Boolinator,
     futures::stream::{self, TryStream, TryStreamExt},
@@ -20,7 +20,7 @@ pub enum FetchError {
 }
 
 pub async fn fetch_columns<T: 'static + Debug>(
-    storage: &dyn Store<T>,
+    storage: &dyn GStore<T>,
     table_name: &str,
 ) -> Result<Vec<String>> {
     Ok(storage
@@ -34,7 +34,7 @@ pub async fn fetch_columns<T: 'static + Debug>(
 }
 
 pub async fn fetch<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     table_name: &'a str,
     columns: Rc<[String]>,
     where_clause: Option<&'a Expr>,
