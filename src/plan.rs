@@ -1,8 +1,8 @@
 use {
     crate::{
         ast::{
-            BinaryOperator, Expr, IndexItem, IndexOperator, Query, Select, SetExpr, Statement,
-            TableFactor, TableWithJoins,
+            AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, Query, Select, SetExpr,
+            Statement, TableFactor, TableWithJoins,
         },
         data::{get_name, Schema},
         result::Result,
@@ -159,6 +159,8 @@ enum Searched {
 fn search_index(indexes: &Indexes, selection: Expr) -> Searched {
     match selection {
         Expr::Nested(expr) => search_index(indexes, *expr),
+        Expr::IsNull(expr) => search_is_null(indexes, true, expr),
+        Expr::IsNotNull(expr) => search_is_null(indexes, false, expr),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::And,
@@ -249,6 +251,34 @@ fn search_index(indexes: &Indexes, selection: Expr) -> Searched {
     }
 }
 
+fn search_is_null(indexes: &Indexes, null: bool, expr: Box<Expr>) -> Searched {
+    match indexes.find(expr.as_ref()) {
+        Some(index_name) => {
+            let index_op = if null {
+                IndexOperator::Eq
+            } else {
+                IndexOperator::Lt
+            };
+
+            Searched::Found {
+                index_name,
+                index_op,
+                index_value_expr: Expr::Literal(AstLiteral::Null),
+                selection: None,
+            }
+        }
+        None => {
+            let expr = if null {
+                Expr::IsNull(expr)
+            } else {
+                Expr::IsNotNull(expr)
+            };
+
+            Searched::NotFound(expr)
+        }
+    }
+}
+
 fn search_index_op(
     indexes: &Indexes,
     index_op: IndexOperator,
@@ -285,5 +315,10 @@ fn search_index_op(
 }
 
 fn is_stateless(expr: &Expr) -> bool {
-    matches!(expr, Expr::Literal(_) | Expr::TypedString { .. })
+    match expr {
+        Expr::Literal(AstLiteral::Null) => false,
+        Expr::Literal(_) => true,
+        Expr::TypedString { .. } => true,
+        _ => false,
+    }
 }

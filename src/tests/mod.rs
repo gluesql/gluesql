@@ -80,6 +80,7 @@ macro_rules! generate_tests {
             () => {
                 glue!(index_basic, index::basic);
                 glue!(index_and, index::and);
+                glue!(index_null, index::null);
             };
         }
 
