@@ -319,6 +319,14 @@ fn is_stateless(expr: &Expr) -> bool {
         Expr::Literal(AstLiteral::Null) => false,
         Expr::Literal(_) => true,
         Expr::TypedString { .. } => true,
+        Expr::IsNull(expr)
+        | Expr::IsNotNull(expr)
+        | Expr::UnaryOp { expr, .. }
+        | Expr::Cast { expr, .. }
+        | Expr::Nested(expr) => is_stateless(expr.as_ref()),
+        Expr::BinaryOp { left, right, .. } => {
+            is_stateless(left.as_ref()) && is_stateless(right.as_ref())
+        }
         _ => false,
     }
 }
