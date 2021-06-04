@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ObjectName, TableAlias, TableFactor},
+        ast::{IndexItem, ObjectName, TableAlias, TableFactor},
         result::Result,
     },
     serde::Serialize,
@@ -17,16 +17,18 @@ pub enum TableError {
 pub struct Table<'a> {
     name: &'a String,
     alias: Option<&'a String>,
+    index: Option<&'a IndexItem>,
 }
 
 impl<'a> Table<'a> {
     pub fn new(table_factor: &'a TableFactor) -> Result<Self> {
         match table_factor {
-            TableFactor::Table { name, alias } => {
+            TableFactor::Table { name, alias, index } => {
                 let name = get_name(name)?;
                 let alias = alias.as_ref().map(|TableAlias { name, .. }| name);
+                let index = index.as_ref();
 
-                Ok(Self { name, alias })
+                Ok(Self { name, alias, index })
             }
         }
     }
@@ -40,6 +42,10 @@ impl<'a> Table<'a> {
             Some(alias) => alias,
             None => self.name,
         }
+    }
+
+    pub fn get_index(&self) -> Option<&'a IndexItem> {
+        self.index
     }
 }
 

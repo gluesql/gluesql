@@ -6,6 +6,17 @@ macro_rules! row {
 }
 
 #[macro_export]
+macro_rules! idx {
+    ($name: path, $op: path, $sql_expr: literal) => {
+        vec![ast::IndexItem {
+            name: stringify!($name).to_owned(),
+            op: $op,
+            value_expr: translate_expr(&parse_expr($sql_expr).unwrap()).unwrap(),
+        }]
+    };
+}
+
+#[macro_export]
 macro_rules! select {
     ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ; $( $( $v2: expr )+ );+) => ({
         let mut rows = vec![

@@ -1,13 +1,15 @@
 mod error;
 mod evaluated;
+mod expr;
+mod stateless;
 
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        ast::{BinaryOperator, Expr, Function, FunctionArg, UnaryOperator},
-        data::{get_name, Literal, Value},
+        ast::{Expr, Function, FunctionArg},
+        data::{get_name, Value},
         result::Result,
-        store::Store,
+        store::GStore,
     },
     async_recursion::async_recursion,
     boolinator::Boolinator,
@@ -21,11 +23,11 @@ use {
     },
 };
 
-pub use {error::EvaluateError, evaluated::Evaluated};
+pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     expr: &'a Expr,
@@ -39,11 +41,9 @@ pub async fn evaluate<'a, T: 'static + Debug>(
     };
 
     match expr {
-        Expr::Literal(ast_literal) => Literal::try_from(ast_literal).map(Evaluated::Literal),
+        Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
-            let literal = Literal::Text(Cow::Borrowed(value));
-
-            Value::try_from_literal(&data_type, &literal).map(Evaluated::from)
+            expr::typed_string(data_type, Cow::Borrowed(&value))
         }
         Expr::Identifier(ident) => {
             let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
@@ -84,49 +84,15 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             .next()
             .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))?,
         Expr::BinaryOp { op, left, right } => {
-            let l = eval(left).await?;
-            let r = eval(right).await?;
+            let left = eval(left).await?;
+            let right = eval(right).await?;
 
-            macro_rules! cmp {
-                ($expr: expr) => {
-                    Ok(Evaluated::from(Value::Bool($expr)))
-                };
-            }
-
-            macro_rules! cond {
-                (l $op: tt r) => {{
-                    let l: bool = l.try_into()?;
-                    let r: bool = r.try_into()?;
-                    let v = l $op r;
-
-                    Ok(Evaluated::from(Value::Bool(v)))
-                }};
-            }
-
-            match op {
-                BinaryOperator::Plus => l.add(&r),
-                BinaryOperator::Minus => l.subtract(&r),
-                BinaryOperator::Multiply => l.multiply(&r),
-                BinaryOperator::Divide => l.divide(&r),
-                BinaryOperator::StringConcat => l.concat(r),
-                BinaryOperator::Eq => cmp!(l == r),
-                BinaryOperator::NotEq => cmp!(l != r),
-                BinaryOperator::Lt => cmp!(l < r),
-                BinaryOperator::LtEq => cmp!(l <= r),
-                BinaryOperator::Gt => cmp!(l > r),
-                BinaryOperator::GtEq => cmp!(l >= r),
-                BinaryOperator::And => cond!(l && r),
-                BinaryOperator::Or => cond!(l || r),
-            }
+            expr::binary_op(op, left, right)
         }
         Expr::UnaryOp { op, expr } => {
             let v = eval(expr).await?;
 
-            match op {
-                UnaryOperator::Plus => v.unary_plus(),
-                UnaryOperator::Minus => v.unary_minus(),
-                UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
-            }
+            expr::unary_op(op, v)
         }
         Expr::Function(func) => match aggregated.as_ref().map(|aggr| aggr.get(func)).flatten() {
             Some(value) => Ok(Evaluated::from(value.clone())),
@@ -201,13 +167,11 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             low,
             high,
         } => {
-            let negated = *negated;
             let target = eval(expr).await?;
+            let low = eval(low).await?;
+            let high = eval(high).await?;
 
-            let v = eval(low).await? <= target && target <= eval(high).await?;
-            let v = negated ^ v;
-
-            Ok(Evaluated::from(Value::Bool(v)))
+            expr::between(target, *negated, low, high)
         }
         Expr::Exists(query) => {
             let v = select(storage, query, context)
@@ -231,12 +195,14 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
-        _ => Err(EvaluateError::Unimplemented.into()),
+        Expr::Wildcard | Expr::QualifiedWildcard(_) => {
+            Err(EvaluateError::UnreachableWildcardExpr.into())
+        }
     }
 }
 
 async fn evaluate_function<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     func: &'a Function,

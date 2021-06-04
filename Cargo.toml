@@ -14,11 +14,14 @@ keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webass
 all-features = true
 
 [features]
-default = ["sled-storage", "alter-table"]
+default = ["sled-storage", "alter-table", "index"]
 
 # ALTER TABLE is optional.
 # You can include whether ALTER TABLE support or not for your custom database implementation.
 alter-table = []
+
+# INDEX is also optional.
+index = []
 
 # Who wants to make a custom storage engine,
 # default storage engine sled-storage is not required.
@@ -28,6 +31,7 @@ sled-storage = ["sled", "bincode"]
 async-trait = "0.1.41"
 async-recursion = "0.3.1"
 boolinator = "2.4.0"
+cfg-if = "1"
 chrono = { version = "0.4", features = ["serde", "wasmbind"] }
 rust_decimal = "1.13"
 futures = "0.3"

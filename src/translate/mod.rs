@@ -7,13 +7,13 @@ mod function;
 mod operator;
 mod query;
 
-pub use error::TranslateError;
+pub use self::{error::TranslateError, expr::translate_expr};
 
 #[cfg(feature = "alter-table")]
 use ddl::translate_alter_table_operation;
 
 use {
-    self::{ddl::translate_column_def, expr::translate_expr, query::translate_query},
+    self::{ddl::translate_column_def, query::translate_query},
     crate::{
         ast::{Assignment, ObjectName, Statement},
         result::Result,
@@ -86,6 +86,40 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             if_exists: *if_exists,
             names: names.iter().map(translate_object_name).collect(),
         }),
+        #[cfg(feature = "index")]
+        SqlStatement::CreateIndex {
+            name,
+            table_name,
+            columns,
+            ..
+        } => {
+            if columns.len() > 1 {
+                return Err(TranslateError::CompositeIndexNotSupported.into());
+            }
+
+            Ok(Statement::CreateIndex {
+                name: translate_object_name(name),
+                table_name: translate_object_name(table_name),
+                column: translate_expr(&columns[0].expr)?,
+            })
+        }
+        #[cfg(feature = "index")]
+        SqlStatement::Drop {
+            object_type: SqlObjectType::Index,
+            names,
+            ..
+        } => {
+            if names.len() > 1 {
+                return Err(TranslateError::TooManyParamsInDropIndex.into());
+            }
+
+            let object_name: &Vec<SqlIdent> = &names[0].0;
+
+            let table_name = ObjectName(vec![object_name[0].value.to_owned()]);
+            let name = ObjectName(vec![object_name[1].value.to_owned()]);
+
+            Ok(Statement::DropIndex { name, table_name })
+        }
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }

@@ -43,10 +43,18 @@ macro_rules! fetch_schema {
 #[async_trait(?Send)]
 impl AlterTable for SledStorage {
     async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
-        let (_, Schema { column_defs, .. }) = fetch_schema!(self, &self.tree, table_name);
+        let (
+            _,
+            Schema {
+                column_defs,
+                indexes,
+                ..
+            },
+        ) = fetch_schema!(self, &self.tree, table_name);
         let schema = Schema {
             table_name: new_table_name.to_string(),
             column_defs,
+            indexes,
         };
 
         let tree = &self.tree;
@@ -83,7 +91,14 @@ impl AlterTable for SledStorage {
         old_column_name: &str,
         new_column_name: &str,
     ) -> MutResult<Self, ()> {
-        let (key, Schema { column_defs, .. }) = fetch_schema!(self, &self.tree, table_name);
+        let (
+            key,
+            Schema {
+                column_defs,
+                indexes,
+                ..
+            },
+        ) = fetch_schema!(self, &self.tree, table_name);
 
         let i = column_defs
             .iter()
@@ -105,6 +120,7 @@ impl AlterTable for SledStorage {
         let schema = Schema {
             table_name: table_name.to_string(),
             column_defs,
+            indexes,
         };
         let value = try_into!(self, bincode::serialize(&schema));
         try_into!(self, self.tree.insert(key, value));
@@ -118,6 +134,7 @@ impl AlterTable for SledStorage {
             Schema {
                 table_name,
                 column_defs,
+                indexes,
             },
         ) = fetch_schema!(self, &self.tree, table_name);
 
@@ -168,6 +185,7 @@ impl AlterTable for SledStorage {
         let schema = Schema {
             table_name,
             column_defs,
+            indexes,
         };
         let schema_value = try_into!(self, bincode::serialize(&schema));
         try_into!(self, self.tree.insert(key, schema_value));
@@ -186,6 +204,7 @@ impl AlterTable for SledStorage {
             Schema {
                 table_name,
                 column_defs,
+                indexes,
             },
         ) = fetch_schema!(self, &self.tree, table_name);
 
@@ -233,6 +252,7 @@ impl AlterTable for SledStorage {
         let schema = Schema {
             table_name,
             column_defs,
+            indexes,
         };
         let schema_value = try_into!(self, bincode::serialize(&schema));
         try_into!(self, self.tree.insert(key, schema_value));

@@ -12,6 +12,8 @@ pub mod drop_table;
 pub mod error;
 pub mod filter;
 pub mod function;
+#[cfg(feature = "index")]
+pub mod index;
 pub mod join;
 pub mod migrate;
 pub mod nested_select;
@@ -25,21 +27,6 @@ mod tester;
 pub mod macros;
 
 pub use tester::*;
-
-#[cfg(feature = "alter-table")]
-#[macro_export]
-macro_rules! generate_alter_table_tests {
-    () => {
-        glue!(alter_table_rename, alter_table::rename);
-        glue!(alter_table_add_drop, alter_table::add_drop);
-    };
-}
-
-#[cfg(not(feature = "alter-table"))]
-#[macro_export]
-macro_rules! generate_alter_table_tests {
-    () => {};
-}
 
 #[macro_export]
 macro_rules! generate_tests {
@@ -88,6 +75,27 @@ macro_rules! generate_tests {
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
 
-        generate_alter_table_tests!();
+        #[cfg(feature = "index")]
+        macro_rules! glue_index {
+            () => {
+                glue!(index_basic, index::basic);
+                glue!(index_and, index::and);
+                glue!(index_null, index::null);
+                glue!(index_value, index::value);
+            };
+        }
+
+        #[cfg(feature = "alter-table")]
+        macro_rules! glue_alter_table {
+            () => {
+                glue!(alter_table_rename, alter_table::rename);
+                glue!(alter_table_add_drop, alter_table::add_drop);
+            };
+        }
+
+        #[cfg(feature = "index")]
+        glue_index!();
+        #[cfg(feature = "alter-table")]
+        glue_alter_table!();
     };
 }

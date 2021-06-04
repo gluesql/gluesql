@@ -97,13 +97,14 @@ test_case!(add_drop, async move {
                             expr: Expr::Identifier("id".to_owned()),
                             label: "id".to_owned(),
                         }],
-                        from: vec![TableWithJoins {
+                        from: TableWithJoins {
                             relation: TableFactor::Table {
                                 name: ObjectName(vec!["Bar".to_owned()]),
                                 alias: None,
+                                index: None,
                             },
                             joins: vec![],
-                        }],
+                        },
                         selection: None,
                         group_by: vec![],
                         having: None,

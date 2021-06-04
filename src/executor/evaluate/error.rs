@@ -36,8 +36,11 @@ pub enum EvaluateError {
     #[error("unsupported compound identifier {0}")]
     UnsupportedCompoundIdentifier(String),
 
-    #[error("unimplemented")]
-    Unimplemented,
+    #[error("unreachable wildcard expression")]
+    UnreachableWildcardExpr,
+
+    #[error("unsupported stateless expression: {0}")]
+    UnsupportedStatelessExpr(String),
 
     #[error("unreachable empty context")]
     UnreachableEmptyContext,

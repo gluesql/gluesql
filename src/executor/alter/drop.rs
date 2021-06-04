@@ -4,13 +4,13 @@ use {
         ast::ObjectName,
         data::get_name,
         result::MutResult,
-        store::{AlterTable, Store, StoreMut},
+        store::{GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
     std::fmt::Debug,
 };
 
-pub async fn drop<T: 'static + Debug, U: Store<T> + StoreMut<T> + AlterTable>(
+pub async fn drop<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     names: &[ObjectName],
     if_exists: bool,

@@ -7,7 +7,7 @@ use {
         ast::{Join as AstJoin, JoinConstraint, JoinOperator},
         data::Table,
         result::{Error, Result},
-        store::Store,
+        store::GStore,
         utils::OrStream,
     },
     boolinator::Boolinator,
@@ -16,7 +16,7 @@ use {
 };
 
 pub struct Join<'a, T: 'static + Debug> {
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     join_clauses: &'a [AstJoin],
     filter_context: Option<Rc<FilterContext<'a>>>,
 }
@@ -27,7 +27,7 @@ type Joined<'a> =
 
 impl<'a, T: 'static + Debug> Join<'a, T> {
     pub fn new(
-        storage: &'a dyn Store<T>,
+        storage: &'a dyn GStore<T>,
         join_clauses: &'a [AstJoin],
         filter_context: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
@@ -83,7 +83,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
 }
 
 async fn join<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
     columns: Rc<[String]>,
@@ -133,7 +133,7 @@ async fn join<'a, T: 'static + Debug>(
 }
 
 async fn fetch_joined<'a, T: 'static + Debug>(
-    storage: &'a dyn Store<T>,
+    storage: &'a dyn GStore<T>,
     table_name: &'a str,
     table_alias: &'a str,
     columns: Rc<[String]>,
