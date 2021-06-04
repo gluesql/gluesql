@@ -1,3 +1,5 @@
+#![cfg(feature = "index")]
+
 mod and;
 mod basic;
 mod null;

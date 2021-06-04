@@ -1,6 +1,6 @@
 use {
     super::{
-        alter::{create_table, drop},
+        alter::{create_table, drop_table},
         fetch::{fetch, fetch_columns},
         select::{select, select_with_labels},
         update::Update,
@@ -20,6 +20,9 @@ use {
 
 #[cfg(feature = "alter-table")]
 use super::alter::alter_table;
+
+#[cfg(feature = "index")]
+use super::alter::{create_index, drop_index};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -77,7 +80,7 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
             .map(|(storage, _)| (storage, Payload::Create)),
         Statement::DropTable {
             names, if_exists, ..
-        } => drop(storage, names, *if_exists)
+        } => drop_table(storage, names, *if_exists)
             .await
             .map(|(storage, _)| (storage, Payload::DropTable)),
         #[cfg(feature = "alter-table")]
@@ -89,33 +92,13 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
             name,
             table_name,
             column,
-        } => {
-            let (table_name, index_name) = try_block!(storage, {
-                let index_name = get_name(name)?;
-                let table_name = get_name(table_name)?;
-
-                Ok((table_name, index_name))
-            });
-
-            storage
-                .create_index(table_name, index_name, column)
-                .await
-                .map(|(storage, _)| (storage, Payload::CreateIndex))
-        }
+        } => create_index(storage, table_name, name, column)
+            .await
+            .map(|(storage, _)| (storage, Payload::CreateIndex)),
         #[cfg(feature = "index")]
-        Statement::DropIndex { name, table_name } => {
-            let (table_name, index_name) = try_block!(storage, {
-                let index_name = get_name(name)?;
-                let table_name = get_name(table_name)?;
-
-                Ok((table_name, index_name))
-            });
-
-            storage
-                .drop_index(table_name, index_name)
-                .await
-                .map(|(storage, _)| (storage, Payload::DropIndex))
-        }
+        Statement::DropIndex { name, table_name } => drop_index(storage, table_name, name)
+            .await
+            .map(|(storage, _)| (storage, Payload::DropIndex)),
         //-- Rows
         Statement::Insert {
             table_name,
