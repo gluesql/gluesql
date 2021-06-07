@@ -22,6 +22,9 @@ pub enum IndexError {
     #[error("index name does not exist: {0}")]
     IndexNameDoesNotExist(String),
 
+    #[error("conflict - table not found: {0}")]
+    ConflictTableNotFound(String),
+
     #[error("conflict - update failed - index value")]
     ConflictOnEmptyIndexValueUpdate,
 

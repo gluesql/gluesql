@@ -1,3 +1,5 @@
+#![cfg(feature = "alter-table")]
+
 use {
     super::validate,
     crate::{

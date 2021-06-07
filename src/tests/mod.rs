@@ -1,18 +1,14 @@
 pub mod aggregate;
-#[cfg(feature = "alter-table")]
-pub mod alter_table;
+pub mod alter;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
 pub mod concat;
-pub mod create_table;
 pub mod data_type;
 pub mod default;
-pub mod drop_table;
 pub mod error;
 pub mod filter;
 pub mod function;
-#[cfg(feature = "index")]
 pub mod index;
 pub mod join;
 pub mod migrate;
@@ -50,9 +46,9 @@ macro_rules! generate_tests {
         glue!(arithmetic_blend, arithmetic::blend);
         glue!(concat, concat::concat);
         glue!(blend, blend::blend);
-        glue!(create_table, create_table::create_table);
+        glue!(create_table, alter::create_table);
+        glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
-        glue!(drop_table, drop_table::drop_table);
         glue!(error, error::error);
         glue!(filter, filter::filter);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
@@ -81,6 +77,7 @@ macro_rules! generate_tests {
                 glue!(index_basic, index::basic);
                 glue!(index_and, index::and);
                 glue!(index_null, index::null);
+                glue!(index_expr, index::expr);
                 glue!(index_value, index::value);
             };
         }
@@ -88,8 +85,8 @@ macro_rules! generate_tests {
         #[cfg(feature = "alter-table")]
         macro_rules! glue_alter_table {
             () => {
-                glue!(alter_table_rename, alter_table::rename);
-                glue!(alter_table_add_drop, alter_table::add_drop);
+                glue!(alter_table_rename, alter::alter_table_rename);
+                glue!(alter_table_add_drop, alter::alter_table_add_drop);
             };
         }
 

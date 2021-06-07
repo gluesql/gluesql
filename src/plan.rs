@@ -305,6 +305,10 @@ fn search_index_op(
             index_value_expr: *left,
             selection: None,
         }
+    } else if let Expr::Nested(left) = *left {
+        search_index_op(indexes, index_op, left, right)
+    } else if let Expr::Nested(right) = *right {
+        search_index_op(indexes, index_op, left, right)
     } else {
         Searched::NotFound(Expr::BinaryOp {
             left,

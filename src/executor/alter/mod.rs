@@ -1,14 +1,14 @@
-#[cfg(feature = "alter-table")]
 mod alter_table;
-mod create_table;
-mod drop;
 mod error;
+mod index;
+mod table;
 mod validate;
 
 use validate::validate;
 
 #[cfg(feature = "alter-table")]
 pub use alter_table::alter_table;
-pub use create_table::create_table;
-pub use drop::drop;
 pub use error::AlterError;
+#[cfg(feature = "index")]
+pub use index::{create_index, drop_index};
+pub use table::{create_table, drop_table};

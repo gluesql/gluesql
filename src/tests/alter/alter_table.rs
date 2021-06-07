@@ -1,10 +1,10 @@
-//! Tests in this file are only executed when feature = "alter-table" is enabled.
+#![cfg(feature = "alter-table")]
 
 use crate::*;
 use ast::*;
 use Value::*;
 
-test_case!(rename, async move {
+test_case!(alter_table_rename, async move {
     let test_cases = vec![
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         (
@@ -34,7 +34,7 @@ test_case!(rename, async move {
     }
 });
 
-test_case!(add_drop, async move {
+test_case!(alter_table_add_drop, async move {
     let test_cases = vec![
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),

@@ -49,7 +49,7 @@ impl<'a> IndexSync<'a> {
             column_defs,
             indexes,
             ..
-        } = schema.ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()))?;
+        } = schema.ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()))?;
 
         let columns = column_defs
             .into_iter()

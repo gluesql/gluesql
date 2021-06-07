@@ -6,6 +6,7 @@ use {
         result::MutResult,
         store::{GStore, GStoreMut},
     },
+    futures::stream::{self, TryStreamExt},
     std::fmt::Debug,
 };
 
@@ -51,4 +52,35 @@ pub async fn create_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     } else {
         Ok((storage, ()))
     }
+}
+
+pub async fn drop_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
+    storage: U,
+    table_names: &[ObjectName],
+    if_exists: bool,
+) -> MutResult<U, ()> {
+    stream::iter(table_names.iter().map(Ok))
+        .try_fold((storage, ()), |(storage, _), table_name| async move {
+            let schema = (|| async {
+                let table_name = get_name(table_name)?;
+                let schema = storage.fetch_schema(table_name).await?;
+
+                if !if_exists {
+                    schema.ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
+                }
+
+                Ok(table_name)
+            })()
+            .await;
+
+            let schema = match schema {
+                Ok(s) => s,
+                Err(e) => {
+                    return Err((storage, e));
+                }
+            };
+
+            storage.delete_schema(schema).await
+        })
+        .await
 }
