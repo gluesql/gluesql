@@ -272,7 +272,7 @@ CREATE TABLE Test (
     );
 
     test!(
-        Err(EvaluateError::UnsupportedStatelessExpr(format!(
+        Err(AlterError::UnsupportedIndexExpr(format!(
             "{:#?}",
             ast::Expr::CompoundIdentifier(vec!["a".to_owned(), "b".to_owned()])
         ))
@@ -281,8 +281,13 @@ CREATE TABLE Test (
     );
 
     test!(
-        Err(IndexError::TableNotFound("Abc".to_owned()).into()),
+        Err(AlterError::TableNotFound("Abc".to_owned()).into()),
         "CREATE INDEX idx_wow ON Abc (name)"
+    );
+
+    test!(
+        Err(IndexError::TableNotFound("NoNameTable".to_owned()).into()),
+        "DROP INDEX NoNameTable.idx_id"
     );
 
     test!(

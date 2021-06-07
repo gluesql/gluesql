@@ -70,7 +70,7 @@ impl IndexMut<IVec> for SledStorage {
             ..
         } = try_into!(
             self,
-            schema.ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()))
+            schema.ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()))
         );
 
         if indexes.iter().any(|(name, _)| name == index_name) {
