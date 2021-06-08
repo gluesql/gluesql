@@ -30,18 +30,15 @@ impl Index<IVec> for SledStorage {
     ) -> Result<RowIter<IVec>> {
         let index_data_ids = {
             #[derive(Iterator)]
-            enum DataIds<I1, I2, I3, I4> {
+            enum DataIds<I1, I2, I3> {
                 Empty(I1),
                 Once(I2),
-                RangeGt(I3),
-                Range(I4),
+                Range(I3),
             }
 
             let map = |item: std::result::Result<_, _>| item.map(|(_, v)| v);
-            let lower = || build_index_key_prefix(table_name, index_name);
-            let upper = || {
-                build_index_key_prefix(table_name, index_name)
-                    .into_iter()
+            let incr = |key: Vec<u8>| {
+                key.into_iter()
                     .rev()
                     .fold((false, Vector::new()), |(added, upper), v| {
                         match (added, v) {
@@ -54,6 +51,8 @@ impl Index<IVec> for SledStorage {
                     .reverse()
                     .into()
             };
+            let lower = || build_index_key_prefix(table_name, index_name);
+            let upper = || incr(build_index_key_prefix(table_name, index_name));
             let key = build_index_key(table_name, index_name, value);
 
             match op {
@@ -61,9 +60,7 @@ impl Index<IVec> for SledStorage {
                     Some(v) => DataIds::Once(once(v)),
                     None => DataIds::Empty(empty()),
                 },
-                IndexOperator::Gt => {
-                    DataIds::RangeGt(self.tree.range(key..upper()).skip(1).map(map))
-                }
+                IndexOperator::Gt => DataIds::Range(self.tree.range(incr(key)..upper()).map(map)),
                 IndexOperator::GtEq => DataIds::Range(self.tree.range(key..upper()).map(map)),
                 IndexOperator::Lt => DataIds::Range(self.tree.range(lower()..key).map(map)),
                 IndexOperator::LtEq => DataIds::Range(self.tree.range(lower()..=key).map(map)),

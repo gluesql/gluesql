@@ -90,6 +90,9 @@ macro_rules! generate_tests {
             };
         }
 
+        #[cfg(all(feature = "alter-table", feature = "index"))]
+        glue!(alter_table_drop_indexed_column, alter::drop_indexed_column);
+
         #[cfg(feature = "index")]
         glue_index!();
         #[cfg(feature = "alter-table")]
