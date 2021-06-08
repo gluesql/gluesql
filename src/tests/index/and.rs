@@ -106,12 +106,13 @@ CREATE TABLE NullIdx (
         "#
     );
 
-    test!(
+    test_idx!(
         Ok(select!(
             id  | date                | flag
             I64 | Date                | Bool;
             5     date!("2030-03-01")   false
         )),
+        idx!(),
         r#"
         SELECT * FROM NullIdx
         WHERE

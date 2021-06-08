@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::IndexItem,
+        ast::{IndexItem, SetExpr, Statement, TableFactor},
         executor::{execute, Payload},
         parse_sql::parse,
         plan::plan,
@@ -36,13 +36,23 @@ pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     let statement = try_run!(translate(&parsed[0]));
     let statement = try_run!(plan(&storage, statement).await);
 
-    if let Some(indexes) = indexes {
-        let statement = format!("{:?}", statement);
-        let indexes = indexes.into_iter().map(|v| format!("{:?}", v));
+    if let Some(expected) = indexes {
+        let found = find_indexes(&statement);
 
-        for index in indexes {
-            if !statement.contains(&index) {
-                panic!("index does not exist: {}", index);
+        if expected.len() != found.len() {
+            panic!(
+                "num of indexes does not match: expected({}) != found({})",
+                expected.len(),
+                found.len(),
+            );
+        }
+
+        for expected_index in expected {
+            if !found
+                .iter()
+                .any(|found_index| *found_index == &expected_index)
+            {
+                panic!("index does not exist: {:#?}", expected_index)
             }
         }
     }
@@ -59,6 +69,33 @@ pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
             Err(error)
         }
     }
+}
+
+fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
+    let body = match statement {
+        Statement::Query(query) => &query.body,
+        _ => {
+            return vec![];
+        }
+    };
+
+    let table_factor = match body {
+        SetExpr::Select(select) => &select.from.relation,
+        _ => {
+            return vec![];
+        }
+    };
+
+    let index = match table_factor {
+        TableFactor::Table {
+            index: Some(index), ..
+        } => index,
+        _ => {
+            return vec![];
+        }
+    };
+
+    vec![index]
 }
 
 /// If you want to make your custom storage and want to run integrate tests,

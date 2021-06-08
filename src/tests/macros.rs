@@ -7,6 +7,9 @@ macro_rules! row {
 
 #[macro_export]
 macro_rules! idx {
+    () => {
+        vec![]
+    };
     ($name: path, $op: path, $sql_expr: literal) => {
         vec![ast::IndexItem {
             name: stringify!($name).to_owned(),

@@ -109,11 +109,12 @@ CREATE TABLE NullIdx (
         "SELECT id, date, flag FROM NullIdx WHERE date IS NOT NULL"
     );
 
-    test!(
+    test_idx!(
         Ok(Payload::Select {
             labels: vec!["id".to_owned(), "date".to_owned(), "flag".to_owned()],
             rows: vec![],
         }),
+        idx!(),
         "SELECT * FROM NullIdx WHERE id = NULL"
     );
 });
