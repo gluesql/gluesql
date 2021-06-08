@@ -72,7 +72,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
                             }
                         }
                         SelectItem::Expr { expr, .. } => {
-                            evaluate(self.storage, filter_context, aggregated, expr, true)
+                            evaluate(self.storage, filter_context, aggregated, expr)
                                 .await
                                 .map(|evaluated| evaluated.try_into())?
                                 .map(|v| vec![v])

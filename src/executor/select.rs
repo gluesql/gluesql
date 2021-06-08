@@ -59,7 +59,7 @@ async fn fetch_blended<'a, T: 'static + Debug>(
                 op: index_op,
                 value_expr,
             }) => {
-                let evaluated = evaluate(storage, None, None, value_expr, false).await?;
+                let evaluated = evaluate(storage, None, None, value_expr).await?;
                 let index_value: Value = evaluated.try_into()?;
 
                 storage

@@ -31,7 +31,10 @@ impl<'a> BlendContext<'a> {
             self.columns
                 .iter()
                 .position(|column| column == target)
-                .map(|index| self.row.as_ref().and_then(|row| row.get_value(index)))
+                .map(|index| match &self.row {
+                    Some(row) => row.get_value(index),
+                    None => Some(&Value::Null),
+                })
         };
 
         match get_value() {
@@ -52,7 +55,10 @@ impl<'a> BlendContext<'a> {
             self.columns
                 .iter()
                 .position(|column| column == target)
-                .map(|index| self.row.as_ref().and_then(|row| row.get_value(index)))
+                .map(|index| match &self.row {
+                    Some(row) => row.get_value(index),
+                    None => Some(&Value::Null),
+                })
         };
 
         match get_value() {
