@@ -124,10 +124,13 @@ CREATE TABLE Test (
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
+            1     2     "Hello".to_owned();
+            1     17    "World".to_owned();
+            4     7     "Job".to_owned();
             11    7     "Great".to_owned()
         )),
-        idx!(idx_id, Gt, "4"),
-        "SELECT id, num, name FROM Test WHERE id > 4"
+        idx!(idx_id, Gt, "0"),
+        "SELECT id, num, name FROM Test WHERE id > 0"
     );
 
     test_idx!(
