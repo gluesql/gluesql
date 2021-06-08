@@ -32,6 +32,7 @@ pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
         };
     }
 
+    println!("[SQL] {}", sql);
     let parsed = try_run!(parse(sql));
     let statement = try_run!(translate(&parsed[0]));
     let statement = try_run!(plan(&storage, statement).await);
@@ -124,6 +125,19 @@ macro_rules! test_case {
             use std::rc::Rc;
 
             let cell = tester.get_cell();
+
+            #[allow(unused_macros)]
+            macro_rules! schema {
+                ($table_name: literal) => {
+                    cell.borrow()
+                        .as_ref()
+                        .expect("cell is empty")
+                        .fetch_schema($table_name)
+                        .await
+                        .expect("error fetching schema")
+                        .expect("table not found")
+                };
+            }
 
             #[allow(unused_macros)]
             macro_rules! run {
