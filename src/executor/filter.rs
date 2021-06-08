@@ -56,7 +56,7 @@ pub async fn check_expr<'a, T: 'static + Debug>(
     aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
     expr: &'a Expr,
 ) -> Result<bool> {
-    evaluate(storage, context, aggregated, expr, false)
+    evaluate(storage, context, aggregated, expr)
         .await
         .map(|evaluated| evaluated.try_into())?
 }

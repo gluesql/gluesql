@@ -70,7 +70,7 @@ impl<'a, T: 'static + Debug> Update<'a, T> {
                 let ColumnDef { data_type, .. } = column_def;
                 let nullable = column_def.is_nullable();
 
-                let value = match evaluate(self.storage, context, None, value, false).await? {
+                let value = match evaluate(self.storage, context, None, value).await? {
                     Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
                     Evaluated::Value(v) => {
                         v.validate_type(data_type)?;

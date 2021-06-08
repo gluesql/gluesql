@@ -142,6 +142,10 @@ test_case!(blend, async move {
             BlendError::TableAliasNotFound("Whatever".to_owned()).into(),
             "SELECT * FROM BlendUser WHERE id IN (SELECT Whatever.* FROM BlendUser)",
         ),
+        (
+            EvaluateError::ValueNotFound("noname".to_owned()).into(),
+            "SELECT noname FROM BlendUser",
+        ),
     ];
 
     for (error, sql) in error_cases.into_iter() {
