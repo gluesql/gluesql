@@ -3,8 +3,8 @@
 use {
     super::{error::err_into, fetch_schema, SledStorage},
     crate::{
-        ast::ColumnDef, schema::ColumnDefExt, utils::Vector, AlterTable, AlterTableError,
-        MutResult, Row, Schema, Value,
+        ast::ColumnDef, executor::evaluate_stateless, schema::ColumnDefExt, utils::Vector,
+        AlterTable, AlterTableError, MutResult, Row, Schema, Value,
     },
     async_trait::async_trait,
     boolinator::Boolinator,
@@ -154,7 +154,11 @@ impl AlterTable for SledStorage {
         let nullable = column_def.is_nullable();
         let default = column_def.get_default();
         let value = match (default, nullable) {
-            (Some(expr), _) => try_self!(self, Value::from_expr(&data_type, nullable, expr)),
+            (Some(expr), _) => {
+                let evaluated = try_self!(self, evaluate_stateless(None, expr));
+
+                try_self!(self, evaluated.try_into_value(&data_type, nullable))
+            }
             (None, true) => Value::Null,
             (None, false) => {
                 return Err((

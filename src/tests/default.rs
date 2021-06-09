@@ -1,4 +1,5 @@
 use crate::*;
+use chrono::NaiveDate;
 
 test_case!(default, async move {
     use Value::*;
@@ -38,4 +39,31 @@ test_case!(default, async move {
     for (sql, expected) in test_cases.into_iter() {
         test!(Ok(expected), sql);
     }
+
+    test!(
+        Ok(Payload::Create),
+        r#"
+        CREATE TABLE TestExpr (
+            id INTEGER,
+            date DATE DEFAULT DATE "2020-01-01",
+            num INTEGER DEFAULT -(-1 * +2),
+            flag BOOLEAN DEFAULT CAST("TRUE" AS BOOLEAN),
+            flag2 BOOLEAN DEFAULT 1 IN (1, 2, 3),
+            flag3 BOOLEAN DEFAULT 10 BETWEEN 1 AND 2,
+            flag4 BOOLEAN DEFAULT (1 IS NULL OR NULL IS NOT NULL)
+        )"#
+    );
+
+    run!("INSERT INTO TestExpr (id) VALUES (1);");
+
+    let d = |y, m, d| NaiveDate::from_ymd(y, m, d);
+
+    test!(
+        Ok(select!(
+            id  | date          | num | flag | flag2 | flag3 | flag4;
+            I64 | Date          | I64 | Bool | Bool  | Bool  | Bool;
+            1     d(2020, 1, 1)   2     true   true    false   false
+        )),
+        "SELECT * FROM TestExpr"
+    );
 });

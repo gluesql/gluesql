@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{AstLiteral, Expr},
+        ast::AstLiteral,
         result::{Error, Result},
     },
     serde::Serialize,
@@ -11,9 +11,6 @@ use {
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum LiteralError {
-    #[error("unsupported expr: {0}")]
-    UnsupportedExpr(String),
-
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
 
@@ -58,19 +55,6 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
         };
 
         Ok(literal)
-    }
-}
-
-impl<'a> TryFrom<&'a Expr> for Literal<'a> {
-    type Error = Error;
-
-    fn try_from(expr: &'a Expr) -> Result<Self> {
-        match expr {
-            Expr::Literal(literal) => Literal::try_from(literal),
-            // TODO: Expr::TypedString support
-            Expr::Identifier(value) => Ok(Literal::Text(Cow::Borrowed(value))),
-            _ => Err(LiteralError::UnsupportedExpr(format!("{:?}", expr)).into()),
-        }
     }
 }
 

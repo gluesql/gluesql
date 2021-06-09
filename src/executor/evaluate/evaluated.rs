@@ -160,4 +160,15 @@ impl<'a> Evaluated<'a> {
             Evaluated::Literal(v) => matches!(v, &Literal::Null),
         }
     }
+
+    pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
+        let value = match self {
+            Evaluated::Value(v) => v.into_owned(),
+            Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
+        };
+
+        value.validate_null(nullable)?;
+
+        Ok(value)
+    }
 }

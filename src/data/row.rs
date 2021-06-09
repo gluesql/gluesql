@@ -2,6 +2,7 @@ use {
     crate::{
         ast::{ColumnDef, Expr},
         data::{schema::ColumnDefExt, Value},
+        executor::evaluate_stateless,
         result::Result,
     },
     serde::{Deserialize, Serialize},
@@ -68,7 +69,7 @@ impl Row {
                 }?;
                 let nullable = column_def.is_nullable();
 
-                Value::from_expr(&data_type, nullable, expr)
+                evaluate_stateless(None, expr)?.try_into_value(&data_type, nullable)
             })
             .collect::<Result<_>>()
             .map(Self)
