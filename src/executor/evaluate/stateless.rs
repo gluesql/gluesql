@@ -105,7 +105,6 @@ pub fn evaluate_stateless<'a>(
         Expr::Wildcard | Expr::QualifiedWildcard(_) => {
             Err(EvaluateError::UnreachableWildcardExpr.into())
         }
-        // TODO: Add test - UnsupportedStatelessExpr error
         _ => Err(EvaluateError::UnsupportedStatelessExpr(format!("{:#?}", expr)).into()),
     }
 }

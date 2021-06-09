@@ -1,7 +1,4 @@
-use crate::{
-    ast::{AstLiteral, BinaryOperator, Expr},
-    *,
-};
+use crate::{ast::Expr, *};
 
 test_case!(migrate, async move {
     run!(
@@ -14,30 +11,26 @@ test_case!(migrate, async move {
     "
     );
     run!(
-        "
+        r#"
         INSERT INTO Test (id, num, name) VALUES
-            (1, 2, \"Hello\"),
-            (1, 9, \"World\"),
-            (3, 4, \"Great\");
-        "
+            (1,     2,     "Hello"),
+            (-(-1), 9,     "World"),
+            (+3,    2 * 2, "Great");
+        "#
     );
 
     let error_cases = vec![
         (
-            LiteralError::UnsupportedExpr(format!(
-                "{:?}",
-                Expr::BinaryOp {
-                    left: Box::new(Expr::Literal(AstLiteral::Number("3".to_owned()))),
-                    op: BinaryOperator::Multiply,
-                    right: Box::new(Expr::Literal(AstLiteral::Number("2".to_owned()))),
-                }
-            ))
-            .into(),
-            "INSERT INTO Test (id, num) VALUES (3 * 2, 1);",
-        ),
-        (
             ValueError::FailedToParseNumber.into(),
             r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
+        ),
+        (
+            EvaluateError::UnsupportedStatelessExpr(format!(
+                "{:#?}",
+                Expr::CompoundIdentifier(vec!["a".to_owned(), "b".to_owned()]),
+            ))
+            .into(),
+            "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
         ),
         (
             EvaluateError::UnsupportedCompoundIdentifier(format!(

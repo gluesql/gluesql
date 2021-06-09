@@ -1,17 +1,10 @@
 use {
-    super::{Interval, Literal},
-    crate::{
-        ast::{DataType, Expr},
-        result::Result,
-    },
+    super::Interval,
+    crate::{ast::DataType, result::Result},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
-    std::{
-        cmp::Ordering,
-        convert::{TryFrom, TryInto},
-        fmt::Debug,
-    },
+    std::{cmp::Ordering, convert::TryInto, fmt::Debug},
 };
 
 mod big_edian;
@@ -77,15 +70,6 @@ impl PartialOrd<Value> for Value {
 }
 
 impl Value {
-    pub fn from_expr(data_type: &DataType, nullable: bool, expr: &Expr) -> Result<Self> {
-        let literal = Literal::try_from(expr)?;
-        let value = Value::try_from_literal(data_type, &literal)?;
-
-        value.validate_null(nullable)?;
-
-        Ok(value)
-    }
-
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
         let valid = matches!(
             (data_type, self),

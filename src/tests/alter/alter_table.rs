@@ -89,8 +89,8 @@ test_case!(alter_table_add_drop, async move {
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
-            Err(LiteralError::UnsupportedExpr(format!(
-                "{:?}",
+            Err(EvaluateError::UnsupportedStatelessExpr(format!(
+                "{:#?}",
                 Expr::Subquery(Box::new(ast::Query {
                     body: SetExpr::Select(Box::new(Select {
                         projection: vec![SelectItem::Expr {
