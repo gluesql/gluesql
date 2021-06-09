@@ -3,7 +3,7 @@ use {
         data::{IntervalError, LiteralError, RowError, TableError, ValueError},
         executor::{
             AggregateError, AlterError, BlendError, EvaluateError, ExecuteError, FetchError,
-            LimitError, SelectError, UpdateError, ValidateError,
+            SelectError, UpdateError, ValidateError,
         },
         translate::TranslateError,
     },
@@ -54,8 +54,6 @@ pub enum Error {
     #[error(transparent)]
     Update(#[from] UpdateError),
     #[error(transparent)]
-    Limit(#[from] LimitError),
-    #[error(transparent)]
     Row(#[from] RowError),
     #[error(transparent)]
     Table(#[from] TableError),
@@ -91,7 +89,6 @@ impl PartialEq for Error {
             (Blend(e), Blend(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
-            (Limit(e), Limit(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,
             (Validate(e), Validate(e2)) => e == e2,

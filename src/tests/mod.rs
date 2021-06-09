@@ -11,6 +11,7 @@ pub mod filter;
 pub mod function;
 pub mod index;
 pub mod join;
+pub mod limit;
 pub mod migrate;
 pub mod nested_select;
 pub mod nullable;
@@ -49,6 +50,7 @@ macro_rules! generate_tests {
         glue!(create_table, alter::create_table);
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
+        glue!(limit, limit::limit);
         glue!(error, error::error);
         glue!(filter, filter::filter);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
