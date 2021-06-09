@@ -1,20 +1,9 @@
 use {
-    super::context::BlendContext,
-    crate::{
-        ast::{AstLiteral, Expr},
-        result::Result,
-    },
+    super::{context::BlendContext, evaluate::evaluate_stateless},
+    crate::{ast::Expr, data::Value, result::Result},
     futures::stream::{Stream, StreamExt},
-    serde::Serialize,
-    std::{fmt::Debug, pin::Pin, rc::Rc},
-    thiserror::Error as ThisError,
+    std::{convert::TryInto, pin::Pin, rc::Rc},
 };
-
-#[derive(ThisError, Serialize, Debug, PartialEq)]
-pub enum LimitError {
-    #[error("Unreachable")]
-    Unreachable,
-}
 
 pub struct Limit {
     limit: Option<usize>,
@@ -23,17 +12,15 @@ pub struct Limit {
 
 impl Limit {
     pub fn new(limit: Option<&Expr>, offset: Option<&Expr>) -> Result<Self> {
-        let parse = |expr: &Expr| -> Result<usize> {
-            match expr {
-                Expr::Literal(AstLiteral::Number(v)) => {
-                    v.parse().map_err(|_| LimitError::Unreachable.into())
-                }
-                _ => Err(LimitError::Unreachable.into()),
-            }
+        let eval = |expr| -> Result<usize> {
+            let value: Value = evaluate_stateless(None, expr)?.try_into()?;
+            let n: i64 = value.try_into()?;
+
+            Ok(n as usize)
         };
 
-        let limit = limit.map(parse).transpose()?;
-        let offset = offset.map(parse).transpose()?;
+        let limit = limit.map(eval).transpose()?;
+        let offset = offset.map(eval).transpose()?;
 
         Ok(Self { limit, offset })
     }

@@ -18,7 +18,6 @@ pub use blend::BlendError;
 pub use evaluate::{evaluate_stateless, EvaluateError};
 pub use execute::{execute, ExecuteError, Payload};
 pub use fetch::FetchError;
-pub use limit::LimitError;
 pub use select::SelectError;
 pub use update::UpdateError;
 pub use validate::{UniqueKey, ValidateError};
