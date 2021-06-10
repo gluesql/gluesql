@@ -24,3 +24,14 @@ pub fn parse_expr(sql_expr: &str) -> Result<SqlExpr> {
         .parse_expr()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
+
+pub fn parse_interval(sql_interval: &str) -> Result<SqlExpr> {
+    let dialect = GenericDialect {};
+    let tokens = Tokenizer::new(&dialect, &sql_interval)
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &dialect)
+        .parse_literal_interval()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
