@@ -89,31 +89,10 @@ test_case!(alter_table_add_drop, async move {
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something INTEGER DEFAULT (SELECT id FROM Bar LIMIT 1)",
-            Err(EvaluateError::UnsupportedStatelessExpr(format!(
-                "{:#?}",
-                Expr::Subquery(Box::new(ast::Query {
-                    body: SetExpr::Select(Box::new(Select {
-                        projection: vec![SelectItem::Expr {
-                            expr: Expr::Identifier("id".to_owned()),
-                            label: "id".to_owned(),
-                        }],
-                        from: TableWithJoins {
-                            relation: TableFactor::Table {
-                                name: ObjectName(vec!["Bar".to_owned()]),
-                                alias: None,
-                                index: None,
-                            },
-                            joins: vec![],
-                        },
-                        selection: None,
-                        group_by: vec![],
-                        having: None,
-                    })),
-                    limit: Some(Expr::Literal(AstLiteral::Number("1".to_owned()))),
-                    offset: None,
-                }))
-            ))
-            .into()),
+            Err(
+                EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Bar LIMIT 1)"))
+                    .into(),
+            ),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN something SOMEWHAT",

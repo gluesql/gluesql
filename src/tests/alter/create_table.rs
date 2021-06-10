@@ -60,6 +60,10 @@ test_case!(create_table, async move {
             )
             .into()),
         ),
+        (
+            "CREATE TABLE Gluery (id INTEGER DEFAULT (SELECT id FROM Wow))",
+            Err(EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Wow)")).into()),
+        ),
     ];
 
     for (sql, expected) in test_cases.into_iter() {

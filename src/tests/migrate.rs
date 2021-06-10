@@ -25,11 +25,7 @@ test_case!(migrate, async move {
             r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
         ),
         (
-            EvaluateError::UnsupportedStatelessExpr(format!(
-                "{:#?}",
-                Expr::CompoundIdentifier(vec!["a".to_owned(), "b".to_owned()]),
-            ))
-            .into(),
+            EvaluateError::UnsupportedStatelessExpr(expr!("a.b")).into(),
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
         ),
         (
