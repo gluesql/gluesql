@@ -1,4 +1,30 @@
-use super::{Interval, DAY, HOUR, MINUTE, SECOND};
+use {
+    super::{Interval, IntervalError, DAY, HOUR, MINUTE, SECOND},
+    crate::{
+        ast::{AstLiteral, Expr},
+        parse_interval,
+        result::{Error, Result},
+        translate::translate_expr,
+    },
+    std::convert::TryFrom,
+};
+
+impl TryFrom<&str> for Interval {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<Self> {
+        let parsed = parse_interval(s)?;
+
+        match translate_expr(&parsed)? {
+            Expr::Literal(AstLiteral::Interval {
+                value,
+                leading_field,
+                last_field,
+            }) => Interval::try_from_literal(&value, leading_field.as_ref(), last_field.as_ref()),
+            _ => Err(IntervalError::Unreachable.into()),
+        }
+    }
+}
 
 impl From<&Interval> for String {
     fn from(interval: &Interval) -> Self {
@@ -122,34 +148,38 @@ impl From<Interval> for String {
 
 #[cfg(test)]
 mod tests {
-    use super::Interval;
+    use {super::Interval, std::convert::TryFrom};
 
     #[test]
     fn into_string() {
         macro_rules! test {
-            ($( $value: literal $duration: ident ),* => $result: literal) => {
-                assert_eq!(interval!($( $value $duration ),* ), $result.to_owned());
-            };
             ($( $value: literal $duration: ident ),* => $result: literal $from_to: tt) => {
-                assert_eq!(
-                    interval!($( $value $duration ),* ),
-                    format!(r#""{}" {}"#, $result, stringify!($from_to))
-                );
+                let interval = interval!($( $value $duration ),*);
+                let interval_str = format!(r#""{}" {}"#, $result, stringify!($from_to));
+
+                assert_eq!(Ok(interval), Interval::try_from(interval_str.as_str()));
+                assert_eq!(String::from(interval), interval_str);
             };
             ($( $value: literal $duration: ident ),* => $result: literal $from: tt TO $to: tt) => {
-                assert_eq!(
-                    interval!($( $value $duration ),* ),
-                    format!(r#""{}" {} TO {}"#, $result, stringify!($from), stringify!($to))
+                let interval = interval!($( $value $duration ),*);
+                let interval_str = format!(
+                    r#""{}" {} TO {}"#,
+                    $result,
+                    stringify!($from),
+                    stringify!($to),
                 );
+
+                assert_eq!(Ok(interval), Interval::try_from(interval_str.as_str()));
+                assert_eq!(String::from(interval), interval_str);
             };
         }
 
         macro_rules! interval {
             ($value: literal $duration:ident) => {
-                String::from(Interval::$duration($value))
+                Interval::$duration($value)
             };
             ($interval: expr ; $value: literal $duration:ident) => {
-                String::from($interval.add(&Interval::$duration($value)).unwrap())
+                $interval.add(&Interval::$duration($value)).unwrap()
             };
             ($v0: literal $d0: ident, $( $v1: literal $d1: ident ),*) => {
                 interval!(
