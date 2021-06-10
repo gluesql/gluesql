@@ -1,6 +1,4 @@
-use serde::Serialize;
-use std::fmt::Debug;
-use thiserror::Error;
+use {crate::ast::Expr, serde::Serialize, std::fmt::Debug, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum EvaluateError {
@@ -39,8 +37,8 @@ pub enum EvaluateError {
     #[error("unreachable wildcard expression")]
     UnreachableWildcardExpr,
 
-    #[error("unsupported stateless expression: {0}")]
-    UnsupportedStatelessExpr(String),
+    #[error("unsupported stateless expression: {0:#?}")]
+    UnsupportedStatelessExpr(Expr),
 
     #[error("unreachable empty context")]
     UnreachableEmptyContext,

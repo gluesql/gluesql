@@ -1,16 +1,22 @@
 use {
     crate::{
-        ast::{IndexItem, SetExpr, Statement, TableFactor},
+        ast::{Expr, IndexItem, SetExpr, Statement, TableFactor},
         executor::{execute, Payload},
-        parse_sql::parse,
+        parse_sql::{parse, parse_expr},
         plan::plan,
         result::Result,
         store::{GStore, GStoreMut},
-        translate::translate,
+        translate::{translate, translate_expr},
     },
     async_trait::async_trait,
     std::{cell::RefCell, fmt::Debug, rc::Rc},
 };
+
+pub fn expr(sql: &str) -> Expr {
+    let parsed = parse_expr(sql).unwrap();
+
+    translate_expr(&parsed).unwrap()
+}
 
 pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     cell: Rc<RefCell<Option<U>>>,
@@ -136,6 +142,13 @@ macro_rules! test_case {
                         .await
                         .expect("error fetching schema")
                         .expect("table not found")
+                };
+            }
+
+            #[allow(unused_macros)]
+            macro_rules! expr {
+                ($sql: literal) => {
+                    tests::expr($sql)
                 };
             }
 
