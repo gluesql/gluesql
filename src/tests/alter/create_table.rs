@@ -56,7 +56,7 @@ test_case!(create_table, async move {
         )"#,
             Err(AlterError::UnsupportedDataTypeForUniqueColumn(
                 "ratio".to_owned(),
-                format!("{:?}", ast::DataType::Float),
+                ast::DataType::Float,
             )
             .into()),
         ),

@@ -19,8 +19,8 @@ pub enum ValidateError {
     #[error("conflict! storage row has no column on index {0}")]
     ConflictOnStorageColumnIndex(usize),
 
-    #[error("duplicate entry '{0}' for unique column '{1}'")]
-    DuplicateEntryOnUniqueField(String, String),
+    #[error("duplicate entry '{0:?}' for unique column '{1}'")]
+    DuplicateEntryOnUniqueField(Value, String),
 }
 
 pub enum ColumnValidation {
@@ -78,7 +78,7 @@ impl UniqueConstraint {
                 || Some(new_key),
                 || {
                     ValidateError::DuplicateEntryOnUniqueField(
-                        format!("{:?}", value),
+                        value.clone(),
                         self.column_name.to_owned(),
                     )
                     .into()

@@ -1,4 +1,4 @@
-use crate::{ast::Expr, *};
+use crate::*;
 
 test_case!(migrate, async move {
     run!(
@@ -29,15 +29,7 @@ test_case!(migrate, async move {
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
         ),
         (
-            EvaluateError::UnsupportedCompoundIdentifier(format!(
-                "{:?}",
-                Expr::CompoundIdentifier(vec![
-                    "Here".to_owned(),
-                    "User".to_owned(),
-                    "id".to_owned()
-                ])
-            ))
-            .into(),
+            EvaluateError::UnsupportedCompoundIdentifier(expr!("Here.User.id")).into(),
             "SELECT * FROM Test WHERE Here.User.id = 1",
         ),
         (

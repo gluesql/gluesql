@@ -61,35 +61,19 @@ test_case!(arithmetic, async move {
 
     let test_cases = vec![
         (
-            ValueError::AddOnNonNumeric(
-                format!("{:?}", Value::Str("A".to_owned())),
-                format!("{:?}", Value::I64(1)),
-            )
-            .into(),
+            ValueError::AddOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
             "SELECT * FROM Arith WHERE name + id < 1",
         ),
         (
-            ValueError::SubtractOnNonNumeric(
-                format!("{:?}", Value::Str("A".to_owned())),
-                format!("{:?}", Value::I64(1)),
-            )
-            .into(),
+            ValueError::SubtractOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
             "SELECT * FROM Arith WHERE name - id < 1",
         ),
         (
-            ValueError::MultiplyOnNonNumeric(
-                format!("{:?}", Value::Str("A".to_owned())),
-                format!("{:?}", Value::I64(1)),
-            )
-            .into(),
+            ValueError::MultiplyOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
             "SELECT * FROM Arith WHERE name * id < 1",
         ),
         (
-            ValueError::DivideOnNonNumeric(
-                format!("{:?}", Value::Str("A".to_owned())),
-                format!("{:?}", Value::I64(1)),
-            )
-            .into(),
+            ValueError::DivideOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
             "SELECT * FROM Arith WHERE name / id < 1",
         ),
         (

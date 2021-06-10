@@ -1,12 +1,20 @@
-use {serde::Serialize, std::fmt::Debug, thiserror::Error};
+use {
+    crate::{ast::DataType, data::Value},
+    serde::Serialize,
+    std::fmt::Debug,
+    thiserror::Error,
+};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum ValueError {
-    #[error("literal: {literal} is incompatible with data type: {data_type}")]
-    IncompatibleLiteralForDataType { data_type: String, literal: String },
+    #[error("literal: {literal} is incompatible with data type: {data_type:?}")]
+    IncompatibleLiteralForDataType {
+        data_type: DataType,
+        literal: String,
+    },
 
-    #[error("incompatible data type, data type: {data_type}, value: {value}")]
-    IncompatibleDataType { data_type: String, value: String },
+    #[error("incompatible data type, data type: {data_type:#?}, value: {value:#?}")]
+    IncompatibleDataType { data_type: DataType, value: Value },
 
     #[error("null value on not null field")]
     NullValueOnNotNullField,
@@ -23,17 +31,17 @@ pub enum ValueError {
     #[error("failed to parse time: {0}")]
     FailedToParseTime(String),
 
-    #[error("add on non-numeric values: {0} + {1}")]
-    AddOnNonNumeric(String, String),
+    #[error("add on non-numeric values: {0:?} + {1:?}")]
+    AddOnNonNumeric(Value, Value),
 
-    #[error("subtract on non-numeric values: {0} - {1}")]
-    SubtractOnNonNumeric(String, String),
+    #[error("subtract on non-numeric values: {0:?} - {1:?}")]
+    SubtractOnNonNumeric(Value, Value),
 
-    #[error("multiply on non-numeric values: {0} * {1}")]
-    MultiplyOnNonNumeric(String, String),
+    #[error("multiply on non-numeric values: {0:?} * {1:?}")]
+    MultiplyOnNonNumeric(Value, Value),
 
-    #[error("divide on non-numeric values: {0} / {1}")]
-    DivideOnNonNumeric(String, String),
+    #[error("divide on non-numeric values: {0:?} / {1:?}")]
+    DivideOnNonNumeric(Value, Value),
 
     #[error("floating numbers cannot be grouped by")]
     FloatCannotBeGroupedBy,
@@ -70,8 +78,11 @@ pub enum ValueError {
     #[error("unreachable literal cast from number to integer: {0}")]
     UnreachableLiteralCastFromNumberToInteger(String),
 
-    #[error("unimplemented literal cast: {literal} as {data_type}")]
-    UnimplementedLiteralCast { data_type: String, literal: String },
+    #[error("unimplemented literal cast: {literal} as {data_type:?}")]
+    UnimplementedLiteralCast {
+        data_type: DataType,
+        literal: String,
+    },
 
     #[error("unreachable integer overflow: {0}")]
     UnreachableIntegerOverflow(String),

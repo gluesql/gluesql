@@ -149,7 +149,7 @@ impl Value {
             | (DataType::Time, Literal::Null)
             | (DataType::Interval, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: format!("{:?}", data_type),
+                data_type: data_type.clone(),
                 literal: format!("{:?}", literal),
             }
             .into()),
@@ -203,7 +203,7 @@ impl Value {
             | (DataType::Float, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::UnimplementedLiteralCast {
-                data_type: format!("{:?}", data_type),
+                data_type: data_type.clone(),
                 literal: format!("{:?}", literal),
             }
             .into()),

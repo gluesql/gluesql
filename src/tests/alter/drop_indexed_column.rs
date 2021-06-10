@@ -21,10 +21,7 @@ CREATE TABLE Test (
     "#
     );
 
-    use {
-        ast::{AstLiteral, Expr, IndexOperator::*},
-        Value::*,
-    };
+    use {ast::IndexOperator::*, Value::*};
 
     // create indexes
     run!("CREATE INDEX idx_name ON Test (num + 1)");
@@ -36,11 +33,7 @@ CREATE TABLE Test (
 
     // check indexes working
     test!(
-        Err(AlterError::IdentifierNotFound(format!(
-            "{:#?}",
-            Expr::Literal(AstLiteral::Number("100".to_owned()))
-        ))
-        .into()),
+        Err(AlterError::IdentifierNotFound(expr!("100")).into()),
         "CREATE INDEX idx_literal ON Test (100)"
     );
 

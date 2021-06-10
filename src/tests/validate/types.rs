@@ -1,4 +1,8 @@
-use {crate::ast::DataType, crate::*, std::borrow::Cow};
+use {
+    crate::ast::DataType,
+    crate::{data::Literal, *},
+    std::borrow::Cow,
+};
 
 test_case!(types, async move {
     run!("CREATE TABLE TableB (id BOOLEAN);");
@@ -10,16 +14,16 @@ test_case!(types, async move {
         (
             "INSERT INTO TableB SELECT uid FROM TableC;",
             Err(ValueError::IncompatibleDataType {
-                data_type: format!("{:?}", DataType::Boolean),
-                value: format!("{:?}", Value::I64(1)),
+                data_type: DataType::Boolean,
+                value: Value::I64(1),
             }
             .into()),
         ),
         (
             "INSERT INTO TableC (uid) VALUES (\"A\")",
             Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: format!("{:?}", DataType::Int),
-                literal: format!("{:?}", data::Literal::Text(Cow::Owned("A".to_owned()))),
+                data_type: DataType::Int,
+                literal: format!("{:?}", Literal::Text(Cow::Owned("A".to_owned()))),
             }
             .into()),
         ),
@@ -34,16 +38,16 @@ test_case!(types, async move {
         (
             "UPDATE TableC SET uid = TRUE;",
             Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: format!("{:?}", DataType::Int),
-                literal: format!("{:?}", data::Literal::Boolean(true)),
+                data_type: DataType::Int,
+                literal: format!("{:?}", Literal::Boolean(true)),
             }
             .into()),
         ),
         (
             "UPDATE TableC SET uid = (SELECT id FROM TableB LIMIT 1) WHERE uid = 1",
             Err(ValueError::IncompatibleDataType {
-                data_type: format!("{:?}", DataType::Int),
-                value: format!("{:?}", Value::Bool(false)),
+                data_type: DataType::Int,
+                value: Value::Bool(false),
             }
             .into()),
         ),

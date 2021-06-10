@@ -14,8 +14,8 @@ pub enum AlterTableError {
     #[error("Renaming column not found")]
     RenamingColumnNotFound,
 
-    #[error("Default value is required: {0}")]
-    DefaultValueRequired(String),
+    #[error("Default value is required: {0:#?}")]
+    DefaultValueRequired(ColumnDef),
 
     #[error("Adding column already exists: {0}")]
     AddingColumnAlreadyExists(String),

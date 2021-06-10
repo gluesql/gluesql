@@ -278,11 +278,7 @@ CREATE TABLE Test (
     );
 
     test!(
-        Err(AlterError::UnsupportedIndexExpr(format!(
-            "{:#?}",
-            ast::Expr::CompoundIdentifier(vec!["a".to_owned(), "b".to_owned()])
-        ))
-        .into()),
+        Err(AlterError::UnsupportedIndexExpr(expr!("a.b")).into()),
         "CREATE INDEX idx_wow On Test (a.b)"
     );
 

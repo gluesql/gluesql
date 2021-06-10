@@ -38,83 +38,43 @@ CREATE TABLE TestC (
 
     let error_cases = vec![
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(2)),
-                "id".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(2), "id".to_owned()).into(),
             "INSERT INTO TestA VALUES (2, 2)",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(4)),
-                "id".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(4), "id".to_owned()).into(),
             "INSERT INTO TestA VALUES (4, 4), (4, 5)",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(2)),
-                "id".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(2), "id".to_owned()).into(),
             "UPDATE TestA SET id = 2 WHERE id = 1",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(1)),
-                "id".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(1), "id".to_owned()).into(),
             "INSERT INTO TestB VALUES (1, 3)",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(2)),
-                "num".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(2), "num".to_owned()).into(),
             "INSERT INTO TestB VALUES (4, 2)",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(5)),
-                "num".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(5), "num".to_owned()).into(),
             "INSERT INTO TestB VALUES (5, 5), (6, 5)",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(2)),
-                "num".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(2), "num".to_owned()).into(),
             "UPDATE TestB SET num = 2 WHERE id = 1",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(2)),
-                "id".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(2), "id".to_owned()).into(),
             "INSERT INTO TestC VALUES (2, 4)",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(3)),
-                "id".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(3), "id".to_owned()).into(),
             "INSERT INTO TestC VALUES (NULL, 5), (3, 5), (3, 6)",
         ),
         (
-            ValidateError::DuplicateEntryOnUniqueField(
-                format!("{:?}", Value::I64(1)),
-                "id".to_owned(),
-            )
-            .into(),
+            ValidateError::DuplicateEntryOnUniqueField(Value::I64(1), "id".to_owned()).into(),
             "UPDATE TestC SET id = 1",
         ),
     ];

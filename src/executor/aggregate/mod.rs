@@ -171,10 +171,7 @@ fn aggregate<'a>(
             .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
-                return Err(AggregateError::UnsupportedCompoundIdentifier(format!(
-                    "{:?}",
-                    expr
-                )));
+                return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
             }
 
             let table_alias = &idents[0];

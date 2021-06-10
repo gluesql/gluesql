@@ -163,7 +163,7 @@ impl AlterTable for SledStorage {
             (None, false) => {
                 return Err((
                     self,
-                    AlterTableError::DefaultValueRequired(format!("{:?}", column_def)).into(),
+                    AlterTableError::DefaultValueRequired(column_def.clone()).into(),
                 ));
             }
         };
