@@ -65,15 +65,7 @@ test_case!(aggregate, async move {
 
     let error_cases = vec![
         (
-            AggregateError::UnsupportedCompoundIdentifier(format!(
-                "{:?}",
-                ast::Expr::CompoundIdentifier(vec![
-                    "id".to_owned(),
-                    "name".to_owned(),
-                    "ok".to_owned()
-                ])
-            ))
-            .into(),
+            AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
         ),
         (

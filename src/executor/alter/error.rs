@@ -1,4 +1,9 @@
-use {serde::Serialize, std::fmt::Debug, thiserror::Error};
+use {
+    crate::ast::{DataType, Expr},
+    serde::Serialize,
+    std::fmt::Debug,
+    thiserror::Error,
+};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum AlterError {
@@ -11,13 +16,13 @@ pub enum AlterError {
     TableNotFound(String),
 
     // validate column def
-    #[error("column '{0}' of data type '{1}' is unsupported for unique constraint")]
-    UnsupportedDataTypeForUniqueColumn(String, String),
+    #[error("column '{0}' of data type '{1:?}' is unsupported for unique constraint")]
+    UnsupportedDataTypeForUniqueColumn(String, DataType),
 
     // validate index expr
-    #[error("unsupported index expr: {0}")]
-    UnsupportedIndexExpr(String),
+    #[error("unsupported index expr: {0:#?}")]
+    UnsupportedIndexExpr(Expr),
 
-    #[error("identifier not found: {0}")]
-    IdentifierNotFound(String),
+    #[error("identifier not found: {0:#?}")]
+    IdentifierNotFound(Expr),
 }

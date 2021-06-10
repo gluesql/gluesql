@@ -23,7 +23,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
     {
         return Err(AlterError::UnsupportedDataTypeForUniqueColumn(
             name.to_string(),
-            format!("{:?}", data_type),
+            data_type.clone(),
         )
         .into());
     }

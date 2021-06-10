@@ -31,8 +31,8 @@ pub enum EvaluateError {
     #[error("only boolean value is accepted: {0}")]
     BooleanTypeRequired(String),
 
-    #[error("unsupported compound identifier {0}")]
-    UnsupportedCompoundIdentifier(String),
+    #[error("unsupported compound identifier {0:#?}")]
+    UnsupportedCompoundIdentifier(Expr),
 
     #[error("unreachable wildcard expression")]
     UnreachableWildcardExpr,

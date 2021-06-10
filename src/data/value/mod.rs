@@ -92,8 +92,8 @@ impl Value {
 
         if !valid {
             return Err(ValueError::IncompatibleDataType {
-                data_type: format!("{:?}", data_type),
-                value: format!("{:?}", self),
+                data_type: data_type.clone(),
+                value: self.clone(),
             }
             .into());
         }
@@ -164,9 +164,7 @@ impl Value {
             | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(
-                ValueError::AddOnNonNumeric(format!("{:?}", self), format!("{:?}", other)).into(),
-            ),
+            _ => Err(ValueError::AddOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
 
@@ -211,11 +209,7 @@ impl Value {
             | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(
-                format!("{:?}", self),
-                format!("{:?}", other),
-            )
-            .into()),
+            _ => Err(ValueError::SubtractOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
 
@@ -237,11 +231,7 @@ impl Value {
             | (F64(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(
-                format!("{:?}", self),
-                format!("{:?}", other),
-            )
-            .into()),
+            _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
 
@@ -264,10 +254,7 @@ impl Value {
             | (F64(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(
-                ValueError::DivideOnNonNumeric(format!("{:?}", self), format!("{:?}", other))
-                    .into(),
-            ),
+            _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
 

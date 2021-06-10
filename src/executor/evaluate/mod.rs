@@ -56,9 +56,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         Expr::Nested(expr) => eval(&expr).await,
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
-                return Err(
-                    EvaluateError::UnsupportedCompoundIdentifier(format!("{:?}", expr)).into(),
-                );
+                return Err(EvaluateError::UnsupportedCompoundIdentifier(expr.clone()).into());
             }
 
             let table_alias = &idents[0];

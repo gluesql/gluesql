@@ -41,14 +41,11 @@ test_case!(alter_table_add_drop, async move {
         ("SELECT * FROM Foo;", Ok(select!(id; I64; 1; 2))),
         (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER",
-            Err(AlterTableError::DefaultValueRequired(format!(
-                "{:?}",
-                ColumnDef {
-                    name: "amount".to_owned(),
-                    data_type: DataType::Int,
-                    options: vec![]
-                }
-            ))
+            Err(AlterTableError::DefaultValueRequired(ColumnDef {
+                name: "amount".to_owned(),
+                data_type: DataType::Int,
+                options: vec![],
+            })
             .into()),
         ),
         (
@@ -102,7 +99,7 @@ test_case!(alter_table_add_drop, async move {
             "ALTER TABLE Foo ADD COLUMN something FLOAT UNIQUE",
             Err(AlterError::UnsupportedDataTypeForUniqueColumn(
                 "something".to_owned(),
-                format!("{:?}", DataType::Float),
+                DataType::Float,
             )
             .into()),
         ),
