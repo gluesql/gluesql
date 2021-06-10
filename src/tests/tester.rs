@@ -1,6 +1,7 @@
 use {
     crate::{
         ast::{Expr, IndexItem, SetExpr, Statement, TableFactor},
+        data::{Row, Value},
         executor::{execute, Payload},
         parse_sql::{parse, parse_expr},
         plan::plan,
@@ -16,6 +17,78 @@ pub fn expr(sql: &str) -> Expr {
     let parsed = parse_expr(sql).unwrap();
 
     translate_expr(&parsed).unwrap()
+}
+
+pub fn test(expected: Result<Payload>, found: Result<Payload>) {
+    let (expected, found): (Payload, Payload) = match (expected, found) {
+        (Ok(a), Ok(b)) => (a, b),
+        (a, b) => {
+            assert_eq!(a, b);
+
+            return;
+        }
+    };
+
+    let (expected, found) = match (expected, found) {
+        (
+            Payload::Select {
+                labels: expected_labels,
+                rows: a,
+            },
+            Payload::Select {
+                labels: found_labels,
+                rows: b,
+            },
+        ) => {
+            assert_eq!(expected_labels, found_labels);
+
+            (a, b)
+        }
+        (a, b) => {
+            assert_eq!(a, b);
+
+            return;
+        }
+    };
+
+    assert_eq!(
+        expected.len(),
+        found.len(),
+        "\n[err: number of rows]\nexpected: {:?}\n   found: {:?}",
+        expected,
+        found
+    );
+
+    let rows = expected.into_iter().zip(found.into_iter()).enumerate();
+
+    for (i, (expected, found)) in rows.into_iter() {
+        let Row(expected) = expected;
+        let Row(found) = found;
+
+        assert_eq!(
+            expected.len(),
+            found.len(),
+            "\n[err: size of row] row index: {}\nexpected: {:?}\n   found: {:?}",
+            i,
+            expected,
+            found
+        );
+
+        expected
+            .iter()
+            .zip(found.iter())
+            .for_each(|(expected_val, found_val)| {
+                if matches!((expected_val, found_val), (&Value::Null, &Value::Null)) {
+                    return;
+                }
+
+                assert_eq!(
+                    expected_val, found_val,
+                    "\n[err: value] row index: {}\nexpected: {:?}\n   found: {:?}",
+                    i, expected, found
+                );
+            });
+    }
 }
 
 pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
@@ -176,7 +249,7 @@ macro_rules! test_case {
                 ($expected: expr, $sql: expr) => {
                     let found = tests::run(Rc::clone(&cell), $sql, None).await;
 
-                    test($expected, found);
+                    tests::test($expected, found);
                 };
             }
 
@@ -185,81 +258,8 @@ macro_rules! test_case {
                 ($expected: expr, $indexes: expr, $sql: expr) => {
                     let found = tests::run(Rc::clone(&cell), $sql, Some($indexes)).await;
 
-                    test($expected, found);
+                    tests::test($expected, found);
                 };
-            }
-
-            #[allow(unused)]
-            fn test(expected: Result<Payload>, found: Result<Payload>) {
-                let (expected, found): (Payload, Payload) = match (expected, found) {
-                    (Ok(a), Ok(b)) => (a, b),
-                    (a, b) => {
-                        assert_eq!(a, b);
-
-                        return;
-                    }
-                };
-
-                let (expected, found) = match (expected, found) {
-                    (
-                        Payload::Select {
-                            labels: expected_labels,
-                            rows: a,
-                        },
-                        Payload::Select {
-                            labels: found_labels,
-                            rows: b,
-                        },
-                    ) => {
-                        assert_eq!(expected_labels, found_labels);
-
-                        (a, b)
-                    }
-                    (a, b) => {
-                        assert_eq!(a, b);
-
-                        return;
-                    }
-                };
-
-                assert_eq!(
-                    expected.len(),
-                    found.len(),
-                    "\n[err: number of rows]\nexpected: {:?}\n   found: {:?}",
-                    expected,
-                    found
-                );
-
-                let rows = expected.into_iter().zip(found.into_iter()).enumerate();
-
-                for (i, (expected, found)) in rows.into_iter() {
-                    let Row(expected) = expected;
-                    let Row(found) = found;
-
-                    assert_eq!(
-                        expected.len(),
-                        found.len(),
-                        "\n[err: size of row] row index: {}\nexpected: {:?}\n   found: {:?}",
-                        i,
-                        expected,
-                        found
-                    );
-
-                    expected
-                        .iter()
-                        .zip(found.iter())
-                        .for_each(|(expected_val, found_val)| {
-                            if matches!((expected_val, found_val), (&Value::Null, &Value::Null)) {
-                                return;
-                            }
-
-                            assert_eq!(
-                                expected_val, found_val,
-                                "\n[err: value] row index: {}\nexpected: {:?}\n   found: {:?}",
-                                i, expected, found
-                            );
-                        });
-                }
             }
 
             $content.await
