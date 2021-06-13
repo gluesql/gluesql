@@ -195,9 +195,9 @@ fn aggregate<'a>(
             .try_fold(state, |state, expr| aggr(state, expr)),
         Expr::UnaryOp { expr, .. } => aggr(state, expr),
         Expr::Nested(expr) => aggr(state, expr),
-        Expr::Aggregate(aggr) => match aggr {
+        Expr::Aggregate(aggr) => match aggr.as_ref() {
             Aggregate::Count(expr) => {
-                let value = Value::I64(match expr.as_ref() {
+                let value = Value::I64(match expr {
                     Expr::Wildcard => 1,
                     _ => {
                         if get_value(expr)?.is_null() {

@@ -91,11 +91,11 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         }
         Expr::Aggregate(aggr) => match aggregated
             .as_ref()
-            .map(|aggregated| aggregated.get(aggr))
+            .map(|aggregated| aggregated.get(aggr.as_ref()))
             .flatten()
         {
             Some(value) => Ok(Evaluated::from(value.clone())),
-            None => Err(EvaluateError::UnreachableEmptyAggregateValue(aggr.clone()).into()),
+            None => Err(EvaluateError::UnreachableEmptyAggregateValue(*aggr.clone()).into()),
         },
         Expr::Function(func) => {
             let context = context.as_ref().map(Rc::clone);
