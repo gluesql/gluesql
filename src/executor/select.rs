@@ -1,6 +1,6 @@
 use {
     super::{
-        aggregate::Aggregate,
+        aggregate::Aggregator,
         blend::Blend,
         context::{BlendContext, FilterContext},
         fetch::fetch_columns,
@@ -213,7 +213,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         joins,
         filter_context.as_ref().map(Rc::clone),
     ));
-    let aggregate = Aggregate::new(
+    let aggregate = Aggregator::new(
         storage,
         projection,
         group_by,

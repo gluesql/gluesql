@@ -10,8 +10,8 @@ use {
         filter::check_expr,
     },
     crate::{
-        ast::{Expr, Function, FunctionArg, SelectItem},
-        data::{get_name, Value},
+        ast::{Aggregate, Expr, SelectItem},
+        data::Value,
         result::{Error, Result},
         store::GStore,
     },
@@ -22,7 +22,7 @@ use {
 
 pub use {error::AggregateError, hash::GroupKey};
 
-pub struct Aggregate<'a, T: 'static + Debug> {
+pub struct Aggregator<'a, T: 'static + Debug> {
     storage: &'a dyn GStore<T>,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
@@ -33,7 +33,7 @@ pub struct Aggregate<'a, T: 'static + Debug> {
 type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
     + 'a;
 
-impl<'a, T: 'static + Debug> Aggregate<'a, T> {
+impl<'a, T: 'static + Debug> Aggregator<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         fields: &'a [SelectItem],
@@ -183,18 +183,6 @@ fn aggregate<'a>(
         }
         _ => Err(AggregateError::OnlyIdentifierAllowed),
     };
-    let get_first_arg_expr =
-        |args: &'a [FunctionArg]| match args.get(0).ok_or(AggregateError::Unreachable)? {
-            FunctionArg::Unnamed(expr) => Ok(expr),
-            FunctionArg::Named { name, .. } => Err(AggregateError::UnreachableNamedFunctionArg(
-                name.to_string(),
-            )),
-        };
-    let get_first_value = |args: &'a [FunctionArg]| {
-        let expr = get_first_arg_expr(args)?;
-
-        get_value(expr)
-    };
 
     match expr {
         Expr::Between {
@@ -207,31 +195,25 @@ fn aggregate<'a>(
             .try_fold(state, |state, expr| aggr(state, expr)),
         Expr::UnaryOp { expr, .. } => aggr(state, expr),
         Expr::Nested(expr) => aggr(state, expr),
-        Expr::Function(func) => {
-            let Function { name, args, .. } = func;
-
-            match get_name(name)?.to_uppercase().as_str() {
-                "COUNT" => {
-                    let expr = get_first_arg_expr(args)?;
-                    let value = Value::I64(match expr {
-                        Expr::Wildcard => 1,
-                        _ => {
-                            if get_value(expr)?.is_null() {
-                                0
-                            } else {
-                                1
-                            }
+        Expr::Aggregate(aggr) => match aggr {
+            Aggregate::Count(expr) => {
+                let value = Value::I64(match expr.as_ref() {
+                    Expr::Wildcard => 1,
+                    _ => {
+                        if get_value(expr)?.is_null() {
+                            0
+                        } else {
+                            1
                         }
-                    });
+                    }
+                });
 
-                    state.add(func, &value)
-                }
-                "SUM" => state.add(func, get_first_value(args)?),
-                "MAX" => Ok(state.set_max(func, get_first_value(args)?)),
-                "MIN" => Ok(state.set_min(func, get_first_value(args)?)),
-                name => Err(AggregateError::UnsupportedAggregation(name.to_string()).into()),
+                state.add(aggr, &value)
             }
-        }
+            Aggregate::Sum(expr) => state.add(aggr, get_value(expr)?),
+            Aggregate::Max(expr) => Ok(state.set_max(aggr, get_value(expr)?)),
+            Aggregate::Min(expr) => Ok(state.set_min(aggr, get_value(expr)?)),
+        },
         _ => Ok(state),
     }
 }
@@ -244,10 +226,7 @@ fn check(expr: &Expr) -> Result<bool> {
         Expr::BinaryOp { left, right, .. } => check(left)? || check(right)?,
         Expr::UnaryOp { expr, .. } => check(expr)?,
         Expr::Nested(expr) => check(expr)?,
-        Expr::Function(func) => matches!(
-            get_name(&func.name)?.to_uppercase().as_str(),
-            "COUNT" | "SUM" | "MAX" | "MIN" | "AVG"
-        ),
+        Expr::Aggregate(_) => true,
         _ => false,
     };
 

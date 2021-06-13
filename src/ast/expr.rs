@@ -1,5 +1,5 @@
 use {
-    super::{AstLiteral, BinaryOperator, DataType, Function, Query, UnaryOperator},
+    super::{Aggregate, AstLiteral, BinaryOperator, DataType, Function, Query, UnaryOperator},
     serde::{Deserialize, Serialize},
 };
 
@@ -47,6 +47,7 @@ pub enum Expr {
         value: String,
     },
     Function(Function),
+    Aggregate(Aggregate),
     Exists(Box<Query>),
     Subquery(Box<Query>),
 }

@@ -55,7 +55,8 @@ test_case!(upper_lower, async move {
         ),
         (
             "SELECT LOWER() FROM Item",
-            Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+            Err(TranslateError::FunctionArgsLengthNotMatching {
+                name: "LOWER".to_owned(),
                 expected: 1,
                 found: 0,
             }
@@ -67,7 +68,11 @@ test_case!(upper_lower, async move {
         ),
         (
             "SELECT WHATEVER(1) FROM Item",
-            Err(EvaluateError::FunctionNotSupported("WHATEVER".to_owned()).into()),
+            Err(TranslateError::UnsupportedFunction("WHATEVER".to_owned()).into()),
+        ),
+        (
+            "SELECT LOWER(a => 2) FROM Item",
+            Err(TranslateError::NamedFunctionArgNotSupported.into()),
         ),
     ];
 

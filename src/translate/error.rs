@@ -14,6 +14,19 @@ pub enum TranslateError {
     #[error("too many params in drop index")]
     TooManyParamsInDropIndex,
 
+    #[error("function args.length not matching: {name}, expected: {expected}, found: {found}")]
+    FunctionArgsLengthNotMatching {
+        name: String,
+        expected: usize,
+        found: usize,
+    },
+
+    #[error("named function arg is not supported")]
+    NamedFunctionArgNotSupported,
+
+    #[error("unsupported function: {0}")]
+    UnsupportedFunction(String),
+
     #[error("unsupported statement: {0}")]
     UnsupportedStatement(String),
 

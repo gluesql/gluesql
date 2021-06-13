@@ -76,7 +76,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             data_type: translate_data_type(data_type)?,
             value: value.to_owned(),
         }),
-        SqlExpr::Function(function) => translate_function(function).map(Expr::Function),
+        SqlExpr::Function(function) => translate_function(function),
         SqlExpr::Exists(query) => translate_query(query).map(Box::new).map(Expr::Exists),
         SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
