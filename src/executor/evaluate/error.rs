@@ -1,4 +1,9 @@
-use {crate::ast::Expr, serde::Serialize, std::fmt::Debug, thiserror::Error};
+use {
+    crate::ast::{Aggregate, Expr},
+    serde::Serialize,
+    std::fmt::Debug,
+    thiserror::Error,
+};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum EvaluateError {
@@ -7,9 +12,6 @@ pub enum EvaluateError {
 
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
-
-    #[error("function is not supported: {0}")]
-    FunctionNotSupported(String),
 
     #[error("function requires string value: {0}")]
     FunctionRequiresStringValue(String),
@@ -20,11 +22,6 @@ pub enum EvaluateError {
     #[error("function requires usize value: {0}")]
     FunctionRequiresUSizeValue(String),
 
-    #[error(
-        "number of function parameters not matching (expected: {expected:?}, found: {found:?})"
-    )]
-    NumberOfFunctionParamsNotMatching { expected: usize, found: usize },
-
     #[error("value not found: {0}")]
     ValueNotFound(String),
 
@@ -34,15 +31,15 @@ pub enum EvaluateError {
     #[error("unsupported compound identifier {0:#?}")]
     UnsupportedCompoundIdentifier(Expr),
 
-    #[error("unreachable wildcard expression")]
-    UnreachableWildcardExpr,
-
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),
+
+    #[error("unreachable wildcard expression")]
+    UnreachableWildcardExpr,
 
     #[error("unreachable empty context")]
     UnreachableEmptyContext,
 
-    #[error("unreachable named function argument: {0}")]
-    UnreachableFunctionArg(String),
+    #[error("unreachable empty aggregate value: {0:?}")]
+    UnreachableEmptyAggregateValue(Aggregate),
 }

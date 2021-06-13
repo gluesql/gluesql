@@ -69,7 +69,7 @@ test_case!(aggregate, async move {
             "SELECT SUM(id.name.ok) FROM Item;",
         ),
         (
-            AggregateError::UnsupportedAggregation("AVG".to_owned()).into(),
+            TranslateError::UnsupportedFunction("AVG".to_owned()).into(),
             "SELECT AVG(*) FROM Item;",
         ),
         (

@@ -6,9 +6,9 @@ mod stateless;
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        ast::{Expr, Function, FunctionArg},
-        data::{get_name, Value},
-        result::Result,
+        ast::{Aggregate, Expr, Function},
+        data::Value,
+        result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
@@ -29,7 +29,7 @@ pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_statele
 pub async fn evaluate<'a, T: 'static + Debug>(
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
+    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
@@ -89,15 +89,20 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             expr::unary_op(op, v)
         }
-        Expr::Function(func) => match aggregated.as_ref().map(|aggr| aggr.get(func)).flatten() {
+        Expr::Aggregate(aggr) => match aggregated
+            .as_ref()
+            .map(|aggregated| aggregated.get(aggr))
+            .flatten()
+        {
             Some(value) => Ok(Evaluated::from(value.clone())),
-            None => {
-                let context = context.as_ref().map(Rc::clone);
-                let aggregated = aggregated.as_ref().map(Rc::clone);
-
-                evaluate_function(storage, context, aggregated, func).await
-            }
+            None => Err(EvaluateError::UnreachableEmptyAggregateValue(aggr.clone()).into()),
         },
+        Expr::Function(func) => {
+            let context = context.as_ref().map(Rc::clone);
+            let aggregated = aggregated.as_ref().map(Rc::clone);
+
+            evaluate_function(storage, context, aggregated, func).await
+        }
         Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
         Expr::InList {
             expr,
@@ -199,7 +204,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 async fn evaluate_function<'a, T: 'static + Debug>(
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
+    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     func: &'a Function,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
@@ -209,98 +214,73 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         evaluate(storage, context, aggregated, expr)
     };
 
-    let get_arg_expr = |arg: &'a FunctionArg| -> Result<&'a Expr> {
-        match arg {
-            FunctionArg::Unnamed(expr) => Ok(expr),
-            FunctionArg::Named { name, .. } => {
-                Err(EvaluateError::UnreachableFunctionArg(name.to_string()).into())
+    enum Nullable<T> {
+        Value(T),
+        Null,
+    }
+
+    let eval_to_str = |name: &'static str, expr| async move {
+        match eval(expr).await?.try_into()? {
+            Value::Str(s) => Ok(Nullable::Value(s)),
+            Value::Null => Ok(Nullable::Null),
+            _ => {
+                Err::<_, Error>(EvaluateError::FunctionRequiresStringValue(name.to_owned()).into())
             }
         }
     };
 
-    let Function { name, args, .. } = func;
-
-    match get_name(name)?.to_uppercase().as_str() {
-        name @ "LOWER" | name @ "UPPER" => {
-            let convert = |s: String| {
-                if name == "LOWER" {
-                    s.to_lowercase()
-                } else {
-                    s.to_uppercase()
-                }
-            };
-
-            let arg = match args.len() {
-                1 => &args[0],
-                found => {
-                    return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
-                        expected: 1,
-                        found,
-                    }
-                    .into());
-                }
-            };
-
-            let expr = get_arg_expr(arg)?;
-            let value: Value = match eval(expr).await?.try_into()? {
-                Value::Str(s) => Value::Str(convert(s)),
-                Value::Null => Value::Null,
-                _ => {
-                    return Err(EvaluateError::FunctionRequiresStringValue(name.to_string()).into());
-                }
-            };
-
-            Ok(Evaluated::from(value))
+    match func {
+        Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
+            Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
+            Nullable::Null => Ok(Value::Null),
         }
-        name @ "LEFT" | name @ "RIGHT" => {
-            match args.len() {
-                2 => (),
-                found => {
-                    return Err(EvaluateError::NumberOfFunctionParamsNotMatching {
-                        expected: 2,
-                        found,
-                    }
-                    .into())
-                }
-            }
+        .map(Evaluated::from),
+        Function::Upper(expr) => match eval_to_str("UPPER", expr).await? {
+            Nullable::Value(v) => Ok(Value::Str(v.to_uppercase())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Left { expr, size } | Function::Right { expr, size } => {
+            let name = if matches!(func, Function::Left { .. }) {
+                "LEFT"
+            } else {
+                "RIGHT"
+            };
 
-            let string = match eval(get_arg_expr(&args[0])?).await?.try_into()? {
-                Value::Str(string) => Ok(string),
-                Value::Null => {
+            let string = match eval_to_str(name, expr).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
                     return Ok(Evaluated::from(Value::Null));
                 }
-                _ => Err(EvaluateError::FunctionRequiresStringValue(name.to_string())),
-            }?;
+            };
 
-            let number = match eval(get_arg_expr(&args[1])?).await?.try_into()? {
+            let size = match eval(size).await?.try_into()? {
                 Value::I64(number) => usize::try_from(number)
-                    .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_string())), // Unlikely to occur hence the imperfect error
+                    .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()))?,
                 Value::Null => {
                     return Ok(Evaluated::from(Value::Null));
                 }
-                _ => Err(EvaluateError::FunctionRequiresIntegerValue(
-                    name.to_string(),
-                )),
-            }?;
-
-            let converted = {
-                if name == "LEFT" {
-                    string.get(..number)
-                } else {
-                    let start_pos = if number > string.len() {
-                        0
-                    } else {
-                        string.len() - number
-                    };
-
-                    string.get(start_pos..)
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into());
                 }
-                .map(|value| value.to_string())
-                .unwrap_or(string)
+            };
+
+            let converted = if name == "LEFT" {
+                string.get(..size).map(|v| v.to_string()).unwrap_or(string)
+            } else {
+                let start_pos = if size > string.len() {
+                    0
+                } else {
+                    string.len() - size
+                };
+
+                string
+                    .get(start_pos..)
+                    .map(|value| value.to_string())
+                    .unwrap_or(string)
             };
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
-        name => Err(EvaluateError::FunctionNotSupported(name.to_owned()).into()),
     }
 }

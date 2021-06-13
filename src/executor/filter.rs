@@ -4,7 +4,7 @@ use {
         evaluate::evaluate,
     },
     crate::{
-        ast::{Expr, Function},
+        ast::{Aggregate, Expr},
         data::Value,
         result::Result,
         store::GStore,
@@ -17,7 +17,7 @@ pub struct Filter<'a, T: 'static + Debug> {
     storage: &'a dyn GStore<T>,
     where_clause: Option<&'a Expr>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
+    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
 }
 
 impl<'a, T: 'static + Debug> Filter<'a, T> {
@@ -25,7 +25,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
         storage: &'a dyn GStore<T>,
         where_clause: Option<&'a Expr>,
         context: Option<Rc<FilterContext<'a>>>,
-        aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
+        aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     ) -> Self {
         Self {
             storage,
@@ -53,7 +53,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
 pub async fn check_expr<'a, T: 'static + Debug>(
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&'a Function, Value>>>,
+    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<bool> {
     evaluate(storage, context, aggregated, expr)

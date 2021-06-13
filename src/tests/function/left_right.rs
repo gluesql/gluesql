@@ -108,26 +108,10 @@ test_case!(left_right, async move {
                 "n".to_owned()
             )),
         ),
-        // TODO: Cast cannot handle
-        /*(
-            r#"SELECT LEFT('Words', CAST(NULL AS INTEGER)) AS test FROM SingleItem"#,
-            Ok(select!(
-                "Words"
-                OptStr;
-                Some("blu".to_owned())
-            )),
-        ),
-        (
-            r#"SELECT LEFT(CAST(NULL AS TEXT), 10) AS test FROM SingleItem"#,
-            Ok(select!(
-                ""
-                OptStr;
-                Some("blu".to_owned())
-            )),
-        ),*/
         (
             r#"SELECT RIGHT(name, 10, 10) AS test FROM SingleItem"#,
-            Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+            Err(TranslateError::FunctionArgsLengthNotMatching {
+                name: "RIGHT".to_owned(),
                 expected: 2,
                 found: 3,
             }
@@ -135,7 +119,8 @@ test_case!(left_right, async move {
         ),
         (
             r#"SELECT RIGHT(name) AS test FROM SingleItem"#,
-            Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+            Err(TranslateError::FunctionArgsLengthNotMatching {
+                name: "RIGHT".to_owned(),
                 expected: 2,
                 found: 1,
             }
@@ -143,7 +128,8 @@ test_case!(left_right, async move {
         ),
         (
             r#"SELECT RIGHT() AS test FROM SingleItem"#,
-            Err(EvaluateError::NumberOfFunctionParamsNotMatching {
+            Err(TranslateError::FunctionArgsLengthNotMatching {
+                name: "RIGHT".to_owned(),
                 expected: 2,
                 found: 0,
             }

@@ -4,7 +4,7 @@ use {
         evaluate::evaluate,
     },
     crate::{
-        ast::{Function, SelectItem},
+        ast::{Aggregate, SelectItem},
         data::{get_name, Row, Value},
         result::{Error, Result},
         store::GStore,
@@ -42,7 +42,7 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
 
     async fn blend(
         &self,
-        aggregated: Option<HashMap<&'a Function, Value>>,
+        aggregated: Option<HashMap<&'a Aggregate, Value>>,
         context: Rc<BlendContext<'a>>,
     ) -> Result<Vec<Value>> {
         let filter_context = FilterContext::concat(None, Some(Rc::clone(&context)));

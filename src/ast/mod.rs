@@ -10,7 +10,7 @@ pub use ast_literal::{AstLiteral, DateTimeField};
 pub use data_type::DataType;
 pub use ddl::*;
 pub use expr::Expr;
-pub use function::{Function, FunctionArg};
+pub use function::{Aggregate, Function};
 pub use operator::*;
 pub use query::*;
 

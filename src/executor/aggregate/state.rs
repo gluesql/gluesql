@@ -1,7 +1,7 @@
 use {
     super::hash::GroupKey,
     crate::{
-        ast::Function,
+        ast::Aggregate,
         data::Value,
         executor::context::BlendContext,
         result::Result,
@@ -13,12 +13,12 @@ use {
 };
 
 type Group = Rc<Vec<GroupKey>>;
-type ValuesMap<'a> = HashMap<&'a Function, Value>;
+type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
 
 pub struct State<'a> {
     index: usize,
     group: Group,
-    values: IndexMap<(Group, &'a Function), (usize, Value)>,
+    values: IndexMap<(Group, &'a Aggregate), (usize, Value)>,
     groups: HashSet<Group>,
     contexts: Vector<Rc<BlendContext<'a>>>,
 }
@@ -54,8 +54,8 @@ impl<'a> State<'a> {
         }
     }
 
-    fn update(self, func: &'a Function, value: Value) -> Self {
-        let key = (Rc::clone(&self.group), func);
+    fn update(self, aggr: &'a Aggregate, value: Value) -> Self {
+        let key = (Rc::clone(&self.group), aggr);
         let (values, _) = self.values.insert(key, (self.index, value));
 
         Self {
@@ -67,10 +67,10 @@ impl<'a> State<'a> {
         }
     }
 
-    fn get(&self, func: &'a Function) -> Option<&(usize, Value)> {
+    fn get(&self, aggr: &'a Aggregate) -> Option<&(usize, Value)> {
         let group = Rc::clone(&self.group);
 
-        self.values.get(&(group, func))
+        self.values.get(&(group, aggr))
     }
 
     pub fn export(self) -> Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)> {
@@ -96,8 +96,8 @@ impl<'a> State<'a> {
             .enumerate()
             .map(|(i, entries)| {
                 let aggregated = entries
-                    .map(|((_, func), value)| (func, value))
-                    .collect::<HashMap<&'a Function, Value>>();
+                    .map(|((_, aggr), value)| (aggr, value))
+                    .collect::<HashMap<&'a Aggregate, Value>>();
                 let next = contexts.get(i).map(Rc::clone);
 
                 (Some(aggregated), next)
@@ -105,8 +105,8 @@ impl<'a> State<'a> {
             .collect::<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>()
     }
 
-    pub fn add(self, func: &'a Function, target: &Value) -> Result<Self> {
-        let value = match self.get(func) {
+    pub fn add(self, aggr: &'a Aggregate, target: &Value) -> Result<Self> {
+        let value = match self.get(aggr) {
             Some((index, value)) => {
                 if &self.index <= index {
                     return Ok(self);
@@ -117,11 +117,11 @@ impl<'a> State<'a> {
             None => target.clone(),
         };
 
-        Ok(self.update(func, value))
+        Ok(self.update(aggr, value))
     }
 
-    pub fn set_max(self, func: &'a Function, target: &Value) -> Self {
-        if let Some((index, value)) = self.get(func) {
+    pub fn set_max(self, aggr: &'a Aggregate, target: &Value) -> Self {
+        if let Some((index, value)) = self.get(aggr) {
             if &self.index <= index {
                 return self;
             }
@@ -134,11 +134,11 @@ impl<'a> State<'a> {
             }
         };
 
-        self.update(func, target.clone())
+        self.update(aggr, target.clone())
     }
 
-    pub fn set_min(self, func: &'a Function, target: &Value) -> Self {
-        if let Some((index, value)) = self.get(func) {
+    pub fn set_min(self, aggr: &'a Aggregate, target: &Value) -> Self {
+        if let Some((index, value)) = self.get(aggr) {
             if &self.index <= index {
                 return self;
             }
@@ -151,6 +151,6 @@ impl<'a> State<'a> {
             }
         }
 
-        self.update(func, target.clone())
+        self.update(aggr, target.clone())
     }
 }
