@@ -42,8 +42,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             check_len(name, args.len(), 1)?;
 
             translate_expr(args[0])
-                .map(Box::new)
                 .map($aggregate)
+                .map(Box::new)
                 .map(Expr::Aggregate)
         }};
     }
@@ -53,33 +53,33 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             check_len(name, args.len(), 1)?;
 
             translate_expr(args[0])
-                .map(Box::new)
                 .map(Function::Lower)
+                .map(Box::new)
                 .map(Expr::Function)
         }
         "UPPER" => {
             check_len(name, args.len(), 1)?;
 
             translate_expr(args[0])
-                .map(Box::new)
                 .map(Function::Upper)
+                .map(Box::new)
                 .map(Expr::Function)
         }
         "LEFT" => {
             check_len(name, args.len(), 2)?;
 
-            let expr = translate_expr(args[0]).map(Box::new)?;
-            let size = translate_expr(args[1]).map(Box::new)?;
+            let expr = translate_expr(args[0])?;
+            let size = translate_expr(args[1])?;
 
-            Ok(Expr::Function(Function::Left { expr, size }))
+            Ok(Expr::Function(Box::new(Function::Left { expr, size })))
         }
         "RIGHT" => {
             check_len(name, args.len(), 2)?;
 
-            let expr = translate_expr(args[0]).map(Box::new)?;
-            let size = translate_expr(args[1]).map(Box::new)?;
+            let expr = translate_expr(args[0])?;
+            let size = translate_expr(args[1])?;
 
-            Ok(Expr::Function(Function::Right { expr, size }))
+            Ok(Expr::Function(Box::new(Function::Right { expr, size })))
         }
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),

@@ -46,8 +46,8 @@ pub enum Expr {
         data_type: DataType,
         value: String,
     },
-    Function(Function),
-    Aggregate(Aggregate),
+    Function(Box<Function>),
+    Aggregate(Box<Aggregate>),
     Exists(Box<Query>),
     Subquery(Box<Query>),
 }

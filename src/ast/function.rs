@@ -5,16 +5,16 @@ use {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Function {
-    Lower(Box<Expr>),
-    Upper(Box<Expr>),
-    Left { expr: Box<Expr>, size: Box<Expr> },
-    Right { expr: Box<Expr>, size: Box<Expr> },
+    Lower(Expr),
+    Upper(Expr),
+    Left { expr: Expr, size: Expr },
+    Right { expr: Expr, size: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Aggregate {
-    Count(Box<Expr>),
-    Sum(Box<Expr>),
-    Max(Box<Expr>),
-    Min(Box<Expr>),
+    Count(Expr),
+    Sum(Expr),
+    Max(Expr),
+    Min(Expr),
 }
