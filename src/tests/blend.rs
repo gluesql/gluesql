@@ -139,7 +139,7 @@ test_case!(blend, async move {
             "SELECT Whatever.* FROM BlendUser",
         ),
         (
-            BlendError::TableAliasNotFound("Whatever".to_owned()).into(),
+            SelectError::BlendTableAliasNotFound("Whatever".to_owned()).into(),
             "SELECT * FROM BlendUser WHERE id IN (SELECT Whatever.* FROM BlendUser)",
         ),
         (

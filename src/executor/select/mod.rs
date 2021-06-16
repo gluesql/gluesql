@@ -1,7 +1,12 @@
+mod blend;
+mod error;
+
+pub use error::SelectError;
+
 use {
+    self::blend::Blend,
     super::{
         aggregate::Aggregator,
-        blend::Blend,
         context::{BlendContext, FilterContext},
         fetch::fetch_columns,
         filter::Filter,
@@ -17,9 +22,7 @@ use {
     boolinator::Boolinator,
     futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
-    serde::Serialize,
     std::{fmt::Debug, iter::once, rc::Rc},
-    thiserror::Error as ThisError,
 };
 
 #[cfg(feature = "index")]
@@ -28,15 +31,6 @@ use {
     crate::{ast::IndexItem, data::Value},
     std::convert::TryInto,
 };
-
-#[derive(ThisError, Serialize, Debug, PartialEq)]
-pub enum SelectError {
-    #[error("table alias not found: {0}")]
-    TableAliasNotFound(String),
-
-    #[error("unreachable!")]
-    Unreachable,
-}
 
 async fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn GStore<T>,
