@@ -6,6 +6,7 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Query {
     pub body: SetExpr,
+    pub order_by: Vec<OrderByExpr>,
     pub limit: Option<Expr>,
     pub offset: Option<Expr>,
 }
@@ -81,6 +82,12 @@ pub enum JoinOperator {
 pub enum JoinConstraint {
     On(Expr),
     None,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct OrderByExpr {
+    pub expr: Expr,
+    pub asc: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

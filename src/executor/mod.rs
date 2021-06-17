@@ -8,6 +8,7 @@ mod filter;
 mod join;
 mod limit;
 mod select;
+mod sort;
 mod update;
 mod validate;
 

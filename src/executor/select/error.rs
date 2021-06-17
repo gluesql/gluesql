@@ -8,6 +8,10 @@ pub enum SelectError {
     #[error("table alias for blend not found: {0}")]
     BlendTableAliasNotFound(String),
 
+    #[cfg(not(feature = "sorter"))]
+    #[error("order by on non-indexed expression is not supported: {0:?}")]
+    OrderByOnNonIndexedExprNotSupported(Vec<crate::ast::OrderByExpr>),
+
     #[error("unreachable!")]
     Unreachable,
 }

@@ -123,6 +123,7 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
                     SetExpr::Select(select_query) => {
                         let query = || Query {
                             body: SetExpr::Select(select_query.clone()),
+                            order_by: vec![],
                             limit: None,
                             offset: None,
                         };
