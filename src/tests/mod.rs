@@ -15,6 +15,7 @@ pub mod limit;
 pub mod migrate;
 pub mod nested_select;
 pub mod nullable;
+pub mod order_by;
 pub mod ordering;
 pub mod synthesize;
 pub mod validate;
@@ -64,6 +65,7 @@ macro_rules! generate_tests {
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
         glue!(ordering, ordering::ordering);
+        glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);

@@ -28,6 +28,7 @@ pub async fn plan<T: 'static + Debug>(
 async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
     let Query {
         body,
+        order_by,
         limit,
         offset,
     } = query;
@@ -37,6 +38,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
         SetExpr::Values(_) => {
             return Ok(Query {
                 body,
+                order_by,
                 limit,
                 offset,
             });
@@ -46,6 +48,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
     let body = SetExpr::Select(select);
     let query = Query {
         body,
+        order_by,
         limit,
         offset,
     };

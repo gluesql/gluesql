@@ -28,6 +28,15 @@ impl<T> Vector<T> {
         self
     }
 
+    pub fn sort_unstable_by<F>(mut self, compare: F) -> Self
+    where
+        F: FnMut(&T, &T) -> std::cmp::Ordering,
+    {
+        self.0.sort_by(compare);
+
+        self
+    }
+
     pub fn get(&self, i: usize) -> Option<&T> {
         self.0.get(i)
     }

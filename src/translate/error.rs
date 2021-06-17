@@ -24,6 +24,9 @@ pub enum TranslateError {
     #[error("named function arg is not supported")]
     NamedFunctionArgNotSupported,
 
+    #[error("order by - NULLS (FIRST | LAST) is not supported")]
+    OrderByNullsFirstOrLastNotSupported,
+
     #[error("unsupported function: {0}")]
     UnsupportedFunction(String),
 

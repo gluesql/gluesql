@@ -2,28 +2,50 @@ use {
     super::{expr::translate_expr, translate_idents, translate_object_name, TranslateError},
     crate::{
         ast::{
-            Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr, TableAlias,
-            TableFactor, TableWithJoins, Values,
+            Join, JoinConstraint, JoinOperator, OrderByExpr, Query, Select, SelectItem, SetExpr,
+            TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
     },
     sqlparser::ast::{
         Expr as SqlExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
-        JoinOperator as SqlJoinOperator, Query as SqlQuery, Select as SqlSelect,
-        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
-        TableFactor as SqlTableFactor, TableWithJoins as SqlTableWithJoins,
+        JoinOperator as SqlJoinOperator, OrderByExpr as SqlOrderByExpr, Query as SqlQuery,
+        Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
+        TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
+        TableWithJoins as SqlTableWithJoins,
     },
 };
 
 pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
     let SqlQuery {
         body,
+        order_by,
         limit,
         offset,
         ..
     } = sql_query;
 
     let body = translate_set_expr(body)?;
+    let order_by = order_by
+        .iter()
+        .map(|order_by| {
+            let SqlOrderByExpr {
+                expr,
+                asc,
+                nulls_first,
+            } = order_by;
+
+            if matches!(nulls_first, Some(_)) {
+                return Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into());
+            }
+
+            Ok(OrderByExpr {
+                expr: translate_expr(expr)?,
+                asc: asc.unwrap_or(true),
+            })
+        })
+        .collect::<Result<_>>()?;
+
     let limit = limit.as_ref().map(translate_expr).transpose()?;
     let offset = offset
         .as_ref()
@@ -32,6 +54,7 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
 
     Ok(Query {
         body,
+        order_by,
         limit,
         offset,
     })

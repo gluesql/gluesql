@@ -1,27 +1,20 @@
 use {
-    super::{
-        context::{AggregateContext, BlendContext, FilterContext},
-        evaluate::evaluate,
-    },
+    super::SelectError,
     crate::{
         ast::{Aggregate, SelectItem},
         data::{get_name, Row, Value},
+        executor::{
+            context::{BlendContext, FilterContext},
+            evaluate::evaluate,
+        },
         result::{Error, Result},
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    serde::Serialize,
     std::convert::TryInto,
     std::{fmt::Debug, rc::Rc},
-    thiserror::Error as ThisError,
 };
-
-#[derive(ThisError, Serialize, Debug, PartialEq)]
-pub enum BlendError {
-    #[error("table alias not found: {0}")]
-    TableAliasNotFound(String),
-}
 
 pub struct Blend<'a, T: 'static + Debug> {
     storage: &'a dyn GStore<T>,
@@ -33,22 +26,13 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         Self { storage, fields }
     }
 
-    pub async fn apply(&self, context: AggregateContext<'a>) -> Result<Row> {
-        let AggregateContext { aggregated, next } = context;
-        let values = self.blend(aggregated, next).await?;
-
-        Ok(Row(values))
-    }
-
-    async fn blend(
+    pub async fn apply(
         &self,
-        aggregated: Option<HashMap<&'a Aggregate, Value>>,
+        aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
         context: Rc<BlendContext<'a>>,
-    ) -> Result<Vec<Value>> {
+    ) -> Result<Row> {
         let filter_context = FilterContext::concat(None, Some(Rc::clone(&context)));
         let filter_context = Some(filter_context).map(Rc::new);
-
-        let aggregated = aggregated.map(Rc::new);
 
         let values = stream::iter(self.fields.iter())
             .map(Ok::<&'a SelectItem, Error>)
@@ -65,10 +49,10 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
 
                             match context.get_alias_values(table_alias) {
                                 Some(values) => Ok(values),
-                                None => {
-                                    Err(BlendError::TableAliasNotFound(table_alias.to_string())
-                                        .into())
-                                }
+                                None => Err(SelectError::BlendTableAliasNotFound(
+                                    table_alias.to_string(),
+                                )
+                                .into()),
                             }
                         }
                         SelectItem::Expr { expr, .. } => {
@@ -84,6 +68,6 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
             .await?
             .concat();
 
-        Ok(values)
+        Ok(Row(values))
     }
 }

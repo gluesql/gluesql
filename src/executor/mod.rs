@@ -1,6 +1,5 @@
 mod aggregate;
 mod alter;
-mod blend;
 mod context;
 mod evaluate;
 mod execute;
@@ -9,12 +8,12 @@ mod filter;
 mod join;
 mod limit;
 mod select;
+mod sort;
 mod update;
 mod validate;
 
 pub use aggregate::{AggregateError, GroupKey};
 pub use alter::AlterError;
-pub use blend::BlendError;
 pub use evaluate::{evaluate_stateless, EvaluateError};
 pub use execute::{execute, ExecuteError, Payload};
 pub use fetch::FetchError;

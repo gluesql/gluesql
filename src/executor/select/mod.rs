@@ -1,15 +1,21 @@
+mod blend;
+mod error;
+
+pub use error::SelectError;
+
 use {
+    self::blend::Blend,
     super::{
         aggregate::Aggregator,
-        blend::Blend,
         context::{BlendContext, FilterContext},
         fetch::fetch_columns,
         filter::Filter,
         join::Join,
         limit::Limit,
+        sort::Sort,
     },
     crate::{
-        ast::{Query, SelectItem, SetExpr, TableWithJoins},
+        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins},
         data::{get_name, Row, Table},
         result::{Error, Result},
         store::GStore,
@@ -17,9 +23,7 @@ use {
     boolinator::Boolinator,
     futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
-    serde::Serialize,
     std::{fmt::Debug, iter::once, rc::Rc},
-    thiserror::Error as ThisError,
 };
 
 #[cfg(feature = "index")]
@@ -28,15 +32,6 @@ use {
     crate::{ast::IndexItem, data::Value},
     std::convert::TryInto,
 };
-
-#[derive(ThisError, Serialize, Debug, PartialEq)]
-pub enum SelectError {
-    #[error("table alias not found: {0}")]
-    TableAliasNotFound(String),
-
-    #[error("unreachable!")]
-    Unreachable,
-}
 
 async fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn GStore<T>,
@@ -155,21 +150,24 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
 ) -> Result<(Vec<String>, impl TryStream<Ok = Row, Error = Error> + 'a)> {
-    macro_rules! err {
-        ($err: expr) => {{
-            return Err($err.into());
-        }};
+    #[cfg(not(feature = "sorter"))]
+    if !query.order_by.is_empty() {
+        let order_by = query.order_by.clone();
+
+        return Err(SelectError::OrderByOnNonIndexedExprNotSupported(order_by).into());
     }
 
-    let (table_with_joins, where_clause, projection, group_by, having) = match &query.body {
-        SetExpr::Select(statement) => (
-            &statement.from,
-            statement.selection.as_ref(),
-            statement.projection.as_ref(),
-            &statement.group_by,
-            statement.having.as_ref(),
-        ),
-        _ => err!(SelectError::Unreachable),
+    let Select {
+        from: table_with_joins,
+        selection: where_clause,
+        projection,
+        group_by,
+        having,
+    } = match &query.body {
+        SetExpr::Select(statement) => statement.as_ref(),
+        _ => {
+            return Err(SelectError::Unreachable.into());
+        }
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
@@ -217,12 +215,18 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         storage,
         projection,
         group_by,
-        having,
+        having.as_ref(),
         filter_context.as_ref().map(Rc::clone),
     );
     let blend = Rc::new(Blend::new(storage, projection));
-    let filter = Rc::new(Filter::new(storage, where_clause, filter_context, None));
-    let limit = Rc::new(Limit::new(query.limit.as_ref(), query.offset.as_ref())?);
+    let filter = Rc::new(Filter::new(
+        storage,
+        where_clause.as_ref(),
+        filter_context.as_ref().map(Rc::clone),
+        None,
+    ));
+    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+    let sort = Sort::new(storage, filter_context, &query.order_by);
 
     let rows = fetch_blended(storage, table, columns)
         .await?
@@ -245,15 +249,14 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         });
 
     let rows = limit.apply(rows);
-
-    let rows = aggregate
+    let rows = aggregate.apply(rows).await?;
+    let rows = sort
         .apply(rows)
         .await?
-        .into_stream()
-        .and_then(move |aggregate_context| {
+        .and_then(move |(aggregated, context)| {
             let blend = Rc::clone(&blend);
 
-            async move { blend.apply(aggregate_context).await }
+            async move { blend.apply(aggregated, context).await }
         });
 
     Ok((labels, rows))
