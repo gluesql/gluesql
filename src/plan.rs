@@ -7,6 +7,7 @@ use {
         data::{get_name, Schema, SchemaIndex, SchemaIndexOrd},
         result::Result,
         store::Store,
+        utils::Vector,
     },
     boolinator::Boolinator,
     std::fmt::Debug,
@@ -92,7 +93,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
         }
     };
 
-    let index = order_by.get(0).and_then(|value_expr| {
+    let index = order_by.last().and_then(|value_expr| {
         indexes.find_ordered(&value_expr).map(|name| IndexItem {
             name,
             asc: value_expr.asc,
@@ -100,8 +101,8 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
         })
     });
 
-    match (order_by.len(), index) {
-        (1, index) if index.is_some() => {
+    match index {
+        index if index.is_some() => {
             let Select {
                 projection,
                 from,
@@ -130,7 +131,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
 
             Ok(Query {
                 body: SetExpr::Select(Box::new(select)),
-                order_by: vec![],
+                order_by: Vector::from(order_by).pop().0.into(),
                 limit,
                 offset,
             })
