@@ -10,7 +10,7 @@ pub use {
     interval::{Interval, IntervalError},
     literal::{Literal, LiteralError},
     row::{Row, RowError},
-    schema::Schema,
+    schema::{Schema, SchemaIndex, SchemaIndexOrd},
     table::{get_name, Table, TableError},
     value::{Value, ValueError},
 };

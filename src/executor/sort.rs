@@ -87,10 +87,10 @@ impl<'a, T: 'static + Debug> Sort<'a, T> {
                     .iter()
                     .map(|(a, _)| a)
                     .zip(values_b.iter())
-                    .map(|(a, (b, asc))| (a, b, asc));
+                    .map(|(a, (b, asc))| (a, b, asc.unwrap_or(true)));
 
                 for (value_a, value_b, asc) in pairs {
-                    let apply_asc = |ord: Ordering| if *asc { ord } else { ord.reverse() };
+                    let apply_asc = |ord: Ordering| if asc { ord } else { ord.reverse() };
 
                     match (value_a, value_b) {
                         (Value::Null, Value::Null) => {}

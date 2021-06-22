@@ -27,11 +27,7 @@ use {
 };
 
 #[cfg(feature = "index")]
-use {
-    super::evaluate::evaluate,
-    crate::{ast::IndexItem, data::Value},
-    std::convert::TryInto,
-};
+use {super::evaluate::evaluate, crate::ast::IndexItem, std::convert::TryInto};
 
 async fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn GStore<T>,
@@ -51,14 +47,20 @@ async fn fetch_blended<'a, T: 'static + Debug>(
         match table.get_index() {
             Some(IndexItem {
                 name: index_name,
-                op: index_op,
-                value_expr,
+                asc,
+                cmp_expr,
             }) => {
-                let evaluated = evaluate(storage, None, None, value_expr).await?;
-                let index_value: Value = evaluated.try_into()?;
+                let cmp_value = match cmp_expr {
+                    Some((op, expr)) => {
+                        let evaluated = evaluate(storage, None, None, expr).await?;
+
+                        Some((op, evaluated.try_into()?))
+                    }
+                    None => None,
+                };
 
                 storage
-                    .scan_indexed_data(table_name, index_name, index_op, index_value)
+                    .scan_indexed_data(table_name, index_name, *asc, cmp_value)
                     .await
                     .map(Rows::Indexed)?
             }

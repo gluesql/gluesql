@@ -13,8 +13,32 @@ macro_rules! idx {
     ($name: path, $op: path, $sql_expr: literal) => {
         vec![ast::IndexItem {
             name: stringify!($name).to_owned(),
-            op: $op,
-            value_expr: translate_expr(&parse_expr($sql_expr).unwrap()).unwrap(),
+            asc: None,
+            cmp_expr: Some((
+                $op,
+                translate_expr(&parse_expr($sql_expr).unwrap()).unwrap(),
+            )),
+        }]
+    };
+    ($name: path) => {
+        vec![ast::IndexItem {
+            name: stringify!($name).to_owned(),
+            asc: None,
+            cmp_expr: None,
+        }]
+    };
+    ($name: path, ASC) => {
+        vec![ast::IndexItem {
+            name: stringify!($name).to_owned(),
+            asc: Some(true),
+            cmp_expr: None,
+        }]
+    };
+    ($name: path, DESC) => {
+        vec![ast::IndexItem {
+            name: stringify!($name).to_owned(),
+            asc: Some(false),
+            cmp_expr: None,
         }]
     };
 }

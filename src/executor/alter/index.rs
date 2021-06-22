@@ -3,7 +3,7 @@
 use {
     super::AlterError,
     crate::{
-        ast::{ColumnDef, Expr, ObjectName},
+        ast::{ColumnDef, Expr, ObjectName, OrderByExpr},
         data::{get_name, Schema},
         result::MutResult,
         store::{GStore, GStoreMut},
@@ -15,11 +15,12 @@ pub async fn create_index<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     table_name: &ObjectName,
     index_name: &ObjectName,
-    expr: &Expr,
+    column: &OrderByExpr,
 ) -> MutResult<U, ()> {
     let names = (|| async {
         let table_name = get_name(table_name)?;
         let index_name = get_name(index_name)?;
+        let expr = &column.expr;
         let Schema { column_defs, .. } = storage
             .fetch_schema(table_name)
             .await?
@@ -47,7 +48,7 @@ pub async fn create_index<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
         }
     };
 
-    storage.create_index(table_name, index_name, expr).await
+    storage.create_index(table_name, index_name, column).await
 }
 
 fn validate_index_expr(columns: &[String], expr: &Expr) -> (bool, bool) {

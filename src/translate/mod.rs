@@ -7,7 +7,10 @@ mod function;
 mod operator;
 mod query;
 
-pub use self::{error::TranslateError, expr::translate_expr};
+pub use self::{
+    error::TranslateError,
+    expr::{translate_expr, translate_order_by_expr},
+};
 
 #[cfg(feature = "alter-table")]
 use ddl::translate_alter_table_operation;
@@ -100,7 +103,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             Ok(Statement::CreateIndex {
                 name: translate_object_name(name),
                 table_name: translate_object_name(table_name),
-                column: translate_expr(&columns[0].expr)?,
+                column: translate_order_by_expr(&columns[0])?,
             })
         }
         #[cfg(feature = "index")]

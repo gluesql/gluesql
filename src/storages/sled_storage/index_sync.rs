@@ -2,7 +2,9 @@
 
 use {
     super::fetch_schema,
-    crate::{ast::Expr, evaluate_stateless, Error, IndexError, Result, Row, Schema, Value},
+    crate::{
+        ast::Expr, evaluate_stateless, Error, IndexError, Result, Row, Schema, SchemaIndex, Value,
+    },
     sled::{
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
@@ -15,7 +17,7 @@ use {
 pub struct IndexSync<'a> {
     table_name: &'a str,
     columns: Vec<String>,
-    indexes: Cow<'a, Vec<(String, Expr)>>,
+    indexes: Cow<'a, Vec<SchemaIndex>>,
 }
 
 impl<'a> From<&'a Schema> for IndexSync<'a> {
@@ -69,7 +71,13 @@ impl<'a> IndexSync<'a> {
         data_key: &IVec,
         row: &Row,
     ) -> ConflictableTransactionResult<(), Error> {
-        for (index_name, index_expr) in self.indexes.iter() {
+        for index in self.indexes.iter() {
+            let SchemaIndex {
+                name: index_name,
+                expr: index_expr,
+                ..
+            } = index;
+
             let index_key =
                 &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
 
@@ -86,7 +94,13 @@ impl<'a> IndexSync<'a> {
         old_row: &Row,
         new_row: &Row,
     ) -> ConflictableTransactionResult<(), Error> {
-        for (index_name, index_expr) in self.indexes.iter() {
+        for index in self.indexes.iter() {
+            let SchemaIndex {
+                name: index_name,
+                expr: index_expr,
+                ..
+            } = index;
+
             let old_index_key = &evaluate_index_key(
                 self.table_name,
                 index_name,
@@ -116,7 +130,13 @@ impl<'a> IndexSync<'a> {
         data_key: &IVec,
         row: &Row,
     ) -> ConflictableTransactionResult<(), Error> {
-        for (index_name, index_expr) in self.indexes.iter() {
+        for index in self.indexes.iter() {
+            let SchemaIndex {
+                name: index_name,
+                expr: index_expr,
+                ..
+            } = index;
+
             let index_key =
                 &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
 

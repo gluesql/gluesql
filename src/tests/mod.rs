@@ -83,6 +83,7 @@ macro_rules! generate_tests {
                 glue!(index_null, index::null);
                 glue!(index_expr, index::expr);
                 glue!(index_value, index::value);
+                glue!(index_order_by, index::order_by);
             };
         }
 
