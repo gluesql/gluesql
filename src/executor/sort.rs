@@ -82,7 +82,7 @@ impl<'a, T: 'static + Debug> Sort<'a, T> {
             .try_collect::<Vec<_>>()
             .await
             .map(Vector::from)?
-            .sort_unstable_by(|(values_a, _, _), (values_b, _, _)| {
+            .sort_by(|(values_a, _, _), (values_b, _, _)| {
                 let pairs = values_a
                     .iter()
                     .map(|(a, _)| a)
