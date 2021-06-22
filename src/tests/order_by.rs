@@ -162,7 +162,7 @@ test_case!(order_by, async move {
         Err(
             SelectError::OrderByOnNonIndexedExprNotSupported(vec![OrderByExpr {
                 expr: Expr::Identifier("id".to_owned()),
-                asc: false,
+                asc: Some(false),
             }])
             .into()
         ),

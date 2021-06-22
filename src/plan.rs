@@ -1,10 +1,10 @@
 use {
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, Query, Select, SetExpr,
-            Statement, TableFactor, TableWithJoins,
+            AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
+            SetExpr, Statement, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema},
+        data::{get_name, Schema, SchemaIndex, SchemaIndexOrd},
         result::Result,
         store::Store,
     },
@@ -25,6 +25,36 @@ pub async fn plan<T: 'static + Debug>(
     }
 }
 
+struct Indexes(Vec<SchemaIndex>);
+
+impl Indexes {
+    fn find(&self, target: &Expr) -> Option<String> {
+        self.0
+            .iter()
+            .find(|SchemaIndex { expr, .. }| expr == target)
+            .map(|SchemaIndex { name, .. }| name.to_owned())
+    }
+
+    fn find_ordered(&self, target: &OrderByExpr) -> Option<String> {
+        self.0
+            .iter()
+            .find(|SchemaIndex { expr, order, .. }| {
+                if expr != &target.expr {
+                    return false;
+                }
+
+                matches!(
+                    (target.asc, order),
+                    (_, SchemaIndexOrd::Both)
+                        | (Some(true), SchemaIndexOrd::Asc)
+                        | (None, SchemaIndexOrd::Asc)
+                        | (Some(false), SchemaIndexOrd::Desc)
+                )
+            })
+            .map(|SchemaIndex { name, .. }| name.to_owned())
+    }
+}
+
 async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
     let Query {
         body,
@@ -34,7 +64,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
     } = query;
 
     let select = match body {
-        SetExpr::Select(select) => plan_select(storage, *select).await.map(Box::new)?,
+        SetExpr::Select(select) => select,
         SetExpr::Values(_) => {
             return Ok(Query {
                 body,
@@ -45,29 +75,82 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
         }
     };
 
-    let body = SetExpr::Select(select);
-    let query = Query {
-        body,
-        order_by,
-        limit,
-        offset,
+    let TableWithJoins { relation, .. } = &select.from;
+    let table_name = match relation {
+        TableFactor::Table { name, .. } => name,
+    };
+    let table_name = get_name(table_name)?;
+    let indexes = match storage.fetch_schema(table_name).await? {
+        Some(Schema { indexes, .. }) => Indexes(indexes),
+        None => {
+            return Ok(Query {
+                body: SetExpr::Select(select),
+                order_by,
+                limit,
+                offset,
+            });
+        }
     };
 
-    Ok(query)
-}
+    let index = order_by.get(0).and_then(|value_expr| {
+        indexes.find_ordered(&value_expr).map(|name| IndexItem {
+            name,
+            asc: value_expr.asc,
+            cmp_expr: None,
+        })
+    });
 
-struct Indexes(Vec<(String, Expr)>);
+    match (order_by.len(), index) {
+        (1, index) if index.is_some() => {
+            let Select {
+                projection,
+                from,
+                selection,
+                group_by,
+                having,
+            } = *select;
 
-impl Indexes {
-    fn find(&self, target: &Expr) -> Option<String> {
-        self.0
-            .iter()
-            .find(|(_, expr)| expr == target)
-            .map(|(index_name, _)| index_name.to_owned())
+            let TableWithJoins { relation, joins } = from;
+            let (name, alias) = match relation {
+                TableFactor::Table { name, alias, .. } => (name, alias),
+            };
+
+            let from = TableWithJoins {
+                relation: TableFactor::Table { name, alias, index },
+                joins,
+            };
+
+            let select = Select {
+                projection,
+                from,
+                selection,
+                group_by,
+                having,
+            };
+
+            Ok(Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: vec![],
+                limit,
+                offset,
+            })
+        }
+        _ => {
+            let select = plan_select(&indexes, *select).await?;
+            let body = SetExpr::Select(Box::new(select));
+            let query = Query {
+                body,
+                order_by,
+                limit,
+                offset,
+            };
+
+            Ok(query)
+        }
     }
 }
 
-async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select) -> Result<Select> {
+async fn plan_select(indexes: &Indexes, select: Select) -> Result<Select> {
     let Select {
         projection,
         from,
@@ -75,26 +158,6 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
         group_by,
         having,
     } = select;
-
-    let TableWithJoins { relation, .. } = &from;
-
-    let table_name = match relation {
-        TableFactor::Table { name, .. } => name,
-    };
-    let table_name = get_name(table_name)?;
-
-    let indexes = match storage.fetch_schema(table_name).await? {
-        Some(Schema { indexes, .. }) => Indexes(indexes),
-        None => {
-            return Ok(Select {
-                projection,
-                from,
-                selection,
-                group_by,
-                having,
-            });
-        }
-    };
 
     let selection = match selection {
         Some(expr) => expr,
@@ -130,8 +193,8 @@ async fn plan_select<T: 'static + Debug>(storage: &dyn Store<T>, select: Select)
 
             let index = Some(IndexItem {
                 name: index_name,
-                op: index_op,
-                value_expr: index_value_expr,
+                asc: None,
+                cmp_expr: Some((index_op, index_value_expr)),
             });
             let from = TableWithJoins {
                 relation: TableFactor::Table { name, alias, index },

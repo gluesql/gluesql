@@ -1,7 +1,7 @@
 use {
     super::RowIter,
     crate::{
-        ast::{Expr, IndexOperator},
+        ast::{IndexOperator, OrderByExpr},
         data::Value,
         result::{MutResult, Result},
     },
@@ -44,8 +44,8 @@ pub trait Index<T: Debug> {
         &self,
         table_name: &str,
         index_name: &str,
-        op: &IndexOperator,
-        value: Value,
+        asc: Option<bool>,
+        cmp_value: Option<(&IndexOperator, Value)>,
     ) -> Result<RowIter<T>>;
 }
 
@@ -58,7 +58,7 @@ where
         self,
         table_name: &str,
         index_name: &str,
-        column: &Expr,
+        column: &OrderByExpr,
     ) -> MutResult<Self, ()>;
 
     async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()>;

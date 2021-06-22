@@ -5,8 +5,8 @@ use {
         err_into, error::StorageError, fetch_schema, index_sync::IndexSync, scan_data, SledStorage,
     },
     crate::{
-        ast::Expr,
-        data::Schema,
+        ast::OrderByExpr,
+        data::{Schema, SchemaIndex, SchemaIndexOrd},
         result::{MutResult, Result},
         store::IndexMut,
         IndexError,
@@ -61,8 +61,9 @@ impl IndexMut<IVec> for SledStorage {
         self,
         table_name: &str,
         index_name: &str,
-        index_expr: &Expr,
+        column: &OrderByExpr,
     ) -> MutResult<Self, ()> {
+        let index_expr = &column.expr;
         let (schema_key, schema) = try_self!(self, fetch_schema(&self.tree, table_name));
         let Schema {
             column_defs,
@@ -73,7 +74,7 @@ impl IndexMut<IVec> for SledStorage {
             schema.ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()))
         );
 
-        if indexes.iter().any(|(name, _)| name == index_name) {
+        if indexes.iter().any(|index| index.name == index_name) {
             return Err((
                 self,
                 IndexError::IndexNameAlreadyExists(index_name.to_owned()).into(),
@@ -82,7 +83,11 @@ impl IndexMut<IVec> for SledStorage {
 
         let indexes = indexes
             .into_iter()
-            .chain(once((index_name.to_owned(), index_expr.clone())))
+            .chain(once(SchemaIndex {
+                name: index_name.to_owned(),
+                expr: index_expr.clone(),
+                order: SchemaIndexOrd::Both,
+            }))
             .collect::<Vec<_>>();
 
         let schema = Schema {
@@ -123,7 +128,7 @@ impl IndexMut<IVec> for SledStorage {
             schema.ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()))
         );
 
-        if indexes.iter().all(|(name, _)| name != index_name) {
+        if indexes.iter().all(|index| index.name != index_name) {
             return Err((
                 self,
                 IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
@@ -132,7 +137,7 @@ impl IndexMut<IVec> for SledStorage {
 
         let indexes = indexes
             .into_iter()
-            .filter(|(name, _)| name != index_name)
+            .filter(|index| index.name != index_name)
             .collect::<Vec<_>>();
 
         let schema = Schema {

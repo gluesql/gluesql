@@ -7,10 +7,10 @@ use {
         translate_idents, translate_query, TranslateError,
     },
     crate::{
-        ast::{AstLiteral, Expr},
+        ast::{AstLiteral, Expr, OrderByExpr},
         result::Result,
     },
-    sqlparser::ast::Expr as SqlExpr,
+    sqlparser::ast::{Expr as SqlExpr, OrderByExpr as SqlOrderByExpr},
 };
 
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
@@ -81,4 +81,21 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
+}
+
+pub fn translate_order_by_expr(sql_order_by_expr: &SqlOrderByExpr) -> Result<OrderByExpr> {
+    let SqlOrderByExpr {
+        expr,
+        asc,
+        nulls_first,
+    } = sql_order_by_expr;
+
+    if matches!(nulls_first, Some(_)) {
+        return Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into());
+    }
+
+    Ok(OrderByExpr {
+        expr: translate_expr(expr)?,
+        asc: *asc,
+    })
 }

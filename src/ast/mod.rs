@@ -75,7 +75,7 @@ pub enum Statement {
     CreateIndex {
         name: ObjectName,
         table_name: ObjectName,
-        column: Expr,
+        column: OrderByExpr,
     },
     /// DROP INDEX
     #[cfg(feature = "index")]

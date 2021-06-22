@@ -1,18 +1,20 @@
 use {
-    super::{expr::translate_expr, translate_idents, translate_object_name, TranslateError},
+    super::{
+        translate_expr, translate_idents, translate_object_name, translate_order_by_expr,
+        TranslateError,
+    },
     crate::{
         ast::{
-            Join, JoinConstraint, JoinOperator, OrderByExpr, Query, Select, SelectItem, SetExpr,
-            TableAlias, TableFactor, TableWithJoins, Values,
+            Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr, TableAlias,
+            TableFactor, TableWithJoins, Values,
         },
         result::Result,
     },
     sqlparser::ast::{
         Expr as SqlExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
-        JoinOperator as SqlJoinOperator, OrderByExpr as SqlOrderByExpr, Query as SqlQuery,
-        Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
-        TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
-        TableWithJoins as SqlTableWithJoins,
+        JoinOperator as SqlJoinOperator, Query as SqlQuery, Select as SqlSelect,
+        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
+        TableFactor as SqlTableFactor, TableWithJoins as SqlTableWithJoins,
     },
 };
 
@@ -28,22 +30,7 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
     let body = translate_set_expr(body)?;
     let order_by = order_by
         .iter()
-        .map(|order_by| {
-            let SqlOrderByExpr {
-                expr,
-                asc,
-                nulls_first,
-            } = order_by;
-
-            if matches!(nulls_first, Some(_)) {
-                return Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into());
-            }
-
-            Ok(OrderByExpr {
-                expr: translate_expr(expr)?,
-                asc: asc.unwrap_or(true),
-            })
-        })
+        .map(translate_order_by_expr)
         .collect::<Result<_>>()?;
 
     let limit = limit.as_ref().map(translate_expr).transpose()?;

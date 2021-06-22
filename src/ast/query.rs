@@ -46,8 +46,8 @@ pub struct TableWithJoins {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct IndexItem {
     pub name: String,
-    pub op: IndexOperator,
-    pub value_expr: Expr,
+    pub asc: Option<bool>,
+    pub cmp_expr: Option<(IndexOperator, Expr)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -87,7 +87,7 @@ pub enum JoinConstraint {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct OrderByExpr {
     pub expr: Expr,
-    pub asc: bool,
+    pub asc: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -3,11 +3,25 @@ use {
     serde::{Deserialize, Serialize},
 };
 
+#[derive(Clone, Copy, Serialize, Deserialize)]
+pub enum SchemaIndexOrd {
+    Asc,
+    Desc,
+    Both,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SchemaIndex {
+    pub name: String,
+    pub expr: Expr,
+    pub order: SchemaIndexOrd,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,
-    pub indexes: Vec<(String, Expr)>,
+    pub indexes: Vec<SchemaIndex>,
 }
 
 pub trait ColumnDefExt {

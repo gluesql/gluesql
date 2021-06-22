@@ -4,7 +4,7 @@ use {
     super::validate,
     crate::{
         ast::{AlterTableOperation, ObjectName},
-        data::get_name,
+        data::{get_name, SchemaIndex},
         result::MutResult,
         store::{GStore, GStoreMut},
     },
@@ -78,13 +78,13 @@ pub async fn alter_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
 
                 let indexes = indexes
                     .iter()
-                    .filter(|(_, expr)| find_column(expr, column_name))
+                    .filter(|SchemaIndex { expr, .. }| find_column(expr, column_name))
                     .map(Ok);
 
                 stream::iter(indexes)
-                    .try_fold(storage, |storage, (index_name, _)| async move {
+                    .try_fold(storage, |storage, SchemaIndex { name, .. }| async move {
                         storage
-                            .drop_index(table_name, index_name)
+                            .drop_index(table_name, name)
                             .await
                             .map(|(storage, _)| storage)
                     })
