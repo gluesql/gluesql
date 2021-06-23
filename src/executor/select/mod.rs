@@ -250,7 +250,6 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
             }
         });
 
-    let rows = limit.apply(rows);
     let rows = aggregate.apply(rows).await?;
     let rows = sort
         .apply(rows)
@@ -260,6 +259,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
 
             async move { blend.apply(aggregated, context).await }
         });
+    let rows = limit.apply(rows);
 
     Ok((labels, rows))
 }

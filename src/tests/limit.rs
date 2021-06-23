@@ -38,6 +38,20 @@ test_case!(limit, async move {
             r#"SELECT * FROM Test LIMIT 4 OFFSET 3;"#,
             select!(id; I64; 4; 5; 6; 7),
         ),
+        (
+            "SELECT * FROM Test ORDER BY id DESC LIMIT 3",
+            select!(id; I64; 8; 7; 6),
+        ),
+        (
+            "SELECT id, COUNT(*) as c FROM Test GROUP BY id LIMIT 3 OFFSET 2",
+            select!(
+                id  | c;
+                I64 | I64;
+                3     1;
+                4     1;
+                5     1
+            ),
+        ),
     ];
 
     for (sql, expected) in test_cases.into_iter() {
