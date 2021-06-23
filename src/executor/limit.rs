@@ -1,8 +1,12 @@
 use {
-    super::{context::BlendContext, evaluate::evaluate_stateless},
-    crate::{ast::Expr, data::Value, result::Result},
+    super::evaluate::evaluate_stateless,
+    crate::{
+        ast::Expr,
+        data::{Row, Value},
+        result::Result,
+    },
     futures::stream::{Stream, StreamExt},
-    std::{convert::TryInto, pin::Pin, rc::Rc},
+    std::{convert::TryInto, pin::Pin},
 };
 
 pub struct Limit {
@@ -27,8 +31,8 @@ impl Limit {
 
     pub fn apply<'a>(
         &self,
-        rows: impl Stream<Item = Result<Rc<BlendContext<'a>>>> + 'a,
-    ) -> Pin<Box<dyn Stream<Item = Result<Rc<BlendContext<'a>>>> + 'a>> {
+        rows: impl Stream<Item = Result<Row>> + 'a,
+    ) -> Pin<Box<dyn Stream<Item = Result<Row>> + 'a>> {
         match (self.offset, self.limit) {
             (Some(offset), Some(limit)) => Box::pin(rows.skip(offset).take(limit)),
             (Some(offset), None) => Box::pin(rows.skip(offset)),
