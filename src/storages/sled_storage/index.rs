@@ -28,7 +28,7 @@ impl Index<IVec> for SledStorage {
         asc: Option<bool>,
         cmp_value: Option<(&IndexOperator, Value)>,
     ) -> Result<RowIter<IVec>> {
-        let index_data_ids = {
+        let data_keys = {
             #[derive(Iterator, DoubleEndedIterator)]
             enum DataIds<I1, I2, I3, I4> {
                 Empty(I1),
@@ -85,50 +85,45 @@ impl Index<IVec> for SledStorage {
         };
 
         let tree = self.tree.clone();
-        let flat_map = move |index_data_id: Result<IVec>| {
+        let flat_map = move |keys: Result<IVec>| {
             #[derive(Iterator)]
             enum Rows<I1, I2> {
                 Ok(I1),
                 Err(I2),
             }
 
-            let index_data_id: IVec = match index_data_id {
-                Ok(id) => id,
-                Err(e) => {
-                    return Rows::Err(once(Err(e)));
-                }
-            };
+            macro_rules! try_into {
+                ($expr: expr) => {
+                    match $expr {
+                        Ok(v) => v,
+                        Err(e) => {
+                            return Rows::Err(once(Err(e)));
+                        }
+                    }
+                };
+            }
 
-            let bytes = "indexdata/"
-                .to_owned()
-                .into_bytes()
-                .into_iter()
-                .chain(index_data_id.iter().copied())
-                .collect::<Vec<_>>();
-            let index_data_prefix = IVec::from(bytes);
-
+            let keys = try_into!(keys);
+            let keys: Vec<Vec<u8>> = try_into!(bincode::deserialize(&keys).map_err(err_into));
             let tree2 = tree.clone();
-            let rows = tree
-                .scan_prefix(&index_data_prefix)
-                .map(move |item| -> Result<_> {
-                    let (_, data_key) = item.map_err(err_into)?;
-                    let value = tree2
-                        .get(&data_key)
-                        .map_err(err_into)?
-                        .ok_or(IndexError::ConflictOnEmptyIndexValueScan)?;
-                    let value = bincode::deserialize(&value).map_err(err_into)?;
+            let rows = keys.into_iter().map(move |key| -> Result<_> {
+                let value = tree2
+                    .get(&key)
+                    .map_err(err_into)?
+                    .ok_or(IndexError::ConflictOnEmptyIndexValueScan)?;
+                let value = bincode::deserialize(&value).map_err(err_into)?;
 
-                    Ok((data_key, value))
-                });
+                Ok((IVec::from(key), value))
+            });
 
             Rows::Ok(rows)
         };
 
-        let index_data_ids = index_data_ids.map(|v| v.map_err(err_into));
+        let data_keys = data_keys.map(|v| v.map_err(err_into));
 
         Ok(match asc {
-            Some(true) | None => Box::new(index_data_ids.flat_map(flat_map)),
-            Some(false) => Box::new(index_data_ids.rev().flat_map(flat_map)),
+            Some(true) | None => Box::new(data_keys.flat_map(flat_map)),
+            Some(false) => Box::new(data_keys.rev().flat_map(flat_map)),
         })
     }
 }

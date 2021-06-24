@@ -267,6 +267,19 @@ CREATE TABLE Test (
         "SELECT id FROM Test WHERE id + num = id"
     );
 
+    test_idx!(
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            2     2     "Hello".to_owned();
+            2     17    "World".to_owned();
+            2     30    "New one".to_owned();
+            4     7     "Job".to_owned()
+        )),
+        idx!(idx_id, Lt, "20"),
+        "SELECT id, num, name FROM Test WHERE id < 20"
+    );
+
     test!(
         Err(TranslateError::CompositeIndexNotSupported.into()),
         "CREATE INDEX idx_com ON Test (id, num)"

@@ -22,6 +22,13 @@ impl<T> Vector<T> {
     }
 
     #[cfg(all(feature = "index", feature = "sled-storage"))]
+    pub fn remove(mut self, i: usize) -> Self {
+        self.0.remove(i);
+
+        self
+    }
+
+    #[cfg(all(feature = "index", feature = "sled-storage"))]
     pub fn reverse(mut self) -> Self {
         self.0.reverse();
 

@@ -81,13 +81,15 @@ impl IndexMut<IVec> for SledStorage {
             ));
         }
 
+        let index = SchemaIndex {
+            name: index_name.to_owned(),
+            expr: index_expr.clone(),
+            order: SchemaIndexOrd::Both,
+        };
+
         let indexes = indexes
             .into_iter()
-            .chain(once(SchemaIndex {
-                name: index_name.to_owned(),
-                expr: index_expr.clone(),
-                order: SchemaIndexOrd::Both,
-            }))
+            .chain(once(index.clone()))
             .collect::<Vec<_>>();
 
         let schema = Schema {
@@ -110,7 +112,7 @@ impl IndexMut<IVec> for SledStorage {
             tree.insert(schema_key.as_bytes(), schema_value)?;
 
             for (data_key, row) in rows.iter() {
-                index_sync.insert(&tree, data_key, row)?;
+                index_sync.insert_index(&tree, &index, data_key, row)?;
             }
 
             Ok(())
@@ -128,17 +130,19 @@ impl IndexMut<IVec> for SledStorage {
             schema.ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()))
         );
 
-        if indexes.iter().all(|index| index.name != index_name) {
-            return Err((
-                self,
-                IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
-            ));
-        }
-
-        let indexes = indexes
+        let (index, indexes): (Vec<_>, _) = indexes
             .into_iter()
-            .filter(|index| index.name != index_name)
-            .collect::<Vec<_>>();
+            .partition(|index| index.name == index_name);
+
+        let index = match index.into_iter().next() {
+            Some(index) => index,
+            None => {
+                return Err((
+                    self,
+                    IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
+                ));
+            }
+        };
 
         let schema = Schema {
             table_name: table_name.to_owned(),
@@ -160,7 +164,7 @@ impl IndexMut<IVec> for SledStorage {
             tree.insert(schema_key.as_bytes(), schema_value)?;
 
             for (data_key, row) in rows.iter() {
-                index_sync.delete(&tree, data_key, row)?;
+                index_sync.delete_index(&tree, &index, data_key, row)?;
             }
 
             Ok(())
