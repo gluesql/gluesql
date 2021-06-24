@@ -4,7 +4,7 @@ use {
     super::validate,
     crate::{
         ast::{AlterTableOperation, ObjectName},
-        data::{get_name, SchemaIndex},
+        data::get_name,
         result::MutResult,
         store::{GStore, GStoreMut},
     },
@@ -14,7 +14,10 @@ use {
 #[cfg(feature = "index")]
 use {
     super::AlterError,
-    crate::{ast::Expr, data::Schema},
+    crate::{
+        ast::Expr,
+        data::{Schema, SchemaIndex},
+    },
     futures::stream::{self, TryStreamExt},
 };
 

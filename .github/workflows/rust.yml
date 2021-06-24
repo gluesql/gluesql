@@ -20,11 +20,19 @@ jobs:
     - name: Clippy
       run: cargo clippy --no-default-features -- -D warnings
     - name: Clippy (alter-table)
-      run: cargo clippy --features alter-table -- -D warnings
+      run: cargo clippy --no-default-features --features alter-table -- -D warnings
     - name: Clippy (index)
-      run: cargo clippy --features index -- -D warnings
+      run: cargo clippy --no-default-features --features index -- -D warnings
+    - name: Clippy (sorter)
+      run: cargo clippy --no-default-features --features sorter -- -D warnings
     - name: Clippy (sled-storage)
-      run: cargo clippy --features sled-storage -- -D warnings
+      run: cargo clippy --no-default-features --features sled-storage -- -D warnings
+    - name: Clippy (sled-storage & index)
+      run: cargo clippy --no-default-features --features "sled-storage index" -- -D warnings
+    - name: Clippy (sled-storage & sorter)
+      run: cargo clippy --no-default-features --features "sled-storage sorter" -- -D warnings
+    - name: Clippy (sled-storage & alter-table)
+      run: cargo clippy --no-default-features --features "sled-storage alter-table" -- -D warnings
     - name: Clippy (all)
       run: cargo clippy --all-features -- -D warnings
     - name: Rustfmt
@@ -34,6 +42,10 @@ jobs:
     - name: Run tests
       run: cargo test --no-default-features --verbose
     - name: Run tests with features (sled-storage)
-      run: cargo test --features sled-storage --verbose
+      run: cargo test --no-default-features --features sled-storage --verbose
+    - name: Run tests with features (sled-storage & index)
+      run: cargo test --no-default-features --features "sled-storage index" --verbose
+    - name: Run tests with features (sled-storage & sorter)
+      run: cargo test --no-default-features --features "sled-storage sorter" --verbose
     - name: Run tests with all features
       run: cargo test --all-features --verbose
