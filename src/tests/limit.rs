@@ -38,6 +38,7 @@ test_case!(limit, async move {
             r#"SELECT * FROM Test LIMIT 4 OFFSET 3;"#,
             select!(id; I64; 4; 5; 6; 7),
         ),
+        #[cfg(feature = "sorter")]
         (
             "SELECT * FROM Test ORDER BY id DESC LIMIT 3",
             select!(id; I64; 8; 7; 6),
