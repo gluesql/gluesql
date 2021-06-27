@@ -18,12 +18,21 @@ use {
 
 pub struct Blend<'a, T: 'static + Debug> {
     storage: &'a dyn GStore<T>,
+    filter_context: Option<Rc<FilterContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
 impl<'a, T: 'static + Debug> Blend<'a, T> {
-    pub fn new(storage: &'a dyn GStore<T>, fields: &'a [SelectItem]) -> Self {
-        Self { storage, fields }
+    pub fn new(
+        storage: &'a dyn GStore<T>,
+        filter_context: Option<Rc<FilterContext<'a>>>,
+        fields: &'a [SelectItem],
+    ) -> Self {
+        Self {
+            storage,
+            filter_context,
+            fields,
+        }
     }
 
     pub async fn apply(
@@ -31,7 +40,10 @@ impl<'a, T: 'static + Debug> Blend<'a, T> {
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
         context: Rc<BlendContext<'a>>,
     ) -> Result<Row> {
-        let filter_context = FilterContext::concat(None, Some(Rc::clone(&context)));
+        let filter_context = FilterContext::concat(
+            self.filter_context.as_ref().map(Rc::clone),
+            Some(Rc::clone(&context)),
+        );
         let filter_context = Some(filter_context).map(Rc::new);
 
         let values = stream::iter(self.fields.iter())
