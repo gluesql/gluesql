@@ -127,6 +127,15 @@ test_case!(blend, async move {
                 3     204     "Jorno".to_owned()
             ),
         ),
+        (
+            "
+            SELECT id FROM BlendUser
+            WHERE id IN (
+                SELECT BlendUser.id FROM BlendItem
+                WHERE quantity > 5 AND BlendUser.id = player_id
+            );",
+            select!(id; I64; 2),
+        ),
     ];
 
     for (sql, expected) in test_cases.into_iter() {

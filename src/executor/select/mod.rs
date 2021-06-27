@@ -220,7 +220,11 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         having.as_ref(),
         filter_context.as_ref().map(Rc::clone),
     );
-    let blend = Rc::new(Blend::new(storage, projection));
+    let blend = Rc::new(Blend::new(
+        storage,
+        filter_context.as_ref().map(Rc::clone),
+        projection,
+    ));
     let filter = Rc::new(Filter::new(
         storage,
         where_clause.as_ref(),
