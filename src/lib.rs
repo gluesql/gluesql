@@ -36,23 +36,27 @@
 //! ```
 //!
 //! ## Custom Storage
-//! All you need to implement for `gluesql` is implementing 3 traits (2 for functions, 1 for
-//! running tests).
-//! There is also an optional trait (AlterTable), whether implementing it or not is all up to you.
+//! To get started, all you need to implement for `gluesql` is implementing three traits
+//! (two for functions, one running tests).
+//! There are also three optional traits (`AlterTable`, `Index` and `IndexMut`),
+//! whether implementing it or not is all up to you.
 //!
+//! ### Store traits
 //! * [Store](store/trait.Store.html)
 //! * [StoreMut](store/trait.StoreMut.html)
-//! * [AlterTable - optional](store/trait.AlterTable.html)
+//!
+//! ### Store traits (optional)
+//! * [AlterTable](store/trait.AlterTable.html)
+//! * [Index](store/trait.Index.html)
+//! * [IndexMut](store/trait.IndexMut.html)
+//!
+//! ### Trait to run integration tests
 //! * [Tester](tests/trait.Tester.html)
 //!
-//! Custom storage examples to see,
-//! * [GlueSQL-js](https://github.com/gluesql/gluesql-js)
-//!
 //! ## Tests
-//! For making easy for developers to implement custom storages, `gluesql` also provides integration
-//! tests as a module.
-//!
-//! So, in `/tests/`, it looks quite empty, but actual test cases exist in `src/tests/`.
+//! `gluesql` provides integration tests as a module.
+//! Developers who wants to make their own custom storages can import and run those tests.
+//! `/tests/` might look quite empty, but actual test cases exist in `src/tests/`.
 //!
 //! Example code to see,
 //! * [tests/sled_storage.rs](https://github.com/gluesql/gluesql/blob/main/tests/sled_storage.rs)
