@@ -16,7 +16,7 @@ You can use GlueSQL as an embedded SQL database. GlueSQL provides [sled](https:/
 In your `Cargo.toml`:
 ```toml
 [dependencies]
-gluesql = "0.6"
+gluesql = "0.7"
 ```
 
 ### Usage
@@ -45,13 +45,15 @@ fn main() {
 ### Installation
 `sled-storage` is optional. So in `Cargo.toml`:
 ```toml
-[dependencies]
-gluesql = { version = "0.6", default-features = false, features = ["alter-table"] }
-
-# alter-table is optional.
-# If your DB does not have plan to support ALTER TABLE, then use this below.
-gluesql = { version = "0.6", default-features = false }
+[dependencies.gluesql]
+version = "0.7"
+default-features = false
+features = ["sorter", "alter-table", "index"]
 ```
+#### Three features above are optional, too.
+* `sorter` - ORDER BY support for non-indexed expressions.
+* `alter-table` - ALTER TABLE query support
+* `index` - CREATE INDEX & DROP INDEX, index support
 
 ### Usage
 There are two required 2 traits for using GlueSQL: `Store` and `StoreMut`.
@@ -71,14 +73,23 @@ pub trait StoreMut<T: Debug> where Self: Sized {
 }
 ```
 
-.. there is also a single, optional trait:
-In `src/store/alter_table.rs`,
+There is also optional store traits
+In `src/store/alter_table.rs` & `src/store/index.rs`
 ```rust
 pub trait AlterTable where Self: Sized {
     async fn rename_schema(..) -> ..;
     async fn rename_column(..) -> ..;
     async fn add_column(..) -> ..;
     async fn drop_column(..) -> ..;
+}
+
+pub trait Index<T: Debug> {
+    async fn scan_indexed_data(..) -> ..;
+}
+
+pub trait IndexMut<T: Debug> where Self: Sized {
+    async fn create_index(..) -> ..;
+    async fn drop_index(..) -> ..;
 }
 ```
 
@@ -106,8 +117,10 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 
 * `CREATE TABLE` with 8 types: `INTEGER`, `FLOAT`, `BOOLEAN`, `TEXT`, `DATE`, `TIMESTAMP`, `TIME` and `INTERVAL`.
 * `ALTER TABLE` with 4 operations: `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
+* `CREATE INDEX`, `DROP INDEX`
 * `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `DROP TABLE`
 * `GROUP BY`, `HAVING`
+* `ORDER BY`
 * Nested select, join, aggregations ...
 
 You can see tests for the currently supported queries in [src/tests/*](https://github.com/gluesql/gluesql/tree/main/src/tests).
