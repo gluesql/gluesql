@@ -9,6 +9,7 @@ use {
         store::Store,
         utils::Vector,
     },
+    async_recursion::async_recursion,
     boolinator::Boolinator,
     std::fmt::Debug,
 };
@@ -137,7 +138,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
             })
         }
         _ => {
-            let select = plan_select(&indexes, *select).await?;
+            let select = plan_select(storage, &indexes, *select).await?;
             let body = SetExpr::Select(Box::new(select));
             let query = Query {
                 body,
@@ -151,7 +152,11 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
     }
 }
 
-async fn plan_select(indexes: &Indexes, select: Select) -> Result<Select> {
+async fn plan_select<T: 'static + Debug>(
+    storage: &dyn Store<T>,
+    indexes: &Indexes,
+    select: Select,
+) -> Result<Select> {
     let Select {
         projection,
         from,
@@ -173,15 +178,15 @@ async fn plan_select(indexes: &Indexes, select: Select) -> Result<Select> {
         }
     };
 
-    match search_index(&indexes, selection) {
-        Searched::NotFound(selection) => Ok(Select {
+    match plan_index(storage, &indexes, selection).await? {
+        Planned::Expr(selection) => Ok(Select {
             projection,
             from,
             selection: Some(selection),
             group_by,
             having,
         }),
-        Searched::Found {
+        Planned::IndexedExpr {
             index_name,
             index_op,
             index_value_expr,
@@ -213,29 +218,57 @@ async fn plan_select(indexes: &Indexes, select: Select) -> Result<Select> {
     }
 }
 
-enum Searched {
-    Found {
+enum Planned {
+    IndexedExpr {
         index_name: String,
         index_op: IndexOperator,
         index_value_expr: Expr,
         selection: Option<Expr>,
     },
-    NotFound(Expr),
+    Expr(Expr),
 }
 
-fn search_index(indexes: &Indexes, selection: Expr) -> Searched {
+#[async_recursion(?Send)]
+async fn plan_index<T: 'static + Debug>(
+    storage: &dyn Store<T>,
+    indexes: &Indexes,
+    selection: Expr,
+) -> Result<Planned> {
     match selection {
-        Expr::Nested(expr) => search_index(indexes, *expr),
-        Expr::IsNull(expr) => search_is_null(indexes, true, expr),
-        Expr::IsNotNull(expr) => search_is_null(indexes, false, expr),
+        Expr::Nested(expr) => plan_index(storage, indexes, *expr).await,
+        Expr::IsNull(expr) => Ok(search_is_null(indexes, true, expr)),
+        Expr::IsNotNull(expr) => Ok(search_is_null(indexes, false, expr)),
+        Expr::Subquery(query) => plan_query(storage, *query)
+            .await
+            .map(Box::new)
+            .map(Expr::Subquery)
+            .map(Planned::Expr),
+        Expr::Exists(query) => plan_query(storage, *query)
+            .await
+            .map(Box::new)
+            .map(Expr::Exists)
+            .map(Planned::Expr),
+        Expr::InSubquery {
+            expr,
+            subquery,
+            negated,
+        } => plan_query(storage, *subquery)
+            .await
+            .map(Box::new)
+            .map(|subquery| Expr::InSubquery {
+                expr,
+                subquery,
+                negated,
+            })
+            .map(Planned::Expr),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::And,
             right,
         } => {
-            let left = match search_index(indexes, *left) {
-                Searched::NotFound(selection) => selection,
-                Searched::Found {
+            let left = match plan_index(storage, indexes, *left).await? {
+                Planned::Expr(selection) => selection,
+                Planned::IndexedExpr {
                     index_name,
                     index_value_expr,
                     index_op,
@@ -250,22 +283,22 @@ fn search_index(indexes: &Indexes, selection: Expr) -> Searched {
                         None => *right,
                     };
 
-                    return Searched::Found {
+                    return Ok(Planned::IndexedExpr {
                         index_name,
                         index_op,
                         index_value_expr,
                         selection: Some(selection),
-                    };
+                    });
                 }
             };
 
-            match search_index(indexes, *right) {
-                Searched::NotFound(expr) => Searched::NotFound(Expr::BinaryOp {
+            match plan_index(storage, indexes, *right).await? {
+                Planned::Expr(expr) => Ok(Planned::Expr(Expr::BinaryOp {
                     left: Box::new(left),
                     op: BinaryOperator::And,
                     right: Box::new(expr),
-                }),
-                Searched::Found {
+                })),
+                Planned::IndexedExpr {
                     index_name,
                     index_op,
                     index_value_expr,
@@ -280,12 +313,12 @@ fn search_index(indexes: &Indexes, selection: Expr) -> Searched {
                         None => left,
                     };
 
-                    Searched::Found {
+                    Ok(Planned::IndexedExpr {
                         index_name,
                         index_value_expr,
                         index_op,
                         selection: Some(selection),
-                    }
+                    })
                 }
             }
         }
@@ -293,32 +326,32 @@ fn search_index(indexes: &Indexes, selection: Expr) -> Searched {
             left,
             op: BinaryOperator::Gt,
             right,
-        } => search_index_op(indexes, IndexOperator::Gt, left, right),
+        } => Ok(search_index_op(indexes, IndexOperator::Gt, left, right)),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::Lt,
             right,
-        } => search_index_op(indexes, IndexOperator::Lt, left, right),
+        } => Ok(search_index_op(indexes, IndexOperator::Lt, left, right)),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::GtEq,
             right,
-        } => search_index_op(indexes, IndexOperator::GtEq, left, right),
+        } => Ok(search_index_op(indexes, IndexOperator::GtEq, left, right)),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::LtEq,
             right,
-        } => search_index_op(indexes, IndexOperator::LtEq, left, right),
+        } => Ok(search_index_op(indexes, IndexOperator::LtEq, left, right)),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::Eq,
             right,
-        } => search_index_op(indexes, IndexOperator::Eq, left, right),
-        _ => Searched::NotFound(selection),
+        } => Ok(search_index_op(indexes, IndexOperator::Eq, left, right)),
+        _ => Ok(Planned::Expr(selection)),
     }
 }
 
-fn search_is_null(indexes: &Indexes, null: bool, expr: Box<Expr>) -> Searched {
+fn search_is_null(indexes: &Indexes, null: bool, expr: Box<Expr>) -> Planned {
     match indexes.find(expr.as_ref()) {
         Some(index_name) => {
             let index_op = if null {
@@ -327,7 +360,7 @@ fn search_is_null(indexes: &Indexes, null: bool, expr: Box<Expr>) -> Searched {
                 IndexOperator::Lt
             };
 
-            Searched::Found {
+            Planned::IndexedExpr {
                 index_name,
                 index_op,
                 index_value_expr: Expr::Literal(AstLiteral::Null),
@@ -341,7 +374,7 @@ fn search_is_null(indexes: &Indexes, null: bool, expr: Box<Expr>) -> Searched {
                 Expr::IsNotNull(expr)
             };
 
-            Searched::NotFound(expr)
+            Planned::Expr(expr)
         }
     }
 }
@@ -351,12 +384,12 @@ fn search_index_op(
     index_op: IndexOperator,
     left: Box<Expr>,
     right: Box<Expr>,
-) -> Searched {
+) -> Planned {
     if let Some(index_name) = indexes
         .find(left.as_ref())
         .and_then(|index_name| is_stateless(right.as_ref()).as_some(index_name))
     {
-        Searched::Found {
+        Planned::IndexedExpr {
             index_name,
             index_op,
             index_value_expr: *right,
@@ -366,7 +399,7 @@ fn search_index_op(
         .find(right.as_ref())
         .and_then(|index_name| is_stateless(left.as_ref()).as_some(index_name))
     {
-        Searched::Found {
+        Planned::IndexedExpr {
             index_name,
             index_op: index_op.reverse(),
             index_value_expr: *left,
@@ -377,7 +410,7 @@ fn search_index_op(
     } else if let Expr::Nested(right) = *right {
         search_index_op(indexes, index_op, left, right)
     } else {
-        Searched::NotFound(Expr::BinaryOp {
+        Planned::Expr(Expr::BinaryOp {
             left,
             op: index_op.into(),
             right,

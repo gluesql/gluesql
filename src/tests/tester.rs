@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{Expr, IndexItem, SetExpr, Statement, TableFactor},
+        ast::{Expr, IndexItem, Query, SetExpr, Statement, TableFactor},
         data::{Row, Value},
         executor::{execute, Payload},
         parse_sql::{parse, parse_expr},
@@ -152,30 +152,45 @@ pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
 }
 
 fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
-    let body = match statement {
-        Statement::Query(query) => &query.body,
-        _ => {
-            return vec![];
+    fn find_expr_indexes(expr: &Expr) -> Vec<&IndexItem> {
+        match expr {
+            Expr::Subquery(query)
+            | Expr::Exists(query)
+            | Expr::InSubquery {
+                subquery: query, ..
+            } => find_query_indexes(query),
+            _ => vec![],
         }
-    };
+    }
 
-    let table_factor = match body {
-        SetExpr::Select(select) => &select.from.relation,
-        _ => {
-            return vec![];
-        }
-    };
+    fn find_query_indexes(query: &Query) -> Vec<&IndexItem> {
+        let select = match &query.body {
+            SetExpr::Select(select) => select,
+            _ => {
+                return vec![];
+            }
+        };
 
-    let index = match table_factor {
-        TableFactor::Table {
-            index: Some(index), ..
-        } => index,
-        _ => {
-            return vec![];
-        }
-    };
+        let selection_indexes = select
+            .selection
+            .as_ref()
+            .map(find_expr_indexes)
+            .unwrap_or_default();
 
-    vec![index]
+        let table_indexes = match &select.from.relation {
+            TableFactor::Table {
+                index: Some(index), ..
+            } => vec![index],
+            _ => vec![],
+        };
+
+        [selection_indexes, table_indexes].concat()
+    }
+
+    match statement {
+        Statement::Query(query) => find_query_indexes(&query),
+        _ => vec![],
+    }
 }
 
 /// If you want to make your custom storage and want to run integrate tests,
