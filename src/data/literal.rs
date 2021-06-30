@@ -7,12 +7,16 @@ use {
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
     Literal::*,
+    regex::{Regex},
 };
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum LiteralError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
+
+    #[error("failed to parse pattern: {0}")]
+    FailedToParsePattern(String),
 
     #[error("literal unary operation on non-numeric")]
     UnaryOperationOnNonNumeric,
@@ -264,6 +268,23 @@ impl<'a> Literal<'a> {
                 format!("{:?}", other),
             )
             .into()),
+        }
+    }
+
+    pub fn like(&self, other: &Literal<'a>) -> Result<Self> {
+        match (self, other) {
+            (Text(l), Text(r)) => Ok(Boolean(Regex::new(
+                &format!(
+                    "^{}$",
+                    regex::escape(r)
+                        .replace("%", ".*")
+                        .replace("_", ".")
+                )
+            )
+            .map_err(|e| LiteralError::FailedToParsePattern(e.to_string()))?
+            .is_match(l)
+        )),
+            _ => Ok(Boolean(false)),
         }
     }
 }

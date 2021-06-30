@@ -31,6 +31,9 @@ pub enum ValueError {
     #[error("failed to parse time: {0}")]
     FailedToParseTime(String),
 
+    #[error("failed to parse pattern: {0}")]
+    FailedToParsePattern(String),
+
     #[error("add on non-numeric values: {0:?} + {1:?}")]
     AddOnNonNumeric(Value, Value),
 

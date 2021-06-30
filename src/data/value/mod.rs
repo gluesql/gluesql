@@ -5,6 +5,7 @@ use {
     core::ops::Sub,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, convert::TryInto, fmt::Debug},
+    regex::{Regex},
 };
 
 mod big_edian;
@@ -281,6 +282,25 @@ impl Value {
             Interval(a) => Ok(Interval(a.unary_minus())),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryMinusOnNonNumeric.into()),
+        }
+    }
+
+    pub fn like(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (Str(a), Str(b)) => Ok(Bool(Regex::new(
+                &format!(
+                    "^{}$",
+                    regex::escape(b)
+                        .replace("%", ".*")
+                        .replace("_", ".")
+                )
+            )
+            .map_err(|e| ValueError::FailedToParsePattern(e.to_string()))?
+            .is_match(a)
+        )),
+            _ => Ok(Bool(false)),
         }
     }
 }
