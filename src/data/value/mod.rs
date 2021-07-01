@@ -5,7 +5,7 @@ use {
     core::ops::Sub,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, convert::TryInto, fmt::Debug},
-    regex::{Regex},
+    super::StringExt,
 };
 
 mod big_edian;
@@ -289,17 +289,7 @@ impl Value {
         use Value::*;
 
         match (self, other) {
-            (Str(a), Str(b)) => Ok(Bool(Regex::new(
-                &format!(
-                    "^{}$",
-                    regex::escape(b)
-                        .replace("%", ".*")
-                        .replace("_", ".")
-                )
-            )
-            .map_err(|e| ValueError::FailedToParsePattern(e.to_string()))?
-            .is_match(a)
-        )),
+            (Str(a), Str(b)) => Ok(Bool(a.like(&b)?)),
             _ => Ok(Bool(false)),
         }
     }

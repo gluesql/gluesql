@@ -1,6 +1,6 @@
 use {
     crate::{
-        data::{IntervalError, LiteralError, RowError, TableError, ValueError},
+        data::{IntervalError, LiteralError, RowError, TableError, ValueError, StringExtError},
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
             UpdateError, ValidateError,
@@ -63,6 +63,8 @@ pub enum Error {
     Literal(#[from] LiteralError),
     #[error(transparent)]
     Interval(#[from] IntervalError),
+    #[error(transparent)]
+    StringExt(#[from] StringExtError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -92,6 +94,7 @@ impl PartialEq for Error {
             (Value(e), Value(e2)) => e == e2,
             (Literal(e), Literal(e2)) => e == e2,
             (Interval(e), Interval(e2)) => e == e2,
+            (StringExt(e), StringExt(e2)) => e == e2,
             _ => false,
         }
     }

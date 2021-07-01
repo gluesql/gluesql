@@ -81,6 +81,8 @@ test_case!(filter, async move {
         (2, "SELECT name FROM Boss WHERE name LIKE '%a'"),
         (5, "SELECT name FROM Boss WHERE name LIKE '%%'"),
         (1, "SELECT name FROM Boss WHERE name NOT LIKE '%a%'"),
+        (5, "SELECT name FROM Boss WHERE 'ABC' LIKE '_B_'"),
+        (0, "SELECT name FROM Boss WHERE name LIKE 10"),
     ];
 
     for (num, sql) in select_sqls.iter() {
