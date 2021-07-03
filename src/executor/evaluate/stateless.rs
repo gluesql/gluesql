@@ -5,7 +5,6 @@ use {
         data::{Row, Value},
         result::Result,
     },
-    boolinator::Boolinator,
     std::borrow::Cow,
 };
 
@@ -69,7 +68,7 @@ pub fn evaluate_stateless<'a>(
 
                     eval(expr).map_or_else(
                         |error| Some(Err(error)),
-                        |evaluated| (target == &evaluated).as_some(Ok(!negated)),
+                        |evaluated| (target == &evaluated).then(|| Ok(!negated)),
                     )
                 })
                 .take(1)

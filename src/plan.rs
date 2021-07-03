@@ -10,7 +10,6 @@ use {
         utils::Vector,
     },
     async_recursion::async_recursion,
-    boolinator::Boolinator,
     std::fmt::Debug,
 };
 
@@ -387,7 +386,7 @@ fn search_index_op(
 ) -> Planned {
     if let Some(index_name) = indexes
         .find(left.as_ref())
-        .and_then(|index_name| is_stateless(right.as_ref()).as_some(index_name))
+        .and_then(|index_name| is_stateless(right.as_ref()).then(|| index_name))
     {
         Planned::IndexedExpr {
             index_name,
@@ -397,7 +396,7 @@ fn search_index_op(
         }
     } else if let Some(index_name) = indexes
         .find(right.as_ref())
-        .and_then(|index_name| is_stateless(left.as_ref()).as_some(index_name))
+        .and_then(|index_name| is_stateless(left.as_ref()).then(|| index_name))
     {
         Planned::IndexedExpr {
             index_name,

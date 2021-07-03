@@ -12,7 +12,6 @@ use {
         store::GStore,
     },
     async_recursion::async_recursion,
-    boolinator::Boolinator,
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
     std::{
@@ -119,7 +118,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                     async move {
                         eval(expr).await.map_or_else(
                             |error| Some(Err(error)),
-                            |evaluated| (target == &evaluated).as_some(Ok(!negated)),
+                            |evaluated| (target == &evaluated).then(|| Ok(!negated)),
                         )
                     }
                 })
@@ -148,7 +147,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                         let value = row.take_first_value()?;
 
                         (target == &Evaluated::from(&value))
-                            .as_some(Ok(!negated))
+                            .then(|| Ok(!negated))
                             .transpose()
                     }
                 })

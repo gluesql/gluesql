@@ -7,7 +7,6 @@ use {
         AlterTable, AlterTableError, MutResult, Row, Schema, Value,
     },
     async_trait::async_trait,
-    boolinator::Boolinator,
     std::{iter::once, str},
 };
 
@@ -239,7 +238,7 @@ impl AlterTable for SledStorage {
                 .0
                 .into_iter()
                 .enumerate()
-                .filter_map(|(i, v)| (i != index).as_some(v))
+                .filter_map(|(i, v)| (i != index).then(|| v))
                 .collect());
             let row = try_into!(self, bincode::serialize(&row));
 
@@ -250,7 +249,7 @@ impl AlterTable for SledStorage {
         let column_defs = column_defs
             .into_iter()
             .enumerate()
-            .filter_map(|(i, v)| (i != index).as_some(v))
+            .filter_map(|(i, v)| (i != index).then(|| v))
             .collect::<Vec<ColumnDef>>();
 
         let schema = Schema {

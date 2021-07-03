@@ -6,7 +6,6 @@ use {
         store::Store,
         utils::Vector,
     },
-    boolinator::Boolinator,
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
     serde::Serialize,
@@ -74,17 +73,14 @@ impl UniqueConstraint {
 
     fn check(&self, value: &Value) -> Result<Option<UniqueKey>> {
         match value.try_into()? {
-            Some(new_key) => (!self.keys.contains(&new_key)).as_result_from(
-                || Some(new_key),
-                || {
-                    ValidateError::DuplicateEntryOnUniqueField(
-                        value.clone(),
-                        self.column_name.to_owned(),
-                    )
-                    .into()
-                },
-            ),
-            None => Ok(None),
+            Some(new_key) if self.keys.contains(&new_key) => {
+                Err(ValidateError::DuplicateEntryOnUniqueField(
+                    value.clone(),
+                    self.column_name.to_owned(),
+                )
+                .into())
+            }
+            new_key => Ok(new_key),
         }
     }
 }
