@@ -15,7 +15,6 @@ use {
         result::{Error, Result},
         store::GStore,
     },
-    boolinator::Boolinator,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     std::{convert::TryFrom, fmt::Debug, pin::Pin, rc::Rc},
 };
@@ -127,7 +126,7 @@ impl<'a, T: 'static + Debug> Aggregator<'a, T> {
                                 having,
                             )
                             .await
-                            .map(|pass| pass.as_some((aggregated, next)))
+                            .map(|pass| pass.then(|| (aggregated, next)))
                             .transpose()
                         }
                     }

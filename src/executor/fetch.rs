@@ -6,7 +6,6 @@ use {
         result::{Error, Result},
         store::GStore,
     },
-    boolinator::Boolinator,
     futures::stream::{self, TryStream, TryStreamExt},
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
@@ -58,7 +57,7 @@ pub async fn fetch<'a, T: 'static + Debug>(
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
-                    .map(|pass| pass.as_some((columns, key, row)))
+                    .map(|pass| pass.then(|| (columns, key, row)))
             }
         });
 

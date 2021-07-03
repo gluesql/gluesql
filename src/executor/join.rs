@@ -10,7 +10,6 @@ use {
         store::GStore,
         utils::OrStream,
     },
-    boolinator::Boolinator,
     futures::stream::{self, once, StreamExt, TryStream, TryStreamExt},
     std::{fmt::Debug, pin::Pin, rc::Rc},
 };
@@ -171,7 +170,7 @@ async fn fetch_joined<'a, T: 'static + Debug>(
                 filter
                     .check(Rc::clone(&context))
                     .await
-                    .map(|pass| pass.as_some(context))
+                    .map(|pass| pass.then(|| context))
             }
         });
 

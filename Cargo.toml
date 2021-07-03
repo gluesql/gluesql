@@ -34,7 +34,6 @@ sled-storage = ["sled", "bincode"]
 [dependencies]
 async-trait = "0.1"
 async-recursion = "0.3"
-boolinator = "2.4"
 cfg-if = "1"
 chrono = { version = "0.4", features = ["serde", "wasmbind"] }
 rust_decimal = "1.14"
