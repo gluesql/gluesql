@@ -1,11 +1,11 @@
 use {
     super::Interval,
+    super::StringExt,
     crate::{ast::DataType, result::Result},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, convert::TryInto, fmt::Debug},
-    super::StringExt,
 };
 
 mod big_edian;
@@ -289,8 +289,8 @@ impl Value {
         use Value::*;
 
         match (self, other) {
-            (Str(a), Str(b)) => Ok(Bool(a.like(&b)?)),
-            _ => Ok(Bool(false)),
+            (Str(a), Str(b)) => a.like(&b).map(Bool),
+            _ => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
         }
     }
 }

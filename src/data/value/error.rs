@@ -86,4 +86,7 @@ pub enum ValueError {
 
     #[error("unreachable integer overflow: {0}")]
     UnreachableIntegerOverflow(String),
+
+    #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
+    LikeOnNonString(Value, Value),
 }

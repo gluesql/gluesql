@@ -1,6 +1,6 @@
 use {
     crate::{
-        data::{IntervalError, LiteralError, RowError, TableError, ValueError, StringExtError},
+        data::{IntervalError, LiteralError, RowError, StringExtError, TableError, ValueError},
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
             UpdateError, ValidateError,

@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, std::borrow::Cow};
 
 test_case!(filter, async move {
     let create_sqls = [
@@ -82,7 +82,6 @@ test_case!(filter, async move {
         (5, "SELECT name FROM Boss WHERE name LIKE '%%'"),
         (1, "SELECT name FROM Boss WHERE name NOT LIKE '%a%'"),
         (5, "SELECT name FROM Boss WHERE 'ABC' LIKE '_B_'"),
-        (0, "SELECT name FROM Boss WHERE name LIKE 10"),
     ];
 
     for (num, sql) in select_sqls.iter() {
@@ -116,6 +115,18 @@ test_case!(filter, async move {
         (
             ValueError::UnaryMinusOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE -name < 1.0",
+        ),
+        (
+            LiteralError::LikeOnNonString(
+                format!("{:?}", Literal::Text(Cow::Owned("ABC".to_string()))),
+                format!("{:?}", Literal::Number(Cow::Owned("10".to_string()))),
+            )
+            .into(),
+            "SELECT name FROM Boss WHERE 'ABC' LIKE 10",
+        ),
+        (
+            ValueError::LikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
+            "SELECT name FROM Boss WHERE name = 'Amelia' AND name LIKE 10",
         ),
     ];
 
