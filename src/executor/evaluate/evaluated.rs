@@ -154,6 +154,23 @@ impl<'a> Evaluated<'a> {
         Ok(evaluated)
     }
 
+    pub fn like(&self, other: Evaluated<'a>) -> Result<Evaluated<'a>> {
+        let evaluated = match (self, other) {
+            (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.like(&r)?),
+            (Evaluated::Literal(l), Evaluated::Value(r)) => {
+                Evaluated::from((&Value::try_from(l)?).like(r.as_ref())?)
+            }
+            (Evaluated::Value(l), Evaluated::Literal(r)) => {
+                Evaluated::from(l.as_ref().like(&Value::try_from(r)?)?)
+            }
+            (Evaluated::Value(l), Evaluated::Value(r)) => {
+                Evaluated::from(l.as_ref().like(r.as_ref())?)
+            }
+        };
+
+        Ok(evaluated)
+    }
+
     pub fn is_null(&self) -> bool {
         match self {
             Evaluated::Value(v) => v.is_null(),

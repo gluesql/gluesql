@@ -1,4 +1,5 @@
 use {
+    super::StringExt,
     crate::{
         ast::AstLiteral,
         result::{Error, Result},
@@ -22,6 +23,9 @@ pub enum LiteralError {
 
     #[error("unreachable literal unary operation")]
     UnreachableUnaryOperation,
+
+    #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
+    LikeOnNonString(String, String),
 }
 
 #[derive(Clone, Debug)]
@@ -264,6 +268,15 @@ impl<'a> Literal<'a> {
                 format!("{:?}", other),
             )
             .into()),
+        }
+    }
+
+    pub fn like(&self, other: &Literal<'a>) -> Result<Self> {
+        match (self, other) {
+            (Text(l), Text(r)) => l.like(&r).map(Boolean),
+            _ => Err(
+                LiteralError::LikeOnNonString(format!("{:?}", self), format!("{:?}", other)).into(),
+            ),
         }
     }
 }

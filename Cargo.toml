@@ -32,6 +32,7 @@ sorter = []
 sled-storage = ["sled", "bincode"]
 
 [dependencies]
+regex = "1.5"
 async-trait = "0.1"
 async-recursion = "0.3"
 cfg-if = "1"

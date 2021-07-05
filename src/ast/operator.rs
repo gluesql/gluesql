@@ -22,6 +22,8 @@ pub enum BinaryOperator {
     NotEq,
     And,
     Or,
+    Like,
+    NotLike,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

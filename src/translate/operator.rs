@@ -33,6 +33,8 @@ pub fn translate_binary_operator(
         SqlBinaryOperator::NotEq => Ok(BinaryOperator::NotEq),
         SqlBinaryOperator::And => Ok(BinaryOperator::And),
         SqlBinaryOperator::Or => Ok(BinaryOperator::Or),
+        SqlBinaryOperator::Like => Ok(BinaryOperator::Like),
+        SqlBinaryOperator::NotLike => Ok(BinaryOperator::NotLike),
         _ => Err(TranslateError::UnsupportedBinaryOperator(sql_binary_operator.to_string()).into()),
     }
 }

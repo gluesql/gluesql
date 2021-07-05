@@ -1,5 +1,6 @@
 use {
     super::Interval,
+    super::StringExt,
     crate::{ast::DataType, result::Result},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
@@ -281,6 +282,15 @@ impl Value {
             Interval(a) => Ok(Interval(a.unary_minus())),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryMinusOnNonNumeric.into()),
+        }
+    }
+
+    pub fn like(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (Str(a), Str(b)) => a.like(&b).map(Bool),
+            _ => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
         }
     }
 }
