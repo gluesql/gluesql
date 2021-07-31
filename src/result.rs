@@ -23,6 +23,9 @@ pub enum Error {
     #[serde(with = "stringify")]
     Storage(#[from] Box<dyn std::error::Error>),
 
+    #[error("storage error: {0}")]
+    StorageMsg(String),
+
     #[error("parsing failed: {0}")]
     Parser(String),
 
@@ -76,6 +79,7 @@ impl PartialEq for Error {
 
         match (self, other) {
             (Parser(e), Parser(e2)) => e == e2,
+            (StorageMsg(e), StorageMsg(e2)) => e == e2,
             (Translate(e), Translate(e2)) => e == e2,
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,

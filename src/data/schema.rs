@@ -1,23 +1,24 @@
 use {
     crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr},
     serde::{Deserialize, Serialize},
+    std::fmt::Debug,
 };
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum SchemaIndexOrd {
     Asc,
     Desc,
     Both,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SchemaIndex {
     pub name: String,
     pub expr: Expr,
     pub order: SchemaIndexOrd,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,

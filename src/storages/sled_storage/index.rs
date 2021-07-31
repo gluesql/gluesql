@@ -1,13 +1,12 @@
-#![cfg(feature = "index")]
-
 use {
     super::{
         err_into,
         index_sync::{build_index_key, build_index_key_prefix},
-        SledStorage,
+        SledStorage, Snapshot, State,
     },
     crate::{
         ast::IndexOperator,
+        data::Row,
         result::Result,
         store::{Index, RowIter},
         utils::Vector,
@@ -84,6 +83,19 @@ impl Index<IVec> for SledStorage {
             }
         };
 
+        let lock_txid: Option<u64> = self
+            .tree
+            .get("lock/")
+            .map_err(err_into)?
+            .map(|l| bincode::deserialize(&l))
+            .transpose()
+            .map_err(err_into)?;
+
+        let txid = match self.state {
+            State::Transaction { txid, .. } => txid,
+            State::Idle => self.tree.generate_id().map_err(err_into)?,
+        };
+
         let tree = self.tree.clone();
         let flat_map = move |keys: Result<IVec>| {
             #[derive(Iterator)]
@@ -104,17 +116,31 @@ impl Index<IVec> for SledStorage {
             }
 
             let keys = try_into!(keys);
-            let keys: Vec<Vec<u8>> = try_into!(bincode::deserialize(&keys).map_err(err_into));
-            let tree2 = tree.clone();
-            let rows = keys.into_iter().map(move |key| -> Result<_> {
-                let value = tree2
-                    .get(&key)
-                    .map_err(err_into)?
-                    .ok_or(IndexError::ConflictOnEmptyIndexValueScan)?;
-                let value = bincode::deserialize(&value).map_err(err_into)?;
+            let keys: Vec<Snapshot<Vec<u8>>> =
+                try_into!(bincode::deserialize(&keys).map_err(err_into));
 
-                Ok((IVec::from(key), value))
-            });
+            let tree2 = tree.clone();
+            let rows = keys
+                .into_iter()
+                .map(move |key_snapshot| -> Result<_> {
+                    let key = match key_snapshot.extract(txid, lock_txid) {
+                        Some(key) => key,
+                        None => {
+                            return Ok(None);
+                        }
+                    };
+
+                    let value = tree2
+                        .get(&key)
+                        .map_err(err_into)?
+                        .ok_or(IndexError::ConflictOnEmptyIndexValueScan)?;
+                    let snapshot: Snapshot<Row> = bincode::deserialize(&value).map_err(err_into)?;
+                    let row = snapshot.extract(txid, lock_txid);
+                    let item = row.map(|row| (IVec::from(key), row));
+
+                    Ok(item)
+                })
+                .filter_map(|item| item.transpose());
 
             Rows::Ok(rows)
         };

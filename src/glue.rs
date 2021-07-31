@@ -1,11 +1,13 @@
 #![cfg(feature = "sled-storage")]
 use {
-    crate::{execute, parse, storages::SledStorage, translate, Payload, Result},
+    crate::{
+        ast::Statement, execute, parse, plan, storages::SledStorage, translate, Payload, Result,
+    },
     futures::executor::block_on,
 };
 
 pub struct Glue {
-    storage: Option<SledStorage>,
+    pub storage: Option<SledStorage>,
 }
 
 impl Glue {
@@ -15,10 +17,15 @@ impl Glue {
         Self { storage }
     }
 
-    pub fn execute(&mut self, sql: &str) -> Result<Payload> {
+    pub fn plan(&self, sql: &str) -> Result<Statement> {
         let parsed = parse(sql)?;
         let statement = translate(&parsed[0])?;
+        let storage = self.storage.as_ref().unwrap();
 
+        block_on(plan(storage, statement))
+    }
+
+    pub fn execute_stmt(&mut self, statement: Statement) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
         match block_on(execute(storage, &statement)) {
@@ -33,6 +40,12 @@ impl Glue {
                 Err(error)
             }
         }
+    }
+
+    pub fn execute(&mut self, sql: &str) -> Result<Payload> {
+        let statement = self.plan(sql)?;
+
+        self.execute_stmt(statement)
     }
 }
 

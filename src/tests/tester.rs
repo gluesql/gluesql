@@ -116,8 +116,25 @@ pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     let statement = try_run!(translate(&parsed[0]));
     let statement = try_run!(plan(&storage, statement).await);
 
+    test_indexes(&statement, indexes);
+
+    match execute(storage, &statement).await {
+        Ok((storage, payload)) => {
+            cell.replace(Some(storage));
+
+            Ok(payload)
+        }
+        Err((storage, error)) => {
+            cell.replace(Some(storage));
+
+            Err(error)
+        }
+    }
+}
+
+pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
     if let Some(expected) = indexes {
-        let found = find_indexes(&statement);
+        let found = find_indexes(statement);
 
         if expected.len() != found.len() {
             panic!(
@@ -134,19 +151,6 @@ pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
             {
                 panic!("index does not exist: {:#?}", expected_index)
             }
-        }
-    }
-
-    match execute(storage, &statement).await {
-        Ok((storage, payload)) => {
-            cell.replace(Some(storage));
-
-            Ok(payload)
-        }
-        Err((storage, error)) => {
-            cell.replace(Some(storage));
-
-            Err(error)
         }
     }
 }

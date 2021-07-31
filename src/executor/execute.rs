@@ -50,6 +50,43 @@ pub enum Payload {
 
     #[cfg(feature = "index")]
     DropIndex,
+
+    #[cfg(feature = "transaction")]
+    StartTransaction,
+    #[cfg(feature = "transaction")]
+    Commit,
+    #[cfg(feature = "transaction")]
+    Rollback,
+}
+
+#[cfg(feature = "transaction")]
+pub async fn execute_atomic<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
+    storage: U,
+    statement: &Statement,
+) -> MutResult<U, Payload> {
+    if matches!(
+        statement,
+        Statement::StartTransaction | Statement::Rollback | Statement::Commit
+    ) {
+        return execute(storage, statement).await;
+    }
+
+    let (storage, autocommit) = storage.begin(true).await?;
+    let result = execute(storage, statement).await;
+
+    match (result, autocommit) {
+        (Ok((storage, payload)), true) => {
+            let (storage, ()) = storage.commit().await?;
+
+            Ok((storage, payload))
+        }
+        (Err((storage, error)), true) => {
+            let (storage, ()) = storage.rollback().await?;
+
+            Err((storage, error))
+        }
+        (result, _) => result,
+    }
 }
 
 pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
@@ -99,6 +136,22 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
         Statement::DropIndex { name, table_name } => drop_index(storage, table_name, name)
             .await
             .map(|(storage, _)| (storage, Payload::DropIndex)),
+        //- Transaction
+        #[cfg(feature = "transaction")]
+        Statement::StartTransaction => storage
+            .begin(false)
+            .await
+            .map(|(storage, _)| (storage, Payload::StartTransaction)),
+        #[cfg(feature = "transaction")]
+        Statement::Commit => storage
+            .commit()
+            .await
+            .map(|(storage, _)| (storage, Payload::Commit)),
+        #[cfg(feature = "transaction")]
+        Statement::Rollback => storage
+            .rollback()
+            .await
+            .map(|(storage, _)| (storage, Payload::Rollback)),
         //-- Rows
         Statement::Insert {
             table_name,

@@ -1,38 +1,18 @@
 use {
-    super::{err_into, error::StorageError, SledStorage},
-    crate::{MutResult, Row, Schema, StoreMut},
+    super::{
+        err_into, error::StorageError, index_sync::IndexSync, key, lock, SledStorage, Snapshot,
+    },
+    crate::{
+        data::{Row, Schema},
+        result::Result,
+        IndexError, MutResult, StoreMut,
+    },
     async_trait::async_trait,
     sled::{
         transaction::{ConflictableTransactionError, TransactionError},
         IVec,
     },
 };
-
-#[cfg(feature = "index")]
-use {super::index_sync::IndexSync, crate::IndexError};
-
-#[cfg(feature = "index")]
-macro_rules! try_self {
-    ($self: expr, $expr: expr) => {
-        match $expr {
-            Err(e) => {
-                return Err(($self, e.into()));
-            }
-            Ok(v) => v,
-        }
-    };
-}
-
-macro_rules! try_into {
-    ($self: expr, $expr: expr) => {
-        match $expr.map_err(err_into) {
-            Err(e) => {
-                return Err(($self, e));
-            }
-            Ok(v) => v,
-        }
-    };
-}
 
 macro_rules! transaction {
     ($self: expr, $expr: expr) => {{
@@ -51,36 +31,117 @@ macro_rules! transaction {
 #[async_trait(?Send)]
 impl StoreMut<IVec> for SledStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
-        let key = format!("schema/{}", schema.table_name);
-        let key = key.as_bytes();
-        let value = try_into!(self, bincode::serialize(schema));
+        let state = &self.state;
 
-        try_into!(self, self.tree.insert(key, value));
+        transaction!(self, move |tree| {
+            let (txid, _) = lock::acquire(tree, state)?;
 
-        Ok((self, ()))
+            let key = format!("schema/{}", schema.table_name);
+            let temp_key = key::temp_schema(&schema.table_name);
+
+            let snapshot: Option<Snapshot<Schema>> = tree
+                .get(key.as_bytes())?
+                .map(|v| bincode::deserialize(&v))
+                .transpose()
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            let schema = schema.clone();
+            let snapshot = match snapshot {
+                Some(snapshot) => snapshot.update(txid, schema).0,
+                None => Snapshot::<Schema>::new(txid, schema),
+            };
+            let snapshot = bincode::serialize(&snapshot)
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            tree.insert(key.as_bytes(), snapshot)?;
+            tree.insert(temp_key, key.as_bytes())?;
+
+            Ok(())
+        })
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let prefix = format!("data/{}/", table_name);
-        let tree = &self.tree;
+        let items = self
+            .tree
+            .scan_prefix(prefix.as_bytes())
+            .map(|item| item.map_err(err_into))
+            .collect::<Result<Vec<_>>>();
+        let items = match items {
+            Ok(items) => items,
+            Err(e) => {
+                return Err((self, e));
+            }
+        };
 
-        for item in tree.scan_prefix(prefix.as_bytes()) {
-            let (key, _) = try_into!(self, item);
+        let state = &self.state;
 
-            try_into!(self, tree.remove(key));
-        }
+        transaction!(self, move |tree| {
+            let (txid, _) = lock::acquire(tree, state)?;
 
-        let key = format!("schema/{}", table_name);
-        try_into!(self, tree.remove(key));
+            let key = format!("schema/{}", table_name);
+            let temp_key = key::temp_schema(table_name);
 
-        Ok((self, ()))
+            let snapshot: Option<Snapshot<Schema>> = tree
+                .get(key.as_bytes())?
+                .map(|v| bincode::deserialize(&v))
+                .transpose()
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            let (snapshot, schema) = match snapshot.map(|snapshot| snapshot.delete(txid)) {
+                Some((snapshot, Some(schema))) => (snapshot, schema),
+                Some((_, None)) | None => {
+                    return Ok(());
+                }
+            };
+            let snapshot = bincode::serialize(&snapshot)
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            tree.insert(key.as_bytes(), snapshot)?;
+            tree.insert(temp_key, key.as_bytes())?;
+
+            let index_sync = IndexSync::from_schema(tree, txid, &schema);
+
+            // delete data
+            for (row_key, row_snapshot) in items.iter() {
+                let row_snapshot: Snapshot<Row> = bincode::deserialize(row_snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+
+                let (row_snapshot, deleted_row) = row_snapshot.delete(txid);
+                let deleted_row = match deleted_row {
+                    Some(row) => row,
+                    None => {
+                        continue;
+                    }
+                };
+
+                let row_snapshot = bincode::serialize(&row_snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+
+                let temp_row_key = key::temp_data(row_key);
+
+                tree.insert(row_key, row_snapshot)?;
+                tree.insert(temp_row_key, row_key)?;
+                index_sync.delete(row_key, &deleted_row)?;
+            }
+
+            Ok(())
+        })
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
-        #[cfg(feature = "index")]
-        let index_sync = try_self!(self, IndexSync::new(&self.tree, table_name));
+        let state = &self.state;
 
         transaction!(self, move |tree| {
+            let (txid, autocommit) = lock::acquire(tree, state)?;
+            let index_sync = IndexSync::new(tree, txid, table_name)?;
+
             for row in rows.iter() {
                 let id = tree.generate_id()?;
                 let id = id.to_be_bytes();
@@ -93,88 +154,116 @@ impl StoreMut<IVec> for SledStorage {
                     .collect::<Vec<_>>();
 
                 let key = IVec::from(bytes);
-                let value = bincode::serialize(row)
+                index_sync.insert(&key, row)?;
+
+                let snapshot = Snapshot::new(txid, row.clone());
+                let snapshot = bincode::serialize(&snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
-                #[cfg(feature = "index")]
-                index_sync.insert(&tree, &key, row)?;
+                tree.insert(&key, snapshot)?;
 
-                tree.insert(key, value)?;
+                if !autocommit {
+                    let temp_key = key::temp_data(&key);
+
+                    tree.insert(temp_key, key)?;
+                }
+            }
+
+            if autocommit {
+                lock::release(tree)?;
             }
 
             Ok(())
         })
     }
 
-    #[cfg(not(feature = "index"))]
-    async fn update_data(self, _: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
-        transaction!(self, |tree| {
-            for (key, row) in rows.iter() {
-                let value = bincode::serialize(row)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
-
-                tree.insert(key, value)?;
-            }
-
-            Ok(())
-        })
-    }
-
-    #[cfg(feature = "index")]
     async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
-        let index_sync = try_self!(self, IndexSync::new(&self.tree, table_name));
+        let state = &self.state;
 
-        transaction!(self, |tree| {
+        transaction!(self, move |tree| {
+            let (txid, autocommit) = lock::acquire(tree, state)?;
+            let index_sync = IndexSync::new(tree, txid, table_name)?;
+
             for (key, new_row) in rows.iter() {
-                let new_value = bincode::serialize(new_row)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
-
-                let old_value = tree
-                    .insert(key, new_value)?
-                    .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueUpdate.into())
-                    .map_err(ConflictableTransactionError::Abort)?;
-
-                let old_row = bincode::deserialize(&old_value)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
-
-                index_sync.update(&tree, &key, &old_row, new_row)?;
-            }
-
-            Ok(())
-        })
-    }
-
-    #[cfg(not(feature = "index"))]
-    async fn delete_data(self, _: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
-        transaction!(self, |tree| {
-            for key in keys.iter() {
-                tree.remove(key)?;
-            }
-
-            Ok(())
-        })
-    }
-
-    #[cfg(feature = "index")]
-    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
-        let index_sync = try_self!(self, IndexSync::new(&self.tree, table_name));
-
-        transaction!(self, |tree| {
-            for key in keys.iter() {
-                let value = tree
-                    .remove(key)?
+                let snapshot = tree
+                    .get(key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
                     .map_err(ConflictableTransactionError::Abort)?;
-
-                let row = bincode::deserialize(&value)
+                let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
-                index_sync.delete(&tree, &key, &row)?;
+                let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
+                let old_row = match old_row {
+                    Some(row) => row,
+                    None => {
+                        continue;
+                    }
+                };
+
+                bincode::serialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|snapshot| tree.insert(key, snapshot))??;
+
+                index_sync.update(&key, &old_row, new_row)?;
+
+                if !autocommit {
+                    let temp_key = key::temp_data(key);
+
+                    tree.insert(temp_key, key)?;
+                }
+            }
+
+            if autocommit {
+                lock::release(tree)?;
+            }
+
+            Ok(())
+        })
+    }
+
+    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
+        let state = &self.state;
+
+        transaction!(self, |tree| {
+            let (txid, autocommit) = lock::acquire(tree, state)?;
+            let index_sync = IndexSync::new(tree, txid, table_name)?;
+
+            for key in keys.iter() {
+                let snapshot = tree
+                    .get(key)?
+                    .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
+                    .map_err(ConflictableTransactionError::Abort)?;
+                let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+
+                let (snapshot, row) = snapshot.delete(txid);
+                let row = match row {
+                    Some(row) => row,
+                    None => {
+                        continue;
+                    }
+                };
+
+                bincode::serialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)
+                    .map(|snapshot| tree.insert(key, snapshot))??;
+
+                index_sync.delete(&key, &row)?;
+
+                if !autocommit {
+                    let temp_key = key::temp_data(key);
+
+                    tree.insert(temp_key, key)?;
+                }
+            }
+
+            if autocommit {
+                lock::release(tree)?;
             }
 
             Ok(())

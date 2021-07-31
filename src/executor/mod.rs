@@ -15,8 +15,13 @@ mod validate;
 pub use aggregate::{AggregateError, GroupKey};
 pub use alter::AlterError;
 pub use evaluate::{evaluate_stateless, EvaluateError};
-pub use execute::{execute, ExecuteError, Payload};
+pub use execute::{ExecuteError, Payload};
 pub use fetch::FetchError;
 pub use select::SelectError;
 pub use update::UpdateError;
 pub use validate::{UniqueKey, ValidateError};
+
+#[cfg(not(feature = "transaction"))]
+pub use execute::execute;
+#[cfg(feature = "transaction")]
+pub use execute::execute_atomic as execute;

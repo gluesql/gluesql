@@ -1,12 +1,13 @@
 #![cfg(feature = "alter-table")]
 
 use {
-    super::{error::err_into, fetch_schema, SledStorage},
+    super::{error::err_into, error::StorageError, fetch_schema, key, lock, SledStorage, Snapshot},
     crate::{
         ast::ColumnDef, executor::evaluate_stateless, schema::ColumnDefExt, utils::Vector,
-        AlterTable, AlterTableError, MutResult, Row, Schema, Value,
+        AlterTable, AlterTableError, MutResult, Result, Row, Schema, Value,
     },
     async_trait::async_trait,
+    sled::transaction::{ConflictableTransactionError, TransactionError},
     std::{iter::once, str},
 };
 
@@ -21,67 +22,122 @@ macro_rules! try_self {
     };
 }
 
-macro_rules! try_into {
-    ($self: expr, $expr: expr) => {
-        try_self!($self, $expr.map_err(err_into))
-    };
-}
+macro_rules! transaction {
+    ($self: expr, $expr: expr) => {{
+        let result = $self.tree.transaction($expr).map_err(|e| match e {
+            TransactionError::Abort(e) => e,
+            TransactionError::Storage(e) => StorageError::Sled(e).into(),
+        });
 
-macro_rules! fetch_schema {
-    ($self: expr, $tree: expr, $table_name: expr) => {{
-        let (key, schema) = try_self!($self, fetch_schema($tree, $table_name));
-        let schema = try_into!(
-            $self,
-            schema.ok_or_else(|| AlterTableError::TableNotFound($table_name.to_string()))
-        );
-
-        (key, schema)
+        match result {
+            Ok(_) => Ok(($self, ())),
+            Err(e) => Err(($self, e)),
+        }
     }};
 }
 
 #[async_trait(?Send)]
 impl AlterTable for SledStorage {
     async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
-        let (
-            _,
-            Schema {
+        let prefix = format!("data/{}/", table_name);
+        let items = self
+            .tree
+            .scan_prefix(prefix.as_bytes())
+            .map(|item| item.map_err(err_into))
+            .collect::<Result<Vec<_>>>();
+        let items = try_self!(self, items);
+
+        let state = &self.state;
+
+        transaction!(self, move |tree| {
+            let (txid, autocommit) = lock::acquire(tree, state)?;
+
+            let (old_schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
+            let schema_snapshot = schema_snapshot
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            // remove existing schema
+            let (old_snapshot, old_schema) = schema_snapshot.delete(txid);
+            let Schema {
                 column_defs,
                 indexes,
                 ..
-            },
-        ) = fetch_schema!(self, &self.tree, table_name);
-        let schema = Schema {
-            table_name: new_table_name.to_string(),
-            column_defs,
-            indexes,
-        };
+            } = old_schema
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
 
-        let tree = &self.tree;
+            let new_schema = Schema {
+                table_name: new_table_name.to_string(),
+                column_defs,
+                indexes,
+            };
 
-        // remove existing schema
-        let key = format!("schema/{}", table_name);
-        try_into!(self, tree.remove(key));
+            bincode::serialize(&old_snapshot)
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)
+                .map(|snapshot| tree.insert(old_schema_key.as_bytes(), snapshot))??;
 
-        // insert new schema
-        let value = try_into!(self, bincode::serialize(&schema));
-        let key = format!("schema/{}", new_table_name);
-        let key = key.as_bytes();
-        try_into!(self, self.tree.insert(key, value));
+            // insert new schema
+            let new_snapshot = Snapshot::<Schema>::new(txid, new_schema);
+            let value = bincode::serialize(&new_snapshot)
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)?;
+            let new_schema_key = format!("schema/{}", new_table_name);
+            tree.insert(new_schema_key.as_bytes(), value)?;
 
-        // replace data
-        let prefix = format!("data/{}/", table_name);
+            // replace data
+            for (old_key, value) in items.iter() {
+                let new_key = str::from_utf8(old_key.as_ref())
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+                let new_key = new_key.replace(table_name, new_table_name);
 
-        for item in tree.scan_prefix(prefix.as_bytes()) {
-            let (key, value) = try_into!(self, item);
+                let old_row_snapshot: Snapshot<Row> = bincode::deserialize(value)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-            let new_key = try_into!(self, str::from_utf8(key.as_ref()));
-            let new_key = new_key.replace(table_name, new_table_name);
-            try_into!(self, tree.insert(new_key, value));
+                let (old_row_snapshot, row) = old_row_snapshot.delete(txid);
+                let row = match row {
+                    Some(row) => row,
+                    None => {
+                        continue;
+                    }
+                };
 
-            try_into!(self, tree.remove(key));
-        }
+                let old_row_snapshot = bincode::serialize(&old_row_snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-        Ok((self, ()))
+                let new_row_snapshot = Snapshot::<Row>::new(txid, row);
+                let new_row_snapshot = bincode::serialize(&new_row_snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+
+                tree.insert(old_key, old_row_snapshot)?;
+                tree.insert(new_key.as_bytes(), new_row_snapshot)?;
+
+                if !autocommit {
+                    let temp_old_key = key::temp_data(old_key);
+                    let temp_new_key = key::temp_data_str(&new_key);
+
+                    tree.insert(temp_old_key, old_key)?;
+                    tree.insert(temp_new_key, new_key.as_bytes())?;
+                }
+            }
+
+            if !autocommit {
+                let temp_old_key = key::temp_schema(table_name);
+                let temp_new_key = key::temp_schema(new_table_name);
+
+                tree.insert(temp_old_key, old_schema_key.as_bytes())?;
+                tree.insert(temp_new_key, new_schema_key.as_bytes())?;
+            } else {
+                lock::release(tree)?;
+            }
+
+            Ok(())
+        })
     }
 
     async fn rename_column(
@@ -90,110 +146,177 @@ impl AlterTable for SledStorage {
         old_column_name: &str,
         new_column_name: &str,
     ) -> MutResult<Self, ()> {
-        let (
-            key,
-            Schema {
+        let state = &self.state;
+
+        transaction!(self, move |tree| {
+            let (txid, autocommit) = lock::acquire(tree, state)?;
+
+            let (schema_key, snapshot) = fetch_schema(tree, table_name)?;
+            let snapshot = snapshot
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            let Schema {
                 column_defs,
                 indexes,
                 ..
-            },
-        ) = fetch_schema!(self, &self.tree, table_name);
+            } = snapshot
+                .get(txid, None)
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
 
-        let i = column_defs
-            .iter()
-            .position(|column_def| column_def.name == old_column_name)
-            .ok_or(AlterTableError::RenamingColumnNotFound);
-        let i = try_into!(self, i);
+            let i = column_defs
+                .iter()
+                .position(|column_def| column_def.name == old_column_name)
+                .ok_or_else(|| AlterTableError::RenamingColumnNotFound.into())
+                .map_err(ConflictableTransactionError::Abort)?;
 
-        let ColumnDef {
-            data_type, options, ..
-        } = column_defs[i].clone();
+            let ColumnDef {
+                data_type, options, ..
+            } = column_defs[i].clone();
 
-        let column_def = ColumnDef {
-            name: new_column_name.to_owned(),
-            data_type,
-            options,
-        };
-        let column_defs = Vector::from(column_defs).update(i, column_def).into();
+            let column_def = ColumnDef {
+                name: new_column_name.to_owned(),
+                data_type,
+                options,
+            };
+            let column_defs = Vector::from(column_defs).update(i, column_def).into();
 
-        let schema = Schema {
-            table_name: table_name.to_string(),
-            column_defs,
-            indexes,
-        };
-        let value = try_into!(self, bincode::serialize(&schema));
-        try_into!(self, self.tree.insert(key, value));
+            let schema = Schema {
+                table_name: table_name.to_string(),
+                column_defs,
+                indexes,
+            };
+            let (snapshot, _) = snapshot.update(txid, schema);
+            let value = bincode::serialize(&snapshot)
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)?;
+            tree.insert(schema_key.as_bytes(), value)?;
 
-        Ok((self, ()))
+            if !autocommit {
+                let temp_key = key::temp_schema(table_name);
+
+                tree.insert(temp_key, schema_key.as_bytes())?;
+            } else {
+                lock::release(tree)?;
+            }
+
+            Ok(())
+        })
     }
 
     async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
-        let (
-            key,
-            Schema {
+        let prefix = format!("data/{}/", table_name);
+        let items = self
+            .tree
+            .scan_prefix(prefix.as_bytes())
+            .map(|item| item.map_err(err_into))
+            .collect::<Result<Vec<_>>>();
+        let items = try_self!(self, items);
+
+        let state = &self.state;
+
+        transaction!(self, move |tree| {
+            let (txid, autocommit) = lock::acquire(tree, state)?;
+
+            let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
+            let schema_snapshot = schema_snapshot
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            let Schema {
                 table_name,
                 column_defs,
                 indexes,
-            },
-        ) = fetch_schema!(self, &self.tree, table_name);
+            } = schema_snapshot
+                .get(txid, None)
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
 
-        if column_defs
-            .iter()
-            .any(|ColumnDef { name, .. }| name == &column_def.name)
-        {
-            let adding_column = column_def.name.to_owned();
+            if column_defs
+                .iter()
+                .any(|ColumnDef { name, .. }| name == &column_def.name)
+            {
+                let adding_column = column_def.name.to_owned();
 
-            return Err((
-                self,
-                AlterTableError::AddingColumnAlreadyExists(adding_column).into(),
-            ));
-        }
-
-        let ColumnDef { data_type, .. } = column_def;
-        let nullable = column_def.is_nullable();
-        let default = column_def.get_default();
-        let value = match (default, nullable) {
-            (Some(expr), _) => {
-                let evaluated = try_self!(self, evaluate_stateless(None, expr));
-
-                try_self!(self, evaluated.try_into_value(&data_type, nullable))
+                return Err(AlterTableError::AddingColumnAlreadyExists(adding_column).into())
+                    .map_err(ConflictableTransactionError::Abort);
             }
-            (None, true) => Value::Null,
-            (None, false) => {
-                return Err((
-                    self,
-                    AlterTableError::DefaultValueRequired(column_def.clone()).into(),
-                ));
+
+            let ColumnDef { data_type, .. } = column_def;
+            let nullable = column_def.is_nullable();
+            let default = column_def.get_default();
+            let value = match (default, nullable) {
+                (Some(expr), _) => {
+                    let evaluated = evaluate_stateless(None, expr)
+                        .map_err(ConflictableTransactionError::Abort)?;
+
+                    evaluated
+                        .try_into_value(&data_type, nullable)
+                        .map_err(ConflictableTransactionError::Abort)?
+                }
+                (None, true) => Value::Null,
+                (None, false) => {
+                    return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into())
+                        .map_err(ConflictableTransactionError::Abort);
+                }
+            };
+
+            // migrate data
+            for (key, snapshot) in items.iter() {
+                let snapshot: Snapshot<Row> = bincode::deserialize(snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+                let row = match snapshot.clone().extract(txid, None) {
+                    Some(row) => row,
+                    None => {
+                        continue;
+                    }
+                };
+                let row = Row(row.0.into_iter().chain(once(value.clone())).collect());
+
+                let (snapshot, _) = snapshot.update(txid, row);
+                let snapshot = bincode::serialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+
+                tree.insert(key, snapshot)?;
+
+                if !autocommit {
+                    let temp_key = key::temp_data(key);
+
+                    tree.insert(temp_key, key)?;
+                }
             }
-        };
 
-        // migrate data
-        let prefix = format!("data/{}/", table_name);
+            // update schema
+            let column_defs = column_defs
+                .into_iter()
+                .chain(once(column_def.clone()))
+                .collect::<Vec<ColumnDef>>();
 
-        for item in self.tree.scan_prefix(prefix.as_bytes()) {
-            let (key, row) = try_into!(self, item);
-            let row: Row = try_into!(self, bincode::deserialize(&row));
-            let row = Row(row.0.into_iter().chain(once(value.clone())).collect());
-            let row = try_into!(self, bincode::serialize(&row));
+            let temp_key = key::temp_schema(&table_name);
 
-            try_into!(self, self.tree.insert(key, row));
-        }
+            let schema = Schema {
+                table_name,
+                column_defs,
+                indexes,
+            };
+            let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
+            let schema_value = bincode::serialize(&schema_snapshot)
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)?;
 
-        // update schema
-        let column_defs = column_defs
-            .into_iter()
-            .chain(once(column_def.clone()))
-            .collect::<Vec<ColumnDef>>();
+            tree.insert(schema_key.as_bytes(), schema_value)?;
 
-        let schema = Schema {
-            table_name,
-            column_defs,
-            indexes,
-        };
-        let schema_value = try_into!(self, bincode::serialize(&schema));
-        try_into!(self, self.tree.insert(key, schema_value));
+            if !autocommit {
+                tree.insert(temp_key, schema_key.as_bytes())?;
+            } else {
+                lock::release(tree)?;
+            }
 
-        Ok((self, ()))
+            Ok(())
+        })
     }
 
     async fn drop_column(
@@ -202,64 +325,108 @@ impl AlterTable for SledStorage {
         column_name: &str,
         if_exists: bool,
     ) -> MutResult<Self, ()> {
-        let (
-            key,
-            Schema {
+        let prefix = format!("data/{}/", table_name);
+        let items = self
+            .tree
+            .scan_prefix(prefix.as_bytes())
+            .map(|item| item.map_err(err_into))
+            .collect::<Result<Vec<_>>>();
+        let items = try_self!(self, items);
+
+        let state = &self.state;
+
+        transaction!(self, move |tree| {
+            let (txid, autocommit) = lock::acquire(tree, state)?;
+
+            let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
+            let schema_snapshot = schema_snapshot
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            let Schema {
                 table_name,
                 column_defs,
                 indexes,
-            },
-        ) = fetch_schema!(self, &self.tree, table_name);
+            } = schema_snapshot
+                .get(txid, None)
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
 
-        let index = column_defs
-            .iter()
-            .position(|ColumnDef { name, .. }| name == column_name);
+            let column_index = column_defs
+                .iter()
+                .position(|ColumnDef { name, .. }| name == column_name);
+            let column_index = match (column_index, if_exists) {
+                (Some(index), _) => index,
+                (None, true) => {
+                    return Ok(());
+                }
+                (None, false) => {
+                    return Err(
+                        AlterTableError::DroppingColumnNotFound(column_name.to_string()).into(),
+                    )
+                    .map_err(ConflictableTransactionError::Abort);
+                }
+            };
 
-        let index = match (index, if_exists) {
-            (Some(index), _) => index,
-            (None, true) => {
-                return Ok((self, ()));
+            // migrate data
+            for (key, snapshot) in items.iter() {
+                let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+                let row = match snapshot.clone().extract(txid, None) {
+                    Some(row) => row,
+                    None => {
+                        continue;
+                    }
+                };
+                let row = Row(row
+                    .0
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(i, v)| (i != column_index).then(|| v))
+                    .collect());
+
+                let (snapshot, _) = snapshot.update(txid, row);
+                let snapshot = bincode::serialize(&snapshot)
+                    .map_err(err_into)
+                    .map_err(ConflictableTransactionError::Abort)?;
+
+                tree.insert(key, snapshot)?;
+
+                if !autocommit {
+                    let temp_key = key::temp_data(key);
+
+                    tree.insert(temp_key, key)?;
+                }
             }
-            (None, false) => {
-                return Err((
-                    self,
-                    AlterTableError::DroppingColumnNotFound(column_name.to_string()).into(),
-                ));
-            }
-        };
 
-        // migrate data
-        let prefix = format!("data/{}/", table_name);
-
-        for item in self.tree.scan_prefix(prefix.as_bytes()) {
-            let (key, row) = try_into!(self, item);
-            let row: Row = try_into!(self, bincode::deserialize(&row));
-            let row = Row(row
-                .0
+            // update schema
+            let column_defs = column_defs
                 .into_iter()
                 .enumerate()
-                .filter_map(|(i, v)| (i != index).then(|| v))
-                .collect());
-            let row = try_into!(self, bincode::serialize(&row));
+                .filter_map(|(i, v)| (i != column_index).then(|| v))
+                .collect::<Vec<ColumnDef>>();
 
-            try_into!(self, self.tree.insert(key, row));
-        }
+            let temp_key = key::temp_schema(&table_name);
 
-        // update schema
-        let column_defs = column_defs
-            .into_iter()
-            .enumerate()
-            .filter_map(|(i, v)| (i != index).then(|| v))
-            .collect::<Vec<ColumnDef>>();
+            let schema = Schema {
+                table_name,
+                column_defs,
+                indexes,
+            };
+            let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
+            let schema_value = bincode::serialize(&schema_snapshot)
+                .map_err(err_into)
+                .map_err(ConflictableTransactionError::Abort)?;
+            tree.insert(schema_key.as_bytes(), schema_value)?;
 
-        let schema = Schema {
-            table_name,
-            column_defs,
-            indexes,
-        };
-        let schema_value = try_into!(self, bincode::serialize(&schema));
-        try_into!(self, self.tree.insert(key, schema_value));
+            if !autocommit {
+                tree.insert(temp_key, schema_key.as_bytes())?;
+            } else {
+                lock::release(tree)?;
+            }
 
-        Ok((self, ()))
+            Ok(())
+        })
     }
 }

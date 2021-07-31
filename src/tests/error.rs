@@ -6,8 +6,8 @@ test_case!(error, async move {
 
     let test_cases = vec![
         (
-            TranslateError::UnsupportedStatement("COMMIT".to_owned()).into(),
-            "COMMIT;",
+            TranslateError::UnsupportedStatement("TRUNCATE TABLE TableA".to_owned()).into(),
+            "TRUNCATE TABLE TableA;",
         ),
         (
             TranslateError::UnsupportedUnaryOperator("!".to_owned()).into(),
