@@ -73,7 +73,7 @@ impl<'a> IndexSync<'a> {
         row: &Row,
     ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
-            self.insert_index(tree, &index, data_key, row)?;
+            self.insert_index(tree, index, data_key, row)?;
         }
 
         Ok(())
@@ -95,7 +95,7 @@ impl<'a> IndexSync<'a> {
         let index_key =
             &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
 
-        insert_index_data(tree, &index_key, &data_key)?;
+        insert_index_data(tree, index_key, data_key)?;
 
         Ok(())
     }
@@ -119,7 +119,7 @@ impl<'a> IndexSync<'a> {
                 index_name,
                 index_expr,
                 &self.columns,
-                &old_row,
+                old_row,
             )?;
 
             let new_index_key = &evaluate_index_key(
@@ -127,11 +127,11 @@ impl<'a> IndexSync<'a> {
                 index_name,
                 index_expr,
                 &self.columns,
-                &new_row,
+                new_row,
             )?;
 
-            delete_index_data(tree, &old_index_key, &data_key)?;
-            insert_index_data(tree, &new_index_key, &data_key)?;
+            delete_index_data(tree, old_index_key, data_key)?;
+            insert_index_data(tree, new_index_key, data_key)?;
         }
 
         Ok(())
@@ -166,7 +166,7 @@ impl<'a> IndexSync<'a> {
         let index_key =
             &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
 
-        delete_index_data(tree, &index_key, &data_key)?;
+        delete_index_data(tree, index_key, data_key)?;
 
         Ok(())
     }

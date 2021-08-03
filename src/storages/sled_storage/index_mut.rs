@@ -112,7 +112,7 @@ impl IndexMut<IVec> for SledStorage {
             tree.insert(schema_key.as_bytes(), schema_value)?;
 
             for (data_key, row) in rows.iter() {
-                index_sync.insert_index(&tree, &index, data_key, row)?;
+                index_sync.insert_index(tree, &index, data_key, row)?;
             }
 
             Ok(())
@@ -164,7 +164,7 @@ impl IndexMut<IVec> for SledStorage {
             tree.insert(schema_key.as_bytes(), schema_value)?;
 
             for (data_key, row) in rows.iter() {
-                index_sync.delete_index(&tree, &index, data_key, row)?;
+                index_sync.delete_index(tree, &index, data_key, row)?;
             }
 
             Ok(())
