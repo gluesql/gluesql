@@ -299,6 +299,7 @@ impl Value {
 mod tests {
     use super::{Interval, Value::*};
 
+    #[allow(clippy::eq_op)]
     #[test]
     fn eq() {
         use super::Interval;
