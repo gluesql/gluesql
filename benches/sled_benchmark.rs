@@ -9,11 +9,8 @@ pub fn bench_insert(c: &mut Criterion) {
     // Generate a new database
     let path = "data/bench_insert";
 
-    match std::fs::remove_dir_all(&path) {
-        Ok(()) => (),
-        // Silently ignore, 99% of the time this will already be removed.
-        Err(_) => (),
-    }
+    // Silently ignore, 99% of the time this will already be removed
+    let _ = std::fs::remove_dir_all(path);
 
     let config = sled::Config::default()
         .path(path.to_string())
@@ -55,11 +52,8 @@ pub fn bench_select(c: &mut Criterion) {
     // Generate a new database
     let path = "data/bench_select";
 
-    match std::fs::remove_dir_all(&path) {
-        Ok(()) => (),
-        // Silently ignore, 99% of the time this will already be removed.
-        Err(_) => (),
-    }
+    // Silently ignore, 99% of the time this will already be removed
+    let _ = std::fs::remove_dir_all(path);
 
     let config = sled::Config::default()
         .path(path.to_string())
@@ -128,11 +122,8 @@ pub fn bench_select_tainted(c: &mut Criterion) {
     // Generate a new database
     let path = "data/bench_select_tainted";
 
-    match std::fs::remove_dir_all(&path) {
-        Ok(()) => (),
-        // Silently ignore, 99% of the time this will already be removed.
-        Err(_) => (),
-    }
+    // Silently ignore, 99% of the time this will already be removed
+    let _ = std::fs::remove_dir_all(path);
 
     let config = sled::Config::default()
         .path(path.to_string())
