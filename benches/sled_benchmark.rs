@@ -7,7 +7,7 @@ const ITEM_SIZE: u32 = 5000;
 // Generate benchmark tests
 pub fn bench_insert(c: &mut Criterion) {
     // Generate a new database
-    let path = format!("data/bench_insert");
+    let path = "data/bench_insert";
 
     match std::fs::remove_dir_all(&path) {
         Ok(()) => (),
@@ -16,7 +16,7 @@ pub fn bench_insert(c: &mut Criterion) {
     }
 
     let config = sled::Config::default()
-        .path(path)
+        .path(path.to_string())
         .temporary(true)
         .mode(sled::Mode::HighThroughput);
 
@@ -53,7 +53,7 @@ pub fn bench_insert(c: &mut Criterion) {
 
 pub fn bench_select(c: &mut Criterion) {
     // Generate a new database
-    let path = format!("data/bench_select");
+    let path = "data/bench_select";
 
     match std::fs::remove_dir_all(&path) {
         Ok(()) => (),
@@ -62,7 +62,7 @@ pub fn bench_select(c: &mut Criterion) {
     }
 
     let config = sled::Config::default()
-        .path(path)
+        .path(path.to_string())
         .temporary(true)
         .mode(sled::Mode::HighThroughput);
 
@@ -126,7 +126,7 @@ pub fn bench_select(c: &mut Criterion) {
 
 pub fn bench_select_tainted(c: &mut Criterion) {
     // Generate a new database
-    let path = format!("data/bench_select_tainted");
+    let path = "data/bench_select_tainted";
 
     match std::fs::remove_dir_all(&path) {
         Ok(()) => (),
@@ -135,7 +135,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
     }
 
     let config = sled::Config::default()
-        .path(path)
+        .path(path.to_string())
         .temporary(true)
         .mode(sled::Mode::HighThroughput);
 
