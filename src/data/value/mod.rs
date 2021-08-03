@@ -289,7 +289,7 @@ impl Value {
         use Value::*;
 
         match (self, other) {
-            (Str(a), Str(b)) => a.like(&b).map(Bool),
+            (Str(a), Str(b)) => a.like(b).map(Bool),
             _ => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
         }
     }
@@ -299,6 +299,7 @@ impl Value {
 mod tests {
     use super::{Interval, Value::*};
 
+    #[allow(clippy::eq_op)]
     #[test]
     fn eq() {
         use super::Interval;

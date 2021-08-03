@@ -16,7 +16,7 @@ pub fn parse(sql: &str) -> Result<Vec<SqlStatement>> {
 
 pub fn parse_expr(sql_expr: &str) -> Result<SqlExpr> {
     let dialect = GenericDialect {};
-    let tokens = Tokenizer::new(&dialect, &sql_expr)
+    let tokens = Tokenizer::new(&dialect, sql_expr)
         .tokenize()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 
@@ -27,7 +27,7 @@ pub fn parse_expr(sql_expr: &str) -> Result<SqlExpr> {
 
 pub fn parse_interval(sql_interval: &str) -> Result<SqlExpr> {
     let dialect = GenericDialect {};
-    let tokens = Tokenizer::new(&dialect, &sql_interval)
+    let tokens = Tokenizer::new(&dialect, sql_interval)
         .tokenize()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 

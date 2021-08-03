@@ -85,23 +85,16 @@ mod tests {
 
     fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {
         for (l, r) in ls.iter().zip(rs.iter()) {
-            if l > r {
-                return Ordering::Greater;
-            } else if l < r {
-                return Ordering::Less;
+            match l.cmp(r) {
+                Ordering::Equal => continue,
+                ordering => return ordering,
             }
         }
 
         let size_l = ls.len();
         let size_r = rs.len();
 
-        if size_l == size_r {
-            return Ordering::Equal;
-        } else if size_l > size_r {
-            return Ordering::Greater;
-        } else {
-            return Ordering::Less;
-        }
+        size_l.cmp(&size_r)
     }
 
     #[test]

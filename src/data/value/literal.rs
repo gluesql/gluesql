@@ -76,7 +76,7 @@ impl PartialOrd<Literal<'_>> for Value {
                 Ok(r) => l.partial_cmp(&r),
                 Err(_) => None,
             },
-            (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(&r),
+            (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(r),
             _ => None,
         }
     }
@@ -223,7 +223,7 @@ fn parse_timestamp(v: &str) -> Result<NaiveDateTime> {
     let forms = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S%.f"];
 
     for form in forms.iter() {
-        if let Ok(v) = NaiveDateTime::parse_from_str(&v, form) {
+        if let Ok(v) = NaiveDateTime::parse_from_str(v, form) {
             return Ok(v);
         }
     }

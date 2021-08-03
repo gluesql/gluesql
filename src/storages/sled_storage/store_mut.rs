@@ -98,7 +98,7 @@ impl StoreMut<IVec> for SledStorage {
                     .map_err(ConflictableTransactionError::Abort)?;
 
                 #[cfg(feature = "index")]
-                index_sync.insert(&tree, &key, row)?;
+                index_sync.insert(tree, &key, row)?;
 
                 tree.insert(key, value)?;
             }
@@ -141,7 +141,7 @@ impl StoreMut<IVec> for SledStorage {
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
-                index_sync.update(&tree, &key, &old_row, new_row)?;
+                index_sync.update(tree, key, &old_row, new_row)?;
             }
 
             Ok(())
@@ -174,7 +174,7 @@ impl StoreMut<IVec> for SledStorage {
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
-                index_sync.delete(&tree, &key, &row)?;
+                index_sync.delete(tree, key, &row)?;
             }
 
             Ok(())

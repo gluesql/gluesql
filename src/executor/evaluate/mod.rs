@@ -41,18 +41,18 @@ pub async fn evaluate<'a, T: 'static + Debug>(
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
-            expr::typed_string(data_type, Cow::Borrowed(&value))
+            expr::typed_string(data_type, Cow::Borrowed(value))
         }
         Expr::Identifier(ident) => {
             let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
 
-            match context.get_value(&ident) {
+            match context.get_value(ident) {
                 Some(value) => Ok(value.clone()),
                 None => Err(EvaluateError::ValueNotFound(ident.to_string()).into()),
             }
             .map(Evaluated::from)
         }
-        Expr::Nested(expr) => eval(&expr).await,
+        Expr::Nested(expr) => eval(expr).await,
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
                 return Err(EvaluateError::UnsupportedCompoundIdentifier(expr.clone()).into());
@@ -68,7 +68,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             }
             .map(Evaluated::from)
         }
-        Expr::Subquery(query) => select(storage, &query, context.as_ref().map(Rc::clone))
+        Expr::Subquery(query) => select(storage, query, context.as_ref().map(Rc::clone))
             .await?
             .map_ok(|row| row.take_first_value().map(Evaluated::from))
             .take(1)
@@ -138,7 +138,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         } => {
             let target = eval(expr).await?;
 
-            select(storage, &subquery, context)
+            select(storage, subquery, context)
                 .await?
                 .try_filter_map(|row| {
                     let target = &target;

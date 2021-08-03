@@ -18,7 +18,7 @@ pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
 pub fn typed_string<'a>(data_type: &'a DataType, value: Cow<'a, String>) -> Result<Evaluated<'a>> {
     let literal = Literal::Text(value);
 
-    Value::try_from_literal(&data_type, &literal).map(Evaluated::from)
+    Value::try_from_literal(data_type, &literal).map(Evaluated::from)
 }
 
 pub fn binary_op<'a>(

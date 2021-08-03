@@ -19,7 +19,7 @@ fn immutable_api() {
         .unwrap()
         .iter()
         .fold(storage, |storage, parsed| {
-            let statement = translate(&parsed).unwrap();
+            let statement = translate(parsed).unwrap();
             let (storage, _) = block_on(execute(storage, &statement)).unwrap();
 
             storage

@@ -19,7 +19,7 @@ pub fn evaluate_stateless<'a>(
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
-            expr::typed_string(data_type, Cow::Borrowed(&value))
+            expr::typed_string(data_type, Cow::Borrowed(value))
         }
         Expr::Identifier(ident) => {
             let (columns, row) = match context {
@@ -41,7 +41,7 @@ pub fn evaluate_stateless<'a>(
             }
             .map(Evaluated::from)
         }
-        Expr::Nested(expr) => eval(&expr),
+        Expr::Nested(expr) => eval(expr),
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left)?;
             let right = eval(right)?;

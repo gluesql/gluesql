@@ -156,7 +156,7 @@ impl AlterTable for SledStorage {
             (Some(expr), _) => {
                 let evaluated = try_self!(self, evaluate_stateless(None, expr));
 
-                try_self!(self, evaluated.try_into_value(&data_type, nullable))
+                try_self!(self, evaluated.try_into_value(data_type, nullable))
             }
             (None, true) => Value::Null,
             (None, false) => {

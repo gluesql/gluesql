@@ -69,7 +69,7 @@ impl Row {
                 }?;
                 let nullable = column_def.is_nullable();
 
-                evaluate_stateless(None, expr)?.try_into_value(&data_type, nullable)
+                evaluate_stateless(None, expr)?.try_into_value(data_type, nullable)
             })
             .collect::<Result<_>>()
             .map(Self)
