@@ -1,5 +1,6 @@
 mod alter_table;
 mod error;
+mod gc;
 mod index;
 mod index_mut;
 mod index_sync;
@@ -35,8 +36,8 @@ pub enum State {
 
 #[derive(Debug, Clone)]
 pub struct SledStorage {
-    tree: Db,
-    state: State,
+    pub tree: Db,
+    pub state: State,
 }
 
 impl SledStorage {

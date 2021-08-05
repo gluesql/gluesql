@@ -233,8 +233,8 @@ fn sled_transaction_data_mut() {
     );
 }
 
-#[tokio::test]
-async fn sled_transaction_index_mut() {
+#[test]
+fn sled_transaction_index_mut() {
     use ast::IndexOperator::Eq;
 
     let path = &format!("{}/transaction_index_mut", PATH_PREFIX);
@@ -311,5 +311,79 @@ async fn sled_transaction_index_mut() {
         glue2 "SELECT * FROM Sample WHERE id = 1;",
         idx!(),
         Ok(select!(id I64; 1))
+    );
+}
+
+#[tokio::test]
+async fn sled_transaction_gc() {
+    let path = &format!("{}/transaction_gc", PATH_PREFIX);
+    fs::remove_dir_all(path).unwrap_or(());
+
+    let storage1 = SledStorage::new(path).unwrap();
+    let storage2 = storage1.clone();
+    let tree = storage1.clone().tree;
+
+    let mut glue1 = Glue::new(storage1);
+    let mut glue2 = Glue::new(storage2);
+
+    macro_rules! assert_some {
+        () => {
+            assert!(tree.scan_prefix("temp_").next().is_some());
+        };
+    }
+    macro_rules! assert_none {
+        () => {
+            assert!(tree.scan_prefix("temp_").next().is_none());
+        };
+    }
+
+    // COMMIT runs GC and all temp_ data must be removed.
+    exec!(glue1 "BEGIN;");
+    exec!(glue1 "CREATE TABLE Garlic (id INTEGER);");
+    assert_some!();
+    exec!(glue1 "CREATE INDEX idx_id ON Garlic (id);");
+    exec!(glue1 "INSERT INTO Garlic VALUES (1), (2);");
+    exec!(glue1 "CREATE INDEX idx_gc ON Garlic (id + 2);");
+    exec!(glue1 "ALTER TABLE Garlic ADD COLUMN num INTEGER NULL;");
+    assert_some!();
+    exec!(glue1 "COMMIT;");
+    assert_none!();
+
+    // Though glue1 COMMIT, glue2 transaction is still alive.
+    // Until glue2 COMMIT, temp_ must survive.
+    exec!(glue2 "BEGIN;");
+    exec!(glue1 "BEGIN;");
+    exec!(glue1 "CREATE TABLE NewGarlic (gar BOOLEAN);");
+    exec!(glue1 "INSERT INTO NewGarlic VALUES (True);");
+    assert_some!();
+    exec!(glue1 "COMMIT;");
+    assert_some!();
+    exec!(glue2 "COMMIT;");
+    assert_none!();
+
+    // force change, txid -> 0
+    exec!(glue1 "BEGIN;");
+    let mut glue1 = Glue {
+        storage: glue1.storage.map(|mut s| {
+            s.state = sled_storage::State::Transaction {
+                txid: 0,
+                autocommit: false,
+            };
+
+            s
+        }),
+    };
+    test!(glue1 "SELECT * FROM NewGarlic", Err(Error::StorageMsg("fetch failed - expired transaction is used".to_owned())));
+    assert_eq!(
+        glue1
+            .storage
+            .unwrap()
+            .update_data("NewGarlic", vec![])
+            .await
+            .map(|(_, v)| v)
+            .map_err(|(_, e)| e),
+        Err(Error::StorageMsg(
+            "acquire failed - expired transaction is used".to_owned()
+        )),
     );
 }

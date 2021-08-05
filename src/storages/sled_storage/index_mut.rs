@@ -1,5 +1,7 @@
 use {
-    super::{err_into, error::StorageError, index_sync::IndexSync, lock, SledStorage, Snapshot},
+    super::{
+        err_into, error::StorageError, index_sync::IndexSync, key, lock, SledStorage, Snapshot,
+    },
     crate::{
         ast::OrderByExpr,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
@@ -125,8 +127,8 @@ impl IndexMut<IVec> for SledStorage {
 
             tree.insert(schema_key.as_bytes(), schema_snapshot)?;
 
-            let temp_key = format!("temp_schema/{}", table_name);
-            tree.insert(temp_key.as_bytes(), schema_key.as_bytes())?;
+            let temp_key = key::temp_schema(txid, table_name);
+            tree.insert(temp_key, schema_key.as_bytes())?;
 
             Ok(())
         })
@@ -186,8 +188,8 @@ impl IndexMut<IVec> for SledStorage {
 
             tree.insert(schema_key.as_bytes(), schema_snapshot)?;
 
-            let temp_key = format!("temp_schema/{}", table_name);
-            tree.insert(temp_key.as_bytes(), schema_key.as_bytes())?;
+            let temp_key = key::temp_schema(txid, table_name);
+            tree.insert(temp_key, schema_key.as_bytes())?;
 
             Ok(())
         })

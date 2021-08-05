@@ -2,12 +2,12 @@ use {
     super::{
         err_into,
         index_sync::{build_index_key, build_index_key_prefix},
-        SledStorage, Snapshot, State,
+        lock, SledStorage, Snapshot, State,
     },
     crate::{
         ast::IndexOperator,
         data::Row,
-        result::Result,
+        result::{Error, Result},
         store::{Index, RowIter},
         utils::Vector,
         IndexError, Value,
@@ -83,18 +83,15 @@ impl Index<IVec> for SledStorage {
             }
         };
 
-        let lock_txid: Option<u64> = self
-            .tree
-            .get("lock/")
-            .map_err(err_into)?
-            .map(|l| bincode::deserialize(&l))
-            .transpose()
-            .map_err(err_into)?;
-
         let txid = match self.state {
             State::Transaction { txid, .. } => txid,
-            State::Idle => self.tree.generate_id().map_err(err_into)?,
+            State::Idle => {
+                return Err(Error::StorageMsg(
+                    "conflict - scan_indexed_data failed, lock does not exist".to_owned(),
+                ));
+            }
         };
+        let lock_txid = lock::fetch(&self.tree, txid)?;
 
         let tree = self.tree.clone();
         let flat_map = move |keys: Result<IVec>| {

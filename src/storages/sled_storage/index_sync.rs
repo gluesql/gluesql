@@ -189,7 +189,7 @@ impl<'a> IndexSync<'a> {
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;
 
-        let temp_key = key::temp_index(index_key);
+        let temp_key = key::temp_index(self.txid, index_key);
 
         self.tree.insert(index_key, data_keys)?;
         self.tree.insert(temp_key, index_key)?;
@@ -228,7 +228,7 @@ impl<'a> IndexSync<'a> {
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;
 
-        let temp_key = key::temp_index(index_key);
+        let temp_key = key::temp_index(self.txid, index_key);
 
         self.tree.insert(index_key, data_keys)?;
         self.tree.insert(temp_key, index_key)?;

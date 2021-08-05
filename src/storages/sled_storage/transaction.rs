@@ -1,12 +1,7 @@
 #![cfg(feature = "transaction")]
 
 use {
-    super::{
-        err_into,
-        error::StorageError,
-        key::{TEMP_DATA, TEMP_INDEX, TEMP_SCHEMA},
-        lock, SledStorage, Snapshot, State,
-    },
+    super::{err_into, error::StorageError, key, lock, SledStorage, Snapshot, State},
     crate::{
         data::{Row, Schema},
         Error, MutResult, Result, Transaction,
@@ -58,11 +53,7 @@ impl Transaction for SledStorage {
                     "nested transaction is not supported".to_owned(),
                 )),
                 (State::Transaction { txid, autocommit }, true) => Ok((*txid, *autocommit)),
-                (State::Idle, _) => self
-                    .tree
-                    .generate_id()
-                    .map_err(err_into)
-                    .map(|txid| (txid, autocommit)),
+                (State::Idle, _) => lock::register(&self.tree).map(|txid| (txid, autocommit)),
             }
         });
 
@@ -93,15 +84,15 @@ impl Transaction for SledStorage {
         };
 
         let temp_items = try_block!(self, {
-            let lock_txid = lock::fetch(&self.tree)?;
+            let lock_txid = lock::fetch(&self.tree, txid)?;
 
             if Some(txid) != lock_txid {
                 return Ok(None);
             }
 
-            let data_items = fetch_items(TEMP_DATA)?;
-            let schema_items = fetch_items(TEMP_SCHEMA)?;
-            let index_items = fetch_items(TEMP_INDEX)?;
+            let data_items = fetch_items(key::temp_data_prefix(txid))?;
+            let schema_items = fetch_items(key::temp_schema_prefix(txid))?;
+            let index_items = fetch_items(key::temp_index_prefix(txid))?;
 
             Ok(Some((data_items, schema_items, index_items)))
         });
@@ -215,7 +206,7 @@ impl Transaction for SledStorage {
                 }
             }
 
-            lock::release(tree)?;
+            lock::release(tree, txid)?;
 
             Ok(())
         })
@@ -232,56 +223,26 @@ impl Transaction for SledStorage {
             }
         };
 
-        let fetch_keys = |prefix| {
-            self.tree
-                .scan_prefix(prefix)
-                .map(|item| item.map(|(key, _)| key).map_err(err_into))
-                .collect::<Result<Vec<_>>>()
-        };
-
-        let temp_keys = try_block!(self, {
-            let lock_txid = lock::fetch(&self.tree)?;
-
-            if Some(txid) != lock_txid {
-                return Ok(None);
-            }
-
-            let data_keys = fetch_keys(TEMP_DATA)?;
-            let schema_keys = fetch_keys(TEMP_SCHEMA)?;
-            let index_keys = fetch_keys(TEMP_INDEX)?;
-
-            Ok(Some((data_keys, schema_keys, index_keys)))
-        });
-
-        let (data_keys, schema_keys, index_keys) = match temp_keys {
-            Some(keys) => keys,
-            None => {
-                return Ok((
-                    Self {
-                        tree: self.tree,
-                        state: State::Idle,
-                    },
-                    (),
-                ));
-            }
-        };
-
-        transaction!(self, move |tree| {
-            for key in data_keys.iter() {
-                tree.remove(key)?;
-            }
-
-            for key in schema_keys.iter() {
-                tree.remove(key)?;
-            }
-
-            for key in index_keys.iter() {
-                tree.remove(key)?;
-            }
-
-            lock::release(tree)?;
+        let (storage, _) = transaction!(self, move |tree| {
+            lock::release(tree, txid)?;
 
             Ok(())
-        })
+        })?;
+
+        try_block!(storage, {
+            if storage.tree.get("gc_lock").map_err(err_into)?.is_some() {
+                return Ok(());
+            }
+
+            storage.tree.insert("gc_lock", &[1]).map_err(err_into)?;
+
+            let gc_result = storage.gc();
+
+            storage.tree.remove("gc_lock").map_err(err_into)?;
+
+            gc_result
+        });
+
+        Ok((storage, ()))
     }
 }

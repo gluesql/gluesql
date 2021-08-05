@@ -121,4 +121,17 @@ impl<T: Debug + Clone> Snapshot<T> {
 
         None
     }
+
+    pub fn gc(self, txid: u64) -> Option<Self> {
+        let items = self
+            .0
+            .into_iter()
+            .skip_while(|SnapshotItem { deleted_by, .. }| match deleted_by {
+                Some(d_txid) => d_txid <= &txid,
+                None => false,
+            })
+            .collect::<Vec<_>>();
+
+        (!items.is_empty()).then(|| Self(items))
+    }
 }

@@ -37,7 +37,7 @@ impl StoreMut<IVec> for SledStorage {
             let (txid, _) = lock::acquire(tree, state)?;
 
             let key = format!("schema/{}", schema.table_name);
-            let temp_key = key::temp_schema(&schema.table_name);
+            let temp_key = key::temp_schema(txid, &schema.table_name);
 
             let snapshot: Option<Snapshot<Schema>> = tree
                 .get(key.as_bytes())?
@@ -82,7 +82,7 @@ impl StoreMut<IVec> for SledStorage {
             let (txid, _) = lock::acquire(tree, state)?;
 
             let key = format!("schema/{}", table_name);
-            let temp_key = key::temp_schema(table_name);
+            let temp_key = key::temp_schema(txid, table_name);
 
             let snapshot: Option<Snapshot<Schema>> = tree
                 .get(key.as_bytes())?
@@ -124,7 +124,7 @@ impl StoreMut<IVec> for SledStorage {
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
-                let temp_row_key = key::temp_data(row_key);
+                let temp_row_key = key::temp_data(txid, row_key);
 
                 tree.insert(row_key, row_snapshot)?;
                 tree.insert(temp_row_key, row_key)?;
@@ -164,14 +164,10 @@ impl StoreMut<IVec> for SledStorage {
                 tree.insert(&key, snapshot)?;
 
                 if !autocommit {
-                    let temp_key = key::temp_data(&key);
+                    let temp_key = key::temp_data(txid, &key);
 
                     tree.insert(temp_key, key)?;
                 }
-            }
-
-            if autocommit {
-                lock::release(tree)?;
             }
 
             Ok(())
@@ -210,14 +206,10 @@ impl StoreMut<IVec> for SledStorage {
                 index_sync.update(&key, &old_row, new_row)?;
 
                 if !autocommit {
-                    let temp_key = key::temp_data(key);
+                    let temp_key = key::temp_data(txid, key);
 
                     tree.insert(temp_key, key)?;
                 }
-            }
-
-            if autocommit {
-                lock::release(tree)?;
             }
 
             Ok(())
@@ -256,14 +248,10 @@ impl StoreMut<IVec> for SledStorage {
                 index_sync.delete(&key, &row)?;
 
                 if !autocommit {
-                    let temp_key = key::temp_data(key);
+                    let temp_key = key::temp_data(txid, key);
 
                     tree.insert(temp_key, key)?;
                 }
-            }
-
-            if autocommit {
-                lock::release(tree)?;
             }
 
             Ok(())

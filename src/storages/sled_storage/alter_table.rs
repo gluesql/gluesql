@@ -118,8 +118,8 @@ impl AlterTable for SledStorage {
                 tree.insert(new_key.as_bytes(), new_row_snapshot)?;
 
                 if !autocommit {
-                    let temp_old_key = key::temp_data(old_key);
-                    let temp_new_key = key::temp_data_str(&new_key);
+                    let temp_old_key = key::temp_data(txid, old_key);
+                    let temp_new_key = key::temp_data_str(txid, &new_key);
 
                     tree.insert(temp_old_key, old_key)?;
                     tree.insert(temp_new_key, new_key.as_bytes())?;
@@ -127,13 +127,11 @@ impl AlterTable for SledStorage {
             }
 
             if !autocommit {
-                let temp_old_key = key::temp_schema(table_name);
-                let temp_new_key = key::temp_schema(new_table_name);
+                let temp_old_key = key::temp_schema(txid, table_name);
+                let temp_new_key = key::temp_schema(txid, new_table_name);
 
                 tree.insert(temp_old_key, old_schema_key.as_bytes())?;
                 tree.insert(temp_new_key, new_schema_key.as_bytes())?;
-            } else {
-                lock::release(tree)?;
             }
 
             Ok(())
@@ -194,11 +192,9 @@ impl AlterTable for SledStorage {
             tree.insert(schema_key.as_bytes(), value)?;
 
             if !autocommit {
-                let temp_key = key::temp_schema(table_name);
+                let temp_key = key::temp_schema(txid, table_name);
 
                 tree.insert(temp_key, schema_key.as_bytes())?;
-            } else {
-                lock::release(tree)?;
             }
 
             Ok(())
@@ -283,7 +279,7 @@ impl AlterTable for SledStorage {
                 tree.insert(key, snapshot)?;
 
                 if !autocommit {
-                    let temp_key = key::temp_data(key);
+                    let temp_key = key::temp_data(txid, key);
 
                     tree.insert(temp_key, key)?;
                 }
@@ -295,7 +291,7 @@ impl AlterTable for SledStorage {
                 .chain(once(column_def.clone()))
                 .collect::<Vec<ColumnDef>>();
 
-            let temp_key = key::temp_schema(&table_name);
+            let temp_key = key::temp_schema(txid, &table_name);
 
             let schema = Schema {
                 table_name,
@@ -311,8 +307,6 @@ impl AlterTable for SledStorage {
 
             if !autocommit {
                 tree.insert(temp_key, schema_key.as_bytes())?;
-            } else {
-                lock::release(tree)?;
             }
 
             Ok(())
@@ -394,7 +388,7 @@ impl AlterTable for SledStorage {
                 tree.insert(key, snapshot)?;
 
                 if !autocommit {
-                    let temp_key = key::temp_data(key);
+                    let temp_key = key::temp_data(txid, key);
 
                     tree.insert(temp_key, key)?;
                 }
@@ -407,7 +401,7 @@ impl AlterTable for SledStorage {
                 .filter_map(|(i, v)| (i != column_index).then(|| v))
                 .collect::<Vec<ColumnDef>>();
 
-            let temp_key = key::temp_schema(&table_name);
+            let temp_key = key::temp_schema(txid, &table_name);
 
             let schema = Schema {
                 table_name,
@@ -422,8 +416,6 @@ impl AlterTable for SledStorage {
 
             if !autocommit {
                 tree.insert(temp_key, schema_key.as_bytes())?;
-            } else {
-                lock::release(tree)?;
             }
 
             Ok(())
