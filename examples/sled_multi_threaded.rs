@@ -27,7 +27,7 @@ mod sled_multi_threaded {
             glue.execute(query).unwrap();
         });
 
-        let world_storage = storage.clone();
+        let world_storage = storage;
         let world_thread = thread::spawn(move || {
             let mut glue = Glue::new(world_storage);
             let query = "INSERT INTO greet (name) VALUES (\"World\")";

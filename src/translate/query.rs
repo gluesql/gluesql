@@ -152,7 +152,7 @@ fn translate_join(sql_join: &SqlJoin) -> Result<Join> {
     } = sql_join;
 
     let translate_constraint = |sql_join_constraint: &SqlJoinConstraint| match sql_join_constraint {
-        SqlJoinConstraint::On(expr) => translate_expr(&expr).map(JoinConstraint::On),
+        SqlJoinConstraint::On(expr) => translate_expr(expr).map(JoinConstraint::On),
         SqlJoinConstraint::None => Ok(JoinConstraint::None),
         SqlJoinConstraint::Using(_) => {
             Err(TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into())

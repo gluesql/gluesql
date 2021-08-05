@@ -123,7 +123,7 @@ impl<'a> IndexSync<'a> {
                 index_name,
                 index_expr,
                 &self.columns,
-                &old_row,
+                old_row,
             )?;
 
             let new_index_key = &evaluate_index_key(
@@ -131,7 +131,7 @@ impl<'a> IndexSync<'a> {
                 index_name,
                 index_expr,
                 &self.columns,
-                &new_row,
+                new_row,
             )?;
 
             self.delete_index_data(&old_index_key, &data_key)?;

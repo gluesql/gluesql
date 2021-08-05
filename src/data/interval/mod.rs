@@ -167,7 +167,7 @@ impl Interval {
     ) -> Result<Self> {
         use DateTimeField::*;
 
-        let sign = || if value.get(0..1) == Some(&"-") { -1 } else { 1 };
+        let sign = || if value.get(0..1) == Some("-") { -1 } else { 1 };
 
         let parse_integer = |v: &str| {
             v.parse::<i32>()
@@ -185,7 +185,7 @@ impl Interval {
         };
 
         let parse_time = |v: &str| {
-            let sign = if v.get(0..1) == Some(&"-") { -1 } else { 1 };
+            let sign = if v.get(0..1) == Some("-") { -1 } else { 1 };
             let v = v.trim_start_matches('-');
             let time = NaiveTime::from_str(v)
                 .map_err(|_| IntervalError::FailedToParseTime(value.to_owned()))?;
@@ -254,7 +254,7 @@ impl Interval {
                         let days = parse_integer(days)?;
 
                         Interval::days(days)
-                            .add(&parse_time(&time)?)
+                            .add(&parse_time(time)?)
                             .map(|interval| sign() * interval)
                     }
                     _ => Err(IntervalError::FailedToParseDayToSecond(value.to_owned()).into()),

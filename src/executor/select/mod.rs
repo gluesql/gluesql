@@ -194,7 +194,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         .await?;
 
     let labels = if with_labels {
-        get_labels(&projection, table.get_alias(), &columns, &join_columns)?
+        get_labels(projection, table.get_alias(), &columns, &join_columns)?
     } else {
         vec![]
     };

@@ -273,7 +273,7 @@ impl<'a> Literal<'a> {
 
     pub fn like(&self, other: &Literal<'a>) -> Result<Self> {
         match (self, other) {
-            (Text(l), Text(r)) => l.like(&r).map(Boolean),
+            (Text(l), Text(r)) => l.like(r).map(Boolean),
             _ => Err(
                 LiteralError::LikeOnNonString(format!("{:?}", self), format!("{:?}", other)).into(),
             ),

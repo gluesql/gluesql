@@ -128,6 +128,7 @@ impl StoreMut<IVec> for SledStorage {
 
                 tree.insert(row_key, row_snapshot)?;
                 tree.insert(temp_row_key, row_key)?;
+
                 index_sync.delete(row_key, &deleted_row)?;
             }
 
@@ -154,6 +155,7 @@ impl StoreMut<IVec> for SledStorage {
                     .collect::<Vec<_>>();
 
                 let key = IVec::from(bytes);
+
                 index_sync.insert(&key, row)?;
 
                 let snapshot = Snapshot::new(txid, row.clone());

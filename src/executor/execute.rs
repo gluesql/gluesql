@@ -197,7 +197,7 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
                     }
                 };
 
-                validate_unique(&storage, &table_name, column_validation, rows.iter()).await?;
+                validate_unique(&storage, table_name, column_validation, rows.iter()).await?;
 
                 Ok((rows, table_name))
             });
@@ -242,7 +242,7 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
                     ColumnValidation::SpecifiedColumns(Rc::from(column_defs), columns_to_update);
                 validate_unique(
                     &storage,
-                    &table_name,
+                    table_name,
                     column_validation,
                     rows.iter().map(|r| &r.1),
                 )
@@ -263,7 +263,7 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
             selection,
         } => {
             let (table_name, keys) = try_block!(storage, {
-                let table_name = get_name(&table_name)?;
+                let table_name = get_name(table_name)?;
                 let columns = Rc::from(fetch_columns(&storage, table_name).await?);
 
                 let keys = fetch(&storage, table_name, columns, selection.as_ref())
@@ -286,7 +286,7 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
         //- Selection
         Statement::Query(query) => {
             let (labels, rows) = try_block!(storage, {
-                let (labels, rows) = select_with_labels(&storage, &query, None, true).await?;
+                let (labels, rows) = select_with_labels(&storage, query, None, true).await?;
                 let rows = rows.try_collect::<Vec<_>>().await?;
 
                 Ok((labels, rows))

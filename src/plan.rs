@@ -94,7 +94,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
     };
 
     let index = order_by.last().and_then(|value_expr| {
-        indexes.find_ordered(&value_expr).map(|name| IndexItem {
+        indexes.find_ordered(value_expr).map(|name| IndexItem {
             name,
             asc: value_expr.asc,
             cmp_expr: None,
@@ -177,7 +177,7 @@ async fn plan_select<T: 'static + Debug>(
         }
     };
 
-    match plan_index(storage, &indexes, selection).await? {
+    match plan_index(storage, indexes, selection).await? {
         Planned::Expr(selection) => Ok(Select {
             projection,
             from,

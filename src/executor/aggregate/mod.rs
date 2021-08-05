@@ -89,7 +89,7 @@ impl<'a, T: 'static + Debug> Aggregator<'a, T> {
                     .fields
                     .iter()
                     .try_fold(state, |state, field| match field {
-                        SelectItem::Expr { expr, .. } => aggregate(state, &blend_context, &expr),
+                        SelectItem::Expr { expr, .. } => aggregate(state, &blend_context, expr),
                         _ => Ok(state),
                     })?;
 
@@ -166,7 +166,7 @@ fn aggregate<'a>(
     let aggr = |state, expr| aggregate(state, context, expr);
     let get_value = |expr: &Expr| match expr {
         Expr::Identifier(ident) => context
-            .get_value(&ident)
+            .get_value(ident)
             .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {

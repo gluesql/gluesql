@@ -192,7 +192,7 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
     }
 
     match statement {
-        Statement::Query(query) => find_query_indexes(&query),
+        Statement::Query(query) => find_query_indexes(query),
         _ => vec![],
     }
 }
