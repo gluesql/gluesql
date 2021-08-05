@@ -205,7 +205,7 @@ impl StoreMut<IVec> for SledStorage {
                     .map_err(ConflictableTransactionError::Abort)
                     .map(|snapshot| tree.insert(key, snapshot))??;
 
-                index_sync.update(&key, &old_row, new_row)?;
+                index_sync.update(key, &old_row, new_row)?;
 
                 if !autocommit {
                     let temp_key = key::temp_data(txid, key);
@@ -247,7 +247,7 @@ impl StoreMut<IVec> for SledStorage {
                     .map_err(ConflictableTransactionError::Abort)
                     .map(|snapshot| tree.insert(key, snapshot))??;
 
-                index_sync.delete(&key, &row)?;
+                index_sync.delete(key, &row)?;
 
                 if !autocommit {
                     let temp_key = key::temp_data(txid, key);

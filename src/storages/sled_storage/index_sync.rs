@@ -79,7 +79,7 @@ impl<'a> IndexSync<'a> {
 
     pub fn insert(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
-            self.insert_index(&index, data_key, row)?;
+            self.insert_index(index, data_key, row)?;
         }
 
         Ok(())
@@ -100,7 +100,7 @@ impl<'a> IndexSync<'a> {
         let index_key =
             &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
 
-        self.insert_index_data(&index_key, &data_key)?;
+        self.insert_index_data(index_key, data_key)?;
 
         Ok(())
     }
@@ -134,8 +134,8 @@ impl<'a> IndexSync<'a> {
                 new_row,
             )?;
 
-            self.delete_index_data(&old_index_key, &data_key)?;
-            self.insert_index_data(&new_index_key, &data_key)?;
+            self.delete_index_data(old_index_key, data_key)?;
+            self.insert_index_data(new_index_key, data_key)?;
         }
 
         Ok(())
@@ -164,7 +164,7 @@ impl<'a> IndexSync<'a> {
         let index_key =
             &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
 
-        self.delete_index_data(&index_key, &data_key)?;
+        self.delete_index_data(index_key, data_key)?;
 
         Ok(())
     }

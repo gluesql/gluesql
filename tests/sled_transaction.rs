@@ -11,7 +11,7 @@ use {
     std::fs,
 };
 
-const PATH_PREFIX: &'static str = "tmp/gluesql";
+const PATH_PREFIX: &str = "tmp/gluesql";
 
 macro_rules! exec {
     ($glue: ident $sql: literal) => {

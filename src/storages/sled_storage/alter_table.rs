@@ -248,7 +248,7 @@ impl AlterTable for SledStorage {
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated
-                        .try_into_value(&data_type, nullable)
+                        .try_into_value(data_type, nullable)
                         .map_err(ConflictableTransactionError::Abort)?
                 }
                 (None, true) => Value::Null,
@@ -364,7 +364,7 @@ impl AlterTable for SledStorage {
 
             // migrate data
             for (key, snapshot) in items.iter() {
-                let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
+                let snapshot: Snapshot<Row> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
                 let row = match snapshot.clone().extract(txid, None) {
