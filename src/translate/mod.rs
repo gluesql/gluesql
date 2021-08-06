@@ -123,6 +123,12 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             Ok(Statement::DropIndex { name, table_name })
         }
+        #[cfg(feature = "transaction")]
+        SqlStatement::StartTransaction { .. } => Ok(Statement::StartTransaction),
+        #[cfg(feature = "transaction")]
+        SqlStatement::Commit { .. } => Ok(Statement::Commit),
+        #[cfg(feature = "transaction")]
+        SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }

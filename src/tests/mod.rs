@@ -18,6 +18,7 @@ pub mod nullable;
 pub mod order_by;
 pub mod ordering;
 pub mod synthesize;
+pub mod transaction;
 pub mod validate;
 
 mod tester;
@@ -89,6 +90,8 @@ macro_rules! generate_tests {
                 glue!(index_order_by_multi, index::order_by_multi);
             };
         }
+        #[cfg(feature = "index")]
+        glue_index!();
 
         #[cfg(feature = "alter-table")]
         macro_rules! glue_alter_table {
@@ -97,13 +100,60 @@ macro_rules! generate_tests {
                 glue!(alter_table_add_drop, alter::alter_table_add_drop);
             };
         }
-
-        #[cfg(all(feature = "alter-table", feature = "index"))]
-        glue!(alter_table_drop_indexed_column, alter::drop_indexed_column);
-
-        #[cfg(feature = "index")]
-        glue_index!();
         #[cfg(feature = "alter-table")]
         glue_alter_table!();
+
+        #[cfg(all(feature = "alter-table", feature = "index"))]
+        macro_rules! glue_alter_table_index {
+            () => {
+                glue!(alter_table_drop_indexed_table, alter::drop_indexed_table);
+                glue!(alter_table_drop_indexed_column, alter::drop_indexed_column);
+            };
+        }
+        #[cfg(all(feature = "alter-table", feature = "index"))]
+        glue_alter_table_index!();
+
+        #[cfg(feature = "transaction")]
+        macro_rules! glue_transaction {
+            () => {
+                glue!(transaction_basic, transaction::basic);
+                glue!(
+                    transaction_create_drop_table,
+                    transaction::create_drop_table
+                );
+            };
+        }
+        #[cfg(feature = "transaction")]
+        glue_transaction!();
+
+        #[cfg(all(feature = "transaction", feature = "alter-table"))]
+        macro_rules! glue_transaction_alter_table {
+            () => {
+                glue!(
+                    transaction_alter_table_rename_column,
+                    transaction::alter_table_rename_column
+                );
+                glue!(
+                    transaction_alter_table_add_column,
+                    transaction::alter_table_add_column
+                );
+                glue!(
+                    transaction_alter_table_drop_column,
+                    transaction::alter_table_drop_column
+                );
+            };
+        }
+        #[cfg(all(feature = "transaction", feature = "alter-table"))]
+        glue_transaction_alter_table!();
+
+        #[cfg(all(feature = "transaction", feature = "index"))]
+        macro_rules! glue_transaction_index {
+            () => {
+                glue!(transaction_index_create, transaction::index_create);
+                glue!(transaction_index_drop, transaction::index_drop);
+            };
+        }
+        #[cfg(all(feature = "transaction", feature = "index"))]
+        glue_transaction_index!();
     };
 }

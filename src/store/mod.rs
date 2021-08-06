@@ -15,6 +15,13 @@ cfg_if! {
 }
 
 cfg_if! {
+    if #[cfg(feature = "transaction")] {
+        mod transaction;
+        pub use transaction::Transaction;
+    }
+}
+
+cfg_if! {
     if #[cfg(feature = "index")] {
         pub trait GStore<T: Debug>: Store<T> + Index<T> {}
     } else {
@@ -23,12 +30,20 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(all(feature = "alter-table", feature = "index"))] {
+    if #[cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))] {
+        pub trait GStoreMut<T: Debug>: StoreMut<T> + IndexMut<T> + AlterTable + Transaction {}
+    } else if #[cfg(all(feature = "alter-table", feature = "index"))] {
         pub trait GStoreMut<T: Debug>: StoreMut<T> + IndexMut<T> + AlterTable {}
+    } else if #[cfg(all(feature = "alter-table", feature = "transaction"))] {
+        pub trait GStoreMut<T: Debug>: StoreMut<T> + Transaction + AlterTable {}
+    } else if #[cfg(all(feature = "index", feature = "transaction"))] {
+        pub trait GStoreMut<T: Debug>: StoreMut<T> + IndexMut<T> + Transaction {}
     } else if #[cfg(feature = "alter-table")] {
         pub trait GStoreMut<T: Debug>: StoreMut<T> + AlterTable {}
     } else if #[cfg(feature = "index")] {
         pub trait GStoreMut<T: Debug>: StoreMut<T> + IndexMut<T> {}
+    } else if #[cfg(feature = "transaction")] {
+        pub trait GStoreMut<T: Debug>: StoreMut<T> + Transaction {}
     } else {
         pub trait GStoreMut<T: Debug>: Store<T> + StoreMut<T> {}
     }

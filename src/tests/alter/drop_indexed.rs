@@ -2,6 +2,41 @@
 
 use crate::*;
 
+test_case!(drop_indexed_table, async move {
+    use {ast::IndexOperator::*, Value::I64};
+
+    run!("DROP TABLE IF EXISTS Test;");
+    run!("CREATE TABLE Test (id INTEGER);");
+    run!("INSERT INTO Test VALUES (1), (2);");
+    run!("CREATE INDEX idx_id ON Test (id)");
+    test_idx!(
+        Ok(select!(id I64; 1)),
+        idx!(idx_id, Eq, "1"),
+        "SELECT * FROM Test WHERE id = 1"
+    );
+
+    run!("DROP TABLE Test;");
+    test!(
+        Err(FetchError::TableNotFound("Test".to_owned()).into()),
+        "SELECT * FROM Test;"
+    );
+
+    run!("CREATE TABLE Test (id INTEGER);");
+    run!("INSERT INTO Test VALUES (3), (4);");
+    test_idx!(
+        Ok(select!(id I64; 3)),
+        idx!(),
+        "SELECT * FROM Test WHERE id = 3"
+    );
+
+    run!("CREATE INDEX idx_id ON Test (id)");
+    test_idx!(
+        Ok(select!(id I64; 3; 4)),
+        idx!(idx_id, Lt, "10"),
+        "SELECT * FROM Test WHERE id < 10"
+    );
+});
+
 test_case!(drop_indexed_column, async move {
     run!(
         r#"

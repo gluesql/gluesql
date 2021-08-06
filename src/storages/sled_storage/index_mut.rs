@@ -1,19 +1,20 @@
-#![cfg(feature = "index")]
-
 use {
     super::{
-        err_into, error::StorageError, fetch_schema, index_sync::IndexSync, scan_data, SledStorage,
+        err_into, error::StorageError, index_sync::IndexSync, key, lock, SledStorage, Snapshot,
     },
     crate::{
         ast::OrderByExpr,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
-        result::{MutResult, Result},
-        store::IndexMut,
+        result::{Error, MutResult, Result},
+        store::{IndexMut, Store},
         IndexError,
     },
     async_trait::async_trait,
     sled::{
-        transaction::{ConflictableTransactionError, TransactionError},
+        transaction::{
+            ConflictableTransactionError, ConflictableTransactionResult, TransactionError,
+            TransactionalTree,
+        },
         IVec,
     },
     std::iter::once,
@@ -24,17 +25,6 @@ macro_rules! try_self {
         match $expr {
             Err(e) => {
                 return Err(($self, e.into()));
-            }
-            Ok(v) => v,
-        }
-    };
-}
-
-macro_rules! try_into {
-    ($self: expr, $expr: expr) => {
-        match $expr.map_err(err_into) {
-            Err(e) => {
-                return Err(($self, e));
             }
             Ok(v) => v,
         }
@@ -55,6 +45,21 @@ macro_rules! transaction {
     }};
 }
 
+fn fetch_schema(
+    tree: &TransactionalTree,
+    table_name: &str,
+) -> ConflictableTransactionResult<(String, Option<Snapshot<Schema>>), Error> {
+    let key = format!("schema/{}", table_name);
+    let value = tree.get(&key.as_bytes())?;
+    let schema_snapshot = value
+        .map(|v| bincode::deserialize(&v))
+        .transpose()
+        .map_err(err_into)
+        .map_err(ConflictableTransactionError::Abort)?;
+
+    Ok((key, schema_snapshot))
+}
+
 #[async_trait(?Send)]
 impl IndexMut<IVec> for SledStorage {
     async fn create_index(
@@ -63,109 +68,128 @@ impl IndexMut<IVec> for SledStorage {
         index_name: &str,
         column: &OrderByExpr,
     ) -> MutResult<Self, ()> {
-        let index_expr = &column.expr;
-        let (schema_key, schema) = try_self!(self, fetch_schema(&self.tree, table_name));
-        let Schema {
-            column_defs,
-            indexes,
-            ..
-        } = try_into!(
-            self,
-            schema.ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()))
-        );
+        let rows = try_self!(self, self.scan_data(table_name).await);
+        let rows = try_self!(self, rows.collect::<Result<Vec<_>>>());
 
-        if indexes.iter().any(|index| index.name == index_name) {
-            return Err((
-                self,
-                IndexError::IndexNameAlreadyExists(index_name.to_owned()).into(),
-            ));
-        }
-
-        let index = SchemaIndex {
-            name: index_name.to_owned(),
-            expr: index_expr.clone(),
-            order: SchemaIndexOrd::Both,
-        };
-
-        let indexes = indexes
-            .into_iter()
-            .chain(once(index.clone()))
-            .collect::<Vec<_>>();
-
-        let schema = Schema {
-            table_name: table_name.to_owned(),
-            column_defs,
-            indexes,
-        };
-
-        let rows = try_self!(
-            self,
-            scan_data(&self.tree, table_name).collect::<Result<Vec<_>>>()
-        );
-        let index_sync = IndexSync::from(&schema);
+        let state = &self.state;
 
         transaction!(self, |tree| {
-            let schema_value = bincode::serialize(&schema)
+            let (txid, _) = lock::acquire(tree, state)?;
+
+            let index_expr = &column.expr;
+
+            let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
+            let schema_snapshot = schema_snapshot
+                .ok_or_else(|| IndexError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            let (schema_snapshot, schema) = schema_snapshot.delete(txid);
+            let Schema {
+                column_defs,
+                indexes,
+                ..
+            } = schema
+                .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            if indexes.iter().any(|index| index.name == index_name) {
+                return Err(IndexError::IndexNameAlreadyExists(index_name.to_owned()).into())
+                    .map_err(ConflictableTransactionError::Abort);
+            }
+
+            let index = SchemaIndex {
+                name: index_name.to_owned(),
+                expr: index_expr.clone(),
+                order: SchemaIndexOrd::Both,
+            };
+
+            let indexes = indexes
+                .into_iter()
+                .chain(once(index.clone()))
+                .collect::<Vec<_>>();
+
+            let schema = Schema {
+                table_name: table_name.to_owned(),
+                column_defs,
+                indexes,
+            };
+
+            let index_sync = IndexSync::from_schema(tree, txid, &schema);
+
+            let schema_snapshot = schema_snapshot.update(txid, schema.clone());
+            let schema_snapshot = bincode::serialize(&schema_snapshot)
                 .map_err(err_into)
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            tree.insert(schema_key.as_bytes(), schema_value)?;
-
             for (data_key, row) in rows.iter() {
-                index_sync.insert_index(tree, &index, data_key, row)?;
+                index_sync.insert_index(&index, data_key, row)?;
             }
+
+            tree.insert(schema_key.as_bytes(), schema_snapshot)?;
+
+            let temp_key = key::temp_schema(txid, table_name);
+            tree.insert(temp_key, schema_key.as_bytes())?;
 
             Ok(())
         })
     }
 
     async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()> {
-        let (schema_key, schema) = try_self!(self, fetch_schema(&self.tree, table_name));
-        let Schema {
-            column_defs,
-            indexes,
-            ..
-        } = try_into!(
-            self,
-            schema.ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()))
-        );
+        let rows = try_self!(self, self.scan_data(table_name).await);
+        let rows = try_self!(self, rows.collect::<Result<Vec<_>>>());
 
-        let (index, indexes): (Vec<_>, _) = indexes
-            .into_iter()
-            .partition(|index| index.name == index_name);
-
-        let index = match index.into_iter().next() {
-            Some(index) => index,
-            None => {
-                return Err((
-                    self,
-                    IndexError::IndexNameDoesNotExist(index_name.to_owned()).into(),
-                ));
-            }
-        };
-
-        let schema = Schema {
-            table_name: table_name.to_owned(),
-            column_defs,
-            indexes,
-        };
-
-        let rows = try_self!(
-            self,
-            scan_data(&self.tree, table_name).collect::<Result<Vec<_>>>()
-        );
-        let index_sync = IndexSync::from(&schema);
+        let state = &self.state;
 
         transaction!(self, |tree| {
-            let schema_value = bincode::serialize(&schema)
+            let (txid, _) = lock::acquire(tree, state)?;
+
+            let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
+            let schema_snapshot = schema_snapshot
+                .ok_or_else(|| IndexError::TableNotFound(table_name.to_string()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            let (schema_snapshot, schema) = schema_snapshot.delete(txid);
+            let Schema {
+                column_defs,
+                indexes,
+                ..
+            } = schema
+                .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
+                .map_err(ConflictableTransactionError::Abort)?;
+
+            let (index, indexes): (Vec<_>, _) = indexes
+                .into_iter()
+                .partition(|index| index.name == index_name);
+
+            let index = match index.into_iter().next() {
+                Some(index) => index,
+                None => {
+                    return Err(IndexError::IndexNameDoesNotExist(index_name.to_owned()).into())
+                        .map_err(ConflictableTransactionError::Abort);
+                }
+            };
+
+            let schema = Schema {
+                table_name: table_name.to_owned(),
+                column_defs,
+                indexes,
+            };
+
+            let index_sync = IndexSync::from_schema(tree, txid, &schema);
+
+            let schema_snapshot = schema_snapshot.update(txid, schema.clone());
+            let schema_snapshot = bincode::serialize(&schema_snapshot)
                 .map_err(err_into)
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            tree.insert(schema_key.as_bytes(), schema_value)?;
-
             for (data_key, row) in rows.iter() {
-                index_sync.delete_index(tree, &index, data_key, row)?;
+                index_sync.delete_index(&index, data_key, row)?;
             }
+
+            tree.insert(schema_key.as_bytes(), schema_snapshot)?;
+
+            let temp_key = key::temp_schema(txid, table_name);
+            tree.insert(temp_key, schema_key.as_bytes())?;
 
             Ok(())
         })

@@ -25,10 +25,16 @@ jobs:
       run: cargo clippy --no-default-features --features index -- -D warnings
     - name: Clippy (sorter)
       run: cargo clippy --no-default-features --features sorter -- -D warnings
+    - name: Clippy (alter-table & index)
+      run: cargo clippy --no-default-features --features "alter-table index" -- -D warnings
+    - name: Clippy (alter-table & transaction)
+      run: cargo clippy --no-default-features --features "alter-table transaction" -- -D warnings
+    - name: Clippy (index & transaction)
+      run: cargo clippy --no-default-features --features "index transaction" -- -D warnings
+    - name: Clippy (alter-table & index & transaction)
+      run: cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
     - name: Clippy (sled-storage)
       run: cargo clippy --no-default-features --features sled-storage -- -D warnings
-    - name: Clippy (sled-storage & index)
-      run: cargo clippy --no-default-features --features "sled-storage index" -- -D warnings
     - name: Clippy (sled-storage & sorter)
       run: cargo clippy --no-default-features --features "sled-storage sorter" -- -D warnings
     - name: Clippy (sled-storage & alter-table)
@@ -43,8 +49,6 @@ jobs:
       run: cargo test --no-default-features --verbose
     - name: Run tests with features (sled-storage)
       run: cargo test --no-default-features --features sled-storage --verbose
-    - name: Run tests with features (sled-storage & index)
-      run: cargo test --no-default-features --features "sled-storage index" --verbose
     - name: Run tests with features (sled-storage & sorter)
       run: cargo test --no-default-features --features "sled-storage sorter" --verbose
     - name: Run tests with all features

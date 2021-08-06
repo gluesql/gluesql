@@ -14,7 +14,7 @@ keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webass
 all-features = true
 
 [features]
-default = ["sled-storage", "alter-table", "index", "sorter"]
+default = ["sled-storage", "alter-table", "index", "transaction", "sorter"]
 
 # optional: ALTER TABLE
 # you can include whether ALTER TABLE support or not for your custom database implementation.
@@ -23,13 +23,16 @@ alter-table = []
 # optional: INDEX
 index = []
 
+# optional: TRANSACTION
+transaction = []
+
 # optional: ORDER BY for non-indexed expressions
 # disable this feature if you use GlueSQL for big data analysis.
 sorter = []
 
 # for someone who wants to make a custom storage engine,
 # default storage engine sled-storage is not required.
-sled-storage = ["sled", "bincode"]
+sled-storage = ["transaction", "index", "sled", "bincode"]
 
 [dependencies]
 regex = "1.5"

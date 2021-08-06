@@ -1,28 +1,28 @@
-#![cfg(feature = "index")]
-
 use {
-    super::{err_into, fetch_schema},
+    super::{err_into, fetch_schema, key, Snapshot},
     crate::{
-        ast::Expr, evaluate_stateless, utils::Vector, Error, IndexError, Result, Row, Schema,
-        SchemaIndex, Value,
+        ast::Expr, evaluate_stateless, utils::Vector, Error, IndexError, Row, Schema, SchemaIndex,
+        Value,
     },
     sled::{
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
-        Db, IVec,
+        IVec,
     },
     std::{borrow::Cow, convert::TryInto},
 };
 
 pub struct IndexSync<'a> {
+    tree: &'a TransactionalTree,
+    txid: u64,
     table_name: &'a str,
     columns: Vec<String>,
     indexes: Cow<'a, Vec<SchemaIndex>>,
 }
 
-impl<'a> From<&'a Schema> for IndexSync<'a> {
-    fn from(schema: &'a Schema) -> Self {
+impl<'a> IndexSync<'a> {
+    pub fn from_schema(tree: &'a TransactionalTree, txid: u64, schema: &'a Schema) -> Self {
         let Schema {
             table_name,
             column_defs,
@@ -38,21 +38,30 @@ impl<'a> From<&'a Schema> for IndexSync<'a> {
         let indexes = Cow::Borrowed(indexes);
 
         Self {
+            tree,
+            txid,
             table_name,
             columns,
             indexes,
         }
     }
-}
 
-impl<'a> IndexSync<'a> {
-    pub fn new(tree: &Db, table_name: &'a str) -> Result<Self> {
-        let (_, schema) = fetch_schema(tree, table_name)?;
+    pub fn new(
+        tree: &'a TransactionalTree,
+        txid: u64,
+        table_name: &'a str,
+    ) -> sled::transaction::ConflictableTransactionResult<Self, Error> {
         let Schema {
             column_defs,
             indexes,
             ..
-        } = schema.ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()))?;
+        } = fetch_schema(tree, table_name)
+            .map(|(_, snapshot)| snapshot)?
+            .map(|snapshot| snapshot.extract(txid, None))
+            .flatten()
+            .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()))
+            .map_err(err_into)
+            .map_err(ConflictableTransactionError::Abort)?;
 
         let columns = column_defs
             .into_iter()
@@ -60,20 +69,17 @@ impl<'a> IndexSync<'a> {
             .collect::<Vec<_>>();
 
         Ok(Self {
+            tree,
+            txid,
             table_name,
             columns,
             indexes: Cow::Owned(indexes),
         })
     }
 
-    pub fn insert(
-        &self,
-        tree: &TransactionalTree,
-        data_key: &IVec,
-        row: &Row,
-    ) -> ConflictableTransactionResult<(), Error> {
+    pub fn insert(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
-            self.insert_index(tree, index, data_key, row)?;
+            self.insert_index(index, data_key, row)?;
         }
 
         Ok(())
@@ -81,7 +87,6 @@ impl<'a> IndexSync<'a> {
 
     pub fn insert_index(
         &self,
-        tree: &TransactionalTree,
         index: &SchemaIndex,
         data_key: &IVec,
         row: &Row,
@@ -95,14 +100,13 @@ impl<'a> IndexSync<'a> {
         let index_key =
             &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
 
-        insert_index_data(tree, index_key, data_key)?;
+        self.insert_index_data(index_key, data_key)?;
 
         Ok(())
     }
 
     pub fn update(
         &self,
-        tree: &TransactionalTree,
         data_key: &IVec,
         old_row: &Row,
         new_row: &Row,
@@ -130,21 +134,16 @@ impl<'a> IndexSync<'a> {
                 new_row,
             )?;
 
-            delete_index_data(tree, old_index_key, data_key)?;
-            insert_index_data(tree, new_index_key, data_key)?;
+            self.delete_index_data(old_index_key, data_key)?;
+            self.insert_index_data(new_index_key, data_key)?;
         }
 
         Ok(())
     }
 
-    pub fn delete(
-        &self,
-        tree: &TransactionalTree,
-        data_key: &IVec,
-        row: &Row,
-    ) -> ConflictableTransactionResult<(), Error> {
+    pub fn delete(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
-            self.delete_index(tree, index, data_key, row)?;
+            self.delete_index(index, data_key, row)?;
         }
 
         Ok(())
@@ -152,7 +151,6 @@ impl<'a> IndexSync<'a> {
 
     pub fn delete_index(
         &self,
-        tree: &TransactionalTree,
         index: &SchemaIndex,
         data_key: &IVec,
         row: &Row,
@@ -166,64 +164,77 @@ impl<'a> IndexSync<'a> {
         let index_key =
             &evaluate_index_key(self.table_name, index_name, index_expr, &self.columns, row)?;
 
-        delete_index_data(tree, index_key, data_key)?;
+        self.delete_index_data(index_key, data_key)?;
 
         Ok(())
     }
-}
 
-fn insert_index_data(
-    tree: &TransactionalTree,
-    index_key: &[u8],
-    data_key: &IVec,
-) -> ConflictableTransactionResult<(), Error> {
-    let data_keys: Vec<Vec<u8>> = tree
-        .get(index_key)?
-        .map(|v| bincode::deserialize(&v))
-        .transpose()
-        .map_err(err_into)
-        .map_err(ConflictableTransactionError::Abort)?
-        .unwrap_or_default();
+    fn insert_index_data(
+        &self,
+        index_key: &[u8],
+        data_key: &IVec,
+    ) -> ConflictableTransactionResult<(), Error> {
+        let data_keys: Vec<Snapshot<Vec<u8>>> = self
+            .tree
+            .get(index_key)?
+            .map(|v| bincode::deserialize(&v))
+            .transpose()
+            .map_err(err_into)
+            .map_err(ConflictableTransactionError::Abort)?
+            .unwrap_or_default();
 
-    let data_keys = Vector::from(data_keys).push(data_key.to_vec());
-    let data_keys = bincode::serialize(&Vec::from(data_keys))
-        .map_err(err_into)
-        .map_err(ConflictableTransactionError::Abort)?;
+        let key_snapshot = Snapshot::<Vec<u8>>::new(self.txid, data_key.to_vec());
+        let data_keys = Vector::from(data_keys).push(key_snapshot);
+        let data_keys = bincode::serialize(&Vec::from(data_keys))
+            .map_err(err_into)
+            .map_err(ConflictableTransactionError::Abort)?;
 
-    tree.insert(index_key, data_keys)?;
+        let temp_key = key::temp_index(self.txid, index_key);
 
-    Ok(())
-}
+        self.tree.insert(index_key, data_keys)?;
+        self.tree.insert(temp_key, index_key)?;
 
-fn delete_index_data(
-    tree: &TransactionalTree,
-    index_key: &[u8],
-    data_key: &IVec,
-) -> ConflictableTransactionResult<(), Error> {
-    let data_keys: Vec<Vec<u8>> = tree
-        .get(index_key)?
-        .map(|v| bincode::deserialize(&v))
-        .ok_or_else(|| IndexError::ConflictOnIndexDataDeleteSync.into())
-        .map_err(ConflictableTransactionError::Abort)?
-        .map_err(err_into)
-        .map_err(ConflictableTransactionError::Abort)?;
+        Ok(())
+    }
 
-    let data_keys = data_keys
-        .into_iter()
-        .filter(|k| k != data_key.as_ref())
-        .collect::<Vec<_>>();
+    fn delete_index_data(
+        &self,
+        index_key: &[u8],
+        data_key: &IVec,
+    ) -> ConflictableTransactionResult<(), Error> {
+        let data_keys: Vec<Snapshot<Vec<u8>>> = self
+            .tree
+            .get(index_key)?
+            .map(|v| bincode::deserialize(&v))
+            .ok_or_else(|| IndexError::ConflictOnIndexDataDeleteSync.into())
+            .map_err(ConflictableTransactionError::Abort)?
+            .map_err(err_into)
+            .map_err(ConflictableTransactionError::Abort)?;
 
-    if data_keys.is_empty() {
-        tree.remove(index_key)?;
-    } else {
+        let data_keys = data_keys
+            .into_iter()
+            .map(|snapshot| {
+                let key = snapshot.get(self.txid, None);
+
+                if Some(data_key) == key.map(IVec::from).as_ref() {
+                    snapshot.delete(self.txid).0
+                } else {
+                    snapshot
+                }
+            })
+            .collect::<Vec<_>>();
+
         let data_keys = bincode::serialize(&data_keys)
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;
 
-        tree.insert(index_key, data_keys)?;
-    }
+        let temp_key = key::temp_index(self.txid, index_key);
 
-    Ok(())
+        self.tree.insert(index_key, data_keys)?;
+        self.tree.insert(temp_key, index_key)?;
+
+        Ok(())
+    }
 }
 
 fn evaluate_index_key(

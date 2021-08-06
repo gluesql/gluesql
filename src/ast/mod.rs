@@ -83,6 +83,15 @@ pub enum Statement {
         name: ObjectName,
         table_name: ObjectName,
     },
+    /// START TRANSACTION, BEGIN
+    #[cfg(feature = "transaction")]
+    StartTransaction,
+    /// COMMIT
+    #[cfg(feature = "transaction")]
+    Commit,
+    /// ROLLBACK
+    #[cfg(feature = "transaction")]
+    Rollback,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
