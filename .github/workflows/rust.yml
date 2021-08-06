@@ -40,7 +40,7 @@ jobs:
     - name: Clippy (sled-storage & alter-table)
       run: cargo clippy --no-default-features --features "sled-storage alter-table" -- -D warnings
     - name: Clippy (all)
-      run: cargo clippy --all-features -- -D warnings
+      run: cargo clippy --all-features --all-targets -- -D warnings
     - name: Rustfmt
       run: cargo fmt --all -- --check
     - name: Build
