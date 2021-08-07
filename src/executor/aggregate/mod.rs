@@ -132,11 +132,12 @@ impl<'a, T: 'static + Debug> Aggregator<'a, T> {
                     }
                 }
             })
-            .map_ok(|(aggregated, next)| {
-                // TODO: Remove unwrap!
-                let aggregated = aggregated.map(|a| Rc::try_unwrap(a).unwrap());
-
-                AggregateContext { aggregated, next }
+            .and_then(|(aggregated, next): (Option<_>, _)| async move {
+                aggregated
+                    .map(Rc::try_unwrap)
+                    .transpose()
+                    .map_err(|_| AggregateError::UnreachableRcUnwrapFailure.into())
+                    .map(|aggregated| AggregateContext { aggregated, next })
             });
 
         Ok(Box::pin(rows))
