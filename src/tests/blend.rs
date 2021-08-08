@@ -138,7 +138,7 @@ test_case!(blend, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(Ok(expected), sql);
     }
 
@@ -157,7 +157,7 @@ test_case!(blend, async move {
         ),
     ];
 
-    for (error, sql) in error_cases.into_iter() {
+    for (error, sql) in error_cases {
         test!(Err(error), sql);
     }
 });

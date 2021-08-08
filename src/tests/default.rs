@@ -36,7 +36,7 @@ test_case!(default, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(Ok(expected), sql);
     }
 

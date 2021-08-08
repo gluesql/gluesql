@@ -61,7 +61,7 @@ pub fn test(expected: Result<Payload>, found: Result<Payload>) {
 
     let rows = expected.into_iter().zip(found.into_iter()).enumerate();
 
-    for (i, (expected, found)) in rows.into_iter() {
+    for (i, (expected, found)) in rows {
         let Row(expected) = expected;
         let Row(found) = found;
 

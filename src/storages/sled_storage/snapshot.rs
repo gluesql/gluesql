@@ -81,7 +81,7 @@ impl<T: Debug + Clone> Snapshot<T> {
             lock_txid
         };
 
-        for item in self.0.into_iter() {
+        for item in self.0 {
             if Some(item.created_by) == lock_txid {
                 continue;
             }
