@@ -58,7 +58,7 @@ CREATE TABLE DropTable (
         ),
     ];
 
-    for (sql, expected) in sqls.into_iter() {
+    for (sql, expected) in sqls {
         test!(expected, sql);
     }
 });
