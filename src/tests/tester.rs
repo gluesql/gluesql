@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::{Expr, IndexItem, Query, SetExpr, Statement, TableFactor},
-        data::{Row, Value},
+        data::Value,
         executor::{execute, Payload},
         parse_sql::{parse, parse_expr},
         plan::plan,
@@ -62,9 +62,6 @@ pub fn test(expected: Result<Payload>, found: Result<Payload>) {
     let rows = expected.into_iter().zip(found.into_iter()).enumerate();
 
     for (i, (expected, found)) in rows {
-        let Row(expected) = expected;
-        let Row(found) = found;
-
         assert_eq!(
             expected.len(),
             found.len(),
