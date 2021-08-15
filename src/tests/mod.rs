@@ -61,6 +61,7 @@ macro_rules! generate_tests {
         glue!(function_cast_value, function::cast::cast_value);
         glue!(function_math_function_sin, function::math_function::sin);
         glue!(function_math_function_cos, function::math_function::cos);
+        glue!(function_math_function_tan, function::math_function::tan);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
