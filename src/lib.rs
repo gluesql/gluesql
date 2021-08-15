@@ -69,11 +69,11 @@
 // re-export
 pub use chrono;
 pub use sqlparser as parser;
+pub use sled_storage;
 
 mod executor;
 mod glue;
 mod parse_sql;
-mod storages;
 mod utils;
 
 pub mod ast;
