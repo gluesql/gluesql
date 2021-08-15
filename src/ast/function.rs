@@ -9,6 +9,7 @@ pub enum Function {
     Upper(Expr),
     Left { expr: Expr, size: Expr },
     Right { expr: Expr, size: Expr },
+    Sin(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
