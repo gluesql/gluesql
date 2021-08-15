@@ -1,0 +1,14 @@
+[package]
+name = "sled-storage"
+version = "0.1.0"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+edition = "2018"
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+# repository = "https://github.com/gluesql/gluesql"
+# documentation = "https://docs.rs/gluesql/"
+
+[dependencies]
+bincode = { version = "1.3", optional = true }
+sled = { version = "0.34.6", optional = true }
+
