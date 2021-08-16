@@ -282,7 +282,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             Ok(Evaluated::from(Value::Str(converted)))
-        },
+        }
         Function::Ceil(expr) => {
             let number = match eval(expr).await?.try_into()? {
                 Value::F64(number) => Some(number),
@@ -301,7 +301,6 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 Some(number) => Ok(Evaluated::from(Value::F64(number.ceil()))),
                 None => Err(EvaluateError::FunctionRequiresFloatValue("CEIL".to_owned()).into()),
             }
-    
         }
     }
 }
