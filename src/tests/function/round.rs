@@ -17,7 +17,7 @@ test_case!(round, async move {
             Ok(select!(
                 "round";
                 F64;
-                f64::from(0.3).round()
+                0.3_f64.round()
             )),
         ),
         (
@@ -25,7 +25,7 @@ test_case!(round, async move {
             Ok(select!(
                 "round";
                 F64;
-                f64::from(-0.8).round()
+                (-0.8_f64).round()
             )),
         ),
         (
@@ -41,7 +41,7 @@ test_case!(round, async move {
             Ok(select!(
                 "round";
                 F64;
-                f64::from(6.87421).round()
+                6.87421_f64.round()
             )),
         ),
         (

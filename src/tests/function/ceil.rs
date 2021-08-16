@@ -17,7 +17,7 @@ test_case!(ceil, async move {
             Ok(select!(
                 "ceil";
                 F64;
-                f64::from(0.3).ceil()
+                0.3_f64.ceil()
             )),
         ),
         (
@@ -25,7 +25,7 @@ test_case!(ceil, async move {
             Ok(select!(
                 "ceil";
                 F64;
-                f64::from(-0.8).ceil()
+                (-0.8_f64).ceil()
             )),
         ),
         (
@@ -41,7 +41,7 @@ test_case!(ceil, async move {
             Ok(select!(
                 "ceil";
                 F64;
-                f64::from(6.87421).ceil()
+                6.87421_f64.ceil()
             )),
         ),
         (

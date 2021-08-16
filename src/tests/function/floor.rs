@@ -17,7 +17,7 @@ test_case!(floor, async move {
             Ok(select!(
                 "floor";
                 F64;
-                f64::from(0.3).floor()
+                0.3_f64.floor()
             )),
         ),
         (
@@ -25,7 +25,7 @@ test_case!(floor, async move {
             Ok(select!(
                 "floor";
                 F64;
-                f64::from(-0.8).floor()
+                (-0.8_f64).floor()
             )),
         ),
         (
@@ -41,7 +41,7 @@ test_case!(floor, async move {
             Ok(select!(
                 "floor";
                 F64;
-                f64::from(6.87421).floor()
+                6.87421_f64.floor()
             )),
         ),
         (

@@ -96,7 +96,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .map(Function::Round)
                 .map(Box::new)
                 .map(Expr::Function)
-        },
+        }
         "FLOOR" => {
             check_len(name, args.len(), 1)?;
 
