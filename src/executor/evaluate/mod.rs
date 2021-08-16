@@ -229,18 +229,6 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
-    let eval_to_float = |name: &'static str, expr| async move {
-        match eval(expr).await?.cast(&DataType::Float) {
-            Ok(v) => match v.try_into_value(&DataType::Float, false) {
-                Ok(f) => Ok(f.parse_float_number()),
-                _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into())
-            }
-            _ => {
-                Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into())
-            }
-        }
-    };
-
     match func {
         Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
@@ -295,26 +283,27 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Ok(Evaluated::from(Value::Str(converted)))
         }
         Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
-            let name = if matches!(func, Function::Sin { .. }) {
-                "SIN"
-            } else if matches!(func, Function::Cos { .. }) {
-                "COS"
-            } else {
-                "TAN"
+            let eval_to_float = |name: &'a str, expr| async move {
+                match eval(expr).await?.cast(&DataType::Float) {
+                    Ok(v) => match v.try_into_value(&DataType::Float, false) {
+                        Ok(f) => Ok(f.parse_float_number()),
+                        _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into())
+                    }
+                    _ => {
+                        Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into())
+                    }
+                }
             };
 
+            let name = func.name();
             let float_number = eval_to_float(name, expr).await?;
 
             match float_number {
                 Some(v) => {
-                    let result = if matches!(func, Function::Sin { .. }) {
-                        v.sin()
-                    } else if matches!(func, Function::Cos { .. }) {
-                        v.cos()
-                    } else {
-                        v.tan()
-                    };
-                    Ok(Evaluated::from(Value::F64(result)))
+                    match func.trigonometric(v) {
+                        Some(result) => Ok(Evaluated::from(Value::F64(result))),
+                        _ => Err(EvaluateError::UnsupportedFunctionExpr(expr.to_owned()).into())
+                    }
                 },
                 None => Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
             }
