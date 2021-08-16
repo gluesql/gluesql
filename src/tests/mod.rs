@@ -61,6 +61,7 @@ macro_rules! generate_tests {
         glue!(function_cast_value, function::cast::cast_value);
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
+        glue!(function_floor, function::floor::floor);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
