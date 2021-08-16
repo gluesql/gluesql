@@ -287,11 +287,13 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 match eval(expr).await?.cast(&DataType::Float) {
                     Ok(v) => match v.try_into_value(&DataType::Float, false) {
                         Ok(f) => Ok(f.parse_float_number()),
-                        _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into())
-                    }
-                    _ => {
-                        Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into())
-                    }
+                        _ => Err::<_, Error>(
+                            EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into(),
+                        ),
+                    },
+                    _ => Err::<_, Error>(
+                        EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into(),
+                    ),
                 }
             };
 
@@ -299,11 +301,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             let float_number = eval_to_float(name, expr).await?;
 
             match float_number {
-                Some(v) => {
-                    match func.trigonometric(v) {
-                        Some(result) => Ok(Evaluated::from(Value::F64(result))),
-                        _ => Err(EvaluateError::UnsupportedFunctionExpr(expr.to_owned()).into())
-                    }
+                Some(v) => match func.trigonometric(v) {
+                    Some(result) => Ok(Evaluated::from(Value::F64(result))),
+                    _ => Err(EvaluateError::UnsupportedFunctionExpr(expr.to_owned()).into()),
                 },
                 None => Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
             }

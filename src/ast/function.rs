@@ -19,20 +19,26 @@ impl Function {
         match self {
             Function::Lower(_) => "LOWER",
             Function::Upper(_) => "UPPER",
-            Function::Left { expr: _expr, size: _size } => "LEFT",
-            Function::Right{ expr: _expr, size: _size }  => "RIGHT",
-            Function::Sin(_)=> "SIN",
-            Function::Cos(_)=> "COS",
-            Function::Tan(_)=> "TAN"
+            Function::Left {
+                expr: _expr,
+                size: _size,
+            } => "LEFT",
+            Function::Right {
+                expr: _expr,
+                size: _size,
+            } => "RIGHT",
+            Function::Sin(_) => "SIN",
+            Function::Cos(_) => "COS",
+            Function::Tan(_) => "TAN",
         }
     }
 
-    pub fn trigonometric(&self, value : f64) -> Option<f64> {
+    pub fn trigonometric(&self, value: f64) -> Option<f64> {
         match self {
             Function::Sin(_) => Some(value.sin()),
             Function::Cos(_) => Some(value.cos()),
             Function::Tan(_) => Some(value.tan()),
-            _ => None
+            _ => None,
         }
     }
 }
