@@ -11,6 +11,7 @@ pub enum Function {
     Right { expr: Expr, size: Expr },
     Ceil(Expr),
     Round(Expr),
+    Floor(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
