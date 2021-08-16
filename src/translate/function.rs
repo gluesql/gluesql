@@ -81,6 +81,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Right { expr, size })))
         }
+        "CEIL" => {
+            check_len(name, args.len(), 1)?;
+
+            translate_expr(args[0])
+                .map(Function::Ceil)
+                .map(Box::new)
+                .map(Expr::Function)
+        }
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
