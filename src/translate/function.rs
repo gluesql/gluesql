@@ -82,6 +82,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
         "MAX" => aggr!(Aggregate::Max),
+        "TRIM" => func_with_one_arg!(Function::Trim),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }
