@@ -321,5 +321,24 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 None => Err(EvaluateError::FunctionRequiresFloatValue("ROUND".to_owned()).into()),
             }
         }
+        Function::Floor(expr) => {
+            let number = match eval(expr).await?.try_into()? {
+                Value::F64(number) => Some(number),
+                Value::Str(s) => match f64::from_str(&s) {
+                    Ok(f) => Some(f),
+                    Err(_) => None,
+                },
+                Value::I64(number) => match f64::from_i64(number) {
+                    Some(number) => Some(number),
+                    None => None,
+                },
+                _ => None,
+            };
+
+            match number {
+                Some(number) => Ok(Evaluated::from(Value::F64(number.floor()))),
+                None => Err(EvaluateError::FunctionRequiresFloatValue("FLOOR".to_owned()).into()),
+            }
+        }
     }
 }
