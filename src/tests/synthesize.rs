@@ -82,7 +82,7 @@ test_case!(synthesize, async move {
         ),
     ];
 
-    for (expected, sql) in test_cases.into_iter() {
+    for (expected, sql) in test_cases {
         test!(Ok(expected), sql);
     }
 });

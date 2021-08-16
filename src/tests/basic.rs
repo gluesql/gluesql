@@ -65,7 +65,7 @@ CREATE TABLE TestA (
         ),
     ];
 
-    for (expected, sql) in test_cases.into_iter() {
+    for (expected, sql) in test_cases {
         test!(expected, sql);
     }
 });
