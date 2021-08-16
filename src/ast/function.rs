@@ -15,6 +15,7 @@ pub enum Function {
     Trim(Expr),
     Div { dividend: Expr, divisor: Expr },
     Mod { dividend: Expr, divisor: Expr },
+    Gcd { left: Expr, right: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

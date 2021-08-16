@@ -28,6 +28,9 @@ pub enum EvaluateError {
     #[error("function requires float value: {0}")]
     FunctionRequiresFloatValue(String),
 
+    #[error("function requires f64 value: {0}")]
+    FunctionRequiresF64Value(String),
+
     #[error("value not found: {0}")]
     ValueNotFound(String),
 

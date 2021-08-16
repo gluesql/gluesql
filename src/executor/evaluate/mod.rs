@@ -237,6 +237,14 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
+    let eval_to_f64 = |name: &'static str, expr| async move {
+        match eval(expr).await?.try_into()? {
+            Value::F64(number) => Ok(number),
+            Value::I64(number) => Ok(number as f64),
+            _ => Err::<_, Error>(EvaluateError::FunctionRequiresF64Value(name.to_owned()).into()),
+        }
+    };
+
     match func {
         Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
@@ -355,6 +363,21 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 "DIV" => Ok(Evaluated::from(Value::I64((dividend / divisor) as i64))),
                 _ => Ok(Evaluated::from(Value::F64(dividend % divisor))),
             }
+        }
+        Function::Gcd { left, right } => {
+            let name = "Gcd";
+            let left = eval_to_f64(name, left).await?;
+            let right = eval_to_f64(name, right).await?;
+
+            fn gcd(a: f64, b: f64) -> f64 {
+                if b == 0.0 {
+                    a
+                } else {
+                    gcd(b, a % b)
+                }
+            }
+
+            Ok(Evaluated::from(Value::F64(gcd(left, right))))
         }
     }
 }
