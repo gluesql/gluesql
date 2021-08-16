@@ -11,7 +11,7 @@ pub enum Function {
     Right { expr: Expr, size: Expr },
     Sin(Expr),
     Cos(Expr),
-    Tan(Expr)
+    Tan(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

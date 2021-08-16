@@ -22,8 +22,7 @@ use {
     },
 };
 
-use rust_decimal::prelude::FromPrimitive;
-use std::str::FromStr;
+use crate::ast::DataType;
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
@@ -230,6 +229,18 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
+    let eval_to_float = |name: &'static str, expr| async move {
+        match eval(expr).await?.cast(&DataType::Float) {
+            Ok(v) => match v.try_into_value(&DataType::Float, false) {
+                Ok(f) => Ok(f.parse_float_number()),
+                _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into())
+            }
+            _ => {
+                Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into())
+            }
+        }
+    };
+
     match func {
         Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
@@ -283,61 +294,29 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
-        Function::Sin(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(v) => Some(v),
-                Value::Str(v) => match f64::from_str(&v) {
-                    Ok(f) => Some(f),
-                    Err(_) => None,
-                },
-                Value::I64(v) => match f64::from_i64(v) {
-                    Some(a) => Some(a),
-                    None => None,
-                },
-                _ => None,
+        Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
+            let name = if matches!(func, Function::Sin { .. }) {
+                "SIN"
+            } else if matches!(func, Function::Cos { .. }) {
+                "COS"
+            } else {
+                "TAN"
             };
 
-            match number {
-                Some(v) => Ok(Evaluated::from(Value::F64(v.sin()))),
-                None => Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_owned()).into()),
-            }
-        }
-        Function::Cos(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(v) => Some(v),
-                Value::Str(v) => match f64::from_str(&v) {
-                    Ok(f) => Some(f),
-                    Err(_) => None,
-                },
-                Value::I64(v) => match f64::from_i64(v) {
-                    Some(a) => Some(a),
-                    None => None,
-                },
-                _ => None,
-            };
+            let float_number = eval_to_float(name, expr).await?;
 
-            match number {
-                Some(v) => Ok(Evaluated::from(Value::F64(v.cos()))),
-                None => Err(EvaluateError::FunctionRequiresFloatValue("COS".to_owned()).into()),
-            }
-        }
-        Function::Tan(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(v) => Some(v),
-                Value::Str(v) => match f64::from_str(&v) {
-                    Ok(f) => Some(f),
-                    Err(_) => None,
+            match float_number {
+                Some(v) => {
+                    let result = if matches!(func, Function::Sin { .. }) {
+                        v.sin()
+                    } else if matches!(func, Function::Cos { .. }) {
+                        v.cos()
+                    } else {
+                        v.tan()
+                    };
+                    Ok(Evaluated::from(Value::F64(result)))
                 },
-                Value::I64(v) => match f64::from_i64(v) {
-                    Some(a) => Some(a),
-                    None => None,
-                },
-                _ => None,
-            };
-
-            match number {
-                Some(v) => Ok(Evaluated::from(Value::F64(v.tan()))),
-                None => Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_owned()).into()),
+                None => Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
             }
         }
     }

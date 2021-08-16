@@ -16,6 +16,8 @@ mod literal;
 mod unique_key;
 
 pub use error::ValueError;
+use rust_decimal::prelude::FromPrimitive;
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
@@ -291,6 +293,20 @@ impl Value {
         match (self, other) {
             (Str(a), Str(b)) => a.like(b).map(Bool),
             _ => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
+        }
+    }
+
+    pub fn parse_float_number(&self) -> Option<f64> {
+        use Value::*;
+
+        match self {
+            F64(v) => Some(*v),
+            I64(v) => f64::from_i64(*v),
+            Str(v) => match f64::from_str(v) {
+                Ok(f) => Some(f),
+                Err(_) => None,
+            },
+            _ => None,
         }
     }
 }

@@ -88,7 +88,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .map(Function::Sin)
                 .map(Box::new)
                 .map(Expr::Function)
-        },
+        }
         "COS" => {
             check_len(name, args.len(), 1)?;
 
@@ -96,7 +96,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .map(Function::Cos)
                 .map(Box::new)
                 .map(Expr::Function)
-        },
+        }
         "TAN" => {
             check_len(name, args.len(), 1)?;
 

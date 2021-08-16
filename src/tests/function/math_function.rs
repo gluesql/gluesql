@@ -17,7 +17,7 @@ test_case!(sin, async move {
             Ok(select!(
                 "sin";
                 F64;
-                f64::from(0.5).sin()
+                0.5_f64.sin()
             )),
         ),
         (
@@ -25,7 +25,7 @@ test_case!(sin, async move {
             Ok(select!(
                 "sin";
                 F64;
-                f64::from(1.0).sin()
+                1.0_f64.sin()
             )),
         ),
         (
@@ -33,7 +33,7 @@ test_case!(sin, async move {
             Ok(select!(
                 "sin";
                 F64;
-                f64::from(-1.0).sin()
+                (-1.0_f64).sin()
             )),
         ),
         (
@@ -41,7 +41,7 @@ test_case!(sin, async move {
             Ok(select!(
                 "sin";
                 F64;
-                f64::from(0.976543125).sin()
+                0.976543125_f64.sin()
             )),
         ),
         (
@@ -49,15 +49,31 @@ test_case!(sin, async move {
             Ok(select!(
                 "sin";
                 F64;
-                f64::from(3).sin()
+                3_f64.sin()
             )),
         ),
         (
-            "SELECT SIN('3.14') AS sin FROM SingleItem",
+            "SELECT SIN('3.15') AS sin FROM SingleItem",
             Ok(select!(
                 "sin";
                 F64;
-                f64::from(3.14).sin()
+                3.15_f64.sin()
+            )),
+        ),
+        (
+            "SELECT SIN(true) AS sin FROM SingleItem",
+            Ok(select!(
+                "sin";
+                F64;
+                1.0_f64.sin()
+            )),
+        ),
+        (
+            "SELECT SIN(false) AS sin FROM SingleItem",
+            Ok(select!(
+                "sin";
+                F64;
+                0.0_f64.sin()
             )),
         ),
         (
@@ -69,16 +85,13 @@ test_case!(sin, async move {
             Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
         ),
         (
-            "SELECT SIN(true) AS sin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
-        ),
-        (
             "SELECT SIN() AS sin FROM SingleItem",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "SIN".to_owned(),
                 expected: 1,
                 found: 0,
-            }.into())
+            }
+            .into()),
         ),
         (
             "SELECT SIN(1.0, 2.0) AS sin FROM SingleItem",
@@ -86,7 +99,8 @@ test_case!(sin, async move {
                 name: "SIN".to_owned(),
                 expected: 1,
                 found: 2,
-            }.into())
+            }
+            .into()),
         ),
     ];
 
@@ -112,7 +126,7 @@ test_case!(cos, async move {
             Ok(select!(
                 "cos";
                 F64;
-                f64::from(0.5).cos()
+                0.5_f64.cos()
             )),
         ),
         (
@@ -120,7 +134,7 @@ test_case!(cos, async move {
             Ok(select!(
                 "cos";
                 F64;
-                f64::from(1.0).cos()
+                1.0_f64.cos()
             )),
         ),
         (
@@ -128,7 +142,7 @@ test_case!(cos, async move {
             Ok(select!(
                 "cos";
                 F64;
-                f64::from(-1.0).cos()
+                (-1.0_f64).cos()
             )),
         ),
         (
@@ -136,7 +150,7 @@ test_case!(cos, async move {
             Ok(select!(
                 "cos";
                 F64;
-                f64::from(0.976543125).cos()
+                0.976543125_f64.cos()
             )),
         ),
         (
@@ -144,15 +158,31 @@ test_case!(cos, async move {
             Ok(select!(
                 "cos";
                 F64;
-                f64::from(3).cos()
+                3_f64.cos()
             )),
         ),
         (
-            "SELECT COS('3.14') AS cos FROM SingleItem",
+            "SELECT COS('3.15') AS cos FROM SingleItem",
             Ok(select!(
                 "cos";
                 F64;
-                f64::from(3.14).cos()
+                3.15_f64.cos()
+            )),
+        ),
+        (
+            "SELECT COS(true) AS cos FROM SingleItem",
+            Ok(select!(
+                "cos";
+                F64;
+                1.0_f64.cos()
+            )),
+        ),
+        (
+            "SELECT COS(false) AS cos FROM SingleItem",
+            Ok(select!(
+                "cos";
+                F64;
+                0.0_f64.cos()
             )),
         ),
         (
@@ -164,16 +194,13 @@ test_case!(cos, async move {
             Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
         ),
         (
-            "SELECT COS(true) AS cos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
-        ),
-        (
             "SELECT COS() AS cos FROM SingleItem",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "COS".to_owned(),
                 expected: 1,
                 found: 0,
-            }.into())
+            }
+            .into()),
         ),
         (
             "SELECT COS(1.0, 2.0) AS cos FROM SingleItem",
@@ -181,7 +208,8 @@ test_case!(cos, async move {
                 name: "COS".to_owned(),
                 expected: 1,
                 found: 2,
-            }.into())
+            }
+            .into()),
         ),
     ];
 
@@ -207,7 +235,7 @@ test_case!(tan, async move {
             Ok(select!(
                 "tan";
                 F64;
-                f64::from(0.5).tan()
+                0.5_f64.tan()
             )),
         ),
         (
@@ -215,7 +243,7 @@ test_case!(tan, async move {
             Ok(select!(
                 "tan";
                 F64;
-                f64::from(1.0).tan()
+                1.0_f64.tan()
             )),
         ),
         (
@@ -223,7 +251,7 @@ test_case!(tan, async move {
             Ok(select!(
                 "tan";
                 F64;
-                f64::from(-1.0).tan()
+                (-1.0_f64).tan()
             )),
         ),
         (
@@ -231,7 +259,7 @@ test_case!(tan, async move {
             Ok(select!(
                 "tan";
                 F64;
-                f64::from(0.976543125).tan()
+                0.976543125_f64.tan()
             )),
         ),
         (
@@ -239,15 +267,31 @@ test_case!(tan, async move {
             Ok(select!(
                 "tan";
                 F64;
-                f64::from(3).tan()
+                3_f64.tan()
             )),
         ),
         (
-            "SELECT TAN('3.14') AS tan FROM SingleItem",
+            "SELECT TAN('3.15') AS tan FROM SingleItem",
             Ok(select!(
                 "tan";
                 F64;
-                f64::from(3.14).tan()
+                3.15_f64.tan()
+            )),
+        ),
+        (
+            "SELECT TAN(true) AS tan FROM SingleItem",
+            Ok(select!(
+                "tan";
+                F64;
+                1.0_f64.tan()
+            )),
+        ),
+        (
+            "SELECT TAN(false) AS tan FROM SingleItem",
+            Ok(select!(
+                "tan";
+                F64;
+                0.0_f64.tan()
             )),
         ),
         (
@@ -259,16 +303,13 @@ test_case!(tan, async move {
             Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
         ),
         (
-            "SELECT TAN(true) AS tan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
-        ),
-        (
             "SELECT TAN() AS tan FROM SingleItem",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "TAN".to_owned(),
                 expected: 1,
                 found: 0,
-            }.into())
+            }
+            .into()),
         ),
         (
             "SELECT TAN(1.0, 2.0) AS tan FROM SingleItem",
@@ -276,7 +317,8 @@ test_case!(tan, async move {
                 name: "TAN".to_owned(),
                 expected: 1,
                 found: 2,
-            }.into())
+            }
+            .into()),
         ),
     ];
 
