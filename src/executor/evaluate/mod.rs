@@ -292,7 +292,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     return Ok(Evaluated::from(Value::Null));
                 }
                 _ => {
-                    return Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into());
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        name.to_owned(),
+                    )
+                    .into());
                 }
             };
             let divisor = match eval(divisor).await?.try_into()? {
@@ -310,7 +313,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     return Ok(Evaluated::from(Value::Null));
                 }
                 _ => {
-                    return Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into());
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        name.to_owned(),
+                    )
+                    .into());
                 }
             };
             let result = (dividend / divisor) as i64;
@@ -328,7 +334,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     return Ok(Evaluated::from(Value::Null));
                 }
                 _ => {
-                    return Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into());
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        name.to_owned(),
+                    )
+                    .into());
                 }
             };
             let divisor = match eval(divisor).await?.try_into()? {
@@ -346,7 +355,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     return Ok(Evaluated::from(Value::Null));
                 }
                 _ => {
-                    return Err(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into());
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        name.to_owned(),
+                    )
+                    .into());
                 }
             };
             // The calculation result as f64 type is sometimes imprecise.
