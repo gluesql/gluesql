@@ -13,43 +13,11 @@ test_case!(round, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT ROUND(0.3) AS round FROM SingleItem",
+            "SELECT ROUND(0.3) AS round1, ROUND(-0.8) AS round2, ROUND(10) AS round3, ROUND(6.87421) AS round4 FROM SingleItem",
             Ok(select!(
-                "round";
-                F64;
-                0.3_f64.round()
-            )),
-        ),
-        (
-            "SELECT ROUND(-0.8) AS round FROM SingleItem",
-            Ok(select!(
-                "round";
-                F64;
-                (-0.8_f64).round()
-            )),
-        ),
-        (
-            "SELECT ROUND(10) AS round FROM SingleItem",
-            Ok(select!(
-                "round";
-                F64;
-                f64::from(10).round()
-            )),
-        ),
-        (
-            "SELECT ROUND('6.87421') AS round FROM SingleItem",
-            Ok(select!(
-                "round";
-                F64;
-                6.87421_f64.round()
-            )),
-        ),
-        (
-            "SELECT ROUND('7') AS round FROM SingleItem",
-            Ok(select!(
-                "round";
-                F64;
-                f64::from(7).round()
+                round1          | round2                       | round3               | round4     
+                F64             | F64                          | F64                  | F64;
+                0.3_f64.round()   f64::round(-0.8_f64)           f64::from(10).round()  6.87421_f64.round()
             )),
         ),
         (
