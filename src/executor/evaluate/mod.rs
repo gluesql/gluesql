@@ -288,7 +288,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 Value::F64(number) => Some(number),
                 Value::Str(s) => match f64::from_str(&s) {
                     Ok(f) => Some(f),
-                    Err(_) => None,
+                    Err(_) => {
+                        return Err(EvaluateError::FunctionRequiresFloatValue("CEIL".to_owned()).into());
+                    },
                 },
                 Value::I64(number) => f64::from_i64(number),
                 _ => None,
@@ -304,7 +306,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 Value::F64(number) => Some(number),
                 Value::Str(s) => match f64::from_str(&s) {
                     Ok(f) => Some(f),
-                    Err(_) => None,
+                    Err(_) => {
+                        return Err(EvaluateError::FunctionRequiresFloatValue("ROUND".to_owned()).into());
+                    },
                 },
                 Value::I64(number) => f64::from_i64(number),
                 _ => None,
@@ -320,7 +324,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 Value::F64(number) => Some(number),
                 Value::Str(s) => match f64::from_str(&s) {
                     Ok(f) => Some(f),
-                    Err(_) => None,
+                    Err(_) => {
+                        return Err(EvaluateError::FunctionRequiresFloatValue("FLOOR".to_owned()).into());
+                    },
                 },
                 Value::I64(number) => f64::from_i64(number),
                 _ => None,
