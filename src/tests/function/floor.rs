@@ -23,7 +23,7 @@ test_case!(floor, async move {
             Ok(select!(
                 floor1          | floor2                 | floor3               | floor4
                 F64             | F64                    | F64                  | F64;
-                0.3_f64.floor()   f64::from(-0.8).floor()  f64::from(10).floor()  6.87421_f64.floor()
+                0.3_f64.floor()   f64::floor(-0.8_f64)        f64::from(10).floor()  6.87421_f64.floor()
             )),
         ),
         (
