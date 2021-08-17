@@ -58,7 +58,7 @@ test_case!(div_mod, async move {
         ),
         (
             r#"SELECT DIV(1.0, "dividend") AS quotient FROM FloatDiv"#,
-            Err(EvaluateError::FunctionRequiresFloatValue("DIV".to_owned()).into()),
+            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("DIV".to_owned()).into()),
         ),
         (
             "SELECT DIV(1.0) AS quotient FROM FloatDiv",
