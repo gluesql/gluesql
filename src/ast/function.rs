@@ -9,6 +9,8 @@ pub enum Function {
     Upper(Expr),
     Left { expr: Expr, size: Expr },
     Right { expr: Expr, size: Expr },
+    Div { dividend: Expr, divisor: Expr },
+    Mod { dividend: Expr, divisor: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
