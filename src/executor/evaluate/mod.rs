@@ -281,5 +281,77 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
+        Function::Div { dividend, divisor } => {
+            let name = "DIV";
+            let dividend = match eval(dividend).await?.try_into()? {
+                Value::F64(number) => f64::try_from(number)
+                    .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                Value::I64(number) => f64::try_from(number as f64)
+                    .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into());
+                }
+            };
+            let divisor = match eval(divisor).await?.try_into()? {
+                Value::F64(number) => match number {
+                    x if x == 0.0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    _ => f64::try_from(number)
+                        .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                },
+                Value::I64(number) => match number {
+                    0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    _ => f64::try_from(number as f64)
+                        .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                },
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into());
+                }
+            };
+            let result = (dividend / divisor) as i64;
+
+            Ok(Evaluated::from(Value::Str(result.to_string())))
+        }
+        Function::Mod { dividend, divisor } => {
+            let name = "MOD";
+            let dividend = match eval(dividend).await?.try_into()? {
+                Value::F64(number) => f64::try_from(number)
+                    .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                Value::I64(number) => f64::try_from(number as f64)
+                    .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into());
+                }
+            };
+            let divisor = match eval(divisor).await?.try_into()? {
+                Value::F64(number) => match number {
+                    x if x == 0.0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    _ => f64::try_from(number)
+                        .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                },
+                Value::I64(number) => match number {
+                    0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    _ => f64::try_from(number as f64)
+                        .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                },
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into());
+                }
+            };
+            let result = (dividend % divisor) as f32;
+
+            Ok(Evaluated::from(Value::Str(result.to_string())))
+        }
     }
 }
