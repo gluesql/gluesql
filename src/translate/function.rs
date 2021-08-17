@@ -81,6 +81,28 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Right { expr, size })))
         }
+        "DIV" => {
+            check_len(name, args.len(), 2)?;
+
+            let dividend = translate_expr(args[0])?;
+            let divisor = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Div {
+                dividend,
+                divisor,
+            })))
+        }
+        "MOD" => {
+            check_len(name, args.len(), 2)?;
+
+            let dividend = translate_expr(args[0])?;
+            let divisor = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Mod {
+                dividend,
+                divisor,
+            })))
+        }
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
