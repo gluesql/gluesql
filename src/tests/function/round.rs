@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(round, async move {
-    use Value::F64;
+    use Value::{Null, F64};
 
     let test_cases = vec![
         (
@@ -26,7 +26,7 @@ test_case!(round, async move {
         ),
         (
             "SELECT ROUND(NULL) AS round FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue(String::from("ROUND")).into()),
+            Ok(select_with_null!(round; Null)),
         ),
         (
             "SELECT ROUND(TRUE) AS round FROM SingleItem",

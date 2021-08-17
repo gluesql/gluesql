@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(ceil, async move {
-    use Value::F64;
+    use Value::{Null, F64};
 
     let test_cases = vec![
         (
@@ -16,12 +16,12 @@ test_case!(ceil, async move {
             "SELECT CEIL(0.3) AS ceil1, 
             CEIL(-0.8) AS ceil2, 
             CEIL(10) AS ceil3, 
-            CEIL('6.87421') AS ceil4 
+            CEIL(6.87421) AS ceil4 
             FROM SingleItem",
             Ok(select!(
                 "ceil1"        | "ceil2"                   | "ceil3"             | "ceil4";
                 F64            | F64                       | F64                 | F64 ;
-                0.3_f64.ceil()   f64::ceil(-0.8_f64)    f64::from(10).ceil()  6.87421_f64.ceil()
+                0.3_f64.ceil()   f64::ceil(-0.8_f64)         f64::from(10).ceil()  6.87421_f64.ceil()
             )),
         ),
         (
@@ -30,7 +30,7 @@ test_case!(ceil, async move {
         ),
         (
             "SELECT CEIL(NULL) AS ceil FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue(String::from("CEIL")).into()),
+            Ok(select_with_null!(ceil; Null)),
         ),
         (
             "SELECT CEIL(TRUE) AS ceil FROM SingleItem",

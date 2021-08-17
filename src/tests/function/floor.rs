@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(floor, async move {
-    use Value::F64;
+    use Value::{Null, F64};
 
     let test_cases = vec![
         (
@@ -18,12 +18,12 @@ test_case!(floor, async move {
             FLOOR(0.3) as floor1, 
             FLOOR(-0.8) as floor2, 
             FLOOR(10) as floor3, 
-            FLOOR('6.87421') as floor4 
+            FLOOR(6.87421) as floor4 
             FROM SingleItem"#,
             Ok(select!(
                 floor1          | floor2                 | floor3               | floor4
                 F64             | F64                    | F64                  | F64;
-                0.3_f64.floor()   f64::floor(-0.8_f64)        f64::from(10).floor()  6.87421_f64.floor()
+                0.3_f64.floor()   f64::floor(-0.8_f64)     f64::from(10).floor()  6.87421_f64.floor()
             )),
         ),
         (
@@ -32,7 +32,7 @@ test_case!(floor, async move {
         ),
         (
             "SELECT FLOOR(NULL) AS floor FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue(String::from("FLOOR")).into()),
+            Ok(select_with_null!(floor; Null)),
         ),
         (
             "SELECT FLOOR(TRUE) AS floor FROM SingleItem",
