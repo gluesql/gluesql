@@ -59,7 +59,7 @@ test_case!(aggregate, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(Ok(expected), sql);
     }
 
@@ -82,7 +82,7 @@ test_case!(aggregate, async move {
         ),
     ];
 
-    for (error, sql) in error_cases.into_iter() {
+    for (error, sql) in error_cases {
         test!(Err(error), sql);
     }
 });
@@ -162,7 +162,7 @@ test_case!(group_by, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(Ok(expected), sql);
     }
 
@@ -171,7 +171,7 @@ test_case!(group_by, async move {
         "SELECT * FROM Item GROUP BY ratio;",
     )];
 
-    for (error, sql) in error_cases.into_iter() {
+    for (error, sql) in error_cases {
         test!(Err(error), sql);
     }
 });

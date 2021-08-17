@@ -41,10 +41,9 @@ impl ColumnDefExt for ColumnDef {
     fn get_default(&self) -> Option<&Expr> {
         self.options
             .iter()
-            .filter_map(|ColumnOptionDef { option, .. }| match option {
+            .find_map(|ColumnOptionDef { option, .. }| match option {
                 ColumnOption::Default(expr) => Some(expr),
                 _ => None,
             })
-            .next()
     }
 }

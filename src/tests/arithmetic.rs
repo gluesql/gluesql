@@ -102,7 +102,7 @@ test_case!(arithmetic, async move {
         ),
     ];
 
-    for (error, sql) in test_cases.into_iter() {
+    for (error, sql) in test_cases {
         test!(Err(error), sql);
     }
 });

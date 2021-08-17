@@ -10,4 +10,7 @@ pub enum AggregateError {
 
     #[error("value not found: {0}")]
     ValueNotFound(String),
+
+    #[error("unreachable rc unwrap failure")]
+    UnreachableRcUnwrapFailure,
 }
