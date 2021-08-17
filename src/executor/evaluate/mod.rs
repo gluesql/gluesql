@@ -22,6 +22,8 @@ use {
     },
 };
 
+use rust_decimal::prelude::FromPrimitive;
+use std::str::FromStr;
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
@@ -280,6 +282,31 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             Ok(Evaluated::from(Value::Str(converted)))
+        }
+        Function::ASin(expr) => {
+            let number = match eval(expr).await?.try_into()? {
+                Value::F64(v) => Some(v),
+                Value::Str(v) => match f64::from_str(&v) {
+                    Ok(f) => Some(f),
+                    Err(_) => None,
+                },
+                Value::I64(v) => match f64::from_i64(v) {
+                    Some(a) => Some(a),
+                    None => None,
+                },
+                _ => None,
+            };
+
+            match number {
+                Some(v) => {
+                    if v > 1.0 || v < -1.0 {
+                        Err(EvaluateError::OutOfRange(v.to_string().to_owned()).into())
+                    } else {
+                        Ok(Evaluated::from(Value::F64(v.asin())))
+                    }
+                }
+                None => Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_owned()).into()),
+            }
         }
     }
 }
