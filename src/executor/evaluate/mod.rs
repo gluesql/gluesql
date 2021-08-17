@@ -315,7 +315,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
             let result = (dividend / divisor) as i64;
 
-            Ok(Evaluated::from(Value::Str(result.to_string())))
+            Ok(Evaluated::from(Value::I64(result)))
         }
         Function::Mod { dividend, divisor } => {
             let name = "MOD";
@@ -349,9 +349,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     return Err(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into());
                 }
             };
+            // The calculation result as f64 type is sometimes imprecise.
             let result = (dividend % divisor) as f32;
 
-            Ok(Evaluated::from(Value::Str(result.to_string())))
+            Ok(Evaluated::from(Value::F64(result as f64)))
         }
     }
 }
