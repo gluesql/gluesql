@@ -1,7 +1,15 @@
 use crate::*;
 
 test_case!(div_mod, async move {
-    use Value::{Null, Str};
+    use Value::{Null, F64, I64};
+    let eval_div = |dividend: f64, divisor: f64| {
+        let result = dividend / divisor;
+        result as i64
+    };
+    let eval_mod = |dividend: f64, divisor: f64| {
+        let result = (dividend % divisor) as f32;
+        result as f64
+    };
     let test_cases = vec![
         (
             "CREATE TABLE FloatDiv (dividend FLOAT, divisor FLOAT)",
@@ -25,10 +33,10 @@ test_case!(div_mod, async move {
             ",
             Ok(select!(
                 "DIV(dividend, divisor)" | "MOD(dividend, divisor)"
-                Str                      | Str;
-                "4".to_owned()             "0".to_owned();
-                "0".to_owned()             "12.34".to_owned();
-                "-3".to_owned()            "-0.3".to_owned()
+                I64                      | F64;
+                eval_div(12.0, 3.0)        eval_mod(12.0, 3.0);
+                eval_div(12.34, 56.78)     eval_mod(12.34, 56.78);
+                eval_div(-12.3, 4.0)       eval_mod(-12.3, 4.0)
             )),
         ),
         (
@@ -39,9 +47,9 @@ test_case!(div_mod, async move {
             FROM FloatDiv LIMIT 1
             ",
             Ok(select!(
-                quotient          | remainder
-                Str               | Str;
-                "4".to_owned()      "0".to_owned()
+                quotient             | remainder
+                I64                  | F64;
+                eval_div(12.0, 3.0)    eval_mod(12.0, 3.0)
             )),
         ),
         (
@@ -92,11 +100,11 @@ test_case!(div_mod, async move {
             ",
             Ok(select!(
                 "DIV(dividend, divisor)" | "MOD(dividend, divisor)"
-                Str                      | Str;
-                "4".to_owned()             "0".to_owned();
-                "1".to_owned()             "5".to_owned();
-                "0".to_owned()             "12".to_owned();
-                "-1".to_owned()            "-5".to_owned()
+                I64                      | F64;
+                eval_div(12_f64, 3_f64)    eval_mod(12_f64, 3_f64);
+                eval_div(12_f64, 7_f64)    eval_mod(12_f64, 7_f64);
+                eval_div(12_f64, 34_f64)   eval_mod(12_f64, 34_f64);
+                eval_div(-12_f64, 7_f64)   eval_mod(-12_f64, 7_f64)
             )),
         ),
         (
@@ -107,9 +115,9 @@ test_case!(div_mod, async move {
             FROM IntDiv LIMIT 1
             ",
             Ok(select!(
-                quotient          | remainder
-                Str               | Str;
-                "4".to_owned()      "0".to_owned()
+                quotient                 | remainder
+                I64                      | F64;
+                eval_div(12_f64, 3_f64)    eval_mod(12_f64, 3_f64)
             )),
         ),
         (
@@ -138,13 +146,13 @@ test_case!(div_mod, async move {
             FROM MixDiv 
             ",
             Ok(select_with_null!(
-                "DIV(dividend, divisor)" | "MOD(dividend, divisor)";
-                Str("4".to_owned())         Str("0".to_owned());
-                Str("0".to_owned())         Str("12".to_owned());
-                Str("-2".to_owned())        Str("1.6".to_owned());
-                Null                        Null;
-                Null                        Null;
-                Null                        Null
+                "DIV(dividend, divisor)"    | "MOD(dividend, divisor)";
+                I64(eval_div(12_f64, 3.0))    F64(eval_mod(12_f64, 3.0));
+                I64(eval_div(12_f64, 34.0))   F64(eval_mod(12_f64, 34.0));
+                I64(eval_div(12_f64, -5.2))   F64(eval_mod(12_f64, -5.2));
+                Null                          Null;
+                Null                          Null;
+                Null                          Null
             )),
         ),
     ];
