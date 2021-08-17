@@ -92,6 +92,10 @@ test_case!(div_mod, async move {
             Ok(Payload::Insert(4)),
         ),
         (
+            "INSERT INTO IntDiv (dividend, divisor) VALUES (12, 2.0)",
+            Err(ValueError::FailedToParseNumber.into()),
+        ),
+        (
             "
             SELECT 
                 DIV(dividend, divisor),
