@@ -13,43 +13,15 @@ test_case!(ceil, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT CEIL(0.3) AS ceil FROM SingleItem",
+            "SELECT CEIL(0.3) AS ceil1, 
+            CEIL(-0.8) AS ceil2, 
+            CEIL(10) AS ceil3, 
+            CEIL('6.87421') AS ceil4 
+            FROM SingleItem",
             Ok(select!(
-                "ceil";
-                F64;
-                0.3_f64.ceil()
-            )),
-        ),
-        (
-            "SELECT CEIL(-0.8) AS ceil FROM SingleItem",
-            Ok(select!(
-                "ceil";
-                F64;
-                (-0.8_f64).ceil()
-            )),
-        ),
-        (
-            "SELECT CEIL(10) AS ceil FROM SingleItem",
-            Ok(select!(
-                "ceil";
-                F64;
-                f64::from(10).ceil()
-            )),
-        ),
-        (
-            "SELECT CEIL('6.87421') AS ceil FROM SingleItem",
-            Ok(select!(
-                "ceil";
-                F64;
-                6.87421_f64.ceil()
-            )),
-        ),
-        (
-            "SELECT CEIL('7') AS ceil FROM SingleItem",
-            Ok(select!(
-                "ceil";
-                F64;
-                f64::from(7).ceil()
+                "ceil1"        | "ceil2"                   | "ceil3"             | "ceil4";
+                F64            | F64                       | F64                 | F64 ;
+                0.3_f64.ceil() f64::from(-0.8_f64).ceil()   f64::from(10).ceil()  6.87421_f64.ceil()
             )),
         ),
         (
