@@ -281,5 +281,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
+        Function::Trim(expr) => match eval_to_str("TRIM", expr).await? {
+            Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
     }
 }
