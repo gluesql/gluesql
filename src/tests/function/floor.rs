@@ -13,43 +13,17 @@ test_case!(floor, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT FLOOR(0.3) AS floor FROM SingleItem",
+            r#"
+            SELECT 
+            FLOOR(0.3) as floor1, 
+            FLOOR(-0.8) as floor2, 
+            FLOOR(10) as floor3, 
+            FLOOR('6.87421') as floor4 
+            FROM SingleItem"#,
             Ok(select!(
-                "floor";
-                F64;
-                0.3_f64.floor()
-            )),
-        ),
-        (
-            "SELECT FLOOR(-0.8) AS floor FROM SingleItem",
-            Ok(select!(
-                "floor";
-                F64;
-                (-0.8_f64).floor()
-            )),
-        ),
-        (
-            "SELECT FLOOR(10) AS floor FROM SingleItem",
-            Ok(select!(
-                "floor";
-                F64;
-                f64::from(10).floor()
-            )),
-        ),
-        (
-            "SELECT FLOOR('6.87421') AS floor FROM SingleItem",
-            Ok(select!(
-                "floor";
-                F64;
-                6.87421_f64.floor()
-            )),
-        ),
-        (
-            "SELECT FLOOR('7') AS floor FROM SingleItem",
-            Ok(select!(
-                "floor";
-                F64;
-                f64::from(7).floor()
+                floor1          | floor2                 | floor3               | floor4
+                F64             | F64                    | F64                  | F64;
+                0.3_f64.floor()   f64::from(-0.8).floor()  f64::from(10).floor()  6.87421_f64.floor()
             )),
         ),
         (
