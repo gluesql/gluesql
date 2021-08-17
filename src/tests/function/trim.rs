@@ -39,6 +39,15 @@ test_case!(trim, async move {
             "SELECT TRIM(a => 2) FROM Item;",
             Err(TranslateError::NamedFunctionArgNotSupported.into()),
         ),
+        (
+            "CREATE TABLE NullName (name TEXT NULL)",
+            Ok(Payload::Create),
+        ),
+        ("INSERT INTO NullName VALUES (NULL)", Ok(Payload::Insert(1))),
+        (
+            "SELECT TRIM(name) AS test FROM NullName;",
+            Ok(select_with_null!(test; Value::Null)),
+        ),
     ];
 
     for (sql, expected) in test_cases {
