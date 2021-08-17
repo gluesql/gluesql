@@ -22,8 +22,6 @@ use {
     },
 };
 
-use rust_decimal::prelude::FromPrimitive;
-use std::str::FromStr;
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
@@ -295,19 +293,19 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         Function::Ceil(expr) => match eval_to_float("CEIL", expr).await? {
             Nullable::Value(v) => Ok(Evaluated::from(Value::F64(v.ceil()))),
             Nullable::Null => {
-                return Ok(Evaluated::from(Value::Null));
+                Ok(Evaluated::from(Value::Null))
             }
         },
         Function::Round(expr) => match eval_to_float("ROUND", expr).await? {
             Nullable::Value(v) => Ok(Evaluated::from(Value::F64(v.round()))),
             Nullable::Null => {
-                return Ok(Evaluated::from(Value::Null));
+                Ok(Evaluated::from(Value::Null))
             }
         },
         Function::Floor(expr) => match eval_to_float("FLOOR", expr).await? {
             Nullable::Value(v) => Ok(Evaluated::from(Value::F64(v.floor()))),
             Nullable::Null => {
-                return Ok(Evaluated::from(Value::Null));
+                Ok(Evaluated::from(Value::Null))
             }
         },
     }
