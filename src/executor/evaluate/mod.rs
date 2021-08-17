@@ -230,6 +230,15 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
+    let eval_to_float = |name: &'static str, expr| async move {
+        match eval(expr).await?.try_into()? {
+            Value::I64(v) => Ok(Nullable::Value(v as f64)),
+            Value::F64(v) => Ok(Nullable::Value(v)),
+            Value::Null => Ok(Nullable::Null),
+            _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
+        }
+    };
+
     match func {
         Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
@@ -283,59 +292,23 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
-        Function::Ceil(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(number) => Some(number),
-                Value::Str(s) => match f64::from_str(&s) {
-                    Ok(f) => Some(f),
-                    Err(_) => {
-                        return Err(EvaluateError::FunctionRequiresFloatValue("CEIL".to_owned()).into());
-                    },
-                },
-                Value::I64(number) => f64::from_i64(number),
-                _ => None,
-            };
-
-            match number {
-                Some(number) => Ok(Evaluated::from(Value::F64(number.ceil()))),
-                None => Err(EvaluateError::FunctionRequiresFloatValue("CEIL".to_owned()).into()),
+        Function::Ceil(expr) => match eval_to_float("CEIL", expr).await? {
+            Nullable::Value(v) => Ok(Evaluated::from(Value::F64(v.ceil()))),
+            Nullable::Null => {
+                return Ok(Evaluated::from(Value::Null));
             }
-        }
-        Function::Round(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(number) => Some(number),
-                Value::Str(s) => match f64::from_str(&s) {
-                    Ok(f) => Some(f),
-                    Err(_) => {
-                        return Err(EvaluateError::FunctionRequiresFloatValue("ROUND".to_owned()).into());
-                    },
-                },
-                Value::I64(number) => f64::from_i64(number),
-                _ => None,
-            };
-
-            match number {
-                Some(number) => Ok(Evaluated::from(Value::F64(number.round()))),
-                None => Err(EvaluateError::FunctionRequiresFloatValue("ROUND".to_owned()).into()),
+        },
+        Function::Round(expr) => match eval_to_float("ROUND", expr).await? {
+            Nullable::Value(v) => Ok(Evaluated::from(Value::F64(v.round()))),
+            Nullable::Null => {
+                return Ok(Evaluated::from(Value::Null));
             }
-        }
-        Function::Floor(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(number) => Some(number),
-                Value::Str(s) => match f64::from_str(&s) {
-                    Ok(f) => Some(f),
-                    Err(_) => {
-                        return Err(EvaluateError::FunctionRequiresFloatValue("FLOOR".to_owned()).into());
-                    },
-                },
-                Value::I64(number) => f64::from_i64(number),
-                _ => None,
-            };
-
-            match number {
-                Some(number) => Ok(Evaluated::from(Value::F64(number.floor()))),
-                None => Err(EvaluateError::FunctionRequiresFloatValue("FLOOR".to_owned()).into()),
+        },
+        Function::Floor(expr) => match eval_to_float("FLOOR", expr).await? {
+            Nullable::Value(v) => Ok(Evaluated::from(Value::F64(v.floor()))),
+            Nullable::Null => {
+                return Ok(Evaluated::from(Value::Null));
             }
-        }
+        },
     }
 }
