@@ -293,15 +293,18 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         Function::Ceil(expr) => match eval_to_float("CEIL", expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.ceil())),
             Nullable::Null => Ok(Value::Null),
-        }.map(Evaluated::from),
+        }
+        .map(Evaluated::from),
         Function::Round(expr) => match eval_to_float("ROUND", expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.round())),
             Nullable::Null => Ok(Value::Null),
-        }.map(Evaluated::from),
+        }
+        .map(Evaluated::from),
         Function::Floor(expr) => match eval_to_float("FLOOR", expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.floor())),
             Nullable::Null => Ok(Value::Null),
-        }.map(Evaluated::from),
+        }
+        .map(Evaluated::from),
         Function::Trim(expr) => match eval_to_str("TRIM", expr).await? {
             Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
             Nullable::Null => Ok(Value::Null),
