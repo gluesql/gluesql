@@ -48,23 +48,20 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }};
     }
 
+    macro_rules! func_with_one_arg {
+        ($func: expr) => {{
+            check_len(name, args.len(), 1)?;
+
+            translate_expr(args[0])
+                .map($func)
+                .map(Box::new)
+                .map(Expr::Function)
+        }};
+    }
+
     match name.as_str() {
-        "LOWER" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Lower)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
-        "UPPER" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Upper)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
+        "LOWER" => func_with_one_arg!(Function::Lower),
+        "UPPER" => func_with_one_arg!(Function::Upper),
         "LEFT" => {
             check_len(name, args.len(), 2)?;
 
@@ -81,34 +78,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Right { expr, size })))
         }
-        "CEIL" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Ceil)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
-        "ROUND" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Round)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
-        "FLOOR" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Floor)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
+        "CEIL" => func_with_one_arg!(Function::Ceil),
+        "ROUND" => func_with_one_arg!(Function::Round),
+        "FLOOR" => func_with_one_arg!(Function::Floor),
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
         "MAX" => aggr!(Aggregate::Max),
+        "TRIM" => func_with_one_arg!(Function::Trim),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

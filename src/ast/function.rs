@@ -12,6 +12,7 @@ pub enum Function {
     Ceil(Expr),
     Round(Expr),
     Floor(Expr),
+    Trim(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
