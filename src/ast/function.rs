@@ -12,6 +12,7 @@ pub enum Function {
     ASin(Expr),
     ACos(Expr),
     ATan(Expr),
+    Trim(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

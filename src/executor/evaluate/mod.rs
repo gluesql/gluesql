@@ -349,5 +349,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 None => Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_owned()).into()),
             }
         }
+        Function::Trim(expr) => match eval_to_str("TRIM", expr).await? {
+            Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
     }
 }
