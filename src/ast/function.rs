@@ -9,6 +9,7 @@ pub enum Function {
     Upper(Expr),
     Left { expr: Expr, size: Expr },
     Right { expr: Expr, size: Expr },
+    Trim(Expr),
     Div { dividend: Expr, divisor: Expr },
     Mod { dividend: Expr, divisor: Expr },
 }
