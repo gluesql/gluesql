@@ -8,7 +8,7 @@ use {
     },
     crate::{
         ast::{Query, SetExpr, Statement, Values},
-        data::{get_name, Row, Schema},
+        data::{get_name, Row, Schema, Value},
         result::{MutResult, Result},
         store::{GStore, GStoreMut},
     },
@@ -36,7 +36,7 @@ pub enum Payload {
     Insert(usize),
     Select {
         labels: Vec<String>,
-        rows: Vec<Row>,
+        rows: Vec<Vec<Value>>,
     },
     Delete(usize),
     Update(usize),
@@ -287,7 +287,10 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
         Statement::Query(query) => {
             let (labels, rows) = try_block!(storage, {
                 let (labels, rows) = select_with_labels(&storage, query, None, true).await?;
-                let rows = rows.try_collect::<Vec<_>>().await?;
+                let rows = rows
+                    .map_ok(|Row(values)| values)
+                    .try_collect::<Vec<_>>()
+                    .await?;
 
                 Ok((labels, rows))
             });
