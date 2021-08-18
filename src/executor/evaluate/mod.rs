@@ -290,7 +290,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     Ok(f) => Some(f),
                     Err(_) => None,
                 },
-                Value::I64(v) => f64::from_i64(v).map(|a| a),
+                Value::I64(v) => f64::from_i64(v),
                 _ => None,
             };
 
@@ -312,7 +312,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     Ok(f) => Some(f),
                     Err(_) => None,
                 },
-                Value::I64(v) => f64::from_i64(v).map(|a| a),
+                Value::I64(v) => f64::from_i64(v),
                 _ => None,
             };
 
@@ -334,7 +334,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     Ok(f) => Some(f),
                     Err(_) => None,
                 },
-                Value::I64(v) => f64::from_i64(v).map(|a| a),
+                Value::I64(v) => f64::from_i64(v),
                 _ => None,
             };
 
