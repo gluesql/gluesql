@@ -89,6 +89,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .map(Box::new)
                 .map(Expr::Function)
         }
+        "ACOS" => {
+            check_len(name, args.len(), 1)?;
+
+            translate_expr(args[0])
+                .map(Function::ACos)
+                .map(Box::new)
+                .map(Expr::Function)
+        }
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),

@@ -290,22 +290,41 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     Ok(f) => Some(f),
                     Err(_) => None,
                 },
-                Value::I64(v) => match f64::from_i64(v) {
-                    Some(a) => Some(a),
-                    None => None,
-                },
+                Value::I64(v) => f64::from_i64(v).map(|a| a),
                 _ => None,
             };
 
             match number {
                 Some(v) => {
-                    if v > 1.0 || v < -1.0 {
-                        Err(EvaluateError::OutOfRange(v.to_string().to_owned()).into())
+                    if !(-1.0..=1.0).contains(&v) {
+                        Err(EvaluateError::OutOfRange(v.to_string()).into())
                     } else {
                         Ok(Evaluated::from(Value::F64(v.asin())))
                     }
                 }
                 None => Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_owned()).into()),
+            }
+        }
+        Function::ACos(expr) => {
+            let number = match eval(expr).await?.try_into()? {
+                Value::F64(v) => Some(v),
+                Value::Str(v) => match f64::from_str(&v) {
+                    Ok(f) => Some(f),
+                    Err(_) => None,
+                },
+                Value::I64(v) => f64::from_i64(v).map(|a| a),
+                _ => None,
+            };
+
+            match number {
+                Some(v) => {
+                    if !(-1.0..=1.0).contains(&v) {
+                        Err(EvaluateError::OutOfRange(v.to_string()).into())
+                    } else {
+                        Ok(Evaluated::from(Value::F64(v.acos())))
+                    }
+                }
+                None => Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_owned()).into()),
             }
         }
     }
