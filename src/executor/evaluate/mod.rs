@@ -327,5 +327,27 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 None => Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_owned()).into()),
             }
         }
+        Function::ATan(expr) => {
+            let number = match eval(expr).await?.try_into()? {
+                Value::F64(v) => Some(v),
+                Value::Str(v) => match f64::from_str(&v) {
+                    Ok(f) => Some(f),
+                    Err(_) => None,
+                },
+                Value::I64(v) => f64::from_i64(v).map(|a| a),
+                _ => None,
+            };
+
+            match number {
+                Some(v) => {
+                    if !(-1.0..=1.0).contains(&v) {
+                        Err(EvaluateError::OutOfRange(v.to_string()).into())
+                    } else {
+                        Ok(Evaluated::from(Value::F64(v.atan())))
+                    }
+                }
+                None => Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_owned()).into()),
+            }
+        }
     }
 }

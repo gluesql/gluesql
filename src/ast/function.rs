@@ -11,6 +11,7 @@ pub enum Function {
     Right { expr: Expr, size: Expr },
     ASin(Expr),
     ACos(Expr),
+    ATan(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
