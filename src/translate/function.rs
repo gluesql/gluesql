@@ -48,6 +48,17 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }};
     }
 
+    macro_rules! maths {
+        ($func_name: expr) => {{
+            check_len(name, args.len(), 1)?;
+
+            translate_expr(args[0])
+                .map($func_name)
+                .map(Box::new)
+                .map(Expr::Function)
+        }};
+    }
+
     match name.as_str() {
         "LOWER" => {
             check_len(name, args.len(), 1)?;
@@ -81,30 +92,9 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Right { expr, size })))
         }
-        "ASIN" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::ASin)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
-        "ACOS" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::ACos)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
-        "ATAN" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::ATan)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
+        "ASIN" => maths!(Function::ASin),
+        "ACOS" => maths!(Function::ACos),
+        "ATAN" => maths!(Function::ATan),
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
