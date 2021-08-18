@@ -15,7 +15,7 @@ test_case!(round, async move {
         (
             "SELECT ROUND(0.3) AS round1, ROUND(-0.8) AS round2, ROUND(10) AS round3, ROUND(6.87421) AS round4 FROM SingleItem",
             Ok(select!(
-                round1          | round2                       | round3               | round4     
+                round1          | round2                       | round3               | round4
                 F64             | F64                          | F64                  | F64;
                 0.3_f64.round()   f64::round(-0.8_f64)           f64::from(10).round()  6.87421_f64.round()
             )),
