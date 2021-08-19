@@ -1,13 +1,19 @@
 #![cfg(feature = "alter-table")]
 
 use {
-    super::{error::err_into, error::StorageError, fetch_schema, key, lock, SledStorage, Snapshot},
+    super::{
+        error::err_into,
+        fetch_schema, key,
+        lock::{self, LockAcquired},
+        transaction::TxPayload,
+        SledStorage, Snapshot,
+    },
     crate::{
         ast::ColumnDef, executor::evaluate_stateless, schema::ColumnDefExt, utils::Vector,
         AlterTable, AlterTableError, MutResult, Result, Row, Schema, Value,
     },
     async_trait::async_trait,
-    sled::transaction::{ConflictableTransactionError, TransactionError},
+    sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
 };
 
@@ -15,25 +21,11 @@ macro_rules! try_self {
     ($self: expr, $expr: expr) => {
         match $expr {
             Err(e) => {
-                return Err(($self, e.into()));
+                return Err(($self, e));
             }
             Ok(v) => v,
         }
     };
-}
-
-macro_rules! transaction {
-    ($self: expr, $expr: expr) => {{
-        let result = $self.tree.transaction($expr).map_err(|e| match e {
-            TransactionError::Abort(e) => e,
-            TransactionError::Storage(e) => StorageError::Sled(e).into(),
-        });
-
-        match result {
-            Ok(_) => Ok(($self, ())),
-            Err(e) => Err(($self, e)),
-        }
-    }};
 }
 
 #[async_trait(?Send)]
@@ -48,9 +40,14 @@ impl AlterTable for SledStorage {
         let items = try_self!(self, items);
 
         let state = &self.state;
-
-        transaction!(self, move |tree| {
-            let (txid, autocommit) = lock::acquire(tree, state)?;
+        let tx_timeout = self.tx_timeout;
+        let tx_result = self.tree.transaction(move |tree| {
+            let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, autocommit } => (txid, autocommit),
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
             let (old_schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
@@ -134,8 +131,14 @@ impl AlterTable for SledStorage {
                 tree.insert(temp_new_key, new_schema_key.as_bytes())?;
             }
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.rename_schema(table_name, new_table_name).await,
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 
     async fn rename_column(
@@ -145,9 +148,14 @@ impl AlterTable for SledStorage {
         new_column_name: &str,
     ) -> MutResult<Self, ()> {
         let state = &self.state;
-
-        transaction!(self, move |tree| {
-            let (txid, autocommit) = lock::acquire(tree, state)?;
+        let tx_timeout = self.tx_timeout;
+        let tx_result = self.tree.transaction(move |tree| {
+            let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, autocommit } => (txid, autocommit),
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
             let (schema_key, snapshot) = fetch_schema(tree, table_name)?;
             let snapshot = snapshot
@@ -197,8 +205,17 @@ impl AlterTable for SledStorage {
                 tree.insert(temp_key, schema_key.as_bytes())?;
             }
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => {
+                self.rename_column(table_name, old_column_name, new_column_name)
+                    .await
+            }
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 
     async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
@@ -211,9 +228,14 @@ impl AlterTable for SledStorage {
         let items = try_self!(self, items);
 
         let state = &self.state;
-
-        transaction!(self, move |tree| {
-            let (txid, autocommit) = lock::acquire(tree, state)?;
+        let tx_timeout = self.tx_timeout;
+        let tx_result = self.tree.transaction(move |tree| {
+            let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, autocommit } => (txid, autocommit),
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
             let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
@@ -309,8 +331,14 @@ impl AlterTable for SledStorage {
                 tree.insert(temp_key, schema_key.as_bytes())?;
             }
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.add_column(table_name, column_def).await,
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 
     async fn drop_column(
@@ -328,9 +356,14 @@ impl AlterTable for SledStorage {
         let items = try_self!(self, items);
 
         let state = &self.state;
-
-        transaction!(self, move |tree| {
-            let (txid, autocommit) = lock::acquire(tree, state)?;
+        let tx_timeout = self.tx_timeout;
+        let tx_result = self.tree.transaction(move |tree| {
+            let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, autocommit } => (txid, autocommit),
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
             let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
@@ -352,7 +385,7 @@ impl AlterTable for SledStorage {
             let column_index = match (column_index, if_exists) {
                 (Some(index), _) => index,
                 (None, true) => {
-                    return Ok(());
+                    return Ok(TxPayload::Success);
                 }
                 (None, false) => {
                     return Err(
@@ -418,7 +451,13 @@ impl AlterTable for SledStorage {
                 tree.insert(temp_key, schema_key.as_bytes())?;
             }
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.drop_column(table_name, column_name, if_exists).await,
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 }

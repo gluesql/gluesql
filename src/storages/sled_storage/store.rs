@@ -12,11 +12,15 @@ use {
 #[async_trait(?Send)]
 impl Store<IVec> for SledStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let (txid, temp) = match self.state {
-            State::Transaction { txid, .. } => (txid, false),
-            State::Idle => (lock::register(&self.tree)?, true),
+        let (txid, created_at, temp) = match self.state {
+            State::Transaction {
+                txid, created_at, ..
+            } => (txid, created_at, false),
+            State::Idle => {
+                lock::register(&self.tree).map(|(txid, created_at)| (txid, created_at, true))?
+            }
         };
-        let lock_txid = lock::fetch(&self.tree, txid)?;
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         let key = format!("schema/{}", table_name);
         let schema = self
@@ -37,15 +41,17 @@ impl Store<IVec> for SledStorage {
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
-        let txid = match self.state {
-            State::Transaction { txid, .. } => txid,
+        let (txid, created_at) = match self.state {
+            State::Transaction {
+                txid, created_at, ..
+            } => (txid, created_at),
             State::Idle => {
                 return Err(Error::StorageMsg(
                     "conflict - scan_data failed, lock does not exist".to_owned(),
                 ));
             }
         };
-        let lock_txid = lock::fetch(&self.tree, txid)?;
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         let prefix = format!("data/{}/", table_name);
         let result_set = self
