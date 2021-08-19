@@ -1,3 +1,5 @@
+use core::fmt;
+use std::fmt::Formatter;
 use {
     super::{Aggregate, AstLiteral, BinaryOperator, DataType, Function, Query, UnaryOperator},
     serde::{Deserialize, Serialize},
@@ -50,4 +52,10 @@ pub enum Expr {
     Aggregate(Box<Aggregate>),
     Exists(Box<Query>),
     Subquery(Box<Query>),
+}
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
