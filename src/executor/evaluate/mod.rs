@@ -228,6 +228,15 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
+    let eval_to_float = |name: &'static str, expr| async move {
+        match eval(expr).await?.try_into()? {
+            Value::I64(v) => Ok(Nullable::Value(v as f64)),
+            Value::F64(v) => Ok(Nullable::Value(v)),
+            Value::Null => Ok(Nullable::Null),
+            _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
+        }
+    };
+
     match func {
         Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
@@ -281,6 +290,21 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
+        Function::Ceil(expr) => match eval_to_float("CEIL", expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.ceil())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Round(expr) => match eval_to_float("ROUND", expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.round())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Floor(expr) => match eval_to_float("FLOOR", expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.floor())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
         Function::Trim(expr) => match eval_to_str("TRIM", expr).await? {
             Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
             Nullable::Null => Ok(Value::Null),

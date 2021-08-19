@@ -78,6 +78,9 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Right { expr, size })))
         }
+        "CEIL" => func_with_one_arg!(Function::Ceil),
+        "ROUND" => func_with_one_arg!(Function::Round),
+        "FLOOR" => func_with_one_arg!(Function::Floor),
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
