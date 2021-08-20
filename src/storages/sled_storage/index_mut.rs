@@ -1,6 +1,11 @@
 use {
     super::{
-        err_into, error::StorageError, index_sync::IndexSync, key, lock, SledStorage, Snapshot,
+        err_into,
+        index_sync::IndexSync,
+        key,
+        lock::{self, LockAcquired},
+        transaction::TxPayload,
+        SledStorage, Snapshot,
     },
     crate::{
         ast::OrderByExpr,
@@ -12,8 +17,7 @@ use {
     async_trait::async_trait,
     sled::{
         transaction::{
-            ConflictableTransactionError, ConflictableTransactionResult, TransactionError,
-            TransactionalTree,
+            ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
         IVec,
     },
@@ -29,20 +33,6 @@ macro_rules! try_self {
             Ok(v) => v,
         }
     };
-}
-
-macro_rules! transaction {
-    ($self: expr, $expr: expr) => {{
-        let result = $self.tree.transaction($expr).map_err(|e| match e {
-            TransactionError::Abort(e) => e,
-            TransactionError::Storage(e) => StorageError::Sled(e).into(),
-        });
-
-        match result {
-            Ok(_) => Ok(($self, ())),
-            Err(e) => Err(($self, e)),
-        }
-    }};
 }
 
 fn fetch_schema(
@@ -72,9 +62,14 @@ impl IndexMut<IVec> for SledStorage {
         let rows = try_self!(self, rows.collect::<Result<Vec<_>>>());
 
         let state = &self.state;
-
-        transaction!(self, |tree| {
-            let (txid, _) = lock::acquire(tree, state)?;
+        let tx_timeout = self.tx_timeout;
+        let tx_result = self.tree.transaction(move |tree| {
+            let txid = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, .. } => txid,
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
             let index_expr = &column.expr;
 
@@ -130,8 +125,14 @@ impl IndexMut<IVec> for SledStorage {
             let temp_key = key::temp_schema(txid, table_name);
             tree.insert(temp_key, schema_key.as_bytes())?;
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.create_index(table_name, index_name, column).await,
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 
     async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()> {
@@ -139,9 +140,14 @@ impl IndexMut<IVec> for SledStorage {
         let rows = try_self!(self, rows.collect::<Result<Vec<_>>>());
 
         let state = &self.state;
-
-        transaction!(self, |tree| {
-            let (txid, _) = lock::acquire(tree, state)?;
+        let tx_timeout = self.tx_timeout;
+        let tx_result = self.tree.transaction(move |tree| {
+            let txid = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, .. } => txid,
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
             let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
@@ -191,7 +197,13 @@ impl IndexMut<IVec> for SledStorage {
             let temp_key = key::temp_schema(txid, table_name);
             tree.insert(temp_key, schema_key.as_bytes())?;
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.drop_index(table_name, index_name).await,
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 }
