@@ -10,7 +10,7 @@ use {
     crate::{
         ast::OrderByExpr,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
-        result::{Error, MutResult, Result},
+        result::{Error, MutResult, Result, TrySelf},
         store::{IndexMut, Store},
         IndexError,
     },
@@ -23,17 +23,6 @@ use {
     },
     std::iter::once,
 };
-
-macro_rules! try_self {
-    ($self: expr, $expr: expr) => {
-        match $expr {
-            Err(e) => {
-                return Err(($self, e.into()));
-            }
-            Ok(v) => v,
-        }
-    };
-}
 
 fn fetch_schema(
     tree: &TransactionalTree,
@@ -58,8 +47,8 @@ impl IndexMut<IVec> for SledStorage {
         index_name: &str,
         column: &OrderByExpr,
     ) -> MutResult<Self, ()> {
-        let rows = try_self!(self, self.scan_data(table_name).await);
-        let rows = try_self!(self, rows.collect::<Result<Vec<_>>>());
+        let (self, rows) = self.scan_data(table_name).await.try_self(self)?;
+        let (self, rows) = rows.collect::<Result<Vec<_>>>().try_self(self)?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -136,8 +125,8 @@ impl IndexMut<IVec> for SledStorage {
     }
 
     async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()> {
-        let rows = try_self!(self, self.scan_data(table_name).await);
-        let rows = try_self!(self, rows.collect::<Result<Vec<_>>>());
+        let (self, rows) = self.scan_data(table_name).await.try_self(self)?;
+        let (self, rows) = rows.collect::<Result<Vec<_>>>().try_self(self)?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;

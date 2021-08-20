@@ -9,24 +9,17 @@ use {
         SledStorage, Snapshot,
     },
     crate::{
-        ast::ColumnDef, executor::evaluate_stateless, schema::ColumnDefExt, utils::Vector,
-        AlterTable, AlterTableError, MutResult, Result, Row, Schema, Value,
+        ast::ColumnDef,
+        executor::evaluate_stateless,
+        result::{MutResult, Result, TrySelf},
+        schema::ColumnDefExt,
+        utils::Vector,
+        AlterTable, AlterTableError, Row, Schema, Value,
     },
     async_trait::async_trait,
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
 };
-
-macro_rules! try_self {
-    ($self: expr, $expr: expr) => {
-        match $expr {
-            Err(e) => {
-                return Err(($self, e));
-            }
-            Ok(v) => v,
-        }
-    };
-}
 
 #[async_trait(?Send)]
 impl AlterTable for SledStorage {
@@ -37,7 +30,7 @@ impl AlterTable for SledStorage {
             .scan_prefix(prefix.as_bytes())
             .map(|item| item.map_err(err_into))
             .collect::<Result<Vec<_>>>();
-        let items = try_self!(self, items);
+        let (self, items) = items.try_self(self)?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -225,7 +218,7 @@ impl AlterTable for SledStorage {
             .scan_prefix(prefix.as_bytes())
             .map(|item| item.map_err(err_into))
             .collect::<Result<Vec<_>>>();
-        let items = try_self!(self, items);
+        let (self, items) = items.try_self(self)?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -353,7 +346,7 @@ impl AlterTable for SledStorage {
             .scan_prefix(prefix.as_bytes())
             .map(|item| item.map_err(err_into))
             .collect::<Result<Vec<_>>>();
-        let items = try_self!(self, items);
+        let (self, items) = items.try_self(self)?;
 
         let state = &self.state;
         let tx_timeout = self.tx_timeout;

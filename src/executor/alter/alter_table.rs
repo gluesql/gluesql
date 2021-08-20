@@ -5,7 +5,7 @@ use {
     crate::{
         ast::{AlterTableOperation, ObjectName},
         data::get_name,
-        result::MutResult,
+        result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
     std::fmt::Debug,
@@ -21,29 +21,18 @@ use {
     futures::stream::{self, TryStreamExt},
 };
 
-macro_rules! try_into {
-    ($storage: expr, $expr: expr) => {
-        match $expr {
-            Err(e) => {
-                return Err(($storage, e.into()));
-            }
-            Ok(v) => v,
-        }
-    };
-}
-
 pub async fn alter_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     name: &ObjectName,
     operation: &AlterTableOperation,
 ) -> MutResult<U, ()> {
-    let table_name = try_into!(storage, get_name(name));
+    let (storage, table_name) = get_name(name).try_self(storage)?;
 
     match operation {
         AlterTableOperation::RenameTable {
             table_name: new_table_name,
         } => {
-            let new_table_name = try_into!(storage, get_name(new_table_name));
+            let (storage, new_table_name) = get_name(new_table_name).try_self(storage)?;
 
             storage.rename_schema(table_name, new_table_name).await
         }
@@ -56,9 +45,11 @@ pub async fn alter_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
                 .await
         }
         AlterTableOperation::AddColumn { column_def } => {
-            try_into!(storage, validate(column_def));
-
-            storage.add_column(table_name, column_def).await
+            validate(column_def)
+                .try_self(storage)
+                .map(|(storage, _)| storage)?
+                .add_column(table_name, column_def)
+                .await
         }
         AlterTableOperation::DropColumn {
             column_name,
