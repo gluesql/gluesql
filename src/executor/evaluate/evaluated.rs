@@ -90,8 +90,8 @@ fn binary_op<'a, 'b, T, U>(
     literal_op: U,
 ) -> Result<Evaluated<'b>>
 where
-    T: Fn(&Value, &Value) -> Result<Value>,
-    U: Fn(&Literal<'a>, &Literal<'b>) -> Result<Literal<'b>>,
+    T: FnOnce(&Value, &Value) -> Result<Value>,
+    U: FnOnce(&Literal<'a>, &Literal<'b>) -> Result<Literal<'b>>,
 {
     match (l, r) {
         (Evaluated::Literal(l), Evaluated::Literal(r)) => literal_op(l, r).map(Evaluated::Literal),
