@@ -83,34 +83,46 @@ impl<'a> PartialOrd for Evaluated<'a> {
     }
 }
 
-macro_rules! binary_op {
-    ($name:ident, $op:tt) => {
-        pub fn $name<'b>(&self, other: &Evaluated<'a>) -> Result<Evaluated<'b>> {
-            let value_binary_op = |l: &Value, r: &Value| l.$name(r).map(Evaluated::from);
-
-            match (self, other) {
-                (Evaluated::Literal(l), Evaluated::Literal(r)) => {
-                    l.$name(r).map(Evaluated::Literal)
-                }
-                (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                    value_binary_op(&Value::try_from(l)?, r.as_ref())
-                }
-                (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                    value_binary_op(l.as_ref(), &Value::try_from(r)?)
-                }
-                (Evaluated::Value(l), Evaluated::Value(r)) => {
-                    value_binary_op(l.as_ref(), r.as_ref())
-                }
-            }
+fn binary_op<'a, 'b, T, U>(
+    l: &Evaluated<'a>,
+    r: &Evaluated<'b>,
+    value_op: T,
+    literal_op: U,
+) -> Result<Evaluated<'b>>
+where
+    T: Fn(&Value, &Value) -> Result<Value>,
+    U: Fn(&Literal<'a>, &Literal<'b>) -> Result<Literal<'b>>,
+{
+    match (l, r) {
+        (Evaluated::Literal(l), Evaluated::Literal(r)) => literal_op(l, r).map(Evaluated::Literal),
+        (Evaluated::Literal(l), Evaluated::Value(r)) => {
+            value_op(&Value::try_from(l)?, r.as_ref()).map(Evaluated::from)
         }
-    };
+        (Evaluated::Value(l), Evaluated::Literal(r)) => {
+            value_op(l.as_ref(), &Value::try_from(r)?).map(Evaluated::from)
+        }
+        (Evaluated::Value(l), Evaluated::Value(r)) => {
+            value_op(l.as_ref(), r.as_ref()).map(Evaluated::from)
+        }
+    }
 }
 
 impl<'a> Evaluated<'a> {
-    binary_op!(add, +);
-    binary_op!(subtract, -);
-    binary_op!(multiply, *);
-    binary_op!(divide, /);
+    pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
+    }
+
+    pub fn subtract<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(self, other, |l, r| l.subtract(r), |l, r| l.subtract(r))
+    }
+
+    pub fn multiply<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(self, other, |l, r| l.multiply(r), |l, r| l.multiply(r))
+    }
+
+    pub fn divide<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(self, other, |l, r| l.divide(r), |l, r| l.divide(r))
+    }
 
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
         match self {
