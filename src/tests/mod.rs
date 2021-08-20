@@ -58,6 +58,7 @@ macro_rules! generate_tests {
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_left_right, function::left_right::left_right);
         glue!(function_trim, function::trim::trim);
+        glue!(function_div_mod, function::div_mod::div_mod);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
         glue!(function_ceil, function::ceil::ceil);

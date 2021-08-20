@@ -13,6 +13,8 @@ pub enum Function {
     Round(Expr),
     Floor(Expr),
     Trim(Expr),
+    Div { dividend: Expr, divisor: Expr },
+    Mod { dividend: Expr, divisor: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
