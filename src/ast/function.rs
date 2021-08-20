@@ -13,6 +13,10 @@ pub enum Function {
     Round(Expr),
     Floor(Expr),
     Trim(Expr),
+    Exp(Expr),
+    Ln(Expr),
+    Log2(Expr),
+    Log10(Expr),
     Div { dividend: Expr, divisor: Expr },
     Mod { dividend: Expr, divisor: Expr },
 }

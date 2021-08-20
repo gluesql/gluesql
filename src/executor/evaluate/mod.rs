@@ -310,6 +310,26 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+        Function::Exp(expr) => match eval_to_float("EXP", expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.exp())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Ln(expr) => match eval_to_float("LN", expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.ln())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Log2(expr) => match eval_to_float("LOG2", expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.log2())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Log10(expr) => match eval_to_float("LOG10", expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.log10())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
         Function::Div { dividend, divisor } | Function::Mod { dividend, divisor } => {
             let name = if matches!(func, Function::Div { .. }) {
                 "DIV"

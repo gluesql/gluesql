@@ -1,6 +1,7 @@
 pub mod cast;
 pub mod ceil;
 pub mod div_mod;
+pub mod exp_log;
 pub mod floor;
 pub mod left_right;
 pub mod round;
