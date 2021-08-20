@@ -19,9 +19,6 @@ pub enum EvaluateError {
     #[error("function requires integer value: {0}")]
     FunctionRequiresIntegerValue(String),
 
-    #[error("function requires float value: {0}")]
-    FunctionRequiresFloatValue(String),
-
     #[error("function requires float or integer value: {0}")]
     FunctionRequiresFloatOrIntegerValue(String),
 

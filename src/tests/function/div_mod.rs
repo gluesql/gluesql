@@ -2,14 +2,8 @@ use crate::*;
 
 test_case!(div_mod, async move {
     use Value::{Null, F64, I64};
-    let eval_div = |dividend: f64, divisor: f64| {
-        let result = dividend / divisor;
-        result as i64
-    };
-    let eval_mod = |dividend: f64, divisor: f64| {
-        let result = (dividend % divisor) as f32;
-        result as f64
-    };
+    let eval_div = |dividend, divisor| (dividend / divisor) as i64;
+    let eval_mod = |dividend, divisor| ((dividend % divisor) as f32) as f64;
     let test_cases = vec![
         (
             "CREATE TABLE FloatDiv (dividend FLOAT, divisor FLOAT)",
@@ -37,19 +31,6 @@ test_case!(div_mod, async move {
                 eval_div(12.0, 3.0)        eval_mod(12.0, 3.0);
                 eval_div(12.34, 56.78)     eval_mod(12.34, 56.78);
                 eval_div(-12.3, 4.0)       eval_mod(-12.3, 4.0)
-            )),
-        ),
-        (
-            "
-            SELECT 
-                DIV(dividend, divisor) as quotient,
-                MOD(dividend, divisor) as remainder 
-            FROM FloatDiv LIMIT 1
-            ",
-            Ok(select!(
-                quotient             | remainder
-                I64                  | F64;
-                eval_div(12.0, 3.0)    eval_mod(12.0, 3.0)
             )),
         ),
         (
@@ -109,19 +90,6 @@ test_case!(div_mod, async move {
                 eval_div(12_f64, 7_f64)    eval_mod(12_f64, 7_f64);
                 eval_div(12_f64, 34_f64)   eval_mod(12_f64, 34_f64);
                 eval_div(-12_f64, 7_f64)   eval_mod(-12_f64, 7_f64)
-            )),
-        ),
-        (
-            "
-            SELECT 
-                DIV(dividend, divisor) as quotient,
-                MOD(dividend, divisor) as remainder 
-            FROM IntDiv LIMIT 1
-            ",
-            Ok(select!(
-                quotient                 | remainder
-                I64                      | F64;
-                eval_div(12_f64, 3_f64)    eval_mod(12_f64, 3_f64)
             )),
         ),
         (
