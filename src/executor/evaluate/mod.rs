@@ -294,10 +294,8 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             let dividend = match eval(dividend).await?.try_into()? {
-                Value::F64(number) => f64::try_from(number)
-                    .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
-                Value::I64(number) => f64::try_from(number as f64)
-                    .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                Value::F64(number) => number,
+                Value::I64(number) => number as f64,
                 Value::Null => {
                     return Ok(Evaluated::from(Value::Null));
                 }
@@ -312,13 +310,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             let divisor = match eval(divisor).await?.try_into()? {
                 Value::F64(number) => match number {
                     x if x == 0.0 => return Err(EvaluateError::InvalidDivisorZero.into()),
-                    _ => f64::try_from(number)
-                        .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                    _ => number,
                 },
                 Value::I64(number) => match number {
                     0 => return Err(EvaluateError::InvalidDivisorZero.into()),
-                    _ => f64::try_from(number as f64)
-                        .map_err(|_| EvaluateError::FunctionRequiresFloatValue(name.to_owned()))?,
+                    _ => number as f64,
                 },
                 Value::Null => {
                     return Ok(Evaluated::from(Value::Null));
