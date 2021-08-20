@@ -352,14 +352,8 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             match name {
-                "DIV" => {
-                    let result = (dividend / divisor) as i64;
-                    Ok(Evaluated::from(Value::I64(result)))
-                }
-                _ => {
-                    let result = (dividend % divisor) as f32;
-                    Ok(Evaluated::from(Value::F64(result as f64)))
-                }
+                "DIV" => Ok(Evaluated::from(Value::I64((dividend / divisor) as i64))),
+                _ => Ok(Evaluated::from(Value::F64(dividend % divisor))),
             }
         }
     }

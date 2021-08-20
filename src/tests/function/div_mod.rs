@@ -3,7 +3,7 @@ use crate::*;
 test_case!(div_mod, async move {
     use Value::{Null, F64, I64};
     let eval_div = |dividend, divisor| (dividend / divisor) as i64;
-    let eval_mod = |dividend, divisor| ((dividend % divisor) as f32) as f64;
+    let eval_mod = |dividend, divisor| dividend % divisor;
     let test_cases = vec![
         (
             "CREATE TABLE FloatDiv (dividend FLOAT, divisor FLOAT)",
