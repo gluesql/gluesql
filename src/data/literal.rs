@@ -343,4 +343,38 @@ mod tests {
         matches!(Null.concat(Boolean(true)), Null);
         matches!(Null.concat(Null), Null);
     }
+
+    #[test]
+    fn divide() {
+        use crate::data::interval::Interval as I;
+
+        macro_rules! num {
+            ($num: expr) => {
+                Number(Cow::Owned($num.to_owned()))
+            };
+        }
+
+        macro_rules! itv {
+            ($itv: expr) => {
+                Interval(I::Microsecond($itv))
+            };
+        }
+
+        let num_divisor = |x: &str| Number(Cow::Owned(x.to_owned()));
+        let itv_divisor = |x: i64| Interval(I::Microsecond(x));
+
+        assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
+        assert_eq!(num!("12").divide(&num_divisor("2.0")).unwrap(), num!("6"));
+        assert_eq!(num!("12").divide(&itv_divisor(2)).unwrap(), itv!(6));
+        assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
+        assert_eq!(num!("12.0").divide(&num_divisor("2.0")).unwrap(), num!("6"));
+        assert_eq!(num!("12.0").divide(&itv_divisor(2)).unwrap(), itv!(6));
+        assert_eq!(itv!(12).divide(&num_divisor("2")).unwrap(), itv!(6));
+        assert_eq!(itv!(12).divide(&num_divisor("2.0")).unwrap(), itv!(6));
+        matches!(num!("12").divide(&Null).unwrap(), Null);
+        matches!(itv!(12).divide(&Null).unwrap(), Null);
+        matches!(Null.divide(&itv_divisor(2)).unwrap(), Null);
+        matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
+        matches!(Null.divide(&Null).unwrap(), Null);
+    }
 }
