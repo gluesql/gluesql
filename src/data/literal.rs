@@ -233,6 +233,7 @@ impl<'a> Literal<'a> {
     }
 
     pub fn divide<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+        use super::Interval as I;
         match (self, other) {
             (Number(l), Number(r)) => {
                 if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
@@ -252,6 +253,9 @@ impl<'a> Literal<'a> {
                 }
             }
             (Number(l), Interval(r)) => {
+                if (r == &I::Microsecond(0)) | (r == &I::Month(0)) {
+                    return Err(LiteralError::DivisorShouldNotBeZero.into());
+                }
                 if let Ok(l) = l.parse::<i64>() {
                     Ok(Interval(l / *r))
                 } else if let Ok(l) = l.parse::<f64>() {
