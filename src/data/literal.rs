@@ -266,9 +266,17 @@ impl<'a> Literal<'a> {
             }
             (Interval(l), Number(r)) => {
                 if let Ok(r) = r.parse::<i64>() {
-                    Ok(Interval(*l / r))
+                    if r == 0 {
+                        return Err(LiteralError::DivisorShouldNotBeZero.into());
+                    } else {
+                        Ok(Interval(*l / r))
+                    }
                 } else if let Ok(r) = r.parse::<f64>() {
-                    Ok(Interval(*l / r))
+                    if r == 0.0 {
+                        return Err(LiteralError::DivisorShouldNotBeZero.into());
+                    } else {
+                        Ok(Interval(*l / r))
+                    }
                 } else {
                     Err(LiteralError::UnreachableBinaryArithmetic.into())
                 }
