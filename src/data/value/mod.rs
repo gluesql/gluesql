@@ -259,6 +259,21 @@ impl Value {
         }
     }
 
+    pub fn modulo(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I64(a), I64(b)) => Ok(I64(a % b)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 % b)),
+            (F64(a), I64(b)) => Ok(F64(a % *b as f64)),
+            (F64(a), F64(b)) => Ok(F64(a % b)),
+            (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
+                Ok(Null)
+            }
+            _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
+        }
+    }
+
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
