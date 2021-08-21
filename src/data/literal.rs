@@ -267,13 +267,13 @@ impl<'a> Literal<'a> {
             (Interval(l), Number(r)) => {
                 if let Ok(r) = r.parse::<i64>() {
                     if r == 0 {
-                        return Err(LiteralError::DivisorShouldNotBeZero.into());
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
                     } else {
                         Ok(Interval(*l / r))
                     }
                 } else if let Ok(r) = r.parse::<f64>() {
                     if r == 0.0 {
-                        return Err(LiteralError::DivisorShouldNotBeZero.into());
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
                     } else {
                         Ok(Interval(*l / r))
                     }
