@@ -43,6 +43,9 @@ pub enum ValueError {
     #[error("divide on non-numeric values: {0:?} / {1:?}")]
     DivideOnNonNumeric(Value, Value),
 
+    #[error("the divisor should not be zero")]
+    DivisorShouldNotBeZero,
+
     #[error("floating numbers cannot be grouped by")]
     FloatCannotBeGroupedBy,
 

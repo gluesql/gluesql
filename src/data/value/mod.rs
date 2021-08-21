@@ -237,7 +237,16 @@ impl Value {
     }
 
     pub fn divide(&self, other: &Value) -> Result<Value> {
+        use super::Interval as I;
         use Value::*;
+
+        if (other == &I64(0))
+            | (other == &F64(0.0))
+            | (other == &Interval(I::Microsecond(0)))
+            | (other == &Interval(I::Month(0)))
+        {
+            return Err(ValueError::DivisorShouldNotBeZero.into());
+        }
 
         match (self, other) {
             (I64(a), I64(b)) => Ok(I64(a / b)),
