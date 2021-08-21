@@ -8,3 +8,4 @@ pub mod math_function;
 pub mod round;
 pub mod trim;
 pub mod upper_lower;
+pub mod lpad_rpad;
