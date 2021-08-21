@@ -89,6 +89,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Gcd { left, right })))
         }
+        "LCM" => {
+            check_len(name, args.len(), 2)?;
+
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
+        }
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
