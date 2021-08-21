@@ -237,6 +237,16 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
+    let eval_to_integer = |name: &'static str, expr| async move {
+        match eval(expr).await?.try_into()? {
+            Value::I64(number) => Ok(Nullable::Value(number)),
+            Value::Null => Ok(Nullable::Null),
+            _ => {
+                Err::<_, Error>(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into())
+            }
+        }
+    };
+
     match func {
         Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
@@ -356,5 +366,51 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 _ => Ok(Evaluated::from(Value::F64(dividend % divisor))),
             }
         }
+        Function::Gcd { left, right } => {
+            let name = "Gcd";
+            let left = match eval_to_integer(name, left).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let right = match eval_to_integer(name, right).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            Ok(Evaluated::from(Value::I64(gcd(left, right))))
+        }
+        Function::Lcm { left, right } => {
+            let name = "Lcm";
+            let left = match eval_to_integer(name, left).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let right = match eval_to_integer(name, right).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            fn lcm(a: i64, b: i64) -> i64 {
+                a * b / gcd(a, b)
+            }
+
+            Ok(Evaluated::from(Value::I64(lcm(left, right))))
+        }
+    }
+}
+
+fn gcd(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
     }
 }
