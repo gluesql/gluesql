@@ -15,6 +15,9 @@ pub enum LiteralError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
 
+    #[error("the divisor should not be zero")]
+    DivisorShouldNotBeZero,
+
     #[error("literal unary operation on non-numeric")]
     UnaryOperationOnNonNumeric,
 
@@ -233,9 +236,17 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Number(l), Number(r)) => {
                 if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    Ok(Number(Cow::Owned((l / r).to_string())))
+                    if r == 0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l / r).to_string())))
+                    }
                 } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    Ok(Number(Cow::Owned((l / r).to_string())))
+                    if r == 0.0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l / r).to_string())))
+                    }
                 } else {
                     Err(LiteralError::UnreachableBinaryArithmetic.into())
                 }
