@@ -302,6 +302,62 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
+        .map(Evaluated::from),
+        Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
+            let name = if matches!(func, Function::Lpad { .. }) {
+                "LPAD"
+            } else {
+                "RPAD"
+            };
+
+            let string = match eval_to_str(expr).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            let size = match eval(size).await?.try_into()? {
+                Value::I64(number) => usize::try_from(number)
+                    .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()))?,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into());
+                }
+            };
+
+
+            let fill = match fill {
+                Some(expr) => {
+                    match eval_to_str(expr).await? {
+                        Nullable::Value(v) => v,
+                        Nullable::Null => {
+                            return Ok(Evaluated::from(Value::Null));
+                        }
+                    }
+                },
+                None => " ".to_string(),
+            };
+
+            let result = if size > string.len() {
+                let padding_size = size - string.len();
+                let repeat_count = padding_size / fill.len();
+                let plus_count = padding_size % fill.len();
+                let fill = fill.repeat(repeat_count) + &fill[0..plus_count];
+
+                if name == "LPAD" {
+                    fill + &string
+                } else {
+                    string + &fill
+                }
+            } else {
+                string[0..size].to_string()
+            };
+
+            Ok(Evaluated::from(Value::Str(result)))
+        }
         Function::Ceil(expr) => match eval_to_float(expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.ceil())),
             Nullable::Null => Ok(Value::Null),
