@@ -239,7 +239,8 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
     let eval_to_integer = |name: &'static str, expr| async move {
         match eval(expr).await?.try_into()? {
-            Value::I64(number) => Ok(number),
+            Value::I64(number) => Ok(Nullable::Value(number)),
+            Value::Null => Ok(Nullable::Null),
             _ => {
                 Err::<_, Error>(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into())
             }
@@ -367,8 +368,18 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         Function::Gcd { left, right } => {
             let name = "Gcd";
-            let left = eval_to_integer(name, left).await?;
-            let right = eval_to_integer(name, right).await?;
+            let left = match eval_to_integer(name, left).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let right = match eval_to_integer(name, right).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
 
             fn gcd(a: i64, b: i64) -> i64 {
                 if b == 0 {
