@@ -237,11 +237,12 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
-    let eval_to_f64 = |name: &'static str, expr| async move {
+    let eval_to_integer = |name: &'static str, expr| async move {
         match eval(expr).await?.try_into()? {
-            Value::F64(number) => Ok(number),
-            Value::I64(number) => Ok(number as f64),
-            _ => Err::<_, Error>(EvaluateError::FunctionRequiresF64Value(name.to_owned()).into()),
+            Value::I64(number) => Ok(number),
+            _ => {
+                Err::<_, Error>(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into())
+            }
         }
     };
 
@@ -366,18 +367,18 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         Function::Gcd { left, right } => {
             let name = "Gcd";
-            let left = eval_to_f64(name, left).await?;
-            let right = eval_to_f64(name, right).await?;
+            let left = eval_to_integer(name, left).await?;
+            let right = eval_to_integer(name, right).await?;
 
-            fn gcd(a: f64, b: f64) -> f64 {
-                if b == 0.0 {
+            fn gcd(a: i64, b: i64) -> i64 {
+                if b == 0 {
                     a
                 } else {
                     gcd(b, a % b)
                 }
             }
 
-            Ok(Evaluated::from(Value::F64(gcd(left, right))))
+            Ok(Evaluated::from(Value::I64(gcd(left, right))))
         }
     }
 }
