@@ -271,6 +271,26 @@ impl<'a> Literal<'a> {
         }
     }
 
+    pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
+                    Ok(Number(Cow::Owned((l % r).to_string())))
+                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
+                    Ok(Number(Cow::Owned((l % r).to_string())))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
     pub fn like(&self, other: &Literal<'a>) -> Result<Self> {
         match (self, other) {
             (Text(l), Text(r)) => l.like(r).map(Boolean),
