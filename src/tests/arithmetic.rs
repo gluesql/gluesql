@@ -44,6 +44,11 @@ test_case!(arithmetic, async move {
         (5, "SELECT * FROM Arith WHERE id > id / 2;"),
         (3, "SELECT * FROM Arith WHERE id > num / id;"),
         (2, "SELECT * FROM Arith WHERE 10 / id = 2;"),
+        // modulo on WHERE
+        (1, "SELECT * FROM Arith WHERE id = 5 % 2;"),
+        (5, "SELECT * FROM Arith WHERE id > num % id;"),
+        (1, "SELECT * FROM Arith WHERE num % id > 2;"),
+        (2, "SELECT * FROM Arith WHERE num % 3 < 2 % id;"),
         // etc
         (1, "SELECT * FROM Arith WHERE 1 + 1 = id;"),
         (5, "UPDATE Arith SET id = id + 1;"),
