@@ -4,10 +4,7 @@ test_case!(lpad_rpad, async move {
     use Value::Str;
 
     let test_cases = vec![
-        (
-            "CREATE TABLE Item (name TEXT)",
-            Ok(Payload::Create),
-        ),
+        ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
             r#"INSERT INTO Item VALUES ("hello")"#,
             Ok(Payload::Insert(1)),
@@ -90,4 +87,3 @@ test_case!(lpad_rpad, async move {
         test!(expected, sql);
     }
 });
-

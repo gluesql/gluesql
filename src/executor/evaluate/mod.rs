@@ -328,7 +328,6 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
 
-
             let fill = match fill {
                 Some(expr) => {
                     match eval_to_str(expr).await? {
