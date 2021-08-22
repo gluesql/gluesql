@@ -16,8 +16,6 @@ mod literal;
 mod unique_key;
 
 pub use error::ValueError;
-use rust_decimal::prelude::FromPrimitive;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
