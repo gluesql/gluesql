@@ -295,20 +295,6 @@ impl Value {
             _ => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
         }
     }
-
-    pub fn parse_float_number(&self) -> Option<f64> {
-        use Value::*;
-
-        match self {
-            F64(v) => Some(*v),
-            I64(v) => f64::from_i64(*v),
-            Str(v) => match f64::from_str(v) {
-                Ok(f) => Some(f),
-                Err(_) => None,
-            },
-            _ => None,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -621,29 +607,5 @@ mod tests {
         assert_eq!(a.concat(&F64(1.0)), Str("A1".to_owned()));
         assert_eq!(I64(2).concat(&I64(1)), Str("21".to_owned()));
         matches!(a.concat(&Null), Null);
-    }
-
-    #[test]
-    fn parse_float_number() {
-        use chrono::{NaiveDate, NaiveTime};
-
-        assert_eq!(I64(2).parse_float_number(), Some(2.0_f64));
-        assert_eq!(F64(2.0).parse_float_number(), Some(2.0_f64));
-        assert_eq!(Str("2".to_owned()).parse_float_number(), Some(2.0_f64));
-        assert_eq!(Str("NotNumber".to_owned()).parse_float_number(), None);
-        assert_eq!(
-            Date(NaiveDate::from_ymd(2021, 8, 16)).parse_float_number(),
-            None
-        );
-        assert_eq!(
-            Timestamp(NaiveDate::from_ymd(2021, 8, 16).and_hms(0, 0, 0)).parse_float_number(),
-            None
-        );
-        assert_eq!(
-            Time(NaiveTime::from_hms(6, 1, 1)).parse_float_number(),
-            None
-        );
-        assert_eq!(Interval(Interval::hours(5)).parse_float_number(), None);
-        assert_eq!(Null.parse_float_number(), None);
     }
 }
