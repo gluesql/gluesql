@@ -233,7 +233,6 @@ impl<'a> Literal<'a> {
     }
 
     pub fn divide<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
-        use super::Interval as I;
         match (self, other) {
             (Number(l), Number(r)) => {
                 if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
@@ -248,18 +247,6 @@ impl<'a> Literal<'a> {
                     } else {
                         Ok(Number(Cow::Owned((l / r).to_string())))
                     }
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
-            (Number(l), Interval(r)) => {
-                if (r == &I::Microsecond(0)) | (r == &I::Month(0)) {
-                    return Err(LiteralError::DivisorShouldNotBeZero.into());
-                }
-                if let Ok(l) = l.parse::<i64>() {
-                    Ok(Interval(l / *r))
-                } else if let Ok(l) = l.parse::<f64>() {
-                    Ok(Interval(l / *r))
                 } else {
                     Err(LiteralError::UnreachableBinaryArithmetic.into())
                 }
@@ -281,11 +268,9 @@ impl<'a> Literal<'a> {
                     Err(LiteralError::UnreachableBinaryArithmetic.into())
                 }
             }
-            (Null, Number(_))
-            | (Null, Interval(_))
-            | (Number(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_)) | (Number(_), Null) | (Interval(_), Null) | (Null, Null) => {
+                Ok(Literal::Null)
+            }
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),
                 format!("{:?}", other),
@@ -361,19 +346,15 @@ mod tests {
         }
 
         let num_divisor = |x: &str| Number(Cow::Owned(x.to_owned()));
-        let itv_divisor = |x: i64| Interval(I::Microsecond(x));
 
         assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
         assert_eq!(num!("12").divide(&num_divisor("2.0")).unwrap(), num!("6"));
-        assert_eq!(num!("12").divide(&itv_divisor(2)).unwrap(), itv!(6));
         assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
         assert_eq!(num!("12.0").divide(&num_divisor("2.0")).unwrap(), num!("6"));
-        assert_eq!(num!("12.0").divide(&itv_divisor(2)).unwrap(), itv!(6));
         assert_eq!(itv!(12).divide(&num_divisor("2")).unwrap(), itv!(6));
         assert_eq!(itv!(12).divide(&num_divisor("2.0")).unwrap(), itv!(6));
         matches!(num!("12").divide(&Null).unwrap(), Null);
         matches!(itv!(12).divide(&Null).unwrap(), Null);
-        matches!(Null.divide(&itv_divisor(2)).unwrap(), Null);
         matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
         matches!(Null.divide(&Null).unwrap(), Null);
     }
