@@ -105,11 +105,49 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .map(Box::new)
                 .map(Expr::Function)
         }
+        "GCD" => {
+            check_len(name, args.len(), 2)?;
+
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Gcd { left, right })))
+        }
+        "LCM" => {
+            check_len(name, args.len(), 2)?;
+
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
+        }
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
         "MAX" => aggr!(Aggregate::Max),
         "TRIM" => func_with_one_arg!(Function::Trim),
+        "DIV" => {
+            check_len(name, args.len(), 2)?;
+
+            let dividend = translate_expr(args[0])?;
+            let divisor = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Div {
+                dividend,
+                divisor,
+            })))
+        }
+        "MOD" => {
+            check_len(name, args.len(), 2)?;
+
+            let dividend = translate_expr(args[0])?;
+            let divisor = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Mod {
+                dividend,
+                divisor,
+            })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

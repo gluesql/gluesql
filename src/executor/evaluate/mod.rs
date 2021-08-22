@@ -228,12 +228,22 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
-    let eval_to_float = |name: &'a str, expr| async move {
+    let eval_to_float = |name: &'static str, expr| async move {
         match eval(expr).await?.try_into()? {
             Value::I64(v) => Ok(Nullable::Value(v as f64)),
             Value::F64(v) => Ok(Nullable::Value(v)),
             Value::Null => Ok(Nullable::Null),
             _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
+        }
+    };
+
+    let eval_to_integer = |name: &'static str, expr| async move {
+        match eval(expr).await?.try_into()? {
+            Value::I64(number) => Ok(Nullable::Value(number)),
+            Value::Null => Ok(Nullable::Null),
+            _ => {
+                Err::<_, Error>(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into())
+            }
         }
     };
 
@@ -326,5 +336,97 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             }
             .map(Evaluated::from)
         }
+        Function::Div { dividend, divisor } | Function::Mod { dividend, divisor } => {
+            let name = if matches!(func, Function::Div { .. }) {
+                "DIV"
+            } else {
+                "MOD"
+            };
+
+            let dividend = match eval(dividend).await?.try_into()? {
+                Value::F64(number) => number,
+                Value::I64(number) => number as f64,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        name.to_owned(),
+                    )
+                    .into());
+                }
+            };
+
+            let divisor = match eval(divisor).await?.try_into()? {
+                Value::F64(number) => match number {
+                    x if x == 0.0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    _ => number,
+                },
+                Value::I64(number) => match number {
+                    0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    _ => number as f64,
+                },
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        name.to_owned(),
+                    )
+                    .into());
+                }
+            };
+
+            match name {
+                "DIV" => Ok(Evaluated::from(Value::I64((dividend / divisor) as i64))),
+                _ => Ok(Evaluated::from(Value::F64(dividend % divisor))),
+            }
+        }
+        Function::Gcd { left, right } => {
+            let name = "Gcd";
+            let left = match eval_to_integer(name, left).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let right = match eval_to_integer(name, right).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            Ok(Evaluated::from(Value::I64(gcd(left, right))))
+        }
+        Function::Lcm { left, right } => {
+            let name = "Lcm";
+            let left = match eval_to_integer(name, left).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let right = match eval_to_integer(name, right).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            fn lcm(a: i64, b: i64) -> i64 {
+                a * b / gcd(a, b)
+            }
+
+            Ok(Evaluated::from(Value::I64(lcm(left, right))))
+        }
+    }
+}
+
+fn gcd(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
     }
 }

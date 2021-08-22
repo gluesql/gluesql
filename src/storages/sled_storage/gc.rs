@@ -8,10 +8,25 @@ use {
         data::{Row, Schema},
         result::Result,
     },
+    std::time::{SystemTime, UNIX_EPOCH},
 };
 
 impl SledStorage {
     pub fn gc(&self) -> Result<()> {
+        let mut lock: Lock = self
+            .tree
+            .get("lock/")
+            .map_err(err_into)?
+            .map(|l| bincode::deserialize(&l))
+            .transpose()
+            .map_err(err_into)?
+            .unwrap_or_default();
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(err_into)?
+            .as_millis();
+
         let txids = self
             .tree
             .scan_prefix("tx_data/")
@@ -20,9 +35,19 @@ impl SledStorage {
                     .map_err(err_into)?
                     .map_err(err_into)
             })
-            .take_while(|tx_data| match tx_data {
-                Ok(TxData { alive, .. }) => !alive,
-                Err(_) => false,
+            .take_while(|tx_data| match (tx_data, self.tx_timeout) {
+                (Ok(TxData { alive, .. }), None) => !alive,
+                (Ok(tx_data), Some(tx_timeout)) => {
+                    let TxData {
+                        txid,
+                        alive,
+                        created_at,
+                    } = tx_data;
+
+                    (!alive || now - created_at >= tx_timeout)
+                        && Some(txid) != lock.lock_txid.as_ref()
+                }
+                (Err(_), _) => false,
             })
             .map(|tx_data| tx_data.map(|TxData { txid, .. }| txid))
             .collect::<Result<Vec<u64>>>()?;
@@ -34,19 +59,7 @@ impl SledStorage {
             }
         };
 
-        let Lock { lock_txid, .. } = self
-            .tree
-            .get("lock/")
-            .map_err(err_into)?
-            .map(|l| bincode::deserialize(&l))
-            .transpose()
-            .map_err(err_into)?
-            .unwrap_or_default();
-
-        let lock = Lock {
-            lock_txid,
-            gc_txid: Some(*max_txid),
-        };
+        lock.gc_txid = Some(*max_txid);
 
         bincode::serialize(&lock)
             .map(|lock| self.tree.insert("lock/", lock))

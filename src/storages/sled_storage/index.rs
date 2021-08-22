@@ -83,15 +83,17 @@ impl Index<IVec> for SledStorage {
             }
         };
 
-        let txid = match self.state {
-            State::Transaction { txid, .. } => txid,
+        let (txid, created_at) = match self.state {
+            State::Transaction {
+                txid, created_at, ..
+            } => (txid, created_at),
             State::Idle => {
                 return Err(Error::StorageMsg(
                     "conflict - scan_indexed_data failed, lock does not exist".to_owned(),
                 ));
             }
         };
-        let lock_txid = lock::fetch(&self.tree, txid)?;
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
         let tree = self.tree.clone();
         let flat_map = move |keys: Result<IVec>| {

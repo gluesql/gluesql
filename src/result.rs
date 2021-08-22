@@ -5,9 +5,11 @@ use {
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
             UpdateError, ValidateError,
         },
+        store::{GStore, GStoreMut},
         translate::TranslateError,
     },
     serde::Serialize,
+    std::fmt::Debug,
     thiserror::Error as ThisError,
 };
 
@@ -100,6 +102,22 @@ impl PartialEq for Error {
             (Interval(e), Interval(e2)) => e == e2,
             (StringExt(e), StringExt(e2)) => e == e2,
             _ => false,
+        }
+    }
+}
+
+pub trait TrySelf<V>
+where
+    Self: Sized,
+{
+    fn try_self<T: Debug, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V>;
+}
+
+impl<V> TrySelf<V> for Result<V> {
+    fn try_self<T: Debug, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V> {
+        match self {
+            Ok(v) => Ok((storage, v)),
+            Err(e) => Err((storage, e)),
         }
     }
 }

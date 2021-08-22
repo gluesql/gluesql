@@ -1,21 +1,18 @@
-use std::str;
-use thiserror::Error as ThisError;
+use {
+    crate::{Error, IndexError},
+    sled::transaction::TransactionError as SledTransactionError,
+    std::{str, time},
+    thiserror::Error as ThisError,
+};
 
 #[cfg(feature = "alter-table")]
 use crate::AlterTableError;
-
-#[cfg(feature = "index")]
-use crate::IndexError;
-
-use crate::Error;
 
 #[derive(ThisError, Debug)]
 pub enum StorageError {
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
-
-    #[cfg(feature = "index")]
     #[error(transparent)]
     Index(#[from] IndexError),
 
@@ -25,6 +22,8 @@ pub enum StorageError {
     Bincode(#[from] bincode::Error),
     #[error(transparent)]
     Str(#[from] str::Utf8Error),
+    #[error(transparent)]
+    SystemTime(#[from] time::SystemTimeError),
 }
 
 impl From<StorageError> for Error {
@@ -35,11 +34,10 @@ impl From<StorageError> for Error {
             Sled(e) => Error::Storage(Box::new(e)),
             Bincode(e) => Error::Storage(e),
             Str(e) => Error::Storage(Box::new(e)),
+            SystemTime(e) => Error::Storage(Box::new(e)),
 
             #[cfg(feature = "alter-table")]
             AlterTable(e) => e.into(),
-
-            #[cfg(feature = "index")]
             Index(e) => e.into(),
         }
     }
@@ -53,4 +51,11 @@ where
     let e: Error = e.into();
 
     e
+}
+
+pub fn tx_err_into(e: SledTransactionError<Error>) -> Error {
+    match e {
+        SledTransactionError::Abort(e) => e,
+        SledTransactionError::Storage(e) => StorageError::Sled(e).into(),
+    }
 }
