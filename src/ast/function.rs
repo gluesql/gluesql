@@ -36,6 +36,10 @@ impl Function {
             Function::Round(_) => "ROUND",
             Function::Floor(_) => "FLOOR",
             Function::Trim(_) => "TRIM",
+            Function::Div { .. } => "DIV",
+            Function::Mod { .. } => "MOD",
+            Function::Gcd { .. } => "GCD",
+            Function::Lcm { .. } => "LCM",
         }
     }
 }
