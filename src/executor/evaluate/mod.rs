@@ -22,7 +22,6 @@ use {
     },
 };
 
-use crate::ast::DataType;
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
@@ -229,7 +228,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
-    let eval_to_float = |name: &'static str, expr| async move {
+    let eval_to_float = |name: &'a str, expr| async move {
         match eval(expr).await?.try_into()? {
             Value::I64(v) => Ok(Nullable::Value(v as f64)),
             Value::F64(v) => Ok(Nullable::Value(v)),
@@ -312,30 +311,20 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         .map(Evaluated::from),
         Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
-            let eval_to_float = |name: &'a str, expr| async move {
-                match eval(expr).await?.cast(&DataType::Float) {
-                    Ok(v) => match v.try_into_value(&DataType::Float, false) {
-                        Ok(f) => Ok(f.parse_float_number()),
-                        _ => Err::<_, Error>(
-                            EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into(),
-                        ),
-                    },
-                    _ => Err::<_, Error>(
-                        EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into(),
-                    ),
-                }
+            let float_number = eval_to_float(func.name(), expr).await?;
+
+            let trigonometric = |func, value| match func {
+                Function::Sin(_) => f64::sin(value),
+                Function::Cos(_) => f64::cos(value),
+                Function::Tan(_) => f64::tan(value),
+                _ => panic!("Unexpected function: {:?}", func.name()),
             };
 
-            let name = func.name();
-            let float_number = eval_to_float(name, expr).await?;
-
             match float_number {
-                Some(v) => match func.trigonometric(v) {
-                    Some(result) => Ok(Evaluated::from(Value::F64(result))),
-                    _ => Err(EvaluateError::UnsupportedFunctionExpr(expr.to_owned()).into()),
-                },
-                None => Err(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
+                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
+                Nullable::Null => Ok(Value::Null),
             }
+            .map(Evaluated::from)
         }
     }
 }

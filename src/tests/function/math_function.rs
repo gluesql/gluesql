@@ -13,75 +13,27 @@ test_case!(sin, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT SIN(0.5) AS sin FROM SingleItem",
+            "SELECT SIN(0.5) AS sin1, SIN(1) AS sin2 FROM SingleItem",
             Ok(select!(
-                "sin";
-                F64;
-                0.5_f64.sin()
+                "sin1"          | "sin2"
+                F64             | F64;
+                0.5_f64.sin()     1.0_f64.sin()
             )),
-        ),
-        (
-            "SELECT SIN(1) AS sin FROM SingleItem",
-            Ok(select!(
-                "sin";
-                F64;
-                1.0_f64.sin()
-            )),
-        ),
-        (
-            "SELECT SIN(-1) AS sin FROM SingleItem",
-            Ok(select!(
-                "sin";
-                F64;
-                (-1.0_f64).sin()
-            )),
-        ),
-        (
-            "SELECT SIN(0.976543125) AS sin FROM SingleItem",
-            Ok(select!(
-                "sin";
-                F64;
-                0.976543125_f64.sin()
-            )),
-        ),
-        (
-            "SELECT SIN(3) AS sin FROM SingleItem",
-            Ok(select!(
-                "sin";
-                F64;
-                3_f64.sin()
-            )),
-        ),
-        (
-            "SELECT SIN('3.15') AS sin FROM SingleItem",
-            Ok(select!(
-                "sin";
-                F64;
-                3.15_f64.sin()
-            )),
-        ),
-        (
-            "SELECT SIN(true) AS sin FROM SingleItem",
-            Ok(select!(
-                "sin";
-                F64;
-                1.0_f64.sin()
-            )),
-        ),
-        (
-            "SELECT SIN(false) AS sin FROM SingleItem",
-            Ok(select!(
-                "sin";
-                F64;
-                0.0_f64.sin()
-            )),
-        ),
-        (
-            "SELECT SIN('string') AS sin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
         ),
         (
             "SELECT SIN(null) AS sin FROM SingleItem",
+            Ok(select_with_null!(sin; Value::Null)),
+        ),
+        (
+            "SELECT SIN(true) AS sin FROM SingleItem",
+            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
+        ),
+        (
+            "SELECT SIN(false) AS sin FROM SingleItem",
+            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
+        ),
+        (
+            "SELECT SIN('string') AS sin FROM SingleItem",
             Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
         ),
         (
@@ -122,75 +74,27 @@ test_case!(cos, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT COS(0.5) AS cos FROM SingleItem",
+            "SELECT COS(0.5) AS cos1, COS(1) AS cos2 FROM SingleItem",
             Ok(select!(
-                "cos";
-                F64;
-                0.5_f64.cos()
+                "cos1"          | "cos2"
+                F64             | F64;
+                0.5_f64.cos()   1.0_f64.cos()
             )),
-        ),
-        (
-            "SELECT COS(1) AS cos FROM SingleItem",
-            Ok(select!(
-                "cos";
-                F64;
-                1.0_f64.cos()
-            )),
-        ),
-        (
-            "SELECT COS(-1) AS cos FROM SingleItem",
-            Ok(select!(
-                "cos";
-                F64;
-                (-1.0_f64).cos()
-            )),
-        ),
-        (
-            "SELECT COS(0.976543125) AS cos FROM SingleItem",
-            Ok(select!(
-                "cos";
-                F64;
-                0.976543125_f64.cos()
-            )),
-        ),
-        (
-            "SELECT COS(3) AS cos FROM SingleItem",
-            Ok(select!(
-                "cos";
-                F64;
-                3_f64.cos()
-            )),
-        ),
-        (
-            "SELECT COS('3.15') AS cos FROM SingleItem",
-            Ok(select!(
-                "cos";
-                F64;
-                3.15_f64.cos()
-            )),
-        ),
-        (
-            "SELECT COS(true) AS cos FROM SingleItem",
-            Ok(select!(
-                "cos";
-                F64;
-                1.0_f64.cos()
-            )),
-        ),
-        (
-            "SELECT COS(false) AS cos FROM SingleItem",
-            Ok(select!(
-                "cos";
-                F64;
-                0.0_f64.cos()
-            )),
-        ),
-        (
-            "SELECT COS('string') AS cos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
         ),
         (
             "SELECT COS(null) AS cos FROM SingleItem",
+            Ok(select_with_null!(cos; Value::Null)),
+        ),
+        (
+            "SELECT COS(true) AS cos FROM SingleItem",
+            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
+        ),
+        (
+            "SELECT COS(false) AS cos FROM SingleItem",
+            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
+        ),
+        (
+            "SELECT COS('string') AS cos FROM SingleItem",
             Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
         ),
         (
@@ -231,75 +135,27 @@ test_case!(tan, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT TAN(0.5) AS tan FROM SingleItem",
+            "SELECT TAN(0.5) AS tan1, TAN(1) AS tan2 FROM SingleItem",
             Ok(select!(
-                "tan";
-                F64;
-                0.5_f64.tan()
+                "tan1"          | "tan2"
+                F64             | F64;
+                0.5_f64.tan()   1.0_f64.tan()
             )),
-        ),
-        (
-            "SELECT TAN(1) AS tan FROM SingleItem",
-            Ok(select!(
-                "tan";
-                F64;
-                1.0_f64.tan()
-            )),
-        ),
-        (
-            "SELECT TAN(-1) AS tan FROM SingleItem",
-            Ok(select!(
-                "tan";
-                F64;
-                (-1.0_f64).tan()
-            )),
-        ),
-        (
-            "SELECT TAN(0.976543125) AS tan FROM SingleItem",
-            Ok(select!(
-                "tan";
-                F64;
-                0.976543125_f64.tan()
-            )),
-        ),
-        (
-            "SELECT TAN(3) AS tan FROM SingleItem",
-            Ok(select!(
-                "tan";
-                F64;
-                3_f64.tan()
-            )),
-        ),
-        (
-            "SELECT TAN('3.15') AS tan FROM SingleItem",
-            Ok(select!(
-                "tan";
-                F64;
-                3.15_f64.tan()
-            )),
-        ),
-        (
-            "SELECT TAN(true) AS tan FROM SingleItem",
-            Ok(select!(
-                "tan";
-                F64;
-                1.0_f64.tan()
-            )),
-        ),
-        (
-            "SELECT TAN(false) AS tan FROM SingleItem",
-            Ok(select!(
-                "tan";
-                F64;
-                0.0_f64.tan()
-            )),
-        ),
-        (
-            "SELECT TAN('string') AS tan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
         ),
         (
             "SELECT TAN(null) AS tan FROM SingleItem",
+            Ok(select_with_null!(tan; Value::Null)),
+        ),
+        (
+            "SELECT TAN(true) AS tan FROM SingleItem",
+            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
+        ),
+        (
+            "SELECT TAN(false) AS tan FROM SingleItem",
+            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
+        ),
+        (
+            "SELECT TAN('string') AS tan FROM SingleItem",
             Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
         ),
         (

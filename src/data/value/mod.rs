@@ -333,7 +333,7 @@ mod tests {
             Time(NaiveTime::from_hms(12, 30, 11)),
             Time(NaiveTime::from_hms(12, 30, 11))
         );
-        
+
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
 
