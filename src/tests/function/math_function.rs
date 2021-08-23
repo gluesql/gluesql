@@ -4,10 +4,7 @@ test_case!(sin, async move {
     use Value::F64;
 
     let test_cases = vec![
-        (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
-            Ok(Payload::Create),
-        ),
+        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),
@@ -65,10 +62,7 @@ test_case!(cos, async move {
     use Value::F64;
 
     let test_cases = vec![
-        (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
-            Ok(Payload::Create),
-        ),
+        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),
@@ -126,10 +120,7 @@ test_case!(tan, async move {
     use Value::F64;
 
     let test_cases = vec![
-        (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
-            Ok(Payload::Create),
-        ),
+        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),
