@@ -305,8 +305,6 @@ mod tests {
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
-        assert_eq!(mon(14).divide(&num(3)), Ok(mon(4)));
-        assert_eq!(num(27).divide(&mon(9)), Ok(mon(3)));
     }
 
     #[test]
