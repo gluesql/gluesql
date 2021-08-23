@@ -70,7 +70,9 @@ mod tests {
             Ok(Payload::DropTable)
         );
         assert_eq!(
-            glue.execute("CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"),
+            glue.execute(
+                "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
+            ),
             Ok(Payload::Create)
         );
         assert_eq!(

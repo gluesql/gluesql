@@ -9,10 +9,7 @@ test_case!(left_right, async move {
             r#"INSERT INTO Item VALUES ("Blop mc blee"), ("B"), ("Steven the &long named$ folken!")"#,
             Ok(Payload::Insert(3)),
         ),
-        (
-            "CREATE TABLE SingleItem (id INTEGER)",
-            Ok(Payload::Create),
-        ),
+        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),

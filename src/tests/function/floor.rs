@@ -4,10 +4,7 @@ test_case!(floor, async move {
     use Value::{Null, F64};
 
     let test_cases = vec![
-        (
-            "CREATE TABLE SingleItem (id INTEGER)",
-            Ok(Payload::Create),
-        ),
+        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),
