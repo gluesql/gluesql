@@ -5,7 +5,7 @@ test_case!(sin, async move {
 
     let test_cases = vec![
         (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE SingleItem (id INTEGER)",
             Ok(Payload::Create),
         ),
         (
@@ -66,7 +66,7 @@ test_case!(cos, async move {
 
     let test_cases = vec![
         (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE SingleItem (id INTEGER)",
             Ok(Payload::Create),
         ),
         (
@@ -127,7 +127,7 @@ test_case!(tan, async move {
 
     let test_cases = vec![
         (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE SingleItem (id INTEGER)",
             Ok(Payload::Create),
         ),
         (

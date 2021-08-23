@@ -10,7 +10,7 @@ test_case!(left_right, async move {
             Ok(Payload::Insert(3)),
         ),
         (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE SingleItem (id INTEGER)",
             Ok(Payload::Create),
         ),
         (
