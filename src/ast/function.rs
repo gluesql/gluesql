@@ -1,47 +1,41 @@
 use {
     super::Expr,
     serde::{Deserialize, Serialize},
+    strum_macros::Display,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
 pub enum Function {
+    #[strum(to_string = "LOWER")]
     Lower(Expr),
+    #[strum(to_string = "UPPER")]
     Upper(Expr),
+    #[strum(to_string = "LEFT")]
     Left { expr: Expr, size: Expr },
+    #[strum(to_string = "RIGHT")]
     Right { expr: Expr, size: Expr },
+    #[strum(to_string = "CEIL")]
     Ceil(Expr),
+    #[strum(to_string = "ROUND")]
     Round(Expr),
+    #[strum(to_string = "FLOOR")]
     Floor(Expr),
+    #[strum(to_string = "TRIM")]
     Trim(Expr),
+    #[strum(to_string = "DIV")]
     Div { dividend: Expr, divisor: Expr },
+    #[strum(to_string = "MOD")]
     Mod { dividend: Expr, divisor: Expr },
+    #[strum(to_string = "GCD")]
     Gcd { left: Expr, right: Expr },
+    #[strum(to_string = "LCM")]
     Lcm { left: Expr, right: Expr },
+    #[strum(to_string = "SIN")]
     Sin(Expr),
+    #[strum(to_string = "COS")]
     Cos(Expr),
+    #[strum(to_string = "TAN")]
     Tan(Expr),
-}
-
-impl Function {
-    pub fn name(&self) -> &str {
-        match self {
-            Function::Lower(_) => "LOWER",
-            Function::Upper(_) => "UPPER",
-            Function::Left { .. } => "LEFT",
-            Function::Right { .. } => "RIGHT",
-            Function::Sin(_) => "SIN",
-            Function::Cos(_) => "COS",
-            Function::Tan(_) => "TAN",
-            Function::Ceil(_) => "CEIL",
-            Function::Round(_) => "ROUND",
-            Function::Floor(_) => "FLOOR",
-            Function::Trim(_) => "TRIM",
-            Function::Div { .. } => "DIV",
-            Function::Mod { .. } => "MOD",
-            Function::Gcd { .. } => "GCD",
-            Function::Lcm { .. } => "LCM",
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

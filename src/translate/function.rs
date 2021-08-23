@@ -81,30 +81,9 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "CEIL" => func_with_one_arg!(Function::Ceil),
         "ROUND" => func_with_one_arg!(Function::Round),
         "FLOOR" => func_with_one_arg!(Function::Floor),
-        "SIN" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Sin)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
-        "COS" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Cos)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
-        "TAN" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Tan)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
+        "SIN" => func_with_one_arg!(Function::Sin),
+        "COS" => func_with_one_arg!(Function::Cos),
+        "TAN" => func_with_one_arg!(Function::Tan),
         "GCD" => {
             check_len(name, args.len(), 2)?;
 
