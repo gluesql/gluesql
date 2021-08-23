@@ -26,6 +26,7 @@
 //!         "INSERT INTO Glue VALUES (200);",
 //!         "SELECT * FROM Glue WHERE id > 100;",
 //!     ];
+//!
 //!     for sql in sqls {
 //!         let output = glue.execute(sql).unwrap();
 //!         println!("{:?}", output)
@@ -39,17 +40,18 @@
 //! ## Custom Storage
 //! To get started, all you need to implement for `gluesql` is implementing three traits
 //! (two for functions, one running tests).
-//! There are also three optional traits (`AlterTable`, `Index` and `IndexMut`),
+//! There are also three optional traits (`AlterTable`, `Index`, `IndexMut`, and `Transaction`),
 //! whether implementing it or not is all up to you.
 //!
 //! ### Store traits
 //! * [Store](store/trait.Store.html)
 //! * [StoreMut](store/trait.StoreMut.html)
 //!
-//! ### Store traits (optional)
+//! ### Optional Store traits
 //! * [AlterTable](store/trait.AlterTable.html)
 //! * [Index](store/trait.Index.html)
 //! * [IndexMut](store/trait.IndexMut.html)
+//! * [Transaction](store/trait.Transaction.html)
 //!
 //! ### Trait to run integration tests
 //! * [Tester](tests/trait.Tester.html)
