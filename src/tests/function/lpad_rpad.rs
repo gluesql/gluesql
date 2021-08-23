@@ -9,12 +9,18 @@ test_case!(lpad_rpad, async move {
             r#"INSERT INTO Item VALUES ("hello")"#,
             Ok(Payload::Insert(1)),
         ),
-        ("CREATE TABLE NullName (name TEXT NULL)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE NullName (name TEXT NULL)",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO NullName VALUES (NULL)"#,
             Ok(Payload::Insert(1)),
         ),
-        ("CREATE TABLE NullNumber (number INTEGER NULL)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE NullNumber (number INTEGER NULL)",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO NullNumber VALUES (NULL)"#,
             Ok(Payload::Insert(1)),

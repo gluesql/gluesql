@@ -329,12 +329,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             let fill = match fill {
-                Some(expr) => {
-                    match eval_to_str(expr).await? {
-                        Nullable::Value(v) => v,
-                        Nullable::Null => {
-                            return Ok(Evaluated::from(Value::Null));
-                        }
+                Some(expr) => match eval_to_str(expr).await? {
+                    Nullable::Value(v) => v,
+                    Nullable::Null => {
+                        return Ok(Evaluated::from(Value::Null));
                     }
                 },
                 None => " ".to_string(),

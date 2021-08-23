@@ -15,9 +15,17 @@ pub enum Function {
     #[strum(to_string = "RIGHT")]
     Right { expr: Expr, size: Expr },
     #[strum(to_string = "LPAD")]
-    Lpad { expr: Expr, size: Expr, fill: Option<Expr> },
+    Lpad {
+        expr: Expr,
+        size: Expr,
+        fill: Option<Expr>,
+    },
     #[strum(to_string = "RPAD")]
-    Rpad { expr: Expr, size: Expr, fill: Option<Expr> },
+    Rpad {
+        expr: Expr,
+        size: Expr,
+        fill: Option<Expr>,
+    },
     #[strum(to_string = "CEIL")]
     Ceil(Expr),
     #[strum(to_string = "ROUND")]
