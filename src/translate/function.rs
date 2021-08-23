@@ -81,6 +81,25 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "CEIL" => func_with_one_arg!(Function::Ceil),
         "ROUND" => func_with_one_arg!(Function::Round),
         "FLOOR" => func_with_one_arg!(Function::Floor),
+        "SIN" => func_with_one_arg!(Function::Sin),
+        "COS" => func_with_one_arg!(Function::Cos),
+        "TAN" => func_with_one_arg!(Function::Tan),
+        "GCD" => {
+            check_len(name, args.len(), 2)?;
+
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Gcd { left, right })))
+        }
+        "LCM" => {
+            check_len(name, args.len(), 2)?;
+
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
+        }
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
