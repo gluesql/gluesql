@@ -233,7 +233,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Value::I64(v) => Ok(Nullable::Value(v as f64)),
             Value::F64(v) => Ok(Nullable::Value(v)),
             Value::Null => Ok(Nullable::Null),
-            _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(func.to_string()).into()),
+            _ => {
+                Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(func.to_string()).into())
+            }
         }
     };
 
@@ -241,9 +243,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         match eval(expr).await?.try_into()? {
             Value::I64(number) => Ok(Nullable::Value(number)),
             Value::Null => Ok(Nullable::Null),
-            _ => {
-                Err::<_, Error>(EvaluateError::FunctionRequiresIntegerValue(func.to_string()).into())
-            }
+            _ => Err::<_, Error>(
+                EvaluateError::FunctionRequiresIntegerValue(func.to_string()).into(),
+            ),
         }
     };
 
