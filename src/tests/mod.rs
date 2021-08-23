@@ -69,6 +69,10 @@ macro_rules! generate_tests {
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
         glue!(function_floor, function::floor::floor);
+        glue!(function_ln, function::exp_log::ln);
+        glue!(function_log2, function::exp_log::log2);
+        glue!(function_log10, function::exp_log::log10);
+        glue!(function_exp, function::exp_log::exp);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);

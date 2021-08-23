@@ -375,6 +375,26 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+        Function::Exp(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.exp())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Ln(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.ln())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Log2(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.log2())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Log10(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.log10())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
         Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
             let float_number = eval_to_float(expr).await?;
 
