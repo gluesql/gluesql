@@ -228,6 +228,15 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
+    let eval_to_float = |name: &'static str, expr| async move {
+        match eval(expr).await?.try_into()? {
+            Value::I64(v) => Ok(Nullable::Value(v as f64)),
+            Value::F64(v) => Ok(Nullable::Value(v)),
+            Value::Null => Ok(Nullable::Null),
+            _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
+        }
+    };
+
     match func {
         Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
@@ -239,6 +248,44 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+
+        Function::Sqrt(expr) => match eval_to_float("SQRT", expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.sqrt())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+
+        Function::Power { expr, power } => {
+            let number = match eval(expr).await?.try_into()? {
+                Value::F64(number) => number,
+                Value::I64(number) => number as f64,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        "POWER".to_owned(),
+                    )
+                    .into());
+                }
+            };
+            let power = match eval(power).await?.try_into()? {
+                Value::F64(power) => power,
+                Value::I64(power) => power as f64,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        "POWER".to_owned(),
+                    )
+                    .into());
+                }
+            };
+
+            Ok(Evaluated::from(Value::F64(number.powf(power) as f64)))
+        }
+
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let name = if matches!(func, Function::Left { .. }) {
                 "LEFT"
