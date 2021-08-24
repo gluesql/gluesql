@@ -37,6 +37,20 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }
     };
 
+    let check_len_range = |name, found, expected_minimum, expected_maximum| -> Result<_> {
+        if found >= expected_minimum && found <= expected_maximum {
+            Ok(())
+        } else {
+            Err(TranslateError::FunctionArgsLengthNotWithinRange {
+                name,
+                expected_minimum,
+                expected_maximum,
+                found,
+            }
+            .into())
+        }
+    };
+
     macro_rules! aggr {
         ($aggregate: expr) => {{
             check_len(name, args.len(), 1)?;
@@ -48,23 +62,20 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }};
     }
 
+    macro_rules! func_with_one_arg {
+        ($func: expr) => {{
+            check_len(name, args.len(), 1)?;
+
+            translate_expr(args[0])
+                .map($func)
+                .map(Box::new)
+                .map(Expr::Function)
+        }};
+    }
+
     match name.as_str() {
-        "LOWER" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Lower)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
-        "UPPER" => {
-            check_len(name, args.len(), 1)?;
-
-            translate_expr(args[0])
-                .map(Function::Upper)
-                .map(Box::new)
-                .map(Expr::Function)
-        }
+        "LOWER" => func_with_one_arg!(Function::Lower),
+        "UPPER" => func_with_one_arg!(Function::Upper),
         "LEFT" => {
             check_len(name, args.len(), 2)?;
 
@@ -97,10 +108,93 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Power { expr, power })))
         }
+        "LPAD" => {
+            check_len_range(name, args.len(), 2, 3)?;
+
+            let expr = translate_expr(args[0])?;
+            let size = translate_expr(args[1])?;
+            let fill = if args.len() == 2 {
+                None
+            } else {
+                Some(translate_expr(args[2])?)
+            };
+
+            Ok(Expr::Function(Box::new(Function::Lpad {
+                expr,
+                size,
+                fill,
+            })))
+        }
+        "RPAD" => {
+            check_len_range(name, args.len(), 2, 3)?;
+
+            let expr = translate_expr(args[0])?;
+            let size = translate_expr(args[1])?;
+            let fill = if args.len() == 2 {
+                None
+            } else {
+                Some(translate_expr(args[2])?)
+            };
+
+            Ok(Expr::Function(Box::new(Function::Rpad {
+                expr,
+                size,
+                fill,
+            })))
+        }
+        "CEIL" => func_with_one_arg!(Function::Ceil),
+        "ROUND" => func_with_one_arg!(Function::Round),
+        "FLOOR" => func_with_one_arg!(Function::Floor),
+        "EXP" => func_with_one_arg!(Function::Exp),
+        "LN" => func_with_one_arg!(Function::Ln),
+        "LOG2" => func_with_one_arg!(Function::Log2),
+        "LOG10" => func_with_one_arg!(Function::Log10),
+        "SIN" => func_with_one_arg!(Function::Sin),
+        "COS" => func_with_one_arg!(Function::Cos),
+        "TAN" => func_with_one_arg!(Function::Tan),
+        "GCD" => {
+            check_len(name, args.len(), 2)?;
+
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Gcd { left, right })))
+        }
+        "LCM" => {
+            check_len(name, args.len(), 2)?;
+
+            let left = translate_expr(args[0])?;
+            let right = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
+        }
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
         "MAX" => aggr!(Aggregate::Max),
+        "TRIM" => func_with_one_arg!(Function::Trim),
+        "DIV" => {
+            check_len(name, args.len(), 2)?;
+
+            let dividend = translate_expr(args[0])?;
+            let divisor = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Div {
+                dividend,
+                divisor,
+            })))
+        }
+        "MOD" => {
+            check_len(name, args.len(), 2)?;
+
+            let dividend = translate_expr(args[0])?;
+            let divisor = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Mod {
+                dividend,
+                divisor,
+            })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

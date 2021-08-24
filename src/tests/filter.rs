@@ -130,7 +130,7 @@ test_case!(filter, async move {
         ),
     ];
 
-    for (error, sql) in error_sqls.into_iter() {
+    for (error, sql) in error_sqls {
         test!(Err(error), sql);
     }
 });

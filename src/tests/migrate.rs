@@ -43,7 +43,7 @@ test_case!(migrate, async move {
         ),
     ];
 
-    for (error, sql) in error_cases.into_iter() {
+    for (error, sql) in error_cases {
         test!(Err(error), sql);
     }
 

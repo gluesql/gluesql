@@ -16,7 +16,7 @@ pub enum EvaluateError {
     #[error("function requires string value: {0}")]
     FunctionRequiresStringValue(String),
 
-    #[error("function requires string value: {0}")]
+    #[error("function requires integer value: {0}")]
     FunctionRequiresIntegerValue(String),
 
     #[error("function requires float or integer value: {0}")]
@@ -48,4 +48,7 @@ pub enum EvaluateError {
 
     #[error("unreachable empty aggregate value: {0:?}")]
     UnreachableEmptyAggregateValue(Aggregate),
+
+    #[error("divisor should not be zero")]
+    InvalidDivisorZero,
 }

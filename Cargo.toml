@@ -1,6 +1,6 @@
 [package]
 name = "gluesql"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 edition = "2018"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
@@ -50,6 +50,8 @@ pin-project = "1.0"
 serde = { version = "1", features = ["derive"] }
 sqlparser = { version = "0.9", features = ["serde"] }
 thiserror = "1.0"
+strum = "0.21"
+strum_macros = "0.21"
 
 # dependencies for sled-storage
 bincode = { version = "1.3", optional = true }

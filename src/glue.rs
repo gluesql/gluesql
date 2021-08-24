@@ -52,7 +52,7 @@ impl Glue {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Glue, Payload, Row, SledStorage, Value},
+        crate::{Glue, Payload, SledStorage, Value},
         std::convert::TryFrom,
     };
 
@@ -70,7 +70,9 @@ mod tests {
             Ok(Payload::DropTable)
         );
         assert_eq!(
-            glue.execute("CREATE TABLE api_test (id INTEGER PRIMARY KEY, name TEXT, nullable TEXT NULL, is BOOLEAN)"),
+            glue.execute(
+                "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
+            ),
             Ok(Payload::Create)
         );
         assert_eq!(
@@ -83,16 +85,16 @@ mod tests {
             Ok(Payload::Select {
                 labels: vec![String::from("id"), String::from("name"), String::from("is")],
                 rows: vec![
-                    Row(vec![
+                    vec![
                         Value::I64(1),
                         Value::Str(String::from("test1")),
                         Value::Bool(true)
-                    ]),
-                    Row(vec![
+                    ],
+                    vec![
                         Value::I64(2),
                         Value::Str(String::from("test2")),
                         Value::Bool(false)
-                    ])
+                    ]
                 ]
             })
         );

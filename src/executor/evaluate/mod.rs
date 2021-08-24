@@ -218,12 +218,12 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         Null,
     }
 
-    let eval_to_str = |name: &'static str, expr| async move {
+    let eval_to_str = |expr| async move {
         match eval(expr).await?.try_into()? {
             Value::Str(s) => Ok(Nullable::Value(s)),
             Value::Null => Ok(Nullable::Null),
             _ => {
-                Err::<_, Error>(EvaluateError::FunctionRequiresStringValue(name.to_owned()).into())
+                Err::<_, Error>(EvaluateError::FunctionRequiresStringValue(func.to_string()).into())
             }
         }
     };
@@ -234,16 +234,29 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Value::F64(v) => Ok(Nullable::Value(v)),
             Value::Null => Ok(Nullable::Null),
             _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
+            _ => {
+                Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(func.to_string()).into())
+            }
+        }
+    };
+
+    let eval_to_integer = |expr| async move {
+        match eval(expr).await?.try_into()? {
+            Value::I64(number) => Ok(Nullable::Value(number)),
+            Value::Null => Ok(Nullable::Null),
+            _ => Err::<_, Error>(
+                EvaluateError::FunctionRequiresIntegerValue(func.to_string()).into(),
+            ),
         }
     };
 
     match func {
-        Function::Lower(expr) => match eval_to_str("LOWER", expr).await? {
+        Function::Lower(expr) => match eval_to_str(expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
-        Function::Upper(expr) => match eval_to_str("UPPER", expr).await? {
+        Function::Upper(expr) => match eval_to_str(expr).await? {
             Nullable::Value(v) => Ok(Value::Str(v.to_uppercase())),
             Nullable::Null => Ok(Value::Null),
         }
@@ -293,7 +306,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 "RIGHT"
             };
 
-            let string = match eval_to_str(name, expr).await? {
+            let string = match eval_to_str(expr).await? {
                 Nullable::Value(v) => v,
                 Nullable::Null => {
                     return Ok(Evaluated::from(Value::Null));
@@ -328,5 +341,203 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
+        .map(Evaluated::from),
+        Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
+            let name = if matches!(func, Function::Lpad { .. }) {
+                "LPAD"
+            } else {
+                "RPAD"
+            };
+
+            let string = match eval_to_str(expr).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            let size = match eval(size).await?.try_into()? {
+                Value::I64(number) => usize::try_from(number)
+                    .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()))?,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into());
+                }
+            };
+
+            let fill = match fill {
+                Some(expr) => match eval_to_str(expr).await? {
+                    Nullable::Value(v) => v,
+                    Nullable::Null => {
+                        return Ok(Evaluated::from(Value::Null));
+                    }
+                },
+                None => " ".to_string(),
+            };
+
+            let result = if size > string.len() {
+                let padding_size = size - string.len();
+                let repeat_count = padding_size / fill.len();
+                let plus_count = padding_size % fill.len();
+                let fill = fill.repeat(repeat_count) + &fill[0..plus_count];
+
+                if name == "LPAD" {
+                    fill + &string
+                } else {
+                    string + &fill
+                }
+            } else {
+                string[0..size].to_string()
+            };
+
+            Ok(Evaluated::from(Value::Str(result)))
+        }
+        Function::Ceil(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.ceil())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Round(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.round())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Floor(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.floor())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Trim(expr) => match eval_to_str(expr).await? {
+            Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Exp(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.exp())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Ln(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.ln())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Log2(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.log2())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Log10(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.log10())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
+            let float_number = eval_to_float(expr).await?;
+
+            let trigonometric = |func, value| match func {
+                Function::Sin(_) => f64::sin(value),
+                Function::Cos(_) => f64::cos(value),
+                _ => f64::tan(value),
+            };
+
+            match float_number {
+                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
+                Nullable::Null => Ok(Value::Null),
+            }
+            .map(Evaluated::from)
+        }
+        Function::Div { dividend, divisor } | Function::Mod { dividend, divisor } => {
+            let name = if matches!(func, Function::Div { .. }) {
+                "DIV"
+            } else {
+                "MOD"
+            };
+
+            let dividend = match eval(dividend).await?.try_into()? {
+                Value::F64(number) => number,
+                Value::I64(number) => number as f64,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        name.to_owned(),
+                    )
+                    .into());
+                }
+            };
+
+            let divisor = match eval(divisor).await?.try_into()? {
+                Value::F64(number) => match number {
+                    x if x == 0.0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    _ => number,
+                },
+                Value::I64(number) => match number {
+                    0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    _ => number as f64,
+                },
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
+                        name.to_owned(),
+                    )
+                    .into());
+                }
+            };
+
+            match name {
+                "DIV" => Ok(Evaluated::from(Value::I64((dividend / divisor) as i64))),
+                _ => Ok(Evaluated::from(Value::F64(dividend % divisor))),
+            }
+        }
+        Function::Gcd { left, right } => {
+            let left = match eval_to_integer(left).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let right = match eval_to_integer(right).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            Ok(Evaluated::from(Value::I64(gcd(left, right))))
+        }
+        Function::Lcm { left, right } => {
+            let left = match eval_to_integer(left).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let right = match eval_to_integer(right).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            fn lcm(a: i64, b: i64) -> i64 {
+                a * b / gcd(a, b)
+            }
+
+            Ok(Evaluated::from(Value::I64(lcm(left, right))))
+        }
+    }
+}
+
+fn gcd(a: i64, b: i64) -> i64 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
     }
 }

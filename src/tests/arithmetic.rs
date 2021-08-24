@@ -77,6 +77,14 @@ test_case!(arithmetic, async move {
             "SELECT * FROM Arith WHERE name / id < 1",
         ),
         (
+            ValueError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE name / 0 < 1",
+        ),
+        (
+            ValueError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE name / 0.0 < 1",
+        ),
+        (
             UpdateError::ColumnNotFound("aaa".to_owned()).into(),
             "UPDATE Arith SET aaa = 1",
         ),
@@ -87,6 +95,22 @@ test_case!(arithmetic, async move {
             )
             .into(),
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = 2 / 0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = 2 / 0.0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0.0",
         ),
         (
             EvaluateError::BooleanTypeRequired(format!(
@@ -102,7 +126,7 @@ test_case!(arithmetic, async move {
         ),
     ];
 
-    for (error, sql) in test_cases.into_iter() {
+    for (error, sql) in test_cases {
         test!(Err(error), sql);
     }
 });

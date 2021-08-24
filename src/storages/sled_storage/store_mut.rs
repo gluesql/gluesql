@@ -1,6 +1,11 @@
 use {
     super::{
-        err_into, error::StorageError, index_sync::IndexSync, key, lock, SledStorage, Snapshot,
+        err_into,
+        index_sync::IndexSync,
+        key,
+        lock::{self, LockAcquired},
+        transaction::TxPayload,
+        SledStorage, Snapshot,
     },
     crate::{
         data::{Row, Schema},
@@ -8,33 +13,23 @@ use {
         IndexError, MutResult, StoreMut,
     },
     async_trait::async_trait,
-    sled::{
-        transaction::{ConflictableTransactionError, TransactionError},
-        IVec,
-    },
+    sled::{transaction::ConflictableTransactionError, IVec},
+    std::rc::Rc,
 };
-
-macro_rules! transaction {
-    ($self: expr, $expr: expr) => {{
-        let result = $self.tree.transaction($expr).map_err(|e| match e {
-            TransactionError::Abort(e) => e,
-            TransactionError::Storage(e) => StorageError::Sled(e).into(),
-        });
-
-        match result {
-            Ok(_) => Ok(($self, ())),
-            Err(e) => Err(($self, e)),
-        }
-    }};
-}
 
 #[async_trait(?Send)]
 impl StoreMut<IVec> for SledStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let state = &self.state;
+        let tx_timeout = self.tx_timeout;
 
-        transaction!(self, move |tree| {
-            let (txid, _) = lock::acquire(tree, state)?;
+        let tx_result = self.tree.transaction(move |tree| {
+            let txid = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, .. } => txid,
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
             let key = format!("schema/{}", schema.table_name);
             let temp_key = key::temp_schema(txid, &schema.table_name);
@@ -58,8 +53,14 @@ impl StoreMut<IVec> for SledStorage {
             tree.insert(key.as_bytes(), snapshot)?;
             tree.insert(temp_key, key.as_bytes())?;
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.insert_schema(schema).await,
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
@@ -77,9 +78,15 @@ impl StoreMut<IVec> for SledStorage {
         };
 
         let state = &self.state;
+        let tx_timeout = self.tx_timeout;
 
-        transaction!(self, move |tree| {
-            let (txid, _) = lock::acquire(tree, state)?;
+        let tx_result = self.tree.transaction(move |tree| {
+            let txid = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, .. } => txid,
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
             let key = format!("schema/{}", table_name);
             let temp_key = key::temp_schema(txid, table_name);
@@ -94,7 +101,7 @@ impl StoreMut<IVec> for SledStorage {
             let (snapshot, schema) = match snapshot.map(|snapshot| snapshot.delete(txid)) {
                 Some((snapshot, Some(schema))) => (snapshot, schema),
                 Some((_, None)) | None => {
-                    return Ok(());
+                    return Ok(TxPayload::Success);
                 }
             };
             let snapshot = bincode::serialize(&snapshot)
@@ -132,18 +139,45 @@ impl StoreMut<IVec> for SledStorage {
                 index_sync.delete(row_key, &deleted_row)?;
             }
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.delete_schema(table_name).await,
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
-        let state = &self.state;
+        self.insert_data_sync(table_name, Rc::new(rows))
+    }
 
-        transaction!(self, move |tree| {
-            let (txid, autocommit) = lock::acquire(tree, state)?;
+    async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
+        self.update_data_sync(table_name, Rc::new(rows))
+    }
+
+    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
+        self.delete_data_sync(table_name, Rc::new(keys))
+    }
+}
+
+impl SledStorage {
+    fn insert_data_sync(self, table_name: &str, rows: Rc<Vec<Row>>) -> MutResult<Self, ()> {
+        let state = &self.state;
+        let tx_timeout = self.tx_timeout;
+        let tx_rows = Rc::clone(&rows);
+        let tx_result = self.tree.transaction(move |tree| {
+            let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, autocommit } => (txid, autocommit),
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
+
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            for row in rows.iter() {
+            for row in tx_rows.iter() {
                 let id = tree.generate_id()?;
                 let id = id.to_be_bytes();
                 let prefix = format!("data/{}/", table_name);
@@ -172,18 +206,31 @@ impl StoreMut<IVec> for SledStorage {
                 }
             }
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.insert_data_sync(table_name, rows),
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 
-    async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
+    fn update_data_sync(self, table_name: &str, rows: Rc<Vec<(IVec, Row)>>) -> MutResult<Self, ()> {
         let state = &self.state;
+        let tx_timeout = self.tx_timeout;
+        let tx_rows = Rc::clone(&rows);
+        let tx_result = self.tree.transaction(move |tree| {
+            let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, autocommit } => (txid, autocommit),
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
-        transaction!(self, move |tree| {
-            let (txid, autocommit) = lock::acquire(tree, state)?;
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            for (key, new_row) in rows.iter() {
+            for (key, new_row) in tx_rows.iter() {
                 let snapshot = tree
                     .get(key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
@@ -214,18 +261,31 @@ impl StoreMut<IVec> for SledStorage {
                 }
             }
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.update_data_sync(table_name, rows),
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 
-    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
+    fn delete_data_sync(self, table_name: &str, keys: Rc<Vec<IVec>>) -> MutResult<Self, ()> {
         let state = &self.state;
+        let tx_timeout = self.tx_timeout;
+        let tx_keys = Rc::clone(&keys);
+        let tx_result = self.tree.transaction(move |tree| {
+            let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
+                LockAcquired::Success { txid, autocommit } => (txid, autocommit),
+                LockAcquired::RollbackAndRetry { lock_txid } => {
+                    return Ok(TxPayload::RollbackAndRetry(lock_txid));
+                }
+            };
 
-        transaction!(self, |tree| {
-            let (txid, autocommit) = lock::acquire(tree, state)?;
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
-            for key in keys.iter() {
+            for key in tx_keys.iter() {
                 let snapshot = tree
                     .get(key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
@@ -256,7 +316,13 @@ impl StoreMut<IVec> for SledStorage {
                 }
             }
 
-            Ok(())
-        })
+            Ok(TxPayload::Success)
+        });
+
+        match self.check_retry(tx_result) {
+            Ok(true) => self.delete_data_sync(table_name, keys),
+            Ok(false) => Ok((self, ())),
+            Err(e) => Err((self, e)),
+        }
     }
 }
