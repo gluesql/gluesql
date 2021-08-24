@@ -233,7 +233,6 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Value::I64(v) => Ok(Nullable::Value(v as f64)),
             Value::F64(v) => Ok(Nullable::Value(v)),
             Value::Null => Ok(Nullable::Null),
-            _ => Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(name.to_owned()).into()),
             _ => {
                 Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(func.to_string()).into())
             }
