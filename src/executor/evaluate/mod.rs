@@ -262,7 +262,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         .map(Evaluated::from),
 
-        Function::Sqrt(expr) => match eval_to_float("SQRT", expr).await? {
+        Function::Sqrt(expr) => match eval_to_float(expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.sqrt())),
             Nullable::Null => Ok(Value::Null),
         }
