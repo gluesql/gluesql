@@ -66,6 +66,10 @@ pub enum Function {
     Degrees(Expr),
     #[strum(to_string = "PI")]
     Pi(),
+    #[strum(to_string = "LTRIM")]
+    Ltrim { expr: Expr, chars: Option<Expr> },
+    #[strum(to_string = "RTRIM")]
+    Rtrim { expr: Expr, chars: Option<Expr> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
