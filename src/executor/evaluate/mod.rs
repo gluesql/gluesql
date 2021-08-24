@@ -405,6 +405,10 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+        Function::Pi() => {
+            Ok(Evaluated::from(Value::F64(std::f64::consts::PI)))
+        }
+        .map(Evaluated::from),
         Function::Trim(expr) => match eval_to_str(expr).await? {
             Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
             Nullable::Null => Ok(Value::Null),

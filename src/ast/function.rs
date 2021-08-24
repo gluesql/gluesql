@@ -64,6 +64,9 @@ pub enum Function {
     Radians(Expr),
     #[strum(to_string = "DEGREES")]
     Degrees(Expr),
+    #[strum(to_string = "PI")]
+    Pi(),
+
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
