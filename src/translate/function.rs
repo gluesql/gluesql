@@ -1,11 +1,36 @@
 use {
-    super::{expr::translate_expr, translate_object_name, TranslateError},
+    super::{
+        ast_literal::translate_trim_where_field, expr::translate_expr, translate_object_name,
+        TranslateError,
+    },
     crate::{
         ast::{Aggregate, Expr, Function, ObjectName},
         result::Result,
     },
-    sqlparser::ast::{Function as SqlFunction, FunctionArg as SqlFunctionArg},
+    sqlparser::ast::{
+        Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
+        TrimWhereField as SqlTrimWhereField,
+    },
 };
+
+pub fn translate_trim(
+    expr: &SqlExpr,
+    trim_where: &Option<(SqlTrimWhereField, Box<SqlExpr>)>,
+) -> Result<Expr> {
+    let expr = translate_expr(expr)?;
+    let trim_where = match trim_where.as_ref() {
+        Some((trim_where, expr)) => Some((
+            translate_trim_where_field(trim_where),
+            translate_expr(expr)?,
+        )),
+        None => None,
+    };
+
+    Ok(Expr::Function(Box::new(Function::Trim {
+        expr,
+        trim_where,
+    })))
+}
 
 pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     let SqlFunction { name, args, .. } = sql_function;
@@ -194,7 +219,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
         "MAX" => aggr!(Aggregate::Max),
-        "TRIM" => func_with_one_arg!(Function::Trim),
         "DIV" => {
             check_len(name, args.len(), 2)?;
 

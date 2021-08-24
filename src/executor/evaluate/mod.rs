@@ -408,11 +408,12 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         Function::Pi() => {
             { Ok(Evaluated::from(Value::F64(std::f64::consts::PI))) }.map(Evaluated::from)
         }
-        Function::Trim(expr) => match eval_to_str(expr).await? {
-            Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
-            Nullable::Null => Ok(Value::Null),
+        Function::Trim {
+            expr: _,
+            trim_where: _,
+        } => {
+            todo!()
         }
-        .map(Evaluated::from),
         Function::Exp(expr) => match eval_to_float(expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.exp())),
             Nullable::Null => Ok(Value::Null),
