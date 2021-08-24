@@ -49,7 +49,6 @@ test_case!(arithmetic, async move {
         (5, "SELECT * FROM Arith WHERE id > num % id;"),
         (1, "SELECT * FROM Arith WHERE num % id > 2;"),
         (2, "SELECT * FROM Arith WHERE num % 3 < 2 % id;"),
-        (0, "SELECT * FROM Arith WHERE num % 3 < 2 % 0;"),
         // etc
         (1, "SELECT * FROM Arith WHERE 1 + 1 = id;"),
         (5, "UPDATE Arith SET id = id + 1;"),
@@ -113,6 +112,14 @@ test_case!(arithmetic, async move {
         (
             LiteralError::DivisorShouldNotBeZero.into(),
             "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0.0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = 2 % 0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = 2 % 0.0",
         ),
         (
             EvaluateError::BooleanTypeRequired(format!(
