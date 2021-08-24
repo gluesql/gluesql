@@ -395,6 +395,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+        Function::Radians(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.to_radians())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
         Function::Trim(expr) => match eval_to_str(expr).await? {
             Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
             Nullable::Null => Ok(Value::Null),

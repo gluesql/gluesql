@@ -60,6 +60,8 @@ pub enum Function {
     Sqrt(Expr),
     #[strum(to_string = "POWER")]
     Power { expr: Expr, power: Expr },
+    #[strum(to_string = "RADIANS")]
+    Radians(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

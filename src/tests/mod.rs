@@ -91,6 +91,7 @@ macro_rules! generate_tests {
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
+        glue!(function_radians, function::radians::radians);
 
         #[cfg(feature = "index")]
         macro_rules! glue_index {
