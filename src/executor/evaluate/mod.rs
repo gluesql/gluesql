@@ -228,7 +228,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
-    let eval_to_float = |name: &'static str, expr| async move {
+    let eval_to_float = |expr| async move {
         match eval(expr).await?.try_into()? {
             Value::I64(v) => Ok(Nullable::Value(v as f64)),
             Value::F64(v) => Ok(Nullable::Value(v)),
