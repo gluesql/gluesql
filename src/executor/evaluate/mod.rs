@@ -260,6 +260,31 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+
+        Function::Sqrt(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.sqrt())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+
+        Function::Power { expr, power } => {
+            let number = match eval_to_float(expr).await? {
+                Nullable::Value(v) => v as f64,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            let power = match eval_to_float(power).await? {
+                Nullable::Value(v) => v as f64,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            Ok(Evaluated::from(Value::F64(number.powf(power) as f64)))
+        }
+
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let name = if matches!(func, Function::Left { .. }) {
                 "LEFT"

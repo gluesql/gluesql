@@ -8,5 +8,6 @@ pub mod left_right;
 pub mod lpad_rpad;
 pub mod math_function;
 pub mod round;
+pub mod sqrt_power;
 pub mod trim;
 pub mod upper_lower;

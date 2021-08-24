@@ -58,6 +58,8 @@ macro_rules! generate_tests {
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
         glue!(function_left_right, function::left_right::left_right);
+        glue!(function_sqrt, function::sqrt_power::sqrt);
+        glue!(function_power, function::sqrt_power::power);
         glue!(function_lpad_rpad, function::lpad_rpad::lpad_rpad);
         glue!(function_trim, function::trim::trim);
         glue!(function_div_mod, function::div_mod::div_mod);
