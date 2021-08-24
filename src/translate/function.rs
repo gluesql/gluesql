@@ -4,7 +4,7 @@ use {
         TranslateError,
     },
     crate::{
-        ast::{Aggregate, Expr, Function, ObjectName},
+        ast::{Aggregate, Expr, Function, ObjectName, TrimWhereField},
         result::Result,
     },
     sqlparser::ast::{
@@ -18,13 +18,17 @@ pub fn translate_trim(
     trim_where: &Option<(SqlTrimWhereField, Box<SqlExpr>)>,
 ) -> Result<Expr> {
     let expr = translate_expr(expr)?;
-    let trim_where = match trim_where.as_ref() {
-        Some((trim_where, expr)) => Some((
-            translate_trim_where_field(trim_where),
-            translate_expr(expr)?,
-        )),
-        None => None,
-    };
+    let trim_where = trim_where
+        .as_ref()
+        .map(
+            |(trim_where_field, expr)| -> Result<(TrimWhereField, Expr)> {
+                Ok((
+                    translate_trim_where_field(trim_where_field),
+                    translate_expr(expr)?,
+                ))
+            },
+        )
+        .transpose()?;
 
     Ok(Expr::Function(Box::new(Function::Trim {
         expr,
