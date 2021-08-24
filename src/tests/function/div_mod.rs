@@ -35,7 +35,7 @@ test_case!(div_mod, async move {
         ),
         (
             "SELECT DIV(1.0, 0.0) AS quotient FROM FloatDiv",
-            Err(EvaluateError::InvalidDivisorZero.into()),
+            Err(EvaluateError::DivisorShouldNotBeZero.into()),
         ),
         (
             r#"SELECT DIV(1.0, "dividend") AS quotient FROM FloatDiv"#,
@@ -94,7 +94,7 @@ test_case!(div_mod, async move {
         ),
         (
             "SELECT DIV(1, 0) AS quotient FROM IntDiv",
-            Err(EvaluateError::InvalidDivisorZero.into()),
+            Err(EvaluateError::DivisorShouldNotBeZero.into()),
         ),
         (
             "CREATE TABLE MixDiv (dividend INTEGER NULL, divisor FLOAT NULL)",
