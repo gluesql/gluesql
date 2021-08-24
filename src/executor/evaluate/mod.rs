@@ -269,29 +269,16 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
         Function::Power { expr, power } => {
             let number = match eval_to_float(expr).await? {
-                Value::F64(number) => number,
-                Value::I64(number) => number as f64,
-                Value::Null => {
+                Nullable::Value(v) => v as f64,
+                Nullable::Null => {
                     return Ok(Evaluated::from(Value::Null));
-                }
-                _ => {
-                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
-                        "POWER".to_owned(),
-                    )
-                    .into());
                 }
             };
+
             let power = match eval_to_float(power).await? {
-                Value::F64(power) => power,
-                Value::I64(power) => power as f64,
-                Value::Null => {
+                Nullable::Value(v) => v as f64,
+                Nullable::Null => {
                     return Ok(Evaluated::from(Value::Null));
-                }
-                _ => {
-                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
-                        "POWER".to_owned(),
-                    )
-                    .into());
                 }
             };
 

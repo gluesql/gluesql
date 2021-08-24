@@ -77,7 +77,7 @@ test_case!(power, async move {
             POWER(3,0) as power_to_zero
             FROM SingleItem",
             Ok(select!(
-                power_1         | power_2;
+                power_with_zero        | power_to_zero;
                 F64             | F64;
                 f64::from(0).powf(4.0)   f64::from(3).powf(0.0)
             )),
@@ -92,15 +92,15 @@ test_case!(power, async move {
         ),
         (
             "SELECT POWER('string','string') AS power FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(String::from("POWER")).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue(String::from("POWER")).into()),
         ),
         (
             "SELECT POWER(2.0,'string') AS power FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(String::from("POWER")).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue(String::from("POWER")).into()),
         ),
         (
             "SELECT POWER('string',2.0) AS power FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(String::from("POWER")).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue(String::from("POWER")).into()),
         ),
         (
             "SELECT POWER(NULL,NULL) AS power FROM SingleItem",
