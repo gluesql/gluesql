@@ -435,12 +435,8 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             }
             .map(Evaluated::from)
         }
-        Function::Div { dividend, divisor } | Function::Mod { dividend, divisor } => {
-            let name = if matches!(func, Function::Div { .. }) {
-                "DIV"
-            } else {
-                "MOD"
-            };
+        Function::Div { dividend, divisor } => {
+            let name = "DIV";
 
             let dividend = match eval(dividend).await?.try_into()? {
                 Value::F64(number) => number,
@@ -458,11 +454,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             let divisor = match eval(divisor).await?.try_into()? {
                 Value::F64(number) => match number {
-                    x if x == 0.0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    x if x == 0.0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
                     _ => number,
                 },
                 Value::I64(number) => match number {
-                    0 => return Err(EvaluateError::InvalidDivisorZero.into()),
+                    0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
                     _ => number as f64,
                 },
                 Value::Null => {
@@ -476,10 +472,12 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
 
-            match name {
-                "DIV" => Ok(Evaluated::from(Value::I64((dividend / divisor) as i64))),
-                _ => Ok(Evaluated::from(Value::F64(dividend % divisor))),
-            }
+            Ok(Evaluated::from(Value::I64((dividend / divisor) as i64)))
+        }
+        Function::Mod { dividend, divisor } => {
+            let dividend = eval(dividend).await?;
+            let divisor = eval(divisor).await?;
+            dividend.modulo(&divisor)
         }
         Function::Gcd { left, right } => {
             let left = match eval_to_integer(left).await? {
