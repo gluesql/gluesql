@@ -279,6 +279,34 @@ impl<'a> Literal<'a> {
         }
     }
 
+    pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
+                    if r == 0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l % r).to_string())))
+                    }
+                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
+                    if r == 0.0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l % r).to_string())))
+                    }
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
     pub fn like(&self, other: &Literal<'a>) -> Result<Self> {
         match (self, other) {
             (Text(l), Text(r)) => l.like(r).map(Boolean),
@@ -328,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn divide() {
+    fn div_mod() {
         use crate::data::interval::Interval as I;
 
         macro_rules! num {
@@ -345,6 +373,7 @@ mod tests {
 
         let num_divisor = |x: &str| Number(Cow::Owned(x.to_owned()));
 
+        // Divide Test
         assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
         assert_eq!(num!("12").divide(&num_divisor("2.0")).unwrap(), num!("6"));
         assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
@@ -355,5 +384,13 @@ mod tests {
         matches!(itv!(12).divide(&Null).unwrap(), Null);
         matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
         matches!(Null.divide(&Null).unwrap(), Null);
+        // Modulo Test
+        assert_eq!(num!("12").modulo(&num_divisor("2")).unwrap(), num!("0"));
+        assert_eq!(num!("12").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
+        assert_eq!(num!("12.0").modulo(&num_divisor("2")).unwrap(), num!("0"));
+        assert_eq!(num!("12.0").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
+        matches!(num!("12").modulo(&Null).unwrap(), Null);
+        matches!(Null.modulo(&num_divisor("2")).unwrap(), Null);
+        matches!(Null.modulo(&Null).unwrap(), Null);
     }
 }
