@@ -62,6 +62,8 @@ pub enum Function {
     Power { expr: Expr, power: Expr },
     #[strum(to_string = "RADIANS")]
     Radians(Expr),
+    #[strum(to_string = "DEGREES")]
+    Degrees(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

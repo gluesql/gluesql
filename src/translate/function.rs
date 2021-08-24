@@ -153,6 +153,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "COS" => func_with_one_arg!(Function::Cos),
         "TAN" => func_with_one_arg!(Function::Tan),
         "RADIANS" => func_with_one_arg!(Function::Radians),
+        "DEGREES" => func_with_one_arg!(Function::Degrees),
         "GCD" => {
             check_len(name, args.len(), 2)?;
 
