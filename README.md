@@ -21,7 +21,7 @@ In your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gluesql = "0.7"
+gluesql = "0.8"
 ```
 
 ### Usage
@@ -38,6 +38,7 @@ fn main() {
         "INSERT INTO Glue VALUES (200);",
         "SELECT * FROM Glue WHERE id > 100;",
     ];
+
     for sql in sqls {
         let output = glue.execute(sql).unwrap();
         println!("{:?}", output)
@@ -49,20 +50,21 @@ fn main() {
 
 ### Installation
 
-`sled-storage` is optional. So in `Cargo.toml`:
+`sled-storage` is optional, so it is not required for custom storage makers.
 
 ```toml
 [dependencies.gluesql]
-version = "0.7"
+version = "0.8"
 default-features = false
-features = ["sorter", "alter-table", "index"]
+features = ["sorter", "alter-table", "index", "transaction"]
 ```
 
-#### Three features above are optional, too.
+#### Three features below are also optional.
 
 - `sorter` - ORDER BY support for non-indexed expressions.
 - `alter-table` - ALTER TABLE query support
 - `index` - CREATE INDEX & DROP INDEX, index support
+- `transaction` - BEGIN, ROLLBACK and COMMIT, transaction support
 
 ### Usage
 
@@ -103,6 +105,12 @@ pub trait IndexMut<T: Debug> where Self: Sized {
     async fn create_index(..) -> ..;
     async fn drop_index(..) -> ..;
 }
+
+pub trait Transaction where Self: Sized {
+    async fn begin(..) -> ..;
+    async fn rollback(..) -> ..;
+    async fn commit(..) -> ..;
+}
 ```
 
 ## Use Cases
@@ -139,6 +147,7 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 - `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `DROP TABLE`
 - `GROUP BY`, `HAVING`
 - `ORDER BY`
+- Transaction queries: `BEGIN`, `ROLLBACK` and `COMMIT`
 - Nested select, join, aggregations ...
 
 You can see tests for the currently supported queries in [src/tests/\*](https://github.com/gluesql/gluesql/tree/main/src/tests).
