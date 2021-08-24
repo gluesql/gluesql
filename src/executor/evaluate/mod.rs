@@ -268,7 +268,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         .map(Evaluated::from),
 
         Function::Power { expr, power } => {
-            let number = match eval(expr).await?.try_into()? {
+            let number = match eval_to_float(expr).await? {
                 Value::F64(number) => number,
                 Value::I64(number) => number as f64,
                 Value::Null => {
@@ -281,7 +281,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                     .into());
                 }
             };
-            let power = match eval(power).await?.try_into()? {
+            let power = match eval_to_float(power).await? {
                 Value::F64(power) => power,
                 Value::I64(power) => power as f64,
                 Value::Null => {
