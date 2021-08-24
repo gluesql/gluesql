@@ -17,7 +17,7 @@ test_case!(degrees, async move {
             Ok(select!(
                 degrees_1       | degrees_2;
                 F64             | F64;
-                f64::from(180.0).to_degrees()   f64::from(360.0).to_degrees()
+                180.0_f64.to_degrees()   360.0_f64.to_degrees()
             )),
         ),
         (

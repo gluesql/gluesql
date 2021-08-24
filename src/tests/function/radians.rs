@@ -17,7 +17,7 @@ test_case!(radians, async move {
             Ok(select!(
                 radians_1       | radians_2;
                 F64             | F64;
-                f64::from(180.0).to_radians()   f64::from(360.0).to_radians()
+                180.0_f64.to_radians()   360.0_f64.to_radians()
             )),
         ),
         (

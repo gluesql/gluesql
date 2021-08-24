@@ -66,7 +66,6 @@ pub enum Function {
     Degrees(Expr),
     #[strum(to_string = "PI")]
     Pi(),
-
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

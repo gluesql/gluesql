@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(pi, async move {
-    use Value::{Null, F64};
+    use Value::F64;
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),
