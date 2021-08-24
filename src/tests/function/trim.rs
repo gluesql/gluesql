@@ -5,9 +5,9 @@ test_case!(trim, async move {
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
             r#"INSERT INTO Item VALUES
-                ("      Left blank"), 
-                ("Right blank     "), 
-                ("     Blank!     "), 
+                ("      Left blank"),
+                ("Right blank     "),
+                ("     Blank!     "),
                 ("Not Blank");"#,
             Ok(Payload::Insert(4)),
         ),
@@ -23,21 +23,8 @@ test_case!(trim, async move {
             )),
         ),
         (
-            "SELECT TRIM() FROM Item;",
-            Err(TranslateError::FunctionArgsLengthNotMatching {
-                name: "TRIM".to_owned(),
-                expected: 1,
-                found: 0,
-            }
-            .into()),
-        ),
-        (
             "SELECT TRIM(1) FROM Item;",
             Err(EvaluateError::FunctionRequiresStringValue("TRIM".to_owned()).into()),
-        ),
-        (
-            "SELECT TRIM(a => 2) FROM Item;",
-            Err(TranslateError::NamedFunctionArgNotSupported.into()),
         ),
         (
             "CREATE TABLE NullName (name TEXT NULL)",
@@ -47,6 +34,56 @@ test_case!(trim, async move {
         (
             "SELECT TRIM(name) AS test FROM NullName;",
             Ok(select_with_null!(test; Value::Null)),
+        ),
+        ("CREATE TABLE Test (name TEXT)", Ok(Payload::Create)),
+        (
+            r#"INSERT INTO Test VALUES 
+                    ("     blank     "), 
+                    ("xxxyzblankxyzxx"), 
+                    ("xxxyzblank     "),
+                    ("     blankxyzxx"),
+                    ("  xyzblankxyzxx"),
+                    ("xxxyzblankxyz  ");"#,
+            Ok(Payload::Insert(6)),
+        ),
+        (
+            r#"SELECT TRIM(BOTH 'xyz' FROM name) FROM Test;"#,
+            Ok(select!(
+                "TRIM(BOTH 'xyz' FROM name)"
+                Value::Str;
+                "blank".to_owned();
+                "blank".to_owned();
+                "blank".to_owned();
+                "blank".to_owned();
+                "xyzblank".to_owned();
+                "blankxyz".to_owned()
+            )),
+        ),
+        (
+            r#"SELECT TRIM(LEADING 'xyz' FROM name) FROM Test;"#,
+            Ok(select!(
+                "TRIM(LEADING 'xyz' FROM name)"
+                Value::Str;
+                "blank     ".to_owned();
+                "blankxyzxx".to_owned();
+                "blank     ".to_owned();
+                "blankxyzxx".to_owned();
+                "xyzblankxyzxx".to_owned();
+                "blankxyz  ".to_owned()
+            )),
+        ),
+        (
+            r#"SELECT TRIM(TRAILING 'xyz' FROM name) FROM Test;"#,
+            Ok(select!(
+                "TRIM(TRAILING 'xyz' FROM name)"
+                Value::Str;
+                "     blank".to_owned();
+                "xxxyzblank".to_owned();
+                "xxxyzblank".to_owned();
+                "     blank".to_owned();
+                "  xyzblank".to_owned();
+                "xxxyzblankxyz".to_owned()
+            )),
         ),
     ];
 
