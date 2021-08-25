@@ -10,7 +10,7 @@ use {
     gluesql::{tests::test_indexes, Value::*, *},
     std::{
         fs,
-        time::{SystemTime, UNIX_EPOCH},
+        time::{Duration, SystemTime, UNIX_EPOCH},
     },
 };
 
@@ -403,21 +403,23 @@ async fn sled_transaction_gc() {
     );
 }
 
+const TX_TIMEOUT: Option<u128> = Some(200);
+const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
+
 #[tokio::test]
 async fn sled_transaction_timeout_store() {
     let path = &format!("{}/transaction_timeout_store", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
     let mut storage1 = SledStorage::new(path).unwrap();
-    storage1.set_transaction_timeout(Some(100));
+    storage1.set_transaction_timeout(TX_TIMEOUT);
     let storage2 = storage1.clone();
 
     let mut glue1 = Glue::new(storage1);
     let mut glue2 = Glue::new(storage2);
 
-    let tick = std::time::Duration::from_millis(200);
     let sleep = || {
-        std::thread::sleep(tick);
+        std::thread::sleep(TX_SLEEP_TICK);
     };
 
     exec!(glue1 "BEGIN;");
@@ -542,15 +544,14 @@ async fn sled_transaction_timeout_alter() {
     fs::remove_dir_all(path).unwrap_or(());
 
     let mut storage1 = SledStorage::new(path).unwrap();
-    storage1.set_transaction_timeout(Some(100));
+    storage1.set_transaction_timeout(TX_TIMEOUT);
     let storage2 = storage1.clone();
 
     let mut glue1 = Glue::new(storage1);
     let mut glue2 = Glue::new(storage2);
 
-    let tick = std::time::Duration::from_millis(200);
     let sleep = || {
-        std::thread::sleep(tick);
+        std::thread::sleep(TX_SLEEP_TICK);
     };
 
     exec!(glue1 "CREATE TABLE TxAlter (id INTEGER, num INTEGER);");
@@ -621,15 +622,14 @@ async fn sled_transaction_timeout_index() {
     fs::remove_dir_all(path).unwrap_or(());
 
     let mut storage1 = SledStorage::new(path).unwrap();
-    storage1.set_transaction_timeout(Some(100));
+    storage1.set_transaction_timeout(TX_TIMEOUT);
     let storage2 = storage1.clone();
 
     let mut glue1 = Glue::new(storage1);
     let mut glue2 = Glue::new(storage2);
 
-    let tick = std::time::Duration::from_millis(200);
     let sleep = || {
-        std::thread::sleep(tick);
+        std::thread::sleep(TX_SLEEP_TICK);
     };
 
     exec!(glue1 "CREATE TABLE TxIndex (id INTEGER);");

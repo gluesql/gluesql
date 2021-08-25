@@ -124,6 +124,10 @@ impl<'a> Evaluated<'a> {
         binary_op(self, other, |l, r| l.divide(r), |l, r| l.divide(r))
     }
 
+    pub fn modulo<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(self, other, |l, r| l.modulo(r), |l, r| l.modulo(r))
+    }
+
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),

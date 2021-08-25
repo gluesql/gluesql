@@ -239,23 +239,43 @@ impl Value {
     pub fn divide(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
+        if (other == &I64(0)) | (other == &F64(0.0)) {
+            return Err(ValueError::DivisorShouldNotBeZero.into());
+        }
+
         match (self, other) {
             (I64(a), I64(b)) => Ok(I64(a / b)),
             (I64(a), F64(b)) => Ok(F64(*a as f64 / b)),
-            (I64(a), Interval(b)) => Ok(Interval(*a / *b)),
             (F64(a), I64(b)) => Ok(F64(a / *b as f64)),
-            (F64(a), Interval(b)) => Ok(Interval(*a / *b)),
             (F64(a), F64(b)) => Ok(F64(a / b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
             (Null, I64(_))
             | (Null, F64(_))
-            | (Null, Interval(_))
             | (I64(_), Null)
             | (F64(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
+        }
+    }
+
+    pub fn modulo(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        if (other == &I64(0)) | (other == &F64(0.0)) {
+            return Err(ValueError::DivisorShouldNotBeZero.into());
+        }
+
+        match (self, other) {
+            (I64(a), I64(b)) => Ok(I64(a % b)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 % b)),
+            (F64(a), I64(b)) => Ok(F64(a % *b as f64)),
+            (F64(a), F64(b)) => Ok(F64(a % b)),
+            (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
+                Ok(Null)
+            }
+            _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
 
@@ -458,12 +478,15 @@ mod tests {
 
         test!(divide I64(6),   I64(2)   => I64(3));
         test!(divide I64(6),   F64(2.0) => F64(3.0));
-        test!(divide I64(6),   mon!(2)  => mon!(3));
         test!(divide F64(6.0), I64(2)   => F64(3.0));
         test!(divide F64(6.0), F64(2.0) => F64(3.0));
-        test!(divide F64(6.0), mon!(2)  => mon!(3));
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
+
+        test!(modulo I64(6),   I64(2)   => I64(0));
+        test!(modulo I64(6),   F64(2.0) => F64(0.0));
+        test!(modulo F64(6.0), I64(2)   => F64(0.0));
+        test!(modulo F64(6.0), F64(2.0) => F64(0.0));
 
         macro_rules! null_test {
             ($op: ident $a: expr, $b: expr) => {
@@ -493,6 +516,8 @@ mod tests {
         null_test!(divide   I64(1),   Null);
         null_test!(divide   F64(1.0), Null);
         null_test!(divide   mon!(1),  Null);
+        null_test!(modulo   I64(1),   Null);
+        null_test!(modulo   F64(1.0), Null);
 
         null_test!(add      Null, I64(1));
         null_test!(add      Null, F64(1.0));
@@ -507,15 +532,16 @@ mod tests {
         null_test!(subtract Null, mon!(1));
         null_test!(multiply Null, I64(1));
         null_test!(multiply Null, F64(1.0));
-        null_test!(multiply Null, mon!(1));
         null_test!(divide   Null, I64(1));
         null_test!(divide   Null, F64(1.0));
-        null_test!(divide   Null, mon!(1));
+        null_test!(modulo   Null, I64(1));
+        null_test!(modulo   Null, F64(1.0));
 
         null_test!(add      Null, Null);
         null_test!(subtract Null, Null);
         null_test!(multiply Null, Null);
         null_test!(divide   Null, Null);
+        null_test!(modulo   Null, Null);
     }
 
     #[test]

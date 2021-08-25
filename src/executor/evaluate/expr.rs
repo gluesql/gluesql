@@ -47,6 +47,7 @@ pub fn binary_op<'a>(
         BinaryOperator::Minus => l.subtract(&r),
         BinaryOperator::Multiply => l.multiply(&r),
         BinaryOperator::Divide => l.divide(&r),
+        BinaryOperator::Modulo => l.modulo(&r),
         BinaryOperator::StringConcat => l.concat(r),
         BinaryOperator::Eq => cmp!(l == r),
         BinaryOperator::NotEq => cmp!(l != r),

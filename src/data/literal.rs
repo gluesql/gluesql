@@ -15,6 +15,9 @@ pub enum LiteralError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),
 
+    #[error("the divisor should not be zero")]
+    DivisorShouldNotBeZero,
+
     #[error("literal unary operation on non-numeric")]
     UnaryOperationOnNonNumeric,
 
@@ -233,36 +236,69 @@ impl<'a> Literal<'a> {
         match (self, other) {
             (Number(l), Number(r)) => {
                 if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    Ok(Number(Cow::Owned((l / r).to_string())))
+                    if r == 0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l / r).to_string())))
+                    }
                 } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    Ok(Number(Cow::Owned((l / r).to_string())))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
-            (Number(l), Interval(r)) => {
-                if let Ok(l) = l.parse::<i64>() {
-                    Ok(Interval(l / *r))
-                } else if let Ok(l) = l.parse::<f64>() {
-                    Ok(Interval(l / *r))
+                    if r == 0.0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l / r).to_string())))
+                    }
                 } else {
                     Err(LiteralError::UnreachableBinaryArithmetic.into())
                 }
             }
             (Interval(l), Number(r)) => {
                 if let Ok(r) = r.parse::<i64>() {
-                    Ok(Interval(*l / r))
+                    if r == 0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Interval(*l / r))
+                    }
                 } else if let Ok(r) = r.parse::<f64>() {
-                    Ok(Interval(*l / r))
+                    if r == 0.0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Interval(*l / r))
+                    }
                 } else {
                     Err(LiteralError::UnreachableBinaryArithmetic.into())
                 }
             }
-            (Null, Number(_))
-            | (Null, Interval(_))
-            | (Number(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_)) | (Number(_), Null) | (Interval(_), Null) | (Null, Null) => {
+                Ok(Literal::Null)
+            }
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
+    pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+        match (self, other) {
+            (Number(l), Number(r)) => {
+                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
+                    if r == 0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l % r).to_string())))
+                    }
+                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
+                    if r == 0.0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l % r).to_string())))
+                    }
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),
                 format!("{:?}", other),
@@ -297,8 +333,6 @@ mod tests {
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
-        assert_eq!(mon(14).divide(&num(3)), Ok(mon(4)));
-        assert_eq!(num(27).divide(&mon(9)), Ok(mon(3)));
     }
 
     #[test]
@@ -319,5 +353,44 @@ mod tests {
         matches!(text().concat(Null), Null);
         matches!(Null.concat(Boolean(true)), Null);
         matches!(Null.concat(Null), Null);
+    }
+
+    #[test]
+    fn div_mod() {
+        use crate::data::interval::Interval as I;
+
+        macro_rules! num {
+            ($num: expr) => {
+                Number(Cow::Owned($num.to_owned()))
+            };
+        }
+
+        macro_rules! itv {
+            ($itv: expr) => {
+                Interval(I::Microsecond($itv))
+            };
+        }
+
+        let num_divisor = |x: &str| Number(Cow::Owned(x.to_owned()));
+
+        // Divide Test
+        assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
+        assert_eq!(num!("12").divide(&num_divisor("2.0")).unwrap(), num!("6"));
+        assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
+        assert_eq!(num!("12.0").divide(&num_divisor("2.0")).unwrap(), num!("6"));
+        assert_eq!(itv!(12).divide(&num_divisor("2")).unwrap(), itv!(6));
+        assert_eq!(itv!(12).divide(&num_divisor("2.0")).unwrap(), itv!(6));
+        matches!(num!("12").divide(&Null).unwrap(), Null);
+        matches!(itv!(12).divide(&Null).unwrap(), Null);
+        matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
+        matches!(Null.divide(&Null).unwrap(), Null);
+        // Modulo Test
+        assert_eq!(num!("12").modulo(&num_divisor("2")).unwrap(), num!("0"));
+        assert_eq!(num!("12").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
+        assert_eq!(num!("12.0").modulo(&num_divisor("2")).unwrap(), num!("0"));
+        assert_eq!(num!("12.0").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
+        matches!(num!("12").modulo(&Null).unwrap(), Null);
+        matches!(Null.modulo(&num_divisor("2")).unwrap(), Null);
+        matches!(Null.modulo(&Null).unwrap(), Null);
     }
 }
