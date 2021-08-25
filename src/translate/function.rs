@@ -73,6 +73,19 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }};
     }
 
+    macro_rules! func_with_two_arg {
+        ($func: ident) => {{
+            check_len_range(stringify!($func).to_owned(), args.len(), 1, 2)?;
+            let expr = translate_expr(args[0])?;
+            let chars = if args.len() == 1 {
+                None
+            } else {
+                Some(translate_expr(args[1])?)
+            };
+            Ok(Expr::Function(Box::new(Function::$func { expr, chars })))
+        }};
+    }
+
     match name.as_str() {
         "LOWER" => func_with_one_arg!(Function::Lower),
         "UPPER" => func_with_one_arg!(Function::Upper),
@@ -91,6 +104,22 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let size = translate_expr(args[1])?;
 
             Ok(Expr::Function(Box::new(Function::Right { expr, size })))
+        }
+        "SQRT" => {
+            check_len(name, args.len(), 1)?;
+
+            translate_expr(args[0])
+                .map(Function::Sqrt)
+                .map(Box::new)
+                .map(Expr::Function)
+        }
+        "POWER" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let power = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Power { expr, power })))
         }
         "LPAD" => {
             check_len_range(name, args.len(), 2, 3)?;
@@ -136,6 +165,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "SIN" => func_with_one_arg!(Function::Sin),
         "COS" => func_with_one_arg!(Function::Cos),
         "TAN" => func_with_one_arg!(Function::Tan),
+        "RADIANS" => func_with_one_arg!(Function::Radians),
+        "DEGREES" => func_with_one_arg!(Function::Degrees),
+        "PI" => {
+            check_len(name, args.len(), 0)?;
+
+            Ok(Expr::Function(Box::new(Function::Pi())))
+        }
         "GCD" => {
             check_len(name, args.len(), 2)?;
 
@@ -152,6 +188,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
         }
+        "LTRIM" => func_with_two_arg!(Ltrim),
+        "RTRIM" => func_with_two_arg!(Rtrim),
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),

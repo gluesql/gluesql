@@ -56,6 +56,20 @@ pub enum Function {
     Cos(Expr),
     #[strum(to_string = "TAN")]
     Tan(Expr),
+    #[strum(to_string = "SQRT")]
+    Sqrt(Expr),
+    #[strum(to_string = "POWER")]
+    Power { expr: Expr, power: Expr },
+    #[strum(to_string = "RADIANS")]
+    Radians(Expr),
+    #[strum(to_string = "DEGREES")]
+    Degrees(Expr),
+    #[strum(to_string = "PI")]
+    Pi(),
+    #[strum(to_string = "LTRIM")]
+    Ltrim { expr: Expr, chars: Option<Expr> },
+    #[strum(to_string = "RTRIM")]
+    Rtrim { expr: Expr, chars: Option<Expr> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

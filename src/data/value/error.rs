@@ -46,6 +46,9 @@ pub enum ValueError {
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
 
+    #[error("modulo on non-numeric values: {0:?} % {1:?}")]
+    ModuloOnNonNumeric(Value, Value),
+
     #[error("floating numbers cannot be grouped by")]
     FloatCannotBeGroupedBy,
 

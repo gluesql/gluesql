@@ -58,9 +58,12 @@ macro_rules! generate_tests {
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
         glue!(function_left_right, function::left_right::left_right);
+        glue!(function_sqrt, function::sqrt_power::sqrt);
+        glue!(function_power, function::sqrt_power::power);
         glue!(function_lpad_rpad, function::lpad_rpad::lpad_rpad);
         glue!(function_trim, function::trim::trim);
         glue!(function_div_mod, function::div_mod::div_mod);
+        glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
         glue!(function_math_function_sin, function::math_function::sin);
@@ -89,6 +92,9 @@ macro_rules! generate_tests {
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
+        glue!(function_radians, function::radians::radians);
+        glue!(function_degrees, function::degrees::degrees);
+        glue!(function_pi, function::pi::pi);
 
         #[cfg(feature = "index")]
         macro_rules! glue_index {
