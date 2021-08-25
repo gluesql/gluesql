@@ -432,8 +432,14 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             let mut expr_chars = expr_str.chars();
-            let first_char_is_empty = expr_chars.next().unwrap().is_whitespace();
-            let last_char_is_empty = expr_chars.last().unwrap().is_whitespace();
+            let first_char_is_empty = expr_chars
+                .next()
+                .ok_or(EvaluateError::UnreachableIteratorUnwrap)?
+                .is_whitespace();
+            let last_char_is_empty = expr_chars
+                .last()
+                .ok_or(EvaluateError::UnreachableIteratorUnwrap)?
+                .is_whitespace();
 
             let both = || match (first_char_is_empty, last_char_is_empty) {
                 (true, true) => {

@@ -49,6 +49,9 @@ pub enum EvaluateError {
     #[error("unreachable empty aggregate value: {0:?}")]
     UnreachableEmptyAggregateValue(Aggregate),
 
+    #[error("unreachable iterator unwrap")]
+    UnreachableIteratorUnwrap,
+
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
 }
