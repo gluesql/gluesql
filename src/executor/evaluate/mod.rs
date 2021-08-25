@@ -419,54 +419,58 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 return Ok(Value::Str(expr_str.to_owned())).map(Evaluated::from);
             }
 
-            match trim_where {
-                Some((trim_where_field, filter_chars)) => {
-                    let filter_chars = match eval_to_str(filter_chars).await? {
-                        Nullable::Value(str) => str.chars().collect::<Vec<_>>(),
-                        Nullable::Null => return Ok(Evaluated::from(Value::Null)),
-                    };
+            let (trim_where_field, filter_chars) = match trim_where {
+                Some(trim_where) => trim_where,
+                None => {
+                    return Ok(Evaluated::from(Value::Str(expr_str.trim().to_owned())));
+                }
+            };
 
-                    let mut expr_chars = expr_str.chars();
-                    let first_char_is_empty = expr_chars.next().unwrap().is_whitespace();
-                    let last_char_is_empty = expr_chars.last().unwrap().is_whitespace();
+            let filter_chars = match eval_to_str(filter_chars).await? {
+                Nullable::Value(str) => str.chars().collect::<Vec<_>>(),
+                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+            };
 
-                    let result = match trim_where_field {
-                        TrimWhereField::Both => match (first_char_is_empty, last_char_is_empty) {
-                            (true, true) => {
-                                let expr = expr_str.trim();
-                                expr.trim_matches(&filter_chars[..])
-                            }
-                            (true, false) => {
-                                let expr = expr_str.trim_start();
-                                expr.trim_end_matches(&filter_chars[..])
-                            }
-                            (false, true) => {
-                                let expr = expr_str.trim_end();
-                                expr.trim_start_matches(&filter_chars[..])
-                            }
-                            (false, false) => expr_str.trim_matches(&filter_chars[..]),
-                        },
-                        TrimWhereField::Leading => {
-                            if first_char_is_empty {
-                                expr_str.trim_start()
-                            } else {
-                                expr_str.trim_start_matches(&filter_chars[..])
-                            }
-                        }
-                        TrimWhereField::Trailing => {
-                            if last_char_is_empty {
-                                expr_str.trim_end()
-                            } else {
-                                expr_str.trim_end_matches(&filter_chars[..])
-                            }
+            let mut expr_chars = expr_str.chars();
+            let first_char_is_empty = expr_chars.next().unwrap().is_whitespace();
+            let last_char_is_empty = expr_chars.last().unwrap().is_whitespace();
+
+            let both = || match (first_char_is_empty, last_char_is_empty) {
+                (true, true) => {
+                    let expr = expr_str.trim();
+                    expr.trim_matches(&filter_chars[..])
+                }
+                (true, false) => {
+                    let expr = expr_str.trim_start();
+                    expr.trim_end_matches(&filter_chars[..])
+                }
+                (false, true) => {
+                    let expr = expr_str.trim_end();
+                    expr.trim_start_matches(&filter_chars[..])
+                }
+                (false, false) => expr_str.trim_matches(&filter_chars[..]),
+            };
+
+            Ok(Value::Str(
+                match trim_where_field {
+                    TrimWhereField::Both => both(),
+                    TrimWhereField::Leading => {
+                        if first_char_is_empty {
+                            expr_str.trim_start()
+                        } else {
+                            expr_str.trim_start_matches(&filter_chars[..])
                         }
                     }
-                    .to_owned();
-
-                    Ok(Value::Str(result))
+                    TrimWhereField::Trailing => {
+                        if last_char_is_empty {
+                            expr_str.trim_end()
+                        } else {
+                            expr_str.trim_end_matches(&filter_chars[..])
+                        }
+                    }
                 }
-                None => Ok(Value::Str(expr_str.trim().to_owned())),
-            }
+                .to_owned(),
+            ))
             .map(Evaluated::from)
         }
         Function::Exp(expr) => match eval_to_float(expr).await? {
