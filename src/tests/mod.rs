@@ -63,6 +63,7 @@ macro_rules! generate_tests {
         glue!(function_lpad_rpad, function::lpad_rpad::lpad_rpad);
         glue!(function_trim, function::trim::trim);
         glue!(function_div_mod, function::div_mod::div_mod);
+        glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
         glue!(function_math_function_sin, function::math_function::sin);

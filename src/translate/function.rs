@@ -73,6 +73,19 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }};
     }
 
+    macro_rules! func_with_two_arg {
+        ($func: ident) => {{
+            check_len_range(stringify!($func).to_owned(), args.len(), 1, 2)?;
+            let expr = translate_expr(args[0])?;
+            let chars = if args.len() == 1 {
+                None
+            } else {
+                Some(translate_expr(args[1])?)
+            };
+            Ok(Expr::Function(Box::new(Function::$func { expr, chars })))
+        }};
+    }
+
     match name.as_str() {
         "LOWER" => func_with_one_arg!(Function::Lower),
         "UPPER" => func_with_one_arg!(Function::Upper),
@@ -175,6 +188,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
         }
+        "LTRIM" => func_with_two_arg!(Ltrim),
+        "RTRIM" => func_with_two_arg!(Rtrim),
         "COUNT" => aggr!(Aggregate::Count),
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),

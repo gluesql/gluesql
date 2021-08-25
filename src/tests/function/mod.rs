@@ -7,6 +7,7 @@ pub mod floor;
 pub mod gcd_lcm;
 pub mod left_right;
 pub mod lpad_rpad;
+pub mod ltrim_rtrim;
 pub mod math_function;
 pub mod pi;
 pub mod radians;
