@@ -557,11 +557,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         Function::Reverse(expr) => {
             match eval_to_str(expr).await? {
-                Nullable::Value(v) => { Ok(Value::Str(v.chars().rev().collect::<String>())) }
+                Nullable::Value(v) => Ok(Value::Str(v.chars().rev().collect::<String>())),
                 Nullable::Null => Ok(Value::Null),
             }
-        }.map(Evaluated::from),
-
+        }
+        .map(Evaluated::from),
     }
 }
 
