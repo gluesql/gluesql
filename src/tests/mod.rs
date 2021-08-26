@@ -56,13 +56,29 @@ macro_rules! generate_tests {
         glue!(error, error::error);
         glue!(filter, filter::filter);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
+        glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
         glue!(function_left_right, function::left_right::left_right);
+        glue!(function_sqrt, function::sqrt_power::sqrt);
+        glue!(function_power, function::sqrt_power::power);
+        glue!(function_lpad_rpad, function::lpad_rpad::lpad_rpad);
         glue!(function_trim, function::trim::trim);
+        glue!(function_div_mod, function::div_mod::div_mod);
+        glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
         glue!(function_math_function_asin, function::math_function::asin);
         glue!(function_math_function_acos, function::math_function::acos);
         glue!(function_math_function_atan, function::math_function::atan);
+        glue!(function_math_function_sin, function::math_function::sin);
+        glue!(function_math_function_cos, function::math_function::cos);
+        glue!(function_math_function_tan, function::math_function::tan);
+        glue!(function_ceil, function::ceil::ceil);
+        glue!(function_round, function::round::round);
+        glue!(function_floor, function::floor::floor);
+        glue!(function_ln, function::exp_log::ln);
+        glue!(function_log2, function::exp_log::log2);
+        glue!(function_log10, function::exp_log::log10);
+        glue!(function_exp, function::exp_log::exp);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
@@ -79,6 +95,10 @@ macro_rules! generate_tests {
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
+        glue!(function_radians, function::radians::radians);
+        glue!(function_degrees, function::degrees::degrees);
+        glue!(function_pi, function::pi::pi);
+        glue!(function_reverse, function::reverse::reverse);
 
         #[cfg(feature = "index")]
         macro_rules! glue_index {
