@@ -217,6 +217,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 divisor,
             })))
         }
+        "REVERSE" => func_with_one_arg!(Function::Reverse),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }
