@@ -5,19 +5,15 @@ test_case!(reverse, async move {
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
             r#"INSERT INTO Item VALUES
-                ("Hi"), 
-                ("I AM R"), 
-                ("Let's meet"), 
+                ("Let's meet")
             "#,
-            Ok(Payload::Insert(3)),
+            Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT REVERSE(name) FROM Item;",
+            "SELECT REVERSE(name) AS test FROM Item;",
             Ok(select!(
-                "REVERSE(name)"
+                "test"
                 Value::Str;
-                "iH".to_owned();
-                "R MA I".to_owned();
                 "teem s'teL".to_owned()
             )),
         ),

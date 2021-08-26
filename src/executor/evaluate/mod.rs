@@ -560,8 +560,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 Nullable::Value(v) => { Ok(Value::Str(v.chars().rev().collect::<String>())) }
                 Nullable::Null => Ok(Value::Null),
             }
-            .map(Evaluated::from)
-        }
+        }.map(Evaluated::from),
 
     }
 }
