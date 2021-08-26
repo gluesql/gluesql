@@ -229,6 +229,7 @@ test_case!(asin, async move {
 });
 
 test_case!(acos, async move {
+    use Value::Null;
     use Value::F64;
 
     let test_cases = vec![
@@ -254,7 +255,7 @@ test_case!(acos, async move {
         ),
         (
             "SELECT ACOS(null) AS acos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("ACOS".to_string()).into()),
+            Ok(select_with_null!(acos; Null)),
         ),
         (
             "SELECT ACOS(true) AS acos FROM SingleItem",
@@ -286,6 +287,7 @@ test_case!(acos, async move {
 });
 
 test_case!(atan, async move {
+    use Value::Null;
     use Value::F64;
 
     let test_cases = vec![
@@ -311,7 +313,7 @@ test_case!(atan, async move {
         ),
         (
             "SELECT ATAN(null) AS atan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("ATAN".to_string()).into()),
+            Ok(select_with_null!(atan; Null)),
         ),
         (
             "SELECT ATAN(true) AS atan FROM SingleItem",
