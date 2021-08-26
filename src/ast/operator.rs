@@ -13,6 +13,7 @@ pub enum BinaryOperator {
     Minus,
     Multiply,
     Divide,
+    Modulo,
     StringConcat,
     Gt,
     Lt,

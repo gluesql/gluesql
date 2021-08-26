@@ -44,6 +44,11 @@ test_case!(arithmetic, async move {
         (5, "SELECT * FROM Arith WHERE id > id / 2;"),
         (3, "SELECT * FROM Arith WHERE id > num / id;"),
         (2, "SELECT * FROM Arith WHERE 10 / id = 2;"),
+        // modulo on WHERE
+        (1, "SELECT * FROM Arith WHERE id = 5 % 2;"),
+        (5, "SELECT * FROM Arith WHERE id > num % id;"),
+        (1, "SELECT * FROM Arith WHERE num % id > 2;"),
+        (2, "SELECT * FROM Arith WHERE num % 3 < 2 % id;"),
         // etc
         (1, "SELECT * FROM Arith WHERE 1 + 1 = id;"),
         (5, "UPDATE Arith SET id = id + 1;"),
@@ -77,6 +82,10 @@ test_case!(arithmetic, async move {
             "SELECT * FROM Arith WHERE name / id < 1",
         ),
         (
+            ValueError::ModuloOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            "SELECT * FROM Arith WHERE name % id < 1",
+        ),
+        (
             UpdateError::ColumnNotFound("aaa".to_owned()).into(),
             "UPDATE Arith SET aaa = 1",
         ),
@@ -87,6 +96,30 @@ test_case!(arithmetic, async move {
             )
             .into(),
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = 2 / 0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = 2 / 0.0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0.0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = 2 % 0",
+        ),
+        (
+            LiteralError::DivisorShouldNotBeZero.into(),
+            "SELECT * FROM Arith WHERE id = 2 % 0.0",
         ),
         (
             EvaluateError::BooleanTypeRequired(format!(
