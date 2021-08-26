@@ -286,22 +286,13 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         Function::ASin(expr) => {
             let number = match eval(expr).await?.try_into()? {
                 Value::F64(v) => Some(v),
-                Value::Str(v) => match f64::from_str(&v) {
-                    Ok(f) => Some(f),
-                    Err(_) => None,
-                },
                 Value::I64(v) => f64::from_i64(v),
+                Value::Null => return Ok(Evaluated::from(Value::Null)),
                 _ => None,
             };
 
             match number {
-                Some(v) => {
-                    if !(-1.0..=1.0).contains(&v) {
-                        Err(EvaluateError::OutOfRange(v.to_string()).into())
-                    } else {
-                        Ok(Evaluated::from(Value::F64(v.asin())))
-                    }
-                }
+                Some(v) => Ok(Evaluated::from(Value::F64(v.asin()))),
                 None => Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_owned()).into()),
             }
         }

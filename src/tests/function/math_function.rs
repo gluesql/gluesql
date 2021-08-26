@@ -1,7 +1,9 @@
 use crate::*;
 
+
 test_case!(asin, async move {
     use Value::F64;
+    use Value::Null;
 
     let test_cases = vec![
         (
@@ -21,24 +23,12 @@ test_case!(asin, async move {
             )),
         ),
         (
-            "SELECT ASIN(3) AS asin FROM SingleItem",
-            Err(EvaluateError::OutOfRange(3.0_f64.to_string()).into()),
-        ),
-        (
-            "SELECT ASIN('-3') AS sin FROM SingleItem",
-            Err(EvaluateError::OutOfRange((-3.0_f64).to_string()).into()),
-        ),
-        (
             "SELECT ASIN('string') AS asin FROM SingleItem",
             Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_string()).into()),
         ),
         (
             "SELECT ASIN(null) AS asin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_string()).into()),
-        ),
-        (
-            "SELECT ASIN(true) AS asin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_string()).into()),
+            Ok(select_with_null!(asin; Null)),
         ),
         (
             "SELECT ASIN() AS asin FROM SingleItem",
@@ -63,6 +53,8 @@ test_case!(asin, async move {
     for (sql, expected) in test_cases.into_iter() {
         test!(expected, sql);
     }
+
+
 });
 
 test_case!(acos, async move {
