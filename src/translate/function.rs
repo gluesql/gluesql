@@ -219,5 +219,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }
         "REVERSE" => func_with_one_arg!(Function::Reverse),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
+        "REPEAT" => func_with_two_arg!(Repeat),
     }
 }
