@@ -79,7 +79,31 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         SqlExpr::Function(function) => translate_function(function),
         SqlExpr::Exists(query) => translate_query(query).map(Box::new).map(Expr::Exists),
         SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
+        SqlExpr::Case {
+            operand,
+            conditions,
+            results,
+            else_result,
+        } => Ok(Expr::Case {
+            operand: translate_option_expr(operand)?,
+            conditions: conditions
+                .iter()
+                .map(translate_expr)
+                .collect::<Result<_>>()?,
+            results: results.iter().map(translate_expr).collect::<Result<_>>()?,
+            else_result: translate_option_expr(else_result)?,
+        }),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
+    }
+}
+
+pub fn translate_option_expr(sql_option_expr: &Option<Box<SqlExpr>>) -> Result<Option<Box<Expr>>> {
+    match sql_option_expr {
+        Some(expr) => match translate_expr(expr).map(Box::new) {
+            Ok(expr) => Ok(Some(expr)),
+            Err(e) => Err(e),
+        },
+        None => Ok(None),
     }
 }
 
