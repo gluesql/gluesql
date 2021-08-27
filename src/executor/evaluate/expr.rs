@@ -113,7 +113,7 @@ pub fn searched_case<'a>(
     for (i, condition) in conditions.iter().enumerate() {
         match condition.to_owned().try_into()? {
             Value::Bool(v) => {
-                if v == true {
+                if v {
                     match results.get(i) {
                         Some(result) => return Ok(result.to_owned()),
                         None => return Ok(Evaluated::from(Value::Null)),
