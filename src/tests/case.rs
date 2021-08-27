@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(case, async move {
-    use Value::{Str, I64};
+    use Value::{Null, Str, I64};
     let test_cases = vec![
         (
             "CREATE TABLE Item (id INTEGER, name TEXT);",
@@ -35,6 +35,22 @@ test_case!(case, async move {
         ),
         (
             r#"
+            SELECT CASE id
+                WHEN 1 THEN name
+                WHEN 2 THEN name 
+                WHEN 4 THEN name 
+                END
+            AS case FROM Item;
+            "#,
+            Ok(select_with_null!(
+                "case";
+                Str("Harry".to_owned());
+                Str("Ron".to_owned());
+                Null
+            )),
+        ),
+        (
+            r#"
             SELECT CASE
                 WHEN name = "Harry" THEN id
                 WHEN name = "Ron" THEN id 
@@ -49,6 +65,33 @@ test_case!(case, async move {
                 2;
                 3
             )),
+        ),
+        (
+            r#"
+            SELECT CASE
+                WHEN name = "Harry" THEN id
+                WHEN name = "Ron" THEN id 
+                WHEN name = "Hermion" THEN id 
+                END
+            AS case FROM Item;
+            "#,
+            Ok(select_with_null!(
+                "case";
+                I64(1);
+                I64(2);
+                Null
+            )),
+        ),
+        (
+            r#"
+            SELECT CASE
+                WHEN name = "Harry" THEN id
+                WHEN name = "Ron" THEN id 
+                WHEN "Hermione" THEN id 
+                END
+            AS case FROM Item;
+            "#,
+            Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {
