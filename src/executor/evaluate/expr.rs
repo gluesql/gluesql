@@ -92,11 +92,9 @@ pub fn simple_case<'a>(
 ) -> Result<Evaluated<'a>> {
     for (i, condition) in conditions.iter().enumerate() {
         if operand.eq(condition) {
-            let get_result: Result<Evaluated<'a>> = match results.get(i) {
-                Some(result) => Ok(result.to_owned()),
-                None => Ok(Evaluated::from(Value::Null)),
+            if let Some(result) = results.get(i) {
+                return Ok(result.to_owned());
             };
-            return get_result;
         }
     }
     match else_result {
@@ -114,9 +112,8 @@ pub fn searched_case<'a>(
         match condition.to_owned().try_into()? {
             Value::Bool(v) => {
                 if v {
-                    match results.get(i) {
-                        Some(result) => return Ok(result.to_owned()),
-                        None => return Ok(Evaluated::from(Value::Null)),
+                    if let Some(result) = results.get(i) {
+                        return Ok(result.to_owned());
                     }
                 }
             }
