@@ -1,3 +1,5 @@
+use crate::EvaluateError;
+
 use {
     super::Evaluated,
     crate::{
@@ -80,4 +82,49 @@ pub fn between<'a>(
     let v = negated ^ v;
 
     Ok(Evaluated::from(Value::Bool(v)))
+}
+
+pub fn simple_case<'a>(
+    operand: Evaluated<'a>,
+    conditions: Vec<Evaluated<'a>>,
+    results: Vec<Evaluated<'a>>,
+    else_result: Option<Evaluated<'a>>,
+) -> Result<Evaluated<'a>> {
+    for (i, condition) in conditions.iter().enumerate() {
+        if operand.eq(condition) {
+            let get_result: Result<Evaluated<'a>> = match results.get(i) {
+                Some(result) => Ok(result.to_owned()),
+                None => Ok(Evaluated::from(Value::Null)),
+            };
+            return get_result;
+        }
+    }
+    match else_result {
+        Some(result) => Ok(result),
+        None => Ok(Evaluated::from(Value::Null)),
+    }
+}
+
+pub fn searched_case<'a>(
+    conditions: Vec<Evaluated<'a>>,
+    results: Vec<Evaluated<'a>>,
+    else_result: Option<Evaluated<'a>>,
+) -> Result<Evaluated<'a>> {
+    for (i, condition) in conditions.iter().enumerate() {
+        match condition.to_owned().try_into()? {
+            Value::Bool(v) => {
+                if v == true {
+                    match results.get(i) {
+                        Some(result) => return Ok(result.to_owned()),
+                        None => return Ok(Evaluated::from(Value::Null)),
+                    }
+                }
+            }
+            _ => return Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
+        };
+    }
+    match else_result {
+        Some(result) => Ok(result),
+        None => Ok(Evaluated::from(Value::Null)),
+    }
 }
