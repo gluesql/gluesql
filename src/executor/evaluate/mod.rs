@@ -197,6 +197,32 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         Expr::Wildcard | Expr::QualifiedWildcard(_) => {
             Err(EvaluateError::UnreachableWildcardExpr.into())
         }
+        Expr::Case {
+            operand,
+            conditions,
+            results,
+            else_result,
+        } => {
+            let mut c_vec = Vec::new();
+            for c in conditions.iter() {
+                c_vec.push(eval(c).await?);
+            }
+
+            let mut r_vec = Vec::new();
+            for r in results.iter() {
+                r_vec.push(eval(r).await?);
+            }
+
+            let else_result = match else_result {
+                Some(result) => Some(eval(result).await?),
+                None => None,
+            };
+
+            match operand {
+                Some(o) => expr::simple_case(eval(o).await?, c_vec, r_vec, else_result),
+                None => expr::searched_case(c_vec, r_vec, else_result),
+            }
+        }
     }
 }
 
