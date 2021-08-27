@@ -96,5 +96,4 @@ pub use translate::*;
 pub use glue::Glue;
 #[cfg(feature = "sled-storage")]
 pub use sled;
-#[cfg(feature = "sled-storage")]
 pub use storages::*;

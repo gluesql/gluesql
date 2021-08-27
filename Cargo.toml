@@ -14,7 +14,7 @@ keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webass
 all-features = true
 
 [features]
-default = ["sled-storage", "alter-table", "index", "transaction", "sorter"]
+default = ["sled-storage", "alter-table", "sorter"]
 
 # optional: ALTER TABLE
 # you can include whether ALTER TABLE support or not for your custom database implementation.
@@ -33,6 +33,9 @@ sorter = []
 # for someone who wants to make a custom storage engine,
 # default storage engine sled-storage is not required.
 sled-storage = ["transaction", "index", "sled", "bincode"]
+
+# BTreeMap based in-memory storage
+memory-storage = ["sorter"]
 
 [dependencies]
 regex = "1.5"
