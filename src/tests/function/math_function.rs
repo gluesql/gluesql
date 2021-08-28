@@ -197,7 +197,7 @@ test_case!(asin, async move {
         ),
         (
             "SELECT ASIN('string') AS asin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("ASIN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_string()).into()),
         ),
         (
             "SELECT ASIN(null) AS asin FROM SingleItem",
@@ -251,7 +251,7 @@ test_case!(acos, async move {
         ),
         (
             "SELECT ACOS('string') AS acos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("ACOS".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_string()).into()),
         ),
         (
             "SELECT ACOS(null) AS acos FROM SingleItem",
@@ -259,7 +259,7 @@ test_case!(acos, async move {
         ),
         (
             "SELECT ACOS(true) AS acos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("ACOS".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_string()).into()),
         ),
         (
             "SELECT ACOS() AS acos FROM SingleItem",
@@ -309,7 +309,7 @@ test_case!(atan, async move {
         ),
         (
             "SELECT ATAN('string') AS atan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("ATAN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_string()).into()),
         ),
         (
             "SELECT ATAN(null) AS atan FROM SingleItem",
@@ -317,7 +317,7 @@ test_case!(atan, async move {
         ),
         (
             "SELECT ATAN(true) AS atan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("ATAN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_string()).into()),
         ),
         (
             "SELECT ATAN() AS atan FROM SingleItem",

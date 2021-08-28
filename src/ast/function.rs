@@ -11,17 +11,14 @@ pub enum Function {
     #[strum(to_string = "UPPER")]
     Upper(Expr),
     #[strum(to_string = "LEFT")]
-    Left {
-        expr: Expr,
-        size: Expr,
-    },
+    Left { expr: Expr, size: Expr },
     #[strum(to_string = "RIGHT")]
-    Right {
-        expr: Expr,
-        size: Expr,
-    },
+    Right { expr: Expr, size: Expr },
+    #[strum(to_string = "ASIN")]
     ASin(Expr),
+    #[strum(to_string = "ACOS")]
     ACos(Expr),
+    #[strum(to_string = "ATAN")]
     ATan(Expr),
     #[strum(to_string = "LPAD")]
     Lpad {
@@ -52,25 +49,13 @@ pub enum Function {
     #[strum(to_string = "LOG10")]
     Log10(Expr),
     #[strum(to_string = "DIV")]
-    Div {
-        dividend: Expr,
-        divisor: Expr,
-    },
+    Div { dividend: Expr, divisor: Expr },
     #[strum(to_string = "MOD")]
-    Mod {
-        dividend: Expr,
-        divisor: Expr,
-    },
+    Mod { dividend: Expr, divisor: Expr },
     #[strum(to_string = "GCD")]
-    Gcd {
-        left: Expr,
-        right: Expr,
-    },
+    Gcd { left: Expr, right: Expr },
     #[strum(to_string = "LCM")]
-    Lcm {
-        left: Expr,
-        right: Expr,
-    },
+    Lcm { left: Expr, right: Expr },
     #[strum(to_string = "SIN")]
     Sin(Expr),
     #[strum(to_string = "COS")]
@@ -80,10 +65,7 @@ pub enum Function {
     #[strum(to_string = "SQRT")]
     Sqrt(Expr),
     #[strum(to_string = "POWER")]
-    Power {
-        expr: Expr,
-        power: Expr,
-    },
+    Power { expr: Expr, power: Expr },
     #[strum(to_string = "RADIANS")]
     Radians(Expr),
     #[strum(to_string = "DEGREES")]
@@ -91,15 +73,9 @@ pub enum Function {
     #[strum(to_string = "PI")]
     Pi(),
     #[strum(to_string = "LTRIM")]
-    Ltrim {
-        expr: Expr,
-        chars: Option<Expr>,
-    },
+    Ltrim { expr: Expr, chars: Option<Expr> },
     #[strum(to_string = "RTRIM")]
-    Rtrim {
-        expr: Expr,
-        chars: Option<Expr>,
-    },
+    Rtrim { expr: Expr, chars: Option<Expr> },
     #[strum(to_string = "REVERSE")]
     Reverse(Expr),
 }

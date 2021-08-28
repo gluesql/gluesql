@@ -22,7 +22,6 @@ use {
     },
 };
 
-use rust_decimal::prelude::FromPrimitive;
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
@@ -328,50 +327,20 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
-        Function::ASin(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(v) => Some(v),
-                Value::I64(v) => f64::from_i64(v),
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => None,
+        Function::ASin(expr) | Function::ACos(expr) | Function::ATan(expr) => {
+            let float_number = eval_to_float(expr).await?;
+
+            let trigonometric = |func, value| match func {
+                Function::ASin(_) => f64::asin(value),
+                Function::ACos(_) => f64::acos(value),
+                _ => f64::atan(value),
             };
 
-            match number {
-                Some(v) => Ok(Evaluated::from(Value::F64(v.asin()))),
-                None => Err(
-                    EvaluateError::FunctionRequiresFloatOrIntegerValue("ASIN".to_owned()).into(),
-                ),
+            match float_number {
+                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
+                Nullable::Null => Ok(Value::Null),
             }
-        }
-        Function::ACos(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(v) => Some(v),
-                Value::I64(v) => f64::from_i64(v),
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => None,
-            };
-
-            match number {
-                Some(v) => Ok(Evaluated::from(Value::F64(v.acos()))),
-                None => Err(
-                    EvaluateError::FunctionRequiresFloatOrIntegerValue("ACOS".to_owned()).into(),
-                ),
-            }
-        }
-        Function::ATan(expr) => {
-            let number = match eval(expr).await?.try_into()? {
-                Value::F64(v) => Some(v),
-                Value::I64(v) => f64::from_i64(v),
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => None,
-            };
-
-            match number {
-                Some(v) => Ok(Evaluated::from(Value::F64(v.atan()))),
-                None => Err(
-                    EvaluateError::FunctionRequiresFloatOrIntegerValue("ATAN".to_owned()).into(),
-                ),
-            }
+            .map(Evaluated::from)
         }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let name = if matches!(func, Function::Lpad { .. }) {
