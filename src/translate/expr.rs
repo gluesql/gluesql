@@ -113,7 +113,7 @@ pub fn translate_option_expr(sql_option_expr: &Option<Box<SqlExpr>>) -> Result<O
     match sql_option_expr {
         Some(expr) => match translate_expr(expr).map(Box::new) {
             Ok(expr) => Ok(Some(expr)),
-            Err(_) => Err(TranslateError::UnsupportedExpr(expr.to_string()).into()),
+            Err(_) => unreachable!(),
         },
         None => Ok(None),
     }
