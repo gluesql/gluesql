@@ -14,6 +14,12 @@ pub enum Function {
     Left { expr: Expr, size: Expr },
     #[strum(to_string = "RIGHT")]
     Right { expr: Expr, size: Expr },
+    #[strum(to_string = "ASIN")]
+    ASin(Expr),
+    #[strum(to_string = "ACOS")]
+    ACos(Expr),
+    #[strum(to_string = "ATAN")]
+    ATan(Expr),
     #[strum(to_string = "LPAD")]
     Lpad {
         expr: Expr,
