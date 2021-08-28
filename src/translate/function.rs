@@ -165,6 +165,9 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "SIN" => func_with_one_arg!(Function::Sin),
         "COS" => func_with_one_arg!(Function::Cos),
         "TAN" => func_with_one_arg!(Function::Tan),
+        "ASIN" => func_with_one_arg!(Function::ASin),
+        "ACOS" => func_with_one_arg!(Function::ACos),
+        "ATAN" => func_with_one_arg!(Function::ATan),
         "RADIANS" => func_with_one_arg!(Function::Radians),
         "DEGREES" => func_with_one_arg!(Function::Degrees),
         "PI" => {

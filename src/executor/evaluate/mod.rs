@@ -327,7 +327,21 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
-        .map(Evaluated::from),
+        Function::ASin(expr) | Function::ACos(expr) | Function::ATan(expr) => {
+            let float_number = eval_to_float(expr).await?;
+
+            let trigonometric = |func, value| match func {
+                Function::ASin(_) => f64::asin(value),
+                Function::ACos(_) => f64::acos(value),
+                _ => f64::atan(value),
+            };
+
+            match float_number {
+                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
+                Nullable::Null => Ok(Value::Null),
+            }
+            .map(Evaluated::from)
+        }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let name = if matches!(func, Function::Lpad { .. }) {
                 "LPAD"
