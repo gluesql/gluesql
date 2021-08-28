@@ -14,6 +14,7 @@ pub enum Function {
     Left { expr: Expr, size: Expr },
     #[strum(to_string = "RIGHT")]
     Right { expr: Expr, size: Expr },
+    #[strum(to_string = "CEIL")]
     #[strum(to_string = "LPAD")]
     Lpad {
         expr: Expr,
@@ -34,6 +35,7 @@ pub enum Function {
     Floor(Expr),
     #[strum(to_string = "TRIM")]
     Trim(Expr),
+    #[strum(to_string = "DIV")]
     #[strum(to_string = "EXP")]
     Exp(Expr),
     #[strum(to_string = "LN")]
