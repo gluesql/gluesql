@@ -86,15 +86,12 @@ pub fn between<'a>(
 
 pub fn simple_case<'a>(
     operand: Evaluated<'a>,
-    conditions: Vec<Evaluated<'a>>,
-    results: Vec<Evaluated<'a>>,
+    when_then: Vec<(Evaluated<'a>, Evaluated<'a>)>,
     else_result: Option<Evaluated<'a>>,
 ) -> Result<Evaluated<'a>> {
-    for (i, condition) in conditions.iter().enumerate() {
-        if operand.eq(condition) {
-            if let Some(result) = results.get(i) {
-                return Ok(result.to_owned());
-            };
+    for w in when_then.iter() {
+        if w.0.eq(&operand) {
+            return Ok(w.1.to_owned());
         }
     }
     match else_result {
@@ -104,17 +101,14 @@ pub fn simple_case<'a>(
 }
 
 pub fn searched_case<'a>(
-    conditions: Vec<Evaluated<'a>>,
-    results: Vec<Evaluated<'a>>,
+    when_then: Vec<(Evaluated<'a>, Evaluated<'a>)>,
     else_result: Option<Evaluated<'a>>,
 ) -> Result<Evaluated<'a>> {
-    for (i, condition) in conditions.iter().enumerate() {
-        match condition.to_owned().try_into()? {
+    for w in when_then.iter() {
+        match w.0.to_owned().try_into()? {
             Value::Bool(v) => {
                 if v {
-                    if let Some(result) = results.get(i) {
-                        return Ok(result.to_owned());
-                    }
+                    return Ok(w.1.to_owned());
                 }
             }
             _ => return Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),

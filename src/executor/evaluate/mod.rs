@@ -199,18 +199,12 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         }
         Expr::Case {
             operand,
-            conditions,
-            results,
+            when_then,
             else_result,
         } => {
-            let mut c_vec = Vec::new();
-            for c in conditions.iter() {
-                c_vec.push(eval(c).await?);
-            }
-
-            let mut r_vec = Vec::new();
-            for r in results.iter() {
-                r_vec.push(eval(r).await?);
+            let mut wt = Vec::new();
+            for (when, then) in when_then.iter() {
+                wt.push((eval(when).await?, eval(then).await?))
             }
 
             let else_result = match else_result {
@@ -219,8 +213,8 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             };
 
             match operand {
-                Some(o) => expr::simple_case(eval(o).await?, c_vec, r_vec, else_result),
-                None => expr::searched_case(c_vec, r_vec, else_result),
+                Some(o) => expr::simple_case(eval(o).await?, wt, else_result),
+                None => expr::searched_case(wt, else_result),
             }
         }
     }
