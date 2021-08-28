@@ -93,7 +93,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     }
 }
 
-pub fn translate_and_zip(first: &Vec<SqlExpr>, second: &Vec<SqlExpr>) -> Result<Vec<(Expr, Expr)>> {
+pub fn translate_and_zip(first: &[SqlExpr], second: &[SqlExpr]) -> Result<Vec<(Expr, Expr)>> {
     let first = first
         .iter()
         .map(translate_expr)
