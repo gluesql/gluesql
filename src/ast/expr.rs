@@ -52,8 +52,7 @@ pub enum Expr {
     Subquery(Box<Query>),
     Case {
         operand: Option<Box<Expr>>,
-        conditions: Vec<Expr>,
-        results: Vec<Expr>,
+        when_then: Vec<(Expr, Expr)>,
         else_result: Option<Box<Expr>>,
     },
 }
