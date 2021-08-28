@@ -86,22 +86,34 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             else_result,
         } => Ok(Expr::Case {
             operand: translate_option_expr(operand)?,
-            conditions: conditions
-                .iter()
-                .map(translate_expr)
-                .collect::<Result<_>>()?,
-            results: results.iter().map(translate_expr).collect::<Result<_>>()?,
+            when_then: translate_and_zip(conditions, results)?,
             else_result: translate_option_expr(else_result)?,
         }),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
 }
 
+pub fn translate_and_zip(first: &Vec<SqlExpr>, second: &Vec<SqlExpr>) -> Result<Vec<(Expr, Expr)>> {
+    let first = first
+        .iter()
+        .map(translate_expr)
+        .collect::<Result<Vec<_>>>()?;
+    let second = second
+        .iter()
+        .map(translate_expr)
+        .collect::<Result<Vec<_>>>()?;
+    let result = first
+        .into_iter()
+        .zip(second.into_iter())
+        .collect::<Vec<_>>();
+    Ok(result)
+}
+
 pub fn translate_option_expr(sql_option_expr: &Option<Box<SqlExpr>>) -> Result<Option<Box<Expr>>> {
     match sql_option_expr {
         Some(expr) => match translate_expr(expr).map(Box::new) {
             Ok(expr) => Ok(Some(expr)),
-            Err(e) => Err(e),
+            Err(_) => Err(TranslateError::UnsupportedExpr(expr.to_string()).into()),
         },
         None => Ok(None),
     }
