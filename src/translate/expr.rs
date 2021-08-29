@@ -110,7 +110,7 @@ fn translate_option_expr(sql_option_expr: &Option<Box<SqlExpr>>) -> Result<Optio
     match sql_option_expr {
         Some(expr) => match translate_expr(expr).map(Box::new) {
             Ok(expr) => Ok(Some(expr)),
-            Err(_) => Err(TranslateError::UnreachableExpr("CASE".to_owned()).into()),
+            Err(e) => Err(e),
         },
         None => Ok(None),
     }

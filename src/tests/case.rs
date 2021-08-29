@@ -93,6 +93,17 @@ test_case!(case, async move {
             "#,
             Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
         ),
+        (
+            r#"
+            SELECT CASE 1 COLLATE Item
+                WHEN name = "Harry" THEN id
+                WHEN name = "Ron" THEN id 
+                WHEN "Hermione" THEN id 
+                END
+            AS case FROM Item;
+            "#,
+            Err(TranslateError::UnsupportedExpr("1 COLLATE Item".to_owned()).into()),
+        ),
     ];
     for (sql, expected) in test_cases {
         test!(expected, sql);
