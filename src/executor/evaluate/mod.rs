@@ -202,10 +202,11 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             when_then,
             else_result,
         } => {
-            let mut wt = Vec::new();
-            for (when, then) in when_then.iter() {
-                wt.push((eval(when).await?, eval(then).await?))
-            }
+            let when_then = stream::iter(when_then.iter())
+                .map(Ok::<_, Error>)
+                .and_then(|(when, then)| async move { Ok((eval(when).await?, eval(then).await?)) })
+                .try_collect::<Vec<_>>()
+                .await?;
 
             let else_result = match else_result {
                 Some(result) => Some(eval(result).await?),
@@ -213,8 +214,8 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             };
 
             match operand {
-                Some(o) => expr::simple_case(eval(o).await?, wt, else_result),
-                None => expr::searched_case(wt, else_result),
+                Some(o) => expr::simple_case(eval(o).await?, when_then, else_result),
+                None => expr::searched_case(when_then, else_result),
             }
         }
     }
