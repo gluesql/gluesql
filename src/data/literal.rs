@@ -319,6 +319,7 @@ impl<'a> Literal<'a> {
 
 #[cfg(test)]
 mod tests {
+
     use super::Literal::*;
     use std::borrow::Cow;
 
@@ -412,29 +413,70 @@ mod tests {
             };
         }
         //Boolean
-        assert_eq!(PartialEq::eq(&Boolean(true), &Boolean(true)), true);
-        assert_eq!(PartialEq::eq(&Boolean(true), &Boolean(false)), false);
-        assert_eq!(PartialEq::eq(&Boolean(true), &num!("123")), false);
-        assert_eq!(PartialEq::eq(&Boolean(true), &text!("Foo")), false);
-        assert_eq!(PartialEq::eq(&Boolean(true), &itv!(12)), false);
-        assert_eq!(PartialEq::eq(&Boolean(true), &Null), false);
+        assert_eq!(
+            &Boolean(PartialEq::eq(&Boolean(true), &Boolean(true))),
+            &Boolean(true)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&Boolean(true), &Boolean(false))),
+            &Boolean(false)
+        );
         //Number
-        assert_eq!(PartialEq::eq(&num!("123"), &num!("123")), true);
-        assert_eq!(PartialEq::eq(&num!("12.0"), &num!("12.0")), true);
-        assert_eq!(PartialEq::eq(&num!("12.0"), &num!("12")), false);
-        assert_eq!(PartialEq::eq(&num!("123"), &num!("12.3")), false);
-        assert_eq!(PartialEq::eq(&num!("123"), &text!("Foo")), false);
-        assert_eq!(PartialEq::eq(&num!("123"), &itv!(123)), false); //only same data type allowed
-        assert_eq!(PartialEq::eq(&num!("123"), &Null), false);
+        assert_eq!(
+            &Boolean(PartialEq::eq(&num!("123"), &num!("123"))),
+            &Boolean(true)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&num!("12.0"), &num!("12.0"))),
+            &Boolean(true)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&num!("12.0"), &num!("12"))),
+            &Boolean(false)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&num!("123"), &num!("12.3"))),
+            &Boolean(false)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&num!("123"), &text!("Foo"))),
+            &Boolean(false)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&num!("123"), &itv!(123))),
+            &Boolean(false) //only same data type allowed
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&num!("123"), &Null)),
+            &Boolean(false)
+        );
         //Text
-        assert_eq!(PartialEq::eq(&text!("Foo"), &text!("Foo")), true);
-        assert_eq!(PartialEq::eq(&text!("Foo"), &text!("Bar")), false);
-        assert_eq!(PartialEq::eq(&text!("Foo"), &itv!(12)), false);
-        assert_eq!(PartialEq::eq(&text!("Foo"), &Null), false);
+        assert_eq!(
+            &Boolean(PartialEq::eq(&text!("Foo"), &text!("Foo"))),
+            &Boolean(true)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&text!("Foo"), &text!("Bar"))),
+            &Boolean(false)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&text!("Foo"), &itv!(12))),
+            &Boolean(false)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&text!("Foo"), &Null)),
+            &Boolean(false)
+        );
         //Interval
-        assert_eq!(PartialEq::eq(&itv!(123), &itv!(123)), true);
-        assert_eq!(PartialEq::eq(&itv!(123), &itv!(1234)), false);
-        assert_eq!(PartialEq::eq(&itv!(123), &Null), false);
+        assert_eq!(
+            &Boolean(PartialEq::eq(&itv!(123), &itv!(123))),
+            &Boolean(true)
+        );
+        assert_eq!(
+            &Boolean(PartialEq::eq(&itv!(123), &itv!(1234))),
+            &Boolean(false)
+        );
+        assert_eq!(&Boolean(PartialEq::eq(&itv!(123), &Null)), &Boolean(false));
     }
     #[test]
     fn partial_ord() {
