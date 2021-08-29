@@ -35,6 +35,27 @@ test_case!(trim, async move {
             "SELECT TRIM(name) AS test FROM NullName;",
             Ok(select_with_null!(test; Value::Null)),
         ),
+        (
+            r#"SELECT TRIM(BOTH NULL FROM name) FROM NullName;"#,
+            Ok(select_with_null!(
+                "TRIM(BOTH NULL FROM name)";
+                Value::Null
+            )),
+        ),
+        (
+            r#"SELECT TRIM(TRAILING NULL FROM name) FROM NullName;"#,
+            Ok(select_with_null!(
+                "TRIM(TRAILING NULL FROM name)";
+                Value::Null
+            )),
+        ),
+        (
+            r#"SELECT TRIM(LEADING NULL FROM name) FROM NullName;"#,
+            Ok(select_with_null!(
+                "TRIM(LEADING NULL FROM name)";
+                Value::Null
+            )),
+        ),
         ("CREATE TABLE Test (name TEXT)", Ok(Payload::Create)),
         (
             r#"INSERT INTO Test VALUES 
