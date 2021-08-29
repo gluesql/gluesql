@@ -73,4 +73,7 @@ pub enum TranslateError {
 
     #[error("unsupported alter table operation: {0}")]
     UnsupportedAlterTableOperation(String),
+
+    #[error("unreachable expression: {0}")]
+    UnreachableExpr(String),
 }
