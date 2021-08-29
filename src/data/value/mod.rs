@@ -305,12 +305,15 @@ impl Value {
         }
     }
 
-    pub fn like(&self, other: &Value) -> Result<Value> {
+    pub fn like(&self, other: &Value, case_sensitive: bool) -> Result<Value> {
         use Value::*;
 
         match (self, other) {
-            (Str(a), Str(b)) => a.like(b).map(Bool),
-            _ => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
+            (Str(a), Str(b)) => a.like(b, case_sensitive).map(Bool),
+            _ => match case_sensitive {
+                true => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
+                false => Err(ValueError::ILikeOnNonString(self.clone(), other.clone()).into()),
+            },
         }
     }
 }

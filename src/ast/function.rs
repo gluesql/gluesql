@@ -40,7 +40,6 @@ pub enum Function {
     Floor(Expr),
     #[strum(to_string = "TRIM")]
     Trim(Expr),
-    #[strum(to_string = "DIV")]
     #[strum(to_string = "EXP")]
     Exp(Expr),
     #[strum(to_string = "LN")]
