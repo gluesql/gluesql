@@ -408,72 +408,31 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         Function::Pi() => {
             { Ok(Evaluated::from(Value::F64(std::f64::consts::PI))) }.map(Evaluated::from)
         }
-        Function::Trim { expr, trim_where } => {
+        Function::Trim {
+            expr,
+            filter_chars,
+            trim_where_field,
+        } => {
             let expr_str = match eval_to_str(expr).await? {
                 Nullable::Value(str) => str,
                 Nullable::Null => return Ok(Value::Null).map(Evaluated::from),
             };
             let expr_str = expr_str.as_str();
 
-            if expr_str.is_empty() {
-                return Ok(Value::Str(expr_str.to_owned())).map(Evaluated::from);
-            }
-
-            let (trim_where_field, filter_chars) = match trim_where {
-                Some(trim_where) => trim_where,
-                None => {
-                    return Ok(Evaluated::from(Value::Str(expr_str.trim().to_owned())));
-                }
-            };
-
-            let filter_chars = match eval_to_str(filter_chars).await? {
-                Nullable::Value(str) => str.chars().collect::<Vec<_>>(),
-                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
-            };
-
-            let mut expr_chars = expr_str.chars();
-            let first_char_is_empty = expr_chars
-                .next()
-                .ok_or(EvaluateError::UnreachableIteratorUnwrap)?
-                .is_whitespace();
-            let last_char_is_empty = expr_chars
-                .last()
-                .ok_or(EvaluateError::UnreachableIteratorUnwrap)?
-                .is_whitespace();
-
-            let both = || match (first_char_is_empty, last_char_is_empty) {
-                (true, true) => {
-                    let expr = expr_str.trim();
-                    expr.trim_matches(&filter_chars[..])
-                }
-                (true, false) => {
-                    let expr = expr_str.trim_start();
-                    expr.trim_end_matches(&filter_chars[..])
-                }
-                (false, true) => {
-                    let expr = expr_str.trim_end();
-                    expr.trim_start_matches(&filter_chars[..])
-                }
-                (false, false) => expr_str.trim_matches(&filter_chars[..]),
+            let filter_chars = match filter_chars {
+                Some(expr) => match eval_to_str(expr).await? {
+                    Nullable::Value(str) => str.chars().collect::<Vec<_>>(),
+                    Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+                },
+                None => vec![' '],
             };
 
             Ok(Value::Str(
                 match trim_where_field {
-                    TrimWhereField::Both => both(),
-                    TrimWhereField::Leading => {
-                        if first_char_is_empty {
-                            expr_str.trim_start()
-                        } else {
-                            expr_str.trim_start_matches(&filter_chars[..])
-                        }
-                    }
-                    TrimWhereField::Trailing => {
-                        if last_char_is_empty {
-                            expr_str.trim_end()
-                        } else {
-                            expr_str.trim_end_matches(&filter_chars[..])
-                        }
-                    }
+                    Some(TrimWhereField::Both) => expr_str.trim_matches(&filter_chars[..]),
+                    Some(TrimWhereField::Leading) => expr_str.trim_start_matches(&filter_chars[..]),
+                    Some(TrimWhereField::Trailing) => expr_str.trim_end_matches(&filter_chars[..]),
+                    None => return Ok(Evaluated::from(Value::Str(expr_str.trim().to_owned()))),
                 }
                 .to_owned(),
             ))

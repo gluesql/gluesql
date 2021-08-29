@@ -35,7 +35,8 @@ pub enum Function {
     #[strum(to_string = "TRIM")]
     Trim {
         expr: Expr,
-        trim_where: Option<(TrimWhereField, Expr)>,
+        filter_chars: Option<Expr>,
+        trim_where_field: Option<TrimWhereField>,
     },
     #[strum(to_string = "EXP")]
     Exp(Expr),

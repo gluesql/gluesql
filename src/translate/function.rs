@@ -29,10 +29,15 @@ pub fn translate_trim(
             },
         )
         .transpose()?;
+    let (filter_chars, trim_where_field) = match trim_where {
+        Some((trim_where_field, filter_chars)) => (Some(filter_chars), Some(trim_where_field)),
+        None => (None, None),
+    };
 
     Ok(Expr::Function(Box::new(Function::Trim {
         expr,
-        trim_where,
+        filter_chars,
+        trim_where_field,
     })))
 }
 

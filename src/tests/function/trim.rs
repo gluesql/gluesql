@@ -51,12 +51,12 @@ test_case!(trim, async move {
             Ok(select!(
                 "TRIM(BOTH 'xyz' FROM name)"
                 Value::Str;
+                "     blank     ".to_owned();
                 "blank".to_owned();
-                "blank".to_owned();
-                "blank".to_owned();
-                "blank".to_owned();
-                "xyzblank".to_owned();
-                "blankxyz".to_owned()
+                "blank     ".to_owned();
+                "     blank".to_owned();
+                "  xyzblank".to_owned();
+                "blankxyz  ".to_owned()
             )),
         ),
         (
@@ -64,11 +64,11 @@ test_case!(trim, async move {
             Ok(select!(
                 "TRIM(LEADING 'xyz' FROM name)"
                 Value::Str;
-                "blank     ".to_owned();
+                "     blank     ".to_owned();
                 "blankxyzxx".to_owned();
                 "blank     ".to_owned();
-                "blankxyzxx".to_owned();
-                "xyzblankxyzxx".to_owned();
+                "     blankxyzxx".to_owned();
+                "  xyzblankxyzxx".to_owned();
                 "blankxyz  ".to_owned()
             )),
         ),
@@ -77,12 +77,12 @@ test_case!(trim, async move {
             Ok(select!(
                 "TRIM(TRAILING 'xyz' FROM name)"
                 Value::Str;
-                "     blank".to_owned();
+                "     blank     ".to_owned();
                 "xxxyzblank".to_owned();
-                "xxxyzblank".to_owned();
+                "xxxyzblank     ".to_owned();
                 "     blank".to_owned();
                 "  xyzblank".to_owned();
-                "xxxyzblankxyz".to_owned()
+                "xxxyzblankxyz  ".to_owned()
             )),
         ),
     ];
