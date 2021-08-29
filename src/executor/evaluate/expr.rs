@@ -84,38 +84,38 @@ pub fn between<'a>(
     Ok(Evaluated::from(Value::Bool(v)))
 }
 
-pub fn simple_case<'a>(
-    operand: Evaluated<'a>,
+pub fn case<'a>(
+    operand: Option<Evaluated<'a>>,
     when_then: Vec<(Evaluated<'a>, Evaluated<'a>)>,
     else_result: Option<Evaluated<'a>>,
 ) -> Result<Evaluated<'a>> {
-    for w in when_then.iter() {
-        if w.0.eq(&operand) {
-            return Ok(w.1.to_owned());
-        }
-    }
-    match else_result {
-        Some(result) => Ok(result),
-        None => Ok(Evaluated::from(Value::Null)),
-    }
-}
-
-pub fn searched_case<'a>(
-    when_then: Vec<(Evaluated<'a>, Evaluated<'a>)>,
-    else_result: Option<Evaluated<'a>>,
-) -> Result<Evaluated<'a>> {
-    for w in when_then.iter() {
-        match w.0.to_owned().try_into()? {
-            Value::Bool(v) => {
-                if v {
-                    return Ok(w.1.to_owned());
+    match operand {
+        Some(o) => {
+            for (when, then) in when_then.iter() {
+                if when.eq(&o) {
+                    return Ok(then.to_owned());
                 }
             }
-            _ => return Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
-        };
-    }
-    match else_result {
-        Some(result) => Ok(result),
-        None => Ok(Evaluated::from(Value::Null)),
+            match else_result {
+                Some(result) => Ok(result),
+                None => Ok(Evaluated::from(Value::Null)),
+            }
+        }
+        None => {
+            for (when, then) in when_then.iter() {
+                match when.to_owned().try_into()? {
+                    Value::Bool(v) => {
+                        if v {
+                            return Ok(then.to_owned());
+                        }
+                    }
+                    _ => return Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
+                };
+            }
+            match else_result {
+                Some(result) => Ok(result),
+                None => Ok(Evaluated::from(Value::Null)),
+            }
+        }
     }
 }

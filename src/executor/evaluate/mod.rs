@@ -202,6 +202,11 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             when_then,
             else_result,
         } => {
+            let operand = match operand {
+                Some(expr) => Some(eval(expr).await?),
+                None => None,
+            };
+
             let when_then = stream::iter(when_then.iter())
                 .map(Ok::<_, Error>)
                 .and_then(|(when, then)| async move { Ok((eval(when).await?, eval(then).await?)) })
@@ -213,10 +218,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => None,
             };
 
-            match operand {
-                Some(o) => expr::simple_case(eval(o).await?, when_then, else_result),
-                None => expr::searched_case(when_then, else_result),
-            }
+            expr::case(operand, when_then, else_result)
         }
     }
 }
