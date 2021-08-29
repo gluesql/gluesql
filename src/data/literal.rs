@@ -413,70 +413,25 @@ mod tests {
             };
         }
         //Boolean
-        assert_eq!(
-            &Boolean(PartialEq::eq(&Boolean(true), &Boolean(true))),
-            &Boolean(true)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&Boolean(true), &Boolean(false))),
-            &Boolean(false)
-        );
+        assert_eq!(Boolean(true), Boolean(true));
+        assert!(Boolean(true) != Boolean(false));
         //Number
-        assert_eq!(
-            &Boolean(PartialEq::eq(&num!("123"), &num!("123"))),
-            &Boolean(true)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&num!("12.0"), &num!("12.0"))),
-            &Boolean(true)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&num!("12.0"), &num!("12"))),
-            &Boolean(false)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&num!("123"), &num!("12.3"))),
-            &Boolean(false)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&num!("123"), &text!("Foo"))),
-            &Boolean(false)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&num!("123"), &itv!(123))),
-            &Boolean(false) //only same data type allowed
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&num!("123"), &Null)),
-            &Boolean(false)
-        );
+        assert_eq!(num!("123"), num!("123"));
+        assert_eq!(num!("12.0"), num!("12.0"));
+        assert!(num!("12.0") != num!("12"));
+        assert!(num!("123") != num!("12.3"));
+        assert!(num!("123") != text!("Foo"));
+        assert!(num!("123") != itv!(123)); //only same data type allowed
+        assert!(num!("123") != Null);
         //Text
-        assert_eq!(
-            &Boolean(PartialEq::eq(&text!("Foo"), &text!("Foo"))),
-            &Boolean(true)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&text!("Foo"), &text!("Bar"))),
-            &Boolean(false)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&text!("Foo"), &itv!(12))),
-            &Boolean(false)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&text!("Foo"), &Null)),
-            &Boolean(false)
-        );
+        assert_eq!(text!("Foo"), text!("Foo"));
+        assert!(text!("Foo") != text!("Bar"));
+        assert!(text!("Foo") != itv!(12));
+        assert!(text!("Foo") != Null);
         //Interval
-        assert_eq!(
-            &Boolean(PartialEq::eq(&itv!(123), &itv!(123))),
-            &Boolean(true)
-        );
-        assert_eq!(
-            &Boolean(PartialEq::eq(&itv!(123), &itv!(1234))),
-            &Boolean(false)
-        );
-        assert_eq!(&Boolean(PartialEq::eq(&itv!(123), &Null)), &Boolean(false));
+        assert_eq!(itv!(123), itv!(123));
+        assert!(itv!(123) != itv!(1234));
+        assert!(itv!(123) != Null);
     }
     #[test]
     fn partial_ord() {
@@ -498,60 +453,52 @@ mod tests {
             };
         }
         //Boolean
-        let result = &Boolean(false).partial_cmp(&Boolean(true));
-        assert_eq!(result, &Some(Ordering::Less));
-        let result = &Boolean(true).partial_cmp(&Boolean(true));
-        assert_eq!(result, &Some(Ordering::Equal));
-        let result = &Boolean(true).partial_cmp(&Boolean(false));
-        assert_eq!(result, &Some(Ordering::Greater));
-        let result = &Boolean(true).partial_cmp(&num!("1"));
-        assert_eq!(result, &None);
-        let result = &Boolean(true).partial_cmp(&text!("Foo"));
-        assert_eq!(result, &None);
-        let result = &Boolean(true).partial_cmp(&itv!(12));
-        assert_eq!(result, &None);
-        let result = &Boolean(true).partial_cmp(&Null);
-        assert_eq!(result, &None);
+        assert_eq!(
+            Boolean(false).partial_cmp(&Boolean(true)),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            Boolean(true).partial_cmp(&Boolean(true)),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(
+            Boolean(true).partial_cmp(&Boolean(false)),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(Boolean(true).partial_cmp(&num!("1")), None);
+        assert_eq!(Boolean(true).partial_cmp(&text!("Foo")), None);
+        assert_eq!(Boolean(true).partial_cmp(&itv!(12)), None);
+        assert_eq!(Boolean(true).partial_cmp(&Null), None);
         //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
-        let result = &num!("123").partial_cmp(&num!("1234"));
-        assert_eq!(result, &Some(Ordering::Less));
-        let result = &num!("12.0").partial_cmp(&num!("123"));
-        assert_eq!(result, &Some(Ordering::Less));
-        let result = &num!("123").partial_cmp(&num!("123.1"));
-        assert_eq!(result, &Some(Ordering::Less));
-        let result = &num!("12.0").partial_cmp(&num!("12.1"));
-        assert_eq!(result, &Some(Ordering::Less));
-        let result = &num!("123").partial_cmp(&num!("123"));
-        assert_eq!(result, &Some(Ordering::Equal));
-        let result = &num!("1234").partial_cmp(&num!("123"));
-        assert_eq!(result, &Some(Ordering::Greater));
-        let result = &num!("123").partial_cmp(&text!("123"));
-        assert_eq!(result, &None);
-        let result = &num!("123").partial_cmp(&itv!(123));
-        assert_eq!(result, &None);
-        let result = &num!("123").partial_cmp(&Null);
-        assert_eq!(result, &None);
+        assert_eq!(num!("123").partial_cmp(&num!("1234")), Some(Ordering::Less));
+        assert_eq!(num!("12.0").partial_cmp(&num!("123")), Some(Ordering::Less));
+        assert_eq!(
+            num!("123").partial_cmp(&num!("123.1")),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            num!("12.0").partial_cmp(&num!("12.1")),
+            Some(Ordering::Less)
+        );
+        assert_eq!(num!("123").partial_cmp(&num!("123")), Some(Ordering::Equal));
+        assert_eq!(
+            num!("1234").partial_cmp(&num!("123")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(num!("123").partial_cmp(&text!("123")), None);
+        assert_eq!(num!("123").partial_cmp(&itv!(123)), None);
+        assert_eq!(num!("123").partial_cmp(&Null), None);
         //text
-        let result = &text!("a").partial_cmp(&text!("b"));
-        assert_eq!(result, &Some(Ordering::Less));
-        let result = &text!("a").partial_cmp(&text!("a"));
-        assert_eq!(result, &Some(Ordering::Equal));
-        let result = &text!("b").partial_cmp(&text!("a"));
-        assert_eq!(result, &Some(Ordering::Greater));
-        let result = &text!("a").partial_cmp(&itv!(1));
-        assert_eq!(result, &None);
-        let result = &text!("a").partial_cmp(&Null);
-        assert_eq!(result, &None);
+        assert_eq!(text!("a").partial_cmp(&text!("b")), Some(Ordering::Less));
+        assert_eq!(text!("a").partial_cmp(&text!("a")), Some(Ordering::Equal));
+        assert_eq!(text!("b").partial_cmp(&text!("a")), Some(Ordering::Greater));
+        assert_eq!(text!("a").partial_cmp(&itv!(1)), None);
+        assert_eq!(text!("a").partial_cmp(&Null), None);
         //Interval
-        let result = &itv!(1).partial_cmp(&itv!(2));
-        assert_eq!(result, &Some(Ordering::Less));
-        let result = &itv!(1).partial_cmp(&itv!(1));
-        assert_eq!(result, &Some(Ordering::Equal));
-        let result = &itv!(2).partial_cmp(&itv!(1));
-        assert_eq!(result, &Some(Ordering::Greater));
-        let result = &itv!(2).partial_cmp(&Null);
-        assert_eq!(result, &None);
-        let result = &Null.partial_cmp(&Null);
-        assert_eq!(result, &None);
+        assert_eq!(itv!(1).partial_cmp(&itv!(2)), Some(Ordering::Less));
+        assert_eq!(itv!(1).partial_cmp(&itv!(1)), Some(Ordering::Equal));
+        assert_eq!(itv!(2).partial_cmp(&itv!(1)), Some(Ordering::Greater));
+        assert_eq!(itv!(2).partial_cmp(&Null), None);
+        assert_eq!(Null.partial_cmp(&Null), None);
     }
 }
