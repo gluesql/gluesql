@@ -420,6 +420,8 @@ mod tests {
         assert_eq!(PartialEq::eq(&Boolean(true), &Null), false);
         //Number
         assert_eq!(PartialEq::eq(&num!("123"), &num!("123")), true);
+        assert_eq!(PartialEq::eq(&num!("12.0"), &num!("12.0")), true);
+        assert_eq!(PartialEq::eq(&num!("12.0"), &num!("12")), false);
         assert_eq!(PartialEq::eq(&num!("123"), &num!("12.3")), false);
         assert_eq!(PartialEq::eq(&num!("123"), &text!("Foo")), false);
         assert_eq!(PartialEq::eq(&num!("123"), &itv!(123)), false); //only same data type allowed
