@@ -1,5 +1,5 @@
 use {
-    super::Expr,
+    super::{ast_literal::TrimWhereField, Expr},
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
@@ -39,7 +39,11 @@ pub enum Function {
     #[strum(to_string = "FLOOR")]
     Floor(Expr),
     #[strum(to_string = "TRIM")]
-    Trim(Expr),
+    Trim {
+        expr: Expr,
+        filter_chars: Option<Expr>,
+        trim_where_field: Option<TrimWhereField>,
+    },
     #[strum(to_string = "EXP")]
     Exp(Expr),
     #[strum(to_string = "LN")]

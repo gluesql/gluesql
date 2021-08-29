@@ -24,7 +24,7 @@ pub fn translate_binary_operator(
         SqlBinaryOperator::Minus => Ok(BinaryOperator::Minus),
         SqlBinaryOperator::Multiply => Ok(BinaryOperator::Multiply),
         SqlBinaryOperator::Divide => Ok(BinaryOperator::Divide),
-        SqlBinaryOperator::Modulus => Ok(BinaryOperator::Modulo),
+        SqlBinaryOperator::Modulo => Ok(BinaryOperator::Modulo),
         SqlBinaryOperator::StringConcat => Ok(BinaryOperator::StringConcat),
         SqlBinaryOperator::Gt => Ok(BinaryOperator::Gt),
         SqlBinaryOperator::Lt => Ok(BinaryOperator::Lt),
