@@ -307,9 +307,9 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn like(&self, other: &Literal<'a>) -> Result<Self> {
+    pub fn like(&self, other: &Literal<'a>, case_sensitive: bool) -> Result<Self> {
         match (self, other) {
-            (Text(l), Text(r)) => l.like(r).map(Boolean),
+            (Text(l), Text(r)) => l.like(r, case_sensitive).map(Boolean),
             _ => Err(
                 LiteralError::LikeOnNonString(format!("{:?}", self), format!("{:?}", other)).into(),
             ),
