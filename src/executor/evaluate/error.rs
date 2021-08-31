@@ -51,4 +51,7 @@ pub enum EvaluateError {
 
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
+
+    #[error("the result types should be equal: {0:?}")]
+    UnequalResultTypes(String),
 }
