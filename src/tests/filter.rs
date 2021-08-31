@@ -80,8 +80,15 @@ test_case!(filter, async move {
         (2, "SELECT name FROM Boss WHERE name LIKE '%r%'"),
         (2, "SELECT name FROM Boss WHERE name LIKE '%a'"),
         (5, "SELECT name FROM Boss WHERE name LIKE '%%'"),
+        (0, "SELECT name FROM Boss WHERE name LIKE 'g%'"),
+        (2, "SELECT name FROM Boss WHERE name ILIKE '_A%'"),
+        (2, "SELECT name FROM Boss WHERE name ILIKE 'g%'"),
+        (5, "SELECT name FROM Boss WHERE name ILIKE '%%'"),
         (1, "SELECT name FROM Boss WHERE name NOT LIKE '%a%'"),
+        (1, "SELECT name FROM Boss WHERE name NOT ILIKE '%A%'"),
         (5, "SELECT name FROM Boss WHERE 'ABC' LIKE '_B_'"),
+        (5, "SELECT name FROM Boss WHERE 'abc' ILIKE '_B_'"),
+        (5, "SELECT name FROM Boss WHERE 'ABC' ILIKE '_B_'"),
     ];
 
     for (num, sql) in select_sqls.iter() {
@@ -127,6 +134,10 @@ test_case!(filter, async move {
         (
             ValueError::LikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
             "SELECT name FROM Boss WHERE name = 'Amelia' AND name LIKE 10",
+        ),
+        (
+            ValueError::ILikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
+            "SELECT name FROM Boss WHERE name = 'Amelia' AND name ILIKE 10",
         ),
     ];
 

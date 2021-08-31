@@ -9,6 +9,7 @@ use {
     crate::{
         ast::{AstLiteral, Expr, OrderByExpr},
         result::Result,
+        translate::function::translate_trim,
     },
     sqlparser::ast::{Expr as SqlExpr, OrderByExpr as SqlOrderByExpr},
 };
@@ -16,10 +17,8 @@ use {
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     match sql_expr {
         SqlExpr::Identifier(ident) => match ident.quote_style {
-            Some(_) => Ok(Expr::Literal(AstLiteral::QuotedString(
-                ident.value.to_owned(),
-            ))),
-            None => Ok(Expr::Identifier(ident.value.to_owned())),
+            Some(_) => Ok(Expr::Literal(AstLiteral::QuotedString(ident.value.clone()))),
+            None => Ok(Expr::Identifier(ident.value.clone())),
         },
         SqlExpr::Wildcard => Ok(Expr::Wildcard),
         SqlExpr::QualifiedWildcard(idents) => Ok(Expr::QualifiedWildcard(translate_idents(idents))),
@@ -77,6 +76,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             value: value.to_owned(),
         }),
         SqlExpr::Function(function) => translate_function(function),
+        SqlExpr::Trim { expr, trim_where } => translate_trim(expr, trim_where),
         SqlExpr::Exists(query) => translate_query(query).map(Box::new).map(Expr::Exists),
         SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
         SqlExpr::Case {
