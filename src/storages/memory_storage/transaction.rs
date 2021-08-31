@@ -11,7 +11,11 @@ use {
 
 #[async_trait(?Send)]
 impl Transaction for MemoryStorage {
-    async fn begin(self, _autocommit: bool) -> MutResult<Self, bool> {
+    async fn begin(self, autocommit: bool) -> MutResult<Self, bool> {
+        if autocommit {
+            return Ok((self, false));
+        }
+
         Err((
             self,
             Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned()),

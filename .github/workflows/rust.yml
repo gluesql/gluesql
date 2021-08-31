@@ -39,6 +39,8 @@ jobs:
       run: cargo clippy --no-default-features --features "sled-storage sorter" -- -D warnings
     - name: Clippy (sled-storage & alter-table)
       run: cargo clippy --no-default-features --features "sled-storage alter-table" -- -D warnings
+    - name: Clippy (memory-storage)
+      run: cargo clippy --no-default-features --features memory-storage -- -D warnings
     - name: Clippy (all)
       run: cargo clippy --all-features --all-targets -- -D warnings
     - name: Rustfmt
@@ -51,5 +53,7 @@ jobs:
       run: cargo test --no-default-features --features sled-storage --verbose
     - name: Run tests with features (sled-storage & sorter)
       run: cargo test --no-default-features --features "sled-storage sorter" --verbose
+    - name: Run tests with features (memory-storage)
+      run: cargo test --no-default-features --features memory-storage --verbose
     - name: Run tests with all features
       run: cargo test --all-features --verbose
