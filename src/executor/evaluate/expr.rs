@@ -89,32 +89,71 @@ pub fn case<'a>(
     when_then: Vec<(Evaluated<'a>, Evaluated<'a>)>,
     else_result: Option<Evaluated<'a>>,
 ) -> Result<Evaluated<'a>> {
-    match operand {
-        Some(o) => {
-            for (when, then) in when_then.iter() {
-                if when.eq(&o) {
-                    return Ok(then.to_owned());
-                }
+    let (_, then_results) = when_then.iter().cloned().unzip::<_, _, Vec<_>, Vec<_>>();
+
+    let results = match &else_result {
+        Some(result) => [&then_results[..], &[result.to_owned()]].concat(),
+        None => then_results,
+    };
+
+    let result_types = results
+        .iter()
+        .map(|rt| -> Result<i32> {
+            match rt.to_owned().try_into()? {
+                Value::Bool(_) => Ok(1),
+                Value::Interval(_) => Ok(2),
+                Value::Date(_) => Ok(3),
+                Value::I64(_) => Ok(4),
+                Value::F64(_) => Ok(5),
+                Value::Str(_) => Ok(6),
+                Value::Time(_) => Ok(7),
+                Value::Timestamp(_) => Ok(8),
+                Value::Null => Ok(9),
             }
-            match else_result {
-                Some(result) => Ok(result),
-                None => Ok(Evaluated::from(Value::Null)),
-            }
-        }
-        None => {
-            for (when, then) in when_then.iter() {
-                match when.to_owned().try_into()? {
-                    Value::Bool(v) => {
-                        if v {
-                            return Ok(then.to_owned());
+        })
+        .collect::<Vec<_>>();
+
+    if result_types.iter().any(|t| t != &result_types[0]) {
+        Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into())
+    } else {
+        match operand {
+            Some(o) => match when_then.iter().find(|(when, _)| when.eq(&o)) {
+                Some((_, then)) => Ok(then.to_owned()),
+                None => match else_result {
+                    Some(result) => Ok(result),
+                    None => Ok(Evaluated::from(Value::Null)),
+                },
+            },
+            None => {
+                let thens = when_then
+                    .iter()
+                    .map(|(when, then)| match when.to_owned().try_into() {
+                        Ok(Value::Bool(condition)) => {
+                            if condition {
+                                Ok(Some(then))
+                            } else {
+                                Ok(None)
+                            }
                         }
+                        _ => Err(()),
+                    })
+                    .collect::<Vec<_>>();
+
+                if thens.iter().any(|&wt| wt.is_err()) {
+                    Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into())
+                } else {
+                    match thens
+                        .iter()
+                        .map(|&x| x.unwrap())
+                        .find(|&then| then.is_some())
+                    {
+                        Some(then) => Ok(then.unwrap().to_owned()),
+                        None => match else_result {
+                            Some(result) => Ok(result),
+                            None => Ok(Evaluated::from(Value::Null)),
+                        },
                     }
-                    _ => return Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
-                };
-            }
-            match else_result {
-                Some(result) => Ok(result),
-                None => Ok(Evaluated::from(Value::Null)),
+                }
             }
         }
     }
