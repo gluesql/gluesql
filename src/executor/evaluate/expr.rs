@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::EvaluateError;
 
 use {
@@ -95,6 +97,8 @@ pub fn case<'a>(
     when_then: Vec<(Evaluated<'a>, Evaluated<'a>)>,
     else_result: Option<Evaluated<'a>>,
 ) -> Result<Evaluated<'a>> {
+    use std::mem::discriminant as disc;
+
     let (_, then_results) = when_then.iter().cloned().unzip::<_, _, Vec<_>, Vec<_>>();
 
     let results = match &else_result {
@@ -102,24 +106,13 @@ pub fn case<'a>(
         None => then_results,
     };
 
-    let result_types = results
+    let type_diff = results
         .iter()
-        .map(|rt| -> Result<i32> {
-            match rt.to_owned().try_into()? {
-                Value::Bool(_) => Ok(1),
-                Value::Interval(_) => Ok(2),
-                Value::Date(_) => Ok(3),
-                Value::I64(_) => Ok(4),
-                Value::F64(_) => Ok(5),
-                Value::Str(_) => Ok(6),
-                Value::Time(_) => Ok(7),
-                Value::Timestamp(_) => Ok(8),
-                Value::Null => Ok(9),
-            }
-        })
-        .collect::<Vec<_>>();
+        .map(|r| -> Value { r.to_owned().try_into().unwrap() })
+        .tuple_windows()
+        .any(|(left, right)| disc(&left) != disc(&right));
 
-    if result_types.iter().any(|t| t != &result_types[0]) {
+    if type_diff {
         Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into())
     } else {
         match operand {
