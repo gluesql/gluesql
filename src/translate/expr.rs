@@ -94,16 +94,11 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
 }
 
 fn translate_when_then(when: &[SqlExpr], then: &[SqlExpr]) -> Result<Vec<(Expr, Expr)>> {
-    let when = when
+    Ok(when
         .iter()
-        .map(translate_expr)
-        .collect::<Result<Vec<_>>>()?;
-    let then = then
-        .iter()
-        .map(translate_expr)
-        .collect::<Result<Vec<_>>>()?;
-    let result = when.into_iter().zip(then.into_iter()).collect::<Vec<_>>();
-    Ok(result)
+        .zip(then.iter())
+        .map(|wt| (translate_expr(wt.0).unwrap(), translate_expr(wt.1).unwrap()))
+        .collect::<Vec<_>>())
 }
 
 fn translate_option_expr(sql_option_expr: &Option<Box<SqlExpr>>) -> Result<Option<Box<Expr>>> {
