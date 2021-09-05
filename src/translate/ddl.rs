@@ -79,9 +79,7 @@ fn translate_column_option_def(
         SqlColumnOption::Null => Ok(ColumnOption::Null),
         SqlColumnOption::NotNull => Ok(ColumnOption::NotNull),
         SqlColumnOption::Default(expr) => translate_expr(expr).map(ColumnOption::Default),
-        SqlColumnOption::Unique { is_primary } => Ok(ColumnOption::Unique {
-            is_primary: *is_primary,
-        }),
+        SqlColumnOption::Unique { is_primary: false } => Ok(ColumnOption::Unique { is_primary: false }),
         _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
     }?;
 

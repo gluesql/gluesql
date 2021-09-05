@@ -180,7 +180,7 @@ test_case!(asin, async move {
 
     let test_cases = vec![
         (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE SingleItem (id INTEGER)",
             Ok(Payload::Create),
         ),
         (
@@ -234,7 +234,7 @@ test_case!(acos, async move {
 
     let test_cases = vec![
         (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE SingleItem (id INTEGER)",
             Ok(Payload::Create),
         ),
         (
@@ -292,7 +292,7 @@ test_case!(atan, async move {
 
     let test_cases = vec![
         (
-            "CREATE TABLE SingleItem (id INTEGER PRIMARY KEY)",
+            "CREATE TABLE SingleItem (id INTEGER)",
             Ok(Payload::Create),
         ),
         (
