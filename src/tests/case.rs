@@ -64,8 +64,8 @@ test_case!(case, async move {
             r#"
             SELECT CASE
                 WHEN name = "Harry" THEN id
-                WHEN name = "Ron" THEN id 
-                WHEN name = "Hermione" THEN id 
+                WHEN name = "Ron" THEN id
+                WHEN name = "Hermione" THEN id
                 ELSE 404 END
             AS case FROM Item;
             "#,
@@ -91,6 +91,22 @@ test_case!(case, async move {
                 I64(1);
                 I64(2);
                 Null
+            )),
+        ),
+        (
+            r#"
+            SELECT CASE
+                WHEN (name = "Harry") OR (name = "Ron") THEN (id + 1)
+                WHEN name = ("Hermi" || "one") THEN (id + 2)
+                ELSE 404 END
+            AS case FROM Item;
+            "#,
+            Ok(select!(
+                case
+                I64;
+                2;
+                3;
+                5
             )),
         ),
         (
