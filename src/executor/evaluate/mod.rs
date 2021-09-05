@@ -202,6 +202,10 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             when_then,
             else_result,
         } => {
+            use super::EvaluateError;
+            use itertools::Itertools;
+            use std::mem::discriminant as disc;
+
             let operand = match operand {
                 Some(expr) => Some(eval(expr).await?),
                 None => None,
@@ -218,7 +222,62 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => None,
             };
 
-            expr::case(operand, when_then, else_result)
+            let (_, thens) = when_then
+                .clone()
+                .into_iter()
+                .unzip::<_, _, Vec<_>, Vec<_>>();
+
+            let results = match &else_result {
+                Some(er) => [thens, [er.to_owned()].to_vec()].concat(),
+                None => thens,
+            };
+
+            if !results
+                .into_iter()
+                .filter_map(|result| result.try_into().ok())
+                .map(|result: Value| disc(&result))
+                .all_equal()
+            {
+                Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into())
+            } else {
+                match operand {
+                    Some(op) => match when_then.iter().find(|(when, _)| when.eq(&op)) {
+                        Some((_, then)) => Ok(then.to_owned()),
+                        _ => match else_result {
+                            Some(result) => Ok(result),
+                            _ => Ok(Evaluated::from(Value::Null)),
+                        },
+                    },
+                    _ => {
+                        let thens = when_then
+                            .into_iter()
+                            .map(|(when, then)| match when.try_into() {
+                                Ok(Value::Bool(condition)) => Ok(condition.then(|| then)),
+                                _ => Err(()),
+                            })
+                            .collect::<Vec<_>>();
+
+                        if thens.iter().any(|then| then.is_err()) {
+                            Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into())
+                        } else {
+                            match thens
+                                .into_iter()
+                                .map(|then| match then {
+                                    Ok(t) => t,
+                                    _ => None,
+                                })
+                                .find(|then| then.is_some())
+                            {
+                                Some(Some(result)) => Ok(result),
+                                _ => match else_result {
+                                    Some(result) => Ok(result),
+                                    _ => Ok(Evaluated::from(Value::Null)),
+                                },
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
