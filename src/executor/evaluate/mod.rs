@@ -14,10 +14,12 @@ use {
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
+    itertools::Itertools,
     std::{
         borrow::Cow,
         convert::{TryFrom, TryInto},
         fmt::Debug,
+        mem::discriminant,
         rc::Rc,
     },
 };
@@ -202,10 +204,6 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             when_then,
             else_result,
         } => {
-            use super::EvaluateError;
-            use itertools::Itertools;
-            use std::mem::discriminant as disc;
-
             let operand = match operand {
                 Some(expr) => Some(eval(expr).await?),
                 None => None,
@@ -235,7 +233,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             if !results
                 .into_iter()
                 .filter_map(|result| result.try_into().ok())
-                .map(|result: Value| disc(&result))
+                .map(|result: Value| discriminant(&result))
                 .all_equal()
             {
                 Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into())
