@@ -611,7 +611,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
             let start = match eval_to_integer(start).await? {
                 Nullable::Value(v) => v,
-                Nullable::Null => return Ok(Evaluated::from(Value::Null))
+                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
             };
 
             let count = match count {
@@ -628,7 +628,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             let s: i64 = if start <= 0 { 0 } else { start - 1 };
             let e: i64 = start + count - 1;
             let s = s as usize;
-            let e = if count == -1 || e > string.len() as i64 { string.len() } else { e as usize };
+            let e = if count == -1 || e > string.len() as i64 {
+                string.len()
+            } else {
+                e as usize
+            };
 
             let result = if count == 0 || s >= string.len() {
                 String::from("")

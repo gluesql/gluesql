@@ -14,6 +14,6 @@ pub mod radians;
 pub mod reverse;
 pub mod round;
 pub mod sqrt_power;
+pub mod substr;
 pub mod trim;
 pub mod upper_lower;
-pub mod substr;
