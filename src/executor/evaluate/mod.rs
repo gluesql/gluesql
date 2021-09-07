@@ -601,6 +601,45 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             }
         }
         .map(Evaluated::from),
+
+        Function::Substr { expr, start, count } => {
+            let string = match eval_to_str(expr).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let start = match eval_to_integer(start).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => return Ok(Evaluated::from(Value::Null))
+            };
+
+            let count = match count {
+                Some(expr) => match eval_to_integer(expr).await? {
+                    Nullable::Value(v) => match v {
+                        x if x < 0 => return Err(EvaluateError::NegativeSubstrLenNotAllowed.into()),
+                        _ => v,
+                    },
+                    Nullable::Null => -1,
+                },
+                None => -1,
+            };
+
+            let s: i64 = if start <= 0 { 0 } else { start - 1 };
+            let e: i64 = start + count - 1;
+            let s = s as usize;
+            let e = if count == -1 || e > string.len() as i64 { string.len() } else { e as usize };
+
+            let result = if count == 0 || s >= string.len() {
+                String::from("")
+            } else if count == -1 {
+                String::from(&string[s..])
+            } else {
+                String::from(&string[s..e])
+            };
+
+            Ok(Evaluated::from(Value::Str(result)))
+        }
     }
 }
 

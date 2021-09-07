@@ -99,6 +99,7 @@ macro_rules! generate_tests {
         glue!(function_degrees, function::degrees::degrees);
         glue!(function_pi, function::pi::pi);
         glue!(function_reverse, function::reverse::reverse);
+        glue!(function_substr, function::substr::substr);
 
         #[cfg(feature = "index")]
         macro_rules! glue_index {
