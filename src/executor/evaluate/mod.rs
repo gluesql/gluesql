@@ -579,6 +579,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             }
             Ok(value::Str(expr.repeat(num)))
         }
+        .map(Evaluated::from),
     }
 }
 
