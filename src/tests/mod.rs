@@ -66,6 +66,9 @@ macro_rules! generate_tests {
         glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
+        glue!(function_math_function_asin, function::math_function::asin);
+        glue!(function_math_function_acos, function::math_function::acos);
+        glue!(function_math_function_atan, function::math_function::atan);
         glue!(function_math_function_sin, function::math_function::sin);
         glue!(function_math_function_cos, function::math_function::cos);
         glue!(function_math_function_tan, function::math_function::tan);

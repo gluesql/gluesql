@@ -95,4 +95,7 @@ pub enum ValueError {
 
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(Value, Value),
+
+    #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
+    ILikeOnNonString(Value, Value),
 }

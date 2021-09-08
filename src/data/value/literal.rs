@@ -2,7 +2,7 @@ use {
     super::{error::ValueError, Value},
     crate::{
         ast::DataType,
-        data::Literal,
+        data::{Interval, Literal},
         result::{Error, Result},
     },
     chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
@@ -197,6 +197,9 @@ impl Value {
                 let v = if *v { "TRUE" } else { "FALSE" };
 
                 Ok(Value::Str(v.to_owned()))
+            }
+            (DataType::Interval, Literal::Text(v)) => {
+                Interval::try_from(v.as_str()).map(Value::Interval)
             }
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)

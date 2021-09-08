@@ -8,7 +8,13 @@ license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 readme = "README.md"
-keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webassembly"]
+keywords = [
+	"sql-database",
+	"sql",
+	"functional",
+	"no-mut-in-the-middle",
+	"webassembly",
+]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -48,7 +54,7 @@ iter-enum = "1"
 itertools = "0.10"
 pin-project = "1.0"
 serde = { version = "1", features = ["derive"] }
-sqlparser = { version = "0.9", features = ["serde"] }
+sqlparser = { version = "0.10", features = ["serde"] }
 thiserror = "1.0"
 strum = "0.21"
 strum_macros = "0.21"
