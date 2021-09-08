@@ -49,6 +49,10 @@ test_case!(create_table, async move {
             Err(TranslateError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
         ),
         (
+            "CREATE TABLE Glue (id INTEGER PRIMARY KEY)",
+            Err(TranslateError::UnsupportedColumnOption(("PRIMARY KEY").to_owned()).into()),
+        ),
+        (
             r#"
         CREATE TABLE CreateTable3 (
             id INTEGER,

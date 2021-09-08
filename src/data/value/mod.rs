@@ -129,6 +129,7 @@ impl Value {
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
+            (DataType::Interval, value) => value.try_into().map(Value::Interval),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
