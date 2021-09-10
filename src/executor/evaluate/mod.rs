@@ -209,7 +209,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => None,
             };
 
-            let when_then = stream::iter(when_then.iter())
+            let when_then: Vec<(Evaluated, Evaluated)> = stream::iter(when_then.iter())
                 .map(Ok::<_, Error>)
                 .and_then(|(when, then)| async move { Ok((eval(when).await?, eval(then).await?)) })
                 .try_collect::<Vec<_>>()
@@ -220,60 +220,48 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => None,
             };
 
-            let (_, thens) = when_then
+            let (whens, thens) = when_then
                 .clone()
                 .into_iter()
                 .unzip::<_, _, Vec<_>, Vec<_>>();
 
             let results = match &else_result {
-                Some(er) => [thens, [er.to_owned()].to_vec()].concat(),
-                None => thens,
-            };
+                Some(er) => [thens.clone(), [er.to_owned()].to_vec()].concat(),
+                None => thens.clone(),
+            }
+            .into_iter()
+            .map(|result| result.try_into())
+            .collect::<Result<Vec<Value>>>()?;
 
             if !results
-                .into_iter()
-                .filter_map(|result| result.try_into().ok())
-                .map(|result: Value| discriminant(&result))
+                .iter()
+                .map(|result| discriminant(result))
                 .all_equal()
             {
                 Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into())
             } else {
                 match operand {
-                    Some(op) => match when_then.iter().find(|(when, _)| when.eq(&op)) {
-                        Some((_, then)) => Ok(then.to_owned()),
-                        _ => match else_result {
-                            Some(result) => Ok(result),
-                            _ => Ok(Evaluated::from(Value::Null)),
-                        },
-                    },
-                    _ => {
-                        let thens = when_then
-                            .into_iter()
-                            .map(|(when, then)| match when.try_into() {
-                                Ok(Value::Bool(condition)) => Ok(condition.then(|| then)),
-                                _ => Err(()),
-                            })
-                            .collect::<Vec<_>>();
-
-                        if thens.iter().any(|then| then.is_err()) {
-                            Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into())
-                        } else {
-                            match thens
+                    Some(op) => Ok(when_then.iter().find(|(when, _)| when.eq(&op)).map_or(
+                        else_result.unwrap_or_else(|| Evaluated::from(Value::Null)),
+                        |(_, then)| then.to_owned(),
+                    )),
+                    None => whens
+                        .into_iter()
+                        .map(|when| match when.try_into() {
+                            Ok(Value::Bool(condition)) => Ok(condition),
+                            _ => Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
+                        })
+                        .collect::<Result<Vec<bool>>>()
+                        .map_or_else(Err::<_, Error>, |whens| {
+                            Ok(whens
                                 .into_iter()
-                                .map(|then| match then {
-                                    Ok(t) => t,
-                                    _ => None,
-                                })
-                                .find(|then| then.is_some())
-                            {
-                                Some(Some(result)) => Ok(result),
-                                _ => match else_result {
-                                    Some(result) => Ok(result),
-                                    _ => Ok(Evaluated::from(Value::Null)),
-                                },
-                            }
-                        }
-                    }
+                                .zip(thens.into_iter())
+                                .find(|(condition, _)| condition.to_owned())
+                                .map_or(
+                                    else_result.unwrap_or_else(|| Evaluated::from(Value::Null)),
+                                    |(_, result)| result,
+                                ))
+                        }),
                 }
             }
         }
