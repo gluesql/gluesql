@@ -9,12 +9,12 @@ license = "Apache-2.0"
 # documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-bincode = { version = "1.3", optional = true }
-sled = { version = "0.34.6", optional = true }
+# bincode = { version = "1.3", optional = true }
+serde = { version = "1", features = ["derive"] }
+sled = "0.34.6"
 
-[dependencies.gluesql_core]
-version = "0.8"
-package = "gluesql"
+[dependencies.gluesql]
+path = "../../"
 default-features = false
-features = ["sorter", "alter-table", "index", "transaction"]
+features = ["sorter", "alter-table", "bincode", "index", "transaction"]
 

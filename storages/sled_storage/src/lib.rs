@@ -1,5 +1,6 @@
 pub use serde;
-pub use gluesql_core;
+pub use sled;
+pub use gluesql;
 
 mod alter_table;
 mod error;
@@ -25,7 +26,7 @@ use {
     },
     std::convert::TryFrom,
 };
-use gluesql_core::{
+use gluesql::{
     data::Schema,
     Error, Result,
 };
@@ -107,6 +108,3 @@ fn fetch_schema(
 
     Ok((key, schema_snapshot))
 }
-
-impl Store<IVec> for SledStorage {}
-impl StoreMut<IVec> for SledStorage {}
