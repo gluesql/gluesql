@@ -250,11 +250,8 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                             Ok(whens
                                 .into_iter()
                                 .zip(thens.into_iter())
-                                .find(|(condition, _)| condition.to_owned())
-                                .map_or(
-                                    else_result.unwrap_or_else(|| Evaluated::from(Value::Null)),
-                                    |(_, result)| result,
-                                ))
+                                .find_map(|(when, then)| when.to_owned().then(|| then))
+                                .unwrap_or_else(|| Evaluated::from(Value::Null)))
                         }),
                 }
             }
