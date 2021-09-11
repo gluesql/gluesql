@@ -204,15 +204,10 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             when_then,
             else_result,
         } => {
-            let operand = match operand {
-                Some(expr) => Some(eval(expr).await?),
-                None => None,
-            };
-
             let when_then: Vec<(Evaluated, Evaluated)> = stream::iter(when_then.iter())
                 .map(Ok::<_, Error>)
                 .and_then(|(when, then)| async move { Ok((eval(when).await?, eval(then).await?)) })
-                .try_collect::<Vec<_>>()
+                .try_collect()
                 .await?;
 
             let else_result = match else_result {
@@ -225,26 +220,25 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 .into_iter()
                 .unzip::<_, _, Vec<_>, Vec<_>>();
 
-            let results = match &else_result {
-                Some(er) => [thens.clone(), [er.to_owned()].to_vec()].concat(),
-                None => thens.clone(),
-            }
-            .into_iter()
-            .map(|result| result.try_into())
-            .collect::<Result<Vec<Value>>>()?;
+            let results = else_result
+                .as_ref()
+                .map(|er| [thens.clone(), [er.to_owned()].to_vec()].concat())
+                .unwrap_or_else(|| thens.clone())
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<Value>>>()?;
 
-            if !results
-                .iter()
-                .map(|result| discriminant(result))
-                .all_equal()
-            {
+            if !results.iter().map(discriminant).all_equal() {
                 Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into())
             } else {
                 match operand {
-                    Some(op) => Ok(when_then.iter().find(|(when, _)| when.eq(&op)).map_or(
-                        else_result.unwrap_or_else(|| Evaluated::from(Value::Null)),
-                        |(_, then)| then.to_owned(),
-                    )),
+                    Some(op) => {
+                        let op = eval(op).await?;
+                        Ok(when_then
+                            .into_iter()
+                            .find_map(|(when, then)| when.eq(&op).then(|| then))
+                            .unwrap_or_else(|| Evaluated::from(Value::Null)))
+                    }
                     None => whens
                         .into_iter()
                         .map(|when| match when.try_into() {
