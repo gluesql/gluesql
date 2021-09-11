@@ -7,7 +7,7 @@ use {
         transaction::TxPayload,
         SledStorage, Snapshot,
     },
-    crate::{
+    gluesql_core::{
         ast::OrderByExpr,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         result::{Error, MutResult, Result, TrySelf},

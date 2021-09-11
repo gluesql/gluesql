@@ -1,3 +1,6 @@
+pub use serde;
+pub use gluesql_core;
+
 mod alter_table;
 mod error;
 mod gc;
@@ -13,20 +16,18 @@ mod transaction;
 
 use {
     self::snapshot::Snapshot,
-    crate::{
-        data::Schema,
-        store::{GStore, GStoreMut},
-        Error, Result,
-    },
     error::{err_into, tx_err_into},
     sled::{
-        self,
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
         Config, Db, IVec,
     },
     std::convert::TryFrom,
+};
+use gluesql_core::{
+    data::Schema,
+    Error, Result,
 };
 
 /// default transaction timeout : 1 hour
@@ -107,5 +108,5 @@ fn fetch_schema(
     Ok((key, schema_snapshot))
 }
 
-impl GStore<IVec> for SledStorage {}
-impl GStoreMut<IVec> for SledStorage {}
+impl Store<IVec> for SledStorage {}
+impl StoreMut<IVec> for SledStorage {}

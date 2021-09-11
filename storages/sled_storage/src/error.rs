@@ -1,5 +1,5 @@
 use {
-    crate::{Error, IndexError},
+    gluesql::{Error, IndexError},
     sled::transaction::TransactionError as SledTransactionError,
     std::{str, time},
     thiserror::Error as ThisError,

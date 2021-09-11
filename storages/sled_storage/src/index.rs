@@ -4,12 +4,12 @@ use {
         index_sync::{build_index_key, build_index_key_prefix},
         lock, SledStorage, Snapshot, State,
     },
-    crate::{
+    gluesql_core::{
         ast::IndexOperator,
         data::Row,
         result::{Error, Result},
         store::{Index, RowIter},
-        utils::Vector,
+        // utils::Vector,
         IndexError, Value,
     },
     async_trait::async_trait,

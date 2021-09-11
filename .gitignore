@@ -29,4 +29,5 @@ Cargo.lock
 #already existing elements are commented out
 
 /target
+/storages/**/target
 #**/*.rs.bk
