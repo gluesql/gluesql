@@ -12,7 +12,10 @@ use {
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStreamExt},
+    futures::{
+        future::ready,
+        stream::{self, StreamExt, TryStreamExt},
+    },
     im_rc::HashMap,
     std::{
         borrow::Cow,
@@ -71,11 +74,8 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         Expr::Subquery(query) => select(storage, query, context.as_ref().map(Rc::clone))
             .await?
             .map_ok(|row| row.take_first_value().map(Evaluated::from))
-            .take(1)
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
             .next()
+            .await
             .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))?,
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
@@ -111,23 +111,12 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             let negated = *negated;
             let target = eval(expr).await?;
 
-            stream::iter(list.iter())
-                .filter_map(|expr| {
-                    let target = &target;
-
-                    async move {
-                        eval(expr).await.map_or_else(
-                            |error| Some(Err(error)),
-                            |evaluated| (target == &evaluated).then(|| Ok(!negated)),
-                        )
-                    }
-                })
-                .take(1)
-                .collect::<Vec<_>>()
+            stream::iter(list)
+                .then(eval)
+                .try_filter(|evaluated| ready(evaluated == &target))
+                .try_next()
                 .await
-                .into_iter()
-                .next()
-                .unwrap_or(Ok(negated))
+                .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
                 .map(Evaluated::from)
         }
@@ -140,23 +129,11 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             select(storage, subquery, context)
                 .await?
-                .try_filter_map(|row| {
-                    let target = &target;
-
-                    async move {
-                        let value = row.take_first_value()?;
-
-                        (target == &Evaluated::from(&value))
-                            .then(|| Ok(!negated))
-                            .transpose()
-                    }
-                })
-                .take(1)
-                .collect::<Vec<_>>()
+                .and_then(|row| ready(row.take_first_value().map(Evaluated::from)))
+                .try_filter(|evaluated| ready(evaluated == &target))
+                .try_next()
                 .await
-                .into_iter()
-                .next()
-                .unwrap_or(Ok(*negated))
+                .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
                 .map(Evaluated::from)
         }
@@ -172,18 +149,13 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             expr::between(target, *negated, low, high)
         }
-        Expr::Exists(query) => {
-            let v = select(storage, query, context)
-                .await?
-                .into_stream()
-                .take(1)
-                .try_collect::<Vec<_>>()
-                .await?
-                .get(0)
-                .is_some();
-
-            Ok(Evaluated::from(Value::Bool(v)))
-        }
+        Expr::Exists(query) => select(storage, query, context)
+            .await?
+            .try_next()
+            .await
+            .map(|v| v.is_some())
+            .map(Value::Bool)
+            .map(Evaluated::from),
         Expr::IsNull(expr) => {
             let v = eval(expr).await?.is_null();
 
