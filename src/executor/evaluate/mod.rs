@@ -618,26 +618,28 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 Some(expr) => match eval_to_integer(expr).await? {
                     Nullable::Value(v) => match v {
                         x if x < 0 => return Err(EvaluateError::NegativeSubstrLenNotAllowed.into()),
-                        _ => v,
+                        _ => Some(v),
                     },
-                    Nullable::Null => -1,
+                    Nullable::Null => None,
                 },
-                None => -1,
+                None => None,
             };
 
-            let s: i64 = if start <= 0 { 0 } else { start - 1 };
-            let e: i64 = start + count - 1;
-            let s = s as usize;
-            let e = if count == -1 || e > string.len() as i64 {
-                string.len()
-            } else {
-                e as usize
+
+            let s :usize = if start <= 0 { 0 } else { (start - 1) as usize} ;
+            let e = match count {
+                Some(v) => if (start - 1 + v) < 0  {
+                    0
+                }  else if (start - 1 + v) <= string.len() as i64 {
+                    (start - 1 + v) as usize
+                } else {
+                    string.len()
+                },
+                None => string.len()
             };
 
-            let result = if count == 0 || s >= string.len() {
+            let result = if s >= string.len() {
                 String::from("")
-            } else if count == -1 {
-                String::from(&string[s..])
             } else {
                 String::from(&string[s..e])
             };
