@@ -625,17 +625,18 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 None => None,
             };
 
-
-            let s :usize = if start <= 0 { 0 } else { (start - 1) as usize} ;
+            let s: usize = if start <= 0 { 0 } else { (start - 1) as usize };
             let e = match count {
-                Some(v) => if (start - 1 + v) < 0  {
-                    0
-                }  else if (start - 1 + v) <= string.len() as i64 {
-                    (start - 1 + v) as usize
-                } else {
-                    string.len()
-                },
-                None => string.len()
+                Some(v) => {
+                    if (start - 1 + v) < 0 {
+                        0
+                    } else if (start - 1 + v) <= string.len() as i64 {
+                        (start - 1 + v) as usize
+                    } else {
+                        string.len()
+                    }
+                }
+                None => string.len(),
             };
 
             let result = if s >= string.len() {
