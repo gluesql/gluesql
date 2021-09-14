@@ -47,7 +47,7 @@ impl Store<Key> for MemoryStorage {
         let rows = match self.items.get(table_name) {
             Some(item) => &item.rows,
             None => {
-                return Ok(Box::new(empty::<_>()));
+                return Ok(Box::new(empty()));
             }
         };
 

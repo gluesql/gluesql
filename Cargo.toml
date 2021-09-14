@@ -14,7 +14,7 @@ keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webass
 all-features = true
 
 [features]
-default = ["sled-storage", "alter-table", "sorter"]
+default = ["sled-storage", "memory-storage", "alter-table", "sorter"]
 
 # optional: ALTER TABLE
 # you can include whether ALTER TABLE support or not for your custom database implementation.
