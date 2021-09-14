@@ -1,20 +1,27 @@
-#![cfg(feature = "sled-storage")]
 use {
     crate::{
-        ast::Statement, execute, parse, plan, storages::SledStorage, translate, Payload, Result,
+        ast::Statement,
+        execute, parse, plan,
+        store::{GStore, GStoreMut},
+        translate, Payload, Result,
     },
     futures::executor::block_on,
+    std::{fmt::Debug, marker::PhantomData},
 };
 
-pub struct Glue {
-    pub storage: Option<SledStorage>,
+pub struct Glue<T: Debug, U: GStore<T> + GStoreMut<T>> {
+    _marker: PhantomData<T>,
+    pub storage: Option<U>,
 }
 
-impl Glue {
-    pub fn new(storage: SledStorage) -> Self {
+impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
+    pub fn new(storage: U) -> Self {
         let storage = Some(storage);
 
-        Self { storage }
+        Self {
+            _marker: PhantomData,
+            storage,
+        }
     }
 
     pub fn plan(&self, sql: &str) -> Result<Statement> {
@@ -52,31 +59,35 @@ impl Glue {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Glue, Payload, SledStorage, Value},
-        std::convert::TryFrom,
+        crate::{
+            store::{GStore, GStoreMut},
+            Glue, Payload, Value,
+        },
+        std::fmt::Debug,
     };
 
-    #[test]
-    fn eq() {
-        let config = sled::Config::default()
-            .path("data/using_config")
-            .temporary(true);
-
-        let sled = SledStorage::try_from(config).unwrap();
-        let mut glue = Glue::new(sled);
-
+    fn basic<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
         assert_eq!(
             glue.execute("DROP TABLE IF EXISTS api_test"),
             Ok(Payload::DropTable)
         );
+
         assert_eq!(
             glue.execute(
                 "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
             ),
             Ok(Payload::Create)
         );
+
         assert_eq!(
-            glue.execute("INSERT INTO api_test (id, name, nullable, is) VALUES (1, 'test1', 'not null', TRUE), (2, 'test2', NULL, FALSE)"),
+            glue.execute(
+                "
+                INSERT INTO
+                    api_test (id, name, nullable, is)
+                VALUES
+                    (1, 'test1', 'not null', TRUE),
+                    (2, 'test2', NULL, FALSE)"
+            ),
             Ok(Payload::Insert(2))
         );
 
@@ -98,5 +109,32 @@ mod tests {
                 ]
             })
         );
+    }
+
+    #[cfg(feature = "sled-storage")]
+    #[test]
+    fn sled_basic() {
+        use crate::sled_storage::SledStorage;
+        use std::convert::TryFrom;
+
+        let config = sled::Config::default()
+            .path("data/using_config")
+            .temporary(true);
+
+        let storage = SledStorage::try_from(config).unwrap();
+        let glue = Glue::new(storage);
+
+        basic(glue);
+    }
+
+    #[cfg(feature = "memory-storage")]
+    #[test]
+    fn memory_basic() {
+        use crate::memory_storage::MemoryStorage;
+
+        let storage = MemoryStorage::default();
+        let glue = Glue::new(storage);
+
+        basic(glue);
     }
 }
