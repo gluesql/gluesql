@@ -1,9 +1,11 @@
+// use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AstLiteral {
     Boolean(bool),
-    Number(String),
+    #[cfg(feature = "bigdecimal")]
+    Number(bigdecimal::BigDecimal),
     QuotedString(String),
     Interval {
         value: String,

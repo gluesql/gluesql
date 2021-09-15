@@ -34,7 +34,8 @@ pub enum LiteralError {
 #[derive(Clone, Debug)]
 pub enum Literal<'a> {
     Boolean(bool),
-    Number(Cow<'a, String>),
+    #[cfg(feature = "bigdecimal")]
+    Number(Cow<'a, bigdecimal::BigDecimal>),
     Text(Cow<'a, String>),
     Interval(super::Interval),
     Null,
