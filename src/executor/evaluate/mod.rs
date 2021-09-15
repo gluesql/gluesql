@@ -16,6 +16,7 @@ use {
     im_rc::HashMap,
     std::{
         borrow::Cow,
+        cmp::{max, min},
         convert::{TryFrom, TryInto},
         fmt::Debug,
         rc::Rc,
@@ -610,42 +611,26 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
             let start = match eval_to_integer(start).await? {
-                Nullable::Value(v) => v,
+                Nullable::Value(v) => v - 1,
                 Nullable::Null => return Ok(Evaluated::from(Value::Null)),
             };
 
-            let count = match count {
+            let end = match count {
                 Some(expr) => match eval_to_integer(expr).await? {
-                    Nullable::Value(v) => match v {
-                        x if x < 0 => return Err(EvaluateError::NegativeSubstrLenNotAllowed.into()),
-                        _ => Some(v),
-                    },
-                    Nullable::Null => None,
-                },
-                None => None,
-            };
-
-            let s: usize = if start <= 0 { 0 } else { (start - 1) as usize };
-            let e = match count {
-                Some(v) => {
-                    if (start - 1 + v) < 0 {
-                        0
-                    } else if (start - 1 + v) <= string.len() as i64 {
-                        (start - 1 + v) as usize
-                    } else {
-                        string.len()
+                    Nullable::Value(count) => {
+                        if count < 0 {
+                            return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
+                        }
+                        min(max(start + count, 0) as usize, string.len())
                     }
-                }
+                    Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+                },
                 None => string.len(),
             };
 
-            let result = if s >= string.len() {
-                String::from("")
-            } else {
-                String::from(&string[s..e])
-            };
-
-            Ok(Evaluated::from(Value::Str(result)))
+            let start = min(max(start, 0) as usize, string.len());
+            let string = String::from(&string[start..end]);
+            Ok(Evaluated::from(Value::Str(string)))
         }
     }
 }

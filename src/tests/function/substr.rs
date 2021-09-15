@@ -118,11 +118,7 @@ test_case!(substr, async move {
         ),
         (
             r#"SELECT SUBSTR("ABC", -1, NULL) AS test FROM SingleItem"#,
-            Ok(select!(
-                "test"
-                Str;
-                "ABC".to_owned()
-            )),
+            Ok(select_with_null!(test; Null)),
         ),
         (
             r#"SELECT SUBSTR(name, 3) AS test FROM NullName"#,
