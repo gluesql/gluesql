@@ -60,7 +60,7 @@ default-features = false
 features = ["sorter", "alter-table", "index", "transaction"]
 ```
 
-#### Three features below are also optional.
+#### Four features below are also optional.
 
 - `sorter` - ORDER BY support for non-indexed expressions.
 - `alter-table` - ALTER TABLE query support
@@ -69,8 +69,8 @@ features = ["sorter", "alter-table", "index", "transaction"]
 
 ### Usage
 
-There are two required 2 traits for using GlueSQL: `Store` and `StoreMut`.
-In `src/store/mod.rs`,
+#### Two mandatory store traits to implement
+* [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/src/store/mod.rs)
 
 ```rust
 pub trait Store<T: Debug> {
@@ -87,8 +87,8 @@ pub trait StoreMut<T: Debug> where Self: Sized {
 }
 ```
 
-There is also optional store traits
-In `src/store/alter_table.rs` & `src/store/index.rs`
+#### Optional store traits
+* [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/src/store/index.rs) and [`Transaction`](https://github.com/gluesql/gluesql/blob/main/src/store/transaction.rs)
 
 ```rust
 pub trait AlterTable where Self: Sized {
