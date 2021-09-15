@@ -82,6 +82,12 @@ pub enum Function {
     Rtrim { expr: Expr, chars: Option<Expr> },
     #[strum(to_string = "REVERSE")]
     Reverse(Expr),
+    #[strum(to_string = "SUBSTR")]
+    Substr {
+        expr: Expr,
+        start: Expr,
+        count: Option<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

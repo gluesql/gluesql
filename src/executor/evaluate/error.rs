@@ -51,4 +51,7 @@ pub enum EvaluateError {
 
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
+
+    #[error("negative substring length not allowed")]
+    NegativeSubstrLenNotAllowed,
 }
