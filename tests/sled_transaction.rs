@@ -374,20 +374,18 @@ async fn sled_transaction_gc() {
 
     // force change, txid -> 0
     exec!(glue1 "BEGIN;");
-    let mut glue1 = Glue {
-        storage: glue1.storage.map(|mut s| {
-            s.state = sled_storage::State::Transaction {
-                txid: 0,
-                created_at: SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis(),
-                autocommit: false,
-            };
 
-            s
-        }),
+    let mut storage = glue1.storage.unwrap();
+    storage.state = sled_storage::State::Transaction {
+        txid: 0,
+        created_at: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis(),
+        autocommit: false,
     };
+    let mut glue1 = Glue::new(storage);
+
     test!(glue1 "SELECT * FROM NewGarlic", Err(Error::StorageMsg("fetch failed - expired transaction has used (txid)".to_owned())));
     assert_eq!(
         glue1

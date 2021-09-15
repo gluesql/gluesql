@@ -6,13 +6,16 @@ mod stateless;
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function},
+        ast::{Aggregate, Expr, Function, TrimWhereField},
         data::Value,
         result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{self, StreamExt, TryStreamExt},
+    futures::{
+        future::ready,
+        stream::{self, StreamExt, TryStreamExt},
+    },
     im_rc::HashMap,
     std::{
         borrow::Cow,
@@ -71,11 +74,8 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         Expr::Subquery(query) => select(storage, query, context.as_ref().map(Rc::clone))
             .await?
             .map_ok(|row| row.take_first_value().map(Evaluated::from))
-            .take(1)
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
             .next()
+            .await
             .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))?,
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
@@ -111,23 +111,12 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             let negated = *negated;
             let target = eval(expr).await?;
 
-            stream::iter(list.iter())
-                .filter_map(|expr| {
-                    let target = &target;
-
-                    async move {
-                        eval(expr).await.map_or_else(
-                            |error| Some(Err(error)),
-                            |evaluated| (target == &evaluated).then(|| Ok(!negated)),
-                        )
-                    }
-                })
-                .take(1)
-                .collect::<Vec<_>>()
+            stream::iter(list)
+                .then(eval)
+                .try_filter(|evaluated| ready(evaluated == &target))
+                .try_next()
                 .await
-                .into_iter()
-                .next()
-                .unwrap_or(Ok(negated))
+                .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
                 .map(Evaluated::from)
         }
@@ -140,23 +129,11 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             select(storage, subquery, context)
                 .await?
-                .try_filter_map(|row| {
-                    let target = &target;
-
-                    async move {
-                        let value = row.take_first_value()?;
-
-                        (target == &Evaluated::from(&value))
-                            .then(|| Ok(!negated))
-                            .transpose()
-                    }
-                })
-                .take(1)
-                .collect::<Vec<_>>()
+                .and_then(|row| ready(row.take_first_value().map(Evaluated::from)))
+                .try_filter(|evaluated| ready(evaluated == &target))
+                .try_next()
                 .await
-                .into_iter()
-                .next()
-                .unwrap_or(Ok(*negated))
+                .map(|v| v.is_some() ^ negated)
                 .map(Value::Bool)
                 .map(Evaluated::from)
         }
@@ -172,18 +149,13 @@ pub async fn evaluate<'a, T: 'static + Debug>(
 
             expr::between(target, *negated, low, high)
         }
-        Expr::Exists(query) => {
-            let v = select(storage, query, context)
-                .await?
-                .into_stream()
-                .take(1)
-                .try_collect::<Vec<_>>()
-                .await?
-                .get(0)
-                .is_some();
-
-            Ok(Evaluated::from(Value::Bool(v)))
-        }
+        Expr::Exists(query) => select(storage, query, context)
+            .await?
+            .try_next()
+            .await
+            .map(|v| v.is_some())
+            .map(Value::Bool)
+            .map(Evaluated::from),
         Expr::IsNull(expr) => {
             let v = eval(expr).await?.is_null();
 
@@ -327,7 +299,21 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
-        .map(Evaluated::from),
+        Function::ASin(expr) | Function::ACos(expr) | Function::ATan(expr) => {
+            let float_number = eval_to_float(expr).await?;
+
+            let trigonometric = |func, value| match func {
+                Function::ASin(_) => f64::asin(value),
+                Function::ACos(_) => f64::acos(value),
+                _ => f64::atan(value),
+            };
+
+            match float_number {
+                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
+                Nullable::Null => Ok(Value::Null),
+            }
+            .map(Evaluated::from)
+        }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let name = if matches!(func, Function::Lpad { .. }) {
                 "LPAD"
@@ -408,11 +394,36 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         Function::Pi() => {
             { Ok(Evaluated::from(Value::F64(std::f64::consts::PI))) }.map(Evaluated::from)
         }
-        Function::Trim(expr) => match eval_to_str(expr).await? {
-            Nullable::Value(string) => Ok(Value::Str(string.trim().to_owned())),
-            Nullable::Null => Ok(Value::Null),
+        Function::Trim {
+            expr,
+            filter_chars,
+            trim_where_field,
+        } => {
+            let expr_str = match eval_to_str(expr).await? {
+                Nullable::Value(str) => str,
+                Nullable::Null => return Ok(Value::Null).map(Evaluated::from),
+            };
+            let expr_str = expr_str.as_str();
+
+            let filter_chars = match filter_chars {
+                Some(expr) => match eval_to_str(expr).await? {
+                    Nullable::Value(str) => str.chars().collect::<Vec<_>>(),
+                    Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+                },
+                None => vec![' '],
+            };
+
+            Ok(Value::Str(
+                match trim_where_field {
+                    Some(TrimWhereField::Both) => expr_str.trim_matches(&filter_chars[..]),
+                    Some(TrimWhereField::Leading) => expr_str.trim_start_matches(&filter_chars[..]),
+                    Some(TrimWhereField::Trailing) => expr_str.trim_end_matches(&filter_chars[..]),
+                    None => return Ok(Evaluated::from(Value::Str(expr_str.trim().to_owned()))),
+                }
+                .to_owned(),
+            ))
+            .map(Evaluated::from)
         }
-        .map(Evaluated::from),
         Function::Exp(expr) => match eval_to_float(expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.exp())),
             Nullable::Null => Ok(Value::Null),

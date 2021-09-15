@@ -8,13 +8,19 @@ license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 readme = "README.md"
-keywords = ["sql-database", "sql", "functional", "no-mut-in-the-middle", "webassembly"]
+keywords = [
+	"sql-database",
+	"sql",
+	"functional",
+	"no-mut-in-the-middle",
+	"webassembly",
+]
 
 [package.metadata.docs.rs]
 all-features = true
 
 [features]
-default = ["sled-storage", "alter-table", "index", "transaction", "sorter"]
+default = ["sled-storage", "memory-storage", "alter-table", "sorter"]
 
 # optional: ALTER TABLE
 # you can include whether ALTER TABLE support or not for your custom database implementation.
@@ -34,6 +40,9 @@ sorter = []
 # default storage engine sled-storage is not required.
 sled-storage = ["transaction", "index", "sled", "bincode"]
 
+# BTreeMap based in-memory storage
+memory-storage = ["sorter"]
+
 [dependencies]
 regex = "1.5"
 async-trait = "0.1"
@@ -48,7 +57,7 @@ iter-enum = "1"
 itertools = "0.10"
 pin-project = "1.0"
 serde = { version = "1", features = ["derive"] }
-sqlparser = { version = "0.9", features = ["serde"] }
+sqlparser = { version = "0.10", features = ["serde"] }
 thiserror = "1.0"
 strum = "0.21"
 strum_macros = "0.21"

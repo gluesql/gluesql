@@ -1,11 +1,45 @@
 use {
-    super::{expr::translate_expr, translate_object_name, TranslateError},
+    super::{
+        ast_literal::translate_trim_where_field, expr::translate_expr, translate_object_name,
+        TranslateError,
+    },
     crate::{
-        ast::{Aggregate, Expr, Function, ObjectName},
+        ast::{Aggregate, Expr, Function, ObjectName, TrimWhereField},
         result::Result,
     },
-    sqlparser::ast::{Function as SqlFunction, FunctionArg as SqlFunctionArg},
+    sqlparser::ast::{
+        Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
+        TrimWhereField as SqlTrimWhereField,
+    },
 };
+
+pub fn translate_trim(
+    expr: &SqlExpr,
+    trim_where: &Option<(SqlTrimWhereField, Box<SqlExpr>)>,
+) -> Result<Expr> {
+    let expr = translate_expr(expr)?;
+    let trim_where = trim_where
+        .as_ref()
+        .map(
+            |(trim_where_field, expr)| -> Result<(TrimWhereField, Expr)> {
+                Ok((
+                    translate_trim_where_field(trim_where_field),
+                    translate_expr(expr)?,
+                ))
+            },
+        )
+        .transpose()?;
+    let (filter_chars, trim_where_field) = match trim_where {
+        Some((trim_where_field, filter_chars)) => (Some(filter_chars), Some(trim_where_field)),
+        None => (None, None),
+    };
+
+    Ok(Expr::Function(Box::new(Function::Trim {
+        expr,
+        filter_chars,
+        trim_where_field,
+    })))
+}
 
 pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     let SqlFunction { name, args, .. } = sql_function;
@@ -165,6 +199,9 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "SIN" => func_with_one_arg!(Function::Sin),
         "COS" => func_with_one_arg!(Function::Cos),
         "TAN" => func_with_one_arg!(Function::Tan),
+        "ASIN" => func_with_one_arg!(Function::ASin),
+        "ACOS" => func_with_one_arg!(Function::ACos),
+        "ATAN" => func_with_one_arg!(Function::ATan),
         "RADIANS" => func_with_one_arg!(Function::Radians),
         "DEGREES" => func_with_one_arg!(Function::Degrees),
         "PI" => {
@@ -194,7 +231,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
         "MAX" => aggr!(Aggregate::Max),
-        "TRIM" => func_with_one_arg!(Function::Trim),
         "DIV" => {
             check_len(name, args.len(), 2)?;
 
