@@ -73,7 +73,7 @@ pub enum Function {
     #[strum(to_string = "REVERSE")]
     Reverse(Expr),
     #[strum(to_string = "REPEAT")]
-    Repeat{ expr: Expr, num: Expr },
+    Repeat { expr: Expr, num: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

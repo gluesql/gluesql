@@ -218,7 +218,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             })))
         }
         "REVERSE" => func_with_one_arg!(Function::Reverse),
+        "REPEAT" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let num = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Repeat { expr, num })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
-        "REPEAT" => func_with_two_arg!(Repeat),
     }
 }
