@@ -74,6 +74,11 @@ impl Value {
                     .copied()
                     .collect::<Vec<_>>()
             }
+            Value::UUID(v) => [VALUE]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
             Value::Null => vec![NULL],
         }
     }

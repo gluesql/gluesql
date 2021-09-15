@@ -27,6 +27,7 @@ pub enum Value {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
+    UUID(u128),
     Null,
 }
 
@@ -45,6 +46,7 @@ impl PartialEq<Value> for Value {
             (Value::Timestamp(l), Value::Timestamp(r)) => l == r,
             (Value::Time(l), Value::Time(r)) => l == r,
             (Value::Interval(l), Value::Interval(r)) => l == r,
+            (Value::UUID(l), Value::UUID(r)) => l == r,
             _ => false,
         }
     }
@@ -65,6 +67,7 @@ impl PartialOrd<Value> for Value {
             (Value::Timestamp(l), Value::Timestamp(r)) => Some(l.cmp(r)),
             (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
+            (Value::UUID(l), Value::UUID(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -81,6 +84,7 @@ impl Value {
                 | (DataType::Date, Value::Date(_))
                 | (DataType::Timestamp, Value::Timestamp(_))
                 | (DataType::Interval, Value::Interval(_))
+                | (DataType::UUID, Value::UUID(_))
                 | (DataType::Boolean, Value::Null)
                 | (DataType::Int, Value::Null)
                 | (DataType::Float, Value::Null)
@@ -89,6 +93,7 @@ impl Value {
                 | (DataType::Timestamp, Value::Null)
                 | (DataType::Time, Value::Null)
                 | (DataType::Interval, Value::Null)
+                | (DataType::UUID, Value::Null)
         );
 
         if !valid {
@@ -119,7 +124,8 @@ impl Value {
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
-            | (DataType::Interval, Value::Interval(_)) => Ok(self.clone()),
+            | (DataType::Interval, Value::Interval(_))
+            | (DataType::UUID, Value::UUID(_)) => Ok(self.clone()),
 
             (_, Value::Null) => Ok(Value::Null),
 
@@ -130,6 +136,7 @@ impl Value {
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
+            (DataType::UUID, value) => value.try_into().map(Value::UUID),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
@@ -322,6 +329,7 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use super::{Interval, Value::*};
+    use uuid::Uuid;
 
     #[allow(clippy::eq_op)]
     #[test]
@@ -347,6 +355,19 @@ mod tests {
 
         assert_eq!(date, timestamp);
         assert_eq!(timestamp, date);
+
+        assert_eq!(
+            UUID(
+                Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
+                    .unwrap()
+                    .as_u128()
+            ),
+            UUID(
+                Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
+                    .unwrap()
+                    .as_u128()
+            )
+        );
     }
 
     #[test]

@@ -14,6 +14,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Timestamp => Ok(DataType::Timestamp),
         SqlDataType::Time => Ok(DataType::Time),
         SqlDataType::Interval => Ok(DataType::Interval),
+        SqlDataType::Uuid => Ok(DataType::UUID),
         _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
     }
 }
