@@ -38,8 +38,7 @@ impl Store<Key> for MemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.items
             .get(table_name)
-            .map(|item| item.schema.clone())
-            .map(Ok)
+            .map(|item| Ok(item.schema.clone()))
             .transpose()
     }
 
