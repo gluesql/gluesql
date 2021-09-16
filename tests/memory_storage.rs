@@ -1,16 +1,9 @@
 #![cfg(feature = "memory-storage")]
 
-use {
-    futures::executor::block_on,
-    std::{cell::RefCell, rc::Rc},
-};
+use std::{cell::RefCell, rc::Rc};
 
 use gluesql::{
-    declare_test_fn, generate_store_tests,
-    memory_storage::Key,
-    store::{Index, Store},
-    tests::*,
-    Error, Glue, MemoryStorage, Result,
+    declare_test_fn, generate_store_tests, memory_storage::Key, tests::*, MemoryStorage,
 };
 
 struct MemoryTester {
@@ -32,12 +25,14 @@ impl Tester<Key, MemoryStorage> for MemoryTester {
 
 generate_store_tests!(tokio::test, MemoryTester);
 
+#[cfg(any(feature = "alter-table", feature = "index", feature = "transaction"))]
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
         $glue.execute($sql).unwrap();
     };
 }
 
+#[cfg(any(feature = "alter-table", feature = "index", feature = "transaction"))]
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
         assert_eq!($glue.execute($sql), $result);
@@ -47,6 +42,8 @@ macro_rules! test {
 #[cfg(feature = "alter-table")]
 #[test]
 fn memory_storage_alter_table() {
+    use gluesql::{Error, Glue};
+
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);
 
@@ -72,6 +69,12 @@ fn memory_storage_alter_table() {
 #[cfg(feature = "index")]
 #[test]
 fn memory_storage_index() {
+    use futures::executor::block_on;
+    use gluesql::{
+        store::{Index, Store},
+        Error, Glue, Result,
+    };
+
     let storage = MemoryStorage::default();
 
     assert_eq!(
@@ -106,9 +109,12 @@ fn memory_storage_index() {
 #[cfg(feature = "transaction")]
 #[test]
 fn memory_storage_transaction() {
+    use gluesql::{Error, Glue};
+
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);
 
+    exec!(glue "CREATE TABLE TxTest (id INTEGER);");
     test!(glue "BEGIN", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
     test!(glue "COMMIT", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
     test!(glue "ROLLBACK", Err(Error::StorageMsg("[MemoryStorage] transaction is not supported".to_owned())));
