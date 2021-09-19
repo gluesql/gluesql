@@ -254,6 +254,21 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             })))
         }
         "REVERSE" => func_with_one_arg!(Function::Reverse),
+        "SUBSTR" => {
+            check_len_range(name, args.len(), 2, 3)?;
+
+            let expr = translate_expr(args[0])?;
+            let start = translate_expr(args[1])?;
+            let count = (args.len() > 2)
+                .then(|| translate_expr(args[2]))
+                .transpose()?;
+
+            Ok(Expr::Function(Box::new(Function::Substr {
+                expr,
+                start,
+                count,
+            })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

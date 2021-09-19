@@ -20,6 +20,7 @@ use {
     itertools::Itertools,
     std::{
         borrow::Cow,
+        cmp::{max, min},
         convert::{TryFrom, TryInto},
         fmt::Debug,
         mem::discriminant,
@@ -643,6 +644,36 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             }
         }
         .map(Evaluated::from),
+
+        Function::Substr { expr, start, count } => {
+            let string = match eval_to_str(expr).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let start = match eval_to_integer(start).await? {
+                Nullable::Value(v) => v - 1,
+                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+            };
+
+            let end = match count {
+                Some(expr) => match eval_to_integer(expr).await? {
+                    Nullable::Value(count) => {
+                        if count < 0 {
+                            return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
+                        }
+                        min(max(start + count, 0) as usize, string.len())
+                    }
+                    Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+                },
+                None => string.len(),
+            };
+
+            let start = min(max(start, 0) as usize, string.len());
+            let string = String::from(&string[start..end]);
+            Ok(Evaluated::from(Value::Str(string)))
+        }
     }
 }
 

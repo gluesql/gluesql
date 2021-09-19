@@ -69,7 +69,22 @@ impl PartialEq<Literal<'_>> for Literal<'_> {
     fn eq(&self, other: &Literal) -> bool {
         match (self, other) {
             (Boolean(l), Boolean(r)) => l == r,
-            (Number(l), Number(r)) | (Text(l), Text(r)) => l == r,
+            (Text(l), Text(r)) => l == r,
+            (Number(l), Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
+                (Ok(l), Ok(r)) => l == r,
+                (_, Ok(r)) => match l.parse::<f64>() {
+                    Ok(l) => l == (r as f64),
+                    _ => false,
+                },
+                (Ok(l), _) => match r.parse::<f64>() {
+                    Ok(r) => (l as f64) == r,
+                    _ => false,
+                },
+                _ => match (l.parse::<f64>(), r.parse::<f64>()) {
+                    (Ok(l), Ok(r)) => l == r,
+                    _ => false,
+                },
+            },
             (Interval(l), Interval(r)) => l == r,
             _ => false,
         }
@@ -418,7 +433,8 @@ mod tests {
         //Number
         assert_eq!(num!("123"), num!("123"));
         assert_eq!(num!("12.0"), num!("12.0"));
-        assert!(num!("12.0") != num!("12"));
+        assert!(num!("12.0") == num!("12"));
+        assert!(num!("12.0") != num!("12.123"));
         assert!(num!("123") != num!("12.3"));
         assert!(num!("123") != text!("Foo"));
         assert!(num!("123") != itv!(123)); //only same data type allowed

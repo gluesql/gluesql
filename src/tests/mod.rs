@@ -108,6 +108,7 @@ macro_rules! generate_store_tests {
         glue!(function_pi, function::pi::pi);
         glue!(function_reverse, function::reverse::reverse);
         glue!(case, case::case);
+        glue!(function_substr, function::substr::substr);
     };
 }
 
