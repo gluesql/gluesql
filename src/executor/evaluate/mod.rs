@@ -187,45 +187,56 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => None,
             };
 
-            let (whens, thens) = when_then
+            let parse_pair =
+                |result_pair: (Result<Value>, Result<Value>)| -> Result<(Value, Value)> {
+                    match result_pair {
+                        (Err(e), _) | (_, Err(e)) => Err(e),
+                        _ => Ok((result_pair.0.unwrap(), result_pair.1.unwrap())),
+                    }
+                };
+
+            let when_then_val = when_then
                 .clone()
                 .into_iter()
-                .unzip::<_, _, Vec<_>, Vec<_>>();
+                .map(|(when, then)| parse_pair((when.try_into(), then.try_into())))
+                .collect::<Result<Vec<(Value, Value)>>>()?;
 
-            let results = else_result
-                .as_ref()
-                .map(|er| [thens.clone(), [er.to_owned()].to_vec()].concat())
-                .unwrap_or_else(|| thens.clone())
-                .into_iter()
-                .map(TryInto::try_into)
-                .collect::<Result<Vec<Value>>>()?;
+            if let Some(er) = else_result {
+                let else_result = er.try_into()?;
+                let then_type = when_then_val
+                    .iter()
+                    .map(|(_, t)| (discriminant(t)))
+                    .unique()
+                    .collect_vec();
 
-            if !results.iter().map(discriminant).all_equal() {
-                Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into())
-            } else {
-                match operand {
-                    Some(op) => {
-                        let op = eval(op).await?;
-                        Ok(when_then
-                            .into_iter()
-                            .find_map(|(when, then)| when.eq(&op).then(|| then))
-                            .unwrap_or_else(|| Evaluated::from(Value::Null)))
+                if let Some(then_type_first) = then_type.first() {
+                    if then_type_first != &discriminant(&else_result) || then_type.len() != 1 {
+                        return Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into());
                     }
-                    None => whens
-                        .into_iter()
-                        .map(|when| match when.try_into() {
-                            Ok(Value::Bool(condition)) => Ok(condition),
-                            _ => Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
-                        })
-                        .collect::<Result<Vec<bool>>>()
-                        .map_or_else(Err::<_, Error>, |whens| {
-                            Ok(whens
-                                .into_iter()
-                                .zip(thens.into_iter())
-                                .find_map(|(when, then)| when.to_owned().then(|| then))
-                                .unwrap_or_else(|| Evaluated::from(Value::Null)))
-                        }),
                 }
+            }
+
+            match operand {
+                Some(op) => {
+                    let op = eval(op).await?;
+                    Ok(when_then
+                        .into_iter()
+                        .find_map(|(when, then)| when.eq(&op).then(|| then))
+                        .unwrap_or_else(|| Evaluated::from(Value::Null)))
+                }
+                None => when_then_val
+                    .into_iter()
+                    .map(|(when, then)| match when {
+                        Value::Bool(condition) => Ok((condition, then)),
+                        _ => Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
+                    })
+                    .collect::<Result<Vec<(bool, Value)>>>()
+                    .map_or_else(Err::<_, Error>, |wt| {
+                        Ok(wt
+                            .into_iter()
+                            .find_map(|(when, then)| when.then(|| Evaluated::from(then)))
+                            .unwrap_or_else(|| Evaluated::from(Value::Null)))
+                    }),
             }
         }
     }
