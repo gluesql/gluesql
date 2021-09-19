@@ -23,6 +23,7 @@ pub enum BinaryOperator {
     NotEq,
     And,
     Or,
+    Xor,
     Like,
     ILike,
     NotLike,

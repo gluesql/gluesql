@@ -7,7 +7,7 @@ use {
 pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
     match sql_data_type {
         SqlDataType::Boolean => Ok(DataType::Boolean),
-        SqlDataType::Int => Ok(DataType::Int),
+        SqlDataType::Int(_) => Ok(DataType::Int),
         SqlDataType::Float(_) => Ok(DataType::Float),
         SqlDataType::Text => Ok(DataType::Text),
         SqlDataType::Date => Ok(DataType::Date),
