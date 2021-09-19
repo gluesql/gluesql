@@ -81,8 +81,8 @@ test_case!(error, async move {
             "INSERT INTO TableA (id2) VALUES (1);",
         ),
         (
-            RowError::LackOfRequiredValue("id".to_owned()).into(),
-            "INSERT INTO TableA (id2, id) VALUES (100);",
+            RowError::DoNotMatchColumnsAndValues.into(),
+            "INSERT INTO TableA (id) VALUES ('test2', 3)",
         ),
         (
             RowError::TooManyValues.into(),
