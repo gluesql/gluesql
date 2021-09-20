@@ -47,10 +47,7 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
         let literal = match ast_literal {
             AstLiteral::Boolean(v) => Boolean(*v),
             AstLiteral::Number(v) => Number(Cow::Borrowed(v)),
-            AstLiteral::QuotedString(v) => {
-                println!("AstLiteral::QuotedString : {}", v);
-                Text(Cow::Borrowed(v))
-            }
+            AstLiteral::QuotedString(v) => Text(Cow::Borrowed(v)),
             AstLiteral::Interval {
                 value,
                 leading_field,
