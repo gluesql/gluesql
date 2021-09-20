@@ -1,4 +1,3 @@
-use uuid::Uuid;
 use {
     super::{error::ValueError, Value},
     crate::{
@@ -8,6 +7,7 @@ use {
     },
     chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
     std::{cmp::Ordering, convert::TryFrom},
+    uuid::Uuid,
 };
 
 impl PartialEq<Literal<'_>> for Value {
@@ -42,10 +42,7 @@ impl PartialEq<Literal<'_>> for Value {
                 Err(_) => false,
             },
             (Value::Interval(l), Literal::Interval(r)) => l == r,
-            (Value::UUID(l), Literal::Text(r)) => match parse_uuid(r) {
-                Ok(r) => l == &r,
-                Err(_) => false,
-            },
+            (Value::UUID(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
             _ => false,
         }
     }
@@ -82,10 +79,9 @@ impl PartialOrd<Literal<'_>> for Value {
                 Err(_) => None,
             },
             (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(r),
-            (Value::UUID(l), Literal::Text(r)) => match parse_uuid(r) {
-                Ok(r) => l.partial_cmp(&r),
-                Err(_) => None,
-            },
+            (Value::UUID(l), Literal::Text(r)) => {
+                parse_uuid(r).map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
             _ => None,
         }
     }
