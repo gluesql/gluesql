@@ -15,8 +15,8 @@ pub enum RowError {
     #[error("lack of required column: {0}")]
     LackOfRequiredColumn(String),
 
-    #[error("do not match columns and values")]
-    DoNotMatchColumnsAndValues,
+    #[error("column and values not matched")]
+    ColumnAndValuesNotMatched,
 
     #[error("literals have more values than target columns")]
     TooManyValues,
@@ -42,7 +42,7 @@ impl Row {
 
     pub fn new(column_defs: &[ColumnDef], columns: &[String], values: &[Expr]) -> Result<Self> {
         if !columns.is_empty() && values.len() != columns.len() {
-            return Err(RowError::DoNotMatchColumnsAndValues.into());
+            return Err(RowError::ColumnAndValuesNotMatched.into());
         }
         if values.len() > column_defs.len() {
             return Err(RowError::TooManyValues.into());

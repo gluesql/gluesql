@@ -81,7 +81,7 @@ test_case!(error, async move {
             "INSERT INTO TableA (id2) VALUES (1);",
         ),
         (
-            RowError::DoNotMatchColumnsAndValues.into(),
+            RowError::ColumnAndValuesNotMatched.into(),
             "INSERT INTO TableA (id) VALUES ('test2', 3)",
         ),
         (
