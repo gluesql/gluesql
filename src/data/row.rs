@@ -49,8 +49,7 @@ impl Row {
     pub fn new(column_defs: &[ColumnDef], columns: &[String], values: &[Expr]) -> Result<Self> {
         if !columns.is_empty() && values.len() != columns.len() {
             return Err(RowError::ColumnAndValuesNotMatched.into());
-        }
-        if values.len() > column_defs.len() {
+        } else if values.len() > column_defs.len() {
             return Err(RowError::TooManyValues.into());
         }
 
