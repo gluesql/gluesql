@@ -25,6 +25,12 @@ pub enum RowError {
     ConflictOnEmptyRow,
 }
 
+#[derive(iter_enum::Iterator)]
+enum Columns<I1, I2> {
+    All(I1),
+    Specified(I2),
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Row(pub Vec<Value>);
 
@@ -48,10 +54,10 @@ impl Row {
             return Err(RowError::TooManyValues.into());
         }
 
-        let columns: Box<dyn Iterator<Item = &String>> = if columns.is_empty() {
-            Box::new(column_defs.iter().map(|ColumnDef { name, .. }| name))
+        let columns = if columns.is_empty() {
+            Columns::All(column_defs.iter().map(|ColumnDef { name, .. }| name))
         } else {
-            Box::new(columns.iter())
+            Columns::Specified(columns.iter())
         };
 
         let column_name_value_list = columns.zip(values.iter()).collect::<Vec<(_, _)>>();
