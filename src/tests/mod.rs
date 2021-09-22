@@ -92,6 +92,7 @@ macro_rules! generate_store_tests {
         glue!(nested_select, nested_select::nested_select);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
+        glue!(nullable_implicit_insert, nullable::nullable_implicit_insert);
         glue!(ordering, ordering::ordering);
         glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
