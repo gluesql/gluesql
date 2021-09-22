@@ -1,9 +1,11 @@
+#[cfg(feature = "bigdecimal")]
 use {
     super::StringExt,
     crate::{
         ast::AstLiteral,
         result::{Error, Result},
     },
+    bigdecimal::*,
     serde::Serialize,
     std::{borrow::Cow, cmp::Ordering, fmt::Debug},
     thiserror::Error,
@@ -34,8 +36,7 @@ pub enum LiteralError {
 #[derive(Clone, Debug)]
 pub enum Literal<'a> {
     Boolean(bool),
-    #[cfg(feature = "bigdecimal")]
-    Number(Cow<'a, bigdecimal::BigDecimal>),
+    Number(BigDecimal),
     Text(Cow<'a, String>),
     Interval(super::Interval),
     Null,
@@ -70,22 +71,8 @@ impl PartialEq<Literal<'_>> for Literal<'_> {
     fn eq(&self, other: &Literal) -> bool {
         match (self, other) {
             (Boolean(l), Boolean(r)) => l == r,
+            (Number(l), Number(r)) => l == r,
             (Text(l), Text(r)) => l == r,
-            (Number(l), Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
-                (Ok(l), Ok(r)) => l == r,
-                (_, Ok(r)) => match l.parse::<f64>() {
-                    Ok(l) => l == (r as f64),
-                    _ => false,
-                },
-                (Ok(l), _) => match r.parse::<f64>() {
-                    Ok(r) => (l as f64) == r,
-                    _ => false,
-                },
-                _ => match (l.parse::<f64>(), r.parse::<f64>()) {
-                    (Ok(l), Ok(r)) => l == r,
-                    _ => false,
-                },
-            },
             (Interval(l), Interval(r)) => l == r,
             _ => false,
         }
@@ -96,21 +83,7 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
     fn partial_cmp(&self, other: &Literal) -> Option<Ordering> {
         match (self, other) {
             (Boolean(l), Boolean(r)) => Some(l.cmp(r)),
-            (Number(l), Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
-                (Ok(l), Ok(r)) => Some(l.cmp(&r)),
-                (_, Ok(r)) => match l.parse::<f64>() {
-                    Ok(l) => l.partial_cmp(&(r as f64)),
-                    _ => None,
-                },
-                (Ok(l), _) => match r.parse::<f64>() {
-                    Ok(r) => (l as f64).partial_cmp(&r),
-                    _ => None,
-                },
-                _ => match (l.parse::<f64>(), r.parse::<f64>()) {
-                    (Ok(l), Ok(r)) => l.partial_cmp(&r),
-                    _ => None,
-                },
-            },
+            (Number(l), Number(r)) => Some(l.cmp(r)),
             (Text(l), Text(r)) => Some(l.cmp(r)),
             (Interval(l), Interval(r)) => l.partial_cmp(r),
             _ => None,
@@ -121,11 +94,7 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
 impl<'a> Literal<'a> {
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
-            Number(v) => v
-                .parse::<i64>()
-                .map(|_| self.to_owned())
-                .or_else(|_| v.parse::<f64>().map(|_| self.to_owned()))
-                .map_err(|_| LiteralError::UnreachableUnaryOperation.into()),
+            Number(v) => Ok(Number(*v)), // hw: unary_plus?
             Interval(v) => Ok(Interval(*v)),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -134,12 +103,7 @@ impl<'a> Literal<'a> {
 
     pub fn unary_minus(&self) -> Result<Self> {
         match self {
-            Number(v) => v
-                .parse::<i64>()
-                .map(|v| (-v).to_string())
-                .or_else(|_| v.parse::<f64>().map(|v| (-v).to_string()))
-                .map(|v| Number(Cow::Owned(v)))
-                .map_err(|_| LiteralError::UnreachableUnaryOperation.into()),
+            Number(v) => Ok(Number(*v)), // hw: unary_minus?
             Interval(v) => Ok(Interval(v.unary_minus())),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -167,15 +131,7 @@ impl<'a> Literal<'a> {
 
     pub fn add<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    Ok(Number(Cow::Owned((l + r).to_string())))
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    Ok(Number(Cow::Owned((l + r).to_string())))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
+            (Number(l), Number(r)) => BigDecimal::a  add(l, r).map(Number), // hw: impl Number and add?
             (Interval(l), Interval(r)) => l.add(r).map(Interval),
             (Null, Number(_))
             | (Null, Interval(_))
@@ -192,15 +148,7 @@ impl<'a> Literal<'a> {
 
     pub fn subtract<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    Ok(Number(Cow::Owned((l - r).to_string())))
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    Ok(Number(Cow::Owned((l - r).to_string())))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
+            (Number(l), Number(r)) => l.subtract(r).map(Number),
             (Interval(l), Interval(r)) => l.subtract(r).map(Interval),
             (Null, Number(_))
             | (Null, Interval(_))
@@ -217,24 +165,17 @@ impl<'a> Literal<'a> {
 
     pub fn multiply<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    Ok(Number(Cow::Owned((l * r).to_string())))
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    Ok(Number(Cow::Owned((l * r).to_string())))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
-            (Number(l), Interval(r)) | (Interval(r), Number(l)) => {
-                if let Ok(l) = l.parse::<i64>() {
-                    Ok(Interval(l * *r))
-                } else if let Ok(l) = l.parse::<f64>() {
-                    Ok(Interval(l * *r))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
+            (Number(l), Number(r)) => l.multiply(r).map(Number),
+            (Number(l), Interval(r)) | (Interval(r), Number(l)) => Ok(Interval(l * *r)),
+            // {
+            //     if let Ok(l) = l.parse::<i64>() {
+            //         Ok(Interval(l * *r))
+            //     } else if let Ok(l) = l.parse::<f64>() {
+            //         Ok(Interval(l * *r))
+            //     } else {
+            //         Err(LiteralError::UnreachableBinaryArithmetic.into())
+            //     }
+            // }
             (Null, Number(_))
             | (Null, Interval(_))
             | (Number(_), Null)
