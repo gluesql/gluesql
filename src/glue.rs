@@ -33,9 +33,19 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
     }
 
     pub fn execute_stmt(&mut self, statement: Statement) -> Result<Payload> {
+        block_on(self.execute_stmt_async(statement))
+    }
+
+    pub fn execute(&mut self, sql: &str) -> Result<Payload> {
+        let statement = self.plan(sql)?;
+
+        self.execute_stmt(statement)
+    }
+
+    pub async fn execute_stmt_async(&mut self, statement: Statement) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
-        match block_on(execute(storage, &statement)) {
+        match execute(storage, &statement).await {
             Ok((storage, payload)) => {
                 self.storage = Some(storage);
 
@@ -49,10 +59,10 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
         }
     }
 
-    pub fn execute(&mut self, sql: &str) -> Result<Payload> {
+    pub async fn execute_async(&mut self, sql: &str) -> Result<Payload> {
         let statement = self.plan(sql)?;
 
-        self.execute_stmt(statement)
+        self.execute_stmt_async(statement).await
     }
 }
 
