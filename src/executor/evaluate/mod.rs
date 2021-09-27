@@ -217,28 +217,15 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 }
             }
 
-            match operand {
-                Some(op) => {
-                    let op = eval(op).await?;
-                    Ok(when_then
-                        .into_iter()
-                        .find_map(|(when, then)| when.eq(&op).then(|| then))
-                        .unwrap_or_else(|| Evaluated::from(Value::Null)))
-                }
-                None => when_then_val
-                    .into_iter()
-                    .map(|(when, then)| match when {
-                        Value::Bool(condition) => Ok((condition, then)),
-                        _ => Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
-                    })
-                    .collect::<Result<Vec<(bool, Value)>>>()
-                    .map_or_else(Err::<_, Error>, |wt| {
-                        Ok(wt
-                            .into_iter()
-                            .find_map(|(when, then)| when.then(|| Evaluated::from(then)))
-                            .unwrap_or_else(|| Evaluated::from(Value::Null)))
-                    }),
-            }
+            let operand = match operand {
+                Some(op) => eval(op).await?,
+                None => Evaluated::from(Value::Bool(true)),
+            };
+
+            Ok(when_then
+                .into_iter()
+                .find_map(|(when, then)| when.eq(&operand).then(|| then))
+                .unwrap_or_else(|| Evaluated::from(Value::Null)))
         }
     }
 }
