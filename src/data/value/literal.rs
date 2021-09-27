@@ -7,6 +7,7 @@ use {
     },
     chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
     std::{cmp::Ordering, convert::TryFrom},
+    uuid::Uuid,
 };
 
 impl PartialEq<Literal<'_>> for Value {
@@ -41,6 +42,7 @@ impl PartialEq<Literal<'_>> for Value {
                 Err(_) => false,
             },
             (Value::Interval(l), Literal::Interval(r)) => l == r,
+            (Value::UUID(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
             _ => false,
         }
     }
@@ -77,6 +79,9 @@ impl PartialOrd<Literal<'_>> for Value {
                 Err(_) => None,
             },
             (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(r),
+            (Value::UUID(l), Literal::Text(r)) => {
+                parse_uuid(r).map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
             _ => None,
         }
     }
@@ -139,6 +144,7 @@ impl Value {
             (DataType::Time, Literal::Text(v)) => parse_time(v)
                 .map(Value::Time)
                 .map_err(|_| ValueError::FailedToParseTime(v.to_string()).into()),
+            (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
             (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
@@ -147,7 +153,8 @@ impl Value {
             | (DataType::Date, Literal::Null)
             | (DataType::Timestamp, Literal::Null)
             | (DataType::Time, Literal::Null)
-            | (DataType::Interval, Literal::Null) => Ok(Value::Null),
+            | (DataType::Interval, Literal::Null)
+            | (DataType::UUID, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
                 literal: format!("{:?}", literal),
@@ -201,6 +208,7 @@ impl Value {
             (DataType::Interval, Literal::Text(v)) => {
                 Interval::try_from(v.as_str()).map(Value::Interval)
             }
+            (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
             | (DataType::Float, Literal::Null)
@@ -263,6 +271,13 @@ fn parse_time(v: &str) -> Result<NaiveTime> {
     }
 
     Err(ValueError::FailedToParseTime(v).into())
+}
+
+fn parse_uuid(v: &str) -> Result<u128> {
+    match Uuid::parse_str(v) {
+        Ok(u) => Ok(u.as_u128()),
+        _ => Err(ValueError::FailedToParseUUID(v.to_owned()).into()),
+    }
 }
 
 #[cfg(test)]

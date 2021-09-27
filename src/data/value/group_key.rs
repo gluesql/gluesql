@@ -21,6 +21,7 @@ impl TryInto<GroupKey> for &Value {
             Timestamp(v) => Ok(GroupKey::Timestamp(*v)),
             Time(v) => Ok(GroupKey::Time(*v)),
             Interval(v) => Ok(GroupKey::Interval(*v)),
+            UUID(v) => Ok(GroupKey::UUID(*v)),
             Null => Ok(GroupKey::None),
             F64(_) => Err(ValueError::FloatCannotBeGroupedBy.into()),
         }
@@ -41,6 +42,7 @@ impl TryInto<GroupKey> for Value {
             Timestamp(v) => Ok(GroupKey::Timestamp(v)),
             Time(v) => Ok(GroupKey::Time(v)),
             Interval(v) => Ok(GroupKey::Interval(v)),
+            UUID(v) => Ok(GroupKey::UUID(v)),
             Null => Ok(GroupKey::None),
             F64(_) => Err(ValueError::FloatCannotBeGroupedBy.into()),
         }
