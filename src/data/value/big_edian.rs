@@ -183,5 +183,13 @@ mod tests {
         assert_eq!(cmp(&n2, &n3), Ordering::Greater);
         assert_eq!(cmp(&n3, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
+
+        let n1 = UUID(100).to_be_bytes();
+        let n2 = UUID(101).to_be_bytes();
+
+        assert_eq!(cmp(&n1, &n1), Ordering::Equal);
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n2, &n1), Ordering::Greater);
+        assert_eq!(cmp(&n1, &null), Ordering::Less);
     }
 }

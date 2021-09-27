@@ -1,10 +1,4 @@
-use {
-    crate::{ast::DataType, data::Value},
-    std::borrow::Cow,
-    uuid::Uuid,
-};
-
-use crate::*;
+use {crate::*, ast::DataType, std::borrow::Cow, uuid::Uuid};
 
 test_case!(uuid, async move {
     use Value::*;

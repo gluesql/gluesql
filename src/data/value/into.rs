@@ -1,4 +1,3 @@
-use uuid::Uuid;
 use {
     super::{Value, ValueError},
     crate::{
@@ -7,6 +6,7 @@ use {
     },
     chrono::{NaiveDate, NaiveDateTime},
     std::convert::{TryFrom, TryInto},
+    uuid::Uuid,
 };
 
 impl From<&Value> for String {

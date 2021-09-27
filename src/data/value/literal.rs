@@ -144,9 +144,7 @@ impl Value {
             (DataType::Time, Literal::Text(v)) => parse_time(v)
                 .map(Value::Time)
                 .map_err(|_| ValueError::FailedToParseTime(v.to_string()).into()),
-            (DataType::UUID, Literal::Text(v)) => parse_uuid(v)
-                .map(Value::UUID)
-                .map_err(|_| ValueError::FailedToParseUUID(v.to_string()).into()),
+            (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
             (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
@@ -210,9 +208,7 @@ impl Value {
             (DataType::Interval, Literal::Text(v)) => {
                 Interval::try_from(v.as_str()).map(Value::Interval)
             }
-            (DataType::UUID, Literal::Text(v)) => parse_uuid(v)
-                .map(Value::UUID)
-                .map_err(|_| ValueError::FailedToParseUUID(v.to_string()).into()),
+            (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
             | (DataType::Float, Literal::Null)

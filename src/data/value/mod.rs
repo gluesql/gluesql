@@ -594,6 +594,7 @@ mod tests {
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(I64(1)                => Int          , I64(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
+        cast!(Value::UUID(123)      => UUID         , Value::UUID(123));
 
         // Boolean
         cast!(Str("TRUE".to_owned())    => Boolean, Bool(true));
