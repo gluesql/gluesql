@@ -188,44 +188,83 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => None,
             };
 
-            let parse_pair =
-                |result_pair: (Result<Value>, Result<Value>)| -> Result<(Value, Value)> {
-                    match result_pair {
-                        (Err(e), _) | (_, Err(e)) => Err(e),
-                        _ => Ok((result_pair.0.unwrap(), result_pair.1.unwrap())),
-                    }
-                };
-
-            let when_then_val = when_then
-                .clone()
-                .into_iter()
-                .map(|(when, then)| parse_pair((when.try_into(), then.try_into())))
-                .collect::<Result<Vec<(Value, Value)>>>()?;
-
-            if let Some(er) = else_result {
-                let else_result = er.try_into()?;
-                let then_type = when_then_val
-                    .iter()
-                    .map(|(_, t)| (discriminant(t)))
-                    .unique()
-                    .collect_vec();
-
-                if let Some(then_type_first) = then_type.first() {
-                    if then_type_first != &discriminant(&else_result) || then_type.len() != 1 {
-                        return Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into());
-                    }
-                }
-            }
-
             let operand = match operand {
                 Some(op) => eval(op).await?,
                 None => Evaluated::from(Value::Bool(true)),
             };
 
+            let (when_then, else_result) = match when_then
+                .iter()
+                .map(|(_, then)| match then {
+                    Evaluated::Literal(l) => Some(l),
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()
+            {
+                None => {
+                    let when_then_value = when_then
+                        .into_iter()
+                        .map(|(when, then)| -> Result<(Value, Value)> {
+                            match (when.try_into(), then.try_into()) {
+                                (Ok(w), Ok(t)) => Ok((w, t)),
+                                (Err(e), _) | (_, Err(e)) => Err(e),
+                            }
+                        })
+                        .collect::<Result<Vec<(Value, Value)>>>()?;
+
+                    let wt_type = when_then_value
+                        .iter()
+                        .map(|(_, then)| discriminant(then))
+                        .collect_vec();
+
+                    if !wt_type.iter().all_equal() {
+                        return Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into());
+                    }
+                    let else_result = match else_result {
+                        Some(Evaluated::Value(cv)) => {
+                            let er = cv.into_owned();
+                            if Some(&discriminant(&er)) != wt_type.first() {
+                                return Err(
+                                    EvaluateError::UnequalResultTypes("CASE".to_owned()).into()
+                                );
+                            }
+                            Some(Evaluated::from(er))
+                        }
+                        _ => else_result,
+                    };
+
+                    (
+                        when_then_value
+                            .into_iter()
+                            .map(|(when, then)| (Evaluated::from(when), Evaluated::from(then)))
+                            .collect::<Vec<_>>(),
+                        else_result,
+                    )
+                }
+                Some(wt_type) => {
+                    let wt_type = wt_type.into_iter().map(discriminant).collect_vec();
+                    if !wt_type.iter().all_equal()
+                        || match &else_result {
+                            Some(Evaluated::Literal(er)) => {
+                                Some(&discriminant(er)) != wt_type.first()
+                            }
+                            _ => false,
+                        }
+                    {
+                        return Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into());
+                    }
+
+                    (when_then, else_result)
+                }
+            };
+
             Ok(when_then
                 .into_iter()
                 .find_map(|(when, then)| when.eq(&operand).then(|| then))
-                .unwrap_or_else(|| Evaluated::from(Value::Null)))
+                .unwrap_or_else(|| match else_result {
+                    Some(er) => er,
+                    None => Evaluated::from(Value::Null),
+                }))
         }
     }
 }

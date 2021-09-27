@@ -111,17 +111,6 @@ test_case!(case, async move {
         ),
         (
             r#"
-            SELECT CASE
-                WHEN name = "Harry" THEN id
-                WHEN name = "Ron" THEN id 
-                WHEN "Hermione" THEN id 
-                END
-            AS case FROM Item;
-            "#,
-            Err(EvaluateError::BooleanTypeRequired("CASE".to_owned()).into()),
-        ),
-        (
-            r#"
             SELECT CASE 1 COLLATE Item
                 WHEN name = "Harry" THEN id
                 WHEN name = "Ron" THEN id 
