@@ -192,6 +192,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "CEIL" => func_with_one_arg!(Function::Ceil),
         "ROUND" => func_with_one_arg!(Function::Round),
         "FLOOR" => func_with_one_arg!(Function::Floor),
+        "ABS" => func_with_one_arg!(Function::Abs),
+        "SIGN" => func_with_one_arg!(Function::Sign),
         "EXP" => func_with_one_arg!(Function::Exp),
         "LN" => func_with_one_arg!(Function::Ln),
         "LOG2" => func_with_one_arg!(Function::Log2),

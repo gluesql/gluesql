@@ -409,6 +409,16 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+        Function::Abs(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.abs())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
+        Function::Sign(expr) => match eval_to_float(expr).await? {
+            Nullable::Value(v) => Ok(Value::F64(v.signum())),
+            Nullable::Null => Ok(Value::Null),
+        }
+        .map(Evaluated::from),
         Function::Radians(expr) => match eval_to_float(expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.to_radians())),
             Nullable::Null => Ok(Value::Null),
