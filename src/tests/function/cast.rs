@@ -3,6 +3,9 @@ use data::Interval as I;
 use Value::*;
 
 test_case!(cast_literal, async move {
+    use chrono::NaiveDate;
+    use Value::*;
+
     let test_cases = vec![
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
@@ -125,6 +128,18 @@ test_case!(cast_literal, async move {
             I::seconds(-(12 * 3600 + 30 * 60 + 12))
             I::seconds(-(30 * 60 + 11))
             )),
+        ),
+        (
+            "SELECT CAST('2021-08-25' AS DATE) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Date(NaiveDate::from_ymd(2021, 8, 25)))),
+        ),
+        (
+            "SELECT CAST('08-25-2021' AS DATE) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Date(NaiveDate::from_ymd(2021, 8, 25)))),
+        ),
+        (
+            r#"SELECT CAST('2021-08-025' AS DATE) FROM Item"#,
+            Err(ValueError::LiteralCastToDateFailed("2021-08-025".to_string()).into()),
         ),
     ];
 

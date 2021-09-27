@@ -8,6 +8,7 @@ use {
 };
 
 mod big_edian;
+mod date;
 mod error;
 mod group_key;
 mod into;
@@ -635,8 +636,9 @@ mod tests {
         let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
         let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
 
-        cast!(timestamp => Date, date);
-        cast!(Null      => Date, Null);
+        cast!(Str("2021-05-01".to_owned()) => Date, date.to_owned());
+        cast!(timestamp                    => Date, date);
+        cast!(Null                         => Date, Null);
 
         // Timestamp
         let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));

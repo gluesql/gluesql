@@ -1,5 +1,5 @@
 use {
-    super::{error::ValueError, Value},
+    super::{date::parse_date, error::ValueError, Value},
     crate::{
         ast::DataType,
         data::{Interval, Literal},
@@ -207,6 +207,9 @@ impl Value {
             | (DataType::Int, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
+            (DataType::Date, Literal::Text(v)) => parse_date(v)
+                .map(Value::Date)
+                .map_err(|_| ValueError::LiteralCastToDateFailed(v.to_string()).into()),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
                 literal: format!("{:?}", literal),

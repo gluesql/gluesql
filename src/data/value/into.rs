@@ -1,5 +1,5 @@
 use {
-    super::{Value, ValueError},
+    super::{date::parse_date, Value, ValueError},
     crate::{
         data::Interval,
         result::{Error, Result},
@@ -155,6 +155,7 @@ impl TryInto<NaiveDate> for &Value {
         Ok(match self {
             Value::Date(value) => *value,
             Value::Timestamp(value) => value.date(),
+            Value::Str(value) => parse_date(value)?,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
     }
