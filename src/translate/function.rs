@@ -44,8 +44,7 @@ pub fn translate_trim(
 fn check_len(name: String, found: usize, expected: usize) -> Result<()> {
     if found == expected {
         Ok(())
-    }
-    else {
+    } else {
         Err(TranslateError::FunctionArgsLengthNotMatching {
             name,
             found,
@@ -55,11 +54,15 @@ fn check_len(name: String, found: usize, expected: usize) -> Result<()> {
     }
 }
 
-fn check_len_range(name: String, found:usize, expected_minimum: usize, expected_maximum:usize) -> Result<()> {
+fn check_len_range(
+    name: String,
+    found: usize,
+    expected_minimum: usize,
+    expected_maximum: usize,
+) -> Result<()> {
     if found >= expected_minimum && found <= expected_maximum {
         Ok(())
-    }
-    else {
+    } else {
         Err(TranslateError::FunctionArgsLengthNotWithinRange {
             name,
             expected_minimum,
@@ -76,7 +79,11 @@ fn translate_function_zero_arg(func: Function, args: Vec<&SqlExpr>, name: String
     Ok(Expr::Function(Box::new(func)))
 }
 
-fn translate_function_one_arg<T: FnOnce(Expr) -> Function>(func: T, args: Vec<&SqlExpr>, name: String) -> Result<Expr> {
+fn translate_function_one_arg<T: FnOnce(Expr) -> Function>(
+    func: T,
+    args: Vec<&SqlExpr>,
+    name: String,
+) -> Result<Expr> {
     check_len(name, args.len(), 1)?;
 
     translate_expr(args[0])
@@ -85,7 +92,11 @@ fn translate_function_one_arg<T: FnOnce(Expr) -> Function>(func: T, args: Vec<&S
         .map(Expr::Function)
 }
 
-fn translate_aggrecate_one_arg<T: FnOnce(Expr) -> Aggregate>(func: T, args: Vec<&SqlExpr>, name: String) -> Result<Expr> {
+fn translate_aggrecate_one_arg<T: FnOnce(Expr) -> Aggregate>(
+    func: T,
+    args: Vec<&SqlExpr>,
+    name: String,
+) -> Result<Expr> {
     check_len(name, args.len(), 1)?;
 
     translate_expr(args[0])
@@ -94,7 +105,11 @@ fn translate_aggrecate_one_arg<T: FnOnce(Expr) -> Aggregate>(func: T, args: Vec<
         .map(Expr::Aggregate)
 }
 
-fn translate_function_range<T: FnOnce(Expr, Option<Expr>) -> Function>(func: T, args: Vec<&SqlExpr>, name: String) -> Result<Expr> {
+fn translate_function_range<T: FnOnce(Expr, Option<Expr>) -> Function>(
+    func: T,
+    args: Vec<&SqlExpr>,
+    name: String,
+) -> Result<Expr> {
     check_len_range(name, args.len(), 1, 2)?;
 
     let expr = translate_expr(args[0])?;
@@ -227,8 +242,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
         }
-        "LTRIM" => translate_function_range(|expr, chars| Function::Ltrim{expr, chars}, args, name),
-        "RTRIM" => translate_function_range(|expr, chars| Function::Rtrim{expr, chars}, args, name),
+        "LTRIM" => {
+            translate_function_range(|expr, chars| Function::Ltrim { expr, chars }, args, name)
+        }
+        "RTRIM" => {
+            translate_function_range(|expr, chars| Function::Rtrim { expr, chars }, args, name)
+        }
         "COUNT" => translate_aggrecate_one_arg(Aggregate::Count, args, name),
         "SUM" => translate_aggrecate_one_arg(Aggregate::Sum, args, name),
         "MIN" => translate_aggrecate_one_arg(Aggregate::Min, args, name),
