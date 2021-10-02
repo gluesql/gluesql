@@ -43,10 +43,28 @@ fn mutable_api() {
     }
 }
 
+#[cfg(feature = "sled-storage")]
+fn async_mutable_api() {
+    let storage = SledStorage::new("data/async-mutable-api").unwrap();
+    let mut glue = Glue::new(storage);
+
+    let sqls = [
+        "CREATE TABLE Glue (id INTEGER);",
+        "INSERT INTO Glue VALUES (100);",
+        "INSERT INTO Glue VALUES (200);",
+        "DROP TABLE Glue;",
+    ];
+
+    for sql in sqls {
+        block_on(glue.execute_async(sql)).unwrap();
+    }
+}
+
 fn main() {
     #[cfg(feature = "sled-storage")]
     {
         mutable_api();
         immutable_api();
+        async_mutable_api();
     }
 }
