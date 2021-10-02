@@ -96,4 +96,5 @@ pub enum Aggregate {
     Sum(Expr),
     Max(Expr),
     Min(Expr),
+    Avg(Expr),
 }

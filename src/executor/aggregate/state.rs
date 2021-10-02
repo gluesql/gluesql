@@ -18,7 +18,7 @@ type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
 pub struct State<'a> {
     index: usize,
     group: Group,
-    values: IndexMap<(Group, &'a Aggregate), (usize, Value)>,
+    values: IndexMap<(Group, &'a Aggregate), (usize, Value, Value)>,
     groups: HashSet<Group>,
     contexts: Vector<Rc<BlendContext<'a>>>,
 }
@@ -54,10 +54,9 @@ impl<'a> State<'a> {
         }
     }
 
-    fn update(self, aggr: &'a Aggregate, value: Value) -> Self {
+    fn update(self, aggr: &'a Aggregate, value: (Value, Value)) -> Self {
         let key = (Rc::clone(&self.group), aggr);
-        let (values, _) = self.values.insert(key, (self.index, value));
-
+        let (values, _) = self.values.insert(key, (self.index, value.0, value.1));
         Self {
             index: self.index,
             group: self.group,
@@ -67,7 +66,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn get(&self, aggr: &'a Aggregate) -> Option<&(usize, Value)> {
+    fn get(&self, aggr: &'a Aggregate) -> Option<&(usize, Value, Value)> {
         let group = Rc::clone(&self.group);
 
         self.values.get(&(group, aggr))
@@ -90,13 +89,20 @@ impl<'a> State<'a> {
 
         values
             .into_iter()
-            .map(|(k, (_, v))| (k, v))
+            .map(|(k, v)| (k, v))
             .chunks(size)
             .into_iter()
             .enumerate()
             .map(|(i, entries)| {
                 let aggregated = entries
-                    .map(|((_, aggr), value)| (aggr, value))
+                    .map(|((_, aggr), v)| {
+                        //v.2 : exists to store the intermediate value of the avg function.
+                        if !v.1.is_null() && !v.2.is_null() {
+                            (aggr, v.2)
+                        } else {
+                            (aggr, v.1)
+                        }
+                    })
                     .collect::<HashMap<&'a Aggregate, Value>>();
                 let next = contexts.get(i).map(Rc::clone);
 
@@ -107,26 +113,26 @@ impl<'a> State<'a> {
 
     pub fn add(self, aggr: &'a Aggregate, target: &Value) -> Result<Self> {
         let value = match self.get(aggr) {
-            Some((index, value)) => {
-                if &self.index <= index {
+            Some(v) => {
+                if self.index <= v.0 {
                     return Ok(self);
                 }
 
-                target.add(value)?
+                target.add(&v.1)?
             }
             None => target.clone(),
         };
 
-        Ok(self.update(aggr, value))
+        Ok(self.update(aggr, (value, Value::Null)))
     }
 
     pub fn set_max(self, aggr: &'a Aggregate, target: &Value) -> Self {
-        if let Some((index, value)) = self.get(aggr) {
-            if &self.index <= index {
+        if let Some(v) = self.get(aggr) {
+            if self.index <= v.0 {
                 return self;
             }
 
-            match value.partial_cmp(target) {
+            match v.1.partial_cmp(target) {
                 None | Some(Ordering::Greater) | Some(Ordering::Equal) => {
                     return self;
                 }
@@ -134,16 +140,16 @@ impl<'a> State<'a> {
             }
         };
 
-        self.update(aggr, target.clone())
+        self.update(aggr, (target.clone(), Value::Null))
     }
 
     pub fn set_min(self, aggr: &'a Aggregate, target: &Value) -> Self {
-        if let Some((index, value)) = self.get(aggr) {
-            if &self.index <= index {
+        if let Some(v) = self.get(aggr) {
+            if self.index <= v.0 {
                 return self;
             }
 
-            match value.partial_cmp(target) {
+            match v.1.partial_cmp(target) {
                 None | Some(Ordering::Less) => {
                     return self;
                 }
@@ -151,6 +157,23 @@ impl<'a> State<'a> {
             }
         }
 
-        self.update(aggr, target.clone())
+        self.update(aggr, (target.clone(), Value::Null))
+    }
+
+    pub fn set_avg(self, aggr: &'a Aggregate, target: &Value) -> Result<Self> {
+        let added_value = match self.get(aggr) {
+            Some(v) => {
+                if self.index <= v.0 {
+                    return Ok(self);
+                }
+                target.add(&v.1)?
+            }
+            None => target.clone(),
+        };
+        let divided_value = match self.get(aggr) {
+            Some(v) => added_value.divide(&Value::I64((v.0 as i64) + 2))?,
+            None => target.clone(),
+        };
+        Ok(self.update(aggr, (added_value, divided_value)))
     }
 }
