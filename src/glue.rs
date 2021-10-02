@@ -77,8 +77,6 @@ mod tests {
     };
 
     fn basic<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
-        use futures::executor::block_on;
-
         assert_eq!(
             glue.execute("DROP TABLE IF EXISTS api_test"),
             Ok(Payload::DropTable)
@@ -121,14 +119,20 @@ mod tests {
                 ]
             })
         );
-
-        block_on(basic_async(glue));
     }
 
     async fn basic_async<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
         assert_eq!(
-            glue.execute_async("DROP TABLE api_test").await,
+            glue.execute_async("DROP TABLE IF EXISTS api_test").await,
             Ok(Payload::DropTable)
+        );
+
+        assert_eq!(
+            glue.execute_async(
+                "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
+            )
+            .await,
+            Ok(Payload::Create)
         );
     }
 
@@ -157,5 +161,18 @@ mod tests {
         let glue = Glue::new(storage);
 
         basic(glue);
+    }
+
+    #[cfg(feature = "memory-storage")]
+    #[test]
+    fn memory_basic_async() {
+        use futures::executor::block_on;
+
+        use crate::memory_storage::MemoryStorage;
+
+        let storage = MemoryStorage::default();
+        let glue = Glue::new(storage);
+
+        block_on(basic_async(glue));
     }
 }
