@@ -30,7 +30,7 @@ macro_rules! test {
 
 macro_rules! test_idx {
     ($glue: ident $sql: literal, $idx: expr, $result: expr) => {
-        let statement = $glue.plan($sql).unwrap();
+        let statement = $glue.plan($sql).await.unwrap();
 
         test_indexes(&statement, Some($idx));
         assert_eq!($glue.execute_stmt(statement), $result);
@@ -243,8 +243,8 @@ fn sled_transaction_data_mut() {
     );
 }
 
-#[test]
-fn sled_transaction_index_mut() {
+#[tokio::test]
+async fn sled_transaction_index_mut() {
     use ast::IndexOperator::Eq;
 
     let path = &format!("{}/transaction_index_mut", PATH_PREFIX);

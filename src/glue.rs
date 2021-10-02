@@ -24,12 +24,12 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
         }
     }
 
-    pub fn plan(&self, sql: &str) -> Result<Statement> {
+    pub async fn plan(&self, sql: &str) -> Result<Statement> {
         let parsed = parse(sql)?;
         let statement = translate(&parsed[0])?;
         let storage = self.storage.as_ref().unwrap();
 
-        block_on(plan(storage, statement))
+        plan(storage, statement).await
     }
 
     pub fn execute_stmt(&mut self, statement: Statement) -> Result<Payload> {
@@ -37,7 +37,7 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
     }
 
     pub fn execute(&mut self, sql: &str) -> Result<Payload> {
-        let statement = self.plan(sql)?;
+        let statement = block_on(self.plan(sql))?;
 
         self.execute_stmt(statement)
     }
@@ -60,7 +60,7 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
     }
 
     pub async fn execute_async(&mut self, sql: &str) -> Result<Payload> {
-        let statement = self.plan(sql)?;
+        let statement = self.plan(sql).await?;
 
         self.execute_stmt_async(statement).await
     }
