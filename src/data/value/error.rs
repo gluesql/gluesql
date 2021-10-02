@@ -52,8 +52,8 @@ pub enum ValueError {
     #[error("modulo on non-numeric values: {0:?} % {1:?}")]
     ModuloOnNonNumeric(Value, Value),
 
-    #[error("floating numbers cannot be grouped by")]
-    FloatCannotBeGroupedBy,
+    #[error("{0} type cannot be grouped by")]
+    GroupByNotSupported(String),
 
     #[error("unary plus operation for non numeric value")]
     UnaryPlusOnNonNumeric,
@@ -64,8 +64,8 @@ pub enum ValueError {
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
-    #[error("floating columns cannot be set to unique constraint")]
-    ConflictOnFloatWithUniqueConstraint,
+    #[error("conflict - unique constraint cannot be used for {0} type")]
+    ConflictDataTypeOnUniqueConstraint(String),
 
     // Cast errors from value to value
     #[error("impossible cast")]
@@ -101,4 +101,7 @@ pub enum ValueError {
 
     #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
     ILikeOnNonString(Value, Value),
+
+    #[error("big edian export not supported for {0} type")]
+    BigEdianExportNotSupported(String),
 }

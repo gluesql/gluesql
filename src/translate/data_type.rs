@@ -15,6 +15,14 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Time => Ok(DataType::Time),
         SqlDataType::Interval => Ok(DataType::Interval),
         SqlDataType::Uuid => Ok(DataType::UUID),
+        SqlDataType::Custom(name) => {
+            let name = name.0.get(0).map(|v| v.value.to_uppercase());
+
+            match name.as_deref() {
+                Some("MAP") => Ok(DataType::Map),
+                _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
+            }
+        }
         _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
     }
 }

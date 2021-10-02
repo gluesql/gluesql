@@ -1,7 +1,7 @@
 use {
     super::Interval,
     super::StringExt,
-    crate::{ast::DataType, result::Result},
+    crate::{ast::DataType, data::Map, result::Result},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
@@ -28,6 +28,7 @@ pub enum Value {
     Time(NaiveTime),
     Interval(Interval),
     UUID(u128),
+    Map(Map),
     Null,
 }
 
@@ -47,6 +48,7 @@ impl PartialEq<Value> for Value {
             (Value::Time(l), Value::Time(r)) => l == r,
             (Value::Interval(l), Value::Interval(r)) => l == r,
             (Value::UUID(l), Value::UUID(r)) => l == r,
+            (Value::Map(l), Value::Map(r)) => l == r,
             _ => false,
         }
     }
@@ -75,26 +77,19 @@ impl PartialOrd<Value> for Value {
 
 impl Value {
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
-        let valid = matches!(
-            (data_type, self),
-            (DataType::Boolean, Value::Bool(_))
-                | (DataType::Int, Value::I64(_))
-                | (DataType::Float, Value::F64(_))
-                | (DataType::Text, Value::Str(_))
-                | (DataType::Date, Value::Date(_))
-                | (DataType::Timestamp, Value::Timestamp(_))
-                | (DataType::Interval, Value::Interval(_))
-                | (DataType::UUID, Value::UUID(_))
-                | (DataType::Boolean, Value::Null)
-                | (DataType::Int, Value::Null)
-                | (DataType::Float, Value::Null)
-                | (DataType::Text, Value::Null)
-                | (DataType::Date, Value::Null)
-                | (DataType::Timestamp, Value::Null)
-                | (DataType::Time, Value::Null)
-                | (DataType::Interval, Value::Null)
-                | (DataType::UUID, Value::Null)
-        );
+        let valid = match self {
+            Value::Bool(_) => matches!(data_type, DataType::Boolean),
+            Value::I64(_) => matches!(data_type, DataType::Int),
+            Value::F64(_) => matches!(data_type, DataType::Float),
+            Value::Str(_) => matches!(data_type, DataType::Text),
+            Value::Date(_) => matches!(data_type, DataType::Date),
+            Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
+            Value::Time(_) => matches!(data_type, DataType::Time),
+            Value::Interval(_) => matches!(data_type, DataType::Interval),
+            Value::UUID(_) => matches!(data_type, DataType::UUID),
+            Value::Map(_) => matches!(data_type, DataType::Map),
+            Value::Null => true,
+        };
 
         if !valid {
             return Err(ValueError::IncompatibleDataType {
