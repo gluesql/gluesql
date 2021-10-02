@@ -75,12 +75,17 @@ impl Row {
                     .find(|(name, _)| name == &def_name)
                     .map(|(_, value)| value);
 
-                let expr = match (value, column_def.get_default()) {
-                    (Some(&expr), _) | (None, Some(expr)) => Ok(expr),
-                    (None, None) => Err(RowError::LackOfRequiredColumn(def_name.to_owned())),
-                }?;
                 let nullable = column_def.is_nullable();
-                evaluate_stateless(None, expr)?.try_into_value(data_type, nullable)
+
+                match (value, column_def.get_default(), nullable) {
+                    (Some(&expr), _, _) | (None, Some(expr), _) => {
+                        evaluate_stateless(None, expr)?.try_into_value(data_type, nullable)
+                    }
+                    (None, None, true) => Ok(Value::Null),
+                    (None, None, false) => {
+                        Err(RowError::LackOfRequiredColumn(def_name.to_owned()).into())
+                    }
+                }
             })
             .collect::<Result<_>>()
             .map(Self)
