@@ -31,14 +31,16 @@ fn mutable_api() {
     let storage = SledStorage::new("data/mutable-api").unwrap();
     let mut glue = Glue::new(storage);
 
-    let sqls = "
-        CREATE TABLE Glue (id INTEGER);
-        INSERT INTO Glue VALUES (100);
-        INSERT INTO Glue VALUES (200);
-        DROP TABLE Glue;
-    ";
+    let sqls = [
+        "CREATE TABLE Glue (id INTEGER);",
+        "INSERT INTO Glue VALUES (100);",
+        "INSERT INTO Glue VALUES (200);",
+        "DROP TABLE Glue;",
+    ];
 
-    glue.execute(sqls).unwrap();
+    for sql in sqls {
+        glue.execute(sql).unwrap();
+    }
 }
 
 fn main() {
