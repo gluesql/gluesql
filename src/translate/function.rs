@@ -231,6 +231,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "SUM" => aggr!(Aggregate::Sum),
         "MIN" => aggr!(Aggregate::Min),
         "MAX" => aggr!(Aggregate::Max),
+        "AVG" => aggr!(Aggregate::Avg),
         "DIV" => {
             check_len(name, args.len(), 2)?;
 

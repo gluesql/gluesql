@@ -96,7 +96,6 @@ impl<'a, T: 'static + Debug> Aggregator<'a, T> {
                 Ok(state)
             })
             .await?;
-
         let storage = self.storage;
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
         let having = self.having;
@@ -213,6 +212,7 @@ fn aggregate<'a>(
             Aggregate::Sum(expr) => state.add(aggr, get_value(expr)?),
             Aggregate::Max(expr) => Ok(state.set_max(aggr, get_value(expr)?)),
             Aggregate::Min(expr) => Ok(state.set_min(aggr, get_value(expr)?)),
+            Aggregate::Avg(expr) => state.set_avg(aggr, get_value(expr)?),
         },
         _ => Ok(state),
     }

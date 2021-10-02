@@ -54,8 +54,16 @@ test_case!(aggregate, async move {
             select_with_null!("SUM(age) + SUM(quantity)"; Null),
         ),
         (
+            "SELECT AVG(age) FROM Item",
+            select_with_null!("AVG(age)"; Null),
+        ),
+        (
             "SELECT COUNT(age), COUNT(quantity) FROM Item",
             select!("COUNT(age)" | "COUNT(quantity)"; I64 | I64; 3 5),
+        ),
+        (
+            "SELECT AVG(quantity) FROM Item",
+            select!("AVG(quantity)"; I64; 9),
         ),
     ];
 
@@ -67,10 +75,6 @@ test_case!(aggregate, async move {
         (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
-        ),
-        (
-            TranslateError::UnsupportedFunction("AVG".to_owned()).into(),
-            "SELECT AVG(*) FROM Item;",
         ),
         (
             AggregateError::OnlyIdentifierAllowed.into(),
