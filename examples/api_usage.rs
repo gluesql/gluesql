@@ -44,7 +44,7 @@ fn mutable_api() {
 }
 
 #[cfg(feature = "sled-storage")]
-fn async_mutable_api() {
+async fn async_mutable_api() {
     let storage = SledStorage::new("data/async-mutable-api").unwrap();
     let mut glue = Glue::new(storage);
 
@@ -56,7 +56,7 @@ fn async_mutable_api() {
     ];
 
     for sql in sqls {
-        block_on(glue.execute_async(sql)).unwrap();
+        glue.execute_async(sql).await.unwrap();
     }
 }
 
@@ -65,6 +65,6 @@ fn main() {
     {
         mutable_api();
         immutable_api();
-        async_mutable_api();
+        block_on(async_mutable_api());
     }
 }
