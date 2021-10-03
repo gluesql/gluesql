@@ -100,6 +100,7 @@ macro_rules! generate_store_tests {
         glue!(timestamp, data_type::timestamp::timestamp);
         glue!(time, data_type::time::time);
         glue!(interval, data_type::interval::interval);
+        glue!(list, data_type::list::list);
         glue!(map, data_type::map::map);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);

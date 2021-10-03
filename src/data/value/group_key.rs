@@ -25,6 +25,7 @@ impl TryInto<GroupKey> for Value {
             Null => Ok(GroupKey::None),
             F64(_) => Err(ValueError::GroupByNotSupported("FLOAT".to_owned()).into()),
             Map(_) => Err(ValueError::GroupByNotSupported("MAP".to_owned()).into()),
+            List(_) => Err(ValueError::GroupByNotSupported("LIST".to_owned()).into()),
         }
     }
 }

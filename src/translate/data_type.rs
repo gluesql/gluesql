@@ -20,6 +20,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
 
             match name.as_deref() {
                 Some("MAP") => Ok(DataType::Map),
+                Some("LIST") => Ok(DataType::List),
                 _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
             }
         }

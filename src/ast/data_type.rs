@@ -12,4 +12,5 @@ pub enum DataType {
     Interval,
     UUID,
     Map,
+    List,
 }

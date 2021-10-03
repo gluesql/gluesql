@@ -22,6 +22,7 @@ impl From<&Value> for String {
             Value::Interval(value) => String::from(value),
             Value::UUID(value) => Uuid::from_u128(*value).to_string(),
             Value::Map(_) => "[MAP]".to_owned(),
+            Value::List(_) => "[LIST]".to_owned(),
             Value::Null => String::from("NULL"),
         }
     }
@@ -67,6 +68,7 @@ impl TryInto<bool> for &Value {
             | Value::Interval(_)
             | Value::UUID(_)
             | Value::Map(_)
+            | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -103,6 +105,7 @@ impl TryInto<i64> for &Value {
             | Value::Interval(_)
             | Value::UUID(_)
             | Value::Map(_)
+            | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -139,6 +142,7 @@ impl TryInto<f64> for &Value {
             | Value::Interval(_)
             | Value::UUID(_)
             | Value::Map(_)
+            | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }

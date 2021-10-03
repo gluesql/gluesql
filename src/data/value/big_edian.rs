@@ -84,6 +84,9 @@ impl Value {
             Value::Map(_) => {
                 return Err(ValueError::BigEdianExportNotSupported("MAP".to_owned()).into());
             }
+            Value::List(_) => {
+                return Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into());
+            }
         };
 
         Ok(value)
@@ -112,7 +115,11 @@ mod tests {
     fn cmp_big_edian() {
         use crate::{
             chrono::{NaiveDate, NaiveTime},
-            data::{self, Interval as I, Value::*, ValueError},
+            data::{
+                Interval as I,
+                Value::{self, *},
+                ValueError,
+            },
         };
 
         let null = Null.to_cmp_be_bytes().unwrap();
@@ -209,12 +216,22 @@ mod tests {
         assert_eq!(cmp(&n2, &n1), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = data::Map::parse_json(r#"{ "a": 10 }"#).unwrap();
-        let n1 = Map(n1).to_cmp_be_bytes();
+        let n1 = Value::parse_json_map(r#"{ "a": 10 }"#)
+            .unwrap()
+            .to_cmp_be_bytes();
 
         assert_eq!(
             n1,
             Err(ValueError::BigEdianExportNotSupported("MAP".to_owned()).into())
+        );
+
+        let n1 = Value::parse_json_list(r#"[1, 2, 3]"#)
+            .unwrap()
+            .to_cmp_be_bytes();
+
+        assert_eq!(
+            n1,
+            Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into())
         );
     }
 }
