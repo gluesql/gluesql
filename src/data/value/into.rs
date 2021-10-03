@@ -1,6 +1,6 @@
 use {
     super::{
-        date::{parse_date, parse_time},
+        date::{parse_date, parse_time, parse_timestamp},
         Value, ValueError,
     },
     crate::{
@@ -182,6 +182,7 @@ impl TryInto<NaiveDateTime> for &Value {
     fn try_into(self) -> Result<NaiveDateTime> {
         Ok(match self {
             Value::Date(value) => value.and_hms(0, 0, 0),
+            Value::Str(value) => parse_timestamp(value)?,
             Value::Timestamp(value) => *value,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })

@@ -646,11 +646,9 @@ mod tests {
         cast!(Null                       => Time, Null);
 
         // Timestamp
-        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
-        let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(0, 0, 0));
-
-        cast!(date => Timestamp, timestamp);
-        cast!(Null => Timestamp, Null);
+        cast!(Value::Date(NaiveDate::from_ymd(2021, 5, 1)) => Timestamp, Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(0, 0, 0)));
+        cast!(Str("2021-05-01 08:05:30".to_owned())        => Timestamp, Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(8, 5, 30)));
+        cast!(Null                                         => Timestamp, Null);
     }
 
     #[test]

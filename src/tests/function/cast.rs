@@ -165,6 +165,22 @@ test_case!(cast_literal, async move {
             "SELECT CAST('25:08:05' AS TIME) AS cast FROM Item",
             Err(ValueError::LiteralCastToTimeFailed("25:08:05".to_string()).into()),
         ),
+        (
+            "SELECT CAST('2021-08-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
+            Ok(
+                select_with_null!(cast; Value::Timestamp(NaiveDate::from_ymd(2021, 8, 25).and_hms(8, 5, 30))),
+            ),
+        ),
+        (
+            "SELECT CAST('2021-08-25 08:05:30.9' AS TIMESTAMP) AS cast FROM Item",
+            Ok(
+                select_with_null!(cast; Value::Timestamp(NaiveDate::from_ymd(2021, 8, 25).and_hms_milli(8, 5, 30, 900))),
+            ),
+        ),
+        (
+            "SELECT CAST('2021-13-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
+            Err(ValueError::LiteralCastToTimestampFailed("2021-13-25 08:05:30".to_string()).into()),
+        ),
     ];
 
     for (sql, expected) in test_cases {
