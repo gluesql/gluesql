@@ -1,11 +1,15 @@
 use {
-    super::{date::parse_date, error::ValueError, Value},
+    super::{
+        date::{parse_date, parse_time},
+        error::ValueError,
+        Value,
+    },
     crate::{
         ast::DataType,
         data::{Interval, Literal},
         result::{Error, Result},
     },
-    chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
+    chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime},
     std::{cmp::Ordering, convert::TryFrom},
     uuid::Uuid,
 };
@@ -210,6 +214,9 @@ impl Value {
             (DataType::Date, Literal::Text(v)) => parse_date(v)
                 .map(Value::Date)
                 .map_err(|_| ValueError::LiteralCastToDateFailed(v.to_string()).into()),
+            (DataType::Time, Literal::Text(v)) => parse_time(v)
+                .map(Value::Time)
+                .map_err(|_| ValueError::LiteralCastToTimeFailed(v.to_string()).into()),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
                 literal: format!("{:?}", literal),
@@ -237,37 +244,6 @@ fn parse_timestamp(v: &str) -> Result<NaiveDateTime> {
     }
 
     Err(ValueError::FailedToParseTimestamp(v.to_string()).into())
-}
-
-fn parse_time(v: &str) -> Result<NaiveTime> {
-    if let Ok(v) = v.parse::<NaiveTime>() {
-        return Ok(v);
-    }
-
-    let forms = [
-        "%P %I:%M",
-        "%P %l:%M",
-        "%P %I:%M:%S",
-        "%P %l:%M:%S",
-        "%P %I:%M:%S%.f",
-        "%P %l:%M:%S%.f",
-        "%I:%M %P",
-        "%l:%M %P",
-        "%I:%M:%S %P",
-        "%l:%M:%S %P",
-        "%I:%M:%S%.f %P",
-        "%l:%M:%S%.f %P",
-    ];
-
-    let v = v.to_uppercase();
-
-    for form in forms.iter() {
-        if let Ok(v) = NaiveTime::parse_from_str(&v, form) {
-            return Ok(v);
-        }
-    }
-
-    Err(ValueError::FailedToParseTime(v).into())
 }
 
 fn parse_uuid(v: &str) -> Result<u128> {

@@ -1,10 +1,13 @@
 use {
-    super::{date::parse_date, Value, ValueError},
+    super::{
+        date::{parse_date, parse_time},
+        Value, ValueError,
+    },
     crate::{
         data::Interval,
         result::{Error, Result},
     },
-    chrono::{NaiveDate, NaiveDateTime},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     std::convert::{TryFrom, TryInto},
     uuid::Uuid,
 };
@@ -156,6 +159,18 @@ impl TryInto<NaiveDate> for &Value {
             Value::Date(value) => *value,
             Value::Timestamp(value) => value.date(),
             Value::Str(value) => parse_date(value)?,
+            _ => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
+impl TryInto<NaiveTime> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<NaiveTime> {
+        Ok(match self {
+            Value::Time(value) => *value,
+            Value::Str(value) => parse_time(value)?,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
     }

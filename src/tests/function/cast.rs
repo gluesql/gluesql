@@ -3,7 +3,7 @@ use data::Interval as I;
 use Value::*;
 
 test_case!(cast_literal, async move {
-    use chrono::NaiveDate;
+    use chrono::{NaiveDate, NaiveTime};
     use Value::*;
 
     let test_cases = vec![
@@ -140,6 +140,30 @@ test_case!(cast_literal, async move {
         (
             r#"SELECT CAST('2021-08-025' AS DATE) FROM Item"#,
             Err(ValueError::LiteralCastToDateFailed("2021-08-025".to_string()).into()),
+        ),
+        (
+            "SELECT CAST('AM 8:05' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 0)))),
+        ),
+        (
+            "SELECT CAST('AM 08:05' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 0)))),
+        ),
+        (
+            "SELECT CAST('AM 8:05:30' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 30)))),
+        ),
+        (
+            "SELECT CAST('AM 8:05:30.9' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli(8, 5, 30, 900)))),
+        ),
+        (
+            "SELECT CAST('8:05:30.9 AM' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli(8, 5, 30, 900)))),
+        ),
+        (
+            "SELECT CAST('25:08:05' AS TIME) AS cast FROM Item",
+            Err(ValueError::LiteralCastToTimeFailed("25:08:05".to_string()).into()),
         ),
     ];
 

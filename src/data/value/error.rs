@@ -87,6 +87,9 @@ pub enum ValueError {
     #[error("literal cast failed to date: {0}")]
     LiteralCastToDateFailed(String),
 
+    #[error("literal cast failed to time: {0}")]
+    LiteralCastToTimeFailed(String),
+
     #[error("unreachable literal cast from number to integer: {0}")]
     UnreachableLiteralCastFromNumberToInteger(String),
 
