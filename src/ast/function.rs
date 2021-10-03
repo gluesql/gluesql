@@ -88,6 +88,8 @@ pub enum Function {
         start: Expr,
         count: Option<Expr>,
     },
+    #[strum(to_string = "UNWRAP")]
+    Unwrap { expr: Expr, selector: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

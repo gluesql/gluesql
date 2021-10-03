@@ -105,7 +105,7 @@ fn translate_aggrecate_one_arg<T: FnOnce(Expr) -> Aggregate>(
         .map(Expr::Aggregate)
 }
 
-fn translate_function_range<T: FnOnce(Expr, Option<Expr>) -> Function>(
+fn translate_function_trim<T: FnOnce(Expr, Option<Expr>) -> Function>(
     func: T,
     args: Vec<&SqlExpr>,
     name: String,
@@ -243,10 +243,10 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
         }
         "LTRIM" => {
-            translate_function_range(|expr, chars| Function::Ltrim { expr, chars }, args, name)
+            translate_function_trim(|expr, chars| Function::Ltrim { expr, chars }, args, name)
         }
         "RTRIM" => {
-            translate_function_range(|expr, chars| Function::Rtrim { expr, chars }, args, name)
+            translate_function_trim(|expr, chars| Function::Rtrim { expr, chars }, args, name)
         }
         "COUNT" => translate_aggrecate_one_arg(Aggregate::Count, args, name),
         "SUM" => translate_aggrecate_one_arg(Aggregate::Sum, args, name),
@@ -288,6 +288,17 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 expr,
                 start,
                 count,
+            })))
+        }
+        "UNWRAP" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let selector = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Unwrap {
+                expr,
+                selector,
             })))
         }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),

@@ -2,7 +2,7 @@ use {
     super::{error::ValueError, Value},
     crate::{
         ast::DataType,
-        data::{Interval, Literal},
+        data::{Interval, Literal, Map},
         result::{Error, Result},
     },
     chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
@@ -144,17 +144,10 @@ impl Value {
             (DataType::Time, Literal::Text(v)) => parse_time(v)
                 .map(Value::Time)
                 .map_err(|_| ValueError::FailedToParseTime(v.to_string()).into()),
-            (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
             (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
-            (DataType::Boolean, Literal::Null)
-            | (DataType::Int, Literal::Null)
-            | (DataType::Float, Literal::Null)
-            | (DataType::Text, Literal::Null)
-            | (DataType::Date, Literal::Null)
-            | (DataType::Timestamp, Literal::Null)
-            | (DataType::Time, Literal::Null)
-            | (DataType::Interval, Literal::Null)
-            | (DataType::UUID, Literal::Null) => Ok(Value::Null),
+            (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
+            (DataType::Map, Literal::Text(v)) => Map::parse_json(v).map(Value::Map),
+            (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
                 literal: format!("{:?}", literal),

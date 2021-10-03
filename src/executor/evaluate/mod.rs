@@ -604,6 +604,28 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             let string = String::from(&string[start..end]);
             Ok(Evaluated::from(Value::Str(string)))
         }
+        Function::Unwrap { expr, selector } => {
+            let evaluated = eval(expr).await?;
+            let map = match &evaluated {
+                Evaluated::Value(Cow::Owned(Value::Map(map))) => map,
+                Evaluated::Value(Cow::Borrowed(Value::Map(map))) => map,
+                _ if evaluated.is_null() => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresMapValue(func.to_string()).into());
+                }
+            };
+
+            let selector = match eval_to_str(selector).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            Ok(Evaluated::from(map.get_value(&selector)))
+        }
     }
 }
 

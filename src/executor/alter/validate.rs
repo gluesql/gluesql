@@ -16,7 +16,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
     } = column_def;
 
     // unique + data type
-    if matches!(data_type, DataType::Float)
+    if matches!(data_type, DataType::Float | DataType::Map)
         && options
             .iter()
             .any(|ColumnOptionDef { option, .. }| matches!(option, ColumnOption::Unique { .. }))
