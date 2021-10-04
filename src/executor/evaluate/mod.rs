@@ -417,6 +417,13 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             .map(Value::F64)
             .map(Evaluated::from),
 
+        Function::Log { antilog, base } => {
+            let antilog = eval_to_float!(antilog);
+            let base = eval_to_float!(base);
+
+            Ok(Evaluated::from(Value::F64(antilog.log(base))))
+        }
+
         Function::Log2(expr) => Ok(eval_to_float!(expr).log2())
             .map(Value::F64)
             .map(Evaluated::from),
@@ -544,19 +551,20 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         Function::Unwrap { expr, selector } => {
             let evaluated = eval(expr).await?;
-            let map = match &evaluated {
-                Evaluated::Value(Cow::Owned(Value::Map(map))) => map,
-                Evaluated::Value(Cow::Borrowed(Value::Map(map))) => map,
-                _ if evaluated.is_null() => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
+
+            if evaluated.is_null() {
+                return Ok(Evaluated::from(Value::Null));
+            }
+
+            let value = match &evaluated {
+                Evaluated::Value(value) => value.as_ref(),
                 _ => {
                     return Err(EvaluateError::FunctionRequiresMapValue(func.to_string()).into());
                 }
             };
 
             let selector = eval_to_str!(selector);
-            Ok(Evaluated::from(map.get_value(&selector)))
+            Ok(Evaluated::from(value.selector(&selector)))
         }
     }
 }

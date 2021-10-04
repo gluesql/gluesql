@@ -1,4 +1,7 @@
-use crate::{EvaluateError, Value::*, *};
+use crate::{
+    Value::{Null, Str, I64},
+    *,
+};
 
 test_case!(map, async move {
     run!(
@@ -18,7 +21,7 @@ INSERT INTO MapType VALUES
 "#
     );
 
-    let m = |s: &str| Map(data::Map::parse_json(s).unwrap());
+    let m = |s: &str| Value::parse_json_map(s).unwrap();
     let s = |v: &str| Str(v.to_owned());
 
     test!(
@@ -56,6 +59,10 @@ INSERT INTO MapType VALUES
 
     test!(
         Err(EvaluateError::FunctionRequiresMapValue("UNWRAP".to_owned()).into()),
+        r#"SELECT UNWRAP("abc", "a.b.c") FROM MapType"#
+    );
+    test!(
+        Err(ValueError::SelectorRequiresMapOrListTypes.into()),
         r#"SELECT UNWRAP(id, "a.b.c") FROM MapType"#
     );
     test!(
@@ -63,15 +70,11 @@ INSERT INTO MapType VALUES
         r#"SELECT id FROM MapType GROUP BY nested"#
     );
     test!(
-        Err(MapError::ArrayTypeNotSupported.into()),
-        r#"INSERT INTO MapType VALUES (1, '{ "a": [1, 2, 3] }');"#
-    );
-    test!(
-        Err(MapError::InvalidJsonString.into()),
+        Err(ValueError::InvalidJsonString.into()),
         r#"INSERT INTO MapType VALUES (1, '{{ ok [1, 2, 3] }');"#
     );
     test!(
-        Err(MapError::ObjectTypeJsonRequired.into()),
+        Err(ValueError::JsonObjectTypeRequired.into()),
         r#"INSERT INTO MapType VALUES (1, '[1, 2, 3]');"#
     );
 });

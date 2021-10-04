@@ -104,4 +104,19 @@ pub enum ValueError {
 
     #[error("big edian export not supported for {0} type")]
     BigEdianExportNotSupported(String),
+
+    #[error("invalid json string")]
+    InvalidJsonString,
+
+    #[error("json object type is required")]
+    JsonObjectTypeRequired,
+
+    #[error("json array type is required")]
+    JsonArrayTypeRequired,
+
+    #[error("unreachable - failed to parse json number: {0}")]
+    UnreachableJsonNumberParseFailure(String),
+
+    #[error("selector requires MAP or LIST types")]
+    SelectorRequiresMapOrListTypes,
 }
