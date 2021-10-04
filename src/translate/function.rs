@@ -215,6 +215,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "FLOOR" => translate_function_one_arg(Function::Floor, args, name),
         "EXP" => translate_function_one_arg(Function::Exp, args, name),
         "LN" => translate_function_one_arg(Function::Ln, args, name),
+        "LOG" => {
+            check_len(name, args.len(), 2)?;
+
+            let antilog = translate_expr(args[0])?;
+            let base = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Log { antilog, base })))
+        }
         "LOG2" => translate_function_one_arg(Function::Log2, args, name),
         "LOG10" => translate_function_one_arg(Function::Log10, args, name),
         "SIN" => translate_function_one_arg(Function::Sin, args, name),
