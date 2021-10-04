@@ -38,17 +38,6 @@ test_case!(case, async move {
             SELECT CASE id
                 WHEN 1 THEN name
                 WHEN 2 THEN name 
-                WHEN 3 THEN 12
-                ELSE "Malfoy" END
-            AS case FROM Item;
-            "#,
-            Err(EvaluateError::UnequalResultTypes("CASE".to_owned()).into()),
-        ),
-        (
-            r#"
-            SELECT CASE id
-                WHEN 1 THEN name
-                WHEN 2 THEN name 
                 WHEN 4 THEN name 
                 END
             AS case FROM Item;
