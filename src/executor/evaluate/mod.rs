@@ -28,7 +28,7 @@ use {
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
-#[async_recursion(? Send)]
+#[async_recursion(?Send)]
 pub async fn evaluate<'a, T: 'static + Debug>(
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
@@ -194,7 +194,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
     let eval_to_str = |expr| async move {
         match eval(expr).await?.try_into()? {
             Value::Str(s) => Ok(Nullable::Value(s)),
-            Value::Null => return Ok(Nullable::Null),
+            Value::Null => Ok(Nullable::Null),
             _ => {
                 Err::<_, Error>(EvaluateError::FunctionRequiresStringValue(func.to_string()).into())
             }
@@ -291,12 +291,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 "RIGHT"
             };
 
-            let string = match eval_to_str(expr).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let string = eval_to_str!(expr);
 
             let size = match eval(size).await?.try_into()? {
                 Value::I64(number) => usize::try_from(number)
@@ -348,12 +343,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 "RPAD"
             };
 
-            let string = match eval_to_str(expr).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let string = eval_to_str!(expr);
 
             let size = match eval(size).await?.try_into()? {
                 Value::I64(number) => usize::try_from(number)
@@ -367,12 +357,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             let fill = match fill {
-                Some(expr) => match eval_to_str(expr).await? {
-                    Nullable::Value(v) => v,
-                    Nullable::Null => {
-                        return Ok(Evaluated::from(Value::Null));
-                    }
-                },
+                Some(expr) => eval_to_str!(expr),
                 None => " ".to_string(),
             };
 
@@ -426,17 +411,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             filter_chars,
             trim_where_field,
         } => {
-            let expr_str = match eval_to_str(expr).await? {
-                Nullable::Value(str) => str,
-                Nullable::Null => return Ok(Value::Null).map(Evaluated::from),
-            };
+            let expr_str = eval_to_str!(expr);
             let expr_str = expr_str.as_str();
 
             let filter_chars = match filter_chars {
-                Some(expr) => match eval_to_str(expr).await? {
-                    Nullable::Value(str) => str.chars().collect::<Vec<_>>(),
-                    Nullable::Null => return Ok(Evaluated::from(Value::Null)),
-                },
+                Some(expr) => eval_to_str!(expr).chars().collect::<Vec<_>>(),
                 None => vec![' '],
             };
 
@@ -553,23 +532,15 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 "RTRIM"
             };
             let pattern: Result<Vec<char>> = match chars {
-                Some(chars) => match eval_to_str(chars).await? {
-                    Nullable::Value(v) => Ok(v.chars().collect::<Vec<char>>()),
-                    Nullable::Null => {
-                        return Ok(Evaluated::from(Value::Null));
-                    }
-                },
+                Some(chars) => Ok(eval_to_str!(chars).chars().collect::<Vec<char>>()),
                 None => Ok(" ".chars().collect::<Vec<char>>()),
             };
-            match eval_to_str(expr).await? {
-                Nullable::Value(v) => {
-                    if name == "LTRIM" {
-                        Ok(Value::Str(v.trim_start_matches(&pattern?[..]).to_string()))
-                    } else {
-                        Ok(Value::Str(v.trim_end_matches(&pattern?[..]).to_string()))
-                    }
-                }
-                Nullable::Null => Ok(Value::Null),
+
+            let string = eval_to_str!(expr);
+            if name == "LTRIM" {
+                Ok(Value::Str(string.trim_start_matches(&pattern?[..]).to_string()))
+            } else {
+                Ok(Value::Str(string.trim_end_matches(&pattern?[..]).to_string()))
             }
             .map(Evaluated::from)
         }
@@ -582,12 +553,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         .map(Evaluated::from),
 
         Function::Substr { expr, start, count } => {
-            let string = match eval_to_str(expr).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let string = eval_to_str!(expr);
             let start = eval_to_integer!(start) - 1;
 
             let count = match count {
@@ -618,13 +584,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
 
-            let selector = match eval_to_str(selector).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-
+            let selector = eval_to_str!(selector);
             Ok(Evaluated::from(map.get_value(&selector)))
         }
     }
