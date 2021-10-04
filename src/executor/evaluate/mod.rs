@@ -564,7 +564,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             let selector = eval_to_str!(selector);
-            Ok(Evaluated::from(value.selector(&selector)))
+            value.selector(&selector).map(Evaluated::from)
         }
     }
 }
