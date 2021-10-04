@@ -260,26 +260,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Ok(Evaluated::from(Value::Str(v)))
         }
 
-        Function::Sqrt(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.sqrt())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
+        Function::Sqrt(expr) => Ok(Value::F64(eval_to_float!(expr).sqrt())).map(Evaluated::from),
 
         Function::Power { expr, power } => {
-            let number = match eval_to_float(expr).await? {
-                Nullable::Value(v) => v as f64,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-
-            let power = match eval_to_float(power).await? {
-                Nullable::Value(v) => v as f64,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let number = eval_to_float!(expr);
+            let power = eval_to_float!(power);
 
             Ok(Evaluated::from(Value::F64(number.powf(power) as f64)))
         }
@@ -321,8 +306,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
+
         Function::ASin(expr) | Function::ACos(expr) | Function::ATan(expr) => {
-            let float_number = eval_to_float(expr).await?;
+            let float_number = eval_to_float!(expr);
 
             let trigonometric = |func, value| match func {
                 Function::ASin(_) => f64::asin(value),
@@ -330,12 +316,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 _ => f64::atan(value),
             };
 
-            match float_number {
-                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
-                Nullable::Null => Ok(Value::Null),
-            }
-            .map(Evaluated::from)
+            Ok(Value::F64(trigonometric(func.to_owned(), float_number))).map(Evaluated::from)
         }
+
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let name = if matches!(func, Function::Lpad { .. }) {
                 "LPAD"
@@ -378,31 +361,27 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(result)))
         }
-        Function::Ceil(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.ceil())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Round(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.round())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Floor(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.floor())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Radians(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.to_radians())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Degrees(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.to_degrees())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
+
+        Function::Ceil(expr) => Ok(eval_to_float!(expr).ceil())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Round(expr) => Ok(eval_to_float!(expr).round())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Floor(expr) => Ok(eval_to_float!(expr).floor())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Radians(expr) => Ok(eval_to_float!(expr).to_radians())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Degrees(expr) => Ok(eval_to_float!(expr).to_degrees())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
         Function::Pi() => {
             { Ok(Evaluated::from(Value::F64(std::f64::consts::PI))) }.map(Evaluated::from)
         }
@@ -430,28 +409,24 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             ))
             .map(Evaluated::from)
         }
-        Function::Exp(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.exp())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Ln(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.ln())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Log2(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.log2())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Log10(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.log10())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
+        Function::Exp(expr) => Ok(eval_to_float!(expr).exp())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Ln(expr) => Ok(eval_to_float!(expr).ln())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Log2(expr) => Ok(eval_to_float!(expr).log2())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Log10(expr) => Ok(eval_to_float!(expr).log10())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
         Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
-            let float_number = eval_to_float(expr).await?;
+            let float_number = eval_to_float!(expr);
 
             let trigonometric = |func, value| match func {
                 Function::Sin(_) => f64::sin(value),
@@ -459,11 +434,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 _ => f64::tan(value),
             };
 
-            match float_number {
-                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
-                Nullable::Null => Ok(Value::Null),
-            }
-            .map(Evaluated::from)
+            Ok(Value::F64(trigonometric(func.to_owned(), float_number))).map(Evaluated::from)
         }
         Function::Div { dividend, divisor } => {
             let name = "DIV";
@@ -538,19 +509,19 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             let string = eval_to_str!(expr);
             if name == "LTRIM" {
-                Ok(Value::Str(string.trim_start_matches(&pattern?[..]).to_string()))
+                Ok(Value::Str(
+                    string.trim_start_matches(&pattern?[..]).to_string(),
+                ))
             } else {
-                Ok(Value::Str(string.trim_end_matches(&pattern?[..]).to_string()))
+                Ok(Value::Str(
+                    string.trim_end_matches(&pattern?[..]).to_string(),
+                ))
             }
             .map(Evaluated::from)
         }
-        Function::Reverse(expr) => {
-            match eval_to_str(expr).await? {
-                Nullable::Value(v) => Ok(Value::Str(v.chars().rev().collect::<String>())),
-                Nullable::Null => Ok(Value::Null),
-            }
-        }
-        .map(Evaluated::from),
+        Function::Reverse(expr) => Ok(eval_to_str!(expr).chars().rev().collect::<String>())
+            .map(Value::Str)
+            .map(Evaluated::from),
 
         Function::Substr { expr, start, count } => {
             let string = eval_to_str!(expr);
