@@ -92,7 +92,7 @@ test_case!(arithmetic, async move {
         (
             LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", Literal::Boolean(true)),
-                format!("{:?}", Literal::Number(Cow::Owned("1".to_owned()))),
+                format!("{:?}", Literal::Number(1.into())),
             )
             .into(),
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",

@@ -5,9 +5,9 @@ use {
         ast::AstLiteral,
         result::{Error, Result},
     },
-    bigdecimal::*,
+    bigdecimal::{BigDecimal,FromPrimitive}
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, fmt::Debug},
+    std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug, ops::Neg},
     thiserror::Error,
     Literal::*,
 };
@@ -48,7 +48,7 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
     fn try_from(ast_literal: &'a AstLiteral) -> Result<Self> {
         let literal = match ast_literal {
             AstLiteral::Boolean(v) => Boolean(*v),
-            AstLiteral::Number(v) => Number(Cow::Borrowed(v)),
+            AstLiteral::Number(v) => Number(v.to_owned()),
             AstLiteral::QuotedString(v) => Text(Cow::Borrowed(v)),
             AstLiteral::Interval {
                 value,
@@ -94,7 +94,7 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
 impl<'a> Literal<'a> {
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
-            Number(v) => Ok(Number(*v)), // hw: unary_plus?
+            Number(v) => Ok(Number(v.to_owned())), // hw: unary_plus?
             Interval(v) => Ok(Interval(*v)),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -103,7 +103,7 @@ impl<'a> Literal<'a> {
 
     pub fn unary_minus(&self) -> Result<Self> {
         match self {
-            Number(v) => Ok(Number(*v)), // hw: unary_minus?
+            Number(v) => Ok(Number(v.neg())),
             Interval(v) => Ok(Interval(v.unary_minus())),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -117,7 +117,7 @@ impl<'a> Literal<'a> {
             } else {
                 "FALSE".to_owned()
             }),
-            Number(v) => Some(v.into_owned()),
+            Number(v) => Some(v.to_string()),
             Text(v) => Some(v.into_owned()),
             Interval(v) => Some(v.into()),
             Null => None,
@@ -131,7 +131,7 @@ impl<'a> Literal<'a> {
 
     pub fn add<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => BigDecimal::a  add(l, r).map(Number), // hw: impl Number and add?
+            (Number(l), Number(r)) => Ok(Number(l + r)),
             (Interval(l), Interval(r)) => l.add(r).map(Interval),
             (Null, Number(_))
             | (Null, Interval(_))
@@ -148,7 +148,7 @@ impl<'a> Literal<'a> {
 
     pub fn subtract<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => l.subtract(r).map(Number),
+            (Number(l), Number(r)) => Ok(Number(l - r)),
             (Interval(l), Interval(r)) => l.subtract(r).map(Interval),
             (Null, Number(_))
             | (Null, Interval(_))
@@ -165,17 +165,8 @@ impl<'a> Literal<'a> {
 
     pub fn multiply<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => l.multiply(r).map(Number),
-            (Number(l), Interval(r)) | (Interval(r), Number(l)) => Ok(Interval(l * *r)),
-            // {
-            //     if let Ok(l) = l.parse::<i64>() {
-            //         Ok(Interval(l * *r))
-            //     } else if let Ok(l) = l.parse::<f64>() {
-            //         Ok(Interval(l * *r))
-            //     } else {
-            //         Err(LiteralError::UnreachableBinaryArithmetic.into())
-            //     }
-            // }
+            (Number(l), Number(r)) => Ok(Number(l * r)),
+            (Number(l), Interval(r)) | (Interval(r), Number(l)) => Ok(Interval(*r * l)), // hw: BigDecimal * Interval?
             (Null, Number(_))
             | (Null, Interval(_))
             | (Number(_), Null)
@@ -191,40 +182,8 @@ impl<'a> Literal<'a> {
 
     pub fn divide<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    if r == 0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Number(Cow::Owned((l / r).to_string())))
-                    }
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    if r == 0.0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Number(Cow::Owned((l / r).to_string())))
-                    }
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
-            (Interval(l), Number(r)) => {
-                if let Ok(r) = r.parse::<i64>() {
-                    if r == 0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Interval(*l / r))
-                    }
-                } else if let Ok(r) = r.parse::<f64>() {
-                    if r == 0.0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Interval(*l / r))
-                    }
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
+            (Number(l), Number(r)) => Ok(Number(l / r)),
+            (Interval(l), Number(r)) => Ok(Interval(*l / r)),
             (Null, Number(_)) | (Number(_), Null) | (Interval(_), Null) | (Null, Null) => {
                 Ok(Literal::Null)
             }
@@ -238,23 +197,7 @@ impl<'a> Literal<'a> {
 
     pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    if r == 0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Number(Cow::Owned((l % r).to_string())))
-                    }
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    if r == 0.0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Number(Cow::Owned((l % r).to_string())))
-                    }
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
+            (Number(l), Number(r)) => Ok(Number(l % r)),
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),
@@ -278,14 +221,15 @@ impl<'a> Literal<'a> {
 mod tests {
 
     use super::Literal::*;
-    use std::borrow::Cow;
+    use bigdecimal::BigDecimal;
+    use std::{borrow::Cow, str::FromStr};
 
     #[test]
     fn arithmetic() {
         use crate::data::Interval as I;
 
         let mon = |n| Interval(I::months(n));
-        let num = |n: i32| Number(Cow::Owned(n.to_string()));
+        let num = |n: i32| Number(n.into());
 
         assert_eq!(mon(1).add(&mon(2)), Ok(mon(3)));
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
@@ -301,7 +245,7 @@ mod tests {
             };
         }
 
-        let num = || Number(Cow::Owned("123".to_owned()));
+        let num = || Number(123.into());
         let text = || text!("Foo");
 
         assert_eq!(Boolean(true).concat(num()), text!("TRUE123"));
@@ -319,7 +263,7 @@ mod tests {
 
         macro_rules! num {
             ($num: expr) => {
-                Number(Cow::Owned($num.to_owned()))
+                Number(BigDecimal::from_str($num).unwrap())
             };
         }
 
@@ -329,7 +273,7 @@ mod tests {
             };
         }
 
-        let num_divisor = |x: &str| Number(Cow::Owned(x.to_owned()));
+        let num_divisor = |x| Number(BigDecimal::from_str(x).unwrap());
 
         // Divide Test
         assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
@@ -366,7 +310,7 @@ mod tests {
         }
         macro_rules! num {
             ($num: expr) => {
-                Number(Cow::Owned($num.to_owned()))
+                Number(BigDecimal::from_str($num).unwrap())
             };
         }
         //Boolean
@@ -407,7 +351,7 @@ mod tests {
         }
         macro_rules! num {
             ($num: expr) => {
-                Number(Cow::Owned($num.to_owned()))
+                Number(BigDecimal::from_str($num).unwrap())
             };
         }
         //Boolean
