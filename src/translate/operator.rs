@@ -34,6 +34,7 @@ pub fn translate_binary_operator(
         SqlBinaryOperator::NotEq => Ok(BinaryOperator::NotEq),
         SqlBinaryOperator::And => Ok(BinaryOperator::And),
         SqlBinaryOperator::Or => Ok(BinaryOperator::Or),
+        SqlBinaryOperator::Xor => Ok(BinaryOperator::Xor),
         SqlBinaryOperator::Like => Ok(BinaryOperator::Like),
         SqlBinaryOperator::ILike => Ok(BinaryOperator::ILike),
         SqlBinaryOperator::NotLike => Ok(BinaryOperator::NotLike),

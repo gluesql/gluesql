@@ -57,6 +57,7 @@ pub fn binary_op<'a>(
         BinaryOperator::GtEq => cmp!(l >= r),
         BinaryOperator::And => cond!(l && r),
         BinaryOperator::Or => cond!(l || r),
+        BinaryOperator::Xor => cond!(l ^ r),
         BinaryOperator::Like => l.like(r, true),
         BinaryOperator::ILike => l.like(r, false),
         BinaryOperator::NotLike => {

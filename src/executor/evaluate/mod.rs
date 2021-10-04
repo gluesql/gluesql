@@ -464,6 +464,22 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+        Function::Log { antilog, base } => {
+            let antilog = match eval_to_float(antilog).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let base = match eval_to_float(base).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            Ok(Evaluated::from(Value::F64(antilog.log(base))))
+        }
         Function::Log2(expr) => match eval_to_float(expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.log2())),
             Nullable::Null => Ok(Value::Null),
@@ -632,6 +648,29 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             let start = min(max(start, 0) as usize, string.len());
             let string = String::from(&string[start..end]);
             Ok(Evaluated::from(Value::Str(string)))
+        }
+        Function::Unwrap { expr, selector } => {
+            let evaluated = eval(expr).await?;
+
+            if evaluated.is_null() {
+                return Ok(Evaluated::from(Value::Null));
+            }
+
+            let value = match &evaluated {
+                Evaluated::Value(value) => value.as_ref(),
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresMapValue(func.to_string()).into());
+                }
+            };
+
+            let selector = match eval_to_str(selector).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            value.selector(&selector).map(Evaluated::from)
         }
     }
 }

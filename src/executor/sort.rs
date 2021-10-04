@@ -107,15 +107,6 @@ impl<'a, T: 'static + Debug> Sort<'a, T> {
                         Some(ord) if ord != Ordering::Equal => {
                             return apply_asc(ord);
                         }
-                        None => {
-                            let a = String::from(value_a);
-                            let b = String::from(value_b);
-                            let ord = a.cmp(&b);
-
-                            if ord != Ordering::Equal {
-                                return apply_asc(ord);
-                            }
-                        }
                         _ => {}
                     }
                 }

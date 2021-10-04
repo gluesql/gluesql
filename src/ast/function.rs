@@ -48,6 +48,8 @@ pub enum Function {
     Exp(Expr),
     #[strum(to_string = "LN")]
     Ln(Expr),
+    #[strum(to_string = "LOG")]
+    Log { antilog: Expr, base: Expr },
     #[strum(to_string = "LOG2")]
     Log2(Expr),
     #[strum(to_string = "LOG10")]
@@ -88,6 +90,8 @@ pub enum Function {
         start: Expr,
         count: Option<Expr>,
     },
+    #[strum(to_string = "UNWRAP")]
+    Unwrap { expr: Expr, selector: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
