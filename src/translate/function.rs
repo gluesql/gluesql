@@ -317,6 +317,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 selector,
             })))
         }
+        "RANDOM_UUID" => translate_function_zero_arg(Function::RandomUuid(), args, name),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

@@ -1,4 +1,4 @@
-use {crate::*, ast::DataType, std::borrow::Cow, uuid::Uuid as UUID};
+use {crate::*, ast::DataType, std::borrow::Cow, value::parse_uuid};
 
 test_case!(uuid, async move {
     use Value::*;
@@ -33,9 +33,9 @@ test_case!(uuid, async move {
             Ok(select!(
                 uuid_field
                 Uuid;
-                UUID::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap().as_u128();
-                UUID::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap().as_u128();
-                UUID::parse_str("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap().as_u128()
+                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap();
+                parse_uuid("550e8400-e29b-41d4-a716-446655440000").unwrap();
+                parse_uuid("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap()
             )),
         ),
         (
@@ -47,8 +47,8 @@ test_case!(uuid, async move {
             Ok(select!(
                 uuid_field | "COUNT(*)"
                 Uuid | I64;
-                UUID::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap().as_u128()  1;
-                UUID::parse_str("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap().as_u128()  2
+                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()  1;
+                parse_uuid("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap()  2
             )),
         ),
         (

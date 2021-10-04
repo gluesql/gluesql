@@ -2,8 +2,10 @@ use {
     super::{expr, EvaluateError, Evaluated},
     crate::{
         ast::Expr,
+        ast::Function,
         data::{Row, Value},
         result::Result,
+        value::generate_random_uuid,
     },
     std::borrow::Cow,
 };
@@ -104,6 +106,10 @@ pub fn evaluate_stateless<'a>(
         Expr::Wildcard | Expr::QualifiedWildcard(_) => {
             Err(EvaluateError::UnreachableWildcardExpr.into())
         }
+        Expr::Function(func) => match **func {
+            Function::RandomUuid() => Ok(Evaluated::from(Value::UUID(generate_random_uuid()))),
+            _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),
+        },
         _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),
     }
 }

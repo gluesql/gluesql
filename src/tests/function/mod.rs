@@ -11,6 +11,7 @@ pub mod ltrim_rtrim;
 pub mod math_function;
 pub mod pi;
 pub mod radians;
+pub mod random_uuid;
 pub mod repeat;
 pub mod reverse;
 pub mod round;
