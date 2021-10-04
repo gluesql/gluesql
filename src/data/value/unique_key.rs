@@ -29,6 +29,7 @@ impl TryInto<Option<UniqueKey>> for &Value {
             Null => None,
             F64(_) => return conflict("FLOAT"),
             Map(_) => return conflict("MAP"),
+            List(_) => return conflict("LIST"),
         };
 
         Ok(unique_key)

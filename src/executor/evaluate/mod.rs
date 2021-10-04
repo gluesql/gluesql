@@ -622,12 +622,13 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         Function::Unwrap { expr, selector } => {
             let evaluated = eval(expr).await?;
-            let map = match &evaluated {
-                Evaluated::Value(Cow::Owned(Value::Map(map))) => map,
-                Evaluated::Value(Cow::Borrowed(Value::Map(map))) => map,
-                _ if evaluated.is_null() => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
+
+            if evaluated.is_null() {
+                return Ok(Evaluated::from(Value::Null));
+            }
+
+            let value = match &evaluated {
+                Evaluated::Value(value) => value.as_ref(),
                 _ => {
                     return Err(EvaluateError::FunctionRequiresMapValue(func.to_string()).into());
                 }
@@ -640,7 +641,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
 
-            Ok(Evaluated::from(map.get_value(&selector)))
+            value.selector(&selector).map(Evaluated::from)
         }
     }
 }
