@@ -7,8 +7,7 @@ use {
 
 impl Value {
     pub fn parse_json_map(value: &str) -> Result<Value> {
-        let value: JsonValue =
-            serde_json::from_str(value).map_err(|_| ValueError::InvalidJsonString)?;
+        let value = serde_json::from_str(value).map_err(|_| ValueError::InvalidJsonString)?;
 
         if !matches!(value, JsonValue::Object(_)) {
             return Err(ValueError::JsonObjectTypeRequired.into());
@@ -18,8 +17,7 @@ impl Value {
     }
 
     pub fn parse_json_list(value: &str) -> Result<Value> {
-        let value: JsonValue =
-            serde_json::from_str(value).map_err(|_| ValueError::InvalidJsonString)?;
+        let value = serde_json::from_str(value).map_err(|_| ValueError::InvalidJsonString)?;
 
         if !matches!(value, JsonValue::Array(_)) {
             return Err(ValueError::JsonArrayTypeRequired.into());
