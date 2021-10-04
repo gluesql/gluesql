@@ -21,7 +21,7 @@ test_case!(case, async move {
             SELECT CASE id
                 WHEN 1 THEN name
                 WHEN 2 THEN name 
-                WHEN 3 THEN name 
+                WHEN 4 THEN name 
                 ELSE "Malfoy" END
             AS case FROM Item;
             "#,
@@ -30,7 +30,7 @@ test_case!(case, async move {
                 Str;
                 "Harry".to_owned();
                 "Ron".to_owned();
-                "Hermione".to_owned()
+                "Malfoy".to_owned()
             )),
         ),
         (
