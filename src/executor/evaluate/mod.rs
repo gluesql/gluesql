@@ -435,6 +435,22 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+        Function::Log { antilog, base } => {
+            let antilog = match eval_to_float(antilog).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+            let base = match eval_to_float(base).await? {
+                Nullable::Value(v) => v,
+                Nullable::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+            };
+
+            Ok(Evaluated::from(Value::F64(antilog.log(base))))
+        }
         Function::Log2(expr) => match eval_to_float(expr).await? {
             Nullable::Value(v) => Ok(Value::F64(v.log2())),
             Nullable::Null => Ok(Value::Null),
