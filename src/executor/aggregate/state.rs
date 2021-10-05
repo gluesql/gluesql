@@ -95,12 +95,12 @@ impl<'a> State<'a> {
             .enumerate()
             .map(|(i, entries)| {
                 let aggregated = entries
-                    .map(|((_, aggr), v)| {
-                        //v.2 : exists to store the intermediate value of the avg function.
-                        if !v.1.is_null() && !v.2.is_null() {
-                            (aggr, v.2)
+                    .map(|((_, aggr), (_, v1, v2))| {
+                        // v.2 : exists to store the intermediate value of the avg function.
+                        if !v1.is_null() && !v2.is_null() {
+                            (aggr, v2)
                         } else {
-                            (aggr, v.1)
+                            (aggr, v1)
                         }
                     })
                     .collect::<HashMap<&'a Aggregate, Value>>();
