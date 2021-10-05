@@ -2,9 +2,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use gluesql::{
-    declare_test_fn, generate_store_tests, memory_storage::Key, tests::*, MemoryStorage,
-};
+use gluesql::{memory_storage::Key, tests::*, *};
 
 struct MemoryTester {
     storage: Rc<RefCell<Option<MemoryStorage>>>,
