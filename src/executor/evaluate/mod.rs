@@ -222,38 +222,49 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     };
 
-    match func {
-        Function::Lower(expr) => match eval_to_str(expr).await? {
-            Nullable::Value(v) => Ok(Value::Str(v.to_lowercase())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Upper(expr) => match eval_to_str(expr).await? {
-            Nullable::Value(v) => Ok(Value::Str(v.to_uppercase())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
+    macro_rules! eval_to_str {
+        ($v : expr) => {
+            match eval_to_str($v).await? {
+                Nullable::Value(s) => s,
+                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+            }
+        };
+    }
 
-        Function::Sqrt(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.sqrt())),
-            Nullable::Null => Ok(Value::Null),
+    macro_rules! eval_to_float {
+        ($v : expr) => {
+            match eval_to_float($v).await? {
+                Nullable::Value(f) => f,
+                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+            }
+        };
+    }
+
+    macro_rules! eval_to_integer {
+        ($v : expr) => {
+            match eval_to_integer($v).await? {
+                Nullable::Value(i) => i,
+                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+            }
+        };
+    }
+
+    match func {
+        Function::Lower(expr) => {
+            let v = eval_to_str!(expr).to_lowercase();
+            Ok(Evaluated::from(Value::Str(v)))
         }
-        .map(Evaluated::from),
+
+        Function::Upper(expr) => {
+            let v = eval_to_str!(expr).to_uppercase();
+            Ok(Evaluated::from(Value::Str(v)))
+        }
+
+        Function::Sqrt(expr) => Ok(Value::F64(eval_to_float!(expr).sqrt())).map(Evaluated::from),
 
         Function::Power { expr, power } => {
-            let number = match eval_to_float(expr).await? {
-                Nullable::Value(v) => v as f64,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-
-            let power = match eval_to_float(power).await? {
-                Nullable::Value(v) => v as f64,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let number = eval_to_float!(expr);
+            let power = eval_to_float!(power);
 
             Ok(Evaluated::from(Value::F64(number.powf(power) as f64)))
         }
@@ -265,12 +276,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 "RIGHT"
             };
 
-            let string = match eval_to_str(expr).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let string = eval_to_str!(expr);
 
             let size = match eval(size).await?.try_into()? {
                 Value::I64(number) => usize::try_from(number)
@@ -300,8 +306,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(converted)))
         }
+
         Function::ASin(expr) | Function::ACos(expr) | Function::ATan(expr) => {
-            let float_number = eval_to_float(expr).await?;
+            let float_number = eval_to_float!(expr);
 
             let trigonometric = |func, value| match func {
                 Function::ASin(_) => f64::asin(value),
@@ -309,12 +316,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 _ => f64::atan(value),
             };
 
-            match float_number {
-                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
-                Nullable::Null => Ok(Value::Null),
-            }
-            .map(Evaluated::from)
+            Ok(Value::F64(trigonometric(func.to_owned(), float_number))).map(Evaluated::from)
         }
+
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let name = if matches!(func, Function::Lpad { .. }) {
                 "LPAD"
@@ -322,12 +326,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 "RPAD"
             };
 
-            let string = match eval_to_str(expr).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let string = eval_to_str!(expr);
 
             let size = match eval(size).await?.try_into()? {
                 Value::I64(number) => usize::try_from(number)
@@ -341,12 +340,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             };
 
             let fill = match fill {
-                Some(expr) => match eval_to_str(expr).await? {
-                    Nullable::Value(v) => v,
-                    Nullable::Null => {
-                        return Ok(Evaluated::from(Value::Null));
-                    }
-                },
+                Some(expr) => eval_to_str!(expr),
                 None => " ".to_string(),
             };
 
@@ -367,31 +361,27 @@ async fn evaluate_function<'a, T: 'static + Debug>(
 
             Ok(Evaluated::from(Value::Str(result)))
         }
-        Function::Ceil(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.ceil())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Round(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.round())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Floor(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.floor())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Radians(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.to_radians())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Degrees(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.to_degrees())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
+
+        Function::Ceil(expr) => Ok(eval_to_float!(expr).ceil())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Round(expr) => Ok(eval_to_float!(expr).round())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Floor(expr) => Ok(eval_to_float!(expr).floor())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Radians(expr) => Ok(eval_to_float!(expr).to_radians())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Degrees(expr) => Ok(eval_to_float!(expr).to_degrees())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
         Function::Pi() => {
             { Ok(Evaluated::from(Value::F64(std::f64::consts::PI))) }.map(Evaluated::from)
         }
@@ -400,17 +390,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             filter_chars,
             trim_where_field,
         } => {
-            let expr_str = match eval_to_str(expr).await? {
-                Nullable::Value(str) => str,
-                Nullable::Null => return Ok(Value::Null).map(Evaluated::from),
-            };
+            let expr_str = eval_to_str!(expr);
             let expr_str = expr_str.as_str();
 
             let filter_chars = match filter_chars {
-                Some(expr) => match eval_to_str(expr).await? {
-                    Nullable::Value(str) => str.chars().collect::<Vec<_>>(),
-                    Nullable::Null => return Ok(Evaluated::from(Value::Null)),
-                },
+                Some(expr) => eval_to_str!(expr).chars().collect::<Vec<_>>(),
                 None => vec![' '],
             };
 
@@ -425,44 +409,31 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             ))
             .map(Evaluated::from)
         }
-        Function::Exp(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.exp())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Ln(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.ln())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
+        Function::Exp(expr) => Ok(eval_to_float!(expr).exp())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Ln(expr) => Ok(eval_to_float!(expr).ln())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
         Function::Log { antilog, base } => {
-            let antilog = match eval_to_float(antilog).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-            let base = match eval_to_float(base).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let antilog = eval_to_float!(antilog);
+            let base = eval_to_float!(base);
 
             Ok(Evaluated::from(Value::F64(antilog.log(base))))
         }
-        Function::Log2(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.log2())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
-        Function::Log10(expr) => match eval_to_float(expr).await? {
-            Nullable::Value(v) => Ok(Value::F64(v.log10())),
-            Nullable::Null => Ok(Value::Null),
-        }
-        .map(Evaluated::from),
+
+        Function::Log2(expr) => Ok(eval_to_float!(expr).log2())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
+        Function::Log10(expr) => Ok(eval_to_float!(expr).log10())
+            .map(Value::F64)
+            .map(Evaluated::from),
+
         Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
-            let float_number = eval_to_float(expr).await?;
+            let float_number = eval_to_float!(expr);
 
             let trigonometric = |func, value| match func {
                 Function::Sin(_) => f64::sin(value),
@@ -470,11 +441,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 _ => f64::tan(value),
             };
 
-            match float_number {
-                Nullable::Value(v) => Ok(Value::F64(trigonometric(func.to_owned(), v))),
-                Nullable::Null => Ok(Value::Null),
-            }
-            .map(Evaluated::from)
+            Ok(Value::F64(trigonometric(func.to_owned(), float_number))).map(Evaluated::from)
         }
         Function::Div { dividend, divisor } => {
             let name = "DIV";
@@ -521,34 +488,14 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             dividend.modulo(&divisor)
         }
         Function::Gcd { left, right } => {
-            let left = match eval_to_integer(left).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-            let right = match eval_to_integer(right).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let left = eval_to_integer!(left);
+            let right = eval_to_integer!(right);
 
             Ok(Evaluated::from(Value::I64(gcd(left, right))))
         }
         Function::Lcm { left, right } => {
-            let left = match eval_to_integer(left).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-            let right = match eval_to_integer(right).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let left = eval_to_integer!(left);
+            let right = eval_to_integer!(right);
 
             fn lcm(a: i64, b: i64) -> i64 {
                 a * b / gcd(a, b)
@@ -563,57 +510,39 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 "RTRIM"
             };
             let pattern: Result<Vec<char>> = match chars {
-                Some(chars) => match eval_to_str(chars).await? {
-                    Nullable::Value(v) => Ok(v.chars().collect::<Vec<char>>()),
-                    Nullable::Null => {
-                        return Ok(Evaluated::from(Value::Null));
-                    }
-                },
+                Some(chars) => Ok(eval_to_str!(chars).chars().collect::<Vec<char>>()),
                 None => Ok(" ".chars().collect::<Vec<char>>()),
             };
-            match eval_to_str(expr).await? {
-                Nullable::Value(v) => {
-                    if name == "LTRIM" {
-                        Ok(Value::Str(v.trim_start_matches(&pattern?[..]).to_string()))
-                    } else {
-                        Ok(Value::Str(v.trim_end_matches(&pattern?[..]).to_string()))
-                    }
-                }
-                Nullable::Null => Ok(Value::Null),
+
+            let string = eval_to_str!(expr);
+            if name == "LTRIM" {
+                Ok(Value::Str(
+                    string.trim_start_matches(&pattern?[..]).to_string(),
+                ))
+            } else {
+                Ok(Value::Str(
+                    string.trim_end_matches(&pattern?[..]).to_string(),
+                ))
             }
             .map(Evaluated::from)
         }
-        Function::Reverse(expr) => {
-            match eval_to_str(expr).await? {
-                Nullable::Value(v) => Ok(Value::Str(v.chars().rev().collect::<String>())),
-                Nullable::Null => Ok(Value::Null),
-            }
-        }
-        .map(Evaluated::from),
+        Function::Reverse(expr) => Ok(eval_to_str!(expr).chars().rev().collect::<String>())
+            .map(Value::Str)
+            .map(Evaluated::from),
 
         Function::Substr { expr, start, count } => {
-            let string = match eval_to_str(expr).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-            let start = match eval_to_integer(start).await? {
-                Nullable::Value(v) => v - 1,
-                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
+            let string = eval_to_str!(expr);
+            let start = eval_to_integer!(start) - 1;
+
+            let count = match count {
+                Some(v) => eval_to_integer!(v),
+                None => string.len() as i64,
             };
 
-            let end = match count {
-                Some(expr) => match eval_to_integer(expr).await? {
-                    Nullable::Value(count) => {
-                        if count < 0 {
-                            return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
-                        }
-                        min(max(start + count, 0) as usize, string.len())
-                    }
-                    Nullable::Null => return Ok(Evaluated::from(Value::Null)),
-                },
-                None => string.len(),
+            let end = if count < 0 {
+                return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
+            } else {
+                min(max(start + count, 0) as usize, string.len())
             };
 
             let start = min(max(start, 0) as usize, string.len());
@@ -634,13 +563,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 }
             };
 
-            let selector = match eval_to_str(selector).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-
+            let selector = eval_to_str!(selector);
             value.selector(&selector).map(Evaluated::from)
         }
     }
