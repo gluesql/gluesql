@@ -5,6 +5,7 @@ use {
     core::ops::Sub,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, collections::HashMap, convert::TryInto, fmt::Debug},
+    rust_decimal::Decimal,
 };
 
 mod big_edian;
@@ -31,6 +32,7 @@ pub enum Value {
     UUID(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
+    Decimal(Decimal),
     Null,
 }
 
@@ -52,6 +54,7 @@ impl PartialEq<Value> for Value {
             (Value::UUID(l), Value::UUID(r)) => l == r,
             (Value::Map(l), Value::Map(r)) => l == r,
             (Value::List(l), Value::List(r)) => l == r,
+            (Value::Decimal(l), Value::Decimal(r)) => l == r,
             _ => false,
         }
     }
@@ -92,6 +95,7 @@ impl Value {
             Value::UUID(_) => matches!(data_type, DataType::UUID),
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
+            Value::Decimal(_) => matches!(data_type, DataType::Decimal),
             Value::Null => true,
         };
 

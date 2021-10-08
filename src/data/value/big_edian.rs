@@ -86,7 +86,12 @@ impl Value {
             }
             Value::List(_) => {
                 return Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into());
-            }
+            },
+            Value::Decimal(v) => [VALUE]
+                .iter()
+                .chain(v.serialize().iter()) // maybe this can cause serde error
+                .copied()
+                .collect::<Vec<_>>(),
         };
 
         Ok(value)

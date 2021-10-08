@@ -6,7 +6,8 @@ use {
         result::{Error, Result},
     },
     chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
-    std::{cmp::Ordering, convert::TryFrom},
+    std::{cmp::Ordering, convert::TryFrom, str::FromStr},
+    rust_decimal::Decimal,
     uuid::Uuid,
 };
 
@@ -148,6 +149,7 @@ impl Value {
             (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
+            (DataType::Decimal, Literal::Number(v)) => parse_decimal(v).map(Value::Decimal),
             (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
@@ -271,6 +273,13 @@ fn parse_uuid(v: &str) -> Result<u128> {
     match Uuid::parse_str(v) {
         Ok(u) => Ok(u.as_u128()),
         _ => Err(ValueError::FailedToParseUUID(v.to_owned()).into()),
+    }
+}
+
+fn parse_decimal(v: &str) -> Result<Decimal> {
+    match Decimal::from_str(v) {
+        Ok(v) => Ok(v),
+        _ => Err(ValueError::FailedToParseDecimal(v.to_owned()).into()),
     }
 }
 

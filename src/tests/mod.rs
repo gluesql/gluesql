@@ -112,6 +112,7 @@ macro_rules! generate_store_tests {
         glue!(function_reverse, function::reverse::reverse);
         glue!(function_substr, function::substr::substr);
         glue!(uuid, data_type::uuid::uuid);
+        glue!(decimal, data_type::decimal::decimal);
     };
 }
 

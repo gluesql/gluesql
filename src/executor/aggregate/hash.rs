@@ -9,6 +9,7 @@ use {
         convert::{TryFrom, TryInto},
         fmt::Debug,
     },
+    rust_decimal::Decimal,
 };
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -21,6 +22,7 @@ pub enum GroupKey {
     Time(NaiveTime),
     Interval(Interval),
     UUID(u128),
+    Decimal(Decimal),
     None,
 }
 

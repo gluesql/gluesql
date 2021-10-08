@@ -7,6 +7,8 @@ use {
     chrono::{NaiveDate, NaiveDateTime},
     std::convert::{TryFrom, TryInto},
     uuid::Uuid,
+    rust_decimal::Decimal,
+    rust_decimal::prelude::ToPrimitive,
 };
 
 impl From<&Value> for String {
@@ -23,6 +25,7 @@ impl From<&Value> for String {
             Value::UUID(value) => Uuid::from_u128(*value).to_string(),
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
+            Value::Decimal(value) => value.to_string(),
             Value::Null => String::from("NULL"),
         }
     }
@@ -62,6 +65,7 @@ impl TryInto<bool> for &Value {
                 "FALSE" => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
+            Value::Decimal(value) => !value.is_zero(),
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -99,6 +103,13 @@ impl TryInto<i64> for &Value {
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => {
+                let v = Decimal::to_i64(value);
+                match v {
+                    Some(v) => v,
+                    None => return Err(ValueError::ImpossibleCast.into()),
+                }
+            },
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -136,6 +147,13 @@ impl TryInto<f64> for &Value {
             Value::Str(value) => value
                 .parse::<f64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => {
+                let v = Decimal::to_f64(value);
+                match v {
+                    Some(v) => v,
+                    None => return Err(ValueError::ImpossibleCast.into()),
+                }
+            },
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)

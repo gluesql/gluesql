@@ -6,3 +6,4 @@ pub mod sql_types;
 pub mod time;
 pub mod timestamp;
 pub mod uuid;
+pub mod decimal;
