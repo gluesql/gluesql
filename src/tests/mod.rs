@@ -3,6 +3,7 @@ pub mod alter;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
+pub mod case;
 pub mod concat;
 pub mod data_type;
 pub mod default;
@@ -111,6 +112,7 @@ macro_rules! generate_store_tests {
         glue!(function_pi, function::pi::pi);
         glue!(function_reverse, function::reverse::reverse);
         glue!(function_repeat, function::repeat::repeat);
+        glue!(case, case::case);
         glue!(function_substr, function::substr::substr);
         glue!(uuid, data_type::uuid::uuid);
     };
