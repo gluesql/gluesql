@@ -569,8 +569,8 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         .map(Evaluated::from),
         Function::Repeat { expr, num } => {
             let expr = eval_to_str!(expr);
-            let num = eval_to_integer!(num);
-            Ok(Value::Str(expr.repeat(num.try_into().unwrap())))
+            let num = eval_to_integer!(num) as usize;
+            Ok(Value::Str(expr.repeat(num)))
         }
         .map(Evaluated::from),
     }
