@@ -50,4 +50,9 @@ pub enum Expr {
     Aggregate(Box<Aggregate>),
     Exists(Box<Query>),
     Subquery(Box<Query>),
+    Case {
+        operand: Option<Box<Expr>>,
+        when_then: Vec<(Expr, Expr)>,
+        else_result: Option<Box<Expr>>,
+    },
 }

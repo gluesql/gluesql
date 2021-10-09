@@ -170,6 +170,29 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         Expr::Wildcard | Expr::QualifiedWildcard(_) => {
             Err(EvaluateError::UnreachableWildcardExpr.into())
         }
+        Expr::Case {
+            operand,
+            when_then,
+            else_result,
+        } => {
+            let operand = match operand {
+                Some(op) => eval(op).await?,
+                None => Evaluated::from(Value::Bool(true)),
+            };
+
+            for (when, then) in when_then.iter() {
+                let when = eval(when).await?;
+
+                if when.eq(&operand) {
+                    return eval(then).await;
+                }
+            }
+
+            match else_result {
+                Some(er) => eval(er).await,
+                None => Ok(Evaluated::from(Value::Null)),
+            }
+        }
     }
 }
 
