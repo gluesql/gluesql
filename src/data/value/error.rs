@@ -31,6 +31,9 @@ pub enum ValueError {
     #[error("failed to parse time: {0}")]
     FailedToParseTime(String),
 
+    #[error("failed to UUID: {0}")]
+    FailedToParseUUID(String),
+
     #[error("add on non-numeric values: {0:?} + {1:?}")]
     AddOnNonNumeric(Value, Value),
 
@@ -49,8 +52,8 @@ pub enum ValueError {
     #[error("modulo on non-numeric values: {0:?} % {1:?}")]
     ModuloOnNonNumeric(Value, Value),
 
-    #[error("floating numbers cannot be grouped by")]
-    FloatCannotBeGroupedBy,
+    #[error("{0} type cannot be grouped by")]
+    GroupByNotSupported(String),
 
     #[error("unary plus operation for non numeric value")]
     UnaryPlusOnNonNumeric,
@@ -61,8 +64,8 @@ pub enum ValueError {
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
-    #[error("floating columns cannot be set to unique constraint")]
-    ConflictOnFloatWithUniqueConstraint,
+    #[error("conflict - unique constraint cannot be used for {0} type")]
+    ConflictDataTypeOnUniqueConstraint(String),
 
     // Cast errors from value to value
     #[error("impossible cast")]
@@ -95,4 +98,25 @@ pub enum ValueError {
 
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(Value, Value),
+
+    #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
+    ILikeOnNonString(Value, Value),
+
+    #[error("big edian export not supported for {0} type")]
+    BigEdianExportNotSupported(String),
+
+    #[error("invalid json string")]
+    InvalidJsonString,
+
+    #[error("json object type is required")]
+    JsonObjectTypeRequired,
+
+    #[error("json array type is required")]
+    JsonArrayTypeRequired,
+
+    #[error("unreachable - failed to parse json number: {0}")]
+    UnreachableJsonNumberParseFailure(String),
+
+    #[error("selector requires MAP or LIST types")]
+    SelectorRequiresMapOrListTypes,
 }

@@ -22,3 +22,10 @@ pub enum DateTimeField {
     Minute,
     Second,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum TrimWhereField {
+    Both,
+    Leading,
+    Trailing,
+}

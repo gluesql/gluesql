@@ -36,6 +36,7 @@ pub enum UniqueKey {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
+    UUID(u128),
 }
 
 #[derive(Debug)]

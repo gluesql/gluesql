@@ -252,3 +252,24 @@ test_case!(nullable_text, async move {
 
     run!("INSERT INTO Foo (id, name) VALUES (1, \"Hello\"), (2, Null);");
 });
+
+test_case!(nullable_implicit_insert, async move {
+    use Value::*;
+    run!(
+        "
+        CREATE TABLE Foo (
+            id INTEGER,
+            name TEXT NULL
+        );
+    "
+    );
+
+    run!("INSERT INTO Foo (id) VALUES (1)");
+    test!(
+        Ok(select_with_null!(
+            id   | name;
+            I64(1)  Null
+        )),
+        "SELECT id, name FROM Foo"
+    );
+});

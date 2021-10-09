@@ -129,6 +129,57 @@ test_case!(ln, async move {
     }
 });
 
+test_case!(log, async move {
+    use Value::{Null, F64};
+
+    let test_cases = vec![
+        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
+        (
+            r#"INSERT INTO SingleItem VALUES (0)"#,
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "SELECT
+            LOG(64.0, 2.0) as log_1,
+            LOG(0.04, 10.0) as log_2
+            FROM SingleItem",
+            Ok(select!(
+                log_1               | log_2;
+                F64                 | F64;
+                64.0_f64.log(2.0)     0.04_f64.log(10.0)
+            )),
+        ),
+        (
+            "SELECT LOG(10, 10) as log_with_int FROM SingleItem",
+            Ok(select!(
+                log_with_int
+                F64;
+                f64::from(10).log(10.0)
+            )),
+        ),
+        (
+            "SELECT LOG('string', 10) AS log FROM SingleItem",
+            Err(EvaluateError::FunctionRequiresFloatValue(String::from("LOG")).into()),
+        ),
+        (
+            "SELECT LOG(10, 'string') AS log FROM SingleItem",
+            Err(EvaluateError::FunctionRequiresFloatValue(String::from("LOG")).into()),
+        ),
+        (
+            "SELECT LOG(NULL, 10) AS log FROM SingleItem",
+            Ok(select_with_null!(log; Null)),
+        ),
+        (
+            "SELECT LOG(10, NULL) AS log FROM SingleItem",
+            Ok(select_with_null!(log; Null)),
+        ),
+    ];
+
+    for (sql, expected) in test_cases {
+        test!(expected, sql);
+    }
+});
+
 test_case!(exp, async move {
     use Value::{Null, F64};
 

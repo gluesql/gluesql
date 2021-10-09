@@ -61,7 +61,7 @@ impl Index<IVec> for SledStorage {
                     };
                     let lower = || build_index_key_prefix(table_name, index_name);
                     let upper = || incr(build_index_key_prefix(table_name, index_name));
-                    let key = build_index_key(table_name, index_name, value);
+                    let key = build_index_key(table_name, index_name, value)?;
 
                     match op {
                         IndexOperator::Eq => match self.tree.get(&key).transpose() {

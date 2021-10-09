@@ -1,5 +1,5 @@
 use {
-    super::Expr,
+    super::{ast_literal::TrimWhereField, Expr},
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
@@ -14,6 +14,12 @@ pub enum Function {
     Left { expr: Expr, size: Expr },
     #[strum(to_string = "RIGHT")]
     Right { expr: Expr, size: Expr },
+    #[strum(to_string = "ASIN")]
+    ASin(Expr),
+    #[strum(to_string = "ACOS")]
+    ACos(Expr),
+    #[strum(to_string = "ATAN")]
+    ATan(Expr),
     #[strum(to_string = "LPAD")]
     Lpad {
         expr: Expr,
@@ -33,11 +39,17 @@ pub enum Function {
     #[strum(to_string = "FLOOR")]
     Floor(Expr),
     #[strum(to_string = "TRIM")]
-    Trim(Expr),
+    Trim {
+        expr: Expr,
+        filter_chars: Option<Expr>,
+        trim_where_field: Option<TrimWhereField>,
+    },
     #[strum(to_string = "EXP")]
     Exp(Expr),
     #[strum(to_string = "LN")]
     Ln(Expr),
+    #[strum(to_string = "LOG")]
+    Log { antilog: Expr, base: Expr },
     #[strum(to_string = "LOG2")]
     Log2(Expr),
     #[strum(to_string = "LOG10")]
@@ -74,6 +86,14 @@ pub enum Function {
     Reverse(Expr),
     #[strum(to_string = "REPEAT")]
     Repeat { expr: Expr, num: Expr },
+    #[strum(to_string = "SUBSTR")]
+    Substr {
+        expr: Expr,
+        start: Expr,
+        count: Option<Expr>,
+    },
+    #[strum(to_string = "UNWRAP")]
+    Unwrap { expr: Expr, selector: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
