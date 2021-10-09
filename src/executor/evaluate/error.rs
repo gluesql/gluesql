@@ -57,7 +57,4 @@ pub enum EvaluateError {
 
     #[error("negative substring length not allowed")]
     NegativeSubstrLenNotAllowed,
-
-    #[error("the result types should be equal: {0}")]
-    UnequalResultTypes(String),
 }
