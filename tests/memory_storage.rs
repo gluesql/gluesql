@@ -38,30 +38,10 @@ macro_rules! test {
 }
 
 #[cfg(feature = "alter-table")]
-#[test]
-fn memory_storage_alter_table() {
-    use gluesql::{Error, Glue};
-
-    let storage = MemoryStorage::default();
-    let mut glue = Glue::new(storage);
-
-    exec!(glue "CREATE TABLE Footer (id INTEGER);");
-    test!(
-        glue "ALTER TABLE Footer RENAME TO Header;",
-        Err(Error::StorageMsg("[MemoryStorage] alter-table is not supported".to_owned()))
-    );
-    test!(
-        glue "ALTER TABLE Footer RENAME COLUMN id TO od;",
-        Err(Error::StorageMsg("[MemoryStorage] alter-table is not supported".to_owned()))
-    );
-    test!(
-        glue "ALTER TABLE Footer ADD COLUMN ratio FLOAT DEFAULT 1.0;",
-        Err(Error::StorageMsg("[MemoryStorage] alter-table is not supported".to_owned()))
-    );
-    test!(
-        glue "ALTER TABLE Footer DROP COLUMN id;",
-        Err(Error::StorageMsg("[MemoryStorage] alter-table is not supported".to_owned()))
-    );
+cfg_if::cfg_if! {
+    if #[cfg(feature = "alter-table")] {
+        generate_alter_table_tests!(tokio::test, MemoryTester);
+    }
 }
 
 #[cfg(feature = "index")]

@@ -1,15 +1,14 @@
 #![cfg(feature = "alter-table")]
 
-use crate::{schema::ColumnDefExt, Row, Value};
-
 use {
     super::MemoryStorage,
     crate::{
         ast::ColumnDef,
         result::MutResult,
+        schema::ColumnDefExt,
         store::AlterTable,
         store::{Store, StoreMut},
-        AlterTableError,
+        AlterTableError, Row, Value,
     },
     async_trait::async_trait,
 };
