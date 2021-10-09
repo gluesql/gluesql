@@ -24,18 +24,28 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
         }
     }
 
-    pub fn plan(&self, sql: &str) -> Result<Statement> {
+    pub async fn plan(&self, sql: &str) -> Result<Statement> {
         let parsed = parse(sql)?;
         let statement = translate(&parsed[0])?;
         let storage = self.storage.as_ref().unwrap();
 
-        block_on(plan(storage, statement))
+        plan(storage, statement).await
     }
 
     pub fn execute_stmt(&mut self, statement: Statement) -> Result<Payload> {
+        block_on(self.execute_stmt_async(statement))
+    }
+
+    pub fn execute(&mut self, sql: &str) -> Result<Payload> {
+        let statement = block_on(self.plan(sql))?;
+
+        self.execute_stmt(statement)
+    }
+
+    pub async fn execute_stmt_async(&mut self, statement: Statement) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
-        match block_on(execute(storage, &statement)) {
+        match execute(storage, &statement).await {
             Ok((storage, payload)) => {
                 self.storage = Some(storage);
 
@@ -49,10 +59,10 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
         }
     }
 
-    pub fn execute(&mut self, sql: &str) -> Result<Payload> {
-        let statement = self.plan(sql)?;
+    pub async fn execute_async(&mut self, sql: &str) -> Result<Payload> {
+        let statement = self.plan(sql).await?;
 
-        self.execute_stmt(statement)
+        self.execute_stmt_async(statement).await
     }
 }
 
@@ -111,6 +121,21 @@ mod tests {
         );
     }
 
+    async fn basic_async<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+        assert_eq!(
+            glue.execute_async("DROP TABLE IF EXISTS api_test").await,
+            Ok(Payload::DropTable)
+        );
+
+        assert_eq!(
+            glue.execute_async(
+                "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
+            )
+            .await,
+            Ok(Payload::Create)
+        );
+    }
+
     #[cfg(feature = "sled-storage")]
     #[test]
     fn sled_basic() {
@@ -136,5 +161,18 @@ mod tests {
         let glue = Glue::new(storage);
 
         basic(glue);
+    }
+
+    #[cfg(feature = "memory-storage")]
+    #[test]
+    fn memory_basic_async() {
+        use futures::executor::block_on;
+
+        use crate::memory_storage::MemoryStorage;
+
+        let storage = MemoryStorage::default();
+        let glue = Glue::new(storage);
+
+        block_on(basic_async(glue));
     }
 }

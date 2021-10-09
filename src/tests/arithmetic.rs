@@ -188,4 +188,14 @@ test_case!(blend, async move {
     let found = run!(sql);
     let expected = select!("a.id + b.id"; I64; 3; 5; 7; 9);
     assert_eq!(expected, found);
+
+    let sql =
+        "SELECT TRUE XOR TRUE, FALSE XOR FALSE, TRUE XOR FALSE, FALSE XOR TRUE FROM Arith LIMIT 1";
+    let found = run!(sql);
+    let expected = select!(
+        "true XOR true" | "false XOR false" | "true XOR false" | "false XOR true"
+        Value::Bool     | Value::Bool       | Value::Bool      | Value::Bool;
+        false             false               true               true
+    );
+    assert_eq!(expected, found);
 });

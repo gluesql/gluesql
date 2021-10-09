@@ -83,6 +83,7 @@ macro_rules! generate_store_tests {
         glue!(function_round, function::round::round);
         glue!(function_floor, function::floor::floor);
         glue!(function_ln, function::exp_log::ln);
+        glue!(function_log, function::exp_log::log);
         glue!(function_log2, function::exp_log::log2);
         glue!(function_log10, function::exp_log::log10);
         glue!(function_exp, function::exp_log::exp);
@@ -92,6 +93,7 @@ macro_rules! generate_store_tests {
         glue!(nested_select, nested_select::nested_select);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
+        glue!(nullable_implicit_insert, nullable::nullable_implicit_insert);
         glue!(ordering, ordering::ordering);
         glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
@@ -99,6 +101,8 @@ macro_rules! generate_store_tests {
         glue!(timestamp, data_type::timestamp::timestamp);
         glue!(time, data_type::time::time);
         glue!(interval, data_type::interval::interval);
+        glue!(list, data_type::list::list);
+        glue!(map, data_type::map::map);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -107,6 +111,8 @@ macro_rules! generate_store_tests {
         glue!(function_pi, function::pi::pi);
         glue!(function_reverse, function::reverse::reverse);
         glue!(function_repeat, function::repeat::repeat);
+        glue!(function_substr, function::substr::substr);
+        glue!(uuid, data_type::uuid::uuid);
     };
 }
 

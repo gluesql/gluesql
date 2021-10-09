@@ -81,16 +81,12 @@ test_case!(error, async move {
             "INSERT INTO TableA (id2) VALUES (1);",
         ),
         (
-            RowError::LackOfRequiredValue("id".to_owned()).into(),
-            "INSERT INTO TableA (id2, id) VALUES (100);",
+            RowError::ColumnAndValuesNotMatched.into(),
+            "INSERT INTO TableA (id) VALUES ('test2', 3)",
         ),
         (
             RowError::TooManyValues.into(),
             "INSERT INTO TableA VALUES (100), (100, 200);",
-        ),
-        (
-            TranslateError::UnsupportedAstLiteral(r#"X'123'"#.to_owned()).into(),
-            "SELECT * FROM TableA Where id = X'123';",
         ),
         #[cfg(feature = "alter-table")]
         (
