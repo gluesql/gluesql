@@ -52,7 +52,7 @@ test_case!(concat, async move {
         Ok(select!(
             "id || rate"      | "rate || flag"       | "flag || text"       | "id || text"
             Str               | Str                  | Str                  | Str;
-            "12.3".to_owned()   "2.3TRUE".to_owned()   "TRUEFoo".to_owned()   "1Foo".to_owned()
+            "12.3000000000000003".to_owned()   "2.3000000000000003TRUE".to_owned()   "TRUEFoo".to_owned()   "1Foo".to_owned()
         )),
         "SELECT
             id || rate,
@@ -81,7 +81,7 @@ test_case!(concat, async move {
     test!(
         Ok(select_with_null!(
             Case1                      | Case2                         | Case3;
-            Str("112.3Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
+            Str("112.3000000000000003Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
         )),
         r#"SELECT
             1 || id || rate || "Bar" AS Case1,

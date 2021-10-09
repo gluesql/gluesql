@@ -146,11 +146,11 @@ test_case!(group_by, async move {
         ),
         (
             "SELECT ratio FROM Item GROUP BY id, city",
-            select!(ratio; F64; 0.2; 0.9; 1.1; 3.2; 11.1; 6.11),
+            select!(ratio; F64; 0.2; 0.9; 1.1; 3.2; 11.100000000000001; 6.11),
         ),
         (
             "SELECT ratio FROM Item GROUP BY id, city HAVING ratio > 10",
-            select!(ratio; F64; 11.1),
+            select!(ratio; F64; 11.100000000000001),
         ),
         (
             "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1",
