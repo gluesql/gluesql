@@ -568,18 +568,8 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         .map(Evaluated::from),
         Function::Repeat { expr, num } => {
-            let expr = match eval_to_str(expr).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-            let num = match eval_to_integer(num).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
+            let expr = eval_to_str!(expr);
+            let num = eval_to_integer!(num);
             Ok(Value::Str(expr.repeat(num.try_into().unwrap())))
         }
         .map(Evaluated::from),
