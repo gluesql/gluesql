@@ -283,6 +283,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             })))
         }
         "REVERSE" => translate_function_one_arg(Function::Reverse, args, name),
+        "REPEAT" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let num = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Repeat { expr, num })))
+        }
         "SUBSTR" => {
             check_len_range(name, args.len(), 2, 3)?;
 
