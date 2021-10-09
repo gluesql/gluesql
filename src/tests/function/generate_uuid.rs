@@ -24,7 +24,7 @@ test_case!(generate_uuid, async move {
 
     count!(1, "SELECT generate_uuid() FROM SingleItem");
     type_match!(
-        &DataType::UUID,
+        &[DataType::UUID],
         "SELECT generate_uuid() as uuid FROM SingleItem"
     );
 });

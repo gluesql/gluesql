@@ -20,6 +20,7 @@ pub mod order_by;
 pub mod ordering;
 pub mod synthesize;
 pub mod transaction;
+pub mod type_match;
 pub mod validate;
 
 mod tester;
@@ -116,6 +117,7 @@ macro_rules! generate_store_tests {
         glue!(function_substr, function::substr::substr);
         glue!(uuid, data_type::uuid::uuid);
         glue!(function_generate_uuid, function::generate_uuid::generate_uuid);
+        glue!(type_match, type_match::type_match);
     };
 }
 

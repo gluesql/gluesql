@@ -19,28 +19,6 @@ pub fn expr(sql: &str) -> Expr {
     translate_expr(&parsed).unwrap()
 }
 
-pub fn type_match(expected: &DataType, found: Result<Payload>) {
-    let rows = match found {
-        Ok(Payload::Select {
-            labels: _expected_labels,
-            rows,
-        }) => rows,
-        _ => panic!("type match is only for Select"),
-    };
-
-    for item in rows {
-        for x in item {
-            match x.validate_type(expected) {
-                Ok(_) => {}
-                Err(_) => panic!(
-                    "[err: type match failed]\n expected {:?}\n found {:?}\n",
-                    expected, x
-                ),
-            }
-        }
-    }
-}
-
 pub fn test(expected: Result<Payload>, found: Result<Payload>) {
     let (expected, found): (Payload, Payload) = match (expected, found) {
         (Ok(a), Ok(b)) => (a, b),
@@ -214,6 +192,28 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
         Statement::Query(query) => find_query_indexes(query),
         _ => vec![],
     }
+}
+
+pub fn type_match(expected: &[DataType], found: Result<Payload>) {
+    let rows = match found {
+        Ok(Payload::Select {
+            labels: _expected_labels,
+            rows,
+        }) => rows,
+        _ => panic!("type match is only for Select"),
+    };
+
+    rows.into_iter().for_each(|item| {
+        item.iter()
+            .zip(expected.iter())
+            .for_each(|(value, data_type)| match value.validate_type(data_type) {
+                Ok(_) => {}
+                Err(_) => panic!(
+                    "[err: type match failed]\n expected {:?}\n found {:?}\n",
+                    data_type, value
+                ),
+            })
+    });
 }
 
 /// If you want to make your custom storage and want to run integrate tests,
