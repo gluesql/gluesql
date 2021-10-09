@@ -170,6 +170,29 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         Expr::Wildcard | Expr::QualifiedWildcard(_) => {
             Err(EvaluateError::UnreachableWildcardExpr.into())
         }
+        Expr::Case {
+            operand,
+            when_then,
+            else_result,
+        } => {
+            let operand = match operand {
+                Some(op) => eval(op).await?,
+                None => Evaluated::from(Value::Bool(true)),
+            };
+
+            for (when, then) in when_then.iter() {
+                let when = eval(when).await?;
+
+                if when.eq(&operand) {
+                    return eval(then).await;
+                }
+            }
+
+            match else_result {
+                Some(er) => eval(er).await,
+                None => Ok(Evaluated::from(Value::Null)),
+            }
+        }
     }
 }
 
@@ -568,19 +591,9 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
         .map(Evaluated::from),
         Function::Repeat { expr, num } => {
-            let expr = match eval_to_str(expr).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-            let num = match eval_to_integer(num).await? {
-                Nullable::Value(v) => v,
-                Nullable::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-            };
-            Ok(Value::Str(expr.repeat(num.try_into().unwrap())))
+            let expr = eval_to_str!(expr);
+            let num = eval_to_integer!(num) as usize;
+            Ok(Value::Str(expr.repeat(num)))
         }
         .map(Evaluated::from),
     }

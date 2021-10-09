@@ -1,8 +1,6 @@
 use crate::*;
 
 test_case!(repeat, async move {
-    //use Value::{Null, Str, I64};
-
     let test_cases = vec![
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
