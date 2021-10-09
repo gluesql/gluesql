@@ -180,19 +180,17 @@ pub async fn evaluate<'a, T: 'static + Debug>(
                 None => Evaluated::from(Value::Bool(true)),
             };
 
-            if let Some((_, then)) = stream::iter(when_then.iter())
-                .map(Ok::<_, Error>)
-                .and_then(|(when, then)| async move { Ok((eval(when).await?, eval(then).await?)) })
-                .try_collect::<Vec<(Evaluated, Evaluated)>>()
-                .await?
-                .into_iter()
-                .find(|(when, _)| when.eq(&operand))
-            {
-                Ok(then)
-            } else if let Some(er) = else_result {
-                Ok(eval(er).await?)
-            } else {
-                Ok(Evaluated::from(Value::Null))
+            for (when, then) in when_then.iter() {
+                let when = eval(when).await?;
+
+                if when.eq(&operand) {
+                    return eval(then).await;
+                }
+            }
+
+            match else_result {
+                Some(er) => eval(er).await,
+                None => Ok(Evaluated::from(Value::Null)),
             }
         }
     }
