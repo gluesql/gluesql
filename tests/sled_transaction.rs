@@ -30,7 +30,7 @@ macro_rules! test {
 
 macro_rules! test_idx {
     ($glue: ident $sql: literal, $idx: expr, $result: expr) => {
-        let statement = $glue.plan($sql).unwrap();
+        let statement = $glue.plan($sql).await.unwrap();
 
         test_indexes(&statement, Some($idx));
         assert_eq!($glue.execute_stmt(statement), $result);
@@ -243,8 +243,8 @@ fn sled_transaction_data_mut() {
     );
 }
 
-#[test]
-fn sled_transaction_index_mut() {
+#[tokio::test]
+async fn sled_transaction_index_mut() {
     use ast::IndexOperator::Eq;
 
     let path = &format!("{}/transaction_index_mut", PATH_PREFIX);
@@ -374,20 +374,18 @@ async fn sled_transaction_gc() {
 
     // force change, txid -> 0
     exec!(glue1 "BEGIN;");
-    let mut glue1 = Glue {
-        storage: glue1.storage.map(|mut s| {
-            s.state = sled_storage::State::Transaction {
-                txid: 0,
-                created_at: SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis(),
-                autocommit: false,
-            };
 
-            s
-        }),
+    let mut storage = glue1.storage.unwrap();
+    storage.state = sled_storage::State::Transaction {
+        txid: 0,
+        created_at: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis(),
+        autocommit: false,
     };
+    let mut glue1 = Glue::new(storage);
+
     test!(glue1 "SELECT * FROM NewGarlic", Err(Error::StorageMsg("fetch failed - expired transaction has used (txid)".to_owned())));
     assert_eq!(
         glue1

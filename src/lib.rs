@@ -68,6 +68,8 @@
 
 // re-export
 pub use chrono;
+#[cfg(feature = "sled-storage")]
+pub use sled;
 pub use sqlparser as parser;
 
 mod executor;
@@ -92,9 +94,5 @@ pub use result::*;
 pub use store::*;
 pub use translate::*;
 
-#[cfg(feature = "sled-storage")]
 pub use glue::Glue;
-#[cfg(feature = "sled-storage")]
-pub use sled;
-#[cfg(feature = "sled-storage")]
 pub use storages::*;

@@ -1,9 +1,7 @@
 use crate::*;
 
 test_case!(repeat, async move {
-    //use Value::{Null, Str, I64};
-
-    let test_cases = vec! [
+    let test_cases = vec![
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (
             r#"INSERT INTO Item VALUES ("hello")"#,
@@ -38,6 +36,10 @@ test_case!(repeat, async move {
         (
             r#"SELECT REPEAT(1, 1) AS test FROM Item"#,
             Err(EvaluateError::FunctionRequiresStringValue("REPEAT".to_owned()).into()),
+        ),
+        (
+            r#"SELECT REPEAT(name, null) AS test FROM Item"#,
+            Ok(select_with_null!(test; Value::Null)),
         ),
         (
             "CREATE TABLE NullTest (name TEXT null)",
