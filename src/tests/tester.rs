@@ -21,13 +21,10 @@ pub fn expr(sql: &str) -> Expr {
 
 pub fn type_match(expected: &DataType, found: Result<Payload>) {
     let rows = match found {
-        Ok(a) => match a {
-            Payload::Select {
-                labels: _expected_labels,
-                rows,
-            } => rows,
-            _ => panic!("type match is only for Select"),
-        },
+        Ok(Payload::Select {
+            labels: _expected_labels,
+            rows,
+        }) => rows,
         _ => panic!("type match is only for Select"),
     };
 
