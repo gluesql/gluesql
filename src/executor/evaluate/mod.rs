@@ -567,7 +567,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             value.selector(&selector).map(Evaluated::from)
         }
         .map(Evaluated::from),
-        Function::Repeat{ expr, num } => {
+        Function::Repeat { expr, num } => {
             let expr = match eval_to_str(expr).await? {
                 Nullable::Value(v) => v,
                 Nullable::Null => {
