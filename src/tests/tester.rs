@@ -203,8 +203,18 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
         _ => panic!("type match is only for Select"),
     };
 
-    rows.into_iter().for_each(|item| {
-        item.iter()
+    for (i, items) in rows.iter().enumerate() {
+        assert_eq!(
+            items.len(),
+            expected.len(),
+            "\n[err: size of row] row index: {}\nexpected: {:?}\n found: {:?}",
+            i,
+            expected.len(),
+            items.len()
+        );
+
+        items
+            .iter()
             .zip(expected.iter())
             .for_each(|(value, data_type)| match value.validate_type(data_type) {
                 Ok(_) => {}
@@ -213,7 +223,7 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
                     data_type, value
                 ),
             })
-    });
+    }
 }
 
 /// If you want to make your custom storage and want to run integrate tests,
