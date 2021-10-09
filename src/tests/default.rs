@@ -40,6 +40,28 @@ test_case!(default, async move {
         test!(Ok(expected), sql);
     }
 
+    let stateless_function_test_cases = vec![
+        (
+            "CREATE TABLE FunctionTest (
+                uuid UUID,
+                num FLOAT
+            )",
+            Ok(Payload::Create),
+        ),
+        (
+            "INSERT INTO FunctionTest VALUES (generate_uuid(), 1.0)",
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "INSERT INTO FunctionTest VALUES (generate_uuid(), SIN(1))",
+            Err(EvaluateError::UnsupportedStatelessExpr(expr!("SIN(1)")).into()),
+        ),
+    ];
+
+    for (sql, expected) in stateless_function_test_cases {
+        test!(expected, sql);
+    }
+
     test!(
         Ok(Payload::Create),
         r#"

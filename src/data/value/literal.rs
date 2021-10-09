@@ -6,7 +6,7 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::parse_uuid, Interval, Literal},
+        data::{value::uuid::parse_uuid, Interval, Literal},
         result::{Error, Result},
     },
     chrono::NaiveDate,

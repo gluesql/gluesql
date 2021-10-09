@@ -1,4 +1,4 @@
-use {crate::*, ast::DataType, std::borrow::Cow, value::parse_uuid};
+use {crate::value::parse_uuid, crate::*, ast::DataType, std::borrow::Cow};
 
 test_case!(uuid, async move {
     use Value::*;

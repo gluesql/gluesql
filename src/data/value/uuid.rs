@@ -4,14 +4,14 @@ use {
     uuid::Uuid,
 };
 
-pub fn parse_uuid(v: &str) -> Result<u128, Error> {
+pub(crate) fn parse_uuid(v: &str) -> Result<u128, Error> {
     match Uuid::parse_str(v) {
         Ok(u) => Ok(u.as_u128()),
         _ => Err(Value(ValueError::FailedToParseUUID(v.to_owned()))),
     }
 }
 
-pub fn generate_random_uuid() -> u128 {
+pub(crate) fn generate_random_uuid() -> u128 {
     Uuid::new_v4().as_u128()
 }
 

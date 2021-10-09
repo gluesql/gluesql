@@ -332,8 +332,10 @@ impl Value {
 
 #[cfg(test)]
 mod tests {
-    use super::{Interval, Value::*};
-    use crate::data::value::parse_uuid;
+    use {
+        super::{Interval, Value::*},
+        crate::data::value::uuid::parse_uuid,
+    };
 
     #[allow(clippy::eq_op)]
     #[test]

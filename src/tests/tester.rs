@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{Expr, IndexItem, Query, SetExpr, Statement, TableFactor},
+        ast::{DataType, Expr, IndexItem, Query, SetExpr, Statement, TableFactor},
         data::Value,
         executor::{execute, Payload},
         parse_sql::{parse, parse_expr},
@@ -17,6 +17,31 @@ pub fn expr(sql: &str) -> Expr {
     let parsed = parse_expr(sql).unwrap();
 
     translate_expr(&parsed).unwrap()
+}
+
+pub fn type_match(expected: &DataType, found: Result<Payload>) {
+    let rows = match found {
+        Ok(a) => match a {
+            Payload::Select {
+                labels: _expected_labels,
+                rows,
+            } => rows,
+            _ => panic!("type match is only for Select"),
+        },
+        _ => panic!("type match is only for Select"),
+    };
+
+    for item in rows {
+        for x in item {
+            match x.validate_type(expected) {
+                Ok(_) => {}
+                Err(_) => panic!(
+                    "[err: type match failed]\n expected {:?}\n found {:?}\n",
+                    expected, x
+                ),
+            }
+        }
+    }
 }
 
 pub fn test(expected: Result<Payload>, found: Result<Payload>) {
@@ -257,6 +282,15 @@ macro_rules! test_case {
                         Payload::Update(num) => assert_eq!($count, num),
                         _ => panic!("compare is only for Select, Delete and Update"),
                     };
+                };
+            }
+
+            #[allow(unused_macros)]
+            macro_rules! type_match {
+                ($expected: expr, $sql: expr) => {
+                    let found = tests::run(Rc::clone(&cell), $sql, None).await;
+
+                    tests::type_match($expected, found);
                 };
             }
 

@@ -7,10 +7,10 @@ use {
     super::{context::FilterContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function, TrimWhereField},
+        data::value::uuid::generate_random_uuid,
         data::Value,
         result::{Error, Result},
         store::GStore,
-        value::generate_random_uuid,
     },
     async_recursion::async_recursion,
     futures::{
@@ -591,7 +591,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             value.selector(&selector).map(Evaluated::from)
         }
         .map(Evaluated::from),
-        Function::RandomUuid() => Ok(Evaluated::from(Value::UUID(generate_random_uuid()))),
+        Function::GenerateUuid() => Ok(Evaluated::from(Value::UUID(generate_random_uuid()))),
         Function::Repeat { expr, num } => {
             let expr = eval_to_str!(expr);
             let num = eval_to_integer!(num) as usize;
