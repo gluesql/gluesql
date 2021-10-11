@@ -3,6 +3,7 @@ pub mod alter;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
+pub mod case;
 pub mod concat;
 pub mod data_type;
 pub mod default;
@@ -28,17 +29,24 @@ pub mod macros;
 pub use tester::*;
 
 #[macro_export]
-macro_rules! generate_tests {
+macro_rules! declare_test_fn {
+    ($test: meta, $storage: ident, $title: ident, $func: path) => {
+        #[$test]
+        async fn $title() {
+            let path = stringify!($title);
+            let storage = $storage::new(path);
+
+            $func(storage).await;
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! generate_store_tests {
     ($test: meta, $storage: ident) => {
         macro_rules! glue {
             ($title: ident, $func: path) => {
-                #[$test]
-                async fn $title() {
-                    let path = stringify!($title);
-                    let storage = $storage::new(path);
-
-                    $func(storage).await;
-                }
+                declare_test_fn!($test, $storage, $title, $func);
             };
         }
 
@@ -76,6 +84,7 @@ macro_rules! generate_tests {
         glue!(function_round, function::round::round);
         glue!(function_floor, function::floor::floor);
         glue!(function_ln, function::exp_log::ln);
+        glue!(function_log, function::exp_log::log);
         glue!(function_log2, function::exp_log::log2);
         glue!(function_log10, function::exp_log::log10);
         glue!(function_exp, function::exp_log::exp);
@@ -85,6 +94,7 @@ macro_rules! generate_tests {
         glue!(nested_select, nested_select::nested_select);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
+        glue!(nullable_implicit_insert, nullable::nullable_implicit_insert);
         glue!(ordering, ordering::ordering);
         glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
@@ -92,6 +102,8 @@ macro_rules! generate_tests {
         glue!(timestamp, data_type::timestamp::timestamp);
         glue!(time, data_type::time::time);
         glue!(interval, data_type::interval::interval);
+        glue!(list, data_type::list::list);
+        glue!(map, data_type::map::map);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -99,85 +111,119 @@ macro_rules! generate_tests {
         glue!(function_degrees, function::degrees::degrees);
         glue!(function_pi, function::pi::pi);
         glue!(function_reverse, function::reverse::reverse);
+        glue!(function_repeat, function::repeat::repeat);
+        glue!(case, case::case);
+        glue!(function_substr, function::substr::substr);
+        glue!(uuid, data_type::uuid::uuid);
+    };
+}
 
-        #[cfg(feature = "index")]
-        macro_rules! glue_index {
-            () => {
-                glue!(index_basic, index::basic);
-                glue!(index_and, index::and);
-                glue!(index_nested, index::nested);
-                glue!(index_null, index::null);
-                glue!(index_expr, index::expr);
-                glue!(index_value, index::value);
-                glue!(index_order_by, index::order_by);
-                #[cfg(feature = "sorter")]
-                glue!(index_order_by_multi, index::order_by_multi);
+#[cfg(feature = "alter-table")]
+#[macro_export]
+macro_rules! generate_alter_table_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
             };
         }
-        #[cfg(feature = "index")]
-        glue_index!();
 
-        #[cfg(feature = "alter-table")]
-        macro_rules! glue_alter_table {
-            () => {
-                glue!(alter_table_rename, alter::alter_table_rename);
-                glue!(alter_table_add_drop, alter::alter_table_add_drop);
+        glue!(alter_table_rename, alter::alter_table_rename);
+        glue!(alter_table_add_drop, alter::alter_table_add_drop);
+    };
+}
+
+#[cfg(feature = "index")]
+#[macro_export]
+macro_rules! generate_index_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
             };
         }
-        #[cfg(feature = "alter-table")]
-        glue_alter_table!();
 
-        #[cfg(all(feature = "alter-table", feature = "index"))]
-        macro_rules! glue_alter_table_index {
-            () => {
-                glue!(alter_table_drop_indexed_table, alter::drop_indexed_table);
-                glue!(alter_table_drop_indexed_column, alter::drop_indexed_column);
+        glue!(index_basic, index::basic);
+        glue!(index_and, index::and);
+        glue!(index_nested, index::nested);
+        glue!(index_null, index::null);
+        glue!(index_expr, index::expr);
+        glue!(index_value, index::value);
+        glue!(index_order_by, index::order_by);
+        #[cfg(feature = "sorter")]
+        glue!(index_order_by_multi, index::order_by_multi);
+    };
+}
+
+#[cfg(feature = "transaction")]
+#[macro_export]
+macro_rules! generate_transaction_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
             };
         }
-        #[cfg(all(feature = "alter-table", feature = "index"))]
-        glue_alter_table_index!();
 
-        #[cfg(feature = "transaction")]
-        macro_rules! glue_transaction {
-            () => {
-                glue!(transaction_basic, transaction::basic);
-                glue!(
-                    transaction_create_drop_table,
-                    transaction::create_drop_table
-                );
+        glue!(transaction_basic, transaction::basic);
+        glue!(
+            transaction_create_drop_table,
+            transaction::create_drop_table
+        );
+    };
+}
+
+#[cfg(all(feature = "alter-table", feature = "index"))]
+#[macro_export]
+macro_rules! generate_alter_table_index_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
             };
         }
-        #[cfg(feature = "transaction")]
-        glue_transaction!();
 
-        #[cfg(all(feature = "transaction", feature = "alter-table"))]
-        macro_rules! glue_transaction_alter_table {
-            () => {
-                glue!(
-                    transaction_alter_table_rename_column,
-                    transaction::alter_table_rename_column
-                );
-                glue!(
-                    transaction_alter_table_add_column,
-                    transaction::alter_table_add_column
-                );
-                glue!(
-                    transaction_alter_table_drop_column,
-                    transaction::alter_table_drop_column
-                );
+        glue!(alter_table_drop_indexed_table, alter::drop_indexed_table);
+        glue!(alter_table_drop_indexed_column, alter::drop_indexed_column);
+    };
+}
+
+#[cfg(all(feature = "transaction", feature = "alter-table"))]
+#[macro_export]
+macro_rules! generate_transaction_alter_table_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
             };
         }
-        #[cfg(all(feature = "transaction", feature = "alter-table"))]
-        glue_transaction_alter_table!();
 
-        #[cfg(all(feature = "transaction", feature = "index"))]
-        macro_rules! glue_transaction_index {
-            () => {
-                glue!(transaction_index_create, transaction::index_create);
-                glue!(transaction_index_drop, transaction::index_drop);
+        glue!(
+            transaction_alter_table_rename_column,
+            transaction::alter_table_rename_column
+        );
+        glue!(
+            transaction_alter_table_add_column,
+            transaction::alter_table_add_column
+        );
+        glue!(
+            transaction_alter_table_drop_column,
+            transaction::alter_table_drop_column
+        );
+    };
+}
+
+#[cfg(all(feature = "transaction", feature = "index"))]
+#[macro_export]
+macro_rules! generate_transaction_index_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
             };
         }
-        #[cfg(all(feature = "transaction", feature = "index"))]
-        glue_transaction_index!();
+
+        glue!(transaction_index_create, transaction::index_create);
+        glue!(transaction_index_drop, transaction::index_drop);
     };
 }

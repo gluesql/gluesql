@@ -79,6 +79,31 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         SqlExpr::Trim { expr, trim_where } => translate_trim(expr, trim_where),
         SqlExpr::Exists(query) => translate_query(query).map(Box::new).map(Expr::Exists),
         SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
+        SqlExpr::Case {
+            operand,
+            conditions,
+            results,
+            else_result,
+        } => Ok(Expr::Case {
+            operand: operand
+                .as_ref()
+                .map(|expr| translate_expr(expr.as_ref()).map(Box::new))
+                .transpose()?,
+            when_then: conditions
+                .iter()
+                .zip(results)
+                .map(|(when, then)| {
+                    let when = translate_expr(when)?;
+                    let then = translate_expr(then)?;
+
+                    Ok((when, then))
+                })
+                .collect::<Result<Vec<_>>>()?,
+            else_result: else_result
+                .as_ref()
+                .map(|expr| translate_expr(expr.as_ref()).map(Box::new))
+                .transpose()?,
+        }),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
 }

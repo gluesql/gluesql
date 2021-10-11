@@ -48,6 +48,8 @@ pub enum Function {
     Exp(Expr),
     #[strum(to_string = "LN")]
     Ln(Expr),
+    #[strum(to_string = "LOG")]
+    Log { antilog: Expr, base: Expr },
     #[strum(to_string = "LOG2")]
     Log2(Expr),
     #[strum(to_string = "LOG10")]
@@ -82,6 +84,16 @@ pub enum Function {
     Rtrim { expr: Expr, chars: Option<Expr> },
     #[strum(to_string = "REVERSE")]
     Reverse(Expr),
+    #[strum(to_string = "REPEAT")]
+    Repeat { expr: Expr, num: Expr },
+    #[strum(to_string = "SUBSTR")]
+    Substr {
+        expr: Expr,
+        start: Expr,
+        count: Option<Expr>,
+    },
+    #[strum(to_string = "UNWRAP")]
+    Unwrap { expr: Expr, selector: Expr },
     #[strum(to_string = "ABS")]
     Abs(Expr),
     #[strum(to_string = "SIGN")]
