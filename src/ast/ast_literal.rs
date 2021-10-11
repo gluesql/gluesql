@@ -1,10 +1,13 @@
-use serde::{Deserialize, Serialize};
+use {
+    bigdecimal::BigDecimal,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AstLiteral {
     Boolean(bool),
-    #[cfg(feature = "bigdecimal")]
-    Number(bigdecimal::BigDecimal),
+    #[serde(with = "serde_str")]
+    Number(BigDecimal),
     QuotedString(String),
     Interval {
         value: String,

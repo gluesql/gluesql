@@ -1,4 +1,3 @@
-#[cfg(feature = "bigdecimal")]
 use {
     super::StringExt,
     crate::{
@@ -238,9 +237,11 @@ impl<'a> Literal<'a> {
 #[cfg(test)]
 mod tests {
 
-    use super::Literal::*;
-    use bigdecimal::BigDecimal;
-    use std::{borrow::Cow, str::FromStr};
+    use {
+        super::Literal::*,
+        bigdecimal::BigDecimal,
+        std::{borrow::Cow, str::FromStr},
+    };
 
     #[test]
     fn arithmetic() {
