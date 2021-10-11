@@ -1,4 +1,4 @@
-use {crate::*, ast::DataType, std::borrow::Cow, uuid::Uuid as UUID};
+use {crate::*, ast::DataType, uuid::Uuid as UUID};
 
 test_case!(uuid, async move {
     use Value::*;
@@ -11,7 +11,7 @@ test_case!(uuid, async move {
             r#"INSERT INTO UUID VALUES (0)"#,
             Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: DataType::Uuid,
-                literal: format!("{:?}", Literal::Number(Cow::Owned("0".to_owned()))),
+                literal: format!("{:?}", Literal::Number(0.into())),
             }
             .into()),
         ),

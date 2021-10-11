@@ -94,7 +94,7 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
 impl<'a> Literal<'a> {
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
-            Number(v) => Ok(Number(v.to_owned())), // hw: unary_plus?
+            Number(v) => Ok(Number(v.to_owned())),
             Interval(v) => Ok(Interval(*v)),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -166,7 +166,7 @@ impl<'a> Literal<'a> {
     pub fn multiply<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(l * r)),
-            (Number(l), Interval(r)) | (Interval(r), Number(l)) => Ok(Interval(*r * l)), // hw: BigDecimal * Interval?
+            (Number(l), Interval(r)) | (Interval(r), Number(l)) => Ok(Interval(*r * l)),
             (Null, Number(_))
             | (Null, Interval(_))
             | (Number(_), Null)
@@ -182,8 +182,20 @@ impl<'a> Literal<'a> {
 
     pub fn divide<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => Ok(Number(l / r)),
-            (Interval(l), Number(r)) => Ok(Interval(*l / r)),
+            (Number(l), Number(r)) => {
+                if *r == 0.into() {
+                    Err(LiteralError::DivisorShouldNotBeZero.into())
+                } else {
+                    Ok(Number(l / r))
+                }
+            }
+            (Interval(l), Number(r)) => {
+                if *r == 0.into() {
+                    Err(LiteralError::DivisorShouldNotBeZero.into())
+                } else {
+                    Ok(Interval(*l / r))
+                }
+            }
             (Null, Number(_)) | (Number(_), Null) | (Interval(_), Null) | (Null, Null) => {
                 Ok(Literal::Null)
             }
@@ -197,7 +209,13 @@ impl<'a> Literal<'a> {
 
     pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => Ok(Number(l % r)),
+            (Number(l), Number(r)) => {
+                if *r == 0.into() {
+                    Err(LiteralError::DivisorShouldNotBeZero.into())
+                } else {
+                    Ok(Number(l % r))
+                }
+            }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),

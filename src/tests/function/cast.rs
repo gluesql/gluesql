@@ -23,7 +23,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(3 AS BOOLEAN) AS cast FROM Item"#,
-            Err(ValueError::LiteralCastToBooleanFailed("3".to_owned()).into()),
+            Ok(select!(cast Bool; true)),
         ),
         (
             r#"SELECT CAST(NULL AS BOOLEAN) AS cast FROM Item"#,

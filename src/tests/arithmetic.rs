@@ -40,7 +40,7 @@ test_case!(arithmetic, async move {
         (0, "SELECT * FROM Arith WHERE id > num * id;"),
         (1, "SELECT * FROM Arith WHERE 3 * id < 4;"),
         // divide on WHERE
-        (1, "SELECT * FROM Arith WHERE id = 5 / 2;"),
+        (0, "SELECT * FROM Arith WHERE id = 5 / 2;"),
         (5, "SELECT * FROM Arith WHERE id > id / 2;"),
         (3, "SELECT * FROM Arith WHERE id > num / id;"),
         (2, "SELECT * FROM Arith WHERE 10 / id = 2;"),
