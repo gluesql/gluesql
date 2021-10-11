@@ -1,6 +1,4 @@
 use {
-    super::Interval,
-    super::StringExt,
     crate::{ast::DataType, ast::DateTimeField, result::Result},
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     super::{Interval, StringExt},
