@@ -70,7 +70,22 @@ impl PartialEq<Literal<'_>> for Literal<'_> {
     fn eq(&self, other: &Literal) -> bool {
         match (self, other) {
             (Boolean(l), Boolean(r)) => l == r,
-            (Number(l), Number(r)) | (Text(l), Text(r)) => l == r,
+            (Text(l), Text(r)) => l == r,
+            (Number(l), Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
+                (Ok(l), Ok(r)) => l == r,
+                (_, Ok(r)) => match l.parse::<f64>() {
+                    Ok(l) => l == (r as f64),
+                    _ => false,
+                },
+                (Ok(l), _) => match r.parse::<f64>() {
+                    Ok(r) => (l as f64) == r,
+                    _ => false,
+                },
+                _ => match (l.parse::<f64>(), r.parse::<f64>()) {
+                    (Ok(l), Ok(r)) => l == r,
+                    _ => false,
+                },
+            },
             (Interval(l), Interval(r)) => l == r,
             _ => false,
         }
@@ -280,9 +295,37 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn like(&self, other: &Literal<'a>) -> Result<Self> {
+    pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Text(l), Text(r)) => l.like(r).map(Boolean),
+            (Number(l), Number(r)) => {
+                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
+                    if r == 0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l % r).to_string())))
+                    }
+                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
+                    if r == 0.0 {
+                        Err(LiteralError::DivisorShouldNotBeZero.into())
+                    } else {
+                        Ok(Number(Cow::Owned((l % r).to_string())))
+                    }
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
+            _ => Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", self),
+                format!("{:?}", other),
+            )
+            .into()),
+        }
+    }
+
+    pub fn like(&self, other: &Literal<'a>, case_sensitive: bool) -> Result<Self> {
+        match (self, other) {
+            (Text(l), Text(r)) => l.like(r, case_sensitive).map(Boolean),
             _ => Err(
                 LiteralError::LikeOnNonString(format!("{:?}", self), format!("{:?}", other)).into(),
             ),
@@ -300,6 +343,7 @@ impl<'a> Literal<'a> {
 
 #[cfg(test)]
 mod tests {
+
     use super::Literal::*;
     use std::borrow::Cow;
 
@@ -337,7 +381,7 @@ mod tests {
     }
 
     #[test]
-    fn divide() {
+    fn div_mod() {
         use crate::data::interval::Interval as I;
 
         macro_rules! num {
@@ -354,6 +398,7 @@ mod tests {
 
         let num_divisor = |x: &str| Number(Cow::Owned(x.to_owned()));
 
+        // Divide Test
         assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
         assert_eq!(num!("12").divide(&num_divisor("2.0")).unwrap(), num!("6"));
         assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
@@ -364,5 +409,121 @@ mod tests {
         matches!(itv!(12).divide(&Null).unwrap(), Null);
         matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
         matches!(Null.divide(&Null).unwrap(), Null);
+        // Modulo Test
+        assert_eq!(num!("12").modulo(&num_divisor("2")).unwrap(), num!("0"));
+        assert_eq!(num!("12").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
+        assert_eq!(num!("12.0").modulo(&num_divisor("2")).unwrap(), num!("0"));
+        assert_eq!(num!("12.0").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
+        matches!(num!("12").modulo(&Null).unwrap(), Null);
+        matches!(Null.modulo(&num_divisor("2")).unwrap(), Null);
+        matches!(Null.modulo(&Null).unwrap(), Null);
+    }
+    #[test]
+    fn partial_eq() {
+        use crate::data::interval::Interval as I;
+        macro_rules! text {
+            ($text: expr) => {
+                Text(Cow::Owned($text.to_owned()))
+            };
+        }
+        macro_rules! itv {
+            ($itv: expr) => {
+                Interval(I::Microsecond($itv))
+            };
+        }
+        macro_rules! num {
+            ($num: expr) => {
+                Number(Cow::Owned($num.to_owned()))
+            };
+        }
+        //Boolean
+        assert_eq!(Boolean(true), Boolean(true));
+        assert!(Boolean(true) != Boolean(false));
+        //Number
+        assert_eq!(num!("123"), num!("123"));
+        assert_eq!(num!("12.0"), num!("12.0"));
+        assert!(num!("12.0") == num!("12"));
+        assert!(num!("12.0") != num!("12.123"));
+        assert!(num!("123") != num!("12.3"));
+        assert!(num!("123") != text!("Foo"));
+        assert!(num!("123") != itv!(123)); //only same data type allowed
+        assert!(num!("123") != Null);
+        //Text
+        assert_eq!(text!("Foo"), text!("Foo"));
+        assert!(text!("Foo") != text!("Bar"));
+        assert!(text!("Foo") != itv!(12));
+        assert!(text!("Foo") != Null);
+        //Interval
+        assert_eq!(itv!(123), itv!(123));
+        assert!(itv!(123) != itv!(1234));
+        assert!(itv!(123) != Null);
+    }
+    #[test]
+    fn partial_ord() {
+        use crate::data::interval::Interval as I;
+        use std::cmp::Ordering;
+        macro_rules! text {
+            ($text: expr) => {
+                Text(Cow::Owned($text.to_owned()))
+            };
+        }
+        macro_rules! itv {
+            ($itv: expr) => {
+                Interval(I::Microsecond($itv))
+            };
+        }
+        macro_rules! num {
+            ($num: expr) => {
+                Number(Cow::Owned($num.to_owned()))
+            };
+        }
+        //Boolean
+        assert_eq!(
+            Boolean(false).partial_cmp(&Boolean(true)),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            Boolean(true).partial_cmp(&Boolean(true)),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(
+            Boolean(true).partial_cmp(&Boolean(false)),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(Boolean(true).partial_cmp(&num!("1")), None);
+        assert_eq!(Boolean(true).partial_cmp(&text!("Foo")), None);
+        assert_eq!(Boolean(true).partial_cmp(&itv!(12)), None);
+        assert_eq!(Boolean(true).partial_cmp(&Null), None);
+        //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
+        assert_eq!(num!("123").partial_cmp(&num!("1234")), Some(Ordering::Less));
+        assert_eq!(num!("12.0").partial_cmp(&num!("123")), Some(Ordering::Less));
+        assert_eq!(
+            num!("123").partial_cmp(&num!("123.1")),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            num!("12.0").partial_cmp(&num!("12.1")),
+            Some(Ordering::Less)
+        );
+        assert_eq!(num!("123").partial_cmp(&num!("123")), Some(Ordering::Equal));
+        assert_eq!(
+            num!("1234").partial_cmp(&num!("123")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(num!("123").partial_cmp(&text!("123")), None);
+        assert_eq!(num!("123").partial_cmp(&itv!(123)), None);
+        assert_eq!(num!("123").partial_cmp(&Null), None);
+        //text
+        assert_eq!(text!("a").partial_cmp(&text!("b")), Some(Ordering::Less));
+        assert_eq!(text!("a").partial_cmp(&text!("a")), Some(Ordering::Equal));
+        assert_eq!(text!("b").partial_cmp(&text!("a")), Some(Ordering::Greater));
+        assert_eq!(text!("a").partial_cmp(&itv!(1)), None);
+        assert_eq!(text!("a").partial_cmp(&Null), None);
+        //Interval
+        assert_eq!(itv!(1).partial_cmp(&itv!(2)), Some(Ordering::Less));
+        assert_eq!(itv!(1).partial_cmp(&itv!(1)), Some(Ordering::Equal));
+        assert_eq!(itv!(2).partial_cmp(&itv!(1)), Some(Ordering::Greater));
+        assert_eq!(itv!(2).partial_cmp(&Null), None);
+        assert_eq!(Null.partial_cmp(&Null), None);
     }
 }

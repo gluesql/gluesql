@@ -1,5 +1,5 @@
 use {
-    super::Expr,
+    super::{ast_literal::TrimWhereField, Expr},
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
@@ -14,6 +14,12 @@ pub enum Function {
     Left { expr: Expr, size: Expr },
     #[strum(to_string = "RIGHT")]
     Right { expr: Expr, size: Expr },
+    #[strum(to_string = "ASIN")]
+    ASin(Expr),
+    #[strum(to_string = "ACOS")]
+    ACos(Expr),
+    #[strum(to_string = "ATAN")]
+    ATan(Expr),
     #[strum(to_string = "LPAD")]
     Lpad {
         expr: Expr,
@@ -33,11 +39,17 @@ pub enum Function {
     #[strum(to_string = "FLOOR")]
     Floor(Expr),
     #[strum(to_string = "TRIM")]
-    Trim(Expr),
+    Trim {
+        expr: Expr,
+        filter_chars: Option<Expr>,
+        trim_where_field: Option<TrimWhereField>,
+    },
     #[strum(to_string = "EXP")]
     Exp(Expr),
     #[strum(to_string = "LN")]
     Ln(Expr),
+    #[strum(to_string = "LOG")]
+    Log { antilog: Expr, base: Expr },
     #[strum(to_string = "LOG2")]
     Log2(Expr),
     #[strum(to_string = "LOG10")]
@@ -60,6 +72,28 @@ pub enum Function {
     Sqrt(Expr),
     #[strum(to_string = "POWER")]
     Power { expr: Expr, power: Expr },
+    #[strum(to_string = "RADIANS")]
+    Radians(Expr),
+    #[strum(to_string = "DEGREES")]
+    Degrees(Expr),
+    #[strum(to_string = "PI")]
+    Pi(),
+    #[strum(to_string = "LTRIM")]
+    Ltrim { expr: Expr, chars: Option<Expr> },
+    #[strum(to_string = "RTRIM")]
+    Rtrim { expr: Expr, chars: Option<Expr> },
+    #[strum(to_string = "REVERSE")]
+    Reverse(Expr),
+    #[strum(to_string = "REPEAT")]
+    Repeat { expr: Expr, num: Expr },
+    #[strum(to_string = "SUBSTR")]
+    Substr {
+        expr: Expr,
+        start: Expr,
+        count: Option<Expr>,
+    },
+    #[strum(to_string = "UNWRAP")]
+    Unwrap { expr: Expr, selector: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

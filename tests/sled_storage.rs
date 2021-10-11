@@ -1,9 +1,11 @@
 #![cfg(feature = "sled-storage")]
 
-use sled::IVec;
-use std::{cell::RefCell, convert::TryFrom, rc::Rc};
+use {
+    cfg_if::cfg_if,
+    std::{cell::RefCell, convert::TryFrom, rc::Rc},
+};
 
-use gluesql::{generate_tests, sled, tests::*, SledStorage};
+use gluesql::{sled::IVec, sled_storage::SledStorage, tests::*, *};
 
 struct SledTester {
     storage: Rc<RefCell<Option<SledStorage>>>,
@@ -39,4 +41,15 @@ impl Tester<IVec, SledStorage> for SledTester {
     }
 }
 
-generate_tests!(tokio::test, SledTester);
+generate_store_tests!(tokio::test, SledTester);
+generate_index_tests!(tokio::test, SledTester);
+generate_transaction_tests!(tokio::test, SledTester);
+
+cfg_if! {
+    if #[cfg(feature = "alter-table")] {
+        generate_alter_table_tests!(tokio::test, SledTester);
+        generate_alter_table_index_tests!(tokio::test, SledTester);
+        generate_transaction_alter_table_tests!(tokio::test, SledTester);
+        generate_transaction_index_tests!(tokio::test, SledTester);
+    }
+}

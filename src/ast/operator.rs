@@ -13,6 +13,7 @@ pub enum BinaryOperator {
     Minus,
     Multiply,
     Divide,
+    Modulo,
     StringConcat,
     Gt,
     Lt,
@@ -22,8 +23,11 @@ pub enum BinaryOperator {
     NotEq,
     And,
     Or,
+    Xor,
     Like,
+    ILike,
     NotLike,
+    NotILike,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

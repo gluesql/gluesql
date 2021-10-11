@@ -47,6 +47,7 @@ pub fn binary_op<'a>(
         BinaryOperator::Minus => l.subtract(&r),
         BinaryOperator::Multiply => l.multiply(&r),
         BinaryOperator::Divide => l.divide(&r),
+        BinaryOperator::Modulo => l.modulo(&r),
         BinaryOperator::StringConcat => l.concat(r),
         BinaryOperator::Eq => cmp!(l == r),
         BinaryOperator::NotEq => cmp!(l != r),
@@ -56,8 +57,15 @@ pub fn binary_op<'a>(
         BinaryOperator::GtEq => cmp!(l >= r),
         BinaryOperator::And => cond!(l && r),
         BinaryOperator::Or => cond!(l || r),
-        BinaryOperator::Like => l.like(r),
-        BinaryOperator::NotLike => cmp!(l.like(r)? == Evaluated::Literal(Literal::Boolean(false))),
+        BinaryOperator::Xor => cond!(l ^ r),
+        BinaryOperator::Like => l.like(r, true),
+        BinaryOperator::ILike => l.like(r, false),
+        BinaryOperator::NotLike => {
+            cmp!(l.like(r, true)? == Evaluated::Literal(Literal::Boolean(false)))
+        }
+        BinaryOperator::NotILike => {
+            cmp!(l.like(r, false)? == Evaluated::Literal(Literal::Boolean(false)))
+        }
     }
 }
 

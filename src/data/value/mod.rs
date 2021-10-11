@@ -3,16 +3,21 @@ use {
     super::StringExt,
     crate::{ast::DataType, ast::DateTimeField, result::Result},
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
+    super::{Interval, StringExt},
+    crate::{ast::DataType, result::Result},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, convert::TryInto, fmt::Debug},
+    std::{cmp::Ordering, collections::HashMap, convert::TryInto, fmt::Debug},
 };
 
 mod big_edian;
 mod error;
 mod group_key;
 mod into;
+mod json;
 mod literal;
+mod selector;
 mod unique_key;
 
 pub use error::ValueError;
@@ -27,6 +32,9 @@ pub enum Value {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
+    UUID(u128),
+    Map(HashMap<String, Value>),
+    List(Vec<Value>),
     Null,
 }
 
@@ -45,6 +53,9 @@ impl PartialEq<Value> for Value {
             (Value::Timestamp(l), Value::Timestamp(r)) => l == r,
             (Value::Time(l), Value::Time(r)) => l == r,
             (Value::Interval(l), Value::Interval(r)) => l == r,
+            (Value::UUID(l), Value::UUID(r)) => l == r,
+            (Value::Map(l), Value::Map(r)) => l == r,
+            (Value::List(l), Value::List(r)) => l == r,
             _ => false,
         }
     }
@@ -65,6 +76,7 @@ impl PartialOrd<Value> for Value {
             (Value::Timestamp(l), Value::Timestamp(r)) => Some(l.cmp(r)),
             (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
+            (Value::UUID(l), Value::UUID(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -72,24 +84,20 @@ impl PartialOrd<Value> for Value {
 
 impl Value {
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
-        let valid = matches!(
-            (data_type, self),
-            (DataType::Boolean, Value::Bool(_))
-                | (DataType::Int, Value::I64(_))
-                | (DataType::Float, Value::F64(_))
-                | (DataType::Text, Value::Str(_))
-                | (DataType::Date, Value::Date(_))
-                | (DataType::Timestamp, Value::Timestamp(_))
-                | (DataType::Interval, Value::Interval(_))
-                | (DataType::Boolean, Value::Null)
-                | (DataType::Int, Value::Null)
-                | (DataType::Float, Value::Null)
-                | (DataType::Text, Value::Null)
-                | (DataType::Date, Value::Null)
-                | (DataType::Timestamp, Value::Null)
-                | (DataType::Time, Value::Null)
-                | (DataType::Interval, Value::Null)
-        );
+        let valid = match self {
+            Value::Bool(_) => matches!(data_type, DataType::Boolean),
+            Value::I64(_) => matches!(data_type, DataType::Int),
+            Value::F64(_) => matches!(data_type, DataType::Float),
+            Value::Str(_) => matches!(data_type, DataType::Text),
+            Value::Date(_) => matches!(data_type, DataType::Date),
+            Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
+            Value::Time(_) => matches!(data_type, DataType::Time),
+            Value::Interval(_) => matches!(data_type, DataType::Interval),
+            Value::UUID(_) => matches!(data_type, DataType::UUID),
+            Value::Map(_) => matches!(data_type, DataType::Map),
+            Value::List(_) => matches!(data_type, DataType::List),
+            Value::Null => true,
+        };
 
         if !valid {
             return Err(ValueError::IncompatibleDataType {
@@ -119,7 +127,8 @@ impl Value {
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
-            | (DataType::Interval, Value::Interval(_)) => Ok(self.clone()),
+            | (DataType::Interval, Value::Interval(_))
+            | (DataType::UUID, Value::UUID(_)) => Ok(self.clone()),
 
             (_, Value::Null) => Ok(Value::Null),
 
@@ -129,6 +138,8 @@ impl Value {
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
+            (DataType::Interval, value) => value.try_into().map(Value::Interval),
+            (DataType::UUID, value) => value.try_into().map(Value::UUID),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
@@ -260,6 +271,25 @@ impl Value {
         }
     }
 
+    pub fn modulo(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        if (other == &I64(0)) | (other == &F64(0.0)) {
+            return Err(ValueError::DivisorShouldNotBeZero.into());
+        }
+
+        match (self, other) {
+            (I64(a), I64(b)) => Ok(I64(a % b)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 % b)),
+            (F64(a), I64(b)) => Ok(F64(a % *b as f64)),
+            (F64(a), F64(b)) => Ok(F64(a % b)),
+            (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
+                Ok(Null)
+            }
+            _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
+        }
+    }
+
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
     }
@@ -286,12 +316,15 @@ impl Value {
         }
     }
 
-    pub fn like(&self, other: &Value) -> Result<Value> {
+    pub fn like(&self, other: &Value, case_sensitive: bool) -> Result<Value> {
         use Value::*;
 
         match (self, other) {
-            (Str(a), Str(b)) => a.like(b).map(Bool),
-            _ => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
+            (Str(a), Str(b)) => a.like(b, case_sensitive).map(Bool),
+            _ => match case_sensitive {
+                true => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
+                false => Err(ValueError::ILikeOnNonString(self.clone(), other.clone()).into()),
+            },
         }
     }
 
@@ -332,6 +365,7 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use super::{Interval, Value::*};
+    use uuid::Uuid;
 
     #[allow(clippy::eq_op)]
     #[test]
@@ -357,6 +391,19 @@ mod tests {
 
         assert_eq!(date, timestamp);
         assert_eq!(timestamp, date);
+
+        assert_eq!(
+            UUID(
+                Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
+                    .unwrap()
+                    .as_u128()
+            ),
+            UUID(
+                Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
+                    .unwrap()
+                    .as_u128()
+            )
+        );
     }
 
     #[test]
@@ -497,6 +544,11 @@ mod tests {
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
+        test!(modulo I64(6),   I64(2)   => I64(0));
+        test!(modulo I64(6),   F64(2.0) => F64(0.0));
+        test!(modulo F64(6.0), I64(2)   => F64(0.0));
+        test!(modulo F64(6.0), F64(2.0) => F64(0.0));
+
         macro_rules! null_test {
             ($op: ident $a: expr, $b: expr) => {
                 matches!($a.$op(&$b), Ok(Null));
@@ -525,6 +577,8 @@ mod tests {
         null_test!(divide   I64(1),   Null);
         null_test!(divide   F64(1.0), Null);
         null_test!(divide   mon!(1),  Null);
+        null_test!(modulo   I64(1),   Null);
+        null_test!(modulo   F64(1.0), Null);
 
         null_test!(add      Null, I64(1));
         null_test!(add      Null, F64(1.0));
@@ -541,11 +595,14 @@ mod tests {
         null_test!(multiply Null, F64(1.0));
         null_test!(divide   Null, I64(1));
         null_test!(divide   Null, F64(1.0));
+        null_test!(modulo   Null, I64(1));
+        null_test!(modulo   Null, F64(1.0));
 
         null_test!(add      Null, Null);
         null_test!(subtract Null, Null);
         null_test!(multiply Null, Null);
         null_test!(divide   Null, Null);
+        null_test!(modulo   Null, Null);
     }
 
     #[test]
@@ -573,6 +630,7 @@ mod tests {
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(I64(1)                => Int          , I64(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
+        cast!(Value::UUID(123)      => UUID         , Value::UUID(123));
 
         // Boolean
         cast!(Str("TRUE".to_owned())    => Boolean, Bool(true));
@@ -635,5 +693,60 @@ mod tests {
         assert_eq!(a.concat(&F64(1.0)), Str("A1".to_owned()));
         assert_eq!(I64(2).concat(&I64(1)), Str("21".to_owned()));
         matches!(a.concat(&Null), Null);
+    }
+
+    #[test]
+    fn validate_type() {
+        use {
+            super::{Value, ValueError},
+            crate::{ast::DataType as D, data::Interval as I},
+            chrono::{NaiveDate, NaiveTime},
+        };
+
+        let date = Date(NaiveDate::from_ymd(2021, 5, 1));
+        let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
+        let time = Time(NaiveTime::from_hms(12, 30, 11));
+        let interval = Interval(I::hours(5));
+        let uuid = UUID(
+            Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
+                .unwrap()
+                .as_u128(),
+        );
+        let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
+        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+
+        assert!(Bool(true).validate_type(&D::Boolean).is_ok());
+        assert!(Bool(true).validate_type(&D::Int).is_err());
+        assert!(I64(1).validate_type(&D::Int).is_ok());
+        assert!(I64(1).validate_type(&D::Text).is_err());
+        assert!(F64(1.0).validate_type(&D::Float).is_ok());
+        assert!(F64(1.0).validate_type(&D::Int).is_err());
+        assert!(Str("a".to_owned()).validate_type(&D::Text).is_ok());
+        assert!(Str("a".to_owned()).validate_type(&D::Int).is_err());
+        assert!(date.validate_type(&D::Date).is_ok());
+        assert!(date.validate_type(&D::Text).is_err());
+        assert!(timestamp.validate_type(&D::Timestamp).is_ok());
+        assert!(timestamp.validate_type(&D::Boolean).is_err());
+        assert!(time.validate_type(&D::Time).is_ok());
+        assert!(time.validate_type(&D::Date).is_err());
+        assert!(interval.validate_type(&D::Interval).is_ok());
+        assert!(interval.validate_type(&D::Date).is_err());
+        assert!(uuid.validate_type(&D::UUID).is_ok());
+        assert!(uuid.validate_type(&D::Boolean).is_err());
+        assert!(map.validate_type(&D::Map).is_ok());
+        assert!(map.validate_type(&D::Int).is_err());
+        assert!(list.validate_type(&D::List).is_ok());
+        assert!(list.validate_type(&D::Int).is_err());
+        assert!(Null.validate_type(&D::Time).is_ok());
+        assert!(Null.validate_type(&D::Boolean).is_ok());
+
+        assert_eq!(
+            Bool(true).validate_type(&D::Text),
+            Err(ValueError::IncompatibleDataType {
+                data_type: D::Text,
+                value: Bool(true),
+            }
+            .into()),
+        );
     }
 }

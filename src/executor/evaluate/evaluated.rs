@@ -124,6 +124,10 @@ impl<'a> Evaluated<'a> {
         binary_op(self, other, |l, r| l.divide(r), |l, r| l.divide(r))
     }
 
+    pub fn modulo<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
+        binary_op(self, other, |l, r| l.modulo(r), |l, r| l.modulo(r))
+    }
+
     pub fn unary_plus(&self) -> Result<Evaluated<'a>> {
         match self {
             Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
@@ -166,17 +170,19 @@ impl<'a> Evaluated<'a> {
         Ok(evaluated)
     }
 
-    pub fn like(&self, other: Evaluated<'a>) -> Result<Evaluated<'a>> {
+    pub fn like(&self, other: Evaluated<'a>, case_sensitive: bool) -> Result<Evaluated<'a>> {
         let evaluated = match (self, other) {
-            (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.like(&r)?),
+            (Evaluated::Literal(l), Evaluated::Literal(r)) => {
+                Evaluated::Literal(l.like(&r, case_sensitive)?)
+            }
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((&Value::try_from(l)?).like(r.as_ref())?)
+                Evaluated::from((&Value::try_from(l)?).like(r.as_ref(), case_sensitive)?)
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::from(l.as_ref().like(&Value::try_from(r)?)?)
+                Evaluated::from(l.as_ref().like(&Value::try_from(r)?, case_sensitive)?)
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => {
-                Evaluated::from(l.as_ref().like(r.as_ref())?)
+                Evaluated::from(l.as_ref().like(r.as_ref(), case_sensitive)?)
             }
         };
 
