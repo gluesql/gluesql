@@ -2,7 +2,6 @@ use {
     crate::{ast::DataType, ast::DateTimeField, result::Result},
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     super::{Interval, StringExt},
-    crate::{ast::DataType, result::Result},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, collections::HashMap, convert::TryInto, fmt::Debug},
