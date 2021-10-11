@@ -136,18 +136,9 @@ impl Interval {
         Interval::Month(months)
     }
 
-    pub fn get_month() -> i64 {
-        Interval::Month as i64
-    }
-
-    pub fn get_ms() -> i64 {
-        Interval::Microsecond as i64
-    }
-
-
     pub fn extract(&self, field: &DateTimeField) -> i64 {
-        let months = Interval::get_month() as usize;
-        let microsecond = Interval::get_ms() as usize;
+        let months = Interval::Month as usize;
+        let microsecond = Interval::Microsecond as usize;
         match field {
             DateTimeField::Year => months as i64 / 12,
             DateTimeField::Month => months as i64,
@@ -294,9 +285,9 @@ impl Interval {
                 format!("{:?}", to),
             )
             .into()),
-           // (None, _) => Err(IntervalError::Unreachable.into()),
+            // (None, _) => Err(IntervalError::Unreachable.into()),
             (None, to) => {
-                println!("{:?}",to);
+                println!("{:?}", to);
                 panic!();
             }
         }
