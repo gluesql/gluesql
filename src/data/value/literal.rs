@@ -38,12 +38,12 @@ impl PartialEq<Literal<'_>> for Value {
                 Err(_) => false,
             },
             (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
-                Ok(r) => l == &r,
-                Err(_) => false,
+                Some(r) => l == &r,
+                None => false,
             },
             (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
-                Ok(r) => l == &r,
-                Err(_) => false,
+                Some(r) => l == &r,
+                None => false,
             },
             (Value::Interval(l), Literal::Interval(r)) => l == r,
             (Value::UUID(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
@@ -75,12 +75,12 @@ impl PartialOrd<Literal<'_>> for Value {
                 Err(_) => None,
             },
             (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
-                Ok(r) => l.partial_cmp(&r),
-                Err(_) => None,
+                Some(r) => l.partial_cmp(&r),
+                None => None,
             },
             (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
-                Ok(r) => l.partial_cmp(&r),
-                Err(_) => None,
+                Some(r) => l.partial_cmp(&r),
+                None => None,
             },
             (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(r),
             (Value::UUID(l), Literal::Text(r)) => {
@@ -144,10 +144,10 @@ impl Value {
                 .map_err(|_| ValueError::FailedToParseDate(v.to_string()).into()),
             (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
                 .map(Value::Timestamp)
-                .map_err(|_| ValueError::FailedToParseTimestamp(v.to_string()).into()),
+                .ok_or_else(|| ValueError::FailedToParseTimestamp(v.to_string()).into()),
             (DataType::Time, Literal::Text(v)) => parse_time(v)
                 .map(Value::Time)
-                .map_err(|_| ValueError::FailedToParseTime(v.to_string()).into()),
+                .ok_or_else(|| ValueError::FailedToParseTime(v.to_string()).into()),
             (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
@@ -213,13 +213,13 @@ impl Value {
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
             (DataType::Date, Literal::Text(v)) => parse_date(v)
                 .map(Value::Date)
-                .map_err(|_| ValueError::LiteralCastToDateFailed(v.to_string()).into()),
+                .ok_or_else(|| ValueError::LiteralCastToDateFailed(v.to_string()).into()),
             (DataType::Time, Literal::Text(v)) => parse_time(v)
                 .map(Value::Time)
-                .map_err(|_| ValueError::LiteralCastToTimeFailed(v.to_string()).into()),
+                .ok_or_else(|| ValueError::LiteralCastToTimeFailed(v.to_string()).into()),
             (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
                 .map(Value::Timestamp)
-                .map_err(|_| ValueError::LiteralCastToTimestampFailed(v.to_string()).into()),
+                .ok_or_else(|| ValueError::LiteralCastToTimestampFailed(v.to_string()).into()),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
                 literal: format!("{:?}", literal),
@@ -246,7 +246,7 @@ mod tests {
 
         macro_rules! test (
             ($timestamp: literal, $result: expr) => {
-                assert_eq!(super::parse_timestamp($timestamp), Ok($result));
+                assert_eq!(super::parse_timestamp($timestamp), Some($result));
             }
         );
 
@@ -275,7 +275,7 @@ mod tests {
 
         macro_rules! test (
             ($time: literal, $result: expr) => {
-                assert_eq!(super::parse_time($time), Ok($result));
+                assert_eq!(super::parse_time($time), Some($result));
             }
         );
 

@@ -158,7 +158,7 @@ impl TryInto<NaiveDate> for &Value {
         Ok(match self {
             Value::Date(value) => *value,
             Value::Timestamp(value) => value.date(),
-            Value::Str(value) => parse_date(value)?,
+            Value::Str(value) => parse_date(value).ok_or(ValueError::ImpossibleCast)?,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -170,7 +170,7 @@ impl TryInto<NaiveTime> for &Value {
     fn try_into(self) -> Result<NaiveTime> {
         Ok(match self {
             Value::Time(value) => *value,
-            Value::Str(value) => parse_time(value)?,
+            Value::Str(value) => parse_time(value).ok_or(ValueError::ImpossibleCast)?,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -182,7 +182,7 @@ impl TryInto<NaiveDateTime> for &Value {
     fn try_into(self) -> Result<NaiveDateTime> {
         Ok(match self {
             Value::Date(value) => value.and_hms(0, 0, 0),
-            Value::Str(value) => parse_timestamp(value)?,
+            Value::Str(value) => parse_timestamp(value).ok_or(ValueError::ImpossibleCast)?,
             Value::Timestamp(value) => *value,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
