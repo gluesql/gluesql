@@ -1,5 +1,5 @@
 use {
-    crate::{ast::DataType, data::Value},
+    crate::{ast::DataType, ast::DateTimeField, data::Value},
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -92,4 +92,7 @@ pub enum ValueError {
 
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(Value, Value),
+
+    #[error("extract format does not support value: EXTRACT({0:?},{1:?})")]
+    ExtractFormatNotMatched(Value, DateTimeField),
 }

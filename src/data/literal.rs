@@ -1,7 +1,8 @@
 use {
     super::StringExt,
+    super::Value,
     crate::{
-        ast::AstLiteral,
+        ast::{AstLiteral, DateTimeField},
         result::{Error, Result},
     },
     serde::Serialize,
@@ -285,6 +286,14 @@ impl<'a> Literal<'a> {
             _ => Err(
                 LiteralError::LikeOnNonString(format!("{:?}", self), format!("{:?}", other)).into(),
             ),
+        }
+    }
+
+    pub fn extract(&self, date_type: &DateTimeField) -> Result<Value> {
+        use Value::*;
+        match self {
+            Literal::Interval(v) => Ok(I64(v.extract(date_type))),
+            _ => Err(LiteralError::UnreachableBinaryArithmetic.into()),
         }
     }
 }

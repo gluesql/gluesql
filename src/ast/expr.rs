@@ -1,5 +1,8 @@
 use {
-    super::{Aggregate, AstLiteral, BinaryOperator, DataType, Function, Query, UnaryOperator},
+    super::{
+        Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query,
+        UnaryOperator,
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -39,6 +42,10 @@ pub enum Expr {
     Cast {
         expr: Box<Expr>,
         data_type: DataType,
+    },
+    Extract {
+        field: DateTimeField,
+        expr: Box<Expr>,
     },
     Nested(Box<Expr>),
     Literal(AstLiteral),

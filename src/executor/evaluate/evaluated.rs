@@ -1,7 +1,7 @@
 use {
     super::error::EvaluateError,
     crate::{
-        ast::DataType,
+        ast::{DataType, DateTimeField},
         data::{Literal, Value},
         result::{Error, Result},
     },
@@ -181,6 +181,14 @@ impl<'a> Evaluated<'a> {
         };
 
         Ok(evaluated)
+    }
+
+    pub fn extract(&self, date_type: &DateTimeField) -> Result<Evaluated<'a>> {
+        match self {
+            Evaluated::Literal(l) => l.extract(date_type),
+            Evaluated::Value(v) => v.extract(date_type),
+        }
+        .map(Evaluated::from)
     }
 
     pub fn is_null(&self) -> bool {

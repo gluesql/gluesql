@@ -2,6 +2,7 @@ pub mod cast;
 pub mod ceil;
 pub mod div_mod;
 pub mod exp_log;
+pub mod extract;
 pub mod floor;
 pub mod gcd_lcm;
 pub mod left_right;

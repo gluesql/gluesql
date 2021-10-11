@@ -1,8 +1,8 @@
 use {
     super::Interval,
     super::StringExt,
-    crate::{ast::DataType, result::Result},
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    crate::{ast::DataType, ast::DateTimeField, result::Result},
+    chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, convert::TryInto, fmt::Debug},
@@ -292,6 +292,39 @@ impl Value {
         match (self, other) {
             (Str(a), Str(b)) => a.like(b).map(Bool),
             _ => Err(ValueError::LikeOnNonString(self.clone(), other.clone()).into()),
+        }
+    }
+
+    pub fn extract(&self, date_type: &DateTimeField) -> Result<Value> {
+        use Value::*;
+
+        match self {
+            Value::Date(v) => match date_type {
+                DateTimeField::Year => Ok(I64(v.year().into())),
+                DateTimeField::Month => Ok(I64(v.month().into())),
+                DateTimeField::Day => Ok(I64(v.day().into())),
+                _ => {
+                    Err(ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into())
+                }
+            },
+            Value::Time(v) => match date_type {
+                DateTimeField::Hour => Ok(I64(v.hour().into())),
+                DateTimeField::Minute => Ok(I64(v.minute().into())),
+                DateTimeField::Second => Ok(I64(v.second().into())),
+                _ => {
+                    Err(ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into())
+                }
+            },
+            Value::Timestamp(v) => match date_type {
+                DateTimeField::Year => Ok(I64(v.year().into())),
+                DateTimeField::Month => Ok(I64(v.month().into())),
+                DateTimeField::Day => Ok(I64(v.day().into())),
+                DateTimeField::Hour => Ok(I64(v.hour().into())),
+                DateTimeField::Minute => Ok(I64(v.minute().into())),
+                DateTimeField::Second => Ok(I64(v.second().into())),
+            },
+            Value::Interval(v) => Ok(I64(v.extract(date_type))),
+            _ => Err(ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into()),
         }
     }
 }

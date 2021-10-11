@@ -23,6 +23,7 @@ impl TryFrom<&str> for Interval {
             }) => Interval::try_from_literal(&value, leading_field.as_ref(), last_field.as_ref()),
             _ => Err(IntervalError::Unreachable.into()),
         }
+
     }
 }
 

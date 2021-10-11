@@ -28,6 +28,9 @@ pub enum EvaluateError {
     #[error("function requires float value: {0}")]
     FunctionRequiresFloatValue(String),
 
+    #[error("extract format does not support value: {0}")]
+    ExtractFormatNotMatched(String),
+
     #[error("value not found: {0}")]
     ValueNotFound(String),
 

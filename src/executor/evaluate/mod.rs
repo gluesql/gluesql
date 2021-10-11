@@ -103,6 +103,7 @@ pub async fn evaluate<'a, T: 'static + Debug>(
             evaluate_function(storage, context, aggregated, func).await
         }
         Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
+        Expr::Extract { field, expr } => eval(expr).await?.extract(field),
         Expr::InList {
             expr,
             list,
@@ -420,6 +421,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             Nullable::Null => Ok(Value::Null),
         }
         .map(Evaluated::from),
+
         Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
             let float_number = eval_to_float(expr).await?;
 
@@ -481,6 +483,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
                 _ => Ok(Evaluated::from(Value::F64(dividend % divisor))),
             }
         }
+
         Function::Gcd { left, right } => {
             let left = match eval_to_integer(left).await? {
                 Nullable::Value(v) => v,
@@ -519,7 +522,6 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         }
     }
 }
-
 fn gcd(a: i64, b: i64) -> i64 {
     if b == 0 {
         a
