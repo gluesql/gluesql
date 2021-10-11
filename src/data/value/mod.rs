@@ -3,7 +3,6 @@ use {
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     super::{Interval, StringExt},
     crate::{ast::DataType, result::Result},
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
     std::{cmp::Ordering, collections::HashMap, convert::TryInto, fmt::Debug},
