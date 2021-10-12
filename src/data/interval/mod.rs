@@ -285,11 +285,7 @@ impl Interval {
                 format!("{:?}", to),
             )
             .into()),
-            // (None, _) => Err(IntervalError::Unreachable.into()),
-            (None, to) => {
-                println!("{:?}", to);
-                panic!();
-            }
+            (None, _) => Err(IntervalError::Unreachable.into()),           
         }
     }
 }
