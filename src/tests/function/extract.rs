@@ -39,8 +39,13 @@ test_case!(extract, async move {
             Ok(select!("extract" I64; 6)),
         ),
         (
-            r#"SELECT EXTRACT(DAY FROM INTERVAL '3 MONTHS 2 DAYS') as extract FROM Item"#,
+            r#"SELECT EXTRACT(DAY FROM INTERVAL "2" DAY ) as extract FROM Item"#,
             Ok(select!("extract" I64; 2)),
+        ),
+        
+        (
+            r#"SELECT EXTRACT(DAY FROM INTERVAL "3" YEAR ) as extract FROM Item"#,
+            Ok(select!("extract" I64; 3)),
         ),
     ];
 
