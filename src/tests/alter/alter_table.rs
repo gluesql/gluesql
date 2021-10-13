@@ -1,8 +1,7 @@
 #![cfg(feature = "alter-table")]
 
+use crate::test::*;
 use crate::*;
-use ast::*;
-use Value::*;
 
 test_case!(alter_table_rename, async move {
     let test_cases = vec![
