@@ -1,7 +1,5 @@
-use crate::{
-    Value::{Null, Str, I64},
-    *,
-};
+use crate::*;
+use test::*;
 
 test_case!(map, async move {
     run!(

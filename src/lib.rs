@@ -81,7 +81,7 @@ pub mod tests;
 pub mod translate;
 
 pub mod prelude {
-    pub use crate::data::Value;
+    pub use crate::data::value::Value;
     pub use crate::glue::Glue;
     pub use crate::result::Error;
     pub use crate::result::Result;
@@ -92,7 +92,13 @@ pub use prelude::*;
 
 pub mod test {
     pub use crate::ast::{ColumnDef, DataType};
-    pub use crate::data::value::Value::{Bool, Null, I64};
+    pub use crate::data::{
+        value::{
+            Value::{Bool, Null, Str, F64, I64},
+            ValueError,
+        },
+        IntervalError, Literal,
+    };
     pub use crate::executor::{AlterError, EvaluateError, FetchError, Payload};
     pub use crate::parse_sql::parse_expr;
     pub use crate::store::{AlterTableError, GStore, GStoreMut};

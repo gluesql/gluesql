@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(interval, async move {
     run!(
