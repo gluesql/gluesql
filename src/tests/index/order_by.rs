@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(order_by, async move {
     run!(
