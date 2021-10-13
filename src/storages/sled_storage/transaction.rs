@@ -8,7 +8,9 @@ use {
     },
     crate::{
         data::{Row, Schema},
-        Error, MutResult, Result, Transaction,
+        result::MutResult,
+        store::Transaction,
+        Error, Result,
     },
     async_trait::async_trait,
     serde::{de::DeserializeOwned, Serialize},
