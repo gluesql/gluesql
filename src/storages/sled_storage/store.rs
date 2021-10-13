@@ -2,8 +2,8 @@ use {
     super::{err_into, lock, SledStorage, Snapshot, State},
     crate::{
         data::{Row, Schema},
-        result::{Error, Result},
-        RowIter, Store,
+        store::{RowIter, Store},
+        Error, Result,
     },
     async_trait::async_trait,
     sled::IVec,
