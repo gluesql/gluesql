@@ -113,14 +113,12 @@ mod tests {
 
     #[test]
     fn cmp_big_edian() {
-        use crate::{
-            chrono::{NaiveDate, NaiveTime},
-            data::{
-                Interval as I,
-                Value::{self, *},
-                ValueError,
-            },
+        use crate::data::{
+            Interval as I,
+            Value::{self, *},
+            ValueError,
         };
+        use chrono::{NaiveDate, NaiveTime};
 
         let null = Null.to_cmp_be_bytes().unwrap();
 
