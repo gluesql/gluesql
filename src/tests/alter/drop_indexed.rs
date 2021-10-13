@@ -1,6 +1,7 @@
 #![cfg(all(feature = "alter-table", feature = "index"))]
 
 use crate::*;
+use test::*;
 
 test_case!(drop_indexed_table, async move {
     use {ast::IndexOperator::*, Value::I64};

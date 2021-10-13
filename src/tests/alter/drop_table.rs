@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(drop_table, async move {
     let create_sql = r#"
