@@ -10,11 +10,14 @@ use {
     },
     crate::{
         ast::ColumnDef,
+        data::{
+            schema::{ColumnDefExt, Schema},
+            Row, Value,
+        },
         executor::evaluate_stateless,
         result::{MutResult, Result, TrySelf},
-        schema::ColumnDefExt,
+        store::{AlterTable, AlterTableError},
         utils::Vector,
-        AlterTable, AlterTableError, Row, Schema, Value,
     },
     async_trait::async_trait,
     sled::transaction::ConflictableTransactionError,
