@@ -11,8 +11,7 @@ use {
         ast::OrderByExpr,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         result::{Error, MutResult, Result, TrySelf},
-        store::{IndexMut, Store},
-        IndexError,
+        store::{IndexError, IndexMut, Store},
     },
     async_trait::async_trait,
     sled::{
