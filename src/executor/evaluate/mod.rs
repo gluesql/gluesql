@@ -12,6 +12,7 @@ use {
         store::GStore,
     },
     async_recursion::async_recursion,
+    chrono::prelude::*,
     futures::{
         future::ready,
         stream::{self, StreamExt, TryStreamExt},
@@ -410,6 +411,11 @@ async fn evaluate_function<'a, T: 'static + Debug>(
         Function::Pi() => {
             { Ok(Evaluated::from(Value::F64(std::f64::consts::PI))) }.map(Evaluated::from)
         }
+
+        Function::Now() => {
+            { Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))) }.map(Evaluated::from)
+        }
+
         Function::Trim {
             expr,
             filter_chars,

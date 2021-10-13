@@ -76,6 +76,8 @@ pub enum Function {
     Radians(Expr),
     #[strum(to_string = "DEGREES")]
     Degrees(Expr),
+    #[strum(to_string = "NOW")]
+    Now(),
     #[strum(to_string = "PI")]
     Pi(),
     #[strum(to_string = "LTRIM")]

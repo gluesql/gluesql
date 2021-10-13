@@ -234,6 +234,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "RADIANS" => translate_function_one_arg(Function::Radians, args, name),
         "DEGREES" => translate_function_one_arg(Function::Degrees, args, name),
         "PI" => translate_function_zero_arg(Function::Pi(), args, name),
+        "NOW" => translate_function_zero_arg(Function::Now(), args, name),
         "GCD" => {
             check_len(name, args.len(), 2)?;
 

@@ -88,6 +88,7 @@ macro_rules! generate_store_tests {
         glue!(function_log2, function::exp_log::log2);
         glue!(function_log10, function::exp_log::log10);
         glue!(function_exp, function::exp_log::exp);
+        glue!(function_now, function::now::now);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
