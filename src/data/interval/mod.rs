@@ -136,16 +136,30 @@ impl Interval {
         Interval::Month(months)
     }
 
+    pub fn get_month(&self) -> i64 {
+        if let Interval::Month(i) = self {
+            *i as i64
+        } else {
+            panic!("Impossible get month from {:?}", self)
+        }
+    }
+
+    pub fn get_ms(&self) -> i64 {
+        if let Interval::Microsecond(i) = self {
+            *i
+        } else {
+            panic!("Impossible get microsecond from {:?}", self)
+        }
+    }
+
     pub fn extract(&self, field: &DateTimeField) -> i64 {
-        let months = Interval::Month as usize;
-        let microsecond = Interval::Microsecond as usize;
         match field {
-            DateTimeField::Year => months as i64 / 12,
-            DateTimeField::Month => months as i64,
-            DateTimeField::Day => microsecond as i64 * DAY,
-            DateTimeField::Hour => microsecond as i64 * HOUR,
-            DateTimeField::Minute => microsecond as i64 * MINUTE,
-            DateTimeField::Second => microsecond as i64 * SECOND,
+            DateTimeField::Year => Interval::get_month(self) as i64 / 12,
+            DateTimeField::Month => Interval::get_month(self) as i64,
+            DateTimeField::Day => Interval::get_ms(self) as i64 / DAY,
+            DateTimeField::Hour => Interval::get_ms(self) as i64 / HOUR,
+            DateTimeField::Minute => Interval::get_ms(self) as i64 / MINUTE,
+            DateTimeField::Second => Interval::get_ms(self) as i64 / SECOND,
         }
     }
 
@@ -285,11 +299,7 @@ impl Interval {
                 format!("{:?}", to),
             )
             .into()),
-            // (None, _) => Err(IntervalError::Unreachable.into()),
-            (None, to) => {
-                println!("{:?}", to);
-                panic!();
-            }
+            (None, _) => Err(IntervalError::Unreachable.into()),
         }
     }
 }

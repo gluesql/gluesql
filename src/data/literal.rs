@@ -30,6 +30,9 @@ pub enum LiteralError {
 
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(String, String),
+
+    #[error("cannot extract from value")]
+    CannotExtract,
 }
 
 #[derive(Clone, Debug)]
@@ -336,7 +339,7 @@ impl<'a> Literal<'a> {
         use Value::*;
         match self {
             Literal::Interval(v) => Ok(I64(v.extract(date_type))),
-            _ => Err(LiteralError::UnreachableBinaryArithmetic.into()),
+            _ => Err(LiteralError::CannotExtract.into()),
         }
     }
 }
