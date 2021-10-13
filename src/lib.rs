@@ -66,12 +66,6 @@
 //!
 //! After you implement `Tester` trait, the only thing you need to do is calling `generate_tests!` macro.
 
-// re-export
-pub use chrono;
-#[cfg(feature = "sled-storage")]
-pub use sled;
-pub use sqlparser as parser;
-
 mod executor;
 mod glue;
 mod parse_sql;
@@ -86,13 +80,12 @@ pub mod store;
 pub mod tests;
 pub mod translate;
 
-pub use data::*;
-pub use executor::*;
-pub use parse_sql::*;
-pub use plan::*;
-pub use result::*;
-pub use store::*;
-pub use translate::*;
+pub mod prelude {
+    pub use crate::data::Value;
+    pub use crate::glue::Glue;
+    pub use crate::result::Error;
+    pub use crate::result::Result;
+    pub use crate::storages::{MemoryStorage, SledStorage};
+}
 
-pub use glue::Glue;
-pub use storages::*;
+pub use prelude::*;
