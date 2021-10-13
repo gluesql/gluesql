@@ -207,7 +207,7 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
         assert_eq!(
             items.len(),
             expected.len(),
-            "\n[err: size of row] row index: {}\nexpected: {:?}\n found: {:?}",
+            "\n[err: size of row] row index: {}\n expected: {:?}\n found: {:?}",
             i,
             expected.len(),
             items.len()

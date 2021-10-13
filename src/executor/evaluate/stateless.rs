@@ -1,10 +1,8 @@
 use {
     super::{expr, EvaluateError, Evaluated},
     crate::{
-        ast::Expr,
-        ast::Function,
-        data::value::uuid::generate_random_uuid,
-        data::{Row, Value},
+        ast::{Expr, Function},
+        data::{value::uuid::generate_random_uuid, Row, Value},
         result::Result,
     },
     std::borrow::Cow,
