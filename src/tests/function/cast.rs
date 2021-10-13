@@ -1,6 +1,7 @@
 use crate::*;
+use test::*;
+
 use data::Interval as I;
-use Value::*;
 
 test_case!(cast_literal, async move {
     let test_cases = vec![

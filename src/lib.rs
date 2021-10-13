@@ -94,7 +94,7 @@ pub mod test {
     pub use crate::ast::{ColumnDef, DataType};
     pub use crate::data::{
         value::{
-            Value::{Bool, Null, Str, F64, I64},
+            Value::{Bool, Interval, Null, Str, F64, I64},
             ValueError,
         },
         IntervalError, Literal,

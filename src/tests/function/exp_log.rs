@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(log2, async move {
     use Value::{Null, F64};

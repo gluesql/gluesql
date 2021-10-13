@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(sin, async move {
     use Value::F64;

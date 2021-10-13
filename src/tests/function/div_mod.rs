@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(div_mod, async move {
     use Value::{Null, F64, I64};

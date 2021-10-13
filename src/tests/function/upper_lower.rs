@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(upper_lower, async move {
     use Value::{Null, Str};

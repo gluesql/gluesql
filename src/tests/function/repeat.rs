@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(repeat, async move {
     let test_cases = vec![

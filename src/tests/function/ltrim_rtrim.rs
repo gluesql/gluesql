@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(ltrim_rtrim, async move {
     use Value::Str;

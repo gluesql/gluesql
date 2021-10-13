@@ -1,5 +1,5 @@
 use crate::*;
-use Value::*;
+use test::*;
 
 test_case!(gcd_lcm, async move {
     use Value::I64;
