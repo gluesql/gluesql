@@ -7,10 +7,9 @@ use {
     crate::{
         ast::IndexOperator,
         data::Row,
-        result::{Error, Result},
-        store::{Index, RowIter},
+        store::{Index, IndexError, RowIter},
         utils::Vector,
-        IndexError, Value,
+        Error, Result, Value,
     },
     async_trait::async_trait,
     iter_enum::{DoubleEndedIterator, Iterator},
