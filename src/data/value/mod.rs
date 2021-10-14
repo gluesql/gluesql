@@ -8,6 +8,7 @@ use {
 };
 
 mod big_edian;
+mod date;
 mod error;
 mod group_key;
 mod into;
@@ -133,6 +134,7 @@ impl Value {
             (DataType::Float, value) => value.try_into().map(Value::F64),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
+            (DataType::Time, value) => value.try_into().map(Value::Time),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
             (DataType::UUID, value) => value.try_into().map(Value::UUID),
@@ -572,7 +574,7 @@ mod tests {
     fn cast() {
         use {
             crate::{ast::DataType::*, Value},
-            chrono::NaiveDate,
+            chrono::{NaiveDate, NaiveTime},
         };
 
         macro_rules! cast {
@@ -635,15 +637,18 @@ mod tests {
         let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
         let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
 
-        cast!(timestamp => Date, date);
-        cast!(Null      => Date, Null);
+        cast!(Str("2021-05-01".to_owned()) => Date, date.to_owned());
+        cast!(timestamp                    => Date, date);
+        cast!(Null                         => Date, Null);
+
+        // Time
+        cast!(Str("08:05:30".to_owned()) => Time, Value::Time(NaiveTime::from_hms(8, 5, 30)));
+        cast!(Null                       => Time, Null);
 
         // Timestamp
-        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
-        let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(0, 0, 0));
-
-        cast!(date => Timestamp, timestamp);
-        cast!(Null => Timestamp, Null);
+        cast!(Value::Date(NaiveDate::from_ymd(2021, 5, 1)) => Timestamp, Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(0, 0, 0)));
+        cast!(Str("2021-05-01 08:05:30".to_owned())        => Timestamp, Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(8, 5, 30)));
+        cast!(Null                                         => Timestamp, Null);
     }
 
     #[test]

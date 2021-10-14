@@ -1,11 +1,15 @@
 use {
-    super::{error::ValueError, Value},
+    super::{
+        date::{parse_date, parse_time, parse_timestamp},
+        error::ValueError,
+        Value,
+    },
     crate::{
         ast::DataType,
         data::{Interval, Literal},
         result::{Error, Result},
     },
-    chrono::{offset::Utc, DateTime, NaiveDate, NaiveDateTime, NaiveTime},
+    chrono::NaiveDate,
     std::{cmp::Ordering, convert::TryFrom},
     uuid::Uuid,
 };
@@ -34,12 +38,12 @@ impl PartialEq<Literal<'_>> for Value {
                 Err(_) => false,
             },
             (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
-                Ok(r) => l == &r,
-                Err(_) => false,
+                Some(r) => l == &r,
+                None => false,
             },
             (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
-                Ok(r) => l == &r,
-                Err(_) => false,
+                Some(r) => l == &r,
+                None => false,
             },
             (Value::Interval(l), Literal::Interval(r)) => l == r,
             (Value::UUID(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
@@ -71,12 +75,12 @@ impl PartialOrd<Literal<'_>> for Value {
                 Err(_) => None,
             },
             (Value::Timestamp(l), Literal::Text(r)) => match parse_timestamp(r) {
-                Ok(r) => l.partial_cmp(&r),
-                Err(_) => None,
+                Some(r) => l.partial_cmp(&r),
+                None => None,
             },
             (Value::Time(l), Literal::Text(r)) => match parse_time(r) {
-                Ok(r) => l.partial_cmp(&r),
-                Err(_) => None,
+                Some(r) => l.partial_cmp(&r),
+                None => None,
             },
             (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(r),
             (Value::UUID(l), Literal::Text(r)) => {
@@ -140,10 +144,10 @@ impl Value {
                 .map_err(|_| ValueError::FailedToParseDate(v.to_string()).into()),
             (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
                 .map(Value::Timestamp)
-                .map_err(|_| ValueError::FailedToParseTimestamp(v.to_string()).into()),
+                .ok_or_else(|| ValueError::FailedToParseTimestamp(v.to_string()).into()),
             (DataType::Time, Literal::Text(v)) => parse_time(v)
                 .map(Value::Time)
-                .map_err(|_| ValueError::FailedToParseTime(v.to_string()).into()),
+                .ok_or_else(|| ValueError::FailedToParseTime(v.to_string()).into()),
             (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
@@ -207,6 +211,15 @@ impl Value {
             | (DataType::Int, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
+            (DataType::Date, Literal::Text(v)) => parse_date(v)
+                .map(Value::Date)
+                .ok_or_else(|| ValueError::LiteralCastToDateFailed(v.to_string()).into()),
+            (DataType::Time, Literal::Text(v)) => parse_time(v)
+                .map(Value::Time)
+                .ok_or_else(|| ValueError::LiteralCastToTimeFailed(v.to_string()).into()),
+            (DataType::Timestamp, Literal::Text(v)) => parse_timestamp(v)
+                .map(Value::Timestamp)
+                .ok_or_else(|| ValueError::LiteralCastToTimestampFailed(v.to_string()).into()),
             _ => Err(ValueError::UnimplementedLiteralCast {
                 data_type: data_type.clone(),
                 literal: format!("{:?}", literal),
@@ -214,57 +227,6 @@ impl Value {
             .into()),
         }
     }
-}
-
-fn parse_timestamp(v: &str) -> Result<NaiveDateTime> {
-    if let Ok(v) = v.parse::<DateTime<Utc>>() {
-        return Ok(v.naive_utc());
-    } else if let Ok(v) = v.parse::<NaiveDateTime>() {
-        return Ok(v);
-    } else if let Ok(v) = v.parse::<NaiveDate>() {
-        return Ok(v.and_hms(0, 0, 0));
-    }
-
-    let forms = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S%.f"];
-
-    for form in forms.iter() {
-        if let Ok(v) = NaiveDateTime::parse_from_str(v, form) {
-            return Ok(v);
-        }
-    }
-
-    Err(ValueError::FailedToParseTimestamp(v.to_string()).into())
-}
-
-fn parse_time(v: &str) -> Result<NaiveTime> {
-    if let Ok(v) = v.parse::<NaiveTime>() {
-        return Ok(v);
-    }
-
-    let forms = [
-        "%P %I:%M",
-        "%P %l:%M",
-        "%P %I:%M:%S",
-        "%P %l:%M:%S",
-        "%P %I:%M:%S%.f",
-        "%P %l:%M:%S%.f",
-        "%I:%M %P",
-        "%l:%M %P",
-        "%I:%M:%S %P",
-        "%l:%M:%S %P",
-        "%I:%M:%S%.f %P",
-        "%l:%M:%S%.f %P",
-    ];
-
-    let v = v.to_uppercase();
-
-    for form in forms.iter() {
-        if let Ok(v) = NaiveTime::parse_from_str(&v, form) {
-            return Ok(v);
-        }
-    }
-
-    Err(ValueError::FailedToParseTime(v).into())
 }
 
 fn parse_uuid(v: &str) -> Result<u128> {
@@ -284,7 +246,7 @@ mod tests {
 
         macro_rules! test (
             ($timestamp: literal, $result: expr) => {
-                assert_eq!(super::parse_timestamp($timestamp), Ok($result));
+                assert_eq!(super::parse_timestamp($timestamp), Some($result));
             }
         );
 
@@ -313,7 +275,7 @@ mod tests {
 
         macro_rules! test (
             ($time: literal, $result: expr) => {
-                assert_eq!(super::parse_time($time), Ok($result));
+                assert_eq!(super::parse_time($time), Some($result));
             }
         );
 
