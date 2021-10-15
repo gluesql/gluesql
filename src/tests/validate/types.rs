@@ -1,8 +1,7 @@
-use {
-    crate::ast::DataType,
-    crate::{data::Literal, *},
-    std::borrow::Cow,
-};
+use std::borrow::Cow;
+
+use crate::*;
+use test::*;
 
 test_case!(types, async move {
     run!("CREATE TABLE TableB (id BOOLEAN);");

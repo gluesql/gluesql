@@ -99,7 +99,7 @@ pub mod test {
         },
         IntervalError, Literal,
     };
-    pub use crate::executor::{AlterError, EvaluateError, FetchError, Payload};
+    pub use crate::executor::{AlterError, EvaluateError, FetchError, Payload, ValidateError};
     pub use crate::parse_sql::parse_expr;
     pub use crate::store::{AlterTableError, GStore, GStoreMut, IndexError};
     pub use crate::translate::{translate_expr, TranslateError};
