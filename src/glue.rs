@@ -1,9 +1,12 @@
 use {
     crate::{
         ast::Statement,
-        execute, parse, plan,
+        executor::{execute, Payload},
+        parse_sql::parse,
+        plan::plan,
         store::{GStore, GStoreMut},
-        translate, Payload, Result,
+        translate::translate,
+        Result,
     },
     futures::executor::block_on,
     std::{fmt::Debug, marker::PhantomData},
@@ -70,8 +73,9 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
 mod tests {
     use {
         crate::{
+            executor::Payload,
             store::{GStore, GStoreMut},
-            Glue, Payload, Value,
+            Glue, Value,
         },
         std::fmt::Debug,
     };
@@ -139,7 +143,7 @@ mod tests {
     #[cfg(feature = "sled-storage")]
     #[test]
     fn sled_basic() {
-        use crate::sled_storage::SledStorage;
+        use crate::storages::sled_storage::SledStorage;
         use std::convert::TryFrom;
 
         let config = sled::Config::default()
@@ -155,7 +159,7 @@ mod tests {
     #[cfg(feature = "memory-storage")]
     #[test]
     fn memory_basic() {
-        use crate::memory_storage::MemoryStorage;
+        use crate::storages::memory_storage::MemoryStorage;
 
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);
@@ -168,7 +172,7 @@ mod tests {
     fn memory_basic_async() {
         use futures::executor::block_on;
 
-        use crate::memory_storage::MemoryStorage;
+        use crate::storages::memory_storage::MemoryStorage;
 
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);
