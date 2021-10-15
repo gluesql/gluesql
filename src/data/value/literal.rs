@@ -1,3 +1,4 @@
+#![cfg(feature = "bigdecimal")]
 use {
     super::{
         date::{parse_date, parse_time, parse_timestamp},

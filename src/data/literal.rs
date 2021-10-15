@@ -1,3 +1,4 @@
+#![cfg(feature = "bigdecimal")]
 use {
     super::StringExt,
     crate::{
