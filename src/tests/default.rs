@@ -49,11 +49,11 @@ test_case!(default, async move {
             Ok(Payload::Create),
         ),
         (
-            "INSERT INTO FunctionTest VALUES (generate_uuid(), 1.0)",
+            "INSERT INTO FunctionTest VALUES (GENERATE_UUID(), 1.0)",
             Ok(Payload::Insert(1)),
         ),
         (
-            "INSERT INTO FunctionTest VALUES (generate_uuid(), SIN(1))",
+            "INSERT INTO FunctionTest VALUES (GENERATE_UUID(), SIN(1))",
             Err(EvaluateError::UnsupportedStatelessExpr(expr!("SIN(1)")).into()),
         ),
     ];

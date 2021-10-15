@@ -18,8 +18,6 @@ mod selector;
 mod unique_key;
 mod uuid;
 
-pub use self::uuid::parse_uuid;
-
 pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -672,7 +670,7 @@ mod tests {
         let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
         let time = Time(NaiveTime::from_hms(12, 30, 11));
         let interval = Interval(I::hours(5));
-        let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8"));
+        let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
 

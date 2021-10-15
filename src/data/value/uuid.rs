@@ -1,18 +1,14 @@
 use {
     super::error::ValueError,
-    crate::{Error, Error::Value},
+    crate::{result::Result, Error::Value},
     uuid::Uuid,
 };
 
-pub(crate) fn parse_uuid(v: &str) -> Result<u128, Error> {
+pub fn parse_uuid(v: &str) -> Result<u128> {
     match Uuid::parse_str(v) {
         Ok(u) => Ok(u.as_u128()),
         _ => Err(Value(ValueError::FailedToParseUUID(v.to_owned()))),
     }
-}
-
-pub(crate) fn generate_random_uuid() -> u128 {
-    Uuid::new_v4().as_u128()
 }
 
 #[cfg(test)]
@@ -48,10 +44,5 @@ mod tests {
             "NOT_UUID_STRING",
             Err(ValueError::FailedToParseUUID("NOT_UUID_STRING".to_owned()).into())
         );
-    }
-
-    #[test]
-    fn generate_random_uuid() {
-        matches!(super::generate_random_uuid(), _u128);
     }
 }

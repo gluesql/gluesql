@@ -11,7 +11,6 @@ use {
     },
     chrono::NaiveDate,
     std::{cmp::Ordering, convert::TryFrom},
-    uuid::Uuid,
 };
 
 impl PartialEq<Literal<'_>> for Value {

@@ -7,7 +7,6 @@ use {
     super::{context::FilterContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function, TrimWhereField},
-        data::value::uuid::generate_random_uuid,
         data::Value,
         result::{Error, Result},
         store::GStore,
@@ -25,6 +24,7 @@ use {
         fmt::Debug,
         rc::Rc,
     },
+    uuid::Uuid,
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
@@ -591,7 +591,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             value.selector(&selector).map(Evaluated::from)
         }
         .map(Evaluated::from),
-        Function::GenerateUuid() => Ok(Evaluated::from(Value::UUID(generate_random_uuid()))),
+        Function::GenerateUuid() => Ok(Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))),
         Function::Repeat { expr, num } => {
             let expr = eval_to_str!(expr);
             let num = eval_to_integer!(num) as usize;

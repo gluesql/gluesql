@@ -1,7 +1,9 @@
-use {crate::value::parse_uuid, crate::*, ast::DataType, std::borrow::Cow};
+use {crate::*, ast::DataType, std::borrow::Cow, uuid::Uuid as UUID};
 
 test_case!(uuid, async move {
     use Value::*;
+
+    let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
 
     let test_cases = vec![
         ("CREATE TABLE UUID (uuid_field UUID)", Ok(Payload::Create)),
@@ -33,9 +35,9 @@ test_case!(uuid, async move {
             Ok(select!(
                 uuid_field
                 Uuid;
-                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap();
-                parse_uuid("550e8400-e29b-41d4-a716-446655440000").unwrap();
-                parse_uuid("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap()
+                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8");
+                parse_uuid("550e8400-e29b-41d4-a716-446655440000");
+                parse_uuid("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4")
             )),
         ),
         (
@@ -47,8 +49,8 @@ test_case!(uuid, async move {
             Ok(select!(
                 uuid_field | "COUNT(*)"
                 Uuid | I64;
-                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()  1;
-                parse_uuid("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap()  2
+                parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8")  1;
+                parse_uuid("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4")  2
             )),
         ),
         (

@@ -2,10 +2,11 @@ use {
     super::{expr, EvaluateError, Evaluated},
     crate::{
         ast::{Expr, Function},
-        data::{value::uuid::generate_random_uuid, Row, Value},
+        data::{Row, Value},
         result::Result,
     },
     std::borrow::Cow,
+    uuid::Uuid,
 };
 
 type Columns<'a> = &'a [String];
@@ -105,7 +106,7 @@ pub fn evaluate_stateless<'a>(
             Err(EvaluateError::UnreachableWildcardExpr.into())
         }
         Expr::Function(func) => match func.as_ref() {
-            Function::GenerateUuid() => Ok(Evaluated::from(Value::UUID(generate_random_uuid()))),
+            Function::GenerateUuid() => Ok(Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))),
             _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),
         },
         _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),

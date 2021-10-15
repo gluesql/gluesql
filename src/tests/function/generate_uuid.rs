@@ -4,7 +4,7 @@ test_case!(generate_uuid, async move {
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id UUID)", Ok(Payload::Create)),
         (
-            r#"INSERT INTO SingleItem VALUES (generate_uuid())"#,
+            r#"INSERT INTO SingleItem VALUES (GENERATE_UUID())"#,
             Ok(Payload::Insert(1)),
         ),
         (
@@ -22,9 +22,9 @@ test_case!(generate_uuid, async move {
         test!(expected, sql);
     }
 
-    count!(1, "SELECT generate_uuid() FROM SingleItem");
+    count!(1, "SELECT GENERATE_UUID() FROM SingleItem");
     type_match!(
-        &[DataType::UUID],
-        "SELECT generate_uuid() as uuid FROM SingleItem"
+        &[DataType::Uuid],
+        "SELECT GENERATE_UUID() as uuid FROM SingleItem"
     );
 });
