@@ -90,8 +90,7 @@ pub mod prelude {
         executor::{execute, Payload},
         glue::Glue,
         parse_sql::parse,
-        result::Error,
-        result::Result,
+        result::{Error, Result},
         storages::{MemoryStorage, SledStorage},
         translate::translate,
     };
@@ -118,6 +117,7 @@ pub mod test {
         },
         parse_sql::{parse, parse_expr},
         plan::plan,
+        storages::{memory_storage, MemoryStorage},
         store::{AlterTableError, GStore, GStoreMut, IndexError},
         translate::{translate, translate_expr, TranslateError},
     };
