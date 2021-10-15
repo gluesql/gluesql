@@ -105,8 +105,14 @@ impl Value {
     pub fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
-            (DataType::Int, Literal::Number(v)) => Ok(Value::I64(v.to_i64().unwrap())),
-            (DataType::Float, Literal::Number(v)) => Ok(Value::F64(v.to_f64().unwrap())),
+            (DataType::Int, Literal::Number(v)) => v
+                .to_i64()
+                .map(Value::I64)
+                .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
+            (DataType::Float, Literal::Number(v)) => v
+                .to_f64()
+                .map(Value::F64)
+                .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Date, Literal::Text(v)) => v
                 .parse::<NaiveDate>()
