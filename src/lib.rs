@@ -91,7 +91,7 @@ pub mod prelude {
 pub use prelude::*;
 
 pub mod test {
-    pub use crate::ast::{ColumnDef, DataType};
+    pub use crate::ast::{ColumnDef, DataType, IndexOperator::Eq};
     pub use crate::data::{
         value::{
             Value::{Bool, Interval, Null, Str, F64, I64},

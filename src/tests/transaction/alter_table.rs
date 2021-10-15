@@ -1,6 +1,7 @@
 #![cfg(all(feature = "transaction", feature = "alter-table"))]
 
-use crate::{Value::I64, *};
+use crate::*;
+use test::*;
 
 test_case!(alter_table_rename_table, async move {
     run!("CREATE TABLE RenameTable (id INTEGER);");

@@ -1,4 +1,5 @@
-use crate::{Value::I64, *};
+use crate::*;
+use test::*;
 
 test_case!(create_drop_table, async move {
     // CREATE && ROLLBACK
