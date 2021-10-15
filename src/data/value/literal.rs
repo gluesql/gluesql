@@ -42,7 +42,7 @@ impl PartialEq<Literal<'_>> for Value {
                 Err(_) => false,
             },
             (Value::Interval(l), Literal::Interval(r)) => l == r,
-            (Value::UUID(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
+            (Value::Uuid(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
             _ => false,
         }
     }
@@ -79,7 +79,7 @@ impl PartialOrd<Literal<'_>> for Value {
                 Err(_) => None,
             },
             (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(r),
-            (Value::UUID(l), Literal::Text(r)) => {
+            (Value::Uuid(l), Literal::Text(r)) => {
                 parse_uuid(r).map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
             _ => None,
@@ -145,7 +145,7 @@ impl Value {
                 .map(Value::Time)
                 .map_err(|_| ValueError::FailedToParseTime(v.to_string()).into()),
             (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
-            (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
+            (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             (_, Literal::Null) => Ok(Value::Null),
@@ -202,7 +202,7 @@ impl Value {
             (DataType::Interval, Literal::Text(v)) => {
                 Interval::try_from(v.as_str()).map(Value::Interval)
             }
-            (DataType::UUID, Literal::Text(v)) => parse_uuid(v).map(Value::UUID),
+            (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
             | (DataType::Float, Literal::Null)

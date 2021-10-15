@@ -25,7 +25,7 @@ impl TryInto<Option<UniqueKey>> for &Value {
             Timestamp(v) => Some(UniqueKey::Timestamp(*v)),
             Time(v) => Some(UniqueKey::Time(*v)),
             Interval(v) => Some(UniqueKey::Interval(*v)),
-            UUID(v) => Some(UniqueKey::UUID(*v)),
+            Uuid(v) => Some(UniqueKey::Uuid(*v)),
             Null => None,
             F64(_) => return conflict("FLOAT"),
             Map(_) => return conflict("MAP"),

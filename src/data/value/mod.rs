@@ -28,7 +28,7 @@ pub enum Value {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
-    UUID(u128),
+    Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
     Null,
@@ -49,7 +49,7 @@ impl PartialEq<Value> for Value {
             (Value::Timestamp(l), Value::Timestamp(r)) => l == r,
             (Value::Time(l), Value::Time(r)) => l == r,
             (Value::Interval(l), Value::Interval(r)) => l == r,
-            (Value::UUID(l), Value::UUID(r)) => l == r,
+            (Value::Uuid(l), Value::Uuid(r)) => l == r,
             (Value::Map(l), Value::Map(r)) => l == r,
             (Value::List(l), Value::List(r)) => l == r,
             _ => false,
@@ -72,7 +72,7 @@ impl PartialOrd<Value> for Value {
             (Value::Timestamp(l), Value::Timestamp(r)) => Some(l.cmp(r)),
             (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
-            (Value::UUID(l), Value::UUID(r)) => Some(l.cmp(r)),
+            (Value::Uuid(l), Value::Uuid(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -89,7 +89,7 @@ impl Value {
             Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
             Value::Time(_) => matches!(data_type, DataType::Time),
             Value::Interval(_) => matches!(data_type, DataType::Interval),
-            Value::UUID(_) => matches!(data_type, DataType::UUID),
+            Value::Uuid(_) => matches!(data_type, DataType::Uuid),
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
             Value::Null => true,
@@ -124,7 +124,7 @@ impl Value {
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_))
-            | (DataType::UUID, Value::UUID(_)) => Ok(self.clone()),
+            | (DataType::Uuid, Value::Uuid(_)) => Ok(self.clone()),
 
             (_, Value::Null) => Ok(Value::Null),
 
@@ -135,7 +135,7 @@ impl Value {
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
-            (DataType::UUID, value) => value.try_into().map(Value::UUID),
+            (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
@@ -356,12 +356,12 @@ mod tests {
         assert_eq!(timestamp, date);
 
         assert_eq!(
-            UUID(
+            Uuid(
                 Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
                     .unwrap()
                     .as_u128()
             ),
-            UUID(
+            Uuid(
                 Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
                     .unwrap()
                     .as_u128()
@@ -593,7 +593,7 @@ mod tests {
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(I64(1)                => Int          , I64(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
-        cast!(Value::UUID(123)      => UUID         , Value::UUID(123));
+        cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
 
         // Boolean
         cast!(Str("TRUE".to_owned())    => Boolean, Bool(true));
@@ -670,7 +670,7 @@ mod tests {
         let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
         let time = Time(NaiveTime::from_hms(12, 30, 11));
         let interval = Interval(I::hours(5));
-        let uuid = UUID(
+        let uuid = Uuid(
             Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
                 .unwrap()
                 .as_u128(),
@@ -694,7 +694,7 @@ mod tests {
         assert!(time.validate_type(&D::Date).is_err());
         assert!(interval.validate_type(&D::Interval).is_ok());
         assert!(interval.validate_type(&D::Date).is_err());
-        assert!(uuid.validate_type(&D::UUID).is_ok());
+        assert!(uuid.validate_type(&D::Uuid).is_ok());
         assert!(uuid.validate_type(&D::Boolean).is_err());
         assert!(map.validate_type(&D::Map).is_ok());
         assert!(map.validate_type(&D::Int).is_err());

@@ -20,7 +20,7 @@ impl From<&Value> for String {
             Value::Timestamp(value) => value.to_string(),
             Value::Time(value) => value.to_string(),
             Value::Interval(value) => String::from(value),
-            Value::UUID(value) => Uuid::from_u128(*value).to_string(),
+            Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
             Value::Null => String::from("NULL"),
@@ -66,7 +66,7 @@ impl TryInto<bool> for &Value {
             | Value::Timestamp(_)
             | Value::Time(_)
             | Value::Interval(_)
-            | Value::UUID(_)
+            | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
@@ -103,7 +103,7 @@ impl TryInto<i64> for &Value {
             | Value::Timestamp(_)
             | Value::Time(_)
             | Value::Interval(_)
-            | Value::UUID(_)
+            | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
@@ -140,7 +140,7 @@ impl TryInto<f64> for &Value {
             | Value::Timestamp(_)
             | Value::Time(_)
             | Value::Interval(_)
-            | Value::UUID(_)
+            | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
@@ -188,7 +188,7 @@ impl TryInto<u128> for &Value {
 
     fn try_into(self) -> Result<u128> {
         match self {
-            Value::UUID(value) => Ok(*value),
+            Value::Uuid(value) => Ok(*value),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
