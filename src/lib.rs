@@ -117,8 +117,8 @@ pub mod test {
         },
         parse_sql::{parse, parse_expr},
         plan::plan,
-        storages::{memory_storage, MemoryStorage, SledStorage},
-        store::{AlterTableError, GStore, GStoreMut, IndexError},
+        storages::{memory_storage, sled_storage, MemoryStorage, SledStorage},
+        store::{AlterTableError, GStore, GStoreMut, IndexError, StoreMut},
         translate::{translate, translate_expr, TranslateError},
     };
 }
