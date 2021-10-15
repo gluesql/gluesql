@@ -85,13 +85,18 @@ pub mod tests;
 pub mod translate;
 
 pub mod prelude {
+    #[cfg(feature = "sled-storage")]
+    pub use crate::storages::SledStorage;
+
+    #[cfg(feature = "memory-storage")]
+    pub use crate::storages::MemoryStorage;
+
     pub use crate::{
         data::value::Value,
         executor::{execute, Payload},
         glue::Glue,
         parse_sql::parse,
         result::{Error, Result},
-        storages::{MemoryStorage, SledStorage},
         translate::translate,
     };
 }
@@ -99,6 +104,18 @@ pub mod prelude {
 pub use prelude::*;
 
 pub mod test {
+    #[cfg(feature = "sled-storage")]
+    pub use crate::storages::{sled_storage, SledStorage};
+
+    #[cfg(feature = "memory-storage")]
+    pub use crate::storages::{memory_storage, MemoryStorage};
+
+    #[cfg(feature = "alter-table")]
+    pub use crate::store::AlterTableError;
+
+    #[cfg(feature = "index")]
+    pub use crate::store::IndexError;
+
     pub use crate::{
         ast::{
             ColumnDef, DataType, Expr, IndexItem, IndexOperator::Eq, Query, SetExpr, Statement,
@@ -117,8 +134,7 @@ pub mod test {
         },
         parse_sql::{parse, parse_expr},
         plan::plan,
-        storages::{memory_storage, sled_storage, MemoryStorage, SledStorage},
-        store::{AlterTableError, GStore, GStoreMut, IndexError, StoreMut},
+        store::{GStore, GStoreMut, StoreMut},
         translate::{translate, translate_expr, TranslateError},
     };
 }
