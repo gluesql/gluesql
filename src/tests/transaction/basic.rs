@@ -1,7 +1,6 @@
 #![cfg(feature = "transaction")]
 
 use crate::*;
-use test::*;
 
 test_case!(basic, async move {
     use Value::*;
