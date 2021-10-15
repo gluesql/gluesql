@@ -4,6 +4,9 @@ use test::*;
 use data::Interval as I;
 
 test_case!(cast_literal, async move {
+    use chrono::{NaiveDate, NaiveTime};
+    use Value::*;
+
     let test_cases = vec![
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
@@ -126,6 +129,58 @@ test_case!(cast_literal, async move {
             I::seconds(-(12 * 3600 + 30 * 60 + 12))
             I::seconds(-(30 * 60 + 11))
             )),
+        ),
+        (
+            "SELECT CAST('2021-08-25' AS DATE) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Date(NaiveDate::from_ymd(2021, 8, 25)))),
+        ),
+        (
+            "SELECT CAST('08-25-2021' AS DATE) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Date(NaiveDate::from_ymd(2021, 8, 25)))),
+        ),
+        (
+            r#"SELECT CAST('2021-08-025' AS DATE) FROM Item"#,
+            Err(ValueError::LiteralCastToDateFailed("2021-08-025".to_string()).into()),
+        ),
+        (
+            "SELECT CAST('AM 8:05' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 0)))),
+        ),
+        (
+            "SELECT CAST('AM 08:05' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 0)))),
+        ),
+        (
+            "SELECT CAST('AM 8:05:30' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 30)))),
+        ),
+        (
+            "SELECT CAST('AM 8:05:30.9' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli(8, 5, 30, 900)))),
+        ),
+        (
+            "SELECT CAST('8:05:30.9 AM' AS TIME) AS cast FROM Item",
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli(8, 5, 30, 900)))),
+        ),
+        (
+            "SELECT CAST('25:08:05' AS TIME) AS cast FROM Item",
+            Err(ValueError::LiteralCastToTimeFailed("25:08:05".to_string()).into()),
+        ),
+        (
+            "SELECT CAST('2021-08-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
+            Ok(
+                select_with_null!(cast; Value::Timestamp(NaiveDate::from_ymd(2021, 8, 25).and_hms(8, 5, 30))),
+            ),
+        ),
+        (
+            "SELECT CAST('2021-08-25 08:05:30.9' AS TIMESTAMP) AS cast FROM Item",
+            Ok(
+                select_with_null!(cast; Value::Timestamp(NaiveDate::from_ymd(2021, 8, 25).and_hms_milli(8, 5, 30, 900))),
+            ),
+        ),
+        (
+            "SELECT CAST('2021-13-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
+            Err(ValueError::LiteralCastToTimestampFailed("2021-13-25 08:05:30".to_string()).into()),
         ),
     ];
 

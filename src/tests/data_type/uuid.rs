@@ -1,8 +1,4 @@
-use crate::*;
-use test::*;
-
-use std::borrow::Cow;
-use uuid::Uuid;
+use {crate::*, std::borrow::Cow, test::*, uuid::Uuid as UUID};
 
 test_case!(uuid, async move {
     use Value::*;
@@ -12,7 +8,7 @@ test_case!(uuid, async move {
         (
             r#"INSERT INTO UUID VALUES (0)"#,
             Err(ValueError::IncompatibleLiteralForDataType {
-                data_type: DataType::UUID,
+                data_type: DataType::Uuid,
                 literal: format!("{:?}", Literal::Number(Cow::Owned("0".to_owned()))),
             }
             .into()),
@@ -36,10 +32,10 @@ test_case!(uuid, async move {
             r#"SELECT uuid_field AS uuid_field FROM UUID;"#,
             Ok(select!(
                 uuid_field
-                UUID;
-                Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap().as_u128();
-                Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap().as_u128();
-                Uuid::parse_str("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap().as_u128()
+                Uuid;
+                UUID::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap().as_u128();
+                UUID::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap().as_u128();
+                UUID::parse_str("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap().as_u128()
             )),
         ),
         (
@@ -50,9 +46,9 @@ test_case!(uuid, async move {
             r#"SELECT uuid_field AS uuid_field, COUNT(*) FROM UUID GROUP BY uuid_field"#,
             Ok(select!(
                 uuid_field | "COUNT(*)"
-                UUID | I64;
-                Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap().as_u128()  1;
-                Uuid::parse_str("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap().as_u128()  2
+                Uuid | I64;
+                UUID::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap().as_u128()  1;
+                UUID::parse_str("urn:uuid:F9168C5E-CEB2-4faa-B6BF-329BF39FA1E4").unwrap().as_u128()  2
             )),
         ),
         (

@@ -20,7 +20,7 @@ pub enum GroupKey {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
-    UUID(u128),
+    Uuid(u128),
     None,
 }
 

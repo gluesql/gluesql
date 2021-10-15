@@ -1,10 +1,13 @@
 use {
-    super::{Value, ValueError},
+    super::{
+        date::{parse_date, parse_time, parse_timestamp},
+        Value, ValueError,
+    },
     crate::{
         data::Interval,
         result::{Error, Result},
     },
-    chrono::{NaiveDate, NaiveDateTime},
+    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     std::convert::{TryFrom, TryInto},
     uuid::Uuid,
 };
@@ -20,7 +23,7 @@ impl From<&Value> for String {
             Value::Timestamp(value) => value.to_string(),
             Value::Time(value) => value.to_string(),
             Value::Interval(value) => String::from(value),
-            Value::UUID(value) => Uuid::from_u128(*value).to_string(),
+            Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
             Value::Null => String::from("NULL"),
@@ -66,7 +69,7 @@ impl TryInto<bool> for &Value {
             | Value::Timestamp(_)
             | Value::Time(_)
             | Value::Interval(_)
-            | Value::UUID(_)
+            | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
@@ -103,7 +106,7 @@ impl TryInto<i64> for &Value {
             | Value::Timestamp(_)
             | Value::Time(_)
             | Value::Interval(_)
-            | Value::UUID(_)
+            | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
@@ -140,7 +143,7 @@ impl TryInto<f64> for &Value {
             | Value::Timestamp(_)
             | Value::Time(_)
             | Value::Interval(_)
-            | Value::UUID(_)
+            | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
@@ -155,6 +158,19 @@ impl TryInto<NaiveDate> for &Value {
         Ok(match self {
             Value::Date(value) => *value,
             Value::Timestamp(value) => value.date(),
+            Value::Str(value) => parse_date(value).ok_or(ValueError::ImpossibleCast)?,
+            _ => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
+impl TryInto<NaiveTime> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<NaiveTime> {
+        Ok(match self {
+            Value::Time(value) => *value,
+            Value::Str(value) => parse_time(value).ok_or(ValueError::ImpossibleCast)?,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -166,6 +182,7 @@ impl TryInto<NaiveDateTime> for &Value {
     fn try_into(self) -> Result<NaiveDateTime> {
         Ok(match self {
             Value::Date(value) => value.and_hms(0, 0, 0),
+            Value::Str(value) => parse_timestamp(value).ok_or(ValueError::ImpossibleCast)?,
             Value::Timestamp(value) => *value,
             _ => return Err(ValueError::ImpossibleCast.into()),
         })
@@ -188,7 +205,7 @@ impl TryInto<u128> for &Value {
 
     fn try_into(self) -> Result<u128> {
         match self {
-            Value::UUID(value) => Ok(*value),
+            Value::Uuid(value) => Ok(*value),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
