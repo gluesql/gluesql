@@ -66,6 +66,10 @@
 //!
 //! After you implement `Tester` trait, the only thing you need to do is calling `generate_tests!` macro.
 
+// re-export
+#[cfg(feature = "sled-storage")]
+pub use sled;
+
 mod executor;
 mod glue;
 mod parse_sql;
@@ -81,33 +85,40 @@ pub mod tests;
 pub mod translate;
 
 pub mod prelude {
-    pub use crate::data::value::Value;
-    pub use crate::glue::Glue;
-    pub use crate::result::Error;
-    pub use crate::result::Result;
-    pub use crate::storages::{MemoryStorage, SledStorage};
+    pub use crate::{
+        data::value::Value,
+        executor::{execute, Payload},
+        glue::Glue,
+        parse_sql::parse,
+        result::Error,
+        result::Result,
+        storages::{MemoryStorage, SledStorage},
+        translate::translate,
+    };
 }
 
 pub use prelude::*;
 
 pub mod test {
-    pub use crate::ast::{
-        ColumnDef, DataType, Expr, IndexItem, IndexOperator::Eq, Query, SetExpr, Statement,
-        TableFactor,
-    };
-    pub use crate::data::{
-        value::{
-            Value::{Bool, Interval, Null, Str, F64, I64},
-            ValueError,
+    pub use crate::{
+        ast::{
+            ColumnDef, DataType, Expr, IndexItem, IndexOperator::Eq, Query, SetExpr, Statement,
+            TableFactor,
         },
-        IntervalError, Literal, LiteralError, RowError,
+        data::{
+            value::{
+                Value::{Bool, Interval, Null, Str, F64, I64},
+                ValueError,
+            },
+            IntervalError, Literal, LiteralError, RowError,
+        },
+        executor::{
+            execute, AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, Payload,
+            SelectError, UpdateError, ValidateError,
+        },
+        parse_sql::{parse, parse_expr},
+        plan::plan,
+        store::{AlterTableError, GStore, GStoreMut, IndexError},
+        translate::{translate, translate_expr, TranslateError},
     };
-    pub use crate::executor::{
-        execute, AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, Payload,
-        SelectError, UpdateError, ValidateError,
-    };
-    pub use crate::parse_sql::{parse, parse_expr};
-    pub use crate::plan::plan;
-    pub use crate::store::{AlterTableError, GStore, GStoreMut, IndexError};
-    pub use crate::translate::{translate, translate_expr, TranslateError};
 }
