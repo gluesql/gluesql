@@ -16,7 +16,7 @@ macro_rules! idx {
             asc: None,
             cmp_expr: Some((
                 $op,
-                translate_expr(&parse_expr($sql_expr).unwrap()).unwrap(),
+                test::translate_expr(&test::parse_expr($sql_expr).unwrap()).unwrap(),
             )),
         }]
     };
@@ -50,19 +50,19 @@ macro_rules! select {
             row!($( $t )+ ; $( $v )+),
         ];
 
-        Payload::Select {
+        test::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
         }
     });
     ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
-        Payload::Select {
+        test::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![row!($( $t )+ ; $( $v )+ )],
         }
     );
     ( $( $c: tt )|+ $( ; )?) => (
-        Payload::Select {
+        test::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![],
         }

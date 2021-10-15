@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(blend, async move {
     let create_sqls: [&str; 2] = [

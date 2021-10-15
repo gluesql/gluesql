@@ -91,16 +91,23 @@ pub mod prelude {
 pub use prelude::*;
 
 pub mod test {
-    pub use crate::ast::{ColumnDef, DataType, IndexOperator::Eq};
+    pub use crate::ast::{
+        ColumnDef, DataType, Expr, IndexItem, IndexOperator::Eq, Query, SetExpr, Statement,
+        TableFactor,
+    };
     pub use crate::data::{
         value::{
             Value::{Bool, Interval, Null, Str, F64, I64},
             ValueError,
         },
-        IntervalError, Literal,
+        IntervalError, Literal, LiteralError, RowError,
     };
-    pub use crate::executor::{AlterError, EvaluateError, FetchError, Payload, ValidateError};
-    pub use crate::parse_sql::parse_expr;
+    pub use crate::executor::{
+        execute, AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, Payload,
+        SelectError, UpdateError, ValidateError,
+    };
+    pub use crate::parse_sql::{parse, parse_expr};
+    pub use crate::plan::plan;
     pub use crate::store::{AlterTableError, GStore, GStoreMut, IndexError};
-    pub use crate::translate::{translate_expr, TranslateError};
+    pub use crate::translate::{translate, translate_expr, TranslateError};
 }

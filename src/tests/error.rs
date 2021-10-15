@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(error, async move {
     run!("CREATE TABLE TableA (id INTEGER);");

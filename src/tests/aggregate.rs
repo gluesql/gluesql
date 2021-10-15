@@ -1,4 +1,5 @@
 use crate::*;
+use test::*;
 
 test_case!(aggregate, async move {
     run!(
@@ -20,8 +21,6 @@ test_case!(aggregate, async move {
             (5, 25, NULL);
     "
     );
-
-    use Value::*;
 
     let test_cases = vec![
         ("SELECT COUNT(*) FROM Item", select!("COUNT(*)"; I64; 5)),
