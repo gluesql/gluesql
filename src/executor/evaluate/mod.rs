@@ -24,6 +24,7 @@ use {
         fmt::Debug,
         rc::Rc,
     },
+    uuid::Uuid,
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
@@ -590,6 +591,7 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             value.selector(&selector).map(Evaluated::from)
         }
         .map(Evaluated::from),
+        Function::GenerateUuid() => Ok(Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))),
         Function::Repeat { expr, num } => {
             let expr = eval_to_str!(expr);
             let num = eval_to_integer!(num) as usize;

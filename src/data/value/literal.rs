@@ -6,12 +6,11 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{Interval, Literal},
+        data::{value::uuid::parse_uuid, Interval, Literal},
         result::{Error, Result},
     },
     chrono::NaiveDate,
     std::{cmp::Ordering, convert::TryFrom},
-    uuid::Uuid,
 };
 
 impl PartialEq<Literal<'_>> for Value {
@@ -226,13 +225,6 @@ impl Value {
             }
             .into()),
         }
-    }
-}
-
-fn parse_uuid(v: &str) -> Result<u128> {
-    match Uuid::parse_str(v) {
-        Ok(u) => Ok(u.as_u128()),
-        _ => Err(ValueError::FailedToParseUUID(v.to_owned()).into()),
     }
 }
 
