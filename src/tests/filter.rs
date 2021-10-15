@@ -1,4 +1,3 @@
-#![cfg(feature = "bigdecimal")]
 use {
     crate::*,
     bigdecimal::BigDecimal,

@@ -1,4 +1,3 @@
-#![cfg(feature = "bigdecimal")]
 use {
     bigdecimal::BigDecimal,
     serde::{Deserialize, Serialize},

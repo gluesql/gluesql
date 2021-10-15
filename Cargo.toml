@@ -20,7 +20,7 @@ keywords = [
 all-features = true
 
 [features]
-default = ["sled-storage", "memory-storage", "alter-table", "sorter", "bigdecimal"]
+default = ["sled-storage", "memory-storage", "alter-table", "sorter"]
 
 # optional: ALTER TABLE
 # you can include whether ALTER TABLE support or not for your custom database implementation.
@@ -64,7 +64,7 @@ thiserror = "1.0"
 strum = "0.21"
 strum_macros = "0.21"
 uuid = { version = "0.8", features = ["v4"]}
-bigdecimal = { version = "0.3", features = ["serde"], optional = true }
+bigdecimal = { version = "0.3", features = ["serde"]}
 
 # dependencies for sled-storage
 bincode = { version = "1.3", optional = true }

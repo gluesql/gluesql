@@ -1,4 +1,3 @@
-#![cfg(feature = "bigdecimal")]
 use {
     super::Interval,
     bigdecimal::{BigDecimal, ToPrimitive},
