@@ -186,6 +186,38 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
     }
 }
 
+pub fn type_match(expected: &[DataType], found: Result<Payload>) {
+    let rows = match found {
+        Ok(Payload::Select {
+            labels: _expected_labels,
+            rows,
+        }) => rows,
+        _ => panic!("type match is only for Select"),
+    };
+
+    for (i, items) in rows.iter().enumerate() {
+        assert_eq!(
+            items.len(),
+            expected.len(),
+            "\n[err: size of row] row index: {}\n expected: {:?}\n found: {:?}",
+            i,
+            expected.len(),
+            items.len()
+        );
+
+        items
+            .iter()
+            .zip(expected.iter())
+            .for_each(|(value, data_type)| match value.validate_type(data_type) {
+                Ok(_) => {}
+                Err(_) => panic!(
+                    "[err: type match failed]\n expected {:?}\n found {:?}\n",
+                    data_type, value
+                ),
+            })
+    }
+}
+
 /// If you want to make your custom storage and want to run integrate tests,
 /// you should implement this `Tester` trait.
 ///
@@ -249,6 +281,15 @@ macro_rules! test_case {
                         test::Payload::Update(num) => assert_eq!($count, num),
                         _ => panic!("compare is only for Select, Delete and Update"),
                     };
+                };
+            }
+
+            #[allow(unused_macros)]
+            macro_rules! type_match {
+                ($expected: expr, $sql: expr) => {
+                    let found = tests::run(Rc::clone(&cell), $sql, None).await;
+
+                    tests::type_match($expected, found);
                 };
             }
 
