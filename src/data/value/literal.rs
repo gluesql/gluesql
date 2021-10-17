@@ -18,8 +18,8 @@ impl PartialEq<Literal<'_>> for Value {
     fn eq(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
-            (Value::I64(l), Literal::Number(r)) => BigDecimal::from_i64(*l).unwrap() == *r,
-            (Value::F64(l), Literal::Number(r)) => BigDecimal::from_f64(*l).unwrap() == *r,
+            (Value::I64(l), Literal::Number(r)) => BigDecimal::from_i64(*l).unwrap() == *r.as_ref(),
+            (Value::F64(l), Literal::Number(r)) => BigDecimal::from_f64(*l).unwrap() == *r.as_ref(),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l == &r,

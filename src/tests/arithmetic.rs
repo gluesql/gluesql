@@ -1,4 +1,4 @@
-use {crate::*, std::borrow::Cow};
+use {crate::*, bigdecimal::BigDecimal, std::borrow::Cow};
 
 test_case!(arithmetic, async move {
     run!(
@@ -92,7 +92,7 @@ test_case!(arithmetic, async move {
         (
             LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", Literal::Boolean(true)),
-                format!("{:?}", Literal::Number(1.into())),
+                format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(1)))),
             )
             .into(),
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",

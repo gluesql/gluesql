@@ -35,7 +35,7 @@ pub enum LiteralError {
 #[derive(Clone, Debug)]
 pub enum Literal<'a> {
     Boolean(bool),
-    Number(BigDecimal),
+    Number(Cow<'a, BigDecimal>),
     Text(Cow<'a, String>),
     Interval(super::Interval),
     Null,
@@ -47,7 +47,7 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
     fn try_from(ast_literal: &'a AstLiteral) -> Result<Self> {
         let literal = match ast_literal {
             AstLiteral::Boolean(v) => Boolean(*v),
-            AstLiteral::Number(v) => Number(v.to_owned()),
+            AstLiteral::Number(v) => Number(Cow::Borrowed(v)),
             AstLiteral::QuotedString(v) => Text(Cow::Borrowed(v)),
             AstLiteral::Interval {
                 value,
@@ -93,7 +93,7 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
 impl<'a> Literal<'a> {
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
-            Number(v) => Ok(Number(v.to_owned())),
+            Number(v) => Ok(Number(v.clone())),
             Interval(v) => Ok(Interval(*v)),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -102,7 +102,7 @@ impl<'a> Literal<'a> {
 
     pub fn unary_minus(&self) -> Result<Self> {
         match self {
-            Number(v) => Ok(Number(v.neg())),
+            Number(v) => Ok(Number(Cow::Owned(v.as_ref().neg()))),
             Interval(v) => Ok(Interval(v.unary_minus())),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -130,7 +130,7 @@ impl<'a> Literal<'a> {
 
     pub fn add<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => Ok(Number(l + r)),
+            (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
             (Interval(l), Interval(r)) => l.add(r).map(Interval),
             (Null, Number(_))
             | (Null, Interval(_))
@@ -147,7 +147,7 @@ impl<'a> Literal<'a> {
 
     pub fn subtract<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => Ok(Number(l - r)),
+            (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() - r.as_ref()))),
             (Interval(l), Interval(r)) => l.subtract(r).map(Interval),
             (Null, Number(_))
             | (Null, Interval(_))
@@ -164,8 +164,8 @@ impl<'a> Literal<'a> {
 
     pub fn multiply<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => Ok(Number(l * r)),
-            (Number(l), Interval(r)) | (Interval(r), Number(l)) => Ok(Interval(*r * l)),
+            (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
+            (Number(l), Interval(r)) | (Interval(r), Number(l)) => Ok(Interval(*r * l.as_ref())),
             (Null, Number(_))
             | (Null, Interval(_))
             | (Number(_), Null)
@@ -182,17 +182,17 @@ impl<'a> Literal<'a> {
     pub fn divide<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
             (Number(l), Number(r)) => {
-                if *r == 0.into() {
+                if *r.as_ref() == 0.into() {
                     Err(LiteralError::DivisorShouldNotBeZero.into())
                 } else {
-                    Ok(Number(l / r))
+                    Ok(Number(Cow::Owned(l.as_ref() / r.as_ref())))
                 }
             }
             (Interval(l), Number(r)) => {
-                if *r == 0.into() {
+                if *r.as_ref() == 0.into() {
                     Err(LiteralError::DivisorShouldNotBeZero.into())
                 } else {
-                    Ok(Interval(*l / r))
+                    Ok(Interval(*l / r.as_ref()))
                 }
             }
             (Null, Number(_)) | (Number(_), Null) | (Interval(_), Null) | (Null, Null) => {
@@ -209,10 +209,10 @@ impl<'a> Literal<'a> {
     pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
             (Number(l), Number(r)) => {
-                if *r == 0.into() {
+                if *r.as_ref() == 0.into() {
                     Err(LiteralError::DivisorShouldNotBeZero.into())
                 } else {
-                    Ok(Number(l % r))
+                    Ok(Number(Cow::Owned(l.as_ref() % r.as_ref())))
                 }
             }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
@@ -248,7 +248,7 @@ mod tests {
         use crate::data::Interval as I;
 
         let mon = |n| Interval(I::months(n));
-        let num = |n: i32| Number(n.into());
+        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
 
         assert_eq!(mon(1).add(&mon(2)), Ok(mon(3)));
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
@@ -264,7 +264,7 @@ mod tests {
             };
         }
 
-        let num = || Number(123.into());
+        let num = || Number(Cow::Owned(BigDecimal::from(123)));
         let text = || text!("Foo");
 
         assert_eq!(Boolean(true).concat(num()), text!("TRUE123"));
@@ -282,7 +282,7 @@ mod tests {
 
         macro_rules! num {
             ($num: expr) => {
-                Number(BigDecimal::from_str($num).unwrap())
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
 
@@ -292,7 +292,7 @@ mod tests {
             };
         }
 
-        let num_divisor = |x| Number(BigDecimal::from_str(x).unwrap());
+        let num_divisor = |x| Number(Cow::Owned(BigDecimal::from_str(x).unwrap()));
 
         // Divide Test
         assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
@@ -329,7 +329,7 @@ mod tests {
         }
         macro_rules! num {
             ($num: expr) => {
-                Number(BigDecimal::from_str($num).unwrap())
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
         //Boolean
@@ -370,7 +370,7 @@ mod tests {
         }
         macro_rules! num {
             ($num: expr) => {
-                Number(BigDecimal::from_str($num).unwrap())
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
         //Boolean
