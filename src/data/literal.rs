@@ -23,6 +23,9 @@ pub enum LiteralError {
     #[error("literal unary operation on non-numeric")]
     UnaryOperationOnNonNumeric,
 
+    #[error("literal unary factorial operation on negative-numeric")]
+    UnaryFactorialOperationOnNegativeNumeric,
+
     #[error("unreachable literal binary arithmetic")]
     UnreachableBinaryArithmetic,
 
@@ -107,6 +110,45 @@ impl<'a> Literal<'a> {
             Interval(v) => Ok(Interval(v.unary_minus())),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
+        }
+    }
+
+    pub fn unary_factorial(&self) -> Result<Self> {
+        let factorial_function = |a: i64| -> i64 {
+            let mut result:i64 = 1;
+            
+            for x in 1..(a+1) {
+                result = result * x;
+            }
+
+            return result;
+        };
+
+        match self {
+            Number(v) => {
+                println!("Test-1");
+                let value = v.parse::<i64>();
+                
+                println!("Test-2 {:?}", value);
+
+                match value {
+                    Ok(x) => {
+                        if x < 0 {
+                            return Err(LiteralError::UnaryFactorialOperationOnNegativeNumeric.into());
+                        }
+                    },
+                    Err(_) => {
+                        return Err(LiteralError::UnreachableUnaryOperation.into());
+                    }
+                }
+
+                value.map(|v| factorial_function(v).to_string())
+                .map(|v| Number(Cow::Owned(v)))
+                .map_err(|_| LiteralError::UnreachableUnaryOperation.into())},
+            Null => Ok(Null),
+            _ => {
+                println!("Test-2");
+                Err(LiteralError::UnaryOperationOnNonNumeric.into())},
         }
     }
 

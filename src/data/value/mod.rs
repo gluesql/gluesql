@@ -315,6 +315,31 @@ impl Value {
         }
     }
 
+    pub fn unary_factorial(&self) -> Result<Value> {
+        use Value::*;
+
+        let factorial_function = |a: i64| -> i64 {
+            let mut result:i64 = 1;
+            
+            for x in 1..(a+1) {
+                result = result * x;
+            }
+
+            return result;
+        };
+
+        match self {
+            I64(a) => {
+                if *a < 0 {
+                    return Err(ValueError::UnaryFactorialOnNegativeNumeric.into());
+                }
+                Ok(I64(factorial_function(*a)))
+            },
+            Null => Ok(Null),
+            _ => Err(ValueError::UnaryFactorialOnNonNumeric.into()),
+        }
+    }
+
     pub fn like(&self, other: &Value, case_sensitive: bool) -> Result<Value> {
         use Value::*;
 
