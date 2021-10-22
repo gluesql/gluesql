@@ -267,4 +267,41 @@ impl SledStorage {
             }
         }
     }
+
+    pub async fn retry<Fut>(
+        self,
+        tx_result: StdResult<TxPayload, TransactionError<Error>>,
+        retry_func: impl FnOnce(SledStorage) -> Fut,
+    ) -> MutResult<SledStorage, ()>
+    where
+        Fut: futures::Future<Output = MutResult<SledStorage, ()>>,
+    {
+        match self.check_retry(tx_result) {
+            Ok(check_retry) => {
+                if check_retry {
+                    retry_func(self).await
+                } else {
+                    Ok((self, ()))
+                }
+            }
+            Err(err) => Err((self, err)),
+        }
+    }
+
+    pub fn retry_sync(
+        self,
+        tx_result: StdResult<TxPayload, TransactionError<Error>>,
+        retry_func: impl FnOnce(SledStorage) -> MutResult<SledStorage, ()>,
+    ) -> MutResult<SledStorage, ()> {
+        match self.check_retry(tx_result) {
+            Ok(check_retry) => {
+                if check_retry {
+                    retry_func(self)
+                } else {
+                    Ok((self, ()))
+                }
+            }
+            Err(err) => Err((self, err)),
+        }
+    }
 }

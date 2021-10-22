@@ -56,11 +56,8 @@ impl StoreMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.insert_schema(schema).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.retry(tx_result, |storage| storage.insert_schema(schema))
+            .await
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
@@ -142,11 +139,8 @@ impl StoreMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.delete_schema(table_name).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.retry(tx_result, |storage| storage.delete_schema(table_name))
+            .await
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
@@ -209,11 +203,9 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.insert_data_sync(table_name, rows),
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.retry_sync(tx_result, |storage| {
+            storage.insert_data_sync(table_name, rows)
+        })
     }
 
     fn update_data_sync(self, table_name: &str, rows: Rc<Vec<(IVec, Row)>>) -> MutResult<Self, ()> {
@@ -264,11 +256,9 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.update_data_sync(table_name, rows),
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.retry_sync(tx_result, |storage| {
+            storage.update_data_sync(table_name, rows)
+        })
     }
 
     fn delete_data_sync(self, table_name: &str, keys: Rc<Vec<IVec>>) -> MutResult<Self, ()> {
@@ -319,10 +309,8 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.delete_data_sync(table_name, keys),
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.retry_sync(tx_result, |storage| {
+            storage.delete_data_sync(table_name, keys)
+        })
     }
 }

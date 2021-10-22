@@ -117,11 +117,10 @@ impl IndexMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.create_index(table_name, index_name, column).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.retry(tx_result, |storage| {
+            storage.create_index(table_name, index_name, column)
+        })
+        .await
     }
 
     async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()> {
@@ -189,10 +188,9 @@ impl IndexMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.drop_index(table_name, index_name).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.retry(tx_result, |storage| {
+            storage.drop_index(table_name, index_name)
+        })
+        .await
     }
 }
