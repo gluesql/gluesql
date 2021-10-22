@@ -118,18 +118,18 @@ impl<'a> Literal<'a> {
 
     pub fn unary_factorial(&self) -> Result<Self> {
         let factorial_function = |a: i64| -> Result<i64> {
-            let mut result:i64 = 1;
-            
-            for x in 1..(a+1) {
+            let mut result: i64 = 1;
+
+            for x in 1..(a + 1) {
                 match result.checked_mul(x) {
                     Some(x) => result = x,
                     None => {
                         return Err(LiteralError::UnaryFactorialOperationOverflow.into());
-                    },
+                    }
                 }
             }
 
-            return Ok(result);
+            Ok(result)
         };
 
         match self {
@@ -139,23 +139,22 @@ impl<'a> Literal<'a> {
                 match v.parse::<i64>() {
                     Ok(x) => {
                         if x < 0 {
-                            value = Err(LiteralError::UnaryFactorialOperationOnNegativeNumeric.into());
+                            value =
+                                Err(LiteralError::UnaryFactorialOperationOnNegativeNumeric.into());
                         } else {
                             match factorial_function(x) {
                                 Ok(x) => value = Ok(x),
                                 Err(x) => value = Err(x),
                             }
                         }
-                    },
+                    }
                     Err(_) => value = Err(LiteralError::UnreachableUnaryOperation.into()),
                 }
 
-                value.map(|v| v.to_string())
-                .map(|v| Number(Cow::Owned(v)))
-            },
+                value.map(|v| v.to_string()).map(|v| Number(Cow::Owned(v)))
+            }
             Null => Ok(Null),
-            _ => {
-                Err(LiteralError::UnaryOperationOnNonNumeric.into())},
+            _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
     }
 

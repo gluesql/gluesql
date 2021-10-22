@@ -21,8 +21,8 @@ pub mod ordering;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
-pub mod validate;
 pub mod unary_operator;
+pub mod validate;
 
 mod tester;
 

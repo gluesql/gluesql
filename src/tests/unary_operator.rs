@@ -4,7 +4,10 @@ test_case!(unary_operator, async move {
     use Value::*;
 
     let test_cases = vec![
-        ("CREATE TABLE Test (v1 INT, v2 FLOAT, v3 TEXT, v4 INT, v5 INT)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE Test (v1 INT, v2 FLOAT, v3 TEXT, v4 INT, v5 INT)",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO Test VALUES (10, 10.5, "hello", -5, 1000)"#,
             Ok(Payload::Insert(1)),
@@ -20,8 +23,8 @@ test_case!(unary_operator, async move {
         (
             "SELECT -v1 as v1, -v2 as v2, v3, -v4 as v4 FROM Test",
             Ok(select!(
-                v1  |           v2  |               v3  |               v4
-                I64 |           F64 |               Str |               I64;
+                v1  |           v2  |                   v3  |                   v4
+                I64 |           F64 |                   Str |                   I64;
                 i64::from(-10)  f64::from(-10.5)  "hello".to_owned()    5
             )),
         ),

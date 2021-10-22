@@ -319,18 +319,18 @@ impl Value {
         use Value::*;
 
         let factorial_function = |a: i64| -> Result<i64> {
-            let mut result:i64 = 1;
-            
-            for x in 1..(a+1) {
+            let mut result: i64 = 1;
+
+            for x in 1..(a + 1) {
                 match result.checked_mul(x) {
                     Some(x) => result = x,
                     None => {
                         return Err(ValueError::UnaryFactorialOverflow.into());
-                    },
+                    }
                 }
             }
 
-            return Ok(result);
+            Ok(result)
         };
 
         match self {
@@ -343,7 +343,7 @@ impl Value {
                         Err(x) => Err(x),
                     }
                 }
-            },
+            }
             Null => Ok(Null),
             _ => Err(ValueError::UnaryFactorialOnNonNumeric.into()),
         }
