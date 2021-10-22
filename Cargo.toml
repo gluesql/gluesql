@@ -2,7 +2,7 @@
 name = "gluesql"
 version = "0.8.0"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-edition = "2018"
+edition = "2021"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
