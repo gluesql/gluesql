@@ -26,6 +26,9 @@ pub enum LiteralError {
     #[error("literal unary factorial operation on negative-numeric")]
     UnaryFactorialOperationOnNegativeNumeric,
 
+    #[error("literal unary factorial operation overflow")]
+    UnaryFactorialOperationOverflow,
+
     #[error("unreachable literal binary arithmetic")]
     UnreachableBinaryArithmetic,
 
@@ -114,40 +117,44 @@ impl<'a> Literal<'a> {
     }
 
     pub fn unary_factorial(&self) -> Result<Self> {
-        let factorial_function = |a: i64| -> i64 {
+        let factorial_function = |a: i64| -> Result<i64> {
             let mut result:i64 = 1;
             
             for x in 1..(a+1) {
-                result = result * x;
+                match result.checked_mul(x) {
+                    Some(x) => result = x,
+                    None => {
+                        return Err(LiteralError::UnaryFactorialOperationOverflow.into());
+                    },
+                }
             }
 
-            return result;
+            return Ok(result);
         };
 
         match self {
             Number(v) => {
-                println!("Test-1");
-                let value = v.parse::<i64>();
-                
-                println!("Test-2 {:?}", value);
+                let value;
 
-                match value {
+                match v.parse::<i64>() {
                     Ok(x) => {
                         if x < 0 {
-                            return Err(LiteralError::UnaryFactorialOperationOnNegativeNumeric.into());
+                            value = Err(LiteralError::UnaryFactorialOperationOnNegativeNumeric.into());
+                        } else {
+                            match factorial_function(x) {
+                                Ok(x) => value = Ok(x),
+                                Err(x) => value = Err(x),
+                            }
                         }
                     },
-                    Err(_) => {
-                        return Err(LiteralError::UnreachableUnaryOperation.into());
-                    }
+                    Err(_) => value = Err(LiteralError::UnreachableUnaryOperation.into()),
                 }
 
-                value.map(|v| factorial_function(v).to_string())
+                value.map(|v| v.to_string())
                 .map(|v| Number(Cow::Owned(v)))
-                .map_err(|_| LiteralError::UnreachableUnaryOperation.into())},
+            },
             Null => Ok(Null),
             _ => {
-                println!("Test-2");
                 Err(LiteralError::UnaryOperationOnNonNumeric.into())},
         }
     }

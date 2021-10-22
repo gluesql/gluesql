@@ -318,22 +318,31 @@ impl Value {
     pub fn unary_factorial(&self) -> Result<Value> {
         use Value::*;
 
-        let factorial_function = |a: i64| -> i64 {
+        let factorial_function = |a: i64| -> Result<i64> {
             let mut result:i64 = 1;
             
             for x in 1..(a+1) {
-                result = result * x;
+                match result.checked_mul(x) {
+                    Some(x) => result = x,
+                    None => {
+                        return Err(ValueError::UnaryFactorialOverflow.into());
+                    },
+                }
             }
 
-            return result;
+            return Ok(result);
         };
 
         match self {
             I64(a) => {
                 if *a < 0 {
-                    return Err(ValueError::UnaryFactorialOnNegativeNumeric.into());
+                    Err(ValueError::UnaryFactorialOnNegativeNumeric.into())
+                } else {
+                    match factorial_function(*a) {
+                        Ok(x) => Ok(I64(x)),
+                        Err(x) => Err(x),
+                    }
                 }
-                Ok(I64(factorial_function(*a)))
             },
             Null => Ok(Null),
             _ => Err(ValueError::UnaryFactorialOnNonNumeric.into()),
