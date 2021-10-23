@@ -5,10 +5,7 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    std::{
-        convert::{TryFrom, TryInto},
-        fmt::Debug,
-    },
+    std::fmt::Debug,
 };
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]

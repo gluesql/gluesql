@@ -10,7 +10,7 @@ use {
         result::{Error, Result},
     },
     chrono::NaiveDate,
-    std::{cmp::Ordering, convert::TryFrom},
+    std::cmp::Ordering,
 };
 
 impl PartialEq<Literal<'_>> for Value {

@@ -9,7 +9,7 @@ use {
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
     serde::Serialize,
-    std::{convert::TryInto, fmt::Debug, rc::Rc},
+    std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 

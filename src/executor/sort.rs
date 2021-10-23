@@ -12,7 +12,7 @@ use {
     },
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    std::{cmp::Ordering, convert::TryInto, fmt::Debug, pin::Pin, rc::Rc},
+    std::{cmp::Ordering, fmt::Debug, pin::Pin, rc::Rc},
 };
 
 pub struct Sort<'a, T: 'static + Debug> {

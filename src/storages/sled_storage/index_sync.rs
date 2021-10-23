@@ -13,7 +13,7 @@ use {
         },
         IVec,
     },
-    std::{borrow::Cow, convert::TryInto},
+    std::borrow::Cow,
 };
 
 pub struct IndexSync<'a> {

@@ -4,7 +4,6 @@ use {
         executor::GroupKey,
         result::{Error, Result},
     },
-    std::convert::TryInto,
 };
 
 impl TryInto<GroupKey> for Value {
