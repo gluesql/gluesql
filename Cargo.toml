@@ -2,7 +2,7 @@
 name = "gluesql"
 version = "0.8.0"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-edition = "2018"
+edition = "2021"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
@@ -62,7 +62,7 @@ sqlparser = { git = "https://github.com/sqlparser-rs/sqlparser-rs/", rev = "014b
 thiserror = "1.0"
 strum = "0.21"
 strum_macros = "0.21"
-uuid = { version = "0.8", features = ["v4"]}
+uuid = { version = "0.8", features = ["v4"] }
 
 # dependencies for sled-storage
 bincode = { version = "1.3", optional = true }
