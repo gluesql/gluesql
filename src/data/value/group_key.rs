@@ -4,7 +4,6 @@ use {
         executor::GroupKey,
         result::{Error, Result},
     },
-    std::convert::TryInto,
 };
 
 impl TryInto<GroupKey> for Value {
@@ -21,7 +20,7 @@ impl TryInto<GroupKey> for Value {
             Timestamp(v) => Ok(GroupKey::Timestamp(v)),
             Time(v) => Ok(GroupKey::Time(v)),
             Interval(v) => Ok(GroupKey::Interval(v)),
-            UUID(v) => Ok(GroupKey::UUID(v)),
+            Uuid(v) => Ok(GroupKey::Uuid(v)),
             Null => Ok(GroupKey::None),
             F64(_) => Err(ValueError::GroupByNotSupported("FLOAT".to_owned()).into()),
             Map(_) => Err(ValueError::GroupByNotSupported("MAP".to_owned()).into()),

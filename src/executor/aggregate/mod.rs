@@ -16,7 +16,7 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
-    std::{convert::TryFrom, fmt::Debug, pin::Pin, rc::Rc},
+    std::{fmt::Debug, pin::Pin, rc::Rc},
 };
 
 pub use {error::AggregateError, hash::GroupKey};

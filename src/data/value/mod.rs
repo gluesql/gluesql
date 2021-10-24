@@ -4,10 +4,11 @@ use {
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, collections::HashMap, convert::TryInto, fmt::Debug},
+    std::{cmp::Ordering, collections::HashMap, fmt::Debug},
 };
 
 mod big_edian;
+mod date;
 mod error;
 mod group_key;
 mod into;
@@ -15,6 +16,7 @@ mod json;
 mod literal;
 mod selector;
 mod unique_key;
+mod uuid;
 
 pub use error::ValueError;
 
@@ -28,7 +30,7 @@ pub enum Value {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
-    UUID(u128),
+    Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
     Null,
@@ -49,7 +51,7 @@ impl PartialEq<Value> for Value {
             (Value::Timestamp(l), Value::Timestamp(r)) => l == r,
             (Value::Time(l), Value::Time(r)) => l == r,
             (Value::Interval(l), Value::Interval(r)) => l == r,
-            (Value::UUID(l), Value::UUID(r)) => l == r,
+            (Value::Uuid(l), Value::Uuid(r)) => l == r,
             (Value::Map(l), Value::Map(r)) => l == r,
             (Value::List(l), Value::List(r)) => l == r,
             _ => false,
@@ -72,7 +74,7 @@ impl PartialOrd<Value> for Value {
             (Value::Timestamp(l), Value::Timestamp(r)) => Some(l.cmp(r)),
             (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
-            (Value::UUID(l), Value::UUID(r)) => Some(l.cmp(r)),
+            (Value::Uuid(l), Value::Uuid(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -89,7 +91,7 @@ impl Value {
             Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
             Value::Time(_) => matches!(data_type, DataType::Time),
             Value::Interval(_) => matches!(data_type, DataType::Interval),
-            Value::UUID(_) => matches!(data_type, DataType::UUID),
+            Value::Uuid(_) => matches!(data_type, DataType::Uuid),
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
             Value::Null => true,
@@ -124,7 +126,7 @@ impl Value {
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_))
-            | (DataType::UUID, Value::UUID(_)) => Ok(self.clone()),
+            | (DataType::Uuid, Value::Uuid(_)) => Ok(self.clone()),
 
             (_, Value::Null) => Ok(Value::Null),
 
@@ -133,9 +135,10 @@ impl Value {
             (DataType::Float, value) => value.try_into().map(Value::F64),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
+            (DataType::Time, value) => value.try_into().map(Value::Time),
             (DataType::Timestamp, value) => value.try_into().map(Value::Timestamp),
             (DataType::Interval, value) => value.try_into().map(Value::Interval),
-            (DataType::UUID, value) => value.try_into().map(Value::UUID),
+            (DataType::Uuid, value) => value.try_into().map(Value::Uuid),
 
             _ => Err(ValueError::UnimplementedCast.into()),
         }
@@ -327,8 +330,10 @@ impl Value {
 
 #[cfg(test)]
 mod tests {
-    use super::{Interval, Value::*};
-    use uuid::Uuid;
+    use {
+        super::{Interval, Value::*},
+        crate::data::value::uuid::parse_uuid,
+    };
 
     #[allow(clippy::eq_op)]
     #[test]
@@ -356,16 +361,8 @@ mod tests {
         assert_eq!(timestamp, date);
 
         assert_eq!(
-            UUID(
-                Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
-                    .unwrap()
-                    .as_u128()
-            ),
-            UUID(
-                Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
-                    .unwrap()
-                    .as_u128()
-            )
+            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
+            Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap())
         );
     }
 
@@ -572,7 +569,7 @@ mod tests {
     fn cast() {
         use {
             crate::{ast::DataType::*, Value},
-            chrono::NaiveDate,
+            chrono::{NaiveDate, NaiveTime},
         };
 
         macro_rules! cast {
@@ -593,7 +590,7 @@ mod tests {
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(I64(1)                => Int          , I64(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
-        cast!(Value::UUID(123)      => UUID         , Value::UUID(123));
+        cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
 
         // Boolean
         cast!(Str("TRUE".to_owned())    => Boolean, Bool(true));
@@ -635,15 +632,18 @@ mod tests {
         let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
         let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
 
-        cast!(timestamp => Date, date);
-        cast!(Null      => Date, Null);
+        cast!(Str("2021-05-01".to_owned()) => Date, date.to_owned());
+        cast!(timestamp                    => Date, date);
+        cast!(Null                         => Date, Null);
+
+        // Time
+        cast!(Str("08:05:30".to_owned()) => Time, Value::Time(NaiveTime::from_hms(8, 5, 30)));
+        cast!(Null                       => Time, Null);
 
         // Timestamp
-        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
-        let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(0, 0, 0));
-
-        cast!(date => Timestamp, timestamp);
-        cast!(Null => Timestamp, Null);
+        cast!(Value::Date(NaiveDate::from_ymd(2021, 5, 1)) => Timestamp, Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(0, 0, 0)));
+        cast!(Str("2021-05-01 08:05:30".to_owned())        => Timestamp, Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(8, 5, 30)));
+        cast!(Null                                         => Timestamp, Null);
     }
 
     #[test]
@@ -670,11 +670,7 @@ mod tests {
         let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
         let time = Time(NaiveTime::from_hms(12, 30, 11));
         let interval = Interval(I::hours(5));
-        let uuid = UUID(
-            Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8")
-                .unwrap()
-                .as_u128(),
-        );
+        let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
 
@@ -694,7 +690,7 @@ mod tests {
         assert!(time.validate_type(&D::Date).is_err());
         assert!(interval.validate_type(&D::Interval).is_ok());
         assert!(interval.validate_type(&D::Date).is_err());
-        assert!(uuid.validate_type(&D::UUID).is_ok());
+        assert!(uuid.validate_type(&D::Uuid).is_ok());
         assert!(uuid.validate_type(&D::Boolean).is_err());
         assert!(map.validate_type(&D::Map).is_ok());
         assert!(map.validate_type(&D::Int).is_err());
