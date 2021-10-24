@@ -96,7 +96,6 @@ pub mod prelude {
         executor::{execute, Payload},
         glue::Glue,
         parse_sql::parse,
-        result::{Error, Result},
         translate::translate,
     };
 }
