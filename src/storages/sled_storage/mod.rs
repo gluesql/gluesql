@@ -26,7 +26,6 @@ use {
         },
         Config, Db, IVec,
     },
-    std::convert::TryFrom,
 };
 
 /// default transaction timeout : 1 hour

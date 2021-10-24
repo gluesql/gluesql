@@ -8,7 +8,6 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    std::convert::{TryFrom, TryInto},
     uuid::Uuid,
 };
 

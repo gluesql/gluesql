@@ -3,7 +3,7 @@
 use {
     cfg_if::cfg_if,
     gluesql::{sled::IVec, test::SledStorage, tests::*, *},
-    std::{cell::RefCell, convert::TryFrom, rc::Rc},
+    std::{cell::RefCell, rc::Rc},
 };
 
 struct SledTester {

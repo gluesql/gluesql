@@ -4,7 +4,6 @@ use {
         executor::UniqueKey,
         result::{Error, Result},
     },
-    std::convert::TryInto,
 };
 
 impl TryInto<Option<UniqueKey>> for &Value {

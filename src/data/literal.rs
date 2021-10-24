@@ -5,7 +5,7 @@ use {
         result::{Error, Result},
     },
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
+    std::{borrow::Cow, cmp::Ordering, fmt::Debug},
     thiserror::Error,
     Literal::*,
 };

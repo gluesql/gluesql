@@ -6,7 +6,6 @@ use {
         result::{Error, Result},
         translate::translate_expr,
     },
-    std::convert::TryFrom,
 };
 
 impl TryFrom<&str> for Interval {
@@ -148,7 +147,7 @@ impl From<Interval> for String {
 
 #[cfg(test)]
 mod tests {
-    use {super::Interval, std::convert::TryFrom};
+    use super::Interval;
 
     #[test]
     fn into_string() {
