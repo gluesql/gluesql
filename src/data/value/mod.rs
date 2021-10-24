@@ -32,8 +32,9 @@ pub enum Value {
     UUID(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
-    Decimal(Decimal),
     Null,
+    #[serde(with = "serde_str")]
+    Decimal(Decimal),
 }
 
 impl PartialEq<Value> for Value {
@@ -76,6 +77,7 @@ impl PartialOrd<Value> for Value {
             (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
             (Value::UUID(l), Value::UUID(r)) => Some(l.cmp(r)),
+            (Value::Decimal(l), Value::Decimal(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -128,7 +130,9 @@ impl Value {
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_))
-            | (DataType::UUID, Value::UUID(_)) => Ok(self.clone()),
+            | (DataType::UUID, Value::UUID(_)) 
+            | (DataType::Decimal, Value::Decimal(_))
+            => Ok(self.clone()),
 
             (_, Value::Null) => Ok(Value::Null),
 
@@ -164,6 +168,7 @@ impl Value {
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
+            (Decimal(a), Decimal(b)) => Ok(Decimal(a + b)),
             (Null, I64(_))
             | (Null, F64(_))
             | (Null, Date(_))
@@ -208,6 +213,7 @@ impl Value {
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
+            (Decimal(a), Decimal(b)) => Ok(Decimal(a - b)),
             (Null, I64(_))
             | (Null, F64(_))
             | (Null, Date(_))
@@ -236,6 +242,7 @@ impl Value {
             (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 * b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
+            (Decimal(a), Decimal(b))=> Ok(Decimal(*a * *b)),
             (Null, I64(_))
             | (Null, F64(_))
             | (Null, Interval(_))
@@ -261,6 +268,7 @@ impl Value {
             (F64(a), F64(b)) => Ok(F64(a / b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
+            (Decimal(a), Decimal(b)) => Ok(Decimal(*a / *b)),
             (Null, I64(_))
             | (Null, F64(_))
             | (I64(_), Null)
@@ -283,6 +291,7 @@ impl Value {
             (I64(a), F64(b)) => Ok(F64(*a as f64 % b)),
             (F64(a), I64(b)) => Ok(F64(a % *b as f64)),
             (F64(a), F64(b)) => Ok(F64(a % b)),
+            (Decimal(a), Decimal(b)) => Ok(Decimal(a % b)),
             (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
                 Ok(Null)
             }
@@ -298,7 +307,7 @@ impl Value {
         use Value::*;
 
         match self {
-            I64(_) | F64(_) | Interval(_) => Ok(self.clone()),
+            I64(_) | F64(_) | Interval(_) | Decimal(_) => Ok(self.clone()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryPlusOnNonNumeric.into()),
         }
@@ -310,6 +319,7 @@ impl Value {
         match self {
             I64(a) => Ok(I64(-a)),
             F64(a) => Ok(F64(-a)),
+            Decimal(a) => Ok(Decimal(-a)),
             Interval(a) => Ok(Interval(a.unary_minus())),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryMinusOnNonNumeric.into()),
@@ -352,6 +362,7 @@ mod tests {
             Time(NaiveTime::from_hms(12, 30, 11)),
             Time(NaiveTime::from_hms(12, 30, 11))
         );
+        assert_eq!(Decimal(1.into()), Decimal(1.into()));
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
@@ -452,6 +463,7 @@ mod tests {
             Time(time(4, 10, 0))
         );
         test!(add mon!(1),  mon!(2)  => mon!(3));
+        test!(add Decimal(1.into()), Decimal(2.into()) => Decimal(3.into()));
 
         test!(subtract I64(3),   I64(2)   => I64(1));
         test!(subtract I64(3),   F64(2.0) => F64(1.0));
@@ -494,6 +506,7 @@ mod tests {
             Time(time(18, 10, 0))
         );
         test!(subtract mon!(1),  mon!(2)  => mon!(-1));
+        test!(subtract Decimal(3.into()), Decimal(2.into()) => Decimal(1.into())); 
 
         test!(multiply I64(3),   I64(2)   => I64(6));
         test!(multiply I64(3),   F64(2.0) => F64(6.0));
@@ -503,6 +516,7 @@ mod tests {
         test!(multiply F64(3.0), mon!(3)  => mon!(9));
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
+        test!(multiply Decimal(3.into()), Decimal(2.into()) => Decimal(6.into()));
 
         test!(divide I64(6),   I64(2)   => I64(3));
         test!(divide I64(6),   F64(2.0) => F64(3.0));
@@ -510,6 +524,7 @@ mod tests {
         test!(divide F64(6.0), F64(2.0) => F64(3.0));
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
+        test!(divide Decimal(6.into()), Decimal(2.into()) => Decimal(3.into()));
 
         test!(modulo I64(6),   I64(2)   => I64(0));
         test!(modulo I64(6),   F64(2.0) => F64(0.0));

@@ -1,4 +1,6 @@
-use {crate::*, ast::DataType };
+use {
+    crate::*
+};
 
 test_case!(decimal, async move {
     use Value::Decimal;
