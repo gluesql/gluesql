@@ -123,7 +123,7 @@ pub mod test {
         },
         data::{
             value::{
-                Value::{Bool, Interval, Null, Str, F64, I64},
+                Value::{Bool, Interval, Null, Str, Uuid, F64, I64},
                 ValueError,
             },
             IntervalError, Literal, LiteralError, RowError,

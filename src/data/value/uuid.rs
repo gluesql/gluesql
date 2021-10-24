@@ -13,7 +13,7 @@ pub fn parse_uuid(v: &str) -> Result<u128> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ValueError;
+    use super::ValueError;
 
     #[test]
     fn parse_uuid() {

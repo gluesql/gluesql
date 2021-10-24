@@ -1,8 +1,6 @@
 use {crate::*, std::borrow::Cow, test::*, uuid::Uuid as UUID};
 
 test_case!(uuid, async move {
-    use Value::*;
-
     let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
 
     let test_cases = vec![
