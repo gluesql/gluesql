@@ -3,6 +3,7 @@ pub mod alter;
 pub mod arithmetic;
 pub mod basic;
 pub mod blend;
+pub mod case;
 pub mod concat;
 pub mod data_type;
 pub mod default;
@@ -19,6 +20,7 @@ pub mod order_by;
 pub mod ordering;
 pub mod synthesize;
 pub mod transaction;
+pub mod type_match;
 pub mod validate;
 
 mod tester;
@@ -83,6 +85,7 @@ macro_rules! generate_store_tests {
         glue!(function_round, function::round::round);
         glue!(function_floor, function::floor::floor);
         glue!(function_ln, function::exp_log::ln);
+        glue!(function_log, function::exp_log::log);
         glue!(function_log2, function::exp_log::log2);
         glue!(function_log10, function::exp_log::log10);
         glue!(function_exp, function::exp_log::exp);
@@ -100,6 +103,8 @@ macro_rules! generate_store_tests {
         glue!(timestamp, data_type::timestamp::timestamp);
         glue!(time, data_type::time::time);
         glue!(interval, data_type::interval::interval);
+        glue!(list, data_type::list::list);
+        glue!(map, data_type::map::map);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
@@ -107,8 +112,15 @@ macro_rules! generate_store_tests {
         glue!(function_degrees, function::degrees::degrees);
         glue!(function_pi, function::pi::pi);
         glue!(function_reverse, function::reverse::reverse);
+        glue!(function_repeat, function::repeat::repeat);
+        glue!(case, case::case);
         glue!(function_substr, function::substr::substr);
         glue!(uuid, data_type::uuid::uuid);
+        glue!(
+            function_generate_uuid,
+            function::generate_uuid::generate_uuid
+        );
+        glue!(type_match, type_match::type_match);
     };
 }
 

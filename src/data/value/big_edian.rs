@@ -1,6 +1,6 @@
 use {
-    super::Value,
-    crate::data::Interval,
+    super::{Value, ValueError},
+    crate::{data::Interval, result::Result},
     chrono::{Datelike, Timelike},
 };
 
@@ -8,8 +8,9 @@ const VALUE: u8 = 0;
 const NULL: u8 = 1;
 
 impl Value {
-    pub fn to_be_bytes(&self) -> Vec<u8> {
-        match self {
+    /// Value to Big-Edian for comparison purpose
+    pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
+        let value = match self {
             Value::Bool(v) => {
                 if *v {
                     vec![VALUE, 1]
@@ -74,13 +75,21 @@ impl Value {
                     .copied()
                     .collect::<Vec<_>>()
             }
-            Value::UUID(v) => [VALUE]
+            Value::Uuid(v) => [VALUE]
                 .iter()
                 .chain(v.to_be_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
             Value::Null => vec![NULL],
-        }
+            Value::Map(_) => {
+                return Err(ValueError::BigEdianExportNotSupported("MAP".to_owned()).into());
+            }
+            Value::List(_) => {
+                return Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into());
+            }
+        };
+
+        Ok(value)
     }
 }
 
@@ -106,42 +115,46 @@ mod tests {
     fn cmp_big_edian() {
         use crate::{
             chrono::{NaiveDate, NaiveTime},
-            data::{Interval as I, Value::*},
+            data::{
+                Interval as I,
+                Value::{self, *},
+                ValueError,
+            },
         };
 
-        let null = Null.to_be_bytes();
+        let null = Null.to_cmp_be_bytes().unwrap();
 
-        let n1 = Bool(true).to_be_bytes();
-        let n2 = Bool(false).to_be_bytes();
+        let n1 = Bool(true).to_cmp_be_bytes().unwrap();
+        let n2 = Bool(false).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n2, &n1), Ordering::Less);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = I64(3).to_be_bytes();
-        let n2 = I64(20).to_be_bytes();
-        let n3 = I64(100).to_be_bytes();
+        let n1 = I64(3).to_cmp_be_bytes().unwrap();
+        let n2 = I64(20).to_cmp_be_bytes().unwrap();
+        let n3 = I64(100).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n1), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = F64(3.0).to_be_bytes();
-        let n2 = F64(100.0).to_be_bytes();
-        let n3 = F64(1324.0).to_be_bytes();
+        let n1 = F64(3.0).to_cmp_be_bytes().unwrap();
+        let n2 = F64(100.0).to_cmp_be_bytes().unwrap();
+        let n3 = F64(1324.0).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n1), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Str("a".to_owned()).to_be_bytes();
-        let n2 = Str("ab".to_owned()).to_be_bytes();
-        let n3 = Str("aaa".to_owned()).to_be_bytes();
-        let n4 = Str("aaz".to_owned()).to_be_bytes();
-        let n5 = Str("c".to_owned()).to_be_bytes();
+        let n1 = Str("a".to_owned()).to_cmp_be_bytes().unwrap();
+        let n2 = Str("ab".to_owned()).to_cmp_be_bytes().unwrap();
+        let n3 = Str("aaa".to_owned()).to_cmp_be_bytes().unwrap();
+        let n4 = Str("aaz".to_owned()).to_cmp_be_bytes().unwrap();
+        let n5 = Str("c".to_owned()).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
@@ -151,32 +164,43 @@ mod tests {
         assert_eq!(cmp(&n5, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Date(NaiveDate::from_ymd(2021, 1, 1)).to_be_bytes();
-        let n2 = Date(NaiveDate::from_ymd(1989, 3, 20)).to_be_bytes();
+        let n1 = Date(NaiveDate::from_ymd(2021, 1, 1))
+            .to_cmp_be_bytes()
+            .unwrap();
+        let n2 = Date(NaiveDate::from_ymd(1989, 3, 20))
+            .to_cmp_be_bytes()
+            .unwrap();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Time(NaiveTime::from_hms_milli(20, 1, 9, 100)).to_be_bytes();
-        let n2 = Time(NaiveTime::from_hms_milli(3, 10, 30, 0)).to_be_bytes();
+        let n1 = Time(NaiveTime::from_hms_milli(20, 1, 9, 100))
+            .to_cmp_be_bytes()
+            .unwrap();
+        let n2 = Time(NaiveTime::from_hms_milli(3, 10, 30, 0))
+            .to_cmp_be_bytes()
+            .unwrap();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms_milli(1, 2, 3, 0)).to_be_bytes();
-        let n2 =
-            Timestamp(NaiveDate::from_ymd(1989, 3, 20).and_hms_milli(10, 0, 0, 1000)).to_be_bytes();
+        let n1 = Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms_milli(1, 2, 3, 0))
+            .to_cmp_be_bytes()
+            .unwrap();
+        let n2 = Timestamp(NaiveDate::from_ymd(1989, 3, 20).and_hms_milli(10, 0, 0, 1000))
+            .to_cmp_be_bytes()
+            .unwrap();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Interval(I::Month(30)).to_be_bytes();
-        let n2 = Interval(I::Month(2)).to_be_bytes();
-        let n3 = Interval(I::Microsecond(1000)).to_be_bytes();
-        let n4 = Interval(I::Microsecond(30)).to_be_bytes();
+        let n1 = Interval(I::Month(30)).to_cmp_be_bytes().unwrap();
+        let n2 = Interval(I::Month(2)).to_cmp_be_bytes().unwrap();
+        let n3 = Interval(I::Microsecond(1000)).to_cmp_be_bytes().unwrap();
+        let n4 = Interval(I::Microsecond(30)).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n1, &n1), Ordering::Equal);
         assert_eq!(cmp(&n2, &n1), Ordering::Less);
@@ -184,12 +208,30 @@ mod tests {
         assert_eq!(cmp(&n3, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = UUID(100).to_be_bytes();
-        let n2 = UUID(101).to_be_bytes();
+        let n1 = Uuid(100).to_cmp_be_bytes().unwrap();
+        let n2 = Uuid(101).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n1, &n1), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n2, &n1), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
+
+        let n1 = Value::parse_json_map(r#"{ "a": 10 }"#)
+            .unwrap()
+            .to_cmp_be_bytes();
+
+        assert_eq!(
+            n1,
+            Err(ValueError::BigEdianExportNotSupported("MAP".to_owned()).into())
+        );
+
+        let n1 = Value::parse_json_list(r#"[1, 2, 3]"#)
+            .unwrap()
+            .to_cmp_be_bytes();
+
+        assert_eq!(
+            n1,
+            Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into())
+        );
     }
 }

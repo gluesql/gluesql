@@ -5,10 +5,7 @@ use {
         data::{Literal, Value},
         result::Result,
     },
-    std::{
-        borrow::Cow,
-        convert::{TryFrom, TryInto},
-    },
+    std::borrow::Cow,
 };
 
 pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {

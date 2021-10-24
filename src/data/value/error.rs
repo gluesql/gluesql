@@ -52,8 +52,8 @@ pub enum ValueError {
     #[error("modulo on non-numeric values: {0:?} % {1:?}")]
     ModuloOnNonNumeric(Value, Value),
 
-    #[error("floating numbers cannot be grouped by")]
-    FloatCannotBeGroupedBy,
+    #[error("{0} type cannot be grouped by")]
+    GroupByNotSupported(String),
 
     #[error("unary plus operation for non numeric value")]
     UnaryPlusOnNonNumeric,
@@ -64,8 +64,8 @@ pub enum ValueError {
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
-    #[error("floating columns cannot be set to unique constraint")]
-    ConflictOnFloatWithUniqueConstraint,
+    #[error("conflict - unique constraint cannot be used for {0} type")]
+    ConflictDataTypeOnUniqueConstraint(String),
 
     // Cast errors from value to value
     #[error("impossible cast")]
@@ -84,6 +84,15 @@ pub enum ValueError {
     #[error("literal cast failed to boolean: {0}")]
     LiteralCastToBooleanFailed(String),
 
+    #[error("literal cast failed to date: {0}")]
+    LiteralCastToDateFailed(String),
+
+    #[error("literal cast failed to time: {0}")]
+    LiteralCastToTimeFailed(String),
+
+    #[error("literal cast failed to timestamp: {0}")]
+    LiteralCastToTimestampFailed(String),
+
     #[error("unreachable literal cast from number to integer: {0}")]
     UnreachableLiteralCastFromNumberToInteger(String),
 
@@ -101,4 +110,22 @@ pub enum ValueError {
 
     #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
     ILikeOnNonString(Value, Value),
+
+    #[error("big edian export not supported for {0} type")]
+    BigEdianExportNotSupported(String),
+
+    #[error("invalid json string")]
+    InvalidJsonString,
+
+    #[error("json object type is required")]
+    JsonObjectTypeRequired,
+
+    #[error("json array type is required")]
+    JsonArrayTypeRequired,
+
+    #[error("unreachable - failed to parse json number: {0}")]
+    UnreachableJsonNumberParseFailure(String),
+
+    #[error("selector requires MAP or LIST types")]
+    SelectorRequiresMapOrListTypes,
 }

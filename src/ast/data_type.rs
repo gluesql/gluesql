@@ -10,5 +10,7 @@ pub enum DataType {
     Timestamp,
     Time,
     Interval,
-    UUID,
+    Uuid,
+    Map,
+    List,
 }

@@ -105,7 +105,7 @@ fn translate_aggrecate_one_arg<T: FnOnce(Expr) -> Aggregate>(
         .map(Expr::Aggregate)
 }
 
-fn translate_function_range<T: FnOnce(Expr, Option<Expr>) -> Function>(
+fn translate_function_trim<T: FnOnce(Expr, Option<Expr>) -> Function>(
     func: T,
     args: Vec<&SqlExpr>,
     name: String,
@@ -215,6 +215,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "FLOOR" => translate_function_one_arg(Function::Floor, args, name),
         "EXP" => translate_function_one_arg(Function::Exp, args, name),
         "LN" => translate_function_one_arg(Function::Ln, args, name),
+        "LOG" => {
+            check_len(name, args.len(), 2)?;
+
+            let antilog = translate_expr(args[0])?;
+            let base = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Log { antilog, base })))
+        }
         "LOG2" => translate_function_one_arg(Function::Log2, args, name),
         "LOG10" => translate_function_one_arg(Function::Log10, args, name),
         "SIN" => translate_function_one_arg(Function::Sin, args, name),
@@ -243,10 +251,10 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             Ok(Expr::Function(Box::new(Function::Lcm { left, right })))
         }
         "LTRIM" => {
-            translate_function_range(|expr, chars| Function::Ltrim { expr, chars }, args, name)
+            translate_function_trim(|expr, chars| Function::Ltrim { expr, chars }, args, name)
         }
         "RTRIM" => {
-            translate_function_range(|expr, chars| Function::Rtrim { expr, chars }, args, name)
+            translate_function_trim(|expr, chars| Function::Rtrim { expr, chars }, args, name)
         }
         "COUNT" => translate_aggrecate_one_arg(Aggregate::Count, args, name),
         "SUM" => translate_aggrecate_one_arg(Aggregate::Sum, args, name),
@@ -276,6 +284,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             })))
         }
         "REVERSE" => translate_function_one_arg(Function::Reverse, args, name),
+        "REPEAT" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let num = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Repeat { expr, num })))
+        }
         "SUBSTR" => {
             check_len_range(name, args.len(), 2, 3)?;
 
@@ -291,6 +307,18 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 count,
             })))
         }
+        "UNWRAP" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let selector = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Unwrap {
+                expr,
+                selector,
+            })))
+        }
+        "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

@@ -5,10 +5,7 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    std::{
-        convert::{TryFrom, TryInto},
-        fmt::Debug,
-    },
+    std::fmt::Debug,
 };
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -20,7 +17,7 @@ pub enum GroupKey {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
-    UUID(u128),
+    Uuid(u128),
     None,
 }
 

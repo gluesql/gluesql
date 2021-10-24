@@ -12,7 +12,7 @@ use {
     },
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    std::{cmp::Ordering, convert::TryInto, fmt::Debug, pin::Pin, rc::Rc},
+    std::{cmp::Ordering, fmt::Debug, pin::Pin, rc::Rc},
 };
 
 pub struct Sort<'a, T: 'static + Debug> {
@@ -106,15 +106,6 @@ impl<'a, T: 'static + Debug> Sort<'a, T> {
                     match value_a.partial_cmp(value_b) {
                         Some(ord) if ord != Ordering::Equal => {
                             return apply_asc(ord);
-                        }
-                        None => {
-                            let a = String::from(value_a);
-                            let b = String::from(value_b);
-                            let ord = a.cmp(&b);
-
-                            if ord != Ordering::Equal {
-                                return apply_asc(ord);
-                            }
                         }
                         _ => {}
                     }

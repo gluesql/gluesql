@@ -167,7 +167,7 @@ test_case!(group_by, async move {
     }
 
     let error_cases = vec![(
-        ValueError::FloatCannotBeGroupedBy.into(),
+        ValueError::GroupByNotSupported("FLOAT".to_owned()).into(),
         "SELECT * FROM Item GROUP BY ratio;",
     )];
 

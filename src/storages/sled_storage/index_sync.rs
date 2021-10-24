@@ -1,8 +1,11 @@
 use {
     super::{err_into, fetch_schema, key, Snapshot},
     crate::{
-        ast::Expr, evaluate_stateless, utils::Vector, Error, IndexError, Row, Schema, SchemaIndex,
-        Value,
+        ast::Expr,
+        evaluate_stateless,
+        result::{Error, Result},
+        utils::Vector,
+        IndexError, Row, Schema, SchemaIndex, Value,
     },
     sled::{
         transaction::{
@@ -10,7 +13,7 @@ use {
         },
         IVec,
     },
-    std::{borrow::Cow, convert::TryInto},
+    std::borrow::Cow,
 };
 
 pub struct IndexSync<'a> {
@@ -250,16 +253,16 @@ fn evaluate_index_key(
         .try_into()
         .map_err(ConflictableTransactionError::Abort)?;
 
-    Ok(build_index_key(table_name, index_name, value))
+    build_index_key(table_name, index_name, value).map_err(ConflictableTransactionError::Abort)
 }
 
 pub fn build_index_key_prefix(table_name: &str, index_name: &str) -> Vec<u8> {
     format!("index/{}/{}/", table_name, index_name).into_bytes()
 }
 
-pub fn build_index_key(table_name: &str, index_name: &str, value: Value) -> Vec<u8> {
-    build_index_key_prefix(table_name, index_name)
+pub fn build_index_key(table_name: &str, index_name: &str, value: Value) -> Result<Vec<u8>> {
+    Ok(build_index_key_prefix(table_name, index_name)
         .into_iter()
-        .chain(value.to_be_bytes().into_iter())
-        .collect::<Vec<_>>()
+        .chain(value.to_cmp_be_bytes()?)
+        .collect::<Vec<_>>())
 }
