@@ -67,8 +67,10 @@
 //! After you implement `Tester` trait, the only thing you need to do is calling `generate_tests!` macro.
 
 // re-export
+pub use chrono;
 #[cfg(feature = "sled-storage")]
 pub use sled;
+pub use sqlparser;
 
 mod executor;
 mod glue;
