@@ -140,7 +140,6 @@ mod tests {
     #[test]
     fn sled_basic() {
         use crate::sled_storage::SledStorage;
-        use std::convert::TryFrom;
 
         let config = sled::Config::default()
             .path("data/using_config")

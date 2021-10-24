@@ -2,7 +2,7 @@
 
 use {
     cfg_if::cfg_if,
-    std::{cell::RefCell, convert::TryFrom, rc::Rc},
+    std::{cell::RefCell, rc::Rc},
 };
 
 use gluesql::{sled::IVec, sled_storage::SledStorage, tests::*, *};

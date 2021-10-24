@@ -12,7 +12,6 @@ use {
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    std::convert::TryInto,
     std::{fmt::Debug, rc::Rc},
 };
 

@@ -4,7 +4,7 @@ use {
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, collections::HashMap, convert::TryInto, fmt::Debug},
+    std::{cmp::Ordering, collections::HashMap, fmt::Debug},
 };
 
 mod big_edian;

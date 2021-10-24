@@ -10,7 +10,7 @@ use {
         store::GStore,
     },
     im_rc::HashMap,
-    std::{convert::TryInto, fmt::Debug, rc::Rc},
+    std::{fmt::Debug, rc::Rc},
 };
 
 pub struct Filter<'a, T: 'static + Debug> {

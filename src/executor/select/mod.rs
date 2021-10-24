@@ -26,7 +26,7 @@ use {
 };
 
 #[cfg(feature = "index")]
-use {super::evaluate::evaluate, crate::ast::IndexItem, std::convert::TryInto};
+use {super::evaluate::evaluate, crate::ast::IndexItem};
 
 async fn fetch_blended<'a, T: 'static + Debug>(
     storage: &dyn GStore<T>,

@@ -6,7 +6,7 @@ use {
         result::Result,
     },
     futures::stream::{Stream, StreamExt},
-    std::{convert::TryInto, pin::Pin},
+    std::pin::Pin,
 };
 
 pub struct Limit {
