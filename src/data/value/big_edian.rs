@@ -8,7 +8,7 @@ const VALUE: u8 = 0;
 const NULL: u8 = 1;
 
 impl Value {
-    /// Value to Big-Endian for comparison purpose
+    /// Value to Big-Edian for comparison purpose
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
         let value = match self {
             Value::Bool(v) => {
@@ -82,10 +82,10 @@ impl Value {
                 .collect::<Vec<_>>(),
             Value::Null => vec![NULL],
             Value::Map(_) => {
-                return Err(ValueError::BigEndianExportNotSupported("MAP".to_owned()).into());
+                return Err(ValueError::BigEdianExportNotSupported("MAP".to_owned()).into());
             }
             Value::List(_) => {
-                return Err(ValueError::BigEndianExportNotSupported("LIST".to_owned()).into());
+                return Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into());
             }
             Value::Decimal(v) => [VALUE]
                 .iter()
@@ -227,7 +227,7 @@ mod tests {
 
         assert_eq!(
             n1,
-            Err(ValueError::BigEndianExportNotSupported("MAP".to_owned()).into())
+            Err(ValueError::BigEdianExportNotSupported("MAP".to_owned()).into())
         );
 
         let n1 = Value::parse_json_list(r#"[1, 2, 3]"#)
@@ -236,7 +236,7 @@ mod tests {
 
         assert_eq!(
             n1,
-            Err(ValueError::BigEndianExportNotSupported("LIST".to_owned()).into())
+            Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into())
         );
     }
 }
