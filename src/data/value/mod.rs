@@ -243,7 +243,7 @@ impl Value {
             (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 * b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(*a * *b)),
+            (Decimal(a), Decimal(b)) => Ok(Decimal(a * b)),
             (Null, I64(_))
             | (Null, F64(_))
             | (Null, Interval(_))
@@ -269,7 +269,7 @@ impl Value {
             (F64(a), F64(b)) => Ok(F64(a / b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(*a / *b)),
+            (Decimal(a), Decimal(b)) => Ok(Decimal(a / b)),
             (Null, I64(_))
             | (Null, F64(_))
             | (I64(_), Null)

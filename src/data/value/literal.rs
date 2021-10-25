@@ -10,8 +10,7 @@ use {
         result::{Error, Result},
     },
     chrono::NaiveDate,
-    rust_decimal::Decimal,
-    std::{cmp::Ordering, convert::TryFrom, str::FromStr},
+    std::cmp::Ordering,
 };
 
 impl PartialEq<Literal<'_>> for Value {
@@ -152,7 +151,10 @@ impl Value {
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
-            (DataType::Decimal, Literal::Number(v)) => parse_decimal(v).map(Value::Decimal),
+            (DataType::Decimal, Literal::Number(v)) => v
+                .parse()
+                .map(Value::Decimal)
+                .map_err(|_| ValueError::FailedToParseDecimal(v.to_string()).into()),
             (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
@@ -227,13 +229,6 @@ impl Value {
             }
             .into()),
         }
-    }
-}
-
-fn parse_decimal(v: &str) -> Result<Decimal> {
-    match Decimal::from_str(v) {
-        Ok(v) => Ok(v),
-        _ => Err(ValueError::FailedToParseDecimal(v.to_owned()).into()),
     }
 }
 

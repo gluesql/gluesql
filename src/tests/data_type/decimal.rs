@@ -2,7 +2,6 @@ use crate::*;
 
 test_case!(decimal, async move {
     use Value::Decimal;
-    // use rust_decimal::Decimal;
 
     let test_cases = vec![
         (

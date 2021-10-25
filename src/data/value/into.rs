@@ -9,7 +9,6 @@ use {
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     rust_decimal::prelude::ToPrimitive,
-    rust_decimal::Decimal,
     uuid::Uuid,
 };
 
@@ -105,13 +104,7 @@ impl TryInto<i64> for &Value {
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
-            Value::Decimal(value) => {
-                let v = Decimal::to_i64(value);
-                match v {
-                    Some(v) => v,
-                    None => return Err(ValueError::ImpossibleCast.into()),
-                }
-            }
+            Value::Decimal(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -149,13 +142,7 @@ impl TryInto<f64> for &Value {
             Value::Str(value) => value
                 .parse::<f64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
-            Value::Decimal(value) => {
-                let v = Decimal::to_f64(value);
-                match v {
-                    Some(v) => v,
-                    None => return Err(ValueError::ImpossibleCast.into()),
-                }
-            }
+            Value::Decimal(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
