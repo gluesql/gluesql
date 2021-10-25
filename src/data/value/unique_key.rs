@@ -4,7 +4,6 @@ use {
         executor::UniqueKey,
         result::{Error, Result},
     },
-    std::convert::TryInto,
 };
 
 impl TryInto<Option<UniqueKey>> for &Value {
@@ -25,7 +24,7 @@ impl TryInto<Option<UniqueKey>> for &Value {
             Timestamp(v) => Some(UniqueKey::Timestamp(*v)),
             Time(v) => Some(UniqueKey::Time(*v)),
             Interval(v) => Some(UniqueKey::Interval(*v)),
-            UUID(v) => Some(UniqueKey::UUID(*v)),
+            Uuid(v) => Some(UniqueKey::Uuid(*v)),
             Decimal(v) => Some(UniqueKey::Decimal(*v)),
             Null => None,
             F64(_) => return conflict("FLOAT"),

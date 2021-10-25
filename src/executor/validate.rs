@@ -6,11 +6,11 @@ use {
         store::Store,
         utils::Vector,
     },
-    rust_decimal::Decimal,
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
+    rust_decimal::Decimal,
     serde::Serialize,
-    std::{convert::TryInto, fmt::Debug, rc::Rc},
+    std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -37,8 +37,8 @@ pub enum UniqueKey {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
+    Uuid(u128),
     Decimal(Decimal),
-    UUID(u128),
 }
 
 #[derive(Debug)]

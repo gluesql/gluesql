@@ -5,11 +5,7 @@ use {
         data::{Literal, Value},
         result::{Error, Result},
     },
-    std::{
-        borrow::Cow,
-        cmp::Ordering,
-        convert::{TryFrom, TryInto},
-    },
+    std::{borrow::Cow, cmp::Ordering},
 };
 
 #[derive(Clone)]

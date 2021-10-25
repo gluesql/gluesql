@@ -6,7 +6,6 @@ use {
         result::{Error, Result},
         translate::translate_expr,
     },
-    std::convert::TryFrom,
 };
 
 impl TryFrom<&str> for Interval {
@@ -84,7 +83,7 @@ impl From<&Interval> for String {
                         f!($template; minute second; "MINUTE TO SECOND")
                     };
                     (MINUTE TO MICRO $template: literal) => {
-                        f!($template; minute second micro!(); "MINUTE TO SECOND");
+                        f!($template; minute second micro!(); "MINUTE TO SECOND")
                     };
 
                     // HOUR TO ..
@@ -95,7 +94,7 @@ impl From<&Interval> for String {
                         f!($template; hour minute second; "HOUR TO SECOND")
                     };
                     (HOUR TO MICRO $template: literal) => {
-                        f!($template; hour minute second micro!(); "HOUR TO SECOND");
+                        f!($template; hour minute second micro!(); "HOUR TO SECOND")
                     };
 
                     // DAY TO ..
@@ -148,7 +147,7 @@ impl From<Interval> for String {
 
 #[cfg(test)]
 mod tests {
-    use {super::Interval, std::convert::TryFrom};
+    use super::Interval;
 
     #[test]
     fn into_string() {

@@ -84,6 +84,8 @@ pub enum Function {
     Rtrim { expr: Expr, chars: Option<Expr> },
     #[strum(to_string = "REVERSE")]
     Reverse(Expr),
+    #[strum(to_string = "REPEAT")]
+    Repeat { expr: Expr, num: Expr },
     #[strum(to_string = "SUBSTR")]
     Substr {
         expr: Expr,
@@ -92,6 +94,8 @@ pub enum Function {
     },
     #[strum(to_string = "UNWRAP")]
     Unwrap { expr: Expr, selector: Expr },
+    #[strum(to_string = "GENERATE_UUID")]
+    GenerateUuid(),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

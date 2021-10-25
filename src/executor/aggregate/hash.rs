@@ -5,11 +5,11 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    rust_decimal::Decimal,
     std::{
         convert::{TryFrom, TryInto},
         fmt::Debug,
     },
-    rust_decimal::Decimal,
 };
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -21,7 +21,7 @@ pub enum GroupKey {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
-    UUID(u128),
+    Uuid(u128),
     Decimal(Decimal),
     None,
 }

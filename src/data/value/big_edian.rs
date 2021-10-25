@@ -75,7 +75,7 @@ impl Value {
                     .copied()
                     .collect::<Vec<_>>()
             }
-            Value::UUID(v) => [VALUE]
+            Value::Uuid(v) => [VALUE]
                 .iter()
                 .chain(v.to_be_bytes().iter())
                 .copied()
@@ -86,7 +86,7 @@ impl Value {
             }
             Value::List(_) => {
                 return Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into());
-            },
+            }
             Value::Decimal(v) => [VALUE]
                 .iter()
                 .chain(v.serialize().iter()) // maybe this can cause serde error
@@ -213,8 +213,8 @@ mod tests {
         assert_eq!(cmp(&n3, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = UUID(100).to_cmp_be_bytes().unwrap();
-        let n2 = UUID(101).to_cmp_be_bytes().unwrap();
+        let n1 = Uuid(100).to_cmp_be_bytes().unwrap();
+        let n2 = Uuid(101).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n1, &n1), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);

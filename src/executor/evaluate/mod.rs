@@ -20,10 +20,10 @@ use {
     std::{
         borrow::Cow,
         cmp::{max, min},
-        convert::{TryFrom, TryInto},
         fmt::Debug,
         rc::Rc,
     },
+    uuid::Uuid,
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
@@ -169,6 +169,29 @@ pub async fn evaluate<'a, T: 'static + Debug>(
         }
         Expr::Wildcard | Expr::QualifiedWildcard(_) => {
             Err(EvaluateError::UnreachableWildcardExpr.into())
+        }
+        Expr::Case {
+            operand,
+            when_then,
+            else_result,
+        } => {
+            let operand = match operand {
+                Some(op) => eval(op).await?,
+                None => Evaluated::from(Value::Bool(true)),
+            };
+
+            for (when, then) in when_then.iter() {
+                let when = eval(when).await?;
+
+                if when.eq(&operand) {
+                    return eval(then).await;
+                }
+            }
+
+            match else_result {
+                Some(er) => eval(er).await,
+                None => Ok(Evaluated::from(Value::Null)),
+            }
         }
     }
 }
@@ -566,6 +589,14 @@ async fn evaluate_function<'a, T: 'static + Debug>(
             let selector = eval_to_str!(selector);
             value.selector(&selector).map(Evaluated::from)
         }
+        .map(Evaluated::from),
+        Function::GenerateUuid() => Ok(Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))),
+        Function::Repeat { expr, num } => {
+            let expr = eval_to_str!(expr);
+            let num = eval_to_integer!(num) as usize;
+            Ok(Value::Str(expr.repeat(num)))
+        }
+        .map(Evaluated::from),
     }
 }
 
