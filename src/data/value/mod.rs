@@ -8,7 +8,7 @@ use {
     std::{cmp::Ordering, collections::HashMap, convert::TryInto, fmt::Debug},
 };
 
-mod big_edian;
+mod big_endian;
 mod date;
 mod error;
 mod group_key;
