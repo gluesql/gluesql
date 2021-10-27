@@ -1,4 +1,4 @@
-use {crate::*, prelude::*, test::*};
+use {crate::*, test::*};
 
 #[cfg(feature = "sorter")]
 test_case!(order_by, async move {
@@ -22,7 +22,7 @@ CREATE TABLE Test (
     "#
     );
 
-    use Value::*;
+    use prelude::Value::*;
 
     test!(
         Ok(select!(
