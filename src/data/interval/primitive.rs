@@ -1,6 +1,5 @@
 use {
     super::Interval,
-    bigdecimal::{BigDecimal, ToPrimitive},
     std::ops::{Div, Mul},
 };
 
@@ -49,32 +48,6 @@ impl Mul<f64> for Interval {
         match self {
             Interval::Month(v) => Interval::Month((v as f64 * rhs) as i32),
             Interval::Microsecond(v) => Interval::Microsecond((v as f64 * rhs) as i64),
-        }
-    }
-}
-
-impl Mul<&BigDecimal> for Interval {
-    type Output = Self;
-
-    fn mul(self, rhs: &BigDecimal) -> Self {
-        match self {
-            Interval::Month(v) => Interval::Month((BigDecimal::from(v) * rhs).to_i32().unwrap()),
-            Interval::Microsecond(v) => {
-                Interval::Microsecond((BigDecimal::from(v) * rhs).to_i64().unwrap())
-            }
-        }
-    }
-}
-
-impl Div<&BigDecimal> for Interval {
-    type Output = Self;
-
-    fn div(self, rhs: &BigDecimal) -> Self {
-        match self {
-            Interval::Month(v) => Interval::Month((BigDecimal::from(v) / rhs).to_i32().unwrap()),
-            Interval::Microsecond(v) => {
-                Interval::Microsecond((BigDecimal::from(v) / rhs).to_i64().unwrap())
-            }
         }
     }
 }

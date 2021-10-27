@@ -4,7 +4,7 @@ use {
         ast::AstLiteral,
         result::{Error, Result},
     },
-    bigdecimal::{BigDecimal,FromPrimitive}
+    bigdecimal::{BigDecimal, ToPrimitive},
     serde::Serialize,
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug, ops::Neg},
     thiserror::Error,
@@ -116,7 +116,10 @@ impl<'a> Literal<'a> {
             } else {
                 "FALSE".to_owned()
             }),
-            Number(v) => Some(v.to_string()),
+            Number(v) => {
+                println!("{:?}", v);
+                Some(v.to_string())
+            }
             Text(v) => Some(v.into_owned()),
             Interval(v) => Some(v.into()),
             Null => None,
@@ -165,7 +168,15 @@ impl<'a> Literal<'a> {
     pub fn multiply<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
-            (Number(l), Interval(r)) | (Interval(r), Number(l)) => Ok(Interval(*r * l.as_ref())),
+            (Number(l), Interval(r)) | (Interval(r), Number(l)) => {
+                if let Some(l) = l.to_i64() {
+                    Ok(Interval(l * *r))
+                } else if let Some(l) = l.to_f64() {
+                    Ok(Interval(l * *r))
+                } else {
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                }
+            }
             (Null, Number(_))
             | (Null, Interval(_))
             | (Number(_), Null)
@@ -189,10 +200,15 @@ impl<'a> Literal<'a> {
                 }
             }
             (Interval(l), Number(r)) => {
-                if *r.as_ref() == 0.into() {
-                    Err(LiteralError::DivisorShouldNotBeZero.into())
+                if let Some(r) = r.to_i64() {
+                    match r {
+                        0 => Err(LiteralError::DivisorShouldNotBeZero.into()),
+                        _ => Ok(Interval(*l / r)),
+                    }
+                } else if let Some(r) = r.to_f64() {
+                    Ok(Interval(*l / r))
                 } else {
-                    Ok(Interval(*l / r.as_ref()))
+                    Err(LiteralError::UnreachableBinaryArithmetic.into())
                 }
             }
             (Null, Number(_)) | (Number(_), Null) | (Interval(_), Null) | (Null, Null) => {

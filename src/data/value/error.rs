@@ -78,8 +78,14 @@ pub enum ValueError {
     #[error("literal cast failed from text to integer: {0}")]
     LiteralCastFromTextToIntegerFailed(String),
 
+    #[error("literal cast failed from number to integer: {0}")]
+    LiteralCastFromNumberToIntegerFailed(String),
+
     #[error("literal cast failed from text to float: {0}")]
-    LiteralCastToFloatFailed(String),
+    LiteralCastFromTextToFloatFailed(String),
+
+    #[error("literal cast failed from number to float: {0}")]
+    LiteralCastFromNumberToFloatFailed(String),
 
     #[error("literal cast failed to boolean: {0}")]
     LiteralCastToBooleanFailed(String),

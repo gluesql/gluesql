@@ -9,7 +9,7 @@ use {
         data::{value::uuid::parse_uuid, Interval, Literal},
         result::{Error, Result},
     },
-    bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive},
+    bigdecimal::ToPrimitive,
     chrono::NaiveDate,
     std::cmp::Ordering,
 };
@@ -18,8 +18,11 @@ impl PartialEq<Literal<'_>> for Value {
     fn eq(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
-            (Value::I64(l), Literal::Number(r)) => BigDecimal::from_i64(*l).unwrap() == *r.as_ref(),
-            (Value::F64(l), Literal::Number(r)) => BigDecimal::from_f64(*l).unwrap() == *r.as_ref(),
+            (Value::I64(l), Literal::Number(r)) => match r.is_integer() {
+                true => r.to_i64().map(|r| *l == r).unwrap_or(false),
+                false => false,
+            },
+            (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l == &r,
@@ -43,8 +46,12 @@ impl PartialEq<Literal<'_>> for Value {
 impl PartialOrd<Literal<'_>> for Value {
     fn partial_cmp(&self, other: &Literal<'_>) -> Option<Ordering> {
         match (self, other) {
-            (Value::I64(l), Literal::Number(r)) => Some(BigDecimal::from_i64(*l).unwrap().cmp(r)),
-            (Value::F64(l), Literal::Number(r)) => Some(BigDecimal::from_f64(*l).unwrap().cmp(r)),
+            (Value::I64(l), Literal::Number(r)) => {
+                r.to_i64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::F64(l), Literal::Number(r)) => {
+                r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
             (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l.partial_cmp(&r),
@@ -73,9 +80,10 @@ impl TryFrom<&Literal<'_>> for Value {
     fn try_from(literal: &Literal<'_>) -> Result<Self> {
         match literal {
             Literal::Number(v) => match v.is_integer() {
-                true => Ok(Value::I64(v.to_i64().unwrap())),
-                false => Ok(Value::F64(v.to_f64().unwrap())),
-            },
+                true => v.to_i64().map(Value::I64),
+                false => v.to_f64().map(Value::F64),
+            }
+            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Interval(v) => Ok(Value::Interval(*v)),
@@ -90,9 +98,10 @@ impl TryFrom<Literal<'_>> for Value {
     fn try_from(literal: Literal<'_>) -> Result<Self> {
         match literal {
             Literal::Number(v) => match v.is_integer() {
-                true => Ok(Value::I64(v.to_i64().unwrap())),
-                false => Ok(Value::F64(v.to_f64().unwrap())),
-            },
+                true => v.to_i64().map(Value::I64),
+                false => v.to_f64().map(Value::F64),
+            }
+            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(v)),
             Literal::Text(v) => Ok(Value::Str(v.into_owned())),
             Literal::Interval(v) => Ok(Value::Interval(v)),
@@ -105,10 +114,11 @@ impl Value {
     pub fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
-            (DataType::Int, Literal::Number(v)) => v
-                .to_i64()
-                .map(Value::I64)
-                .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
+            (DataType::Int, Literal::Number(v)) => match v.is_integer() {
+                true => v.to_i64().map(Value::I64),
+                false => None,
+            }
+            .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)
@@ -141,19 +151,22 @@ impl Value {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
             (DataType::Boolean, Literal::Text(v)) => match v.to_uppercase().as_str() {
-                "TRUE" => Ok(Value::Bool(true)),
-                "FALSE" => Ok(Value::Bool(false)),
+                "TRUE" | "1" => Ok(Value::Bool(true)),
+                "FALSE" | "0" => Ok(Value::Bool(false)),
                 _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
             },
-            (DataType::Boolean, Literal::Number(v)) => match v.to_i64().unwrap() {
-                0 => Ok(Value::Bool(false)),
-                _ => Ok(Value::Bool(true)),
+            (DataType::Boolean, Literal::Number(v)) => match v.to_i64() {
+                Some(0) => Ok(Value::Bool(false)),
+                Some(_) => Ok(Value::Bool(true)),
+                None => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
             },
             (DataType::Int, Literal::Text(v)) => v
                 .parse::<i64>()
                 .map(Value::I64)
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int, Literal::Number(v)) => Ok(Value::I64(v.to_i64().unwrap())),
+            (DataType::Int, Literal::Number(v)) => v.to_i64().map(Value::I64).ok_or_else(|| {
+                ValueError::LiteralCastFromNumberToIntegerFailed(v.to_string()).into()
+            }),
             (DataType::Int, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
@@ -162,8 +175,10 @@ impl Value {
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
-                .map_err(|_| ValueError::LiteralCastToFloatFailed(v.to_string()).into()),
-            (DataType::Float, Literal::Number(v)) => Ok(Value::F64(v.to_f64().unwrap())),
+                .map_err(|_| ValueError::LiteralCastFromTextToFloatFailed(v.to_string()).into()),
+            (DataType::Float, Literal::Number(v)) => v.to_f64().map(Value::F64).ok_or_else(|| {
+                ValueError::LiteralCastFromNumberToFloatFailed(v.to_string()).into()
+            }),
             (DataType::Float, Literal::Boolean(v)) => {
                 let v = if *v { 1.0 } else { 0.0 };
 
