@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, prelude::*};
 
 test_case!(synthesize, async move {
     let create_sql = "

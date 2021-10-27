@@ -12,7 +12,7 @@
 //! ## Examples
 //!
 //! ```
-//! use gluesql::*;
+//! use gluesql::prelude::*;
 //!
 //! #[cfg(feature = "sled-storage")]
 //! fn main() {
@@ -102,8 +102,6 @@ pub mod prelude {
     };
 }
 
-pub use prelude::*;
-
 pub mod test {
     #[cfg(feature = "sled-storage")]
     pub use crate::storages::{sled_storage, SledStorage};
@@ -118,23 +116,15 @@ pub mod test {
     pub use crate::store::IndexError;
 
     pub use crate::{
-        ast::{
-            ColumnDef, DataType, Expr, IndexItem, IndexOperator::Eq, Query, SetExpr, Statement,
-            TableFactor,
-        },
+        ast::*,
         data::{
-            value::{
-                Value::{Bool, Interval, Null, Str, Uuid, F64, I64},
-                ValueError,
-            },
+            value::{Value::*, ValueError},
             IntervalError, Literal, LiteralError, RowError,
         },
-        executor::{
-            execute, AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, Payload,
-            SelectError, UpdateError, ValidateError,
-        },
+        executor::*,
         parse_sql::{parse, parse_expr},
         plan::plan,
+        result::*,
         store::{GStore, GStoreMut, StoreMut},
         translate::{translate, translate_expr, TranslateError},
     };

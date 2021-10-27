@@ -1,7 +1,4 @@
-use std::borrow::Cow;
-
-use crate::*;
-use test::*;
+use {crate::*, prelude::*, std::borrow::Cow, test::*};
 
 test_case!(types, async move {
     run!("CREATE TABLE TableB (id BOOLEAN);");

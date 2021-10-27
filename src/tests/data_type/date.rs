@@ -20,7 +20,7 @@ INSERT INTO DateLog VALUES
 "#
     );
 
-    use Value::*;
+    use prelude::Value::*;
 
     macro_rules! date {
         ($date: expr) => {

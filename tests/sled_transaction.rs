@@ -7,12 +7,7 @@
 //! scenarios, but not PHANTOM READ safe.
 
 use {
-    gluesql::{
-        test::{sled_storage, FetchError, StoreMut},
-        tests::test_indexes,
-        Value::*,
-        *,
-    },
+    gluesql::{prelude::*, test::*, tests::test_indexes, *},
     std::{
         fs,
         time::{Duration, SystemTime, UNIX_EPOCH},

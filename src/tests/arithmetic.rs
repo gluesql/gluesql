@@ -1,4 +1,4 @@
-use {crate::*, std::borrow::Cow, test::*};
+use {crate::*, prelude::*, std::borrow::Cow, test::*};
 
 test_case!(arithmetic, async move {
     run!(

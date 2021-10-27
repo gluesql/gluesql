@@ -1,5 +1,4 @@
-use crate::*;
-use test::*;
+use {crate::*, prelude::*, test::*};
 
 #[cfg(feature = "sorter")]
 test_case!(order_by, async move {

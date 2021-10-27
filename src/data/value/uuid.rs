@@ -1,19 +1,19 @@
 use {
-    super::error::ValueError,
-    crate::{result::Result, Error::Value},
+    super::ValueError,
+    crate::result::{Error, Result},
     uuid::Uuid,
 };
 
 pub fn parse_uuid(v: &str) -> Result<u128> {
     match Uuid::parse_str(v) {
         Ok(u) => Ok(u.as_u128()),
-        _ => Err(Value(ValueError::FailedToParseUUID(v.to_owned()))),
+        _ => Err(Error::Value(ValueError::FailedToParseUUID(v.to_owned()))),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::ValueError;
+    use crate::data::value::ValueError;
 
     #[test]
     fn parse_uuid() {

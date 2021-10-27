@@ -34,7 +34,7 @@ CREATE TABLE Test (
     );
 
     use ast::IndexOperator::*;
-    use Value::*;
+    use prelude::Value::*;
 
     test_idx!(
         Ok(select!(

@@ -2,7 +2,7 @@ use crate::*;
 use test::*;
 
 test_case!(log2, async move {
-    use Value::{Null, F64};
+    use prelude::Value::{Null, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -45,7 +45,7 @@ test_case!(log2, async move {
 });
 
 test_case!(log10, async move {
-    use Value::{Null, F64};
+    use prelude::Value::{Null, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -88,7 +88,7 @@ test_case!(log10, async move {
 });
 
 test_case!(ln, async move {
-    use Value::{Null, F64};
+    use prelude::Value::{Null, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -131,7 +131,7 @@ test_case!(ln, async move {
 });
 
 test_case!(log, async move {
-    use Value::{Null, F64};
+    use prelude::Value::{Null, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -182,7 +182,7 @@ test_case!(log, async move {
 });
 
 test_case!(exp, async move {
-    use Value::{Null, F64};
+    use prelude::Value::{Null, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),

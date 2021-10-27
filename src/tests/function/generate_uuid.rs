@@ -1,4 +1,4 @@
-use crate::{ast::DataType, test::TranslateError, *};
+use crate::{test::*, *};
 
 test_case!(generate_uuid, async move {
     let test_cases = vec![

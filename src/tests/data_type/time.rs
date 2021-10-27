@@ -21,7 +21,7 @@ INSERT INTO TimeLog VALUES
     );
 
     use chrono::{NaiveDate, NaiveTime};
-    use Value::*;
+    use prelude::Value::*;
 
     let t = |h, m, s, ms| NaiveTime::from_hms_milli(h, m, s, ms);
     let i = |h, m, s, ms| {

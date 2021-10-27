@@ -2,7 +2,7 @@ use crate::*;
 use test::*;
 
 test_case!(degrees, async move {
-    use Value::{Null, F64};
+    use prelude::Value::{Null, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),

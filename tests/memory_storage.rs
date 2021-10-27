@@ -44,7 +44,7 @@ macro_rules! test {
 #[cfg(feature = "alter-table")]
 #[test]
 fn memory_storage_alter_table() {
-    use gluesql::{Error, Glue};
+    use gluesql::{prelude::Glue, result::Error};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);
@@ -73,8 +73,9 @@ fn memory_storage_alter_table() {
 fn memory_storage_index() {
     use futures::executor::block_on;
     use gluesql::{
+        prelude::Glue,
+        result::{Error, Result},
         store::{Index, Store},
-        Error, Glue, Result,
     };
 
     let storage = MemoryStorage::default();
@@ -111,7 +112,7 @@ fn memory_storage_index() {
 #[cfg(feature = "transaction")]
 #[test]
 fn memory_storage_transaction() {
-    use gluesql::{Error, Glue};
+    use gluesql::{prelude::Glue, result::Error};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);

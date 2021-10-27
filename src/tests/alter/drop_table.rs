@@ -17,7 +17,7 @@ CREATE TABLE DropTable (
         run!(sql);
     }
 
-    use Value::*;
+    use prelude::Value::*;
 
     let sqls = vec![
         (

@@ -25,7 +25,7 @@ INSERT INTO IntervalLog VALUES
     );
 
     use data::Interval as I;
-    use Value::*;
+    use prelude::Value::*;
 
     test!(
         Ok(select!(

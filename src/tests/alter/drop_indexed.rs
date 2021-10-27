@@ -4,7 +4,7 @@ use crate::*;
 use test::*;
 
 test_case!(drop_indexed_table, async move {
-    use {ast::IndexOperator::*, Value::I64};
+    use {ast::IndexOperator::*, prelude::Value::I64};
 
     run!("DROP TABLE IF EXISTS Test;");
     run!("CREATE TABLE Test (id INTEGER);");
@@ -57,7 +57,7 @@ CREATE TABLE Test (
     "#
     );
 
-    use {ast::IndexOperator::*, Value::*};
+    use {ast::IndexOperator::*, prelude::Value::*};
 
     // create indexes
     run!("CREATE INDEX idx_name ON Test (num + 1)");

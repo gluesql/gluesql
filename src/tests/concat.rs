@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, prelude::*, test::*};
 
 test_case!(concat, async move {
     use Value::{Null, Str};

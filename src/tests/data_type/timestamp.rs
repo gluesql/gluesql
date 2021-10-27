@@ -26,7 +26,7 @@ INSERT INTO TimestampLog VALUES
         };
     }
 
-    use Value::*;
+    use prelude::Value::*;
 
     test!(
         Ok(select!(

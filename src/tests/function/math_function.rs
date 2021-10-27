@@ -2,7 +2,7 @@ use crate::*;
 use test::*;
 
 test_case!(sin, async move {
-    use Value::F64;
+    use prelude::Value::{self, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -60,7 +60,7 @@ test_case!(sin, async move {
 });
 
 test_case!(cos, async move {
-    use Value::F64;
+    use prelude::Value::{self, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -118,7 +118,7 @@ test_case!(cos, async move {
 });
 
 test_case!(tan, async move {
-    use Value::F64;
+    use prelude::Value::{self, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -176,8 +176,8 @@ test_case!(tan, async move {
 });
 
 test_case!(asin, async move {
-    use Value::Null;
-    use Value::F64;
+    use prelude::Value::Null;
+    use prelude::Value::F64;
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -227,8 +227,8 @@ test_case!(asin, async move {
 });
 
 test_case!(acos, async move {
-    use Value::Null;
-    use Value::F64;
+    use prelude::Value::Null;
+    use prelude::Value::F64;
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -282,8 +282,8 @@ test_case!(acos, async move {
 });
 
 test_case!(atan, async move {
-    use Value::Null;
-    use Value::F64;
+    use prelude::Value::Null;
+    use prelude::Value::F64;
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),

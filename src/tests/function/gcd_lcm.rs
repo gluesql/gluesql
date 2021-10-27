@@ -2,7 +2,7 @@ use crate::*;
 use test::*;
 
 test_case!(gcd_lcm, async move {
-    use Value::I64;
+    use prelude::Value::I64;
 
     let test_cases = vec![
         (

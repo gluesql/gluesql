@@ -1,4 +1,5 @@
 use crate::*;
+use prelude::Value;
 use test::*;
 
 test_case!(expr, async move {

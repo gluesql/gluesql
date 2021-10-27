@@ -1,4 +1,5 @@
 use crate::*;
+use prelude::*;
 use test::*;
 
 test_case!(aggregate, async move {

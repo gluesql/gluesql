@@ -2,7 +2,7 @@ use crate::*;
 use test::*;
 
 test_case!(ltrim_rtrim, async move {
-    use Value::Str;
+    use prelude::Value::{self, Str};
     let test_cases = vec![
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (

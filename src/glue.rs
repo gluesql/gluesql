@@ -4,9 +4,9 @@ use {
         executor::{execute, Payload},
         parse_sql::parse,
         plan::plan,
+        result::Result,
         store::{GStore, GStoreMut},
         translate::translate,
-        Result,
     },
     futures::executor::block_on,
     std::{fmt::Debug, marker::PhantomData},
@@ -74,8 +74,8 @@ mod tests {
     use {
         crate::{
             executor::Payload,
+            prelude::{Glue, Value},
             store::{GStore, GStoreMut},
-            Glue, Value,
         },
         std::fmt::Debug,
     };
@@ -143,12 +143,7 @@ mod tests {
     #[cfg(feature = "sled-storage")]
     #[test]
     fn sled_basic() {
-<<<<<<< HEAD
         use crate::storages::sled_storage::SledStorage;
-        use std::convert::TryFrom;
-=======
-        use crate::sled_storage::SledStorage;
->>>>>>> ab8511d3b6bf61cdde601d6e472b8cdd6314b058
 
         let config = sled::Config::default()
             .path("data/using_config")

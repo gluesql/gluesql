@@ -568,7 +568,7 @@ mod tests {
     #[test]
     fn cast() {
         use {
-            crate::{ast::DataType::*, Value},
+            crate::{ast::DataType::*, prelude::Value},
             chrono::{NaiveDate, NaiveTime},
         };
 

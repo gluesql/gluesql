@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, prelude::*};
 
 test_case!(limit, async move {
     use Value::I64;

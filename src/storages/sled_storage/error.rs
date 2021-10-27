@@ -1,5 +1,5 @@
 use {
-    crate::{store::IndexError, Error},
+    crate::{result::Error, store::IndexError},
     sled::transaction::TransactionError as SledTransactionError,
     std::{str, time},
     thiserror::Error as ThisError,

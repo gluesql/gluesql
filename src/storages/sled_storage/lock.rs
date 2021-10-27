@@ -1,6 +1,6 @@
 use {
     super::{err_into, State},
-    crate::{Error, Result},
+    crate::result::{Error, Result},
     serde::{Deserialize, Serialize},
     sled::{
         transaction::{

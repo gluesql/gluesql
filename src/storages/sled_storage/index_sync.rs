@@ -7,10 +7,10 @@ use {
             Row,
         },
         executor::evaluate_stateless,
+        prelude::Value,
         result::{Error, Result},
         store::IndexError,
         utils::Vector,
-        Value,
     },
     sled::{
         transaction::{
