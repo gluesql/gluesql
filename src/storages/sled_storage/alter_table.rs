@@ -127,7 +127,7 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry(tx_result, |storage| {
+        self.check_and_retry(tx_result, |storage| {
             storage.rename_schema(table_name, new_table_name)
         })
         .await
@@ -200,7 +200,7 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry(tx_result, |storage| {
+        self.check_and_retry(tx_result, |storage| {
             storage.rename_column(table_name, old_column_name, new_column_name)
         })
         .await
@@ -322,7 +322,7 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry(tx_result, |storage| {
+        self.check_and_retry(tx_result, |storage| {
             storage.add_column(table_name, column_def)
         })
         .await
@@ -441,7 +441,7 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry(tx_result, |storage| {
+        self.check_and_retry(tx_result, |storage| {
             storage.drop_column(table_name, column_name, if_exists)
         })
         .await

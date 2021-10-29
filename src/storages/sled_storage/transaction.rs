@@ -250,25 +250,7 @@ impl SledStorage {
             .map_err(tx_err_into)
     }
 
-    pub fn check_retry(
-        &self,
-        tx_result: StdResult<TxPayload, TransactionError<Error>>,
-    ) -> Result<bool> {
-        match tx_result.map_err(tx_err_into) {
-            Err(e) => Err(e),
-            Ok(TxPayload::Success) => Ok(false),
-            Ok(TxPayload::RollbackAndRetry(lock_txid)) => {
-                self.rollback_txid(lock_txid)?;
-
-                self.tree
-                    .transaction(move |tree| lock::release(tree, lock_txid))
-                    .map_err(tx_err_into)
-                    .map(|_| true)
-            }
-        }
-    }
-
-    pub async fn retry<Fut>(
+    pub async fn check_and_retry<Fut>(
         self,
         tx_result: StdResult<TxPayload, TransactionError<Error>>,
         retry_func: impl FnOnce(SledStorage) -> Fut,
@@ -276,32 +258,30 @@ impl SledStorage {
     where
         Fut: futures::Future<Output = MutResult<SledStorage, ()>>,
     {
-        match self.check_retry(tx_result) {
-            Ok(check_retry) => {
-                if check_retry {
-                    retry_func(self).await
-                } else {
-                    Ok((self, ()))
-                }
-            }
-            Err(err) => Err((self, err)),
-        }
-    }
+        let check_retry = match tx_result.map_err(tx_err_into) {
+            Ok(TxPayload::Success) => false,
+            Ok(TxPayload::RollbackAndRetry(lock_txid)) => {
+                if let Err(err) = self.rollback_txid(lock_txid) {
+                    return Err((self, err));
+                };
 
-    pub fn retry_sync(
-        self,
-        tx_result: StdResult<TxPayload, TransactionError<Error>>,
-        retry_func: impl FnOnce(SledStorage) -> MutResult<SledStorage, ()>,
-    ) -> MutResult<SledStorage, ()> {
-        match self.check_retry(tx_result) {
-            Ok(check_retry) => {
-                if check_retry {
-                    retry_func(self)
-                } else {
-                    Ok((self, ()))
+                match self
+                    .tree
+                    .transaction(move |tree| lock::release(tree, lock_txid))
+                    .map_err(tx_err_into)
+                    .map(|_| true)
+                {
+                    Ok(check_retry) => check_retry,
+                    Err(err) => return Err((self, err)),
                 }
             }
-            Err(err) => Err((self, err)),
+            Err(err) => return Err((self, err)),
+        };
+
+        if check_retry {
+            retry_func(self).await
+        } else {
+            Ok((self, ()))
         }
     }
 }

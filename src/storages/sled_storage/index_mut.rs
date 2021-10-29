@@ -117,7 +117,7 @@ impl IndexMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry(tx_result, |storage| {
+        self.check_and_retry(tx_result, |storage| {
             storage.create_index(table_name, index_name, column)
         })
         .await
@@ -188,7 +188,7 @@ impl IndexMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry(tx_result, |storage| {
+        self.check_and_retry(tx_result, |storage| {
             storage.drop_index(table_name, index_name)
         })
         .await

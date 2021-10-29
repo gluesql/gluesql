@@ -56,7 +56,7 @@ impl StoreMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry(tx_result, |storage| storage.insert_schema(schema))
+        self.check_and_retry(tx_result, |storage| storage.insert_schema(schema))
             .await
     }
 
@@ -139,28 +139,16 @@ impl StoreMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry(tx_result, |storage| storage.delete_schema(table_name))
+        self.check_and_retry(tx_result, |storage| storage.delete_schema(table_name))
             .await
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
-        self.insert_data_sync(table_name, Rc::new(rows))
-    }
+        let rc_rows = Rc::new(rows.clone());
 
-    async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
-        self.update_data_sync(table_name, Rc::new(rows))
-    }
-
-    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
-        self.delete_data_sync(table_name, Rc::new(keys))
-    }
-}
-
-impl SledStorage {
-    fn insert_data_sync(self, table_name: &str, rows: Rc<Vec<Row>>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_rows = Rc::clone(&rows);
+        let tx_rows = Rc::clone(&rc_rows);
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
@@ -203,15 +191,16 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry_sync(tx_result, |storage| {
-            storage.insert_data_sync(table_name, rows)
-        })
+        self.check_and_retry(tx_result, |storage| storage.insert_data(table_name, rows))
+            .await
     }
 
-    fn update_data_sync(self, table_name: &str, rows: Rc<Vec<(IVec, Row)>>) -> MutResult<Self, ()> {
+    async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
+        let rc_rows = Rc::new(rows.clone());
+
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_rows = Rc::clone(&rows);
+        let tx_rows = Rc::clone(&rc_rows);
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
@@ -256,15 +245,16 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry_sync(tx_result, |storage| {
-            storage.update_data_sync(table_name, rows)
-        })
+        self.check_and_retry(tx_result, |storage| storage.update_data(table_name, rows))
+            .await
     }
 
-    fn delete_data_sync(self, table_name: &str, keys: Rc<Vec<IVec>>) -> MutResult<Self, ()> {
+    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
+        let rc_keys = Rc::new(keys.clone());
+
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_keys = Rc::clone(&keys);
+        let tx_keys = Rc::clone(&rc_keys);
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
@@ -309,8 +299,7 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.retry_sync(tx_result, |storage| {
-            storage.delete_data_sync(table_name, keys)
-        })
+        self.check_and_retry(tx_result, |storage| storage.delete_data(table_name, keys))
+            .await
     }
 }
