@@ -250,21 +250,31 @@ impl SledStorage {
             .map_err(tx_err_into)
     }
 
-    pub fn check_retry(
-        &self,
+    pub async fn check_and_retry<Fut>(
+        self,
         tx_result: StdResult<TxPayload, TransactionError<Error>>,
-    ) -> Result<bool> {
+        retry_func: impl FnOnce(SledStorage) -> Fut,
+    ) -> MutResult<SledStorage, ()>
+    where
+        Fut: futures::Future<Output = MutResult<SledStorage, ()>>,
+    {
         match tx_result.map_err(tx_err_into) {
-            Err(e) => Err(e),
-            Ok(TxPayload::Success) => Ok(false),
+            Ok(TxPayload::Success) => Ok((self, ())),
             Ok(TxPayload::RollbackAndRetry(lock_txid)) => {
-                self.rollback_txid(lock_txid)?;
+                if let Err(err) = self.rollback_txid(lock_txid) {
+                    return Err((self, err));
+                };
 
-                self.tree
+                match self
+                    .tree
                     .transaction(move |tree| lock::release(tree, lock_txid))
                     .map_err(tx_err_into)
-                    .map(|_| true)
+                {
+                    Ok(_) => retry_func(self).await,
+                    Err(err) => Err((self, err)),
+                }
             }
+            Err(err) => Err((self, err)),
         }
     }
 }
