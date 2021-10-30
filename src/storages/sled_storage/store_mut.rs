@@ -14,7 +14,6 @@ use {
     },
     async_trait::async_trait,
     sled::{transaction::ConflictableTransactionError, IVec},
-    std::rc::Rc,
 };
 
 #[async_trait(?Send)]
@@ -144,11 +143,10 @@ impl StoreMut<IVec> for SledStorage {
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
-        let rc_rows = Rc::new(rows.clone());
-
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_rows = Rc::clone(&rc_rows);
+        let tx_rows = &rows;
+
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
@@ -196,11 +194,10 @@ impl StoreMut<IVec> for SledStorage {
     }
 
     async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
-        let rc_rows = Rc::new(rows.clone());
-
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_rows = Rc::clone(&rc_rows);
+        let tx_rows = &rows;
+
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
@@ -250,11 +247,10 @@ impl StoreMut<IVec> for SledStorage {
     }
 
     async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
-        let rc_keys = Rc::new(keys.clone());
-
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_keys = Rc::clone(&rc_keys);
+        let tx_keys = &keys;
+
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
