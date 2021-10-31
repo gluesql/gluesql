@@ -14,7 +14,7 @@ use {
     std::{fmt::Debug, pin::Pin, rc::Rc},
 };
 
-pub struct Join<'a, T: 'static + Debug> {
+pub struct Join<'a, T: Debug> {
     storage: &'a dyn GStore<T>,
     join_clauses: &'a [AstJoin],
     filter_context: Option<Rc<FilterContext<'a>>>,
@@ -24,7 +24,7 @@ type JoinItem<'a> = Rc<BlendContext<'a>>;
 type Joined<'a> =
     Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
 
-impl<'a, T: 'static + Debug> Join<'a, T> {
+impl<'a, T: Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         join_clauses: &'a [AstJoin],
@@ -81,7 +81,7 @@ impl<'a, T: 'static + Debug> Join<'a, T> {
     }
 }
 
-async fn join<'a, T: 'static + Debug>(
+async fn join<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
@@ -131,7 +131,7 @@ async fn join<'a, T: 'static + Debug>(
     }
 }
 
-async fn fetch_joined<'a, T: 'static + Debug>(
+async fn fetch_joined<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
     table_name: &'a str,
     table_alias: &'a str,
