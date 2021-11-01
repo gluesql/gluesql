@@ -143,19 +143,16 @@ impl AlterTable for MemoryStorage {
     ) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        match storage.rename_column_sync(table_name, old_column_name, new_column_name) {
-            Ok(()) => Ok((storage, ())),
-            Err(err) => Err((storage, err)),
-        }
+        result_into(
+            storage.rename_column_sync(table_name, old_column_name, new_column_name),
+            storage,
+        )
     }
 
     async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        match storage.add_column_sync(table_name, column_def) {
-            Ok(()) => Ok((storage, ())),
-            Err(err) => Err((storage, err)),
-        }
+        result_into(storage.add_column_sync(table_name, column_def), storage)
     }
 
     async fn drop_column(
@@ -166,9 +163,16 @@ impl AlterTable for MemoryStorage {
     ) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        match storage.drop_column_sync(table_name, column_name, if_exists) {
-            Ok(()) => Ok((storage, ())),
-            Err(err) => Err((storage, err)),
-        }
+        result_into(
+            storage.drop_column_sync(table_name, column_name, if_exists),
+            storage,
+        )
+    }
+}
+
+fn result_into(result: Result<()>, storage: MemoryStorage) -> MutResult<MemoryStorage, ()> {
+    match result {
+        Ok(()) => Ok((storage, ())),
+        Err(err) => Err((storage, err)),
     }
 }
