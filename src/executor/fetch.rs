@@ -18,7 +18,7 @@ pub enum FetchError {
     TableNotFound(String),
 }
 
-pub async fn fetch_columns<T: 'static + Debug>(
+pub async fn fetch_columns<T: Debug>(
     storage: &dyn GStore<T>,
     table_name: &str,
 ) -> Result<Vec<String>> {
@@ -32,7 +32,7 @@ pub async fn fetch_columns<T: 'static + Debug>(
         .collect::<Vec<String>>())
 }
 
-pub async fn fetch<'a, T: 'static + Debug>(
+pub async fn fetch<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
     table_name: &'a str,
     columns: Rc<[String]>,

@@ -21,7 +21,7 @@ use {
 
 pub use {error::AggregateError, hash::GroupKey};
 
-pub struct Aggregator<'a, T: 'static + Debug> {
+pub struct Aggregator<'a, T: Debug> {
     storage: &'a dyn GStore<T>,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
@@ -32,7 +32,7 @@ pub struct Aggregator<'a, T: 'static + Debug> {
 type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
     + 'a;
 
-impl<'a, T: 'static + Debug> Aggregator<'a, T> {
+impl<'a, T: Debug> Aggregator<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         fields: &'a [SelectItem],
