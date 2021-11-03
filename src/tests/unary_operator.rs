@@ -13,19 +13,10 @@ test_case!(unary_operator, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT * FROM Test",
-            Ok(select!(
-                v1  |   v2  |   v3  |               v4  |           v5
-                I64 |   F64 |   Str |               I64 |           I64;
-                10      10.5    "hello".to_owned()  i64::from(-5)   1000
-            )),
-        ),
-        (
             "SELECT -v1 as v1, -v2 as v2, v3, -v4 as v4 FROM Test",
-            Ok(select!(
-                v1  |           v2  |                   v3  |                   v4
-                I64 |           F64 |                   Str |                   I64;
-                i64::from(-10)  f64::from(-10.5)  "hello".to_owned()    5
+            Ok(select_with_null!(
+                v1  |           v2  |                   v3  |                   v4;
+                I64(-10)      F64(-10.5)            Str("hello".to_owned())                   I64(5)
             )),
         ),
         (
@@ -75,10 +66,6 @@ test_case!(unary_operator, async move {
                 I64;
                 24
             )),
-        ),
-        (
-            "SELECT v2! as v2 FROM Test",
-            Err(ValueError::UnaryFactorialOnNonNumeric.into()),
         ),
         (
             "SELECT v3! as v1 FROM Test",
