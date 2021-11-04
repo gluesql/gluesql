@@ -352,7 +352,7 @@ impl Value {
                 DateTimeField::Minute => Ok(I64(v.minute().into())),
                 DateTimeField::Second => Ok(I64(v.second().into())),
             },
-            Value::Interval(v) => Ok(I64(v.extract(date_type))),
+            Value::Interval(v) => v.extract(date_type),
             _ => Err(ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into()),
         }
     }

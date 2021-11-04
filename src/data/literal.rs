@@ -336,9 +336,8 @@ impl<'a> Literal<'a> {
     }
 
     pub fn extract(&self, date_type: &DateTimeField) -> Result<Value> {
-        use Value::*;
         match self {
-            Literal::Interval(v) => Ok(I64(v.extract(date_type))),
+            Literal::Interval(v) => v.extract(date_type),
             _ => Err(LiteralError::CannotExtract.into()),
         }
     }

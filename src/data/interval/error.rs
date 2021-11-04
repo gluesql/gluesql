@@ -41,6 +41,9 @@ pub enum IntervalError {
     #[error("date overflow: {year}-{month}")]
     DateOverflow { year: i32, month: i32 },
 
+    #[error("failed to get extract from interval")]
+    FailedToExtract,
+
     #[error("unreachable")]
     Unreachable,
 }

@@ -3,6 +3,7 @@ mod primitive;
 mod string;
 
 use {
+    super::Value,
     crate::{ast::DateTimeField, result::Result},
     chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::str::FromStr,
@@ -136,30 +137,51 @@ impl Interval {
         Interval::Month(months)
     }
 
-    pub fn get_month(&self) -> i64 {
-        if let Interval::Month(i) = self {
-            *i as i64
-        } else {
-            panic!("Impossible get month from {:?}", self)
-        }
-    }
-
-    pub fn get_ms(&self) -> i64 {
-        if let Interval::Microsecond(i) = self {
-            *i
-        } else {
-            panic!("Impossible get microsecond from {:?}", self)
-        }
-    }
-
-    pub fn extract(&self, field: &DateTimeField) -> i64 {
+    pub fn extract(&self, field: &DateTimeField) -> Result<Value> {
+        use Value::I64;
         match field {
-            DateTimeField::Year => Interval::get_month(self) as i64 / 12,
-            DateTimeField::Month => Interval::get_month(self) as i64,
-            DateTimeField::Day => Interval::get_ms(self) as i64 / DAY,
-            DateTimeField::Hour => Interval::get_ms(self) as i64 / HOUR,
-            DateTimeField::Minute => Interval::get_ms(self) as i64 / MINUTE,
-            DateTimeField::Second => Interval::get_ms(self) as i64 / SECOND,
+            DateTimeField::Year => {
+                if let Interval::Month(i) = self {
+                    Ok(I64(*i as i64 / 12))
+                } else {
+                    Err(IntervalError::FailedToExtract.into())
+                }
+            }
+            DateTimeField::Month => {
+                if let Interval::Month(i) = self {
+                    Ok(I64(*i as i64))
+                } else {
+                    Err(IntervalError::FailedToExtract.into())
+                }
+            }
+            DateTimeField::Day => {
+                if let Interval::Microsecond(i) = self {
+                    Ok(I64(*i / DAY))
+                } else {
+                    Err(IntervalError::FailedToExtract.into())
+                }
+            }
+            DateTimeField::Hour => {
+                if let Interval::Microsecond(i) = self {
+                    Ok(I64(*i / HOUR))
+                } else {
+                    Err(IntervalError::FailedToExtract.into())
+                }
+            }
+            DateTimeField::Minute => {
+                if let Interval::Microsecond(i) = self {
+                    Ok(I64(*i / MINUTE))
+                } else {
+                    Err(IntervalError::FailedToExtract.into())
+                }
+            }
+            DateTimeField::Second => {
+                if let Interval::Microsecond(i) = self {
+                    Ok(I64(*i / SECOND))
+                } else {
+                    Err(IntervalError::FailedToExtract.into())
+                }
+            }
         }
     }
 
