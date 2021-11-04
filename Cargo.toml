@@ -58,7 +58,6 @@ itertools = "0.10"
 pin-project = "1.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_str = "0.1.0"
 sqlparser = { git = "https://github.com/sqlparser-rs/sqlparser-rs/", rev = "014b82f03d82d6f36b5271376e33461002709a55" }
 thiserror = "1.0"
 strum = "0.21"

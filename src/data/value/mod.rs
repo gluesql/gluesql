@@ -26,6 +26,7 @@ pub enum Value {
     Bool(bool),
     I64(i64),
     F64(f64),
+    Decimal(Decimal),
     Str(String),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
@@ -35,8 +36,6 @@ pub enum Value {
     Map(HashMap<String, Value>),
     List(Vec<Value>),
     Null,
-    #[serde(with = "serde_str")]
-    Decimal(Decimal),
 }
 
 impl PartialEq<Value> for Value {
@@ -542,38 +541,48 @@ mod tests {
         null_test!(add      ts(),     Null);
         null_test!(add      time(),   Null);
         null_test!(add      mon!(1),  Null);
+        null_test!(add      Decimal(1.into()), Null);
         null_test!(subtract I64(1),   Null);
         null_test!(subtract F64(1.0), Null);
         null_test!(subtract date(),   Null);
         null_test!(subtract ts(),     Null);
         null_test!(subtract time(),   Null);
         null_test!(subtract mon!(1),  Null);
+        null_test!(subtract Decimal(1.into()), Null);
         null_test!(multiply I64(1),   Null);
         null_test!(multiply F64(1.0), Null);
         null_test!(multiply mon!(1),  Null);
+        null_test!(multiply Decimal(1.into()), Null);
         null_test!(divide   I64(1),   Null);
         null_test!(divide   F64(1.0), Null);
         null_test!(divide   mon!(1),  Null);
+        null_test!(divide   Decimal(1.into()), Null);
         null_test!(modulo   I64(1),   Null);
         null_test!(modulo   F64(1.0), Null);
+        null_test!(modulo   Decimal(1.into()), Null);
 
         null_test!(add      Null, I64(1));
         null_test!(add      Null, F64(1.0));
         null_test!(add      Null, mon!(1));
         null_test!(add      Null, date());
         null_test!(add      Null, ts());
+        null_test!(add      Null, Decimal(1.into()));
         null_test!(subtract Null, I64(1));
         null_test!(subtract Null, F64(1.0));
         null_test!(subtract Null, date());
         null_test!(subtract Null, ts());
         null_test!(subtract Null, time());
         null_test!(subtract Null, mon!(1));
+        null_test!(subtract Null, Decimal(1.into()));
         null_test!(multiply Null, I64(1));
         null_test!(multiply Null, F64(1.0));
+        null_test!(multiply Null, Decimal(1.into()));
         null_test!(divide   Null, I64(1));
         null_test!(divide   Null, F64(1.0));
+        null_test!(divide   Null, Decimal(1.into()));
         null_test!(modulo   Null, I64(1));
         null_test!(modulo   Null, F64(1.0));
+        null_test!(modulo   Null, Decimal(1.into()));
 
         null_test!(add      Null, Null);
         null_test!(subtract Null, Null);
