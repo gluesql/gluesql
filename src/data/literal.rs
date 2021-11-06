@@ -6,7 +6,7 @@ use {
     },
     bigdecimal::{BigDecimal, ToPrimitive},
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug, ops::Neg},
+    std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
     Literal::*,
 };
@@ -102,7 +102,7 @@ impl<'a> Literal<'a> {
 
     pub fn unary_minus(&self) -> Result<Self> {
         match self {
-            Number(v) => Ok(Number(Cow::Owned(v.as_ref().neg()))),
+            Number(v) => Ok(Number(Cow::Owned(-v.as_ref()))),
             Interval(v) => Ok(Interval(v.unary_minus())),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -116,10 +116,7 @@ impl<'a> Literal<'a> {
             } else {
                 "FALSE".to_owned()
             }),
-            Number(v) => {
-                println!("{:?}", v);
-                Some(v.to_string())
-            }
+            Number(v) => Some(v.to_string()),
             Text(v) => Some(v.into_owned()),
             Interval(v) => Some(v.into()),
             Null => None,
