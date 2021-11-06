@@ -105,7 +105,7 @@ test_case!(group_by, async move {
             (2,    0,   \"Dhaka\",  0.9),
             (3, NULL, \"Beijing\",  1.1),
             (3,   30, \"Daejeon\",  3.2),
-            (4,   11,   \"Seoul\", 11.1),
+            (4,   11,   \"Seoul\",   11),
             (5,   24, \"Seattle\", 6.11);
     "
     );
@@ -146,18 +146,18 @@ test_case!(group_by, async move {
         ),
         (
             "SELECT ratio FROM Item GROUP BY id, city",
-            select!(ratio; F64; 0.2; 0.9; 1.1; 3.2; 11.1; 6.11),
+            select!(ratio; F64; 0.2; 0.9; 1.1; 3.2; 11.0; 6.11),
         ),
         (
             "SELECT ratio FROM Item GROUP BY id, city HAVING ratio > 10",
-            select!(ratio; F64; 11.1),
+            select!(ratio; F64; 11.0),
         ),
         (
             "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1",
             select!(
                 "SUM(quantity)" | "COUNT(*)" | city
-                I64          | I64        | Str;
-                21             2            "Seoul".to_owned()
+                I64             | I64        | Str;
+                21                2            "Seoul".to_owned()
             ),
         ),
     ];

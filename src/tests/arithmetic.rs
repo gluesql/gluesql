@@ -1,4 +1,4 @@
-use {crate::*, std::borrow::Cow};
+use {crate::*, bigdecimal::BigDecimal, std::borrow::Cow};
 
 test_case!(arithmetic, async move {
     run!(
@@ -40,7 +40,7 @@ test_case!(arithmetic, async move {
         (0, "SELECT * FROM Arith WHERE id > num * id;"),
         (1, "SELECT * FROM Arith WHERE 3 * id < 4;"),
         // divide on WHERE
-        (1, "SELECT * FROM Arith WHERE id = 5 / 2;"),
+        (0, "SELECT * FROM Arith WHERE id = 5 / 2;"),
         (5, "SELECT * FROM Arith WHERE id > id / 2;"),
         (3, "SELECT * FROM Arith WHERE id > num / id;"),
         (2, "SELECT * FROM Arith WHERE 10 / id = 2;"),
@@ -92,7 +92,7 @@ test_case!(arithmetic, async move {
         (
             LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", Literal::Boolean(true)),
-                format!("{:?}", Literal::Number(Cow::Owned("1".to_owned()))),
+                format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(1)))),
             )
             .into(),
             "SELECT * FROM Arith WHERE TRUE + 1 = 1",
