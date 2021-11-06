@@ -75,11 +75,11 @@ impl TryFrom<&Literal<'_>> for Value {
 
     fn try_from(literal: &Literal<'_>) -> Result<Self> {
         match literal {
-            Literal::Number(v) => match v.is_integer() {
-                true => v.to_i64().map(Value::I64),
-                false => v.to_f64().map(Value::F64),
-            }
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            Literal::Number(v) => v
+                .to_i64()
+                .map(Value::I64)
+                .or_else(|| v.to_f64().map(Value::F64))
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Interval(v) => Ok(Value::Interval(*v)),
@@ -93,15 +93,8 @@ impl TryFrom<Literal<'_>> for Value {
 
     fn try_from(literal: Literal<'_>) -> Result<Self> {
         match literal {
-            Literal::Number(v) => match v.is_integer() {
-                true => v.to_i64().map(Value::I64),
-                false => v.to_f64().map(Value::F64),
-            }
-            .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            Literal::Boolean(v) => Ok(Value::Bool(v)),
             Literal::Text(v) => Ok(Value::Str(v.into_owned())),
-            Literal::Interval(v) => Ok(Value::Interval(v)),
-            Literal::Null => Ok(Value::Null),
+            _ => Value::try_from(&literal),
         }
     }
 }
@@ -110,11 +103,10 @@ impl Value {
     pub fn try_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
-            (DataType::Int, Literal::Number(v)) => match v.is_integer() {
-                true => v.to_i64().map(Value::I64),
-                false => None,
-            }
-            .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
+            (DataType::Int, Literal::Number(v)) => v
+                .to_i64()
+                .map(Value::I64)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)
