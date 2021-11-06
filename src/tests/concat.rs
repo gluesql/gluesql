@@ -50,8 +50,8 @@ test_case!(concat, async move {
 
     test!(
         Ok(select!(
-            Case1               | Case2                | Case3                | Case4
-            Str                 | Str                  | Str                  | Str;
+            Case1            | Case2               | Case3                | Case4
+            Str              | Str                 | Str                  | Str;
             "123".to_owned()   "23TRUE".to_owned()   "TRUEFoo".to_owned()   "1Foo".to_owned()
         )),
         "SELECT
@@ -80,7 +80,7 @@ test_case!(concat, async move {
 
     test!(
         Ok(select_with_null!(
-            Case1                      | Case2                         | Case3;
+            Case1                     | Case2                         | Case3;
             Str("1123Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
         )),
         r#"SELECT
