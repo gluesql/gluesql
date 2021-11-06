@@ -2,9 +2,10 @@ use {
     super::StringExt,
     crate::{
         ast::AstLiteral,
+        data::BigDecimalExt,
         result::{Error, Result},
     },
-    bigdecimal::{BigDecimal, ToPrimitive},
+    bigdecimal::BigDecimal,
     serde::Serialize,
     std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
@@ -267,6 +268,10 @@ mod tests {
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
+        assert_eq!(
+            Number(Cow::Owned(BigDecimal::try_from(3.3).unwrap())).multiply(&mon(10)),
+            Ok(mon(33))
+        );
     }
 
     #[test]
