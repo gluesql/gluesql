@@ -6,10 +6,9 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, Interval, Literal},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
         result::{Error, Result},
     },
-    bigdecimal::ToPrimitive,
     chrono::NaiveDate,
     std::cmp::Ordering,
 };
@@ -18,10 +17,7 @@ impl PartialEq<Literal<'_>> for Value {
     fn eq(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
-            (Value::I64(l), Literal::Number(r)) => match r.is_integer() {
-                true => r.to_i64().map(|r| *l == r).unwrap_or(false),
-                false => false,
-            },
+            (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
@@ -164,9 +160,12 @@ impl Value {
                 .parse::<i64>()
                 .map(Value::I64)
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int, Literal::Number(v)) => v.to_i64().map(Value::I64).ok_or_else(|| {
-                ValueError::LiteralCastFromNumberToIntegerFailed(v.to_string()).into()
-            }),
+            (DataType::Int, Literal::Number(v)) => v
+                .to_f64()
+                .map(|v| Value::I64(v.trunc() as i64))
+                .ok_or_else(|| {
+                    ValueError::LiteralCastFromNumberToIntegerFailed(v.to_string()).into()
+                }),
             (DataType::Int, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
