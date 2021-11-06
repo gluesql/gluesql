@@ -156,7 +156,7 @@ impl Value {
                 .to_f64()
                 .map(|v| Value::I64(v.trunc() as i64))
                 .ok_or_else(|| {
-                    ValueError::LiteralCastFromNumberToIntegerFailed(v.to_string()).into()
+                    ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
                 }),
             (DataType::Int, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
@@ -168,7 +168,7 @@ impl Value {
                 .map(Value::F64)
                 .map_err(|_| ValueError::LiteralCastFromTextToFloatFailed(v.to_string()).into()),
             (DataType::Float, Literal::Number(v)) => v.to_f64().map(Value::F64).ok_or_else(|| {
-                ValueError::LiteralCastFromNumberToFloatFailed(v.to_string()).into()
+                ValueError::UnreachableLiteralCastFromNumberToFloat(v.to_string()).into()
             }),
             (DataType::Float, Literal::Boolean(v)) => {
                 let v = if *v { 1.0 } else { 0.0 };
