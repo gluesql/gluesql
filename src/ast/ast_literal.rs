@@ -6,7 +6,6 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AstLiteral {
     Boolean(bool),
-    #[serde(with = "serde_str")]
     Number(BigDecimal),
     QuotedString(String),
     Interval {
