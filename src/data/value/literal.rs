@@ -145,8 +145,8 @@ impl Value {
             },
             (DataType::Boolean, Literal::Number(v)) => match v.to_i64() {
                 Some(0) => Ok(Value::Bool(false)),
-                Some(_) => Ok(Value::Bool(true)),
-                None => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
+                Some(1) => Ok(Value::Bool(true)),
+                _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
             },
             (DataType::Int, Literal::Text(v)) => v
                 .parse::<i64>()
