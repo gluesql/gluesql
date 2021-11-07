@@ -131,18 +131,21 @@ impl<'a> Literal<'a> {
             Number(v) => {
                 let value;
 
-                match v.parse::<i64>() {
-                    Ok(x) => {
-                        if x < 0 {
+                match v.as_ref().to_i64() {
+                    Some(v) => {
+                        if v < 0 {
                             value = Err(LiteralError::FactorialOperationOnNegativeNumeric.into());
                         } else {
-                            value = factorial_function(x);
+                            match factorial_function(v) {
+                                Ok(v) => value = Ok(Number(Cow::Owned(BigDecimal::from(v)))),
+                                Err(e) => value = Err(e),
+                            }
                         }
                     }
-                    Err(_) => value = Err(LiteralError::FactorialOnNonInteger.into()),
+                    None => value = Err(LiteralError::FactorialOnNonInteger.into()),
                 }
 
-                value.map(|v| v.to_string()).map(|v| Number(Cow::Owned(v)))
+                value
             }
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
