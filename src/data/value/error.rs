@@ -62,13 +62,16 @@ pub enum ValueError {
     UnaryMinusOnNonNumeric,
 
     #[error("unary factorial operation for non numeric value")]
-    UnaryFactorialOnNonNumeric,
+    FactorialOnNonNumeric,
+
+    #[error("unary factorial operation for non integer value")]
+    FactorialOnNonInteger,
 
     #[error("unary factorial operation for negative numeric value")]
-    UnaryFactorialOnNegativeNumeric,
+    FactorialOnNegativeNumeric,
 
     #[error("unary factorial operation overflow")]
-    UnaryFactorialOverflow,
+    FactorialOverflow,
 
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,

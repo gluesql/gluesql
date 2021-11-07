@@ -68,24 +68,28 @@ test_case!(unary_operator, async move {
             )),
         ),
         (
+            "SELECT v2! as v1 FROM Test",
+            Err(ValueError::FactorialOnNonInteger.into()),
+        ),
+        (
             "SELECT v3! as v1 FROM Test",
-            Err(ValueError::UnaryFactorialOnNonNumeric.into()),
+            Err(ValueError::FactorialOnNonNumeric.into()),
         ),
         (
             "SELECT v4! as v4 FROM Test",
-            Err(ValueError::UnaryFactorialOnNegativeNumeric.into()),
+            Err(ValueError::FactorialOnNegativeNumeric.into()),
         ),
         (
             "SELECT v5! as v5 FROM Test",
-            Err(ValueError::UnaryFactorialOverflow.into()),
+            Err(ValueError::FactorialOverflow.into()),
         ),
         (
             "SELECT (-5)! as v4 FROM Test",
-            Err(LiteralError::UnaryFactorialOperationOnNegativeNumeric.into()),
+            Err(LiteralError::FactorialOperationOnNegativeNumeric.into()),
         ),
         (
             "SELECT (5.5)! as v4 FROM Test",
-            Err(LiteralError::UnreachableUnaryOperation.into()),
+            Err(LiteralError::FactorialOnNonInteger.into()),
         ),
         (
             "SELECT 'errrr'! as v1 FROM Test",
@@ -93,7 +97,7 @@ test_case!(unary_operator, async move {
         ),
         (
             "SELECT 1000! as v4 FROM Test",
-            Err(LiteralError::UnaryFactorialOperationOverflow.into()),
+            Err(LiteralError::FactorialOperationOverflow.into()),
         ),
     ];
 

@@ -319,13 +319,13 @@ impl Value {
         use Value::*;
 
         let factorial_function = |a: i64| -> Result<i64> {
-            (1..(a+1)).into_iter().try_fold(1i64, |mul, x| mul.checked_mul(x)).ok_or(ValueError::UnaryFactorialOverflow.into())
+            (1..(a+1)).into_iter().try_fold(1i64, |mul, x| mul.checked_mul(x)).ok_or(ValueError::FactorialOverflow.into())
         };
 
         match self {
             I64(a) => {
                 if *a < 0 {
-                    Err(ValueError::UnaryFactorialOnNegativeNumeric.into())
+                    Err(ValueError::FactorialOnNegativeNumeric.into())
                 } else {
                     match factorial_function(*a) {
                         Ok(x) => Ok(I64(x)),
@@ -333,8 +333,9 @@ impl Value {
                     }
                 }
             }
+            F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
-            _ => Err(ValueError::UnaryFactorialOnNonNumeric.into()),
+            _ => Err(ValueError::FactorialOnNonNumeric.into()),
         }
     }
 
