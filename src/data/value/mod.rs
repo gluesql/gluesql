@@ -351,6 +351,7 @@ mod tests {
     fn eq() {
         use super::Interval;
         use chrono::{NaiveDateTime, NaiveTime};
+        let decimal = |n: i32| Decimal(n.into());
 
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
@@ -364,7 +365,7 @@ mod tests {
             Time(NaiveTime::from_hms(12, 30, 11)),
             Time(NaiveTime::from_hms(12, 30, 11))
         );
-        assert_eq!(Decimal(1.into()), Decimal(1.into()));
+        assert_eq!(decimal(1), decimal(1));
 
         let date = Date("2020-05-01".parse().unwrap());
         let timestamp = Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap());
@@ -421,6 +422,7 @@ mod tests {
 
         let time = |h, m, s| NaiveTime::from_hms(h, m, s);
         let date = |y, m, d| NaiveDate::from_ymd(y, m, d);
+        let decimal = |n: i32| Decimal(n.into());
 
         test!(add I64(1),   I64(2)   => I64(3));
         test!(add I64(1),   F64(2.0) => F64(3.0));
@@ -456,8 +458,8 @@ mod tests {
             =>
             Time(time(4, 10, 0))
         );
-        test!(add mon!(1),  mon!(2)  => mon!(3));
-        test!(add Decimal(1.into()), Decimal(2.into()) => Decimal(3.into()));
+        test!(add mon!(1),    mon!(2)    => mon!(3));
+        test!(add decimal(1), decimal(2) => decimal(3));
 
         test!(subtract I64(3),   I64(2)   => I64(1));
         test!(subtract I64(3),   F64(2.0) => F64(1.0));
@@ -499,31 +501,32 @@ mod tests {
             =>
             Time(time(18, 10, 0))
         );
-        test!(subtract mon!(1),  mon!(2)  => mon!(-1));
-        test!(subtract Decimal(3.into()), Decimal(2.into()) => Decimal(1.into()));
+        test!(subtract mon!(1),    mon!(2)    => mon!(-1));
+        test!(subtract decimal(3), decimal(2) => decimal(1));
 
-        test!(multiply I64(3),   I64(2)   => I64(6));
-        test!(multiply I64(3),   F64(2.0) => F64(6.0));
-        test!(multiply I64(3),   mon!(3)  => mon!(9));
-        test!(multiply F64(3.0), I64(2)   => F64(6.0));
-        test!(multiply F64(3.0), F64(2.0) => F64(6.0));
-        test!(multiply F64(3.0), mon!(3)  => mon!(9));
-        test!(multiply mon!(3),  I64(2)   => mon!(6));
-        test!(multiply mon!(3),  F64(2.0) => mon!(6));
-        test!(multiply Decimal(3.into()), Decimal(2.into()) => Decimal(6.into()));
+        test!(multiply I64(3),     I64(2)     => I64(6));
+        test!(multiply I64(3),     F64(2.0)   => F64(6.0));
+        test!(multiply I64(3),     mon!(3)    => mon!(9));
+        test!(multiply F64(3.0),   I64(2)     => F64(6.0));
+        test!(multiply F64(3.0),   F64(2.0)   => F64(6.0));
+        test!(multiply F64(3.0),   mon!(3)    => mon!(9));
+        test!(multiply mon!(3),    I64(2)     => mon!(6));
+        test!(multiply mon!(3),    F64(2.0)   => mon!(6));
+        test!(multiply decimal(3), decimal(2) => decimal(6));
 
-        test!(divide I64(6),   I64(2)   => I64(3));
-        test!(divide I64(6),   F64(2.0) => F64(3.0));
-        test!(divide F64(6.0), I64(2)   => F64(3.0));
-        test!(divide F64(6.0), F64(2.0) => F64(3.0));
-        test!(divide mon!(6),  I64(2)   => mon!(3));
-        test!(divide mon!(6),  F64(2.0) => mon!(3));
-        test!(divide Decimal(6.into()), Decimal(2.into()) => Decimal(3.into()));
+        test!(divide I64(6),     I64(2)     => I64(3));
+        test!(divide I64(6),     F64(2.0)   => F64(3.0));
+        test!(divide F64(6.0),   I64(2)     => F64(3.0));
+        test!(divide F64(6.0),   F64(2.0)   => F64(3.0));
+        test!(divide mon!(6),    I64(2)     => mon!(3));
+        test!(divide mon!(6),    F64(2.0)   => mon!(3));
+        test!(divide decimal(6), decimal(2) => decimal(3));
 
-        test!(modulo I64(6),   I64(2)   => I64(0));
-        test!(modulo I64(6),   F64(2.0) => F64(0.0));
-        test!(modulo F64(6.0), I64(2)   => F64(0.0));
-        test!(modulo F64(6.0), F64(2.0) => F64(0.0));
+        test!(modulo I64(6),     I64(2)     => I64(0));
+        test!(modulo I64(6),     F64(2.0)   => F64(0.0));
+        test!(modulo F64(6.0),   I64(2)     => F64(0.0));
+        test!(modulo F64(6.0),   F64(2.0)   => F64(0.0));
+        test!(modulo decimal(6), decimal(2) => decimal(0));
 
         macro_rules! null_test {
             ($op: ident $a: expr, $b: expr) => {
@@ -535,54 +538,54 @@ mod tests {
         let time = || Time(NaiveTime::from_hms(6, 1, 1));
         let ts = || Timestamp(NaiveDate::from_ymd(1989, 1, 1).and_hms(0, 0, 0));
 
-        null_test!(add      I64(1),   Null);
-        null_test!(add      F64(1.0), Null);
-        null_test!(add      date(),   Null);
-        null_test!(add      ts(),     Null);
-        null_test!(add      time(),   Null);
-        null_test!(add      mon!(1),  Null);
-        null_test!(add      Decimal(1.into()), Null);
-        null_test!(subtract I64(1),   Null);
-        null_test!(subtract F64(1.0), Null);
-        null_test!(subtract date(),   Null);
-        null_test!(subtract ts(),     Null);
-        null_test!(subtract time(),   Null);
-        null_test!(subtract mon!(1),  Null);
-        null_test!(subtract Decimal(1.into()), Null);
-        null_test!(multiply I64(1),   Null);
-        null_test!(multiply F64(1.0), Null);
-        null_test!(multiply mon!(1),  Null);
-        null_test!(multiply Decimal(1.into()), Null);
-        null_test!(divide   I64(1),   Null);
-        null_test!(divide   F64(1.0), Null);
-        null_test!(divide   mon!(1),  Null);
-        null_test!(divide   Decimal(1.into()), Null);
-        null_test!(modulo   I64(1),   Null);
-        null_test!(modulo   F64(1.0), Null);
-        null_test!(modulo   Decimal(1.into()), Null);
+        null_test!(add      I64(1),     Null);
+        null_test!(add      F64(1.0),   Null);
+        null_test!(add      date(),     Null);
+        null_test!(add      ts(),       Null);
+        null_test!(add      time(),     Null);
+        null_test!(add      mon!(1),    Null);
+        null_test!(add      decimal(1), Null);
+        null_test!(subtract I64(1),     Null);
+        null_test!(subtract F64(1.0),   Null);
+        null_test!(subtract date(),     Null);
+        null_test!(subtract ts(),       Null);
+        null_test!(subtract time(),     Null);
+        null_test!(subtract mon!(1),    Null);
+        null_test!(subtract decimal(1), Null);
+        null_test!(multiply I64(1),     Null);
+        null_test!(multiply F64(1.0),   Null);
+        null_test!(multiply mon!(1),    Null);
+        null_test!(multiply decimal(1), Null);
+        null_test!(divide   I64(1),     Null);
+        null_test!(divide   F64(1.0),   Null);
+        null_test!(divide   mon!(1),    Null);
+        null_test!(divide   decimal(1), Null);
+        null_test!(modulo   I64(1),     Null);
+        null_test!(modulo   F64(1.0),   Null);
+        null_test!(modulo   decimal(1), Null);
 
         null_test!(add      Null, I64(1));
         null_test!(add      Null, F64(1.0));
         null_test!(add      Null, mon!(1));
         null_test!(add      Null, date());
         null_test!(add      Null, ts());
-        null_test!(add      Null, Decimal(1.into()));
+        null_test!(add      Null, decimal(1));
         null_test!(subtract Null, I64(1));
         null_test!(subtract Null, F64(1.0));
         null_test!(subtract Null, date());
         null_test!(subtract Null, ts());
         null_test!(subtract Null, time());
         null_test!(subtract Null, mon!(1));
-        null_test!(subtract Null, Decimal(1.into()));
+        null_test!(subtract Null, decimal(1));
         null_test!(multiply Null, I64(1));
         null_test!(multiply Null, F64(1.0));
-        null_test!(multiply Null, Decimal(1.into()));
+        null_test!(multiply Null, decimal(1));
         null_test!(divide   Null, I64(1));
         null_test!(divide   Null, F64(1.0));
-        null_test!(divide   Null, Decimal(1.into()));
+        null_test!(divide   Null, decimal(1));
         null_test!(modulo   Null, I64(1));
         null_test!(modulo   Null, F64(1.0));
-        null_test!(modulo   Null, Decimal(1.into()));
+        null_test!(modulo   Null, decimal(1));
 
         null_test!(add      Null, Null);
         null_test!(subtract Null, Null);
