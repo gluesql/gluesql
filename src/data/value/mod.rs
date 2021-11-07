@@ -319,7 +319,10 @@ impl Value {
         use Value::*;
 
         let factorial_function = |a: i64| -> Result<i64> {
-            (1..(a+1)).into_iter().try_fold(1i64, |mul, x| mul.checked_mul(x)).ok_or(ValueError::FactorialOverflow.into())
+            (1..(a + 1))
+                .into_iter()
+                .try_fold(1i64, |mul, x| mul.checked_mul(x))
+                .ok_or_else(|| ValueError::FactorialOverflow.into())
         };
 
         match self {

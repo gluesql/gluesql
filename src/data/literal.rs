@@ -121,7 +121,10 @@ impl<'a> Literal<'a> {
 
     pub fn unary_factorial(&self) -> Result<Self> {
         let factorial_function = |a: i64| -> Result<i64> {
-            (1..(a+1)).into_iter().try_fold(1i64, |mul, x| mul.checked_mul(x)).ok_or(LiteralError::FactorialOperationOverflow.into())
+            (1..(a + 1))
+                .into_iter()
+                .try_fold(1i64, |mul, x| mul.checked_mul(x))
+                .ok_or_else(|| LiteralError::FactorialOperationOverflow.into())
         };
 
         match self {
