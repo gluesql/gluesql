@@ -165,6 +165,7 @@ fn aggregate<'a>(
     expr: &'a Expr,
 ) -> Result<State<'a>> {
     let aggr = |state, expr| aggregate(state, context, expr);
+    
     let get_value = |expr: &Expr| match expr {
         Expr::Identifier(ident) => context
             .get_value(ident)
@@ -196,25 +197,13 @@ fn aggregate<'a>(
         Expr::UnaryOp { expr, .. } => aggr(state, expr),
         Expr::Nested(expr) => aggr(state, expr),
         Expr::Aggregate(aggr) => match aggr.as_ref() {
-            Aggregate::Count(expr) => {
-                let value = Value::I64(match expr {
-                    Expr::Wildcard => 1,
-                    _ => {
-                        if get_value(expr)?.is_null() {
-                            0
-                        } else {
-                            1
-                        }
-                    }
-                });
-
-                state.add(aggr, &value)
-            }
+            Aggregate::Count(expr) => state.set_count(aggr, expr, get_value(expr)?),
             Aggregate::Sum(expr) => state.add(aggr, get_value(expr)?),
             Aggregate::Max(expr) => Ok(state.set_max(aggr, get_value(expr)?)),
             Aggregate::Min(expr) => Ok(state.set_min(aggr, get_value(expr)?)),
             Aggregate::Avg(expr) => state.set_avg(aggr, get_value(expr)?),
         },
+        //Expr::Aggregate(aggr) => state.accumulate(aggr.as_ref(), get_value(expr)?),
         _ => Ok(state),
     }
 }
