@@ -98,6 +98,7 @@ pub mod prelude {
         executor::{execute, Payload},
         glue::Glue,
         parse_sql::parse,
+        plan::plan,
         translate::translate,
     };
 }
