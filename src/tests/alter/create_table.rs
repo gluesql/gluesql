@@ -46,10 +46,6 @@ test_case!(create_table, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT * FROM CreateTable2",
-            Err(EvaluateError::UnsupportedStatelessExpr(expr!("CTAS")).into()),
-        ),
-        (
             "CREATE TABLE Gluery (id SOMEWHAT);",
             Err(TranslateError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
         ),
@@ -85,11 +81,11 @@ test_case!(create_table, async move {
             "CREATE TABLE TB_TARGET AS SELECT * FROM CreateTable1",
             Ok(Payload::Create),
         ),
-        // (
-        //     "SELECT * FROM TB_TARGET",
-        //     Err(EvaluateError::UnsupportedStatelessExpr(expr!("CTAS")).into()),
-        //     // Ok(Select { labels: [], rows: [] })
-        // ),
+        (
+            "SELECT * FROM TB_TARGET",
+            Err(EvaluateError::UnsupportedStatelessExpr(expr!("CTAS")).into()),
+            // Ok(Select { labels: [], rows: [] })
+        ),
     ];
 
     for (sql, expected) in test_cases {
