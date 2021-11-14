@@ -31,7 +31,7 @@ pub struct Aggregator<'a, T: Debug> {
 type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
     + 'a;
 
-impl<'a, T: 'static + std::fmt::Debug> Aggregator<'a, T> {
+impl<'a, T: Debug> Aggregator<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         fields: &'a [SelectItem],
