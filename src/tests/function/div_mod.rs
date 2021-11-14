@@ -74,7 +74,7 @@ test_case!(div_mod, async move {
         ),
         (
             "INSERT INTO IntDiv (dividend, divisor) VALUES (12, 2.0)",
-            Err(ValueError::FailedToParseNumber.into()),
+            Ok(Payload::Insert(1)),
         ),
         (
             "
@@ -89,7 +89,8 @@ test_case!(div_mod, async move {
                 eval_div(12_f64, 3_f64)    eval_mod(12_f64, 3_f64);
                 eval_div(12_f64, 7_f64)    eval_mod(12_f64, 7_f64);
                 eval_div(12_f64, 34_f64)   eval_mod(12_f64, 34_f64);
-                eval_div(-12_f64, 7_f64)   eval_mod(-12_f64, 7_f64)
+                eval_div(-12_f64, 7_f64)   eval_mod(-12_f64, 7_f64);
+                eval_div(12_f64, 2_f64)   eval_mod(12_f64, 2_f64)
             )),
         ),
         (

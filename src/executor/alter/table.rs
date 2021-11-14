@@ -10,7 +10,7 @@ use {
     std::fmt::Debug,
 };
 
-pub async fn create_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     name: &ObjectName,
     column_defs: &[ColumnDef],
@@ -54,7 +54,7 @@ pub async fn create_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     }
 }
 
-pub async fn drop_table<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn drop_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     table_names: &[ObjectName],
     if_exists: bool,

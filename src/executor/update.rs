@@ -24,14 +24,14 @@ pub enum UpdateError {
     ConflictOnSchema,
 }
 
-pub struct Update<'a, T: 'static + Debug> {
+pub struct Update<'a, T: Debug> {
     storage: &'a dyn GStore<T>,
     table_name: &'a str,
     fields: &'a [Assignment],
     column_defs: &'a [ColumnDef],
 }
 
-impl<'a, T: 'static + Debug> Update<'a, T> {
+impl<'a, T: Debug> Update<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         table_name: &'a str,

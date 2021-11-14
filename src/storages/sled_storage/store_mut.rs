@@ -14,7 +14,6 @@ use {
     },
     async_trait::async_trait,
     sled::{transaction::ConflictableTransactionError, IVec},
-    std::rc::Rc,
 };
 
 #[async_trait(?Send)]
@@ -56,11 +55,8 @@ impl StoreMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.insert_schema(schema).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| storage.insert_schema(schema))
+            .await
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
@@ -142,31 +138,15 @@ impl StoreMut<IVec> for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.delete_schema(table_name).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| storage.delete_schema(table_name))
+            .await
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
-        self.insert_data_sync(table_name, Rc::new(rows))
-    }
-
-    async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
-        self.update_data_sync(table_name, Rc::new(rows))
-    }
-
-    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
-        self.delete_data_sync(table_name, Rc::new(keys))
-    }
-}
-
-impl SledStorage {
-    fn insert_data_sync(self, table_name: &str, rows: Rc<Vec<Row>>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_rows = Rc::clone(&rows);
+        let tx_rows = &rows;
+
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
@@ -209,17 +189,15 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.insert_data_sync(table_name, rows),
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| storage.insert_data(table_name, rows))
+            .await
     }
 
-    fn update_data_sync(self, table_name: &str, rows: Rc<Vec<(IVec, Row)>>) -> MutResult<Self, ()> {
+    async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_rows = Rc::clone(&rows);
+        let tx_rows = &rows;
+
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
@@ -264,17 +242,15 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.update_data_sync(table_name, rows),
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| storage.update_data(table_name, rows))
+            .await
     }
 
-    fn delete_data_sync(self, table_name: &str, keys: Rc<Vec<IVec>>) -> MutResult<Self, ()> {
+    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
-        let tx_keys = Rc::clone(&keys);
+        let tx_keys = &keys;
+
         let tx_result = self.tree.transaction(move |tree| {
             let (txid, autocommit) = match lock::acquire(tree, state, tx_timeout)? {
                 LockAcquired::Success { txid, autocommit } => (txid, autocommit),
@@ -319,10 +295,7 @@ impl SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.delete_data_sync(table_name, keys),
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| storage.delete_data(table_name, keys))
+            .await
     }
 }

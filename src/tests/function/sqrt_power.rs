@@ -83,11 +83,11 @@ test_case!(power, async move {
             )),
         ),
         (
-            "SELECT POWER(32,0.3) as power_with_float FROM SingleItem",
+            "SELECT POWER(32,3.0) as power_with_float FROM SingleItem",
             Ok(select!(
                 power_with_float
                 F64;
-                f64::from(32).powf(0.3)
+                f64::from(32).powf(3.0)
             )),
         ),
         (
