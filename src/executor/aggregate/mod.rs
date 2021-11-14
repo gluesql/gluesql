@@ -10,8 +10,7 @@ use {
         filter::check_expr,
     },
     crate::{
-        ast::{Aggregate, Expr, SelectItem},
-        data::Value,
+        ast::{Expr, SelectItem},
         result::{Error, Result},
         store::GStore,
     },
@@ -21,7 +20,7 @@ use {
 
 pub use {error::AggregateError, hash::GroupKey};
 
-pub struct Aggregator<'a, T: 'static + Debug> {
+pub struct Aggregator<'a, T: Debug> {
     storage: &'a dyn GStore<T>,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
@@ -32,7 +31,7 @@ pub struct Aggregator<'a, T: 'static + Debug> {
 type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
     + 'a;
 
-impl<'a, T: 'static + Debug> Aggregator<'a, T> {
+impl<'a, T: 'static + std::fmt::Debug> Aggregator<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         fields: &'a [SelectItem],
@@ -102,7 +101,7 @@ impl<'a, T: 'static + Debug> Aggregator<'a, T> {
         let having = self.having;
 
         let rows = state
-            .export()
+            .export()?
             .into_iter()
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
         let rows = stream::iter(rows)
@@ -165,24 +164,6 @@ fn aggregate<'a>(
     expr: &'a Expr,
 ) -> Result<State<'a>> {
     let aggr = |state, expr| aggregate(state, context, expr);
-    let get_value = |expr: &Expr| match expr {
-        Expr::Identifier(ident) => context
-            .get_value(ident)
-            .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
-        Expr::CompoundIdentifier(idents) => {
-            if idents.len() != 2 {
-                return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
-            }
-
-            let table_alias = &idents[0];
-            let column = &idents[1];
-
-            context
-                .get_alias_value(table_alias, column)
-                .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
-        }
-        _ => Err(AggregateError::OnlyIdentifierAllowed),
-    };
 
     match expr {
         Expr::Between {
@@ -195,25 +176,7 @@ fn aggregate<'a>(
             .try_fold(state, |state, expr| aggr(state, expr)),
         Expr::UnaryOp { expr, .. } => aggr(state, expr),
         Expr::Nested(expr) => aggr(state, expr),
-        Expr::Aggregate(aggr) => match aggr.as_ref() {
-            Aggregate::Count(expr) => {
-                let value = Value::I64(match expr {
-                    Expr::Wildcard => 1,
-                    _ => {
-                        if get_value(expr)?.is_null() {
-                            0
-                        } else {
-                            1
-                        }
-                    }
-                });
-
-                state.add(aggr, &value)
-            }
-            Aggregate::Sum(expr) => state.add(aggr, get_value(expr)?),
-            Aggregate::Max(expr) => Ok(state.set_max(aggr, get_value(expr)?)),
-            Aggregate::Min(expr) => Ok(state.set_min(aggr, get_value(expr)?)),
-        },
+        Expr::Aggregate(aggr) => state.accumulate(context, aggr.as_ref()),
         _ => Ok(state),
     }
 }
