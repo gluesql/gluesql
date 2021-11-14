@@ -58,8 +58,12 @@ test_case!(aggregate, async move {
             select!("COUNT(age)" | "COUNT(quantity)"; I64 | I64; 3 5),
         ),
         (
-            "SELECT AVG(quantity) FROM Item",
-            select!("AVG(quantity)"; I64; 9),
+            "SELECT AVG(id), AVG(quantity) FROM Item",
+            select!(
+                "AVG(id)" | "AVG(quantity)"
+                I64       | I64;
+                3           9
+            ),
         ),
     ];
 

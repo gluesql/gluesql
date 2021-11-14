@@ -10,8 +10,7 @@ use {
         filter::check_expr,
     },
     crate::{
-        ast::{Aggregate, Expr, SelectItem},
-        data::Value,
+        ast::{Expr, SelectItem},
         result::{Error, Result},
         store::GStore,
     },
@@ -102,7 +101,7 @@ impl<'a, T: 'static + Debug> Aggregator<'a, T> {
         let having = self.having;
 
         let rows = state
-            .export()
+            .export()?
             .into_iter()
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
         let rows = stream::iter(rows)
@@ -165,25 +164,6 @@ fn aggregate<'a>(
     expr: &'a Expr,
 ) -> Result<State<'a>> {
     let aggr = |state, expr| aggregate(state, context, expr);
-    
-    let get_value = |expr: &Expr| match expr {
-        Expr::Identifier(ident) => context
-            .get_value(ident)
-            .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
-        Expr::CompoundIdentifier(idents) => {
-            if idents.len() != 2 {
-                return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
-            }
-
-            let table_alias = &idents[0];
-            let column = &idents[1];
-
-            context
-                .get_alias_value(table_alias, column)
-                .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
-        }
-        _ => Err(AggregateError::OnlyIdentifierAllowed),
-    };
 
     match expr {
         Expr::Between {
@@ -196,14 +176,7 @@ fn aggregate<'a>(
             .try_fold(state, |state, expr| aggr(state, expr)),
         Expr::UnaryOp { expr, .. } => aggr(state, expr),
         Expr::Nested(expr) => aggr(state, expr),
-        Expr::Aggregate(aggr) => match aggr.as_ref() {
-            Aggregate::Count(expr) => state.set_count(aggr, expr, get_value(expr)?),
-            Aggregate::Sum(expr) => state.add(aggr, get_value(expr)?),
-            Aggregate::Max(expr) => Ok(state.set_max(aggr, get_value(expr)?)),
-            Aggregate::Min(expr) => Ok(state.set_min(aggr, get_value(expr)?)),
-            Aggregate::Avg(expr) => state.set_avg(aggr, get_value(expr)?),
-        },
-        //Expr::Aggregate(aggr) => state.accumulate(aggr.as_ref(), get_value(expr)?),
+        Expr::Aggregate(aggr) => state.accumulate(context, aggr.as_ref()),
         _ => Ok(state),
     }
 }
