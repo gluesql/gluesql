@@ -272,6 +272,12 @@ mod tests {
             Number(Cow::Owned(BigDecimal::try_from(3.3).unwrap())).multiply(&mon(10)),
             Ok(mon(33))
         );
+        assert_eq!(num(2).unary_plus(), Ok(num(2)));
+        assert_eq!(mon(2).unary_plus(), Ok(mon(2)));
+        matches!(Null.unary_plus(), Ok(Null));
+        assert_eq!(num(1).unary_minus(), Ok(num(-1)));
+        assert_eq!(mon(1).unary_minus(), Ok(mon(-1)));
+        matches!(Null.unary_minus(), Ok(Null));
     }
 
     #[test]
