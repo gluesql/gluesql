@@ -1,7 +1,7 @@
 use crate::*;
-use test::*;
 
 test_case!(timestamp, async move {
+    use data::ValueError;
     run!(
         r#"
 CREATE TABLE TimestampLog (

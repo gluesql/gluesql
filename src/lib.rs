@@ -72,16 +72,16 @@ pub use chrono;
 pub use sled;
 pub use sqlparser;
 
-mod executor;
 mod glue;
-mod parse_sql;
-mod storages;
 mod utils;
 
 pub mod ast;
 pub mod data;
+pub mod executor;
+pub mod parse_sql;
 pub mod plan;
 pub mod result;
+pub mod storages;
 pub mod store;
 pub mod tests;
 pub mod translate;
@@ -100,33 +100,5 @@ pub mod prelude {
         parse_sql::parse,
         plan::plan,
         translate::translate,
-    };
-}
-
-pub mod test {
-    #[cfg(feature = "sled-storage")]
-    pub use crate::storages::{sled_storage, SledStorage};
-
-    #[cfg(feature = "memory-storage")]
-    pub use crate::storages::{memory_storage, MemoryStorage};
-
-    #[cfg(feature = "alter-table")]
-    pub use crate::store::AlterTableError;
-
-    #[cfg(feature = "index")]
-    pub use crate::store::IndexError;
-
-    pub use crate::{
-        ast::*,
-        data::{
-            value::{Value::*, ValueError},
-            IntervalError, Literal, LiteralError, RowError,
-        },
-        executor::*,
-        parse_sql::{parse, parse_expr},
-        plan::plan,
-        result::*,
-        store::{GStore, GStoreMut, StoreMut},
-        translate::{translate, translate_expr, TranslateError},
     };
 }

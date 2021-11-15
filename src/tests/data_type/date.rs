@@ -1,5 +1,4 @@
 use crate::*;
-use test::*;
 
 test_case!(date, async move {
     run!(
@@ -107,7 +106,7 @@ INSERT INTO DateLog VALUES
     );
 
     test!(
-        Err(ValueError::FailedToParseDate("12345-678".to_owned()).into()),
+        Err(data::ValueError::FailedToParseDate("12345-678".to_owned()).into()),
         r#"INSERT INTO DateLog VALUES (1, "12345-678", "2021-05-01")"#
     );
 });

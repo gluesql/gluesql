@@ -1,8 +1,11 @@
 use crate::*;
-use test::*;
 
 test_case!(floor, async move {
-    use prelude::Value::{Null, F64};
+    use {
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+        translate::TranslateError,
+    };
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),

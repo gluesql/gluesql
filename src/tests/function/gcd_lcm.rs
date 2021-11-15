@@ -1,8 +1,10 @@
 use crate::*;
-use test::*;
 
 test_case!(gcd_lcm, async move {
-    use prelude::Value::I64;
+    use {
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+    };
 
     let test_cases = vec![
         (

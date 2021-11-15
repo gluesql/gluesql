@@ -1,4 +1,4 @@
-use {crate::*, prelude::*, test::*};
+use {crate::*, data::ValueError, prelude::Value::*};
 
 test_case!(nullable, async move {
     run!(
@@ -17,8 +17,6 @@ CREATE TABLE Test (
             (   3, 4, \"Great\");
     "
     );
-
-    use Value::*;
 
     let test_cases = vec![
         (
@@ -254,7 +252,6 @@ test_case!(nullable_text, async move {
 });
 
 test_case!(nullable_implicit_insert, async move {
-    use Value::*;
     run!(
         "
         CREATE TABLE Foo (

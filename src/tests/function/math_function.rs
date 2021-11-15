@@ -1,9 +1,14 @@
-use crate::*;
-use test::*;
+use {
+    crate::*,
+    executor::EvaluateError,
+    prelude::{
+        Payload,
+        Value::{self, *},
+    },
+    translate::TranslateError,
+};
 
 test_case!(sin, async move {
-    use prelude::Value::{self, F64};
-
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (
@@ -227,9 +232,6 @@ test_case!(asin, async move {
 });
 
 test_case!(acos, async move {
-    use prelude::Value::Null;
-    use prelude::Value::F64;
-
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (

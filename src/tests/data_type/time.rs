@@ -1,7 +1,8 @@
 use crate::*;
-use test::*;
 
 test_case!(time, async move {
+    use data::{IntervalError, ValueError};
+
     run!(
         r#"
 CREATE TABLE TimeLog (

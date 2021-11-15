@@ -1,6 +1,13 @@
-use {crate::*, prelude::*, std::borrow::Cow, test::*};
+use crate::*;
 
 test_case!(types, async move {
+    use {
+        ast::DataType,
+        data::{Literal, ValueError},
+        prelude::Value,
+        std::borrow::Cow,
+    };
+
     run!("CREATE TABLE TableB (id BOOLEAN);");
     run!("CREATE TABLE TableC (uid INTEGER, null_val INTEGER NULL);");
     run!("INSERT INTO TableB VALUES (FALSE);");

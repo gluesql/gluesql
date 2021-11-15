@@ -1,7 +1,7 @@
 use crate::*;
-use test::*;
 
 test_case!(interval, async move {
+    use crate::data::IntervalError;
     run!(
         r#"
 CREATE TABLE IntervalLog (

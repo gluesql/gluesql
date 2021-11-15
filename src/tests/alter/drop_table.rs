@@ -1,5 +1,8 @@
-use crate::*;
-use test::*;
+use {
+    crate::*,
+    executor::{AlterError, FetchError, Payload},
+    translate::TranslateError,
+};
 
 test_case!(drop_table, async move {
     let create_sql = r#"

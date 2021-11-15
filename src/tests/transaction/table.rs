@@ -1,5 +1,4 @@
-use crate::*;
-use test::*;
+use {crate::*, executor::FetchError, prelude::Value::*};
 
 test_case!(create_drop_table, async move {
     // CREATE && ROLLBACK

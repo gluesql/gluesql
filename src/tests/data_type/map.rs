@@ -1,6 +1,9 @@
-use crate::*;
-use prelude::Value;
-use test::*;
+use {
+    crate::*,
+    data::ValueError,
+    executor::EvaluateError,
+    prelude::Value::{self, *},
+};
 
 test_case!(map, async move {
     run!(

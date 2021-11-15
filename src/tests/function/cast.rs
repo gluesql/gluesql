@@ -1,11 +1,13 @@
-use crate::*;
-use test::*;
-
-use data::Interval as I;
+use {
+    crate::*,
+    data::Interval as I,
+    data::ValueError,
+    executor::Payload,
+    prelude::Value::{self, *},
+};
 
 test_case!(cast_literal, async move {
     use chrono::{NaiveDate, NaiveTime};
-    use prelude::Value::{self, *};
 
     let test_cases = vec![
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),

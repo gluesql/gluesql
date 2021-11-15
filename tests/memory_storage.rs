@@ -1,8 +1,9 @@
 #![cfg(feature = "memory-storage")]
 
-use std::{cell::RefCell, rc::Rc};
-
-use gluesql::{memory_storage::Key, tests::*, *};
+use {
+    gluesql::{prelude::MemoryStorage, storages::memory_storage::Key, tests::*, *},
+    std::{cell::RefCell, rc::Rc},
+};
 
 struct MemoryTester {
     storage: Rc<RefCell<Option<MemoryStorage>>>,

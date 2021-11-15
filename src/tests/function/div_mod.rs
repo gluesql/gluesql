@@ -1,8 +1,12 @@
 use crate::*;
-use test::*;
 
 test_case!(div_mod, async move {
-    use prelude::Value::{Null, F64, I64};
+    use {
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+        translate::TranslateError,
+    };
+
     let eval_div = |dividend, divisor| (dividend / divisor) as i64;
     let eval_mod = |dividend, divisor| dividend % divisor;
     let test_cases = vec![

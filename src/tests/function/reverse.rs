@@ -1,8 +1,11 @@
 use crate::*;
-use prelude::Value;
-use test::*;
 
 test_case!(reverse, async move {
+    use {
+        executor::EvaluateError,
+        prelude::{Payload, Value},
+    };
+
     let test_cases = vec![
         ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
         (

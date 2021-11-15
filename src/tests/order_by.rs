@@ -1,4 +1,4 @@
-use {crate::*, test::*};
+use {crate::*, translate::TranslateError};
 
 #[cfg(feature = "sorter")]
 test_case!(order_by, async move {
@@ -154,7 +154,10 @@ CREATE TABLE Test (
 
 #[cfg(not(feature = "sorter"))]
 test_case!(order_by, async move {
-    use ast::{Expr, OrderByExpr};
+    use {
+        ast::{Expr, OrderByExpr},
+        executor::SelectError,
+    };
 
     run!("CREATE TABLE Test (id INTEGER);");
 

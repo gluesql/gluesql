@@ -1,6 +1,8 @@
-use {crate::*, prelude::*, test::*};
+use crate::*;
 
 test_case!(migrate, async move {
+    use {data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError};
+
     run!(
         "
         CREATE TABLE Test (
@@ -46,8 +48,6 @@ test_case!(migrate, async move {
     for (error, sql) in error_cases {
         test!(Err(error), sql);
     }
-
-    use Value::*;
 
     let found = run!("SELECT id, num, name FROM Test");
     let expected = select!(
