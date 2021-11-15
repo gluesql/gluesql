@@ -1,4 +1,8 @@
-use {crate::*, prelude::*, std::borrow::Cow, test::*};
+use {
+    crate::*,
+    bigdecimal::BigDecimal,
+    std::{borrow::Cow, str::FromStr},
+};
 
 test_case!(filter, async move {
     let create_sqls = [
@@ -126,7 +130,10 @@ test_case!(filter, async move {
         (
             LiteralError::LikeOnNonString(
                 format!("{:?}", Literal::Text(Cow::Owned("ABC".to_string()))),
-                format!("{:?}", Literal::Number(Cow::Owned("10".to_string()))),
+                format!(
+                    "{:?}",
+                    Literal::Number(Cow::Owned(BigDecimal::from_str("10").unwrap()))
+                ),
             )
             .into(),
             "SELECT name FROM Boss WHERE 'ABC' LIKE 10",

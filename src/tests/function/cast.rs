@@ -60,7 +60,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST("foo" AS FLOAT) AS cast FROM Item"#,
-            Err(ValueError::LiteralCastToFloatFailed("foo".to_owned()).into()),
+            Err(ValueError::LiteralCastFromTextToFloatFailed("foo".to_owned()).into()),
         ),
         (
             r#"SELECT CAST(TRUE AS FLOAT) AS cast FROM Item"#,

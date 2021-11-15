@@ -1,9 +1,12 @@
-use serde::{Deserialize, Serialize};
+use {
+    bigdecimal::BigDecimal,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AstLiteral {
     Boolean(bool),
-    Number(String),
+    Number(BigDecimal),
     QuotedString(String),
     Interval {
         value: String,

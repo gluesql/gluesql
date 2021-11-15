@@ -81,7 +81,7 @@ pub fn test(expected: Result<Payload>, found: Result<Payload>) {
     }
 }
 
-pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn run<T: Debug, U: GStore<T> + GStoreMut<T>>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
     indexes: Option<Vec<IndexItem>>,
@@ -228,7 +228,7 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
 /// Actual test cases are in [/src/tests/](https://github.com/gluesql/gluesql/blob/main/src/tests/),
 /// not in `/tests/`.
 #[async_trait]
-pub trait Tester<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> {
+pub trait Tester<T: Debug, U: GStore<T> + GStoreMut<T>> {
     fn new(namespace: &str) -> Self;
 
     fn get_cell(&mut self) -> Rc<RefCell<Option<U>>>;
@@ -239,8 +239,8 @@ macro_rules! test_case {
     ($name: ident, $content: expr) => {
         pub async fn $name<T, U>(mut tester: impl tests::Tester<T, U>)
         where
-            T: 'static + std::fmt::Debug,
-            U: test::GStore<T> + test::GStoreMut<T>,
+            T: std::fmt::Debug,
+            U: GStore<T> + GStoreMut<T>,
         {
             use std::rc::Rc;
 

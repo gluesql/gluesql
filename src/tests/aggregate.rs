@@ -50,12 +50,20 @@ test_case!(aggregate, async move {
             ),
         ),
         (
-            "SELECT SUM(age) + SUM(quantity) FROM Item",
-            select_with_null!("SUM(age) + SUM(quantity)"; Null),
+            "SELECT AVG(age) FROM Item",
+            select_with_null!("AVG(age)"; Null),
         ),
         (
             "SELECT COUNT(age), COUNT(quantity) FROM Item",
             select!("COUNT(age)" | "COUNT(quantity)"; I64 | I64; 3 5),
+        ),
+        (
+            "SELECT AVG(id), AVG(quantity) FROM Item",
+            select!(
+                "AVG(id)" | "AVG(quantity)"
+                I64       | I64;
+                3           9
+            ),
         ),
     ];
 
@@ -67,10 +75,6 @@ test_case!(aggregate, async move {
         (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
-        ),
-        (
-            TranslateError::UnsupportedFunction("AVG".to_owned()).into(),
-            "SELECT AVG(*) FROM Item;",
         ),
         (
             AggregateError::OnlyIdentifierAllowed.into(),
@@ -105,7 +109,7 @@ test_case!(group_by, async move {
             (2,    0,   \"Dhaka\",  0.9),
             (3, NULL, \"Beijing\",  1.1),
             (3,   30, \"Daejeon\",  3.2),
-            (4,   11,   \"Seoul\", 11.1),
+            (4,   11,   \"Seoul\",   11),
             (5,   24, \"Seattle\", 6.11);
     "
     );
@@ -146,18 +150,18 @@ test_case!(group_by, async move {
         ),
         (
             "SELECT ratio FROM Item GROUP BY id, city",
-            select!(ratio; F64; 0.2; 0.9; 1.1; 3.2; 11.1; 6.11),
+            select!(ratio; F64; 0.2; 0.9; 1.1; 3.2; 11.0; 6.11),
         ),
         (
             "SELECT ratio FROM Item GROUP BY id, city HAVING ratio > 10",
-            select!(ratio; F64; 11.1),
+            select!(ratio; F64; 11.0),
         ),
         (
             "SELECT SUM(quantity), COUNT(*), city FROM Item GROUP BY city HAVING COUNT(*) > 1",
             select!(
                 "SUM(quantity)" | "COUNT(*)" | city
-                I64          | I64        | Str;
-                21             2            "Seoul".to_owned()
+                I64             | I64        | Str;
+                21                2            "Seoul".to_owned()
             ),
         ),
     ];

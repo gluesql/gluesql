@@ -86,7 +86,7 @@ impl UniqueConstraint {
     }
 }
 
-pub async fn validate_unique<T: 'static + Debug>(
+pub async fn validate_unique<T: Debug>(
     storage: &impl Store<T>,
     table_name: &str,
     column_validation: ColumnValidation,

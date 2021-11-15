@@ -13,10 +13,7 @@ use {
     std::fmt::Debug,
 };
 
-pub async fn plan<T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    statement: Statement,
-) -> Result<Statement> {
+pub async fn plan<T: Debug>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
     match statement {
         Statement::Query(query) => plan_query(storage, *query)
             .await
@@ -56,7 +53,7 @@ impl Indexes {
     }
 }
 
-async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
+async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
     let Query {
         body,
         order_by,
@@ -151,7 +148,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
     }
 }
 
-async fn plan_select<T: 'static + Debug>(
+async fn plan_select<T: Debug>(
     storage: &dyn Store<T>,
     indexes: &Indexes,
     select: Select,
@@ -228,7 +225,7 @@ enum Planned {
 }
 
 #[async_recursion(?Send)]
-async fn plan_index<T: 'static + Debug>(
+async fn plan_index<T: Debug>(
     storage: &dyn Store<T>,
     indexes: &Indexes,
     selection: Expr,

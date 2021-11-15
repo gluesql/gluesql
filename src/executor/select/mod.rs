@@ -28,8 +28,8 @@ use {
 #[cfg(feature = "index")]
 use {super::evaluate::evaluate, crate::ast::IndexItem};
 
-async fn fetch_blended<'a, T: 'static + Debug>(
-    storage: &dyn GStore<T>,
+async fn fetch_blended<'a, T: Debug>(
+    storage: &'a dyn GStore<T>,
     table: Table<'a>,
     columns: Rc<[String]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
@@ -145,7 +145,7 @@ fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-pub async fn select_with_labels<'a, T: 'static + Debug>(
+pub async fn select_with_labels<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
@@ -267,7 +267,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     Ok((labels, rows))
 }
 
-pub async fn select<'a, T: 'static + Debug>(
+pub async fn select<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,

@@ -1,4 +1,4 @@
-use {crate::*, std::borrow::Cow, test::*, uuid::Uuid as UUID};
+use {crate::*, ast::DataType, bigdecimal::BigDecimal, std::borrow::Cow, uuid::Uuid as UUID};
 
 test_case!(uuid, async move {
     let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
@@ -9,7 +9,7 @@ test_case!(uuid, async move {
             r#"INSERT INTO UUID VALUES (0)"#,
             Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: DataType::Uuid,
-                literal: format!("{:?}", Literal::Number(Cow::Owned("0".to_owned()))),
+                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(0)))),
             }
             .into()),
         ),

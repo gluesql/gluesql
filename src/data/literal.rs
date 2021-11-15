@@ -2,10 +2,12 @@ use {
     super::StringExt,
     crate::{
         ast::AstLiteral,
+        data::BigDecimalExt,
         result::{Error, Result},
     },
+    bigdecimal::BigDecimal,
     serde::Serialize,
-    std::{borrow::Cow, cmp::Ordering, fmt::Debug},
+    std::{borrow::Cow, cmp::Ordering, convert::TryFrom, fmt::Debug},
     thiserror::Error,
     Literal::*,
 };
@@ -34,7 +36,7 @@ pub enum LiteralError {
 #[derive(Clone, Debug)]
 pub enum Literal<'a> {
     Boolean(bool),
-    Number(Cow<'a, String>),
+    Number(Cow<'a, BigDecimal>),
     Text(Cow<'a, String>),
     Interval(super::Interval),
     Null,
@@ -69,22 +71,8 @@ impl PartialEq<Literal<'_>> for Literal<'_> {
     fn eq(&self, other: &Literal) -> bool {
         match (self, other) {
             (Boolean(l), Boolean(r)) => l == r,
+            (Number(l), Number(r)) => l == r,
             (Text(l), Text(r)) => l == r,
-            (Number(l), Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
-                (Ok(l), Ok(r)) => l == r,
-                (_, Ok(r)) => match l.parse::<f64>() {
-                    Ok(l) => l == (r as f64),
-                    _ => false,
-                },
-                (Ok(l), _) => match r.parse::<f64>() {
-                    Ok(r) => (l as f64) == r,
-                    _ => false,
-                },
-                _ => match (l.parse::<f64>(), r.parse::<f64>()) {
-                    (Ok(l), Ok(r)) => l == r,
-                    _ => false,
-                },
-            },
             (Interval(l), Interval(r)) => l == r,
             _ => false,
         }
@@ -95,21 +83,7 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
     fn partial_cmp(&self, other: &Literal) -> Option<Ordering> {
         match (self, other) {
             (Boolean(l), Boolean(r)) => Some(l.cmp(r)),
-            (Number(l), Number(r)) => match (l.parse::<i64>(), r.parse::<i64>()) {
-                (Ok(l), Ok(r)) => Some(l.cmp(&r)),
-                (_, Ok(r)) => match l.parse::<f64>() {
-                    Ok(l) => l.partial_cmp(&(r as f64)),
-                    _ => None,
-                },
-                (Ok(l), _) => match r.parse::<f64>() {
-                    Ok(r) => (l as f64).partial_cmp(&r),
-                    _ => None,
-                },
-                _ => match (l.parse::<f64>(), r.parse::<f64>()) {
-                    (Ok(l), Ok(r)) => l.partial_cmp(&r),
-                    _ => None,
-                },
-            },
+            (Number(l), Number(r)) => Some(l.cmp(r)),
             (Text(l), Text(r)) => Some(l.cmp(r)),
             (Interval(l), Interval(r)) => l.partial_cmp(r),
             _ => None,
@@ -120,11 +94,7 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
 impl<'a> Literal<'a> {
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
-            Number(v) => v
-                .parse::<i64>()
-                .map(|_| self.to_owned())
-                .or_else(|_| v.parse::<f64>().map(|_| self.to_owned()))
-                .map_err(|_| LiteralError::UnreachableUnaryOperation.into()),
+            Number(v) => Ok(Number(v.clone())),
             Interval(v) => Ok(Interval(*v)),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -133,12 +103,7 @@ impl<'a> Literal<'a> {
 
     pub fn unary_minus(&self) -> Result<Self> {
         match self {
-            Number(v) => v
-                .parse::<i64>()
-                .map(|v| (-v).to_string())
-                .or_else(|_| v.parse::<f64>().map(|v| (-v).to_string()))
-                .map(|v| Number(Cow::Owned(v)))
-                .map_err(|_| LiteralError::UnreachableUnaryOperation.into()),
+            Number(v) => Ok(Number(Cow::Owned(-v.as_ref()))),
             Interval(v) => Ok(Interval(v.unary_minus())),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
@@ -152,7 +117,7 @@ impl<'a> Literal<'a> {
             } else {
                 "FALSE".to_owned()
             }),
-            Number(v) => Some(v.into_owned()),
+            Number(v) => Some(v.to_string()),
             Text(v) => Some(v.into_owned()),
             Interval(v) => Some(v.into()),
             Null => None,
@@ -166,15 +131,7 @@ impl<'a> Literal<'a> {
 
     pub fn add<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    Ok(Number(Cow::Owned((l + r).to_string())))
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    Ok(Number(Cow::Owned((l + r).to_string())))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
+            (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
             (Interval(l), Interval(r)) => l.add(r).map(Interval),
             (Null, Number(_))
             | (Null, Interval(_))
@@ -191,15 +148,7 @@ impl<'a> Literal<'a> {
 
     pub fn subtract<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    Ok(Number(Cow::Owned((l - r).to_string())))
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    Ok(Number(Cow::Owned((l - r).to_string())))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
+            (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() - r.as_ref()))),
             (Interval(l), Interval(r)) => l.subtract(r).map(Interval),
             (Null, Number(_))
             | (Null, Interval(_))
@@ -216,19 +165,11 @@ impl<'a> Literal<'a> {
 
     pub fn multiply<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
-            (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    Ok(Number(Cow::Owned((l * r).to_string())))
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    Ok(Number(Cow::Owned((l * r).to_string())))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
+            (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
             (Number(l), Interval(r)) | (Interval(r), Number(l)) => {
-                if let Ok(l) = l.parse::<i64>() {
+                if let Some(l) = l.to_i64() {
                     Ok(Interval(l * *r))
-                } else if let Ok(l) = l.parse::<f64>() {
+                } else if let Some(l) = l.to_f64() {
                     Ok(Interval(l * *r))
                 } else {
                     Err(LiteralError::UnreachableBinaryArithmetic.into())
@@ -250,35 +191,20 @@ impl<'a> Literal<'a> {
     pub fn divide<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
             (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    if r == 0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Number(Cow::Owned((l / r).to_string())))
-                    }
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    if r == 0.0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Number(Cow::Owned((l / r).to_string())))
-                    }
+                if *r.as_ref() == 0.into() {
+                    Err(LiteralError::DivisorShouldNotBeZero.into())
                 } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                    Ok(Number(Cow::Owned(l.as_ref() / r.as_ref())))
                 }
             }
             (Interval(l), Number(r)) => {
-                if let Ok(r) = r.parse::<i64>() {
-                    if r == 0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Interval(*l / r))
+                if let Some(r) = r.to_i64() {
+                    match r {
+                        0 => Err(LiteralError::DivisorShouldNotBeZero.into()),
+                        _ => Ok(Interval(*l / r)),
                     }
-                } else if let Ok(r) = r.parse::<f64>() {
-                    if r == 0.0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Interval(*l / r))
-                    }
+                } else if let Some(r) = r.to_f64() {
+                    Ok(Interval(*l / r))
                 } else {
                     Err(LiteralError::UnreachableBinaryArithmetic.into())
                 }
@@ -297,20 +223,10 @@ impl<'a> Literal<'a> {
     pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
         match (self, other) {
             (Number(l), Number(r)) => {
-                if let (Ok(l), Ok(r)) = (l.parse::<i64>(), r.parse::<i64>()) {
-                    if r == 0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Number(Cow::Owned((l % r).to_string())))
-                    }
-                } else if let (Ok(l), Ok(r)) = (l.parse::<f64>(), r.parse::<f64>()) {
-                    if r == 0.0 {
-                        Err(LiteralError::DivisorShouldNotBeZero.into())
-                    } else {
-                        Ok(Number(Cow::Owned((l % r).to_string())))
-                    }
+                if *r.as_ref() == 0.into() {
+                    Err(LiteralError::DivisorShouldNotBeZero.into())
                 } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
+                    Ok(Number(Cow::Owned(l.as_ref() % r.as_ref())))
                 }
             }
             (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
@@ -335,20 +251,27 @@ impl<'a> Literal<'a> {
 #[cfg(test)]
 mod tests {
 
-    use super::Literal::*;
-    use std::borrow::Cow;
+    use {
+        super::Literal::*,
+        bigdecimal::BigDecimal,
+        std::{borrow::Cow, str::FromStr},
+    };
 
     #[test]
     fn arithmetic() {
         use crate::data::Interval as I;
 
         let mon = |n| Interval(I::months(n));
-        let num = |n: i32| Number(Cow::Owned(n.to_string()));
+        let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
 
         assert_eq!(mon(1).add(&mon(2)), Ok(mon(3)));
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
+        assert_eq!(
+            Number(Cow::Owned(BigDecimal::try_from(3.3).unwrap())).multiply(&mon(10)),
+            Ok(mon(33))
+        );
     }
 
     #[test]
@@ -359,7 +282,7 @@ mod tests {
             };
         }
 
-        let num = || Number(Cow::Owned("123".to_owned()));
+        let num = || Number(Cow::Owned(BigDecimal::from(123)));
         let text = || text!("Foo");
 
         assert_eq!(Boolean(true).concat(num()), text!("TRUE123"));
@@ -377,7 +300,7 @@ mod tests {
 
         macro_rules! num {
             ($num: expr) => {
-                Number(Cow::Owned($num.to_owned()))
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
 
@@ -387,7 +310,7 @@ mod tests {
             };
         }
 
-        let num_divisor = |x: &str| Number(Cow::Owned(x.to_owned()));
+        let num_divisor = |x| Number(Cow::Owned(BigDecimal::from_str(x).unwrap()));
 
         // Divide Test
         assert_eq!(num!("12").divide(&num_divisor("2")).unwrap(), num!("6"));
@@ -424,7 +347,7 @@ mod tests {
         }
         macro_rules! num {
             ($num: expr) => {
-                Number(Cow::Owned($num.to_owned()))
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
         //Boolean
@@ -465,7 +388,7 @@ mod tests {
         }
         macro_rules! num {
             ($num: expr) => {
-                Number(Cow::Owned($num.to_owned()))
+                Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
         //Boolean
