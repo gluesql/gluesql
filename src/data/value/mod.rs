@@ -23,6 +23,7 @@ pub use error::ValueError;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {
     Bool(bool),
+    I8(i8),
     I64(i64),
     F64(f64),
     Str(String),
@@ -40,10 +41,10 @@ impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => l == r,
-            (Value::I64(l), Value::I64(r)) => l == r,
-            (Value::I64(l), Value::F64(r)) => &(*l as f64) == r,
-            (Value::F64(l), Value::I64(r)) => l == &(*r as f64),
-            (Value::F64(l), Value::F64(r)) => l == r,
+            (
+                Value::I8(_) | Value::I64(_) | Value::F64(_),
+                Value::I8(_) | Value::I64(_) | Value::F64(_),
+            ) => partial_eq_for_numeric(self, other),
             (Value::Str(l), Value::Str(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
@@ -59,14 +60,31 @@ impl PartialEq<Value> for Value {
     }
 }
 
+fn partial_eq_for_numeric(base: &Value, quote: &Value) -> bool {
+    match (base, quote) {
+        (Value::I8(l), Value::I8(r)) => l == r,
+        (Value::I8(l), Value::I64(r)) => &(*l as i64) == r,
+        (Value::I8(l), Value::F64(r)) => (*l as f64 - r).abs() < f64::EPSILON,
+
+        (Value::I64(l), Value::I64(r)) => l == r,
+        (Value::I64(l), Value::I8(r)) => l == &(*r as i64),
+        (Value::I64(l), Value::F64(r)) => (*l as f64 - r).abs() < f64::EPSILON,
+
+        (Value::F64(l), Value::F64(r)) => (l - r).abs() < f64::EPSILON,
+        (Value::F64(l), Value::I8(r)) => (l - *r as f64).abs() < f64::EPSILON,
+        (Value::F64(l), Value::I64(r)) => (l - *r as f64).abs() < f64::EPSILON,
+        _ => false,
+    }
+}
+
 impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
-            (Value::I64(l), Value::I64(r)) => Some(l.cmp(r)),
-            (Value::I64(l), Value::F64(r)) => (*l as f64).partial_cmp(r),
-            (Value::F64(l), Value::I64(r)) => l.partial_cmp(&(*r as f64)),
-            (Value::F64(l), Value::F64(r)) => l.partial_cmp(r),
+            (
+                Value::I8(_) | Value::I64(_) | Value::F64(_),
+                Value::I8(_) | Value::I64(_) | Value::F64(_),
+            ) => partial_cmp_for_numeric(self, other),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),
@@ -80,10 +98,28 @@ impl PartialOrd<Value> for Value {
     }
 }
 
+fn partial_cmp_for_numeric(base: &Value, quote: &Value) -> Option<Ordering> {
+    match (base, quote) {
+        (Value::I8(l), Value::I8(r)) => Some(l.cmp(r)),
+        (Value::I8(l), Value::I64(r)) => (*l as i64).partial_cmp(r),
+        (Value::I8(l), Value::F64(r)) => (*l as f64).partial_cmp(r),
+
+        (Value::I64(l), Value::I64(r)) => Some(l.cmp(r)),
+        (Value::I64(l), Value::I8(r)) => Some(l.cmp(&(*r as i64))),
+        (Value::I64(l), Value::F64(r)) => (*l as f64).partial_cmp(r),
+
+        (Value::F64(l), Value::F64(r)) => l.partial_cmp(r),
+        (Value::F64(l), Value::I8(r)) => l.partial_cmp(&(*r as f64)),
+        (Value::F64(l), Value::I64(r)) => l.partial_cmp(&(*r as f64)),
+        _ => None,
+    }
+}
+
 impl Value {
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
         let valid = match self {
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
+            Value::I8(_) => matches!(data_type, DataType::Int8),
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::F64(_) => matches!(data_type, DataType::Float),
             Value::Str(_) => matches!(data_type, DataType::Text),
@@ -119,6 +155,7 @@ impl Value {
     pub fn cast(&self, data_type: &DataType) -> Result<Self> {
         match (data_type, self) {
             (DataType::Boolean, Value::Bool(_))
+            | (DataType::Int8, Value::I8(_))
             | (DataType::Int, Value::I64(_))
             | (DataType::Float, Value::F64(_))
             | (DataType::Text, Value::Str(_))
@@ -131,6 +168,7 @@ impl Value {
             (_, Value::Null) => Ok(Value::Null),
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
+            (DataType::Int8, value) => value.try_into().map(Value::I8),
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Float, value) => value.try_into().map(Value::F64),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
@@ -155,19 +193,19 @@ impl Value {
         use Value::*;
 
         match (self, other) {
-            (I64(a), I64(b)) => Ok(I64(a + b)),
-            (F64(a), F64(b)) => Ok(F64(a + b)),
-            (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 + b)),
+            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.add_for_numeric(other),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
             (Date(a), Interval(b)) => b.add_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
-            (Null, I64(_))
+            (Null, I8(_))
+            | (Null, I64(_))
             | (Null, F64(_))
             | (Null, Date(_))
             | (Null, Timestamp(_))
             | (Null, Interval(_))
+            | (I8(_), Null)
             | (I64(_), Null)
             | (F64(_), Null)
             | (Date(_), Null)
@@ -179,15 +217,32 @@ impl Value {
         }
     }
 
+    fn add_for_numeric(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I8(a), I8(b)) => Ok(I8(a + b)),
+            (I8(a), I64(b)) => Ok(I64(*a as i64 + b)),
+            (I8(a), F64(b)) => Ok(F64(*a as f64 + b)),
+
+            (I64(a), I64(b)) => Ok(I64(a + b)),
+            (I64(a), I8(b)) => Ok(I64(a + *b as i64)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 + b)),
+
+            (F64(a), F64(b)) => Ok(F64(a + b)),
+            (F64(a), I8(b)) => Ok(F64(a + *b as f64)),
+            (F64(a), I64(b)) => Ok(F64(a + *b as f64)),
+
+            _ => Err(ValueError::AddOnNonNumeric(self.clone(), other.clone()).into()),
+        }
+    }
+
     pub fn subtract(&self, other: &Value) -> Result<Value> {
         use super::Interval as I;
         use Value::*;
 
         match (self, other) {
-            (I64(a), I64(b)) => Ok(I64(a - b)),
-            (I64(a), F64(b)) => Ok(F64(*a as f64 - b)),
-            (F64(a), I64(b)) => Ok(F64(a - *b as f64)),
-            (F64(a), F64(b)) => Ok(F64(a - b)),
+            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.subtract_for_numeric(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
             (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.subtract_from_timestamp(a).map(Timestamp),
@@ -207,12 +262,14 @@ impl Value {
                 .map(|v| Interval(I::microseconds(v))),
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
-            (Null, I64(_))
+            (Null, I8(_))
+            | (Null, I64(_))
             | (Null, F64(_))
             | (Null, Date(_))
             | (Null, Timestamp(_))
             | (Null, Time(_))
             | (Null, Interval(_))
+            | (I8(_), Null)
             | (I64(_), Null)
             | (F64(_), Null)
             | (Date(_), Null)
@@ -224,20 +281,42 @@ impl Value {
         }
     }
 
+    fn subtract_for_numeric(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I8(a), I8(b)) => Ok(I8(a - b)),
+            (I8(a), I64(b)) => Ok(I64(*a as i64 - b)),
+            (I8(a), F64(b)) => Ok(F64(*a as f64 - b)),
+
+            (I64(a), I64(b)) => Ok(I64(a - b)),
+            (I64(a), I8(b)) => Ok(I64(a - *b as i64)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 - b)),
+
+            (F64(a), F64(b)) => Ok(F64(a - b)),
+            (F64(a), I8(b)) => Ok(F64(a - *b as f64)),
+            (F64(a), I64(b)) => Ok(F64(a - *b as f64)),
+
+            _ => Err(ValueError::SubtractOnNonNumeric(self.clone(), other.clone()).into()),
+        }
+    }
+
     pub fn multiply(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
         match (self, other) {
-            (I64(a), I64(b)) => Ok(I64(a * b)),
+            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.multiply_for_numeric(other),
+            (I8(a), Interval(b)) => Ok(Interval(*a * *b)),
             (I64(a), Interval(b)) => Ok(Interval(*a * *b)),
-            (F64(a), F64(b)) => Ok(F64(a * b)),
             (F64(a), Interval(b)) => Ok(Interval(*a * *b)),
-            (I64(a), F64(b)) | (F64(b), I64(a)) => Ok(F64(*a as f64 * b)),
+            (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
-            (Null, I64(_))
+            (Null, I8(_))
+            | (Null, I64(_))
             | (Null, F64(_))
             | (Null, Interval(_))
+            | (I8(_), Null)
             | (I64(_), Null)
             | (F64(_), Null)
             | (Interval(_), Null)
@@ -246,26 +325,66 @@ impl Value {
         }
     }
 
+    fn multiply_for_numeric(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I8(a), I8(b)) => Ok(I8(a * b)),
+            (I8(a), I64(b)) => Ok(I64(*a as i64 * b)),
+            (I8(a), F64(b)) => Ok(F64(*a as f64 * b)),
+
+            (I64(a), I64(b)) => Ok(I64(a * b)),
+            (I64(a), I8(b)) => Ok(I64(a * *b as i64)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 * b)),
+
+            (F64(a), F64(b)) => Ok(F64(a * b)),
+            (F64(a), I8(b)) => Ok(F64(a * *b as f64)),
+            (F64(a), I64(b)) => Ok(F64(a * *b as f64)),
+
+            _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
+        }
+    }
+
     pub fn divide(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if (other == &I64(0)) | (other == &F64(0.0)) {
+        if (other == &I8(0)) | (other == &I64(0)) | (other == &F64(0.0)) {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
         match (self, other) {
-            (I64(a), I64(b)) => Ok(I64(a / b)),
-            (I64(a), F64(b)) => Ok(F64(*a as f64 / b)),
-            (F64(a), I64(b)) => Ok(F64(a / *b as f64)),
-            (F64(a), F64(b)) => Ok(F64(a / b)),
+            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.divide_for_numeric(other),
+            (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
-            (Null, I64(_))
+            (Null, I8(_))
+            | (Null, I64(_))
             | (Null, F64(_))
+            | (I8(_), Null)
             | (I64(_), Null)
             | (F64(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
+            _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
+        }
+    }
+
+    fn divide_for_numeric(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I8(a), I8(b)) => Ok(I8(a / b)),
+            (I8(a), I64(b)) => Ok(I64(*a as i64 / b)),
+            (I8(a), F64(b)) => Ok(F64(*a as f64 / b)),
+
+            (I64(a), I64(b)) => Ok(I64(a / b)),
+            (I64(a), I8(b)) => Ok(I64(a / *b as i64)),
+            (I64(a), F64(b)) => Ok(F64(*a as f64 / b)),
+
+            (F64(a), F64(b)) => Ok(F64(a / b)),
+            (F64(a), I8(b)) => Ok(F64(a / *b as f64)),
+            (F64(a), I64(b)) => Ok(F64(a / *b as f64)),
+
             _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
@@ -278,13 +397,34 @@ impl Value {
         }
 
         match (self, other) {
+            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.modulo_for_numeric(other),
+            (Null, I8(_))
+            | (Null, I64(_))
+            | (Null, F64(_))
+            | (I8(_), Null)
+            | (I64(_), Null)
+            | (F64(_), Null)
+            | (Null, Null) => Ok(Null),
+            _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
+        }
+    }
+
+    fn modulo_for_numeric(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+
+        match (self, other) {
+            (I8(a), I8(b)) => Ok(I8(a % b)),
+            (I8(a), I64(b)) => Ok(I64(*a as i64 % b)),
+            (I8(a), F64(b)) => Ok(F64(*a as f64 % b)),
+
             (I64(a), I64(b)) => Ok(I64(a % b)),
+            (I64(a), I8(b)) => Ok(I64(a % *b as i64)),
             (I64(a), F64(b)) => Ok(F64(*a as f64 % b)),
-            (F64(a), I64(b)) => Ok(F64(a % *b as f64)),
+
             (F64(a), F64(b)) => Ok(F64(a % b)),
-            (Null, I64(_)) | (Null, F64(_)) | (I64(_), Null) | (F64(_), Null) | (Null, Null) => {
-                Ok(Null)
-            }
+            (F64(a), I8(b)) => Ok(F64(a % *b as f64)),
+            (F64(a), I64(b)) => Ok(F64(a % *b as f64)),
+
             _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
@@ -297,7 +437,7 @@ impl Value {
         use Value::*;
 
         match self {
-            I64(_) | F64(_) | Interval(_) => Ok(self.clone()),
+            I8(_) | I64(_) | F64(_) | Interval(_) => Ok(self.clone()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryPlusOnNonNumeric.into()),
         }
@@ -307,6 +447,7 @@ impl Value {
         use Value::*;
 
         match self {
+            I8(a) => Ok(I8(-a)),
             I64(a) => Ok(I64(-a)),
             F64(a) => Ok(F64(-a)),
             Interval(a) => Ok(Interval(a.unary_minus())),
@@ -343,6 +484,7 @@ mod tests {
 
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
+        assert_eq!(I8(1), I8(1));
         assert_eq!(I64(1), I64(1));
         assert_eq!(I64(1), F64(1.0));
         assert_eq!(F64(1.0), I64(1));
@@ -410,10 +552,18 @@ mod tests {
         let time = |h, m, s| NaiveTime::from_hms(h, m, s);
         let date = |y, m, d| NaiveDate::from_ymd(y, m, d);
 
+        test!(add I8(1),    I8(2)    => I8(3));
+        test!(add I8(1),    I64(2)   => I64(3));
+        test!(add I8(1),    F64(2.0) => F64(3.0));
+
         test!(add I64(1),   I64(2)   => I64(3));
+        test!(add I64(1),   I8(2)    => I64(3));
         test!(add I64(1),   F64(2.0) => F64(3.0));
-        test!(add F64(1.0), I64(2)   => F64(3.0));
+
         test!(add F64(1.0), F64(2.0) => F64(3.0));
+        test!(add F64(1.0), I8(2)    => F64(3.0));
+        test!(add F64(1.0), I64(2)   => F64(3.0));
+
         test!(add
             Date(date(2021, 11, 11)),
             mon!(14)
@@ -446,10 +596,18 @@ mod tests {
         );
         test!(add mon!(1),  mon!(2)  => mon!(3));
 
+        test!(subtract I8(3),    I8(2)    => I8(1));
+        test!(subtract I8(3),    I64(2)   => I64(1));
+        test!(subtract I8(3),    F64(2.0) => F64(1.0));
+
         test!(subtract I64(3),   I64(2)   => I64(1));
+        test!(subtract I64(3),   I8(2)    => I64(1));
         test!(subtract I64(3),   F64(2.0) => F64(1.0));
-        test!(subtract F64(3.0), I64(2)   => F64(1.0));
+
         test!(subtract F64(3.0), F64(2.0) => F64(1.0));
+        test!(subtract F64(3.0), I8(2)    => F64(1.0));
+        test!(subtract F64(3.0), I64(2)   => F64(1.0));
+
         test!(subtract
             Date(NaiveDate::from_ymd(2021, 11, 11)),
             Date(NaiveDate::from_ymd(2021, 6, 11))
@@ -488,19 +646,38 @@ mod tests {
         );
         test!(subtract mon!(1),  mon!(2)  => mon!(-1));
 
+        test!(multiply I8(3),    I8(2)    => I8(6));
+        test!(multiply I8(3),    I64(2)   => I64(6));
+        test!(multiply I8(3),    F64(2.0) => F64(6.0));
+
         test!(multiply I64(3),   I64(2)   => I64(6));
+        test!(multiply I64(3),   I8(2)    => I64(6));
         test!(multiply I64(3),   F64(2.0) => F64(6.0));
-        test!(multiply I64(3),   mon!(3)  => mon!(9));
-        test!(multiply F64(3.0), I64(2)   => F64(6.0));
+
         test!(multiply F64(3.0), F64(2.0) => F64(6.0));
+        test!(multiply F64(3.0), I8(2)    => F64(6.0));
+        test!(multiply F64(3.0), I64(2)   => F64(6.0));
+
+        test!(multiply I8(3),    mon!(3)  => mon!(9));
+        test!(multiply I64(3),   mon!(3)  => mon!(9));
         test!(multiply F64(3.0), mon!(3)  => mon!(9));
+        test!(multiply mon!(3),  I8(2)   => mon!(6));
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
+        test!(divide I8(6),    I8(2)    => I8(3));
+        test!(divide I8(6),    I8(2)    => I64(3));
+        test!(divide I8(6),    F64(2.0) => F64(3.0));
+
         test!(divide I64(6),   I64(2)   => I64(3));
+        test!(divide I64(6),   I8(2)    => I64(3));
         test!(divide I64(6),   F64(2.0) => F64(3.0));
+
+        test!(divide F64(6.0), I8(2)    => F64(3.0));
         test!(divide F64(6.0), I64(2)   => F64(3.0));
         test!(divide F64(6.0), F64(2.0) => F64(3.0));
+
+        test!(divide mon!(6),  I8(2)    => mon!(3));
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
@@ -519,42 +696,52 @@ mod tests {
         let time = || Time(NaiveTime::from_hms(6, 1, 1));
         let ts = || Timestamp(NaiveDate::from_ymd(1989, 1, 1).and_hms(0, 0, 0));
 
+        null_test!(add      I8(1),    Null);
         null_test!(add      I64(1),   Null);
         null_test!(add      F64(1.0), Null);
         null_test!(add      date(),   Null);
         null_test!(add      ts(),     Null);
         null_test!(add      time(),   Null);
         null_test!(add      mon!(1),  Null);
+        null_test!(subtract I8(1),    Null);
         null_test!(subtract I64(1),   Null);
         null_test!(subtract F64(1.0), Null);
         null_test!(subtract date(),   Null);
         null_test!(subtract ts(),     Null);
         null_test!(subtract time(),   Null);
         null_test!(subtract mon!(1),  Null);
+        null_test!(multiply I8(1),    Null);
         null_test!(multiply I64(1),   Null);
         null_test!(multiply F64(1.0), Null);
         null_test!(multiply mon!(1),  Null);
+        null_test!(divide   I8(1),    Null);
         null_test!(divide   I64(1),   Null);
         null_test!(divide   F64(1.0), Null);
         null_test!(divide   mon!(1),  Null);
+        null_test!(modulo   I8(1),    Null);
         null_test!(modulo   I64(1),   Null);
         null_test!(modulo   F64(1.0), Null);
 
+        null_test!(add      Null, I8(1));
         null_test!(add      Null, I64(1));
         null_test!(add      Null, F64(1.0));
         null_test!(add      Null, mon!(1));
         null_test!(add      Null, date());
         null_test!(add      Null, ts());
+        null_test!(subtract Null, I8(1));
         null_test!(subtract Null, I64(1));
         null_test!(subtract Null, F64(1.0));
         null_test!(subtract Null, date());
         null_test!(subtract Null, ts());
         null_test!(subtract Null, time());
         null_test!(subtract Null, mon!(1));
+        null_test!(multiply Null, I8(1));
         null_test!(multiply Null, I64(1));
         null_test!(multiply Null, F64(1.0));
+        null_test!(divide   Null, I8(1));
         null_test!(divide   Null, I64(1));
         null_test!(divide   Null, F64(1.0));
+        null_test!(modulo   Null, I8(1));
         null_test!(modulo   Null, I64(1));
         null_test!(modulo   Null, F64(1.0));
 
@@ -588,6 +775,7 @@ mod tests {
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
+        cast!(I8(1)                 => Int8          , I8(1));
         cast!(I64(1)                => Int          , I64(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
         cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
@@ -595,6 +783,8 @@ mod tests {
         // Boolean
         cast!(Str("TRUE".to_owned())    => Boolean, Bool(true));
         cast!(Str("FALSE".to_owned())   => Boolean, Bool(false));
+        cast!(I8(1)                     => Boolean, Bool(true));
+        cast!(I8(0)                     => Boolean, Bool(false));
         cast!(I64(1)                    => Boolean, Bool(true));
         cast!(I64(0)                    => Boolean, Bool(false));
         cast!(F64(1.0)                  => Boolean, Bool(true));
@@ -602,6 +792,12 @@ mod tests {
         cast!(Null                      => Boolean, Null);
 
         // Integer
+        cast!(Bool(true)            => Int8, I8(1));
+        cast!(Bool(false)           => Int8, I8(0));
+        cast!(F64(1.1)              => Int8, I8(1));
+        cast!(Str("11".to_owned())  => Int8, I8(11));
+        cast!(Null                  => Int8, Null);
+
         cast!(Bool(true)            => Int, I64(1));
         cast!(Bool(false)           => Int, I64(0));
         cast!(F64(1.1)              => Int, I64(1));
@@ -611,6 +807,7 @@ mod tests {
         // Float
         cast!(Bool(true)            => Float, F64(1.0));
         cast!(Bool(false)           => Float, F64(0.0));
+        cast!(I8(1)                 => Float, F64(1.0));
         cast!(I64(1)                => Float, F64(1.0));
         cast!(Str("11".to_owned())  => Float, F64(11.0));
         cast!(Null                  => Float, Null);
@@ -618,6 +815,7 @@ mod tests {
         // Text
         cast!(Bool(true)    => Text, Str("TRUE".to_owned()));
         cast!(Bool(false)   => Text, Str("FALSE".to_owned()));
+        cast!(I8(11)        => Text, Str("11".to_owned()));
         cast!(I64(11)       => Text, Str("11".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
 
@@ -676,6 +874,8 @@ mod tests {
 
         assert!(Bool(true).validate_type(&D::Boolean).is_ok());
         assert!(Bool(true).validate_type(&D::Int).is_err());
+        assert!(I8(1).validate_type(&D::Int8).is_ok());
+        assert!(I8(1).validate_type(&D::Text).is_err());
         assert!(I64(1).validate_type(&D::Int).is_ok());
         assert!(I64(1).validate_type(&D::Text).is_err());
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
