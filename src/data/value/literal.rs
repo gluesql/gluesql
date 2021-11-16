@@ -107,6 +107,10 @@ impl Value {
                 .to_i64()
                 .map(Value::I64)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Int8, Literal::Number(v)) => v
+                .to_i8()
+                .map(Value::I8)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)
