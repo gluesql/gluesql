@@ -18,6 +18,11 @@ impl Value {
                     vec![VALUE, 0]
                 }
             }
+            Value::I8(v) => [VALUE]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
             Value::I64(v) => [VALUE]
                 .iter()
                 .chain(v.to_be_bytes().iter())
