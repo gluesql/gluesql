@@ -135,6 +135,15 @@ mod tests {
         assert_eq!(cmp(&n2, &n1), Ordering::Less);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
+        let n1 = I8(3).to_cmp_be_bytes().unwrap();
+        let n2 = I8(20).to_cmp_be_bytes().unwrap();
+        let n3 = I8(100).to_cmp_be_bytes().unwrap();
+
+        assert_eq!(cmp(&n2, &n2), Ordering::Equal);
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n1), Ordering::Greater);
+        assert_eq!(cmp(&n1, &null), Ordering::Less);
+
         let n1 = I64(3).to_cmp_be_bytes().unwrap();
         let n2 = I64(20).to_cmp_be_bytes().unwrap();
         let n3 = I64(100).to_cmp_be_bytes().unwrap();
