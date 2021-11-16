@@ -16,6 +16,7 @@ impl From<&Value> for String {
         match v {
             Value::Str(value) => value.to_string(),
             Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_string(),
+            Value::I8(value) => value.to_string(),
             Value::I64(value) => value.to_string(),
             Value::F64(value) => value.to_string(),
             Value::Date(value) => value.to_string(),
@@ -45,6 +46,11 @@ impl TryInto<bool> for &Value {
     fn try_into(self) -> Result<bool> {
         Ok(match self {
             Value::Bool(value) => *value,
+            Value::I8(value) => match value {
+                1 => true,
+                0 => false,
+                _ => return Err(ValueError::ImpossibleCast.into()),
+            },
             Value::I64(value) => match value {
                 1 => true,
                 0 => false,
@@ -84,6 +90,44 @@ impl TryInto<bool> for Value {
     }
 }
 
+impl TryInto<i8> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<i8> {
+        Ok(match self {
+            Value::Bool(value) => {
+                if *value {
+                    1
+                } else {
+                    0
+                }
+            }
+            Value::I8(value) => *value,
+            Value::I64(value) => *value as i8,
+            Value::F64(value) => value.trunc() as i8,
+            Value::Str(value) => value
+                .parse::<i8>()
+                .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
+impl TryInto<i8> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<i8> {
+        (&self).try_into()
+    }
+}
+
 impl TryInto<i64> for &Value {
     type Error = Error;
 
@@ -96,6 +140,7 @@ impl TryInto<i64> for &Value {
                     0
                 }
             }
+            Value::I8(value) => *value as i64,
             Value::I64(value) => *value,
             Value::F64(value) => value.trunc() as i64,
             Value::Str(value) => value
@@ -133,6 +178,7 @@ impl TryInto<f64> for &Value {
                     0.0
                 }
             }
+            Value::I8(value) => *value as f64,
             Value::I64(value) => (*value as f64).trunc(),
             Value::F64(value) => *value,
             Value::Str(value) => value
