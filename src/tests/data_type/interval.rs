@@ -1,6 +1,7 @@
 use crate::*;
 
 test_case!(interval, async move {
+    use crate::data::IntervalError;
     run!(
         r#"
 CREATE TABLE IntervalLog (
@@ -24,7 +25,7 @@ INSERT INTO IntervalLog VALUES
     );
 
     use data::Interval as I;
-    use Value::*;
+    use prelude::Value::*;
 
     test!(
         Ok(select!(

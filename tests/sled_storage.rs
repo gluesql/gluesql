@@ -2,10 +2,9 @@
 
 use {
     cfg_if::cfg_if,
+    gluesql::{prelude::SledStorage, sled::IVec, tests::*, *},
     std::{cell::RefCell, rc::Rc},
 };
-
-use gluesql::{sled::IVec, sled_storage::SledStorage, tests::*, *};
 
 struct SledTester {
     storage: Rc<RefCell<Option<SledStorage>>>,

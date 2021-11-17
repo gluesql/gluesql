@@ -1,8 +1,9 @@
 #![cfg(feature = "memory-storage")]
 
-use std::{cell::RefCell, rc::Rc};
-
-use gluesql::{memory_storage::Key, tests::*, *};
+use {
+    gluesql::{prelude::MemoryStorage, storages::memory_storage::Key, tests::*, *},
+    std::{cell::RefCell, rc::Rc},
+};
 
 struct MemoryTester {
     storage: Rc<RefCell<Option<MemoryStorage>>>,
@@ -49,8 +50,9 @@ cfg_if::cfg_if! {
 fn memory_storage_index() {
     use futures::executor::block_on;
     use gluesql::{
+        prelude::Glue,
+        result::{Error, Result},
         store::{Index, Store},
-        Error, Glue, Result,
     };
 
     let storage = MemoryStorage::default();
@@ -87,7 +89,7 @@ fn memory_storage_index() {
 #[cfg(feature = "transaction")]
 #[test]
 fn memory_storage_transaction() {
-    use gluesql::{Error, Glue};
+    use gluesql::{prelude::Glue, result::Error};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);

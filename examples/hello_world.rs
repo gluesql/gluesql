@@ -1,6 +1,6 @@
 #[cfg(feature = "sled-storage")]
 mod hello_world {
-    use gluesql::{Glue, Payload, SledStorage, Value};
+    use gluesql::prelude::{Glue, Payload, SledStorage, Value};
 
     pub fn run() {
         /*

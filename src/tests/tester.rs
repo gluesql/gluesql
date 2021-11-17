@@ -1,16 +1,13 @@
 use {
-    crate::{
-        ast::{DataType, Expr, IndexItem, Query, SetExpr, Statement, TableFactor},
-        data::Value,
-        executor::{execute, Payload},
-        parse_sql::{parse, parse_expr},
-        plan::plan,
-        result::Result,
-        store::{GStore, GStoreMut},
-        translate::{translate, translate_expr},
-    },
+    crate::*,
+    ast::*,
     async_trait::async_trait,
+    parse_sql::parse_expr,
+    prelude::*,
+    result::Result,
     std::{cell::RefCell, fmt::Debug, rc::Rc},
+    store::{GStore, GStoreMut},
+    translate::translate_expr,
 };
 
 pub fn expr(sql: &str) -> Expr {
@@ -247,7 +244,7 @@ macro_rules! test_case {
         pub async fn $name<T, U>(mut tester: impl tests::Tester<T, U>)
         where
             T: std::fmt::Debug,
-            U: GStore<T> + GStoreMut<T>,
+            U: store::GStore<T> + store::GStoreMut<T>,
         {
             use std::rc::Rc;
 
@@ -284,9 +281,9 @@ macro_rules! test_case {
             macro_rules! count {
                 ($count: expr, $sql: expr) => {
                     match tests::run(Rc::clone(&cell), $sql, None).await.unwrap() {
-                        Payload::Select { rows, .. } => assert_eq!($count, rows.len()),
-                        Payload::Delete(num) => assert_eq!($count, num),
-                        Payload::Update(num) => assert_eq!($count, num),
+                        prelude::Payload::Select { rows, .. } => assert_eq!($count, rows.len()),
+                        prelude::Payload::Delete(num) => assert_eq!($count, num),
+                        prelude::Payload::Update(num) => assert_eq!($count, num),
                         _ => panic!("compare is only for Select, Delete and Update"),
                     };
                 };

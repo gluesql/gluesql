@@ -3,8 +3,12 @@
 use {
     super::MemoryStorage,
     crate::{
-        ast::ColumnDef, result::MutResult, schema::ColumnDefExt, store::AlterTable,
-        AlterTableError, Result, TrySelf, Value,
+        ast::ColumnDef,
+        data::{schema::ColumnDefExt, Value},
+        result::Result,
+        result::{MutResult, TrySelf},
+        store::AlterTable,
+        store::AlterTableError,
     },
     async_trait::async_trait,
 };
@@ -55,7 +59,7 @@ impl MemoryStorage {
         let default = column_def.get_default();
         let value = match (default, nullable) {
             (Some(expr), _) => {
-                let evaluated = crate::evaluate_stateless(None, expr)?;
+                let evaluated = crate::executor::evaluate_stateless(None, expr)?;
 
                 evaluated.try_into_value(data_type, nullable)?
             }

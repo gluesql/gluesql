@@ -1,4 +1,5 @@
 use crate::*;
+use prelude::Value::*;
 
 test_case!(aggregate, async move {
     run!(
@@ -20,8 +21,6 @@ test_case!(aggregate, async move {
             (5, 25, NULL);
     "
     );
-
-    use Value::*;
 
     let test_cases = vec![
         ("SELECT COUNT(*) FROM Item", select!("COUNT(*)"; I64; 5)),
@@ -71,6 +70,7 @@ test_case!(aggregate, async move {
         test!(Ok(expected), sql);
     }
 
+    use crate::executor::AggregateError;
     let error_cases = vec![
         (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
@@ -113,8 +113,6 @@ test_case!(group_by, async move {
             (5,   24, \"Seattle\", 6.11);
     "
     );
-
-    use Value::*;
 
     let test_cases = vec![
         (
@@ -170,6 +168,7 @@ test_case!(group_by, async move {
         test!(Ok(expected), sql);
     }
 
+    use crate::data::ValueError;
     let error_cases = vec![(
         ValueError::GroupByNotSupported("FLOAT".to_owned()).into(),
         "SELECT * FROM Item GROUP BY ratio;",

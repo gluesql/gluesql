@@ -1,4 +1,11 @@
-use {crate::*, bigdecimal::BigDecimal, std::borrow::Cow};
+use {
+    crate::*,
+    bigdecimal::BigDecimal,
+    data::{Literal, LiteralError, ValueError},
+    executor::{EvaluateError, UpdateError},
+    prelude::Value::{self, *},
+    std::borrow::Cow,
+};
 
 test_case!(arithmetic, async move {
     run!(
@@ -160,8 +167,6 @@ test_case!(blend, async move {
             (5, 3);
     "
     );
-
-    use Value::I64;
 
     let sql = "SELECT 1 * 2 + 1 - 3 / 1 FROM Arith LIMIT 1;";
     let found = run!(sql);

@@ -9,8 +9,9 @@ use {
     },
     crate::{
         data::{Row, Schema},
+        result::MutResult,
         result::Result,
-        IndexError, MutResult, StoreMut,
+        store::{IndexError, StoreMut},
     },
     async_trait::async_trait,
     sled::{transaction::ConflictableTransactionError, IVec},

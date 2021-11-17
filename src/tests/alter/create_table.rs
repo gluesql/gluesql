@@ -1,6 +1,11 @@
 use crate::*;
 
 test_case!(create_table, async move {
+    use {
+        executor::{AlterError, EvaluateError},
+        prelude::Payload,
+        translate::TranslateError,
+    };
     let test_cases = vec![
         (
             r#"

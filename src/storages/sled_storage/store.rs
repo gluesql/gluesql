@@ -3,7 +3,7 @@ use {
     crate::{
         data::{Row, Schema},
         result::{Error, Result},
-        RowIter, Store,
+        store::{RowIter, Store},
     },
     async_trait::async_trait,
     sled::IVec,

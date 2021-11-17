@@ -2,7 +2,7 @@ use {
     super::{Interval, IntervalError, DAY, HOUR, MINUTE, SECOND},
     crate::{
         ast::{AstLiteral, Expr},
-        parse_interval,
+        parse_sql::parse_interval,
         result::{Error, Result},
         translate::translate_expr,
     },

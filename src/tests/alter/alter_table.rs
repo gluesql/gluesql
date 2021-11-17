@@ -1,8 +1,6 @@
 #![cfg(feature = "alter-table")]
 
-use crate::*;
-use ast::*;
-use Value::*;
+use crate::{data::Value::*, prelude::Payload, store::AlterTableError, *};
 
 test_case!(alter_table_rename, async move {
     let test_cases = vec![
@@ -35,6 +33,9 @@ test_case!(alter_table_rename, async move {
 });
 
 test_case!(alter_table_add_drop, async move {
+    use crate::{
+        ast::*, executor::AlterError, executor::EvaluateError, store::*, translate::TranslateError,
+    };
     let test_cases = vec![
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),

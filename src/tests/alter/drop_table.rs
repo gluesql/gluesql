@@ -1,4 +1,8 @@
-use crate::*;
+use {
+    crate::*,
+    executor::{AlterError, FetchError, Payload},
+    translate::TranslateError,
+};
 
 test_case!(drop_table, async move {
     let create_sql = r#"
@@ -16,7 +20,7 @@ CREATE TABLE DropTable (
         run!(sql);
     }
 
-    use Value::*;
+    use prelude::Value::*;
 
     let sqls = vec![
         (
