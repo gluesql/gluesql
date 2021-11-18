@@ -1,6 +1,12 @@
 use crate::*;
 
 test_case!(error, async move {
+    use {
+        data::RowError,
+        executor::{EvaluateError, ExecuteError, FetchError},
+        translate::TranslateError,
+    };
+
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
 

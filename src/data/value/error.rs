@@ -82,7 +82,7 @@ pub enum ValueError {
     LiteralCastFromTextToIntegerFailed(String),
 
     #[error("literal cast failed from text to float: {0}")]
-    LiteralCastToFloatFailed(String),
+    LiteralCastFromTextToFloatFailed(String),
 
     #[error("literal cast failed to boolean: {0}")]
     LiteralCastToBooleanFailed(String),
@@ -98,6 +98,9 @@ pub enum ValueError {
 
     #[error("unreachable literal cast from number to integer: {0}")]
     UnreachableLiteralCastFromNumberToInteger(String),
+
+    #[error("unreachable literal cast from number to float: {0}")]
+    UnreachableLiteralCastFromNumberToFloat(String),
 
     #[error("unimplemented literal cast: {literal} as {data_type:?}")]
     UnimplementedLiteralCast {

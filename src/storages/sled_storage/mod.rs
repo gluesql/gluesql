@@ -15,8 +15,8 @@ use {
     self::snapshot::Snapshot,
     crate::{
         data::Schema,
+        result::{Error, Result},
         store::{GStore, GStoreMut},
-        Error, Result,
     },
     error::{err_into, tx_err_into},
     sled::{

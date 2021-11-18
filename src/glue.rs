@@ -1,9 +1,12 @@
 use {
     crate::{
         ast::Statement,
-        execute, parse, plan,
+        executor::{execute, Payload},
+        parse_sql::parse,
+        plan::plan,
+        result::Result,
         store::{GStore, GStoreMut},
-        translate, Payload, Result,
+        translate::translate,
     },
     futures::executor::block_on,
     std::{fmt::Debug, marker::PhantomData},
@@ -14,7 +17,7 @@ pub struct Glue<T: Debug, U: GStore<T> + GStoreMut<T>> {
     pub storage: Option<U>,
 }
 
-impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
+impl<T: Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
     pub fn new(storage: U) -> Self {
         let storage = Some(storage);
 
@@ -70,13 +73,14 @@ impl<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
 mod tests {
     use {
         crate::{
+            executor::Payload,
+            prelude::{Glue, Value},
             store::{GStore, GStoreMut},
-            Glue, Payload, Value,
         },
         std::fmt::Debug,
     };
 
-    fn basic<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+    fn basic<T: Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
         assert_eq!(
             glue.execute("DROP TABLE IF EXISTS api_test"),
             Ok(Payload::DropTable)
@@ -121,7 +125,7 @@ mod tests {
         );
     }
 
-    async fn basic_async<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+    async fn basic_async<T: Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
         assert_eq!(
             glue.execute_async("DROP TABLE IF EXISTS api_test").await,
             Ok(Payload::DropTable)
@@ -139,7 +143,7 @@ mod tests {
     #[cfg(feature = "sled-storage")]
     #[test]
     fn sled_basic() {
-        use crate::sled_storage::SledStorage;
+        use crate::storages::sled_storage::SledStorage;
 
         let config = sled::Config::default()
             .path("data/using_config")
@@ -154,7 +158,7 @@ mod tests {
     #[cfg(feature = "memory-storage")]
     #[test]
     fn memory_basic() {
-        use crate::memory_storage::MemoryStorage;
+        use crate::storages::memory_storage::MemoryStorage;
 
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);
@@ -167,7 +171,7 @@ mod tests {
     fn memory_basic_async() {
         use futures::executor::block_on;
 
-        use crate::memory_storage::MemoryStorage;
+        use crate::storages::memory_storage::MemoryStorage;
 
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);

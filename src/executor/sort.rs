@@ -15,7 +15,7 @@ use {
     std::{cmp::Ordering, fmt::Debug, pin::Pin, rc::Rc},
 };
 
-pub struct Sort<'a, T: 'static + Debug> {
+pub struct Sort<'a, T: Debug> {
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     order_by: &'a [OrderByExpr],
@@ -26,7 +26,7 @@ type Item<'a> = Result<(
     Rc<BlendContext<'a>>,
 )>;
 
-impl<'a, T: 'static + Debug> Sort<'a, T> {
+impl<'a, T: Debug> Sort<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         context: Option<Rc<FilterContext<'a>>>,

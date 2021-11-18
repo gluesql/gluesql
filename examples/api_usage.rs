@@ -1,7 +1,7 @@
 #[cfg(feature = "sled-storage")]
 use {
     futures::executor::block_on,
-    gluesql::{execute, parse, translate, Glue, SledStorage},
+    gluesql::prelude::{execute, parse, translate, Glue, SledStorage},
 };
 
 #[cfg(feature = "sled-storage")]

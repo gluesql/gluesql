@@ -1,8 +1,11 @@
 use crate::*;
-use chrono::NaiveDate;
 
 test_case!(default, async move {
-    use Value::*;
+    use {
+        chrono::NaiveDate,
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+    };
 
     let test_cases = vec![
         (

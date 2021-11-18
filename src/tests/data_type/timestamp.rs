@@ -1,6 +1,7 @@
 use crate::*;
 
 test_case!(timestamp, async move {
+    use data::ValueError;
     run!(
         r#"
 CREATE TABLE TimestampLog (
@@ -25,7 +26,7 @@ INSERT INTO TimestampLog VALUES
         };
     }
 
-    use Value::*;
+    use prelude::Value::*;
 
     test!(
         Ok(select!(

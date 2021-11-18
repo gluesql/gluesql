@@ -1,6 +1,8 @@
 use crate::*;
 
 test_case!(unique, async move {
+    use {executor::ValidateError, prelude::Value};
+
     run!(
         r#"
 CREATE TABLE TestA (

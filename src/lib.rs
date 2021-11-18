@@ -12,7 +12,7 @@
 //! ## Examples
 //!
 //! ```
-//! use gluesql::*;
+//! use gluesql::prelude::*;
 //!
 //! #[cfg(feature = "sled-storage")]
 //! fn main() {
@@ -70,29 +70,35 @@
 pub use chrono;
 #[cfg(feature = "sled-storage")]
 pub use sled;
-pub use sqlparser as parser;
+pub use sqlparser;
 
-mod executor;
 mod glue;
-mod parse_sql;
-mod storages;
 mod utils;
 
 pub mod ast;
 pub mod data;
+pub mod executor;
+pub mod parse_sql;
 pub mod plan;
 pub mod result;
+pub mod storages;
 pub mod store;
 pub mod tests;
 pub mod translate;
 
-pub use data::*;
-pub use executor::*;
-pub use parse_sql::*;
-pub use plan::*;
-pub use result::*;
-pub use store::*;
-pub use translate::*;
+pub mod prelude {
+    #[cfg(feature = "sled-storage")]
+    pub use crate::storages::SledStorage;
 
-pub use glue::Glue;
-pub use storages::*;
+    #[cfg(feature = "memory-storage")]
+    pub use crate::storages::MemoryStorage;
+
+    pub use crate::{
+        data::value::Value,
+        executor::{execute, Payload},
+        glue::Glue,
+        parse_sql::parse,
+        plan::plan,
+        translate::translate,
+    };
+}

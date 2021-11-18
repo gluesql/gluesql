@@ -1,3 +1,4 @@
+mod bigdecimal_ext;
 mod interval;
 mod literal;
 mod row;
@@ -8,6 +9,7 @@ pub mod schema;
 pub mod value;
 
 pub use {
+    bigdecimal_ext::BigDecimalExt,
     interval::{Interval, IntervalError},
     literal::{Literal, LiteralError},
     row::{Row, RowError},
