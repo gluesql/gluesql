@@ -1,8 +1,6 @@
-use crate::*;
+use {crate::*, executor::Payload, prelude::Value::*};
 
 test_case!(decimal, async move {
-    use Value::Decimal;
-
     let test_cases = vec![
         (
             "CREATE TABLE DECIMAL_ITEM (decimal_field DECIMAL)",

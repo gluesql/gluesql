@@ -10,6 +10,7 @@ use {
         result::{Error, Result},
     },
     chrono::NaiveDate,
+    rust_decimal::Decimal,
     std::cmp::Ordering,
 };
 
@@ -127,7 +128,8 @@ impl Value {
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
             (DataType::Decimal, Literal::Number(v)) => v
-                .parse()
+                .to_string()
+                .parse::<Decimal>()
                 .map(Value::Decimal)
                 .map_err(|_| ValueError::FailedToParseDecimal(v.to_string()).into()),
             (_, Literal::Null) => Ok(Value::Null),
