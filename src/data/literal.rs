@@ -266,6 +266,10 @@ mod tests {
         let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
 
         assert_eq!(mon(1).add(&mon(2)), Ok(mon(3)));
+        matches!(Null.add(&num(1)), Ok(Null));
+        matches!(Null.add(&mon(1)), Ok(Null));
+        matches!(num(1).add(&Null), Ok(Null));
+        matches!(mon(1).add(&Null), Ok(Null));
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
