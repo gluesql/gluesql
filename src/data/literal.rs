@@ -270,7 +270,7 @@ mod tests {
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
 
-        //multiply test
+        // multiply test
         matches!(Null.multiply(&num(2)), Ok(Null));
         matches!(Null.multiply(&mon(1)), Ok(Null));
         matches!(num(2).multiply(&Null), Ok(Null));
