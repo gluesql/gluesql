@@ -270,7 +270,7 @@ mod tests {
         matches!(Null.add(&mon(1)), Ok(Null));
         matches!(num(1).add(&Null), Ok(Null));
         matches!(mon(1).add(&Null), Ok(Null));
-      
+
         //substract test
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         matches!(Null.subtract(&num(2)), Ok(Null));
