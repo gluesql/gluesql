@@ -326,9 +326,10 @@ mod tests {
         assert_eq!(itv!(12).divide(&num_divisor("2")).unwrap(), itv!(6));
         assert_eq!(itv!(10).divide(&num_divisor("2.5")).unwrap(), itv!(4));
         matches!(num!("12").divide(&Null).unwrap(), Null);
-        matches!(num!("12.0").divide(&Null).unwrap(), Null);
+        matches!(num!("12.5").divide(&Null).unwrap(), Null);
         matches!(itv!(12).divide(&Null).unwrap(), Null);
         matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
+        matches!(Null.divide(&num_divisor("2.5")).unwrap(), Null);
         matches!(Null.divide(&Null).unwrap(), Null);
         // Modulo Test
         assert_eq!(num!("12").modulo(&num_divisor("2")).unwrap(), num!("0"));
