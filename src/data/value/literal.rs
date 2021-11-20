@@ -248,11 +248,17 @@ mod tests {
         assert_eq!(Value::F64(7.123), num!("7.123"));
         assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
+        assert_ne!(Value::Date(date(2021, 11, 20)), text!("202=abcdef"));
         assert_eq!(
             Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
             text!("2021-11-20T10:00:00Z")
         );
+        assert_ne!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            text!("2021-11-Hello")
+        );
         assert_eq!(Value::Time(time(10, 0, 0, 0)), text!("10:00:00"));
+        assert_ne!(Value::Time(time(10, 0, 0, 0)), text!("FALSE"));
         assert_eq!(Value::Interval(I::Month(1)), Literal::Interval(I::Month(1)));
         assert_eq!(Value::Uuid(uuid), text!(uuid_text));
     }
