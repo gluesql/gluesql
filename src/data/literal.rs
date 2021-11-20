@@ -268,6 +268,14 @@ mod tests {
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
+    
+        
+        matches!(Null.multiply(&num(2)), Ok(Null));
+        matches!(Null.multiply(&mon(1)), Ok(Null));
+        matches!(num(2).multiply(&Null), Ok(Null));
+        matches!(mon(3).multiply(&Null), Ok(Null));
+        matches!(Null.multiply(&Null), Ok(Null));
+        
         assert_eq!(
             Number(Cow::Owned(BigDecimal::try_from(3.3).unwrap())).multiply(&mon(10)),
             Ok(mon(33))
