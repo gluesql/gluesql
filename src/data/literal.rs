@@ -340,6 +340,7 @@ mod tests {
     #[test]
     fn div_mod() {
         use crate::data::interval::Interval as I;
+        use crate::data::LiteralError;
 
         macro_rules! num {
             ($num: expr) => {
@@ -361,11 +362,22 @@ mod tests {
         assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
         assert_eq!(num!("12.0").divide(&num_divisor("2.0")).unwrap(), num!("6"));
         assert_eq!(itv!(12).divide(&num_divisor("2")).unwrap(), itv!(6));
-        assert_eq!(itv!(12).divide(&num_divisor("2.0")).unwrap(), itv!(6));
+        assert_eq!(itv!(10).divide(&num_divisor("2.5")).unwrap(), itv!(4));
         matches!(num!("12").divide(&Null).unwrap(), Null);
+        matches!(num!("12.5").divide(&Null).unwrap(), Null);
         matches!(itv!(12).divide(&Null).unwrap(), Null);
         matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
+        matches!(Null.divide(&num_divisor("2.5")).unwrap(), Null);
         matches!(Null.divide(&Null).unwrap(), Null);
+        assert_eq!(
+            Boolean(true).divide(&num_divisor("3")),
+            Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", Boolean(true)),
+                format!("{:?}", num!("3")),
+            )
+            .into()),
+        );
+
         // Modulo Test
         assert_eq!(num!("12").modulo(&num_divisor("2")).unwrap(), num!("0"));
         assert_eq!(num!("12").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
