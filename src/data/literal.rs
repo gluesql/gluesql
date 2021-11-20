@@ -260,12 +260,29 @@ mod tests {
     #[test]
     fn arithmetic() {
         use crate::data::Interval as I;
+        use crate::data::LiteralError;
 
         let mon = |n| Interval(I::months(n));
         let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
 
         assert_eq!(mon(1).add(&mon(2)), Ok(mon(3)));
+
+        //substract test
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
+        matches!(Null.subtract(&num(2)), Ok(Null));
+        matches!(Null.subtract(&mon(3)), Ok(Null));
+        matches!(num(2).subtract(&Null), Ok(Null));
+        matches!(mon(3).subtract(&Null), Ok(Null));
+        matches!(Null.subtract(&Null), Ok(Null));
+        assert_eq!(
+            Boolean(true).subtract(&num(3)),
+            Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", Boolean(true)),
+                format!("{:?}", num(3)),
+            )
+            .into()),
+        );
+
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
         assert_eq!(
