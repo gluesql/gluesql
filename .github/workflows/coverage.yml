@@ -21,7 +21,7 @@ jobs:
       uses: actions-rs/install@v0.1
       with:
         crate: cargo-tarpaulin
-        version: 0.14.2
+        version: latest
         use-tool-cache: true
     - name: Checkout
       uses: actions/checkout@v2
