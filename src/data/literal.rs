@@ -332,12 +332,6 @@ mod tests {
         matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
         matches!(Null.divide(&num_divisor("2.5")).unwrap(), Null);
         matches!(Null.divide(&Null).unwrap(), Null);
-
-        // Modulo Test
-        assert_eq!(num!("12").modulo(&num_divisor("2")).unwrap(), num!("0"));
-        assert_eq!(num!("12").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
-        assert_eq!(num!("12.0").modulo(&num_divisor("2")).unwrap(), num!("0"));
-        assert_eq!(num!("12.0").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
         assert_eq!(
             Boolean(true).divide(&num_divisor("3")),
             Err(LiteralError::UnsupportedBinaryArithmetic(
@@ -346,6 +340,12 @@ mod tests {
             )
             .into()),
         );
+
+        // Modulo Test
+        assert_eq!(num!("12").modulo(&num_divisor("2")).unwrap(), num!("0"));
+        assert_eq!(num!("12").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
+        assert_eq!(num!("12.0").modulo(&num_divisor("2")).unwrap(), num!("0"));
+        assert_eq!(num!("12.0").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
         matches!(num!("12").modulo(&Null).unwrap(), Null);
         matches!(Null.modulo(&num_divisor("2")).unwrap(), Null);
         matches!(Null.modulo(&Null).unwrap(), Null);
