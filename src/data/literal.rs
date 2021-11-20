@@ -336,7 +336,6 @@ mod tests {
         assert_eq!(num!("12.0").modulo(&num_divisor("2")).unwrap(), num!("0"));
         assert_eq!(num!("12.0").modulo(&num_divisor("2.0")).unwrap(), num!("0"));
         matches!(num!("12").modulo(&Null).unwrap(), Null);
-        matches!(itv!(12).modulo(&Null).unwrap(), Null);
         matches!(Null.modulo(&num_divisor("2")).unwrap(), Null);
         matches!(Null.modulo(&Null).unwrap(), Null);
     }
