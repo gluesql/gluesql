@@ -270,7 +270,23 @@ mod tests {
         matches!(Null.add(&mon(1)), Ok(Null));
         matches!(num(1).add(&Null), Ok(Null));
         matches!(mon(1).add(&Null), Ok(Null));
+
+        //substract test
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
+        matches!(Null.subtract(&num(2)), Ok(Null));
+        matches!(Null.subtract(&mon(3)), Ok(Null));
+        matches!(num(2).subtract(&Null), Ok(Null));
+        matches!(mon(3).subtract(&Null), Ok(Null));
+        matches!(Null.subtract(&Null), Ok(Null));
+        assert_eq!(
+            Boolean(true).subtract(&num(3)),
+            Err(LiteralError::UnsupportedBinaryArithmetic(
+                format!("{:?}", Boolean(true)),
+                format!("{:?}", num(3)),
+            )
+            .into()),
+        );
+
         assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
         assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
 
