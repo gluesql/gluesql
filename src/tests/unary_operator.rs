@@ -1,7 +1,10 @@
 use crate::*;
 
 test_case!(unary_operator, async move {
-    use Value::*;
+    use {
+        prelude::{Payload, Value::*},
+        data::{ValueError, LiteralError},
+    };
 
     let test_cases = vec![
         (
@@ -15,8 +18,8 @@ test_case!(unary_operator, async move {
         (
             "SELECT -v1 as v1, -v2 as v2, v3, -v4 as v4 FROM Test",
             Ok(select_with_null!(
-                v1  |           v2  |                   v3  |                   v4;
-                I64(-10)      F64(-10.5)            Str("hello".to_owned())                   I64(5)
+                v1      |   v2          |   v3                      |   v4;
+                I64(-10)    F64(-10.5)      Str("hello".to_owned())     I64(5)
             )),
         ),
         (
@@ -85,19 +88,19 @@ test_case!(unary_operator, async move {
         ),
         (
             "SELECT (-5)! as v4 FROM Test",
-            Err(LiteralError::FactorialOperationOnNegativeNumeric.into()),
+            Err(ValueError::FactorialOnNegativeNumeric.into()),
         ),
         (
             "SELECT (5.5)! as v4 FROM Test",
-            Err(LiteralError::FactorialOnNonInteger.into()),
+            Err(ValueError::FactorialOnNonInteger.into()),
         ),
         (
             "SELECT 'errrr'! as v1 FROM Test",
-            Err(LiteralError::UnaryOperationOnNonNumeric.into()),
+            Err(ValueError::FactorialOnNonNumeric.into()),
         ),
         (
             "SELECT 1000! as v4 FROM Test",
-            Err(LiteralError::FactorialOperationOverflow.into()),
+            Err(ValueError::FactorialOverflow.into()),
         ),
     ];
 

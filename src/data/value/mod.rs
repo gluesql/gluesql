@@ -326,16 +326,8 @@ impl Value {
         };
 
         match self {
-            I64(a) => {
-                if *a < 0 {
-                    Err(ValueError::FactorialOnNegativeNumeric.into())
-                } else {
-                    match factorial_function(*a) {
-                        Ok(x) => Ok(I64(x)),
-                        Err(x) => Err(x),
-                    }
-                }
-            }
+            I64(a) if *a >= 0 => factorial_function(*a).map(I64),
+            I64(_) => Err(ValueError::FactorialOnNegativeNumeric.into()),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),

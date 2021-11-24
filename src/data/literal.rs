@@ -23,15 +23,6 @@ pub enum LiteralError {
     #[error("literal unary operation on non-numeric")]
     UnaryOperationOnNonNumeric,
 
-    #[error("literal factorial operation on negative-numeric")]
-    FactorialOperationOnNegativeNumeric,
-
-    #[error("literal factorial operation overflow")]
-    FactorialOperationOverflow,
-
-    #[error("literal factorial for non integer value")]
-    FactorialOnNonInteger,
-
     #[error("unreachable literal binary arithmetic")]
     UnreachableBinaryArithmetic,
 
@@ -114,39 +105,6 @@ impl<'a> Literal<'a> {
         match self {
             Number(v) => Ok(Number(Cow::Owned(-v.as_ref()))),
             Interval(v) => Ok(Interval(v.unary_minus())),
-            Null => Ok(Null),
-            _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
-        }
-    }
-
-    pub fn unary_factorial(&self) -> Result<Self> {
-        let factorial_function = |a: i64| -> Result<i64> {
-            (1..(a + 1))
-                .into_iter()
-                .try_fold(1i64, |mul, x| mul.checked_mul(x))
-                .ok_or_else(|| LiteralError::FactorialOperationOverflow.into())
-        };
-
-        match self {
-            Number(v) => {
-                let value;
-
-                match v.as_ref().to_i64() {
-                    Some(v) => {
-                        if v < 0 {
-                            value = Err(LiteralError::FactorialOperationOnNegativeNumeric.into());
-                        } else {
-                            match factorial_function(v) {
-                                Ok(v) => value = Ok(Number(Cow::Owned(BigDecimal::from(v)))),
-                                Err(e) => value = Err(e),
-                            }
-                        }
-                    }
-                    None => value = Err(LiteralError::FactorialOnNonInteger.into()),
-                }
-
-                value
-            }
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }

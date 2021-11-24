@@ -13,7 +13,7 @@ pub fn translate_unary_operator(sql_unary_operator: &SqlUnaryOperator) -> Result
         SqlUnaryOperator::Minus => Ok(UnaryOperator::Minus),
         SqlUnaryOperator::Not => Ok(UnaryOperator::Not),
         SqlUnaryOperator::PGPostfixFactorial => Ok(UnaryOperator::Factorial),
-        _ => Err(TranslateError::UnsupportedUnaryOperator(sql_unary_operator.to_string()).into()),
+        _ => Err(TranslateError::UnreachableUnaryOperator(sql_unary_operator.to_string()).into()),
     }
 }
 
