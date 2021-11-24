@@ -2,8 +2,8 @@ use crate::*;
 
 test_case!(unary_operator, async move {
     use {
+        data::{LiteralError, ValueError},
         prelude::{Payload, Value::*},
-        data::{ValueError, LiteralError},
     };
 
     let test_cases = vec![

@@ -142,7 +142,8 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
             Evaluated::Value(v) => v.unary_factorial(),
-        }.map(Evaluated::from)
+        }
+        .map(Evaluated::from)
     }
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
