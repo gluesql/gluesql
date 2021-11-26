@@ -131,4 +131,12 @@ pub enum ValueError {
 
     #[error("selector requires MAP or LIST types")]
     SelectorRequiresMapOrListTypes,
+
+    #[error("overflow occurred: {lhs:?} {operator} {rhs:?}")]
+    BinaryOperationOverflow {
+        lhs: Value,
+        rhs: Value,
+        /// ['+', '-', '*', '/']
+        operator: char,
+    },
 }
