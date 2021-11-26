@@ -72,24 +72,16 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
                             return Err((storage, e));
                         }
                     };
-                    let query = || Query {
+                    let query = Query {
                         body: SetExpr::Select(select_query.clone()),
                         order_by: vec![],
                         limit: None,
                         offset: None,
                     };
 
-                    let rows = select(&storage, &query(), None)
+                    let rows = select(&storage, &query, None)
                         .await
                         .unwrap()
-                        .and_then(|row| {
-                            // let column_defs = Rc::clone(&column_defs);
-                            async move {
-                                // row.validate(&source_column_defs)?; // should we validate again?
-
-                                Ok(row)
-                            }
-                        })
                         .try_collect::<Vec<_>>()
                         .await
                         .unwrap();
