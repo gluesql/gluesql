@@ -1,4 +1,5 @@
 use crate::*;
+use Value::*;
 
 test_case!(create_table, async move {
     use {
@@ -78,13 +79,30 @@ test_case!(create_table, async move {
             Err(EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Wow)")).into()),
         ),
         (
-            "CREATE TABLE TB_TARGET AS SELECT * FROM CreateTable2",
+            // Create schema only
+            "CREATE TABLE TargetTable AS SELECT * FROM CreateTable2 WHERE 1 = 0",
             Ok(Payload::Create),
         ),
         (
-            "SELECT * FROM TB_TARGET",
-            Err(EvaluateError::UnsupportedStatelessExpr(expr!("CTAS")).into()),
-            // Ok(Select { labels: [], rows: [] })
+            "CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithData",
+            Ok(select_with_null!(
+                id     | num    | name;
+                Null     I64(1)   Str("1".to_owned())
+            )),
+        ),
+        (
+            // Target Table already exists
+            "CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2",
+            Err(AlterError::TableAlreadyExists("TargetTableWithData".to_owned()).into()),
+        ),
+        (
+            // source table does not exists
+            "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
+            Err(SelectError::TableAliasNotFound("NonExistentTable".to_owned()).into()),
         ),
     ];
 
