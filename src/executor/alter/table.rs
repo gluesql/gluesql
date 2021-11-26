@@ -1,7 +1,9 @@
+use crate::executor::execute;
+
 use {
     super::{validate, AlterError},
     crate::{
-        ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
+        ast::{ColumnDef, ObjectName, Query, SetExpr, Statement, TableFactor},
         data::{get_name, Schema},
         result::MutResult,
         store::{GStore, GStoreMut},
@@ -32,7 +34,7 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
                     let schema = (|| async {
                         let schema = Schema {
                             table_name: get_name(name).unwrap().to_string(),
-                            column_defs: source_column_defs,
+                            column_defs: source_column_defs.clone(),
                             indexes: vec![],
                         };
 
@@ -60,11 +62,27 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
                             return Err((storage, e));
                         }
                     };
+                    let columns = source_column_defs
+                        .iter()
+                        .map(|ColumnDef { name, .. }| name.to_owned())
+                        .collect::<Vec<_>>();
 
-                    if let Some(schema) = schema {
-                        return storage.insert_schema(&schema).await;
-                    } else {
-                        return Ok((storage, ()));
+                    let statement = Statement::Insert {
+                        table_name: name.to_owned(),
+                        columns,
+                        source: v.to_owned(),
+                    };
+                    println!("{:?}", statement);
+                    let result = execute(storage, &statement).await;
+                    match result {
+                        Ok((storage, _)) => {
+                            if let Some(schema) = schema {
+                                return storage.insert_schema(&schema).await;
+                            } else {
+                                return Ok((storage, ()));
+                            }
+                        }
+                        Err((storage, Error)) => return Ok((storage, ())),
                     }
                 }
             }
