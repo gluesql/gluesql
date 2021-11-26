@@ -8,6 +8,7 @@ use {
 };
 
 mod big_edian;
+mod binary_op;
 mod date;
 mod error;
 mod group_key;
@@ -37,14 +38,30 @@ pub enum Value {
     Null,
 }
 
+trait TryBinaryOperator {
+    type Rhs;
+
+    fn try_add(&self, rhs: &Self::Rhs) -> Result<Value>;
+    fn try_subtract(&self, rhs: &Self::Rhs) -> Result<Value>;
+    fn try_multiply(&self, rhs: &Self::Rhs) -> Result<Value>;
+    fn try_divide(&self, rhs: &Self::Rhs) -> Result<Value>;
+    fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value>;
+}
+
+trait BinaryOperator {
+    type Rhs;
+
+    fn eq(&self, rhs: &Self::Rhs) -> bool;
+    fn partial_cmp(&self, rhs: &Self::Rhs) -> Option<Ordering>;
+}
+
 impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => l == r,
-            (
-                Value::I8(_) | Value::I64(_) | Value::F64(_),
-                Value::I8(_) | Value::I64(_) | Value::F64(_),
-            ) => partial_eq_for_numeric(self, other),
+            (Value::I8(l), _) => BinaryOperator::eq(l, other),
+            (Value::I64(l), _) => BinaryOperator::eq(l, other),
+            (Value::F64(l), _) => BinaryOperator::eq(l, other),
             (Value::Str(l), Value::Str(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
@@ -60,31 +77,13 @@ impl PartialEq<Value> for Value {
     }
 }
 
-fn partial_eq_for_numeric(base: &Value, quote: &Value) -> bool {
-    match (base, quote) {
-        (Value::I8(l), Value::I8(r)) => l == r,
-        (Value::I8(l), Value::I64(r)) => &(*l as i64) == r,
-        (Value::I8(l), Value::F64(r)) => (*l as f64 - r).abs() < f64::EPSILON,
-
-        (Value::I64(l), Value::I64(r)) => l == r,
-        (Value::I64(l), Value::I8(r)) => l == &(*r as i64),
-        (Value::I64(l), Value::F64(r)) => (*l as f64 - r).abs() < f64::EPSILON,
-
-        (Value::F64(l), Value::F64(r)) => (l - r).abs() < f64::EPSILON,
-        (Value::F64(l), Value::I8(r)) => (l - *r as f64).abs() < f64::EPSILON,
-        (Value::F64(l), Value::I64(r)) => (l - *r as f64).abs() < f64::EPSILON,
-        _ => false,
-    }
-}
-
 impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
-            (
-                Value::I8(_) | Value::I64(_) | Value::F64(_),
-                Value::I8(_) | Value::I64(_) | Value::F64(_),
-            ) => partial_cmp_for_numeric(self, other),
+            (Value::I8(l), _) => BinaryOperator::partial_cmp(l, other),
+            (Value::I64(l), _) => BinaryOperator::partial_cmp(l, other),
+            (Value::F64(l), _) => BinaryOperator::partial_cmp(l, other),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),
@@ -98,24 +97,16 @@ impl PartialOrd<Value> for Value {
     }
 }
 
-fn partial_cmp_for_numeric(base: &Value, quote: &Value) -> Option<Ordering> {
-    match (base, quote) {
-        (Value::I8(l), Value::I8(r)) => Some(l.cmp(r)),
-        (Value::I8(l), Value::I64(r)) => (*l as i64).partial_cmp(r),
-        (Value::I8(l), Value::F64(r)) => (*l as f64).partial_cmp(r),
-
-        (Value::I64(l), Value::I64(r)) => Some(l.cmp(r)),
-        (Value::I64(l), Value::I8(r)) => Some(l.cmp(&(*r as i64))),
-        (Value::I64(l), Value::F64(r)) => (*l as f64).partial_cmp(r),
-
-        (Value::F64(l), Value::F64(r)) => l.partial_cmp(r),
-        (Value::F64(l), Value::I8(r)) => l.partial_cmp(&(*r as f64)),
-        (Value::F64(l), Value::I64(r)) => l.partial_cmp(&(*r as f64)),
-        _ => None,
-    }
-}
-
 impl Value {
+    pub fn is_zero(&self) -> bool {
+        match self {
+            Value::I8(v) => *v == 0,
+            Value::I64(v) => *v == 0,
+            Value::F64(v) => *v == 0.0,
+            _ => false,
+        }
+    }
+
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
         let valid = match self {
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
@@ -193,7 +184,9 @@ impl Value {
         use Value::*;
 
         match (self, other) {
-            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.add_for_numeric(other),
+            (I8(a), _) => TryBinaryOperator::try_add(a, other),
+            (I64(a), _) => TryBinaryOperator::try_add(a, other),
+            (F64(a), _) => TryBinaryOperator::try_add(a, other),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
             (Date(a), Interval(b)) => b.add_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
@@ -205,9 +198,6 @@ impl Value {
             | (Null, Date(_))
             | (Null, Timestamp(_))
             | (Null, Interval(_))
-            | (I8(_), Null)
-            | (I64(_), Null)
-            | (F64(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
@@ -217,32 +207,14 @@ impl Value {
         }
     }
 
-    fn add_for_numeric(&self, other: &Value) -> Result<Value> {
-        use Value::*;
-
-        match (self, other) {
-            (I8(a), I8(b)) => Ok(I8(a + b)),
-            (I8(a), I64(b)) => Ok(I64(*a as i64 + b)),
-            (I8(a), F64(b)) => Ok(F64(*a as f64 + b)),
-
-            (I64(a), I64(b)) => Ok(I64(a + b)),
-            (I64(a), I8(b)) => Ok(I64(a + *b as i64)),
-            (I64(a), F64(b)) => Ok(F64(*a as f64 + b)),
-
-            (F64(a), F64(b)) => Ok(F64(a + b)),
-            (F64(a), I8(b)) => Ok(F64(a + *b as f64)),
-            (F64(a), I64(b)) => Ok(F64(a + *b as f64)),
-
-            _ => Err(ValueError::AddOnNonNumeric(self.clone(), other.clone()).into()),
-        }
-    }
-
     pub fn subtract(&self, other: &Value) -> Result<Value> {
         use super::Interval as I;
         use Value::*;
 
         match (self, other) {
-            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.subtract_for_numeric(other),
+            (I8(a), _) => TryBinaryOperator::try_subtract(a, other),
+            (I64(a), _) => TryBinaryOperator::try_subtract(a, other),
+            (F64(a), _) => TryBinaryOperator::try_subtract(a, other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
             (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.subtract_from_timestamp(a).map(Timestamp),
@@ -269,9 +241,6 @@ impl Value {
             | (Null, Timestamp(_))
             | (Null, Time(_))
             | (Null, Interval(_))
-            | (I8(_), Null)
-            | (I64(_), Null)
-            | (F64(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
@@ -281,34 +250,13 @@ impl Value {
         }
     }
 
-    fn subtract_for_numeric(&self, other: &Value) -> Result<Value> {
-        use Value::*;
-
-        match (self, other) {
-            (I8(a), I8(b)) => Ok(I8(a - b)),
-            (I8(a), I64(b)) => Ok(I64(*a as i64 - b)),
-            (I8(a), F64(b)) => Ok(F64(*a as f64 - b)),
-
-            (I64(a), I64(b)) => Ok(I64(a - b)),
-            (I64(a), I8(b)) => Ok(I64(a - *b as i64)),
-            (I64(a), F64(b)) => Ok(F64(*a as f64 - b)),
-
-            (F64(a), F64(b)) => Ok(F64(a - b)),
-            (F64(a), I8(b)) => Ok(F64(a - *b as f64)),
-            (F64(a), I64(b)) => Ok(F64(a - *b as f64)),
-
-            _ => Err(ValueError::SubtractOnNonNumeric(self.clone(), other.clone()).into()),
-        }
-    }
-
     pub fn multiply(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
         match (self, other) {
-            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.multiply_for_numeric(other),
-            (I8(a), Interval(b)) => Ok(Interval(*a * *b)),
-            (I64(a), Interval(b)) => Ok(Interval(*a * *b)),
-            (F64(a), Interval(b)) => Ok(Interval(*a * *b)),
+            (I8(a), _) => TryBinaryOperator::try_multiply(a, other),
+            (I64(a), _) => TryBinaryOperator::try_multiply(a, other),
+            (F64(a), _) => TryBinaryOperator::try_multiply(a, other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
@@ -316,31 +264,8 @@ impl Value {
             | (Null, I64(_))
             | (Null, F64(_))
             | (Null, Interval(_))
-            | (I8(_), Null)
-            | (I64(_), Null)
-            | (F64(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
-        }
-    }
-
-    fn multiply_for_numeric(&self, other: &Value) -> Result<Value> {
-        use Value::*;
-
-        match (self, other) {
-            (I8(a), I8(b)) => Ok(I8(a * b)),
-            (I8(a), I64(b)) => Ok(I64(*a as i64 * b)),
-            (I8(a), F64(b)) => Ok(F64(*a as f64 * b)),
-
-            (I64(a), I64(b)) => Ok(I64(a * b)),
-            (I64(a), I8(b)) => Ok(I64(a * *b as i64)),
-            (I64(a), F64(b)) => Ok(F64(*a as f64 * b)),
-
-            (F64(a), F64(b)) => Ok(F64(a * b)),
-            (F64(a), I8(b)) => Ok(F64(a * *b as f64)),
-            (F64(a), I64(b)) => Ok(F64(a * *b as f64)),
-
             _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
@@ -348,43 +273,22 @@ impl Value {
     pub fn divide(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if (other == &I8(0)) | (other == &I64(0)) | (other == &F64(0.0)) {
+        if self.is_zero() {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
         match (self, other) {
-            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.divide_for_numeric(other),
+            (I8(a), _) => TryBinaryOperator::try_divide(a, other),
+            (I64(a), _) => TryBinaryOperator::try_divide(a, other),
+            (F64(a), _) => TryBinaryOperator::try_divide(a, other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
             (Null, I8(_))
             | (Null, I64(_))
             | (Null, F64(_))
-            | (I8(_), Null)
-            | (I64(_), Null)
-            | (F64(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
-        }
-    }
-
-    fn divide_for_numeric(&self, other: &Value) -> Result<Value> {
-        use Value::*;
-
-        match (self, other) {
-            (I8(a), I8(b)) => Ok(I8(a / b)),
-            (I8(a), I64(b)) => Ok(I64(*a as i64 / b)),
-            (I8(a), F64(b)) => Ok(F64(*a as f64 / b)),
-
-            (I64(a), I64(b)) => Ok(I64(a / b)),
-            (I64(a), I8(b)) => Ok(I64(a / *b as i64)),
-            (I64(a), F64(b)) => Ok(F64(*a as f64 / b)),
-
-            (F64(a), F64(b)) => Ok(F64(a / b)),
-            (F64(a), I8(b)) => Ok(F64(a / *b as f64)),
-            (F64(a), I64(b)) => Ok(F64(a / *b as f64)),
-
             _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
@@ -392,39 +296,15 @@ impl Value {
     pub fn modulo(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if (other == &I64(0)) | (other == &F64(0.0)) {
+        if self.is_zero() {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
         match (self, other) {
-            (I8(_) | I64(_) | F64(_), I8(_) | I64(_) | F64(_)) => self.modulo_for_numeric(other),
-            (Null, I8(_))
-            | (Null, I64(_))
-            | (Null, F64(_))
-            | (I8(_), Null)
-            | (I64(_), Null)
-            | (F64(_), Null)
-            | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
-        }
-    }
-
-    fn modulo_for_numeric(&self, other: &Value) -> Result<Value> {
-        use Value::*;
-
-        match (self, other) {
-            (I8(a), I8(b)) => Ok(I8(a % b)),
-            (I8(a), I64(b)) => Ok(I64(*a as i64 % b)),
-            (I8(a), F64(b)) => Ok(F64(*a as f64 % b)),
-
-            (I64(a), I64(b)) => Ok(I64(a % b)),
-            (I64(a), I8(b)) => Ok(I64(a % *b as i64)),
-            (I64(a), F64(b)) => Ok(F64(*a as f64 % b)),
-
-            (F64(a), F64(b)) => Ok(F64(a % b)),
-            (F64(a), I8(b)) => Ok(F64(a % *b as f64)),
-            (F64(a), I64(b)) => Ok(F64(a % *b as f64)),
-
+            (I8(a), _) => TryBinaryOperator::try_modulo(a, other),
+            (I64(a), _) => TryBinaryOperator::try_modulo(a, other),
+            (F64(a), _) => TryBinaryOperator::try_modulo(a, other),
+            (Null, I8(_)) | (Null, I64(_)) | (Null, F64(_)) | (Null, Null) => Ok(Null),
             _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
