@@ -78,7 +78,7 @@ test_case!(create_table, async move {
             Err(EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Wow)")).into()),
         ),
         (
-            "CREATE TABLE TB_TARGET AS SELECT * FROM CreateTable1",
+            "CREATE TABLE TB_TARGET AS SELECT * FROM CreateTable2",
             Ok(Payload::Create),
         ),
         (

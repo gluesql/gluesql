@@ -1,4 +1,4 @@
-use crate::executor::execute;
+use crate::executor::{execute, select::select};
 
 use {
     super::{validate, AlterError},
@@ -9,7 +9,7 @@ use {
         store::{GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
-    std::fmt::Debug,
+    std::{fmt::Debug, rc::Rc},
 };
 
 pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
@@ -19,6 +19,16 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     if_not_exists: bool,
     source: &Option<Box<Query>>,
 ) -> MutResult<U, ()> {
+    // macro_rules! try_block {
+    //     ($storage: expr, $block: block) => {{
+    //         match (|| async { $block })().await {
+    //             Err(e) => {
+    //                 return Err(($storage, e));
+    //             }
+    //             Ok(v) => v,
+    //         }
+    //     }};
+    // } // can't use try_block here?
     match source {
         Some(v) => {
             if let SetExpr::Select(select_query) = &v.body {
@@ -62,27 +72,36 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
                             return Err((storage, e));
                         }
                     };
-                    let columns = source_column_defs
-                        .iter()
-                        .map(|ColumnDef { name, .. }| name.to_owned())
-                        .collect::<Vec<_>>();
-
-                    let statement = Statement::Insert {
-                        table_name: name.to_owned(),
-                        columns,
-                        source: v.to_owned(),
+                    let query = || Query {
+                        body: SetExpr::Select(select_query.clone()),
+                        order_by: vec![],
+                        limit: None,
+                        offset: None,
                     };
-                    println!("{:?}", statement);
-                    let result = execute(storage, &statement).await;
-                    match result {
-                        Ok((storage, _)) => {
-                            if let Some(schema) = schema {
-                                return storage.insert_schema(&schema).await;
-                            } else {
-                                return Ok((storage, ()));
+
+                    let rows = select(&storage, &query(), None)
+                        .await
+                        .unwrap()
+                        .and_then(|row| {
+                            // let column_defs = Rc::clone(&column_defs);
+                            async move {
+                                // row.validate(&source_column_defs)?; // should we validate again?
+
+                                Ok(row)
                             }
-                        }
-                        Err((storage, Error)) => return Ok((storage, ())),
+                        })
+                        .try_collect::<Vec<_>>()
+                        .await
+                        .unwrap();
+
+                    // let num_rows = rows.len();
+                    // .map(|(storage, _)| (storage, Payload::Insert(num_rows))); // need to impl payload later
+
+                    if let Some(schema) = schema {
+                        let (storage, _) = storage.insert_schema(&schema).await?;
+                        return storage.insert_data(get_name(name).unwrap(), rows).await;
+                    } else {
+                        return Ok((storage, ()));
                     }
                 }
             }
