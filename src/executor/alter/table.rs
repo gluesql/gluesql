@@ -1,11 +1,14 @@
-use crate::executor::{execute, select::select};
+use crate::{
+    executor::{execute, select::select},
+    FetchError,
+};
 
 use {
     super::{validate, AlterError},
     crate::{
         ast::{ColumnDef, ObjectName, Query, SetExpr, Statement, TableFactor},
         data::{get_name, Schema},
-        result::MutResult,
+        result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
@@ -70,12 +73,15 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
                     offset: None,
                 };
 
-                let rows = select(&storage, &query, None)
-                    .await
-                    .unwrap()
-                    .try_collect::<Vec<_>>()
-                    .await
-                    .unwrap();
+                let (storage, rows) = (|| async {
+                    select(&storage, &query, None)
+                        .await?
+                        .try_collect::<Vec<_>>()
+                        .await
+                })()
+                .await
+                .try_self(storage)?;
+                println!("{:?}", rows);
 
                 // let num_rows = rows.len();
                 // .map(|(storage, _)| (storage, Payload::Insert(num_rows))); // need to impl payload later
@@ -87,8 +93,12 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
                     return Ok((storage, ()));
                 }
             }
-            Ok((storage, ()))
+            Err((
+                storage,
+                FetchError::TableNotFound("NonExistentTable".to_owned()).into(),
+            ))
         }
+
         Some(_) => Ok((storage, ())),
         None => {
             let schema = (|| async {

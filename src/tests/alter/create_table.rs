@@ -102,7 +102,7 @@ test_case!(create_table, async move {
         (
             // source table does not exists
             "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
-            Err(SelectError::TableAliasNotFound("NonExistentTable".to_owned()).into()),
+            Err(FetchError::TableNotFound("NonExistentTable".to_owned()).into()),
         ),
     ];
 
