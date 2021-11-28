@@ -1,6 +1,6 @@
 use crate::{
     executor::{execute, select::select},
-    FetchError,
+    FetchError, TableError,
 };
 
 use {
@@ -22,7 +22,20 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     if_not_exists: bool,
     source: &Option<Box<Query>>,
 ) -> MutResult<U, ()> {
-    match source.as_ref().map(AsRef::as_ref) {
+    /*
+    createtable = ||
+    match (source, column_defs.is_empty) {
+        (Some(q), true) => {
+            fetchSchema with valitdation (source table exists)
+            create table with type validation
+            insert
+        },
+        (None, false) => {
+            create table
+        }
+    }
+    */
+    let (target_columns, source_query) = match source.as_ref().map(AsRef::as_ref) {
         Some(Query {
             body: SetExpr::Select(select_query),
             ..
@@ -36,108 +49,66 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
                 ..
             }) = storage.fetch_schema(table_name).await.unwrap()
             {
-                let schema = (|| async {
-                    let schema = Schema {
-                        table_name: get_name(name).unwrap().to_string(),
-                        column_defs: source_column_defs.clone(),
-                        indexes: vec![],
-                    };
-
-                    for column_def in &schema.column_defs {
-                        validate(column_def)?;
-                    }
-
-                    match (
-                        storage.fetch_schema(&schema.table_name).await?,
-                        if_not_exists,
-                    ) {
-                        (None, _) => Ok(Some(schema)),
-                        (Some(_), true) => Ok(None),
-                        (Some(_), false) => {
-                            Err(AlterError::TableAlreadyExists(schema.table_name.to_owned()).into())
-                        }
-                    }
-                })()
-                .await;
-
-                let schema = match schema {
-                    Ok(s) => s,
-                    Err(e) => {
-                        return Err((storage, e));
-                    }
-                };
-                let query = Query {
-                    body: SetExpr::Select(select_query.clone()),
-                    order_by: vec![],
-                    limit: None,
-                    offset: None,
-                };
-
-                let (storage, rows) = (|| async {
-                    select(&storage, &query, None)
-                        .await?
-                        .try_collect::<Vec<_>>()
-                        .await
-                })()
-                .await
-                .try_self(storage)?;
-                println!("{:?}", rows);
-
-                // let num_rows = rows.len();
-                // .map(|(storage, _)| (storage, Payload::Insert(num_rows))); // need to impl payload later
-
-                if let Some(schema) = schema {
-                    let (storage, _) = storage.insert_schema(&schema).await?;
-                    return storage.insert_data(get_name(name).unwrap(), rows).await;
-                } else {
-                    return Ok((storage, ()));
-                }
-            }
-            Err((
-                storage,
-                FetchError::TableNotFound("NonExistentTable".to_owned()).into(),
-            ))
-        }
-
-        Some(_) => Ok((storage, ())),
-        None => {
-            let schema = (|| async {
-                let schema = Schema {
-                    table_name: get_name(name)?.to_string(),
-                    column_defs: column_defs.to_vec(),
-                    indexes: vec![],
-                };
-
-                for column_def in &schema.column_defs {
-                    validate(column_def)?;
-                }
-
-                match (
-                    storage.fetch_schema(&schema.table_name).await?,
-                    if_not_exists,
-                ) {
-                    (None, _) => Ok(Some(schema)),
-                    (Some(_), true) => Ok(None),
-                    (Some(_), false) => {
-                        Err(AlterError::TableAlreadyExists(schema.table_name.to_owned()).into())
-                    }
-                }
-            })()
-            .await;
-
-            let schema = match schema {
-                Ok(s) => s,
-                Err(e) => {
-                    return Err((storage, e));
-                }
-            };
-
-            if let Some(schema) = schema {
-                storage.insert_schema(&schema).await
+                (source_column_defs, Some(select_query))
             } else {
-                Ok((storage, ()))
+                (column_defs.to_vec(), None) // unreachable?
             }
         }
+        _ => (column_defs.to_vec(), None),
+    };
+
+    let schema = (|| async {
+        let schema = Schema {
+            table_name: get_name(name)?.to_string(),
+            column_defs: target_columns,
+            indexes: vec![],
+        };
+
+        for column_def in &schema.column_defs {
+            validate(column_def)?;
+        }
+
+        match (
+            storage.fetch_schema(&schema.table_name).await?,
+            if_not_exists,
+        ) {
+            (None, _) => Ok(Some(schema)),
+            (Some(_), true) => Ok(None),
+            (Some(_), false) => {
+                Err(AlterError::TableAlreadyExists(schema.table_name.to_owned()).into())
+            }
+        }
+    })()
+    .await;
+
+    let schema = match schema {
+        Ok(s) => s,
+        Err(e) => {
+            return Err((storage, e));
+        }
+    };
+
+    let query = Query {
+        body: SetExpr::Select(source_query.unwrap().to_owned()),
+        order_by: vec![],
+        limit: None,
+        offset: None,
+    };
+
+    let (storage, rows) = (|| async {
+        select(&storage, &query, None)
+            .await?
+            .try_collect::<Vec<_>>()
+            .await
+    })()
+    .await
+    .try_self(storage)?;
+
+    if let Some(schema) = schema {
+        let (storage, _) = storage.insert_schema(&schema).await?;
+        return storage.insert_data(get_name(name).unwrap(), rows).await;
+    } else {
+        return Ok((storage, ()));
     }
 }
 
