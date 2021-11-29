@@ -6,6 +6,7 @@ use {
         executor::select::select,
         result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
+        FetchError,
     },
     futures::stream::{self, TryStreamExt},
     std::fmt::Debug,
@@ -18,7 +19,8 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     if_not_exists: bool,
     source: &Option<Box<Query>>,
 ) -> MutResult<U, ()> {
-    let target_columns = match source.as_ref().map(AsRef::as_ref) {
+    let (storage, target_table_name) = get_name(name).try_self(storage)?;
+    let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
         Some(Query {
             body: SetExpr::Select(select_query),
             ..
@@ -26,15 +28,23 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
             let TableFactor::Table {
                 name: source_name, ..
             } = &select_query.from.relation;
-            let table_name = get_name(&source_name).unwrap();
+            let table_name = match get_name(source_name) {
+                Ok(v) => v,
+                Err(e) => return Err((storage, e)),
+            };
             if let Some(Schema {
                 column_defs: source_column_defs,
                 ..
-            }) = storage.fetch_schema(table_name).await.unwrap()
-            {
+            }) = match storage.fetch_schema(table_name).await {
+                Ok(v) => v,
+                Err(e) => return Err((storage, e)),
+            } {
                 source_column_defs
             } else {
-                column_defs.to_vec() // unreachable?
+                return Err((
+                    storage,
+                    FetchError::TableNotFound(table_name.to_owned()).into(),
+                ));
             }
         }
         _ => column_defs.to_vec(),
@@ -42,8 +52,8 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
 
     let schema = (|| async {
         let schema = Schema {
-            table_name: get_name(name)?.to_string(),
-            column_defs: target_columns,
+            table_name: target_table_name.to_string(),
+            column_defs: target_columns_defs,
             indexes: vec![],
         };
 
@@ -94,7 +104,7 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
             .await
             .try_self(storage)?;
 
-            storage.insert_data(get_name(name).unwrap(), rows).await
+            storage.insert_data(target_table_name, rows).await
         }
         None => Ok((storage, ())),
     }
