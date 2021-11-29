@@ -1,13 +1,9 @@
-use crate::{
-    executor::{execute, select::select},
-    FetchError, TableError,
-};
-
 use {
     super::{validate, AlterError},
     crate::{
-        ast::{ColumnDef, ObjectName, Query, SetExpr, Statement, TableFactor},
+        ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
         data::{get_name, Schema},
+        executor::select::select,
         result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
@@ -22,20 +18,7 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     if_not_exists: bool,
     source: &Option<Box<Query>>,
 ) -> MutResult<U, ()> {
-    /*
-    createtable = ||
-    match (source, column_defs.is_empty) {
-        (Some(q), true) => {
-            fetchSchema with valitdation (source table exists)
-            create table with type validation
-            insert
-        },
-        (None, false) => {
-            create table
-        }
-    }
-    */
-    let (target_columns, source_query) = match source.as_ref().map(AsRef::as_ref) {
+    let target_columns = match source.as_ref().map(AsRef::as_ref) {
         Some(Query {
             body: SetExpr::Select(select_query),
             ..
@@ -49,12 +32,12 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
                 ..
             }) = storage.fetch_schema(table_name).await.unwrap()
             {
-                (source_column_defs, Some(select_query))
+                source_column_defs
             } else {
-                (column_defs.to_vec(), None) // unreachable?
+                column_defs.to_vec() // unreachable?
             }
         }
-        _ => (column_defs.to_vec(), None),
+        _ => column_defs.to_vec(),
     };
 
     let schema = (|| async {
@@ -81,34 +64,39 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     })()
     .await;
 
-    let schema = match schema {
-        Ok(s) => s,
+    let (storage, ()) = match schema {
+        Ok(s) => {
+            if let Some(schema) = s {
+                storage.insert_schema(&schema).await
+            } else {
+                Ok((storage, ()))
+            }
+        }
         Err(e) => {
             return Err((storage, e));
         }
-    };
+    }?;
 
-    let query = Query {
-        body: SetExpr::Select(source_query.unwrap().to_owned()),
-        order_by: vec![],
-        limit: None,
-        offset: None,
-    };
-
-    let (storage, rows) = (|| async {
-        select(&storage, &query, None)
-            .await?
-            .try_collect::<Vec<_>>()
+    match source {
+        Some(q) => {
+            let query = Query {
+                body: q.body.to_owned(),
+                order_by: vec![],
+                limit: None,
+                offset: None,
+            };
+            let (storage, rows) = (|| async {
+                select(&storage, &query, None)
+                    .await?
+                    .try_collect::<Vec<_>>()
+                    .await
+            })()
             .await
-    })()
-    .await
-    .try_self(storage)?;
+            .try_self(storage)?;
 
-    if let Some(schema) = schema {
-        let (storage, _) = storage.insert_schema(&schema).await?;
-        return storage.insert_data(get_name(name).unwrap(), rows).await;
-    } else {
-        return Ok((storage, ()));
+            storage.insert_data(get_name(name).unwrap(), rows).await
+        }
+        None => Ok((storage, ())),
     }
 }
 
