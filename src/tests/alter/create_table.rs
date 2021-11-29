@@ -1,5 +1,8 @@
-use crate::*;
-use Value::*;
+use crate::{
+    data::value::Value::{Null, Str, I64},
+    executor::FetchError,
+    *,
+};
 
 test_case!(create_table, async move {
     use {

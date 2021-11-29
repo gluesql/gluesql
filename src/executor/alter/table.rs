@@ -3,10 +3,9 @@ use {
     crate::{
         ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
         data::{get_name, Schema},
-        executor::select::select,
+        executor::{select::select, FetchError},
         result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
-        FetchError,
     },
     futures::stream::{self, TryStreamExt},
     std::fmt::Debug,
