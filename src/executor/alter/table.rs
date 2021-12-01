@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
         data::{get_name, Schema},
-        executor::{select::select, FetchError},
+        executor::select::select,
         result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
@@ -42,7 +42,7 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
             } else {
                 return Err((
                     storage,
-                    FetchError::TableNotFound(table_name.to_owned()).into(),
+                    AlterError::CtasSourceTableNotFound(table_name.to_owned()).into(),
                 ));
             }
         }

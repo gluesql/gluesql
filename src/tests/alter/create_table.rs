@@ -1,6 +1,5 @@
 use crate::{
     data::value::Value::{Null, Str, I64},
-    executor::FetchError,
     *,
 };
 
@@ -103,9 +102,9 @@ test_case!(create_table, async move {
             Err(AlterError::TableAlreadyExists("TargetTableWithData".to_owned()).into()),
         ),
         (
-            // source table does not exists
+            // Source table does not exists
             "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
-            Err(FetchError::TableNotFound("NonExistentTable".to_owned()).into()),
+            Err(AlterError::CtasSourceTableNotFound("NonExistentTable".to_owned()).into()),
         ),
     ];
 
