@@ -79,14 +79,8 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
 
     match source {
         Some(q) => {
-            let query = Query {
-                body: q.body.to_owned(),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
             let (storage, rows) = (|| async {
-                select(&storage, &query, None)
+                select(&storage, q, None)
                     .await?
                     .try_collect::<Vec<_>>()
                     .await

@@ -49,6 +49,10 @@ test_case!(create_table, async move {
             Ok(Payload::Insert(1)),
         ),
         (
+            r#"INSERT INTO CreateTable2 VALUES (2, 2, "2");"#,
+            Ok(Payload::Insert(1)),
+        ),
+        (
             "CREATE TABLE Gluery (id SOMEWHAT);",
             Err(TranslateError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
         ),
@@ -93,6 +97,41 @@ test_case!(create_table, async move {
             "SELECT * FROM TargetTableWithData",
             Ok(select_with_null!(
                 id     | num    | name;
+                Null     I64(1)   Str("1".to_owned());
+                I64(2)   I64(2)   Str("2".to_owned())
+            )),
+        ),
+        (
+            "CREATE TABLE TargetTableWithLimit AS SELECT * FROM CreateTable2 LIMIT 1",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithLimit",
+            Ok(select_with_null!(
+                id     | num    | name;
+                Null     I64(1)   Str("1".to_owned())
+            )),
+        ),
+        (
+            "CREATE TABLE TargetTableWithOffset AS SELECT * FROM CreateTable2 OFFSET 1",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithOffset",
+            Ok(select_with_null!(
+                id     | num    | name;
+                I64(2)   I64(2)   Str("2".to_owned())
+            )),
+        ),
+        (
+            "CREATE TABLE TargetTableWithOrderBy AS SELECT * FROM CreateTable2 ORDER BY num DESC",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithOrderBy",
+            Ok(select_with_null!(
+                id     | num    | name;
+                I64(2)   I64(2)   Str("2".to_owned());
                 Null     I64(1)   Str("1".to_owned())
             )),
         ),
