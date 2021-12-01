@@ -315,6 +315,25 @@ impl Value {
         }
     }
 
+    pub fn unary_factorial(&self) -> Result<Value> {
+        use Value::*;
+
+        let factorial_function = |a: i64| -> Result<i64> {
+            (1..(a + 1))
+                .into_iter()
+                .try_fold(1i64, |mul, x| mul.checked_mul(x))
+                .ok_or_else(|| ValueError::FactorialOverflow.into())
+        };
+
+        match self {
+            I64(a) if *a >= 0 => factorial_function(*a).map(I64),
+            I64(_) => Err(ValueError::FactorialOnNegativeNumeric.into()),
+            F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
+            Null => Ok(Null),
+            _ => Err(ValueError::FactorialOnNonNumeric.into()),
+        }
+    }
+
     pub fn like(&self, other: &Value, case_sensitive: bool) -> Result<Value> {
         use Value::*;
 
