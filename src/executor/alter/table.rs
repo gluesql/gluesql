@@ -4,7 +4,7 @@ use {
         ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
         data::{get_name, Schema},
         executor::select::select,
-        result::{MutResult, TrySelf},
+        result::{Error, MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
@@ -19,37 +19,28 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     source: &Option<Box<Query>>,
 ) -> MutResult<U, ()> {
     let (storage, target_table_name) = get_name(name).try_self(storage)?;
-    let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
-        Some(Query {
-            body: SetExpr::Select(select_query),
-            ..
-        }) => {
-            let TableFactor::Table {
-                name: source_name, ..
-            } = &select_query.from.relation;
-            let table_name = match get_name(source_name) {
-                Ok(v) => v,
-                Err(e) => return Err((storage, e)),
-            };
-            if let Some(Schema {
-                column_defs: source_column_defs,
-                ..
-            }) = match storage.fetch_schema(table_name).await {
-                Ok(v) => v,
-                Err(e) => return Err((storage, e)),
-            } {
-                source_column_defs
-            } else {
-                return Err((
-                    storage,
-                    AlterError::CtasSourceTableNotFound(table_name.to_owned()).into(),
-                ));
-            }
-        }
-        _ => column_defs.to_vec(),
-    };
-
     let schema = (|| async {
+        let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
+            Some(Query {
+                body: SetExpr::Select(select_query),
+                ..
+            }) => {
+                let TableFactor::Table {
+                    name: source_name, ..
+                } = &select_query.from.relation;
+                let table_name = get_name(source_name)?;
+                let schema = storage.fetch_schema(table_name).await?;
+                let Schema {
+                    column_defs: source_column_defs,
+                    ..
+                } = schema.ok_or_else(|| -> Error {
+                    AlterError::CtasSourceTableNotFound(table_name.to_owned()).into()
+                })?;
+                source_column_defs
+            }
+            _ => column_defs.to_vec(),
+        };
+
         let schema = Schema {
             table_name: target_table_name.to_string(),
             column_defs: target_columns_defs,
