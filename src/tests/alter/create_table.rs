@@ -124,18 +124,6 @@ test_case!(create_table, async move {
             )),
         ),
         (
-            "CREATE TABLE TargetTableWithOrderBy AS SELECT * FROM CreateTable2 ORDER BY num DESC",
-            Ok(Payload::Create),
-        ),
-        (
-            "SELECT * FROM TargetTableWithOrderBy",
-            Ok(select_with_null!(
-                id     | num    | name;
-                I64(2)   I64(2)   Str("2".to_owned());
-                Null     I64(1)   Str("1".to_owned())
-            )),
-        ),
-        (
             // Target Table already exists
             "CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2",
             Err(AlterError::TableAlreadyExists("TargetTableWithData".to_owned()).into()),
