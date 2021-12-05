@@ -10,7 +10,7 @@ use {
         store::GStore,
     },
     futures::stream::{self, once, StreamExt, TryStream, TryStreamExt},
-    gluesql_common::utils::OrStream,
+    gluesql_utils::OrStream,
     std::{fmt::Debug, pin::Pin, rc::Rc},
 };
 

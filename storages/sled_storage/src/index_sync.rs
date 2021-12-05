@@ -1,6 +1,5 @@
 use {
     super::{err_into, fetch_schema, key, Snapshot},
-    gluesql_common::utils::Vector,
     gluesql_core::{
         ast::Expr,
         data::{
@@ -12,6 +11,7 @@ use {
         result::{Error, Result},
         store::IndexError,
     },
+    gluesql_utils::Vector,
     sled::{
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,

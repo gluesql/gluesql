@@ -6,7 +6,7 @@ use {
         executor::context::BlendContext,
         result::Result,
     },
-    gluesql_common::utils::{IndexMap, Vector},
+    gluesql_utils::{IndexMap, Vector},
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
     std::{cmp::Ordering, rc::Rc},

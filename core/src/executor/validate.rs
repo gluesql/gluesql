@@ -6,7 +6,7 @@ use {
         store::Store,
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    gluesql_common::utils::Vector,
+    gluesql_utils::Vector,
     im_rc::HashSet,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},

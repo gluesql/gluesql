@@ -1,2 +1,2 @@
 [workspace]
-members = ["core", "storages/*", "common"]
+members = ["core", "storages/*", "utils"]

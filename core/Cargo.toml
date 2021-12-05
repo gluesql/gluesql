@@ -44,7 +44,7 @@ sorter = []
 # memory-storage = ["sorter"]
 
 [dependencies]
-gluesql_common = { path = "../common" }
+gluesql_utils = { path = "../utils" }
 
 regex = "1"
 async-trait = "0.1"

@@ -10,7 +10,7 @@ use {
         store::GStore,
     },
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    gluesql_common::utils::Vector,
+    gluesql_utils::Vector,
     im_rc::HashMap,
     std::{cmp::Ordering, fmt::Debug, pin::Pin, rc::Rc},
 };

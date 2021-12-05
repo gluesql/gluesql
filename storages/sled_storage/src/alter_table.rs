@@ -9,7 +9,6 @@ use {
         SledStorage, Snapshot,
     },
     async_trait::async_trait,
-    gluesql_common::utils::Vector,
     gluesql_core::{
         ast::ColumnDef,
         data::{
@@ -20,6 +19,7 @@ use {
         result::{MutResult, Result, TrySelf},
         store::{AlterTable, AlterTableError},
     },
+    gluesql_utils::Vector,
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
 };

@@ -9,7 +9,7 @@ use {
         store::Store,
     },
     async_recursion::async_recursion,
-    gluesql_common::utils::Vector,
+    gluesql_utils::Vector,
     std::fmt::Debug,
 };
 

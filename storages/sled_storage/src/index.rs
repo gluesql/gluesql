@@ -5,7 +5,6 @@ use {
         lock, SledStorage, Snapshot, State,
     },
     async_trait::async_trait,
-    gluesql_common::utils::Vector,
     gluesql_core::{
         ast::IndexOperator,
         data::Row,
@@ -13,6 +12,7 @@ use {
         result::{Error, Result},
         store::{Index, IndexError, RowIter},
     },
+    gluesql_utils::Vector,
     iter_enum::{DoubleEndedIterator, Iterator},
     sled::IVec,
     std::iter::{empty, once},
