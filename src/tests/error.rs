@@ -1,6 +1,12 @@
 use crate::*;
 
 test_case!(error, async move {
+    use {
+        data::RowError,
+        executor::{EvaluateError, ExecuteError, FetchError},
+        translate::TranslateError,
+    };
+
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
 
@@ -8,10 +14,6 @@ test_case!(error, async move {
         (
             TranslateError::UnsupportedStatement("TRUNCATE TABLE TableA".to_owned()).into(),
             "TRUNCATE TABLE TableA;",
-        ),
-        (
-            TranslateError::UnsupportedUnaryOperator("!".to_owned()).into(),
-            "SELECT 2! FROM TableA;",
         ),
         (
             TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),

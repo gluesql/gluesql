@@ -1,8 +1,10 @@
-use crate::*;
+use {
+    crate::*,
+    executor::EvaluateError,
+    prelude::{Payload, Value::*},
+};
 
 test_case!(sqrt, async move {
-    use Value::{Null, F64};
-
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),
         (
@@ -52,7 +54,7 @@ test_case!(sqrt, async move {
 });
 
 test_case!(power, async move {
-    use Value::{Null, F64};
+    use prelude::Value::{Null, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),
@@ -83,11 +85,11 @@ test_case!(power, async move {
             )),
         ),
         (
-            "SELECT POWER(32,0.3) as power_with_float FROM SingleItem",
+            "SELECT POWER(32,3.0) as power_with_float FROM SingleItem",
             Ok(select!(
                 power_with_float
                 F64;
-                f64::from(32).powf(0.3)
+                f64::from(32).powf(3.0)
             )),
         ),
         (

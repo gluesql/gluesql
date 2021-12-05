@@ -61,6 +61,18 @@ pub enum ValueError {
     #[error("unary minus operation for non numeric value")]
     UnaryMinusOnNonNumeric,
 
+    #[error("unary factorial operation for non numeric value")]
+    FactorialOnNonNumeric,
+
+    #[error("unary factorial operation for non integer value")]
+    FactorialOnNonInteger,
+
+    #[error("unary factorial operation for negative numeric value")]
+    FactorialOnNegativeNumeric,
+
+    #[error("unary factorial operation overflow")]
+    FactorialOverflow,
+
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
@@ -79,7 +91,7 @@ pub enum ValueError {
     LiteralCastFromTextToIntegerFailed(String),
 
     #[error("literal cast failed from text to float: {0}")]
-    LiteralCastToFloatFailed(String),
+    LiteralCastFromTextToFloatFailed(String),
 
     #[error("literal cast failed to boolean: {0}")]
     LiteralCastToBooleanFailed(String),
@@ -95,6 +107,9 @@ pub enum ValueError {
 
     #[error("unreachable literal cast from number to integer: {0}")]
     UnreachableLiteralCastFromNumberToInteger(String),
+
+    #[error("unreachable literal cast from number to float: {0}")]
+    UnreachableLiteralCastFromNumberToFloat(String),
 
     #[error("unimplemented literal cast: {literal} as {data_type:?}")]
     UnimplementedLiteralCast {

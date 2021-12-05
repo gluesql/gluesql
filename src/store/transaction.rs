@@ -1,4 +1,4 @@
-use {crate::MutResult, async_trait::async_trait};
+use {crate::result::MutResult, async_trait::async_trait};
 
 #[async_trait(?Send)]
 pub trait Transaction

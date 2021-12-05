@@ -10,11 +10,14 @@ use {
     },
     crate::{
         ast::ColumnDef,
+        data::{
+            schema::{ColumnDefExt, Schema},
+            Row, Value,
+        },
         executor::evaluate_stateless,
         result::{MutResult, Result, TrySelf},
-        schema::ColumnDefExt,
+        store::{AlterTable, AlterTableError},
         utils::Vector,
-        AlterTable, AlterTableError, Row, Schema, Value,
     },
     async_trait::async_trait,
     sled::transaction::ConflictableTransactionError,
@@ -127,11 +130,10 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.rename_schema(table_name, new_table_name).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| {
+            storage.rename_schema(table_name, new_table_name)
+        })
+        .await
     }
 
     async fn rename_column(
@@ -201,14 +203,10 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => {
-                self.rename_column(table_name, old_column_name, new_column_name)
-                    .await
-            }
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| {
+            storage.rename_column(table_name, old_column_name, new_column_name)
+        })
+        .await
     }
 
     async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
@@ -327,11 +325,10 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.add_column(table_name, column_def).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| {
+            storage.add_column(table_name, column_def)
+        })
+        .await
     }
 
     async fn drop_column(
@@ -447,10 +444,9 @@ impl AlterTable for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        match self.check_retry(tx_result) {
-            Ok(true) => self.drop_column(table_name, column_name, if_exists).await,
-            Ok(false) => Ok((self, ())),
-            Err(e) => Err((self, e)),
-        }
+        self.check_and_retry(tx_result, |storage| {
+            storage.drop_column(table_name, column_name, if_exists)
+        })
+        .await
     }
 }

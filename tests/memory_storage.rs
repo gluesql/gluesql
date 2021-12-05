@@ -1,9 +1,8 @@
 #![cfg(feature = "memory-storage")]
 
-use std::{cell::RefCell, rc::Rc};
-
-use gluesql::{
-    declare_test_fn, generate_store_tests, memory_storage::Key, tests::*, MemoryStorage,
+use {
+    gluesql::{prelude::MemoryStorage, storages::memory_storage::Key, tests::*, *},
+    std::{cell::RefCell, rc::Rc},
 };
 
 struct MemoryTester {
@@ -40,30 +39,10 @@ macro_rules! test {
 }
 
 #[cfg(feature = "alter-table")]
-#[test]
-fn memory_storage_alter_table() {
-    use gluesql::{Error, Glue};
-
-    let storage = MemoryStorage::default();
-    let mut glue = Glue::new(storage);
-
-    exec!(glue "CREATE TABLE Footer (id INTEGER);");
-    test!(
-        glue "ALTER TABLE Footer RENAME TO Header;",
-        Err(Error::StorageMsg("[MemoryStorage] alter-table is not supported".to_owned()))
-    );
-    test!(
-        glue "ALTER TABLE Footer RENAME COLUMN id TO od;",
-        Err(Error::StorageMsg("[MemoryStorage] alter-table is not supported".to_owned()))
-    );
-    test!(
-        glue "ALTER TABLE Footer ADD COLUMN ratio FLOAT DEFAULT 1.0;",
-        Err(Error::StorageMsg("[MemoryStorage] alter-table is not supported".to_owned()))
-    );
-    test!(
-        glue "ALTER TABLE Footer DROP COLUMN id;",
-        Err(Error::StorageMsg("[MemoryStorage] alter-table is not supported".to_owned()))
-    );
+cfg_if::cfg_if! {
+    if #[cfg(feature = "alter-table")] {
+        generate_alter_table_tests!(tokio::test, MemoryTester);
+    }
 }
 
 #[cfg(feature = "index")]
@@ -71,8 +50,9 @@ fn memory_storage_alter_table() {
 fn memory_storage_index() {
     use futures::executor::block_on;
     use gluesql::{
+        prelude::Glue,
+        result::{Error, Result},
         store::{Index, Store},
-        Error, Glue, Result,
     };
 
     let storage = MemoryStorage::default();
@@ -109,7 +89,7 @@ fn memory_storage_index() {
 #[cfg(feature = "transaction")]
 #[test]
 fn memory_storage_transaction() {
-    use gluesql::{Error, Glue};
+    use gluesql::{prelude::Glue, result::Error};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);

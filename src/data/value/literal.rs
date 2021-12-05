@@ -6,7 +6,7 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, Interval, Literal},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
         result::{Error, Result},
     },
     chrono::NaiveDate,
@@ -17,20 +17,8 @@ impl PartialEq<Literal<'_>> for Value {
     fn eq(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
-            (Value::I64(l), Literal::Number(r)) => match r.parse::<i64>() {
-                Ok(r) => l == &r,
-                Err(_) => match r.parse::<f64>() {
-                    Ok(r) => (*l as f64) == r,
-                    Err(_) => false,
-                },
-            },
-            (Value::F64(l), Literal::Number(r)) => match r.parse::<f64>() {
-                Ok(r) => l == &r,
-                Err(_) => match r.parse::<i64>() {
-                    Ok(r) => *l == (r as f64),
-                    Err(_) => false,
-                },
-            },
+            (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
+            (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l == &r,
@@ -54,20 +42,12 @@ impl PartialEq<Literal<'_>> for Value {
 impl PartialOrd<Literal<'_>> for Value {
     fn partial_cmp(&self, other: &Literal<'_>) -> Option<Ordering> {
         match (self, other) {
-            (Value::I64(l), Literal::Number(r)) => match r.parse::<i64>() {
-                Ok(r) => Some(l.cmp(&r)),
-                Err(_) => match r.parse::<f64>() {
-                    Ok(r) => (*l as f64).partial_cmp(&r),
-                    Err(_) => None,
-                },
-            },
-            (Value::F64(l), Literal::Number(r)) => match r.parse::<f64>() {
-                Ok(r) => l.partial_cmp(&r),
-                Err(_) => match r.parse::<i64>() {
-                    Ok(r) => l.partial_cmp(&(r as f64)),
-                    Err(_) => None,
-                },
-            },
+            (Value::I64(l), Literal::Number(r)) => {
+                r.to_i64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::F64(l), Literal::Number(r)) => {
+                r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
             (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l.partial_cmp(&r),
@@ -96,9 +76,10 @@ impl TryFrom<&Literal<'_>> for Value {
     fn try_from(literal: &Literal<'_>) -> Result<Self> {
         match literal {
             Literal::Number(v) => v
-                .parse::<i64>()
-                .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
+                .to_i64()
+                .map(Value::I64)
+                .or_else(|| v.to_f64().map(Value::F64))
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Interval(v) => Ok(Value::Interval(*v)),
@@ -112,14 +93,8 @@ impl TryFrom<Literal<'_>> for Value {
 
     fn try_from(literal: Literal<'_>) -> Result<Self> {
         match literal {
-            Literal::Number(v) => v
-                .parse::<i64>()
-                .map_or_else(|_| v.parse::<f64>().map(Value::F64), |v| Ok(Value::I64(v)))
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
-            Literal::Boolean(v) => Ok(Value::Bool(v)),
             Literal::Text(v) => Ok(Value::Str(v.into_owned())),
-            Literal::Interval(v) => Ok(Value::Interval(v)),
-            Literal::Null => Ok(Value::Null),
+            _ => Value::try_from(&literal),
         }
     }
 }
@@ -129,13 +104,13 @@ impl Value {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
             (DataType::Int, Literal::Number(v)) => v
-                .parse::<i64>()
+                .to_i64()
                 .map(Value::I64)
-                .map_err(|_| ValueError::FailedToParseNumber.into()),
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
-                .parse::<f64>()
+                .to_f64()
                 .map(Value::F64)
-                .map_err(|_| ValueError::UnreachableNumberParsing.into()),
+                .ok_or_else(|| ValueError::UnreachableNumberParsing.into()),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Date, Literal::Text(v)) => v
                 .parse::<NaiveDate>()
@@ -163,40 +138,45 @@ impl Value {
     pub fn try_cast_from_literal(data_type: &DataType, literal: &Literal<'_>) -> Result<Value> {
         match (data_type, literal) {
             (DataType::Boolean, Literal::Boolean(v)) => Ok(Value::Bool(*v)),
-            (DataType::Boolean, Literal::Text(v)) | (DataType::Boolean, Literal::Number(v)) => {
-                match v.to_uppercase().as_str() {
-                    "TRUE" | "1" => Ok(Value::Bool(true)),
-                    "FALSE" | "0" => Ok(Value::Bool(false)),
-                    _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
-                }
-            }
+            (DataType::Boolean, Literal::Text(v)) => match v.to_uppercase().as_str() {
+                "TRUE" | "1" => Ok(Value::Bool(true)),
+                "FALSE" | "0" => Ok(Value::Bool(false)),
+                _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
+            },
+            (DataType::Boolean, Literal::Number(v)) => match v.to_i64() {
+                Some(0) => Ok(Value::Bool(false)),
+                Some(1) => Ok(Value::Bool(true)),
+                _ => Err(ValueError::LiteralCastToBooleanFailed(v.to_string()).into()),
+            },
             (DataType::Int, Literal::Text(v)) => v
                 .parse::<i64>()
                 .map(Value::I64)
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
             (DataType::Int, Literal::Number(v)) => v
-                .parse::<f64>()
-                .map_err(|_| {
+                .to_f64()
+                .map(|v| Value::I64(v.trunc() as i64))
+                .ok_or_else(|| {
                     ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
-                })
-                .map(|v| Value::I64(v.trunc() as i64)),
+                }),
             (DataType::Int, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
                 Ok(Value::I64(v))
             }
-            (DataType::Float, Literal::Text(v)) | (DataType::Float, Literal::Number(v)) => v
+            (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
-                .map_err(|_| ValueError::LiteralCastToFloatFailed(v.to_string()).into()),
+                .map_err(|_| ValueError::LiteralCastFromTextToFloatFailed(v.to_string()).into()),
+            (DataType::Float, Literal::Number(v)) => v.to_f64().map(Value::F64).ok_or_else(|| {
+                ValueError::UnreachableLiteralCastFromNumberToFloat(v.to_string()).into()
+            }),
             (DataType::Float, Literal::Boolean(v)) => {
                 let v = if *v { 1.0 } else { 0.0 };
 
                 Ok(Value::F64(v))
             }
-            (DataType::Text, Literal::Number(v)) | (DataType::Text, Literal::Text(v)) => {
-                Ok(Value::Str(v.to_string()))
-            }
+            (DataType::Text, Literal::Number(v)) => Ok(Value::Str(v.to_string())),
+            (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Boolean(v)) => {
                 let v = if *v { "TRUE" } else { "FALSE" };
 
@@ -230,6 +210,59 @@ impl Value {
 
 #[cfg(test)]
 mod tests {
+    use crate::{data::Literal, prelude::Value};
+    use bigdecimal::BigDecimal;
+
+    #[test]
+    fn eq() {
+        use super::parse_uuid;
+        use crate::data::interval::Interval as I;
+        use std::borrow::Cow;
+        use std::str::FromStr;
+
+        let date = |y, m, d| chrono::NaiveDate::from_ymd(y, m, d);
+
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+
+        let time = |hh, mm, ss, ms| chrono::NaiveTime::from_hms_milli(hh, mm, ss, ms);
+
+        macro_rules! num {
+            ($num: expr) => {
+                Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        macro_rules! text {
+            ($text: expr) => {
+                Literal::Text(Cow::Owned($text.to_owned()))
+            };
+        }
+
+        let uuid_text = "936DA01F9ABD4d9d80C702AF85C822A8";
+        let uuid = parse_uuid(uuid_text).unwrap();
+
+        assert_eq!(Value::Bool(true), Literal::Boolean(true));
+        assert_eq!(Value::I64(1), num!("1"));
+        assert_eq!(Value::F64(7.123), num!("7.123"));
+        assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
+        assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
+        assert_ne!(Value::Date(date(2021, 11, 20)), text!("202=abcdef"));
+        assert_eq!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            text!("2021-11-20T10:00:00Z")
+        );
+        assert_ne!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            text!("2021-11-Hello")
+        );
+        assert_eq!(Value::Time(time(10, 0, 0, 0)), text!("10:00:00"));
+        assert_ne!(Value::Time(time(10, 0, 0, 0)), text!("FALSE"));
+        assert_eq!(Value::Interval(I::Month(1)), Literal::Interval(I::Month(1)));
+        assert_eq!(Value::Uuid(uuid), text!(uuid_text));
+    }
+
     #[test]
     fn timestamp() {
         let timestamp = |y, m, d, hh, mm, ss, ms| {

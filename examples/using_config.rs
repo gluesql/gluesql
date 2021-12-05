@@ -1,6 +1,9 @@
 #[cfg(feature = "sled-storage")]
 use {
-    gluesql::{sled, Glue, SledStorage},
+    gluesql::{
+        prelude::{Glue, SledStorage},
+        sled,
+    },
     std::convert::TryFrom,
 };
 

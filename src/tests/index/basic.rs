@@ -1,6 +1,14 @@
 use crate::*;
 
 test_case!(basic, async move {
+    use {
+        ast::IndexOperator::*,
+        executor::AlterError,
+        prelude::{Payload, Value::*},
+        store::IndexError,
+        translate::TranslateError,
+    };
+
     run!(
         r#"
 CREATE TABLE Test (
@@ -31,9 +39,6 @@ CREATE TABLE Test (
         Ok(Payload::CreateIndex),
         "CREATE INDEX idx_id2 ON Test (id + num)"
     );
-
-    use ast::IndexOperator::*;
-    use Value::*;
 
     test_idx!(
         Ok(select!(
