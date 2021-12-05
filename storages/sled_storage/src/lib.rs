@@ -1,16 +1,3 @@
-mod alter_table;
-mod error;
-mod gc;
-mod index;
-mod index_mut;
-mod index_sync;
-mod key;
-mod lock;
-mod snapshot;
-mod store;
-mod store_mut;
-mod transaction;
-
 use {
     self::snapshot::Snapshot,
     error::{err_into, tx_err_into},
@@ -27,6 +14,19 @@ use {
         Config, Db, IVec,
     },
 };
+
+mod alter_table;
+mod error;
+mod gc;
+mod index;
+mod index_mut;
+mod index_sync;
+mod key;
+mod lock;
+mod snapshot;
+mod store;
+mod store_mut;
+mod transaction;
 
 /// default transaction timeout : 1 hour
 const DEFAULT_TX_TIMEOUT: u128 = 3600 * 1000;

@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-gluesql-core = { version = "0.9", path = "../../core" }
-gluesql-utils = { path = "../../utils", features = ["sled-storage"] }
+gluesql-core = { version = "0.9", path = "../../core", features = ["index", "transaction"] }
+gluesql-utils = { path = "../../utils", features = ["sled-storage", "index"] }
 
 async-trait = "0.1"
 iter-enum = "1"
@@ -16,9 +16,7 @@ bincode = "1"
 sled = "0.34"
 
 [features]
-default = ["index", "transaction"]
+default = ["sorter"]
 
 alter-table = ["gluesql-core/alter-table", "gluesql-utils/alter-table"]
 sorter = ["gluesql-core/sorter"]
-index = ["gluesql-core/index", "gluesql-utils/index"]
-transaction = ["gluesql-core/transaction"]
