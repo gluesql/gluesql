@@ -1,5 +1,5 @@
 [package]
-name = "gluesql_utils"
+name = "gluesql-utils"
 version = "0.1.0"
 edition = "2021"
 

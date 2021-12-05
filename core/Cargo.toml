@@ -1,5 +1,5 @@
 [package]
-name = "gluesql_core"
+name = "gluesql-core"
 version = "0.9.0"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 edition = "2021"
@@ -36,15 +36,8 @@ transaction = []
 # disable this feature if you use GlueSQL for big data analysis.
 sorter = []
 
-# # for someone who wants to make a custom storage engine,
-# # default storage engine sled-storage is not required.
-# sled-storage = ["transaction", "index", "sled", "bincode"]
-
-# # BTreeMap based in-memory storage
-# memory-storage = ["sorter"]
-
 [dependencies]
-gluesql_utils = { path = "../utils" }
+gluesql-utils = { path = "../utils" }
 
 regex = "1"
 async-trait = "0.1"
