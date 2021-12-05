@@ -12,8 +12,8 @@ iter-enum = "1"
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 
-bincode = { version = "1", optional = true }
-sled = { version = "0.34", optional = true }
+bincode = "1"
+sled = "0.34"
 
 [features]
 default = ["index", "transaction"]
