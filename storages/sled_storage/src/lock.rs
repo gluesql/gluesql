@@ -1,6 +1,6 @@
 use {
     super::{err_into, State},
-    crate::result::{Error, Result},
+    gluesql_core::result::{Error, Result},
     serde::{Deserialize, Serialize},
     sled::{
         transaction::{

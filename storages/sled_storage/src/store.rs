@@ -1,11 +1,11 @@
 use {
     super::{err_into, lock, SledStorage, Snapshot, State},
-    crate::{
+    async_trait::async_trait,
+    gluesql_core::{
         data::{Row, Schema},
         result::{Error, Result},
         store::{RowIter, Store},
     },
-    async_trait::async_trait,
     sled::IVec,
 };
 

@@ -1,6 +1,7 @@
 use {
     super::{err_into, fetch_schema, key, Snapshot},
-    crate::{
+    gluesql_common::utils::Vector,
+    gluesql_core::{
         ast::Expr,
         data::{
             schema::{Schema, SchemaIndex},
@@ -10,7 +11,6 @@ use {
         prelude::Value,
         result::{Error, Result},
         store::IndexError,
-        utils::Vector,
     },
     sled::{
         transaction::{

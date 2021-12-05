@@ -258,7 +258,7 @@ impl SledStorage {
         retry_func: impl FnOnce(SledStorage) -> Fut,
     ) -> MutResult<SledStorage, ()>
     where
-        Fut: futures::Future<Output = MutResult<SledStorage, ()>>,
+        Fut: std::future::Future<Output = MutResult<SledStorage, ()>>,
     {
         match tx_result.map_err(tx_err_into) {
             Ok(TxPayload::Success) => Ok((self, ())),

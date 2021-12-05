@@ -12,6 +12,7 @@ gluesql_common = { path = "../../common" }
 async-trait = "0.1"
 iter-enum = "1"
 serde = { version = "1", features = ["derive"] }
+thiserror = "1"
 
 bincode = { version = "1", optional = true }
 sled = { version = "0.34", optional = true }
