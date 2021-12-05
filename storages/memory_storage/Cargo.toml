@@ -9,7 +9,7 @@ gluesql-core = { version = "0.9", path = "../../core" }
 async-trait = "0.1"
 
 [features]
-default = []
+default = ["alter-table", "index", "transaction"]
 
 alter-table = ["gluesql-core/alter-table"]
 index = ["gluesql-core/index"]
