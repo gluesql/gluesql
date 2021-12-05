@@ -13,7 +13,7 @@ async-trait = "0.1"
 [features]
 default = ["alter-table", "sorter", "index", "transaction"]
 
-alter-table = []
-sorter = []
-index = []
-transaction = []
+alter-table = ["gluesql_core/alter-table"]
+sorter = ["gluesql_core/sorter"]
+index = ["gluesql_core/index"]
+transaction = ["gluesql_core/transaction"]
