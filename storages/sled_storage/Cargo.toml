@@ -18,7 +18,7 @@ bincode = { version = "1", optional = true }
 sled = { version = "0.34", optional = true }
 
 [features]
-default = ["alter-table", "sorter", "index", "transaction"]
+default = ["index", "transaction"]
 
 alter-table = ["gluesql-core/alter-table", "gluesql-utils/alter-table"]
 sorter = ["gluesql-core/sorter"]
