@@ -10,8 +10,6 @@ indexmap = "1"
 
 [features]
 alter-table = []
-sorter = []
 index = []
-transaction = []
 
 sled-storage = []
