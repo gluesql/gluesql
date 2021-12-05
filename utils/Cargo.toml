@@ -7,9 +7,3 @@ edition = "2021"
 futures = "0.3"
 pin-project = "1"
 indexmap = "1"
-
-[features]
-alter-table = []
-index = []
-
-sled-storage = []

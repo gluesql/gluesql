@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 gluesql-core = { version = "0.9", path = "../../core", features = ["index", "transaction"] }
-gluesql-utils = { path = "../../utils", features = ["sled-storage", "index"] }
+gluesql-utils = { path = "../../utils" }
 
 async-trait = "0.1"
 iter-enum = "1"
@@ -18,4 +18,4 @@ sled = "0.34"
 [features]
 default = []
 
-alter-table = ["gluesql-core/alter-table", "gluesql-utils/alter-table"]
+alter-table = ["gluesql-core/alter-table"]
