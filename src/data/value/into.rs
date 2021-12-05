@@ -215,8 +215,8 @@ mod tests {
     use {
         super::{Interval, Value::*},
         crate::data::value::uuid::parse_uuid,
-        crate::Value,
         crate::value::{HashMap, NaiveDateTime, NaiveTime},
+        crate::Value,
     };
 
     #[test]
@@ -227,16 +227,13 @@ mod tests {
                 assert_eq!(String::from($value), String::from($string));
             }
         );
-    
+
         test!(&Str("Glue".to_owned()), "Glue");
         test!(Str("Glue".to_owned()), "Glue");
         test!(Bool(true), "TRUE");
         test!(I64(1), "1");
         test!(F64(1.0), "1");
-        test!(
-            Date("2021-12-25".parse().unwrap()),
-            "2021-12-25"
-        );
+        test!(Date("2021-12-25".parse().unwrap()), "2021-12-25");
         test!(
             Timestamp("2021-12-25T00:00:00".parse::<NaiveDateTime>().unwrap()),
             "2021-12-25 00:00:00"
@@ -247,11 +244,8 @@ mod tests {
             Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()),
             "936da01f-9abd-4d9d-80c7-02af85c822a8"
         );
-        
-        let m: HashMap<String, Value> = [
-            ("key1".to_owned(), I64(10)),
-            ("key2".to_owned(), I64(20))
-        ].into();
+        let m: HashMap<String, Value> =
+            [("key1".to_owned(), I64(10)), ("key2".to_owned(), I64(20))].into();
         test!(Map(m), "[MAP]");
         test!(List(vec![I64(1), I64(2), I64(3)]), "[LIST]");
         test!(Null, "NULL");
