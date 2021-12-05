@@ -214,14 +214,17 @@ impl TryInto<u128> for &Value {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::value::uuid::parse_uuid,
-        crate::value::{HashMap, NaiveDateTime, NaiveTime},
-        crate::Value,
+        crate::data::{
+            value::uuid::parse_uuid,
+            value::HashMap,
+            value::Value,
+            ValueError,
+        },
+        chrono::{NaiveDateTime, NaiveTime},
     };
 
     #[test]
     fn into_string() {
-        assert_eq!(String::from(Bool(true)), String::from("TRUE"));
         macro_rules! test (
             ($value: expr, $string: expr) => {
                 assert_eq!(String::from($value), String::from($string));
@@ -250,14 +253,7 @@ mod tests {
         test!(List(vec![I64(1), I64(2), I64(3)]), "[LIST]");
         test!(Null, "NULL");
     }
-    /*
-    #[test]
-    fn into_bool() {
-        macro_rules! test (
-            ($value: expr, #expected: expr) => {
-                assert_eq!(try_into(value), expected);
-            }
-        );
-        test!(I64(1), Bool(true));
-    }*/
+
+    
+    }
 }
