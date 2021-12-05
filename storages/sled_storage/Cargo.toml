@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 gluesql_core = { version = "0.9", path = "../../core" }
-gluesql_common = { path = "../../common" }
+gluesql_common = { path = "../../common", features = ["sled-storage"] }
 
 async-trait = "0.1"
 iter-enum = "1"
@@ -20,7 +20,7 @@ sled = { version = "0.34", optional = true }
 [features]
 default = ["alter-table", "sorter", "index", "transaction"]
 
-alter-table = ["gluesql_core/alter-table"]
+alter-table = ["gluesql_core/alter-table", "gluesql_common/alter-table"]
 sorter = ["gluesql_core/sorter"]
-index = ["gluesql_core/index"]
+index = ["gluesql_core/index", "gluesql_common/index"]
 transaction = ["gluesql_core/transaction"]
