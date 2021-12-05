@@ -1,0 +1,19 @@
+[package]
+name = "memory_storage"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gluesql_core = { version = "0.9", path = "../../core" }
+
+async-trait = "0.1"
+
+[features]
+default = ["alter-table", "sorter", "index", "transaction"]
+
+alter-table = []
+sorter = []
+index = []
+transaction = []
