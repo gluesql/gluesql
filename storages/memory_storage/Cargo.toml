@@ -9,9 +9,8 @@ gluesql-core = { version = "0.9", path = "../../core" }
 async-trait = "0.1"
 
 [features]
-default = ["sorter"]
+default = []
 
 alter-table = ["gluesql-core/alter-table"]
-sorter = ["gluesql-core/sorter"]
 index = ["gluesql-core/index"]
 transaction = ["gluesql-core/transaction"]
