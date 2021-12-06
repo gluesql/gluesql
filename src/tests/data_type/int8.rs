@@ -1,6 +1,6 @@
 use crate::{data::ValueError, prelude::Value::*, *};
 
-test_case!(numeric, async move {
+test_case!(int8, async move {
     run!(
         "CREATE TABLE Item (
         field_one INT(8),
@@ -33,110 +33,51 @@ test_case!(numeric, async move {
     );
 
     test!(
-        Ok(select!(
-            field_one
-            I8;
-            1;
-            3
-        )),
+        Ok(select!(field_one I8; 1; 3)),
         "SELECT field_one FROM Item WHERE field_one > 0"
     );
     test!(
-        Ok(select!(
-            field_one
-            I8;
-            1;
-            3
-        )),
+        Ok(select!(field_one I8; 1; 3)),
         "SELECT field_one FROM Item WHERE field_one >= 0"
     );
 
     test!(
-        Ok(select!(
-            field_one
-            I8;
-            -2
-        )),
+        Ok(select!(field_one I8; -2)),
         "SELECT field_one FROM Item WHERE field_one = -2"
     );
 
     test!(
-        Ok(select!(
-            field_one
-            I8;
-            -2;
-            -4
-        )),
+        Ok(select!(field_one I8; -2; -4)),
         "SELECT field_one FROM Item WHERE field_one < 0"
     );
 
     test!(
-        Ok(select!(
-            field_one
-            I8;
-            -2;
-            -4
-        )),
+        Ok(select!(field_one I8; -2; -4)),
         "SELECT field_one FROM Item WHERE field_one <= 0"
     );
 
     test!(
-        Ok(select!(
-            plus
-            I8;
-            0;
-            0;
-            6;
-            -8
-        )),
+        Ok(select!(plus I8; 0; 0; 6; -8)),
         "SELECT field_one + field_two AS plus FROM Item;"
     );
 
     test!(
-        Ok(select!(
-            sub
-            I8;
-            2;
-            -4;
-            0;
-            0
-        )),
+        Ok(select!(sub I8; 2; -4; 0; 0)),
         "SELECT field_one - field_two AS sub FROM Item;"
     );
 
     test!(
-        Ok(select!(
-            mul
-            I8;
-            -1;
-            -4;
-            9;
-            16
-        )),
+        Ok(select!(mul I8; -1; -4; 9; 16)),
         "SELECT field_one * field_two AS mul FROM Item;"
     );
 
     test!(
-        Ok(select!(
-            div
-            I8;
-            -1;
-            -1;
-            1;
-            1
-        )),
+        Ok(select!(div I8; -1; -1; 1; 1)),
         "SELECT field_one / field_two AS div FROM Item;"
     );
 
     test!(
-        Ok(select!(
-            modulo
-            I8;
-            0;
-            0;
-            0;
-            0
-        )),
+        Ok(select!(modulo I8; 0; 0; 0; 0)),
         "SELECT field_one % field_two AS modulo FROM Item;"
     );
 
