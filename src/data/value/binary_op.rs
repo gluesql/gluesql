@@ -1,9 +1,26 @@
 use {
-    super::{BinaryOperator, TryBinaryOperator, Value},
+    super::Value,
     crate::{data::ValueError, result::Result},
     std::cmp::Ordering,
     Value::*,
 };
+
+pub(crate) trait TryBinaryOperator {
+    type Rhs;
+
+    fn try_add(&self, rhs: &Self::Rhs) -> Result<Value>;
+    fn try_subtract(&self, rhs: &Self::Rhs) -> Result<Value>;
+    fn try_multiply(&self, rhs: &Self::Rhs) -> Result<Value>;
+    fn try_divide(&self, rhs: &Self::Rhs) -> Result<Value>;
+    fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value>;
+}
+
+pub(crate) trait BinaryOperator {
+    type Rhs;
+
+    fn eq(&self, rhs: &Self::Rhs) -> bool;
+    fn partial_cmp(&self, rhs: &Self::Rhs) -> Option<Ordering>;
+}
 
 impl BinaryOperator for i8 {
     type Rhs = Value;
