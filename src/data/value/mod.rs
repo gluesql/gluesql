@@ -1,6 +1,6 @@
 use {
     super::{Interval, StringExt},
-    crate::{ast::DataType, result::Result},
+    crate::{ast::DataType, data::value::binary_op::TryBinaryOperator, result::Result},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
@@ -38,30 +38,13 @@ pub enum Value {
     Null,
 }
 
-trait TryBinaryOperator {
-    type Rhs;
-
-    fn try_add(&self, rhs: &Self::Rhs) -> Result<Value>;
-    fn try_subtract(&self, rhs: &Self::Rhs) -> Result<Value>;
-    fn try_multiply(&self, rhs: &Self::Rhs) -> Result<Value>;
-    fn try_divide(&self, rhs: &Self::Rhs) -> Result<Value>;
-    fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value>;
-}
-
-trait BinaryOperator {
-    type Rhs;
-
-    fn eq(&self, rhs: &Self::Rhs) -> bool;
-    fn partial_cmp(&self, rhs: &Self::Rhs) -> Option<Ordering>;
-}
-
 impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => l == r,
-            (Value::I8(l), _) => BinaryOperator::eq(l, other),
-            (Value::I64(l), _) => BinaryOperator::eq(l, other),
-            (Value::F64(l), _) => BinaryOperator::eq(l, other),
+            (Value::I8(l), _) => l == other,
+            (Value::I64(l), _) => l == other,
+            (Value::F64(l), _) => l == other,
             (Value::Str(l), Value::Str(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
@@ -81,9 +64,9 @@ impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
-            (Value::I8(l), _) => BinaryOperator::partial_cmp(l, other),
-            (Value::I64(l), _) => BinaryOperator::partial_cmp(l, other),
-            (Value::F64(l), _) => BinaryOperator::partial_cmp(l, other),
+            (Value::I8(l), _) => l.partial_cmp(other),
+            (Value::I64(l), _) => l.partial_cmp(other),
+            (Value::F64(l), _) => l.partial_cmp(other),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),
@@ -184,9 +167,9 @@ impl Value {
         use Value::*;
 
         match (self, other) {
-            (I8(a), _) => TryBinaryOperator::try_add(a, other),
-            (I64(a), _) => TryBinaryOperator::try_add(a, other),
-            (F64(a), _) => TryBinaryOperator::try_add(a, other),
+            (I8(a), b) => a.try_add(b),
+            (I64(a), b) => a.try_add(b),
+            (F64(a), b) => a.try_add(b),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
             (Date(a), Interval(b)) => b.add_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
@@ -212,9 +195,9 @@ impl Value {
         use Value::*;
 
         match (self, other) {
-            (I8(a), _) => TryBinaryOperator::try_subtract(a, other),
-            (I64(a), _) => TryBinaryOperator::try_subtract(a, other),
-            (F64(a), _) => TryBinaryOperator::try_subtract(a, other),
+            (I8(a), _) => a.try_subtract(other),
+            (I64(a), _) => a.try_subtract(other),
+            (F64(a), _) => a.try_subtract(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
             (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.subtract_from_timestamp(a).map(Timestamp),
@@ -254,9 +237,9 @@ impl Value {
         use Value::*;
 
         match (self, other) {
-            (I8(a), _) => TryBinaryOperator::try_multiply(a, other),
-            (I64(a), _) => TryBinaryOperator::try_multiply(a, other),
-            (F64(a), _) => TryBinaryOperator::try_multiply(a, other),
+            (I8(a), _) => a.try_multiply(other),
+            (I64(a), _) => a.try_multiply(other),
+            (F64(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
@@ -278,9 +261,9 @@ impl Value {
         }
 
         match (self, other) {
-            (I8(a), _) => TryBinaryOperator::try_divide(a, other),
-            (I64(a), _) => TryBinaryOperator::try_divide(a, other),
-            (F64(a), _) => TryBinaryOperator::try_divide(a, other),
+            (I8(a), _) => a.try_divide(other),
+            (I64(a), _) => a.try_divide(other),
+            (F64(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
@@ -301,9 +284,9 @@ impl Value {
         }
 
         match (self, other) {
-            (I8(a), _) => TryBinaryOperator::try_modulo(a, other),
-            (I64(a), _) => TryBinaryOperator::try_modulo(a, other),
-            (F64(a), _) => TryBinaryOperator::try_modulo(a, other),
+            (I8(a), _) => a.try_modulo(other),
+            (I64(a), _) => a.try_modulo(other),
+            (F64(a), _) => a.try_modulo(other),
             (Null, I8(_)) | (Null, I64(_)) | (Null, F64(_)) | (Null, Null) => Ok(Null),
             _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
         }
