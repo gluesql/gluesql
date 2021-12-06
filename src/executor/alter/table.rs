@@ -64,18 +64,10 @@ pub async fn create_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
     })()
     .await;
 
-    let (storage, ()) = match schema {
-        Ok(s) => {
-            if let Some(schema) = s {
-                storage.insert_schema(&schema).await
-            } else {
-                Ok((storage, ()))
-            }
-        }
-        Err(e) => {
-            return Err((storage, e));
-        }
-    }?;
+    let storage = match schema.try_self(storage)? {
+        (storage, Some(schema)) => storage.insert_schema(&schema).await?.0,
+        (storage, None) => storage,
+    };
 
     match source {
         Some(q) => {
