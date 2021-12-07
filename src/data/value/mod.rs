@@ -1,10 +1,6 @@
 use {
     super::{Interval, StringExt},
-    crate::{
-        ast::DataType,
-        data::value::binary_op::{BinaryOperator, TryBinaryOperator},
-        result::Result,
-    },
+    crate::{ast::DataType, data::value::binary_op::TryBinaryOperator, result::Result},
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
@@ -46,9 +42,9 @@ impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => l == r,
-            (Value::I8(l), _) => BinaryOperator::eq(l, other),
-            (Value::I64(l), _) => BinaryOperator::eq(l, other),
-            (Value::F64(l), _) => BinaryOperator::eq(l, other),
+            (Value::I8(l), _) => l == other,
+            (Value::I64(l), _) => l == other,
+            (Value::F64(l), _) => l == other,
             (Value::Str(l), Value::Str(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
@@ -68,9 +64,9 @@ impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
-            (Value::I8(l), _) => BinaryOperator::partial_cmp(l, other),
-            (Value::I64(l), _) => BinaryOperator::partial_cmp(l, other),
-            (Value::F64(l), _) => BinaryOperator::partial_cmp(l, other),
+            (Value::I8(l), _) => l.partial_cmp(other),
+            (Value::I64(l), _) => l.partial_cmp(other),
+            (Value::F64(l), _) => l.partial_cmp(other),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),

@@ -15,34 +15,23 @@ pub(crate) trait TryBinaryOperator {
     fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value>;
 }
 
-pub(crate) trait BinaryOperator {
-    type Rhs;
-
-    fn eq(&self, rhs: &Self::Rhs) -> bool;
-    fn partial_cmp(&self, rhs: &Self::Rhs) -> Option<Ordering>;
-}
-
-impl BinaryOperator for i8 {
-    type Rhs = Value;
-
-    fn eq(&self, rhs: &Self::Rhs) -> bool {
-        let lhs = *self;
-
-        match *rhs {
-            I8(rhs) => lhs == rhs,
-            I64(rhs) => lhs as i64 == rhs,
-            F64(rhs) => lhs as f64 == rhs,
+impl PartialEq<Value> for i8 {
+    fn eq(&self, other: &Value) -> bool {
+        match other {
+            I8(other) => self == other,
+            I64(other) => &(*self as i64) == other,
+            F64(other) => &(*self as f64) == other,
             _ => false,
         }
     }
+}
 
-    fn partial_cmp(&self, rhs: &Self::Rhs) -> Option<Ordering> {
-        let lhs = *self;
-
-        match rhs {
-            I8(rhs) => PartialOrd::partial_cmp(&lhs, rhs),
-            I64(rhs) => PartialOrd::partial_cmp(&(lhs as i64), rhs),
-            F64(rhs) => PartialOrd::partial_cmp(&(lhs as f64), rhs),
+impl PartialOrd<Value> for i8 {
+    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+        match other {
+            I8(other) => self.partial_cmp(other),
+            I64(other) => (*self as i64).partial_cmp(other),
+            F64(other) => (*self as f64).partial_cmp(other),
             _ => None,
         }
     }
@@ -153,21 +142,21 @@ impl TryBinaryOperator for i8 {
     }
 }
 
-impl BinaryOperator for i64 {
-    type Rhs = Value;
-
-    fn eq(&self, rhs: &Self::Rhs) -> bool {
+impl PartialEq<Value> for i64 {
+    fn eq(&self, other: &Value) -> bool {
         let lhs = *self;
 
-        match *rhs {
+        match *other {
             I8(rhs) => lhs == rhs as i64,
             I64(rhs) => lhs == rhs,
             F64(rhs) => lhs as f64 == rhs,
             _ => false,
         }
     }
+}
 
-    fn partial_cmp(&self, rhs: &Self::Rhs) -> Option<Ordering> {
+impl PartialOrd<Value> for i64 {
+    fn partial_cmp(&self, rhs: &Value) -> Option<Ordering> {
         match rhs {
             I8(rhs) => PartialOrd::partial_cmp(self, &(*rhs as i64)),
             I64(rhs) => PartialOrd::partial_cmp(self, rhs),
@@ -242,25 +231,25 @@ impl TryBinaryOperator for i64 {
     }
 }
 
-impl BinaryOperator for f64 {
-    type Rhs = Value;
-
-    fn eq(&self, rhs: &Self::Rhs) -> bool {
+impl PartialEq<Value> for f64 {
+    fn eq(&self, other: &Value) -> bool {
         let lhs = *self;
 
-        match *rhs {
+        match *other {
             I8(rhs) => lhs == rhs as f64,
             I64(rhs) => lhs == rhs as f64,
             F64(rhs) => lhs == rhs,
             _ => false,
         }
     }
+}
 
-    fn partial_cmp(&self, rhs: &Self::Rhs) -> Option<Ordering> {
-        match *rhs {
-            I8(rhs) => PartialOrd::partial_cmp(self, &(rhs as f64)),
-            I64(rhs) => PartialOrd::partial_cmp(self, &(rhs as f64)),
-            F64(rhs) => PartialOrd::partial_cmp(self, &rhs),
+impl PartialOrd<Value> for f64 {
+    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+        match *other {
+            I8(rhs) => self.partial_cmp(&(rhs as f64)),
+            I64(rhs) => self.partial_cmp(&(rhs as f64)),
+            F64(rhs) => self.partial_cmp(&rhs),
             _ => None,
         }
     }
