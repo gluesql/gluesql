@@ -8,6 +8,7 @@ use {
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
+    rust_decimal::Decimal,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -37,6 +38,7 @@ pub enum UniqueKey {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
+    Decimal(Decimal),
 }
 
 #[derive(Debug)]

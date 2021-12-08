@@ -34,6 +34,9 @@ pub enum ValueError {
     #[error("failed to UUID: {0}")]
     FailedToParseUUID(String),
 
+    #[error("failed to parse Decimal: {0}")]
+    FailedToParseDecimal(String),
+
     #[error("add on non-numeric values: {0:?} + {1:?}")]
     AddOnNonNumeric(Value, Value),
 

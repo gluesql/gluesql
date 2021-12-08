@@ -13,4 +13,5 @@ pub enum DataType {
     Uuid,
     Map,
     List,
+    Decimal,
 }

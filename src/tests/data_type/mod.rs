@@ -1,4 +1,5 @@
 pub mod date;
+pub mod decimal;
 pub mod interval;
 pub mod list;
 pub mod map;

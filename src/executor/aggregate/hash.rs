@@ -5,6 +5,7 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    rust_decimal::Decimal,
     std::fmt::Debug,
 };
 
@@ -18,6 +19,7 @@ pub enum GroupKey {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
+    Decimal(Decimal),
     None,
 }
 

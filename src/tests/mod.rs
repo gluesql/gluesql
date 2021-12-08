@@ -118,6 +118,7 @@ macro_rules! generate_store_tests {
         glue!(case, case::case);
         glue!(function_substr, function::substr::substr);
         glue!(uuid, data_type::uuid::uuid);
+        glue!(decimal, data_type::decimal::decimal);
         glue!(
             function_generate_uuid,
             function::generate_uuid::generate_uuid
