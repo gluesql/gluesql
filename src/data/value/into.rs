@@ -220,6 +220,7 @@ mod tests {
             value::Value,
             ValueError,
         },
+        crate::result::Result,
         chrono::{NaiveDateTime, NaiveTime},
     };
 
@@ -254,6 +255,85 @@ mod tests {
         test!(Null, "NULL");
     }
 
-    
+    #[test]
+    fn into_bool() {        
+        macro_rules! test (
+            ($value: expr, $expected: expr) => {
+                assert_eq!($value.try_into(), $expected)
+            }
+        );
+
+        test!(Bool(true), Ok(true));
+        test!(I64(1), Ok(true));
+        test!(I64(0), Ok(false));
+        test!(F64(1.0), Ok(true));
+        test!(F64(0.0), Ok(false));
+        test!(Str("TRUE".to_owned()), Ok(true));
+        test!(Str("FALSE".to_owned()), Ok(false));
+
+        macro_rules! errtest (
+            ($value: expr) => {
+                let v: Result<bool> = $value.try_into();
+                assert_eq!(v, Err(ValueError::ImpossibleCast.into()));
+            }
+        );
+
+        errtest!(I64(5));
+        errtest!(F64(5.0));
+        errtest!(Str("Glue".to_owned()));
+        errtest!(Date("2021-12-25".parse().unwrap()));
+        errtest!(Timestamp("2021-12-25T00:00:00".parse::<NaiveDateTime>().unwrap()));
+        errtest!(Time(NaiveTime::from_hms(12, 30, 11)));
+        errtest!(Interval(Interval::hours(5)));
+        errtest!(Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()));
+        let m: HashMap<String, Value> =
+            [("key1".to_owned(), I64(10)), ("key2".to_owned(), I64(20))].into();
+        errtest!(Map(m));
+        errtest!(List(vec![I64(1), I64(2), I64(3)]));
+        errtest!(Null);
     }
+
+    #[test]
+    fn into_i64() {
+
+    }
+
+    /*
+    impl TryInto<i64> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<i64> {
+        Ok(match self {
+            Value::Bool(value) => {
+                if *value {
+                    1
+                } else {
+                    0
+                }
+            }
+            Value::I64(value) => *value,
+            Value::F64(value) => value.trunc() as i64,
+            Value::Str(value) => value
+                .parse::<i64>()
+                .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
+impl TryInto<i64> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<i64> {
+        (&self).try_into()
+    }
+}
+    */
 }
