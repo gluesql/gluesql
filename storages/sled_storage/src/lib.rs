@@ -7,13 +7,15 @@ use {
         store::{GStore, GStoreMut},
     },
     sled::{
-        self,
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
         Config, Db, IVec,
     },
 };
+
+// re-export
+pub use sled;
 
 mod alter_table;
 mod error;
