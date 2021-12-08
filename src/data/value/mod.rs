@@ -406,6 +406,9 @@ mod tests {
         let date = Date(NaiveDate::from_ymd(2020, 5, 1));
         let timestamp = Timestamp(NaiveDate::from_ymd(2020, 3, 1).and_hms(0, 0, 0));
 
+        let one = rust_decimal::Decimal::ONE;
+        let two = rust_decimal::Decimal::TWO;
+
         assert_eq!(date.partial_cmp(&timestamp), Some(Ordering::Greater));
         assert_eq!(timestamp.partial_cmp(&date), Some(Ordering::Less));
 
@@ -420,6 +423,13 @@ mod tests {
         assert_eq!(
             Interval::Microsecond(1).partial_cmp(&Interval::Month(2)),
             None
+        );
+
+        assert_eq!(one.partial_cmp(&two), Some(Ordering::Less));
+        assert_eq!(two.partial_cmp(&one), Some(Ordering::Greater));
+        assert_eq!(
+            Decimal(one).partial_cmp(&Decimal(two)),
+            Some(Ordering::Less)
         );
     }
 

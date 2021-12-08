@@ -8,7 +8,7 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    rust_decimal::prelude::ToPrimitive,
+    rust_decimal::prelude::*,
     uuid::Uuid,
 };
 
@@ -66,7 +66,22 @@ impl TryInto<bool> for &Value {
                 "FALSE" => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
-            Value::Decimal(value) => !value.is_zero(),
+            /*
+            Value::Decimal(value) => match value {
+                &rust_decimal::Decimal::ONE => true,
+                &rust_decimal::Decimal::ZERO => false,
+                _ => return Err(ValueError::ImpossibleCast.into())
+            },
+            */
+            Value::Decimal(value) => {
+                if value == &rust_decimal::Decimal::ONE {
+                    true
+                } else if value == &rust_decimal::Decimal::ZERO {
+                    false
+                } else {
+                    return Err(ValueError::ImpossibleCast.into());
+                }
+            }
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
