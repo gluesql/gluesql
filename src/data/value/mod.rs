@@ -1,6 +1,7 @@
 use {
     super::{Interval, StringExt},
-    crate::{ast::DataType, data::value::binary_op::TryBinaryOperator, result::Result},
+    crate::{ast::DataType, result::Result},
+    binary_op::TryBinaryOperator,
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     core::ops::Sub,
     serde::{Deserialize, Serialize},
