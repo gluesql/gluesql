@@ -50,8 +50,8 @@ pub enum TranslateError {
     #[error("unsupported ast literal: {0}")]
     UnsupportedAstLiteral(String),
 
-    #[error("unsupported unary operator: {0}")]
-    UnsupportedUnaryOperator(String),
+    #[error("unreachable unary operator: {0}")]
+    UnreachableUnaryOperator(String),
 
     #[error("unsupported binary operator: {0}")]
     UnsupportedBinaryOperator(String),

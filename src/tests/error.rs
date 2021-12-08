@@ -16,10 +16,6 @@ test_case!(error, async move {
             "TRUNCATE TABLE TableA;",
         ),
         (
-            TranslateError::UnsupportedUnaryOperator("!".to_owned()).into(),
-            "SELECT 2! FROM TableA;",
-        ),
-        (
             TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
             "SELECT 1 ^ 2 FROM TableA;",
         ),

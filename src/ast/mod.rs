@@ -55,6 +55,7 @@ pub enum Statement {
         name: ObjectName,
         /// Optional schema
         columns: Vec<ColumnDef>,
+        source: Option<Box<Query>>,
     },
     /// ALTER TABLE
     #[cfg(feature = "alter-table")]
