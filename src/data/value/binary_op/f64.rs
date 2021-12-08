@@ -115,9 +115,9 @@ mod tests {
     fn try_add() {
         let base = 1.0_f64;
 
-        assert!(matches!(base.try_add(&I8(1)), Ok(F64(x)) if x == 2.0 ));
-        assert!(matches!(base.try_add(&I64(1)), Ok(F64(x)) if x == 2.0 ));
-        assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if x == 2.0 ));
+        assert!(matches!(base.try_add(&I8(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
+        assert!(matches!(base.try_add(&I64(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
+        assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
 
         assert_eq!(
             base.try_add(&Bool(true)),
@@ -129,9 +129,13 @@ mod tests {
     fn try_subtract() {
         let base = 1.0_f64;
 
-        assert!(matches!(base.try_subtract(&I8(1)), Ok(F64(x)) if x == 0.0 ));
-        assert!(matches!(base.try_subtract(&I64(1)), Ok(F64(x)) if x == 0.0 ));
-        assert!(matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if x == 0.0 ));
+        assert!(matches!(base.try_subtract(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
+        assert!(
+            matches!(base.try_subtract(&I64(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+        );
+        assert!(
+            matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+        );
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
@@ -143,9 +147,13 @@ mod tests {
     fn try_multiply() {
         let base = 1.0_f64;
 
-        assert!(matches!(base.try_multiply(&I8(1)), Ok(F64(x)) if x == 1.0 ));
-        assert!(matches!(base.try_multiply(&I64(1)), Ok(F64(x)) if x == 1.0 ));
-        assert!(matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if x == 1.0 ));
+        assert!(matches!(base.try_multiply(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
+        assert!(
+            matches!(base.try_multiply(&I64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+        );
+        assert!(
+            matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+        );
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
@@ -157,9 +165,11 @@ mod tests {
     fn try_divide() {
         let base = 1.0_f64;
 
-        assert!(matches!(base.try_divide(&I8(1)), Ok(F64(x)) if x == 1.0 ));
-        assert!(matches!(base.try_divide(&I64(1)), Ok(F64(x)) if x == 1.0 ));
-        assert!(matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if x == 1.0 ));
+        assert!(matches!(base.try_divide(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
+        assert!(matches!(base.try_divide(&I64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
+        assert!(
+            matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+        );
 
         assert_eq!(
             base.try_divide(&Bool(true)),
@@ -171,9 +181,11 @@ mod tests {
     fn try_modulo() {
         let base = 1.0_f64;
 
-        assert!(matches!(base.try_modulo(&I8(1)), Ok(F64(x)) if x == 0.0 ));
-        assert!(matches!(base.try_modulo(&I64(1)), Ok(F64(x)) if x == 0.0 ));
-        assert!(matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if x == 0.0 ));
+        assert!(matches!(base.try_modulo(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
+        assert!(matches!(base.try_modulo(&I64(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
+        assert!(
+            matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+        );
 
         assert_eq!(
             base.try_modulo(&Bool(true)),
