@@ -1,7 +1,11 @@
 mod blend;
 mod error;
 
+use std::pin::Pin;
+
 pub use error::SelectError;
+
+use super::context::AggregateContext;
 
 use {
     self::blend::Blend,
@@ -145,12 +149,23 @@ fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-pub async fn select_with_labels<'a, T: Debug>(
+pub async fn select_inner<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
-    query: &'a Query,
+    query: &'a Select,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
-) -> Result<(Vec<String>, impl TryStream<Ok = Row, Error = Error> + 'a)> {
+) -> Result<(
+    Vec<String>,
+    impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
+)> {
+    // ) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {
+    #[cfg(not(feature = "sorter"))]
+    if !query.order_by.is_empty() {
+        let order_by = query.order_by.clone();
+
+        return Err(SelectError::OrderByOnNonIndexedExprNotSupported(order_by).into());
+    }
+
     let Select {
         from: table_with_joins,
         selection: where_clause,
@@ -158,12 +173,13 @@ pub async fn select_with_labels<'a, T: Debug>(
         group_by,
         having,
         order_by,
-    } = match &query.body {
-        SetExpr::Select(statement) => statement.as_ref(),
-        _ => {
-            return Err(SelectError::Unreachable.into());
-        }
-    };
+    } = query;
+    // match &query.body {
+    //     SetExpr::Select(statement) => statement.as_ref(),
+    //     _ => {
+    //         return Err(SelectError::Unreachable.into());
+    //     }
+    // };
 
     #[cfg(not(feature = "sorter"))]
     if !order_by.is_empty() {
@@ -251,7 +267,6 @@ pub async fn select_with_labels<'a, T: Debug>(
                     .map(|pass| pass.then(|| blend_context))
             }
         });
-
     let rows = aggregate.apply(rows).await?;
     let rows = sort
         .apply(rows)
@@ -261,8 +276,36 @@ pub async fn select_with_labels<'a, T: Debug>(
 
             async move { blend.apply(aggregated, context).await }
         });
-    let rows = limit.apply(rows);
+    Ok((labels, rows))
+}
 
+pub async fn select_values<'a, T: Debug>(
+    storage: &'a dyn GStore<T>,
+    query: &'a Query,
+    filter_context: Option<Rc<FilterContext<'a>>>,
+    with_labels: bool,
+) -> Result<()> {
+    Ok(())
+}
+
+pub async fn select_with_labels<'a, T: Debug>(
+    storage: &'a dyn GStore<T>,
+    query: &'a Query,
+    filter_context: Option<Rc<FilterContext<'a>>>,
+    with_labels: bool,
+) -> Result<(
+    Option(Vec<String>),
+    impl TryStream<Ok = Row, Error = Error> + 'a,
+)> {
+    let (labels, rows) = match &query.body {
+        SetExpr::Select(q) => select_inner(storage, q, filter_context, with_labels).await?,
+        SetExpr::Values(v) => select_values(storage, v, filter_context, with_labels).await?,
+        _ => {
+            return Err(SelectError::Unreachable.into());
+        }
+    };
+    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+    let rows = limit.apply(rows);
     Ok((labels, rows))
 }
 

@@ -8,6 +8,7 @@ pub struct Query {
     pub body: SetExpr,
     pub limit: Option<Expr>,
     pub offset: Option<Expr>,
+    // pub order_by: Vec<OrderByExpr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

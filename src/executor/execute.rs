@@ -168,34 +168,42 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
                     .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
                 let column_defs = Rc::from(column_defs);
                 let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
+                let rows = async {
+                    select(&storage, source, None)
+                        .await?
+                        .try_collect::<Vec<_>>()
+                        .await
+                }
+                .await?;
 
-                let rows = match &source.body {
-                    SetExpr::Values(Values(values_list)) => values_list
-                        .iter()
-                        .map(|values| Row::new(&column_defs, columns, values))
-                        .collect::<Result<Vec<Row>>>()?,
-                    SetExpr::Select(select_query) => {
-                        let query = || Query {
-                            body: SetExpr::Select(select_query.clone()),
-                            limit: None,
-                            offset: None,
-                        };
+                //     let rows = match &source.body {
+                //         SetExpr::Values(Values(values_list)) => values_list
+                //             .iter()
+                //             .map(|values| Row::new(&column_defs, columns, values))
+                //             .collect::<Result<Vec<Row>>>()?,
+                //         SetExpr::Select(select_query) => {
+                //             let query = || Query {
+                //                 body: SetExpr::Select(select_query.clone()),
+                //                 order_by: vec![],
+                //                 limit: None,
+                //                 offset: None,
+                //             };
 
-                        select(&storage, &query(), None)
-                            .await?
-                            .and_then(|row| {
-                                let column_defs = Rc::clone(&column_defs);
+                //             select(&storage, &query(), None)
+                //                 .await?
+                //                 .and_then(|row| {
+                //                     let column_defs = Rc::clone(&column_defs);
 
-                                async move {
-                                    row.validate(&column_defs)?;
+                //                     async move {
+                //                         row.validate(&column_defs)?;
 
-                                    Ok(row)
-                                }
-                            })
-                            .try_collect::<Vec<_>>()
-                            .await?
-                    }
-                };
+                //                         Ok(row)
+                //                     }
+                //                 })
+                //                 .try_collect::<Vec<_>>()
+                //                 .await?
+                //         }
+                //     };
 
                 validate_unique(&storage, table_name, column_validation, rows.iter()).await?;
 
