@@ -66,13 +66,6 @@ impl TryInto<bool> for &Value {
                 "FALSE" => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
-            /*
-            Value::Decimal(value) => match value {
-                &rust_decimal::Decimal::ONE => true,
-                &rust_decimal::Decimal::ZERO => false,
-                _ => return Err(ValueError::ImpossibleCast.into())
-            },
-            */
             Value::Decimal(value) => {
                 if value == &rust_decimal::Decimal::ONE {
                     true
