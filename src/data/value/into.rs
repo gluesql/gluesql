@@ -307,24 +307,57 @@ mod tests {
         test!(F64(1.7), Ok(1));
         test!(Str("1".to_owned()), Ok(1));
 
-        macro_rules! errtest (
+        macro_rules! test_err (
             ($value: expr) => {
                 let v: Result<i64> = $value.try_into();
                 assert_eq!(v, Err(ValueError::ImpossibleCast.into()));
             }
         );
 
-        errtest!(Str("Glue".to_owned()));
-        errtest!(Date("2021-12-25".parse().unwrap()));
-        errtest!(Timestamp("2021-12-25T00:00:00".parse::<NaiveDateTime>().unwrap()));
-        errtest!(Time(NaiveTime::from_hms(12, 30, 11)));
-        errtest!(Interval(Interval::hours(5)));
-        errtest!(Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()));
+        test_err!(Str("Glue".to_owned()));
+        test_err!(Date("2021-12-25".parse().unwrap()));
+        test_err!(Timestamp("2021-12-25T00:00:00".parse::<NaiveDateTime>().unwrap()));
+        test_err!(Time(NaiveTime::from_hms(12, 30, 11)));
+        test_err!(Interval(Interval::hours(5)));
+        test_err!(Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()));
         let m: HashMap<String, Value> =
             [("key1".to_owned(), I64(10)), ("key2".to_owned(), I64(20))].into();
-        errtest!(Map(m));
-        errtest!(List(vec![I64(1), I64(2), I64(3)]));
-        errtest!(Null);
+        test_err!(Map(m));
+        test_err!(List(vec![I64(1), I64(2), I64(3)]));
+        test_err!(Null);
     }
 
+    #[test]
+    fn into_f64() {
+        macro_rules! test (
+            ($value: expr, $expected: expr) => {
+                assert_eq!((&$value).try_into(), $expected)
+            }
+        );
+
+        test!(Bool(true), Ok(1.0));
+        test!(Bool(false), Ok(0.0));
+        test!(I64(1), Ok(1.0));
+        test!(F64(1.7), Ok(1.7));
+        test!(Str("1.0".to_owned()), Ok(1.0));
+
+        macro_rules! test_err (
+            ($value: expr) => {
+                let v: Result<f64> = (&$value).try_into();
+                assert_eq!(v, Err(ValueError::ImpossibleCast.into()));
+            }
+        );
+
+        test_err!(Str("Glue".to_owned()));
+        test_err!(Date("2021-12-25".parse().unwrap()));
+        test_err!(Timestamp("2021-12-25T00:00:00".parse::<NaiveDateTime>().unwrap()));
+        test_err!(Time(NaiveTime::from_hms(12, 30, 11)));
+        test_err!(Interval(Interval::hours(5)));
+        test_err!(Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap()));
+        let m: HashMap<String, Value> =
+            [("key1".to_owned(), I64(10)), ("key2".to_owned(), I64(20))].into();
+        test_err!(Map(m));
+        test_err!(List(vec![I64(1), I64(2), I64(3)]));
+        test_err!(Null);
+    }
 }
