@@ -66,8 +66,6 @@
 
 // re-export
 pub use chrono;
-#[cfg(feature = "sled-storage")]
-pub use sled;
 pub use sqlparser;
 
 mod glue;
