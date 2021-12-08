@@ -80,3 +80,104 @@ impl TryBinaryOperator for f64 {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::{TryBinaryOperator, Value::*},
+        crate::data::ValueError,
+        std::cmp::Ordering,
+    };
+
+    #[test]
+    fn eq() {
+        let base = 1.0_f64;
+
+        assert_eq!(base, I8(1));
+        assert_eq!(base, I64(1));
+        assert_eq!(base, F64(1.0));
+
+        assert_ne!(base, Bool(true));
+    }
+
+    #[test]
+    fn partial_cmp() {
+        let base = 1.0_f64;
+
+        assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
+
+        assert_eq!(base.partial_cmp(&Bool(true)), None);
+    }
+
+    #[test]
+    fn try_add() {
+        let base = 1.0_f64;
+
+        assert!(matches!(base.try_add(&I8(1)), Ok(F64(x)) if x == 2.0 ));
+        assert!(matches!(base.try_add(&I64(1)), Ok(F64(x)) if x == 2.0 ));
+        assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if x == 2.0 ));
+
+        assert_eq!(
+            base.try_add(&Bool(true)),
+            Err(ValueError::AddOnNonNumeric(F64(1.0), Bool(true)).into())
+        );
+    }
+
+    #[test]
+    fn try_subtract() {
+        let base = 1.0_f64;
+
+        assert!(matches!(base.try_subtract(&I8(1)), Ok(F64(x)) if x == 0.0 ));
+        assert!(matches!(base.try_subtract(&I64(1)), Ok(F64(x)) if x == 0.0 ));
+        assert!(matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if x == 0.0 ));
+
+        assert_eq!(
+            base.try_subtract(&Bool(true)),
+            Err(ValueError::SubtractOnNonNumeric(F64(1.0), Bool(true)).into())
+        );
+    }
+
+    #[test]
+    fn try_multiply() {
+        let base = 1.0_f64;
+
+        assert!(matches!(base.try_multiply(&I8(1)), Ok(F64(x)) if x == 1.0 ));
+        assert!(matches!(base.try_multiply(&I64(1)), Ok(F64(x)) if x == 1.0 ));
+        assert!(matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if x == 1.0 ));
+
+        assert_eq!(
+            base.try_multiply(&Bool(true)),
+            Err(ValueError::MultiplyOnNonNumeric(F64(1.0), Bool(true)).into())
+        );
+    }
+
+    #[test]
+    fn try_divide() {
+        let base = 1.0_f64;
+
+        assert!(matches!(base.try_divide(&I8(1)), Ok(F64(x)) if x == 1.0 ));
+        assert!(matches!(base.try_divide(&I64(1)), Ok(F64(x)) if x == 1.0 ));
+        assert!(matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if x == 1.0 ));
+
+        assert_eq!(
+            base.try_divide(&Bool(true)),
+            Err(ValueError::DivideOnNonNumeric(F64(1.0), Bool(true)).into())
+        );
+    }
+
+    #[test]
+    fn try_modulo() {
+        let base = 1.0_f64;
+
+        assert!(matches!(base.try_modulo(&I8(1)), Ok(F64(x)) if x == 0.0 ));
+        assert!(matches!(base.try_modulo(&I64(1)), Ok(F64(x)) if x == 0.0 ));
+        assert!(matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if x == 0.0 ));
+
+        assert_eq!(
+            base.try_modulo(&Bool(true)),
+            Err(ValueError::ModuloOnNonNumeric(F64(1.0), Bool(true)).into())
+        );
+    }
+}
