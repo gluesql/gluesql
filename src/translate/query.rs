@@ -42,7 +42,7 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
     })
 }
 
-fn translate_set_expr(sql_set_expr: &SqlSetExpr, order_by: &Vec<OrderByExpr>) -> Result<SetExpr> {
+fn translate_set_expr(sql_set_expr: &SqlSetExpr, order_by: &[OrderByExpr]) -> Result<SetExpr> {
     match sql_set_expr {
         SqlSetExpr::Select(select) => translate_select(select, order_by)
             .map(Box::new)
@@ -58,7 +58,7 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr, order_by: &Vec<OrderByExpr>) ->
     }
 }
 
-fn translate_select(sql_select: &SqlSelect, order_by: &Vec<OrderByExpr>) -> Result<Select> {
+fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<Select> {
     let order_by = order_by
         .iter()
         .map(translate_order_by_expr)
@@ -89,7 +89,7 @@ fn translate_select(sql_select: &SqlSelect, order_by: &Vec<OrderByExpr>) -> Resu
         selection: selection.as_ref().map(translate_expr).transpose()?,
         group_by: group_by.iter().map(translate_expr).collect::<Result<_>>()?,
         having: having.as_ref().map(translate_expr).transpose()?,
-        order_by: order_by,
+        order_by,
     })
 }
 

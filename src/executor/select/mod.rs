@@ -151,13 +151,6 @@ pub async fn select_with_labels<'a, T: Debug>(
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
 ) -> Result<(Vec<String>, impl TryStream<Ok = Row, Error = Error> + 'a)> {
-    #[cfg(not(feature = "sorter"))]
-    if !query.order_by.is_empty() {
-        let order_by = query.order_by.clone();
-
-        return Err(SelectError::OrderByOnNonIndexedExprNotSupported(order_by).into());
-    }
-
     let Select {
         from: table_with_joins,
         selection: where_clause,
@@ -171,6 +164,11 @@ pub async fn select_with_labels<'a, T: Debug>(
             return Err(SelectError::Unreachable.into());
         }
     };
+
+    #[cfg(not(feature = "sorter"))]
+    if !order_by.is_empty() {
+        return Err(SelectError::OrderByOnNonIndexedExprNotSupported(order_by.to_vec()).into());
+    }
 
     let TableWithJoins { relation, joins } = &table_with_joins;
     let table = Table::new(relation)?;
