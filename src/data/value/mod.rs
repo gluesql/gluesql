@@ -44,10 +44,11 @@ pub enum Value {
 impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
-            (Value::Bool(l), Value::Bool(r)) => l == r,
             (Value::I8(l), _) => l == other,
             (Value::I64(l), _) => l == other,
             (Value::F64(l), _) => l == other,
+            (Value::Decimal(l), Value::Decimal(r)) => l == r,
+            (Value::Bool(l), Value::Bool(r)) => l == r,
             (Value::Str(l), Value::Str(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
@@ -58,7 +59,6 @@ impl PartialEq<Value> for Value {
             (Value::Uuid(l), Value::Uuid(r)) => l == r,
             (Value::Map(l), Value::Map(r)) => l == r,
             (Value::List(l), Value::List(r)) => l == r,
-            (Value::Decimal(l), Value::Decimal(r)) => l == r,
             _ => false,
         }
     }
@@ -67,10 +67,11 @@ impl PartialEq<Value> for Value {
 impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
-            (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
             (Value::I8(l), _) => l.partial_cmp(other),
             (Value::I64(l), _) => l.partial_cmp(other),
             (Value::F64(l), _) => l.partial_cmp(other),
+            (Value::Decimal(l), Value::Decimal(r)) => Some(l.cmp(r)),
+            (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),
@@ -79,7 +80,6 @@ impl PartialOrd<Value> for Value {
             (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
             (Value::Uuid(l), Value::Uuid(r)) => Some(l.cmp(r)),
-            (Value::Decimal(l), Value::Decimal(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -97,10 +97,11 @@ impl Value {
 
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
         let valid = match self {
-            Value::Bool(_) => matches!(data_type, DataType::Boolean),
             Value::I8(_) => matches!(data_type, DataType::Int8),
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::F64(_) => matches!(data_type, DataType::Float),
+            Value::Decimal(_) => matches!(data_type, DataType::Decimal),
+            Value::Bool(_) => matches!(data_type, DataType::Boolean),
             Value::Str(_) => matches!(data_type, DataType::Text),
             Value::Date(_) => matches!(data_type, DataType::Date),
             Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
@@ -109,7 +110,6 @@ impl Value {
             Value::Uuid(_) => matches!(data_type, DataType::Uuid),
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
-            Value::Decimal(_) => matches!(data_type, DataType::Decimal),
             Value::Null => true,
         };
 
@@ -134,17 +134,17 @@ impl Value {
 
     pub fn cast(&self, data_type: &DataType) -> Result<Self> {
         match (data_type, self) {
-            (DataType::Boolean, Value::Bool(_))
-            | (DataType::Int8, Value::I8(_))
+            (DataType::Int8, Value::I8(_))
             | (DataType::Int, Value::I64(_))
             | (DataType::Float, Value::F64(_))
+            | (DataType::Decimal, Value::Decimal(_))
+            | (DataType::Boolean, Value::Bool(_))
             | (DataType::Text, Value::Str(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
             | (DataType::Interval, Value::Interval(_))
-            | (DataType::Uuid, Value::Uuid(_))
-            | (DataType::Decimal, Value::Decimal(_)) => Ok(self.clone()),
+            | (DataType::Uuid, Value::Uuid(_)) => Ok(self.clone()),
             (_, Value::Null) => Ok(Value::Null),
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
@@ -185,9 +185,11 @@ impl Value {
             (Null, I8(_))
             | (Null, I64(_))
             | (Null, F64(_))
+            | (Null, Decimal(_))
             | (Null, Date(_))
             | (Null, Timestamp(_))
             | (Null, Interval(_))
+            | (Decimal(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
@@ -228,10 +230,12 @@ impl Value {
             (Null, I8(_))
             | (Null, I64(_))
             | (Null, F64(_))
+            | (Null, Decimal(_))
             | (Null, Date(_))
             | (Null, Timestamp(_))
             | (Null, Time(_))
             | (Null, Interval(_))
+            | (Decimal(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
@@ -255,7 +259,9 @@ impl Value {
             (Null, I8(_))
             | (Null, I64(_))
             | (Null, F64(_))
+            | (Null, Decimal(_))
             | (Null, Interval(_))
+            | (Decimal(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
@@ -280,7 +286,9 @@ impl Value {
             (Null, I8(_))
             | (Null, I64(_))
             | (Null, F64(_))
+            | (Null, Decimal(_))
             | (Interval(_), Null)
+            | (Decimal(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
         }
@@ -298,7 +306,12 @@ impl Value {
             (I64(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), Decimal(b)) => Ok(Decimal(a % b)),
-            (Null, I8(_)) | (Null, I64(_)) | (Null, F64(_)) | (Null, Null) => Ok(Null),
+            (Null, I8(_))
+            | (Null, I64(_))
+            | (Null, F64(_))
+            | (Null, Decimal(_))
+            | (Decimal(_), Null)
+            | (Null, Null) => Ok(Null),
             _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }
