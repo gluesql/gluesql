@@ -86,8 +86,7 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
         }
     };
 
-    let Select { order_by, .. } = select.as_ref();
-    let index = order_by.last().and_then(|value_expr| {
+    let index = select.order_by.last().and_then(|value_expr| {
         indexes.find_ordered(value_expr).map(|name| IndexItem {
             name,
             asc: value_expr.asc,
