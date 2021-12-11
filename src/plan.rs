@@ -7,6 +7,7 @@ use {
         data::{get_name, Schema, SchemaIndex, SchemaIndexOrd},
         result::Result,
         store::Store,
+        utils::Vector,
     },
     async_recursion::async_recursion,
     std::fmt::Debug,
@@ -121,7 +122,7 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
                 selection,
                 group_by,
                 having,
-                order_by,
+                order_by: Vector::from(order_by).pop().0.into(),
             };
 
             Ok(Query {
