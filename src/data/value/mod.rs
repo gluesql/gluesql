@@ -614,7 +614,7 @@ mod tests {
 
         macro_rules! null_test {
             ($op: ident $a: expr, $b: expr) => {
-                matches!($a.$op(&$b), Ok(Null));
+                assert!($a.$op(&$b).unwrap().is_null());
             };
         }
 
@@ -789,7 +789,7 @@ mod tests {
         assert_eq!(a.concat(&I64(1)), Str("A1".to_owned()));
         assert_eq!(a.concat(&F64(1.0)), Str("A1".to_owned()));
         assert_eq!(I64(2).concat(&I64(1)), Str("21".to_owned()));
-        matches!(a.concat(&Null), Null);
+        assert!(a.concat(&Null).is_null());
     }
 
     #[test]
