@@ -6,7 +6,7 @@ use {
     core::ops::Sub,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
-    std::{cmp::Ordering, collections::HashMap, convert::TryInto, fmt::Debug},
+    std::{cmp::Ordering, collections::HashMap, fmt::Debug},
 };
 
 mod big_edian;
