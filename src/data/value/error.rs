@@ -129,8 +129,8 @@ pub enum ValueError {
     #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
     ILikeOnNonString(Value, Value),
 
-    #[error("big edian export not supported for {0} type")]
-    BigEdianExportNotSupported(String),
+    #[error("big endian export not supported for {0} type")]
+    BigEndianExportNotSupported(String),
 
     #[error("invalid json string")]
     InvalidJsonString,

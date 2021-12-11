@@ -9,7 +9,7 @@ use {
     std::{cmp::Ordering, collections::HashMap, fmt::Debug},
 };
 
-mod big_edian;
+mod big_endian;
 mod binary_op;
 mod date;
 mod error;
