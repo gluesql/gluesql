@@ -31,6 +31,7 @@ pub enum ColumnValidation {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UniqueKey {
     Bool(bool),
+    I8(i8),
     I64(i64),
     Str(String),
     Date(NaiveDate),

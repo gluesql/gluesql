@@ -11,6 +11,7 @@ use {
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum GroupKey {
+    I8(i8),
     I64(i64),
     Bool(bool),
     Str(String),

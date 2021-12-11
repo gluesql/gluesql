@@ -18,6 +18,7 @@ impl TryInto<Option<UniqueKey>> for &Value {
 
         let unique_key = match self {
             Bool(v) => Some(UniqueKey::Bool(*v)),
+            I8(v) => Some(UniqueKey::I8(*v)),
             I64(v) => Some(UniqueKey::I64(*v)),
             Str(v) => Some(UniqueKey::Str(v.clone())),
             Date(v) => Some(UniqueKey::Date(*v)),

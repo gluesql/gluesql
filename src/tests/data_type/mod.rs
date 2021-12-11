@@ -1,5 +1,6 @@
 pub mod date;
 pub mod decimal;
+pub mod int8;
 pub mod interval;
 pub mod list;
 pub mod map;
