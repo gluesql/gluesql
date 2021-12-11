@@ -7,7 +7,6 @@ use {
         data::{get_name, Schema, SchemaIndex, SchemaIndexOrd},
         result::Result,
         store::Store,
-        utils::Vector,
     },
     async_recursion::async_recursion,
     std::fmt::Debug,
@@ -56,7 +55,6 @@ impl Indexes {
 async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
     let Query {
         body,
-        order_by,
         limit,
         offset,
     } = query;
@@ -66,7 +64,6 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
         SetExpr::Values(_) => {
             return Ok(Query {
                 body,
-                order_by,
                 limit,
                 offset,
             });
@@ -83,13 +80,13 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
         None => {
             return Ok(Query {
                 body: SetExpr::Select(select),
-                order_by,
                 limit,
                 offset,
             });
         }
     };
 
+    let Select { order_by, .. } = select.as_ref();
     let index = order_by.last().and_then(|value_expr| {
         indexes.find_ordered(value_expr).map(|name| IndexItem {
             name,
@@ -106,6 +103,7 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
                 selection,
                 group_by,
                 having,
+                order_by,
             } = *select;
 
             let TableWithJoins { relation, joins } = from;
@@ -124,11 +122,11 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
                 selection,
                 group_by,
                 having,
+                order_by,
             };
 
             Ok(Query {
                 body: SetExpr::Select(Box::new(select)),
-                order_by: Vector::from(order_by).pop().0.into(),
                 limit,
                 offset,
             })
@@ -138,7 +136,6 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
             let body = SetExpr::Select(Box::new(select));
             let query = Query {
                 body,
-                order_by,
                 limit,
                 offset,
             };
@@ -159,6 +156,7 @@ async fn plan_select<T: Debug>(
         selection,
         group_by,
         having,
+        order_by,
     } = select;
 
     let selection = match selection {
@@ -170,6 +168,7 @@ async fn plan_select<T: Debug>(
                 selection,
                 group_by,
                 having,
+                order_by,
             });
         }
     };
@@ -181,6 +180,7 @@ async fn plan_select<T: Debug>(
             selection: Some(selection),
             group_by,
             having,
+            order_by,
         }),
         Planned::IndexedExpr {
             index_name,
@@ -209,6 +209,7 @@ async fn plan_select<T: Debug>(
                 selection,
                 group_by,
                 having,
+                order_by,
             })
         }
     }

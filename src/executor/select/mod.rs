@@ -164,6 +164,7 @@ pub async fn select_with_labels<'a, T: Debug>(
         projection,
         group_by,
         having,
+        order_by,
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         _ => {
@@ -231,7 +232,7 @@ pub async fn select_with_labels<'a, T: Debug>(
         None,
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-    let sort = Sort::new(storage, filter_context, &query.order_by);
+    let sort = Sort::new(storage, filter_context, order_by);
 
     let rows = fetch_blended(storage, table, columns)
         .await?
