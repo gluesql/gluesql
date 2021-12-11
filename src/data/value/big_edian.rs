@@ -92,6 +92,9 @@ impl Value {
             Value::List(_) => {
                 return Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into());
             }
+            Value::Decimal(_) => {
+                return Err(ValueError::BigEdianExportNotSupported("Decimal".to_owned()).into());
+            }
         };
 
         Ok(value)

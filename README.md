@@ -9,12 +9,16 @@
 
 ## SQL Database Engine as a Library
 
-GlueSQL is a SQL database library written in Rust. It provides a parser ([sqlparser-rs](https://github.com/ballista-compute/sqlparser-rs)), execution layer, and optional storage ([sled](https://github.com/spacejam/sled)) packaged into a single library.
+GlueSQL is a SQL database library written in Rust.  
+It provides a parser ([sqlparser-rs](https://github.com/ballista-compute/sqlparser-rs)), execution layer, and optional storages ([`sled`](https://github.com/spacejam/sled) or `memory`) packaged into a single library.  
 Developers can choose to use GlueSQL to build their own SQL database, or as an embedded SQL database using the default storage engine.
 
 ## Standalone Mode
 
-You can use GlueSQL as an embedded SQL database. GlueSQL provides [sled](https://github.com/spacejam/sled "sled") as a default storage engine.
+You can use GlueSQL as an embedded SQL database.  
+GlueSQL provides two reference storage options.
+* `SledStorage` - Persistent storage engine based on [`sled`](https://github.com/spacejam/sled "sled")
+* `MemoryStorage` - Non-persistent storage engine based on `BTreeMap`
 
 ### Installation
 
@@ -22,13 +26,14 @@ In your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gluesql = "0.8"
+gluesql = "0.9"
 ```
 
 ### Usage
 
 ```rust
 use gluesql::*;
+
 fn main() {
     let storage = SledStorage::new("data/doc-db").unwrap();
     let mut glue = Glue::new(storage);
@@ -51,11 +56,11 @@ fn main() {
 
 ### Installation
 
-`sled-storage` is optional, so it is not required for custom storage makers.
+`sled-storage` and `memory-storage` features are optional, so these are not required for custom storage makers.
 
 ```toml
 [dependencies.gluesql]
-version = "0.8"
+version = "0.9"
 default-features = false
 features = ["sorter", "alter-table", "index", "transaction"]
 ```

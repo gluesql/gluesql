@@ -111,8 +111,9 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
             name,
             columns,
             if_not_exists,
+            source,
             ..
-        } => create_table(storage, name, columns, *if_not_exists)
+        } => create_table(storage, name, columns, *if_not_exists, source)
             .await
             .map(|(storage, _)| (storage, Payload::Create)),
         Statement::DropTable {

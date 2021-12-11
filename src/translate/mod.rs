@@ -64,6 +64,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             if_not_exists,
             name,
             columns,
+            query,
             ..
         } => Ok(Statement::CreateTable {
             if_not_exists: *if_not_exists,
@@ -72,6 +73,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .iter()
                 .map(translate_column_def)
                 .collect::<Result<_>>()?,
+            source: match query {
+                Some(v) => Some(translate_query(v).map(Box::new)?),
+                None => None,
+            },
         }),
         #[cfg(feature = "alter-table")]
         SqlStatement::AlterTable {

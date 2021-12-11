@@ -26,6 +26,7 @@ impl TryInto<Option<UniqueKey>> for &Value {
             Time(v) => Some(UniqueKey::Time(*v)),
             Interval(v) => Some(UniqueKey::Interval(*v)),
             Uuid(v) => Some(UniqueKey::Uuid(*v)),
+            Decimal(v) => Some(UniqueKey::Decimal(*v)),
             Null => None,
             F64(_) => return conflict("FLOAT"),
             Map(_) => return conflict("MAP"),

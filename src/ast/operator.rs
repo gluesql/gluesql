@@ -5,6 +5,7 @@ pub enum UnaryOperator {
     Plus,
     Minus,
     Not,
+    Factorial,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

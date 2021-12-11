@@ -8,6 +8,7 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    rust_decimal::prelude::*,
     uuid::Uuid,
 };
 
@@ -26,6 +27,7 @@ impl From<&Value> for String {
             Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
+            Value::Decimal(value) => value.to_string(),
             Value::Null => String::from("NULL"),
         }
     }
@@ -70,6 +72,15 @@ impl TryInto<bool> for &Value {
                 "FALSE" => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
+            Value::Decimal(value) => {
+                if value == &rust_decimal::Decimal::ONE {
+                    true
+                } else if value == &rust_decimal::Decimal::ZERO {
+                    false
+                } else {
+                    return Err(ValueError::ImpossibleCast.into());
+                }
+            }
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -108,6 +119,7 @@ impl TryInto<i8> for &Value {
             Value::Str(value) => value
                 .parse::<i8>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -146,6 +158,7 @@ impl TryInto<i64> for &Value {
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -184,6 +197,7 @@ impl TryInto<f64> for &Value {
             Value::Str(value) => value
                 .parse::<f64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)

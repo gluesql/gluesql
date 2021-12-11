@@ -138,6 +138,14 @@ impl<'a> Evaluated<'a> {
         }
     }
 
+    pub fn unary_factorial(&self) -> Result<Evaluated<'a>> {
+        match self {
+            Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
+            Evaluated::Value(v) => v.unary_factorial(),
+        }
+        .map(Evaluated::from)
+    }
+
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {
         let cast_literal = |literal: &Literal| Value::try_cast_from_literal(data_type, literal);
         let cast_value = |value: &Value| value.cast(data_type);

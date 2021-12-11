@@ -21,6 +21,7 @@ pub mod ordering;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
+pub mod unary_operator;
 pub mod validate;
 
 mod tester;
@@ -64,6 +65,7 @@ macro_rules! generate_store_tests {
         glue!(limit, limit::limit);
         glue!(error, error::error);
         glue!(filter, filter::filter);
+        glue!(unary_operator, unary_operator::unary_operator);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
         glue!(function_left_right, function::left_right::left_right);
@@ -117,6 +119,7 @@ macro_rules! generate_store_tests {
         glue!(case, case::case);
         glue!(function_substr, function::substr::substr);
         glue!(uuid, data_type::uuid::uuid);
+        glue!(decimal, data_type::decimal::decimal);
         glue!(
             function_generate_uuid,
             function::generate_uuid::generate_uuid
