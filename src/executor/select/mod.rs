@@ -157,7 +157,7 @@ pub async fn select_inner<'a, T: Debug>(
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
 ) -> Result<(
-    Vec<String>,
+    Option(Vec<String>),
     impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
 )> {
     // ) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {
@@ -277,7 +277,7 @@ pub async fn select_inner<'a, T: Debug>(
 
             async move { blend.apply(aggregated, context).await }
         });
-    Ok((labels, rows))
+    Ok((Some(labels), rows))
 }
 
 pub async fn select_values<'a, T: Debug>(
@@ -287,7 +287,7 @@ pub async fn select_values<'a, T: Debug>(
     with_labels: bool,
 ) -> Result<(
     Option<Vec<String>>,
-    impl TryStream<Ok = Row, Error = Error> + 'a,
+    Vec<Row>, // impl TryStream<Ok = Row, Error = Error> + 'a,
 )> {
     // SetExpr::Values(Values(values_list)) => values_list
     //             .iter()
@@ -297,15 +297,16 @@ pub async fn select_values<'a, T: Debug>(
     let rows = values_list
         .iter()
         .map(|values| {
-            values.iter().map(|expr| {
-                evaluate_stateless(None, expr)
-                    .unwrap()
-                    .try_into_value(&crate::ast::DataType::Boolean, false)
-                    .unwrap()
-            })
+            values
+                .iter()
+                .map(|expr| {
+                    evaluate_stateless(None, expr)
+                        .unwrap()
+                        .try_into_value(&crate::ast::DataType::Boolean, false)
+                })
+                .collect::<Result<_>>()
+                .map(Row)
         })
-        .collect::<Result<_>>()
-        .map(Self)
         .collect::<Result<Vec<Row>>>()?;
     Ok((None, rows))
 }
