@@ -51,19 +51,19 @@ macro_rules! select {
         ];
 
         executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: Some(vec![$( stringify!($c).to_owned().replace("\"", "")),+]),
             rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
         }
     });
     ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
         executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: Some(vec![$( stringify!($c).to_owned().replace("\"", "")),+]),
             rows: vec![row!($( $t )+ ; $( $v )+ )],
         }
     );
     ( $( $c: tt )|+ $( ; )?) => (
         executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: Some(vec![$( stringify!($c).to_owned().replace("\"", "")),+]),
             rows: vec![],
         }
     );
@@ -87,7 +87,7 @@ macro_rules! concat_with {
 macro_rules! select_with_null {
     ( $( $c: tt )|* ; $( $v: expr )* ) => (
         executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: Some(vec![$( stringify!($c).to_owned().replace("\"", "")),+]),
             rows: vec![vec![$( $v ),*]],
         }
     );
@@ -97,7 +97,7 @@ macro_rules! select_with_null {
         ];
 
         executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: Some(vec![$( stringify!($c).to_owned().replace("\"", "")),+]),
             rows: concat_with_null!(rows ; $( $( $v2 )* );*),
         }
     });

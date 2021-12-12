@@ -112,7 +112,7 @@ CREATE TABLE NullIdx (
 
     test_idx!(
         Ok(Payload::Select {
-            labels: vec!["id".to_owned(), "date".to_owned(), "flag".to_owned()],
+            labels: Some(vec!["id".to_owned(), "date".to_owned(), "flag".to_owned()]),
             rows: vec![],
         }),
         idx!(),

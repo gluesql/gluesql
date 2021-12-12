@@ -35,7 +35,7 @@ pub enum Payload {
     Create,
     Insert(usize),
     Select {
-        labels: Vec<String>,
+        labels: Option<Vec<String>>,
         rows: Vec<Vec<Value>>,
     },
     Delete(usize),

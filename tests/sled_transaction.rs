@@ -201,7 +201,7 @@ fn sled_transaction_data_mut() {
     test!(
         glue1 "SELECT * FROM Sample;",
         Ok(Payload::Select {
-            labels: vec!["id".to_owned()],
+            labels: Some(vec!["id".to_owned()]),
             rows: vec![],
         })
     );

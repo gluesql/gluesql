@@ -108,7 +108,11 @@ mod tests {
         assert_eq!(
             glue.execute("SELECT id, name, is FROM api_test"),
             Ok(Payload::Select {
-                labels: vec![String::from("id"), String::from("name"), String::from("is")],
+                labels: Some(vec![
+                    String::from("id"),
+                    String::from("name"),
+                    String::from("is")
+                ]),
                 rows: vec![
                     vec![
                         Value::I64(1),

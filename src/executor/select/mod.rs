@@ -5,7 +5,9 @@ use std::pin::Pin;
 
 pub use error::SelectError;
 
-use super::context::AggregateContext;
+use crate::ast::Values;
+
+use super::{context::AggregateContext, evaluate_stateless};
 
 use {
     self::blend::Blend,
@@ -245,7 +247,6 @@ pub async fn select_inner<'a, T: Debug>(
         filter_context.as_ref().map(Rc::clone),
         None,
     ));
-    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
     let sort = Sort::new(storage, filter_context, order_by);
 
     let rows = fetch_blended(storage, table, columns)
@@ -281,11 +282,32 @@ pub async fn select_inner<'a, T: Debug>(
 
 pub async fn select_values<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
-    query: &'a Query,
+    values_list: &'a Values,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
-) -> Result<()> {
-    Ok(())
+) -> Result<(
+    Option<Vec<String>>,
+    impl TryStream<Ok = Row, Error = Error> + 'a,
+)> {
+    // SetExpr::Values(Values(values_list)) => values_list
+    //             .iter()
+    //             .map(|values| Row::new(&column_defs, columns, values))
+    //             .collect::<Result<Vec<Row>>>()?,
+    let Values(values_list) = values_list;
+    let rows = values_list
+        .iter()
+        .map(|values| {
+            values.iter().map(|expr| {
+                evaluate_stateless(None, expr)
+                    .unwrap()
+                    .try_into_value(&crate::ast::DataType::Boolean, false)
+                    .unwrap()
+            })
+        })
+        .collect::<Result<_>>()
+        .map(Self)
+        .collect::<Result<Vec<Row>>>()?;
+    Ok((None, rows))
 }
 
 pub async fn select_with_labels<'a, T: Debug>(
@@ -294,7 +316,7 @@ pub async fn select_with_labels<'a, T: Debug>(
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
 ) -> Result<(
-    Option(Vec<String>),
+    Option<Vec<String>>,
     impl TryStream<Ok = Row, Error = Error> + 'a,
 )> {
     let (labels, rows) = match &query.body {
@@ -306,7 +328,7 @@ pub async fn select_with_labels<'a, T: Debug>(
     };
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
     let rows = limit.apply(rows);
-    Ok((labels, rows))
+    Ok((Some(labels), rows))
 }
 
 pub async fn select<'a, T: Debug>(

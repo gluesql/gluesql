@@ -29,7 +29,7 @@ test_case!(limit, async move {
         (
             "SELECT * FROM Test OFFSET 10;",
             Payload::Select {
-                labels: vec!["id".to_owned()],
+                labels: Some(vec!["id".to_owned()]),
                 rows: vec![],
             },
         ),

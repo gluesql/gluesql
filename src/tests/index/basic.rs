@@ -188,7 +188,7 @@ CREATE TABLE Test (
 
     test_idx!(
         Ok(Payload::Select {
-            labels: vec!["id".to_owned(), "num".to_owned(), "name".to_owned()],
+            labels: Some(vec!["id".to_owned(), "num".to_owned(), "name".to_owned()]),
             rows: vec![]
         }),
         idx!(idx_id2, Eq, "10"),
@@ -265,7 +265,7 @@ CREATE TABLE Test (
 
     test_idx!(
         Ok(Payload::Select {
-            labels: vec!["id".to_owned()],
+            labels: Some(vec!["id".to_owned()]),
             rows: vec![],
         }),
         idx!(),
