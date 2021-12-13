@@ -52,3 +52,9 @@ cfg_if! {
         generate_transaction_index_tests!(tokio::test, SledTester);
     }
 }
+
+#[cfg(feature = "metadata")]
+generate_metadata_tests!(tokio::test, SledTester);
+
+#[cfg(all(feature = "transaction", feature = "metadata"))]
+generate_transaction_metadata_tests!(tokio::test, SledTester);

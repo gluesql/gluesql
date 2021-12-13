@@ -93,10 +93,20 @@ pub enum Statement {
     /// ROLLBACK
     #[cfg(feature = "transaction")]
     Rollback,
+    /// SHOW VARIABLE
+    #[cfg(feature = "metadata")]
+    ShowVariable(Variable),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Assignment {
     pub id: String,
     pub value: Expr,
+}
+
+#[cfg(feature = "metadata")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Variable {
+    Tables,
+    Version,
 }

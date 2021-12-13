@@ -13,6 +13,7 @@ pub mod function;
 pub mod index;
 pub mod join;
 pub mod limit;
+pub mod metadata;
 pub mod migrate;
 pub mod nested_select;
 pub mod nullable;
@@ -183,6 +184,20 @@ macro_rules! generate_transaction_tests {
     };
 }
 
+#[cfg(feature = "metadata")]
+#[macro_export]
+macro_rules! generate_metadata_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(metadata, metadata::metadata);
+    };
+}
+
 #[cfg(all(feature = "alter-table", feature = "index"))]
 #[macro_export]
 macro_rules! generate_alter_table_index_tests {
@@ -235,5 +250,19 @@ macro_rules! generate_transaction_index_tests {
 
         glue!(transaction_index_create, transaction::index_create);
         glue!(transaction_index_drop, transaction::index_drop);
+    };
+}
+
+#[cfg(all(feature = "transaction", feature = "metadata"))]
+#[macro_export]
+macro_rules! generate_transaction_metadata_tests {
+    ($test: meta, $storage: ident) => {
+        macro_rules! glue {
+            ($title: ident, $func: path) => {
+                declare_test_fn!($test, $storage, $title, $func);
+            };
+        }
+
+        glue!(transaction_metadata, transaction::metadata);
     };
 }

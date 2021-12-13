@@ -6,6 +6,7 @@ mod index_mut;
 mod index_sync;
 mod key;
 mod lock;
+mod metadata;
 mod snapshot;
 mod store;
 mod store_mut;

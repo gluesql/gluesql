@@ -20,7 +20,7 @@ keywords = [
 all-features = true
 
 [features]
-default = ["sled-storage", "memory-storage", "alter-table", "sorter"]
+default = ["sled-storage", "memory-storage", "alter-table", "metadata", "sorter"]
 
 # optional: ALTER TABLE
 # you can include whether ALTER TABLE support or not for your custom database implementation.
@@ -31,6 +31,10 @@ index = []
 
 # optional: TRANSACTION
 transaction = []
+
+# optional: METADATA
+# e.g. SHOW TABLES;
+metadata = []
 
 # optional: ORDER BY for non-indexed expressions
 # disable this feature if you use GlueSQL for big data analysis.
