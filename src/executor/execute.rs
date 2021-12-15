@@ -50,7 +50,6 @@ pub enum Payload {
 
     #[cfg(feature = "index")]
     CreateIndex,
-
     #[cfg(feature = "index")]
     DropIndex,
 
