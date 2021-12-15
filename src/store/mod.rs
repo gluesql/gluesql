@@ -22,7 +22,19 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(feature = "index")] {
+    if #[cfg(feature = "metadata")] {
+        mod metadata;
+        pub use metadata::Metadata;
+    }
+
+}
+
+cfg_if! {
+    if #[cfg(all(feature = "metadata", feature = "index"))] {
+        pub trait GStore<T: Debug>: Store<T> + Metadata + Index<T> {}
+    } else if #[cfg(feature = "metadata")] {
+        pub trait GStore<T: Debug>: Store<T> + Metadata {}
+    } else if #[cfg(feature = "index")] {
         pub trait GStore<T: Debug>: Store<T> + Index<T> {}
     } else {
         pub trait GStore<T: Debug>: Store<T> {}

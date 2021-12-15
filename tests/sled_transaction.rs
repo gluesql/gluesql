@@ -729,3 +729,49 @@ async fn sled_transaction_timeout_index() {
         Ok(select!(id I64; 1))
     );
 }
+
+#[cfg(feature = "metadata")]
+#[test]
+fn sled_transaction_metadata() {
+    macro_rules! test_tables {
+        ($glue: ident $( $table_name: literal )*) => {
+            let expected = Ok(Payload::ShowVariable(PayloadVariable::Tables(
+                vec![$( $table_name.to_owned() ),*]
+            )));
+
+            assert_eq!($glue.execute("SHOW TABLES"), expected);
+        };
+    }
+
+    let path = &format!("{}/metadata", PATH_PREFIX);
+    fs::remove_dir_all(path).unwrap_or(());
+
+    let storage = SledStorage::new(path).unwrap();
+    let mut glue1 = Glue::new(storage.clone());
+    let mut glue2 = Glue::new(storage.clone());
+    let mut glue3 = Glue::new(storage);
+
+    exec!(glue2 "BEGIN");
+    exec!(glue1 "BEGIN");
+
+    exec!(glue1 "CREATE TABLE Foo (id INTEGER);");
+    test_tables!(glue1 "Foo");
+    test_tables!(glue2);
+    test_tables!(glue3);
+
+    exec!(glue1 "COMMIT");
+    test_tables!(glue1 "Foo");
+    test_tables!(glue2);
+    test_tables!(glue3 "Foo");
+
+    exec!(glue2 "CREATE TABLE Bar (id INTEGER);");
+    exec!(glue2 "CREATE TABLE Qux (id INTEGER);");
+    test_tables!(glue1 "Foo");
+    test_tables!(glue2 "Bar" "Qux");
+    test_tables!(glue3 "Foo");
+
+    exec!(glue2 "ROLLBACK");
+    test_tables!(glue1 "Foo");
+    test_tables!(glue2 "Foo");
+    test_tables!(glue3 "Foo");
+}
