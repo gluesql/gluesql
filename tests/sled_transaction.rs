@@ -146,9 +146,6 @@ fn sled_transaction_schema_mut() {
     exec!(glue1 "CREATE TABLE Sample (id INTEGER);");
     exec!(glue1 "INSERT INTO Sample VALUES (1);");
 
-    #[cfg(feature = "metadata")]
-    test!(glue1 "SHOW TABLES;", Ok(Payload::ShowVariable(PayloadVariable::Tables(vec!["Sample".to_owned()]))));
-
     exec!(glue2 "BEGIN;");
     exec!(glue1 "BEGIN;");
     exec!(glue1 "DROP TABLE Sample;");
@@ -737,15 +734,9 @@ async fn sled_transaction_timeout_index() {
 #[test]
 fn sled_transaction_metadata() {
     macro_rules! test_tables {
-        ($glue: ident []) => {
-            assert_eq!(
-                $glue.execute("SHOW TABLES"),
-                Ok(Payload::ShowVariable(PayloadVariable::Tables(Vec::new()))),
-            );
-        };
-        ($glue: ident $tables: expr) => {
+        ($glue: ident $( $table_name: literal )*) => {
             let expected = Ok(Payload::ShowVariable(PayloadVariable::Tables(
-                $tables.into_iter().map(ToOwned::to_owned).collect(),
+                vec![$( $table_name.to_owned() ),*]
             )));
 
             assert_eq!($glue.execute("SHOW TABLES"), expected);
@@ -764,22 +755,23 @@ fn sled_transaction_metadata() {
     exec!(glue1 "BEGIN");
 
     exec!(glue1 "CREATE TABLE Foo (id INTEGER);");
-    test_tables!(glue1["Foo"]);
-    test_tables!(glue2 []);
-    test_tables!(glue3 []);
+    test_tables!(glue1 "Foo");
+    test_tables!(glue2);
+    test_tables!(glue3);
 
     exec!(glue1 "COMMIT");
-    test_tables!(glue1["Foo"]);
-    test_tables!(glue2 []);
-    test_tables!(glue3["Foo"]);
+    test_tables!(glue1 "Foo");
+    test_tables!(glue2);
+    test_tables!(glue3 "Foo");
 
     exec!(glue2 "CREATE TABLE Bar (id INTEGER);");
-    test_tables!(glue1["Foo"]);
-    test_tables!(glue2["Bar"]);
-    test_tables!(glue3["Foo"]);
+    exec!(glue2 "CREATE TABLE Qux (id INTEGER);");
+    test_tables!(glue1 "Foo");
+    test_tables!(glue2 "Bar" "Qux");
+    test_tables!(glue3 "Foo");
 
     exec!(glue2 "ROLLBACK");
-    test_tables!(glue1["Foo"]);
-    test_tables!(glue2["Foo"]);
-    test_tables!(glue3["Foo"]);
+    test_tables!(glue1 "Foo");
+    test_tables!(glue2 "Foo");
+    test_tables!(glue3 "Foo");
 }
