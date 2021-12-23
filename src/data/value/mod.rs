@@ -376,36 +376,30 @@ impl Value {
     }
 
     pub fn extract(&self, date_type: &DateTimeField) -> Result<Value> {
-        use Value::*;
+        let value = match (self, date_type) {
+            (Value::Date(v), DateTimeField::Year) => v.year().into(),
+            (Value::Date(v), DateTimeField::Month) => v.month().into(),
+            (Value::Date(v), DateTimeField::Day) => v.day().into(),
+            (Value::Time(v), DateTimeField::Hour) => v.hour().into(),
+            (Value::Time(v), DateTimeField::Minute) => v.minute().into(),
+            (Value::Time(v), DateTimeField::Second) => v.second().into(),
+            (Value::Timestamp(v), DateTimeField::Year) => v.year().into(),
+            (Value::Timestamp(v), DateTimeField::Month) => v.month().into(),
+            (Value::Timestamp(v), DateTimeField::Day) => v.day().into(),
+            (Value::Timestamp(v), DateTimeField::Hour) => v.hour().into(),
+            (Value::Timestamp(v), DateTimeField::Minute) => v.minute().into(),
+            (Value::Timestamp(v), DateTimeField::Second) => v.second().into(),
+            (Value::Interval(v), _) => {
+                return v.extract(date_type);
+            }
+            _ => {
+                return Err(
+                    ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into(),
+                )
+            }
+        };
 
-        match self {
-            Value::Date(v) => match date_type {
-                DateTimeField::Year => Ok(I64(v.year().into())),
-                DateTimeField::Month => Ok(I64(v.month().into())),
-                DateTimeField::Day => Ok(I64(v.day().into())),
-                _ => {
-                    Err(ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into())
-                }
-            },
-            Value::Time(v) => match date_type {
-                DateTimeField::Hour => Ok(I64(v.hour().into())),
-                DateTimeField::Minute => Ok(I64(v.minute().into())),
-                DateTimeField::Second => Ok(I64(v.second().into())),
-                _ => {
-                    Err(ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into())
-                }
-            },
-            Value::Timestamp(v) => match date_type {
-                DateTimeField::Year => Ok(I64(v.year().into())),
-                DateTimeField::Month => Ok(I64(v.month().into())),
-                DateTimeField::Day => Ok(I64(v.day().into())),
-                DateTimeField::Hour => Ok(I64(v.hour().into())),
-                DateTimeField::Minute => Ok(I64(v.minute().into())),
-                DateTimeField::Second => Ok(I64(v.second().into())),
-            },
-            Value::Interval(v) => v.extract(date_type),
-            _ => Err(ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into()),
-        }
+        Ok(Value::I64(value))
     }
 }
 

@@ -12,7 +12,7 @@ use {
         store::GStore,
     },
     async_recursion::async_recursion,
-    chrono::prelude::UTC,
+    chrono::prelude::Utc,
     futures::{
         future::ready,
         stream::{self, StreamExt, TryStreamExt},
