@@ -2,10 +2,9 @@
 
 use {
     cfg_if::cfg_if,
-    std::{cell::RefCell, convert::TryFrom, rc::Rc},
+    gluesql::{prelude::SledStorage, sled::IVec, tests::*, *},
+    std::{cell::RefCell, rc::Rc},
 };
-
-use gluesql::{sled::IVec, sled_storage::SledStorage, tests::*, *};
 
 struct SledTester {
     storage: Rc<RefCell<Option<SledStorage>>>,
@@ -53,3 +52,9 @@ cfg_if! {
         generate_transaction_index_tests!(tokio::test, SledTester);
     }
 }
+
+#[cfg(feature = "metadata")]
+generate_metadata_tests!(tokio::test, SledTester);
+
+#[cfg(all(feature = "transaction", feature = "metadata"))]
+generate_transaction_metadata_tests!(tokio::test, SledTester);

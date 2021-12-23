@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(concat, async move {
-    use Value::{Null, Str};
+    use prelude::Value::*;
 
     run!(
         "
@@ -50,15 +50,15 @@ test_case!(concat, async move {
 
     test!(
         Ok(select!(
-            "id || rate"      | "rate || flag"       | "flag || text"       | "id || text"
-            Str               | Str                  | Str                  | Str;
-            "12.3".to_owned()   "2.3TRUE".to_owned()   "TRUEFoo".to_owned()   "1Foo".to_owned()
+            Case1            | Case2               | Case3                | Case4
+            Str              | Str                 | Str                  | Str;
+            "123".to_owned()   "23TRUE".to_owned()   "TRUEFoo".to_owned()   "1Foo".to_owned()
         )),
         "SELECT
-            id || rate,
-            rate || flag,
-            flag || text,
-            id || text
+            id || CAST(rate * 10 AS INT) AS Case1,
+            CAST(rate * 10 AS INT) || flag AS Case2,
+            flag || text AS Case3,
+            id || text AS Case4
         FROM
             Concat;"
     );
@@ -80,11 +80,11 @@ test_case!(concat, async move {
 
     test!(
         Ok(select_with_null!(
-            Case1                      | Case2                         | Case3;
-            Str("112.3Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
+            Case1                     | Case2                         | Case3;
+            Str("1123Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null
         )),
         r#"SELECT
-            1 || id || rate || "Bar" AS Case1,
+            1 || id || CAST(rate * 10 AS INT) || "Bar" AS Case1,
             id || flag || 3.5 || text AS Case2,
             flag || "wow" || null_value AS Case3
         FROM

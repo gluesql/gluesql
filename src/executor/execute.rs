@@ -24,6 +24,9 @@ use super::alter::alter_table;
 #[cfg(feature = "index")]
 use super::alter::{create_index, drop_index};
 
+#[cfg(feature = "metadata")]
+use crate::{ast::Variable, result::TrySelf};
+
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
     #[error("table not found: {0}")]
@@ -47,7 +50,6 @@ pub enum Payload {
 
     #[cfg(feature = "index")]
     CreateIndex,
-
     #[cfg(feature = "index")]
     DropIndex,
 
@@ -57,10 +59,20 @@ pub enum Payload {
     Commit,
     #[cfg(feature = "transaction")]
     Rollback,
+
+    #[cfg(feature = "metadata")]
+    ShowVariable(PayloadVariable),
+}
+
+#[cfg(feature = "metadata")]
+#[derive(Serialize, Debug, PartialEq)]
+pub enum PayloadVariable {
+    Tables(Vec<String>),
+    Version(String),
 }
 
 #[cfg(feature = "transaction")]
-pub async fn execute_atomic<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn execute_atomic<T: Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     statement: &Statement,
 ) -> MutResult<U, Payload> {
@@ -89,7 +101,7 @@ pub async fn execute_atomic<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
     }
 }
 
-pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     statement: &Statement,
 ) -> MutResult<U, Payload> {
@@ -111,8 +123,9 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
             name,
             columns,
             if_not_exists,
+            source,
             ..
-        } => create_table(storage, name, columns, *if_not_exists)
+        } => create_table(storage, name, columns, *if_not_exists, source)
             .await
             .map(|(storage, _)| (storage, Payload::Create)),
         Statement::DropTable {
@@ -176,7 +189,6 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
                     SetExpr::Select(select_query) => {
                         let query = || Query {
                             body: SetExpr::Select(select_query.clone()),
-                            order_by: vec![],
                             limit: None,
                             offset: None,
                         };
@@ -297,5 +309,21 @@ pub async fn execute<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
 
             Ok((storage, Payload::Select { labels, rows }))
         }
+
+        //- Metadata
+        #[cfg(feature = "metadata")]
+        Statement::ShowVariable(variable) => match variable {
+            Variable::Tables => storage
+                .schema_names()
+                .await
+                .map(|table_names| Payload::ShowVariable(PayloadVariable::Tables(table_names)))
+                .try_self(storage),
+            Variable::Version => {
+                let version = storage.version();
+                let payload = Payload::ShowVariable(PayloadVariable::Version(version));
+
+                Ok((storage, payload))
+            }
+        },
     }
 }

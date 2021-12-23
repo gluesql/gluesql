@@ -1,10 +1,13 @@
 #![cfg(all(feature = "alter-table", feature = "index"))]
 
-use crate::*;
+use {
+    crate::*,
+    ast::IndexOperator::*,
+    executor::{AlterError, FetchError},
+    prelude::Value::*,
+};
 
 test_case!(drop_indexed_table, async move {
-    use {ast::IndexOperator::*, Value::I64};
-
     run!("DROP TABLE IF EXISTS Test;");
     run!("CREATE TABLE Test (id INTEGER);");
     run!("INSERT INTO Test VALUES (1), (2);");
@@ -55,8 +58,6 @@ CREATE TABLE Test (
             (1, 2, "Hello");
     "#
     );
-
-    use {ast::IndexOperator::*, Value::*};
 
     // create indexes
     run!("CREATE INDEX idx_name ON Test (num + 1)");

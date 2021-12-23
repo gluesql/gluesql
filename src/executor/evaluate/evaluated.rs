@@ -5,11 +5,7 @@ use {
         data::{Literal, Value},
         result::{Error, Result},
     },
-    std::{
-        borrow::Cow,
-        cmp::Ordering,
-        convert::{TryFrom, TryInto},
-    },
+    std::{borrow::Cow, cmp::Ordering},
 };
 
 #[derive(Clone)]
@@ -140,6 +136,14 @@ impl<'a> Evaluated<'a> {
             Evaluated::Literal(v) => v.unary_minus().map(Evaluated::Literal),
             Evaluated::Value(v) => v.unary_minus().map(Evaluated::from),
         }
+    }
+
+    pub fn unary_factorial(&self) -> Result<Evaluated<'a>> {
+        match self {
+            Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
+            Evaluated::Value(v) => v.unary_factorial(),
+        }
+        .map(Evaluated::from)
     }
 
     pub fn cast(self, data_type: &DataType) -> Result<Evaluated<'a>> {

@@ -38,6 +38,12 @@ pub enum TranslateError {
     #[error("unsupported function: {0}")]
     UnsupportedFunction(String),
 
+    #[error("unsupported SHOW VARIABLE keyword: {0}")]
+    UnsupportedShowVariableKeyword(String),
+
+    #[error("unsupported SHOW VARIABLE statement: {0}")]
+    UnsupportedShowVariableStatement(String),
+
     #[error("unsupported statement: {0}")]
     UnsupportedStatement(String),
 
@@ -50,8 +56,8 @@ pub enum TranslateError {
     #[error("unsupported ast literal: {0}")]
     UnsupportedAstLiteral(String),
 
-    #[error("unsupported unary operator: {0}")]
-    UnsupportedUnaryOperator(String),
+    #[error("unreachable unary operator: {0}")]
+    UnreachableUnaryOperator(String),
 
     #[error("unsupported binary operator: {0}")]
     UnsupportedBinaryOperator(String),

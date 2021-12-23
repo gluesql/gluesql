@@ -5,14 +5,13 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    std::{
-        convert::{TryFrom, TryInto},
-        fmt::Debug,
-    },
+    rust_decimal::Decimal,
+    std::fmt::Debug,
 };
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum GroupKey {
+    I8(i8),
     I64(i64),
     Bool(bool),
     Str(String),
@@ -20,7 +19,8 @@ pub enum GroupKey {
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
-    UUID(u128),
+    Uuid(u128),
+    Decimal(Decimal),
     None,
 }
 

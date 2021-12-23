@@ -1,8 +1,11 @@
 use crate::*;
-use chrono::NaiveDate;
 
 test_case!(default, async move {
-    use Value::*;
+    use {
+        chrono::NaiveDate,
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+    };
 
     let test_cases = vec![
         (
@@ -38,6 +41,28 @@ test_case!(default, async move {
 
     for (sql, expected) in test_cases {
         test!(Ok(expected), sql);
+    }
+
+    let stateless_function_test_cases = vec![
+        (
+            "CREATE TABLE FunctionTest (
+                uuid UUID,
+                num FLOAT
+            )",
+            Ok(Payload::Create),
+        ),
+        (
+            "INSERT INTO FunctionTest VALUES (GENERATE_UUID(), 1.0)",
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "INSERT INTO FunctionTest VALUES (GENERATE_UUID(), SIN(1))",
+            Err(EvaluateError::UnsupportedStatelessExpr(expr!("SIN(1)")).into()),
+        ),
+    ];
+
+    for (sql, expected) in stateless_function_test_cases {
+        test!(expected, sql);
     }
 
     test!(

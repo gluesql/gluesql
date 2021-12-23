@@ -8,8 +8,9 @@ use {
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
+    rust_decimal::Decimal,
     serde::Serialize,
-    std::{convert::TryInto, fmt::Debug, rc::Rc},
+    std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -30,13 +31,15 @@ pub enum ColumnValidation {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UniqueKey {
     Bool(bool),
+    I8(i8),
     I64(i64),
     Str(String),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
     Interval(Interval),
-    UUID(u128),
+    Uuid(u128),
+    Decimal(Decimal),
 }
 
 #[derive(Debug)]
@@ -86,7 +89,7 @@ impl UniqueConstraint {
     }
 }
 
-pub async fn validate_unique<T: 'static + Debug>(
+pub async fn validate_unique<T: Debug>(
     storage: &impl Store<T>,
     table_name: &str,
     column_validation: ColumnValidation,

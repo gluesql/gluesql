@@ -16,7 +16,7 @@ macro_rules! idx {
             asc: None,
             cmp_expr: Some((
                 $op,
-                translate_expr(&parse_expr($sql_expr).unwrap()).unwrap(),
+                translate::translate_expr(&parse_sql::parse_expr($sql_expr).unwrap()).unwrap(),
             )),
         }]
     };
@@ -50,19 +50,19 @@ macro_rules! select {
             row!($( $t )+ ; $( $v )+),
         ];
 
-        Payload::Select {
+        executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
         }
     });
     ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
-        Payload::Select {
+        executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![row!($( $t )+ ; $( $v )+ )],
         }
     );
     ( $( $c: tt )|+ $( ; )?) => (
-        Payload::Select {
+        executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![],
         }
@@ -86,7 +86,7 @@ macro_rules! concat_with {
 #[macro_export]
 macro_rules! select_with_null {
     ( $( $c: tt )|* ; $( $v: expr )* ) => (
-        Payload::Select {
+        executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![vec![$( $v ),*]],
         }
@@ -96,7 +96,7 @@ macro_rules! select_with_null {
             vec![$( $v ),*]
         ];
 
-        Payload::Select {
+        executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: concat_with_null!(rows ; $( $( $v2 )* );*),
         }

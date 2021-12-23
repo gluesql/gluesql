@@ -1,7 +1,12 @@
 use crate::*;
 
 test_case!(upper_lower, async move {
-    use Value::{Null, Str};
+    use {
+        crate::*,
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+        translate::TranslateError,
+    };
 
     let test_cases = vec![
         (

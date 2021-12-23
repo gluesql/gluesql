@@ -1,12 +1,12 @@
 use {
-    crate::{Error, IndexError},
+    crate::{result::Error, store::IndexError},
     sled::transaction::TransactionError as SledTransactionError,
     std::{str, time},
     thiserror::Error as ThisError,
 };
 
 #[cfg(feature = "alter-table")]
-use crate::AlterTableError;
+use crate::store::AlterTableError;
 
 #[derive(ThisError, Debug)]
 pub enum StorageError {

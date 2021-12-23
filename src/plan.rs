@@ -13,10 +13,7 @@ use {
     std::fmt::Debug,
 };
 
-pub async fn plan<T: 'static + Debug>(
-    storage: &dyn Store<T>,
-    statement: Statement,
-) -> Result<Statement> {
+pub async fn plan<T: Debug>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
     match statement {
         Statement::Query(query) => plan_query(storage, *query)
             .await
@@ -56,10 +53,9 @@ impl Indexes {
     }
 }
 
-async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
+async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
     let Query {
         body,
-        order_by,
         limit,
         offset,
     } = query;
@@ -69,7 +65,6 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
         SetExpr::Values(_) => {
             return Ok(Query {
                 body,
-                order_by,
                 limit,
                 offset,
             });
@@ -86,14 +81,13 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
         None => {
             return Ok(Query {
                 body: SetExpr::Select(select),
-                order_by,
                 limit,
                 offset,
             });
         }
     };
 
-    let index = order_by.last().and_then(|value_expr| {
+    let index = select.order_by.last().and_then(|value_expr| {
         indexes.find_ordered(value_expr).map(|name| IndexItem {
             name,
             asc: value_expr.asc,
@@ -109,6 +103,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
                 selection,
                 group_by,
                 having,
+                order_by,
             } = *select;
 
             let TableWithJoins { relation, joins } = from;
@@ -127,11 +122,11 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
                 selection,
                 group_by,
                 having,
+                order_by: Vector::from(order_by).pop().0.into(),
             };
 
             Ok(Query {
                 body: SetExpr::Select(Box::new(select)),
-                order_by: Vector::from(order_by).pop().0.into(),
                 limit,
                 offset,
             })
@@ -141,7 +136,6 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
             let body = SetExpr::Select(Box::new(select));
             let query = Query {
                 body,
-                order_by,
                 limit,
                 offset,
             };
@@ -151,7 +145,7 @@ async fn plan_query<T: 'static + Debug>(storage: &dyn Store<T>, query: Query) ->
     }
 }
 
-async fn plan_select<T: 'static + Debug>(
+async fn plan_select<T: Debug>(
     storage: &dyn Store<T>,
     indexes: &Indexes,
     select: Select,
@@ -162,6 +156,7 @@ async fn plan_select<T: 'static + Debug>(
         selection,
         group_by,
         having,
+        order_by,
     } = select;
 
     let selection = match selection {
@@ -173,6 +168,7 @@ async fn plan_select<T: 'static + Debug>(
                 selection,
                 group_by,
                 having,
+                order_by,
             });
         }
     };
@@ -184,6 +180,7 @@ async fn plan_select<T: 'static + Debug>(
             selection: Some(selection),
             group_by,
             having,
+            order_by,
         }),
         Planned::IndexedExpr {
             index_name,
@@ -212,6 +209,7 @@ async fn plan_select<T: 'static + Debug>(
                 selection,
                 group_by,
                 having,
+                order_by,
             })
         }
     }
@@ -228,7 +226,7 @@ enum Planned {
 }
 
 #[async_recursion(?Send)]
-async fn plan_index<T: 'static + Debug>(
+async fn plan_index<T: Debug>(
     storage: &dyn Store<T>,
     indexes: &Indexes,
     selection: Expr,

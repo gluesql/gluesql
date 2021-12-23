@@ -261,6 +261,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "SUM" => translate_aggrecate_one_arg(Aggregate::Sum, args, name),
         "MIN" => translate_aggrecate_one_arg(Aggregate::Min, args, name),
         "MAX" => translate_aggrecate_one_arg(Aggregate::Max, args, name),
+        "AVG" => translate_aggrecate_one_arg(Aggregate::Avg, args, name),
         "DIV" => {
             check_len(name, args.len(), 2)?;
 
@@ -318,6 +319,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 selector,
             })))
         }
+        "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

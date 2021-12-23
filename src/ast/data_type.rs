@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataType {
     Boolean,
+    Int8,
     Int,
     Float,
     Text,
@@ -10,7 +11,8 @@ pub enum DataType {
     Timestamp,
     Time,
     Interval,
-    UUID,
+    Uuid,
     Map,
     List,
+    Decimal,
 }

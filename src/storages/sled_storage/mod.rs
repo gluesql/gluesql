@@ -6,6 +6,7 @@ mod index_mut;
 mod index_sync;
 mod key;
 mod lock;
+mod metadata;
 mod snapshot;
 mod store;
 mod store_mut;
@@ -15,8 +16,8 @@ use {
     self::snapshot::Snapshot,
     crate::{
         data::Schema,
+        result::{Error, Result},
         store::{GStore, GStoreMut},
-        Error, Result,
     },
     error::{err_into, tx_err_into},
     sled::{
@@ -26,7 +27,6 @@ use {
         },
         Config, Db, IVec,
     },
-    std::convert::TryFrom,
 };
 
 /// default transaction timeout : 1 hour

@@ -1,16 +1,13 @@
 use {
-    crate::{
-        ast::{Expr, IndexItem, Query, SetExpr, Statement, TableFactor},
-        data::Value,
-        executor::{execute, Payload},
-        parse_sql::{parse, parse_expr},
-        plan::plan,
-        result::Result,
-        store::{GStore, GStoreMut},
-        translate::{translate, translate_expr},
-    },
+    crate::*,
+    ast::*,
     async_trait::async_trait,
+    parse_sql::parse_expr,
+    prelude::*,
+    result::Result,
     std::{cell::RefCell, fmt::Debug, rc::Rc},
+    store::{GStore, GStoreMut},
+    translate::translate_expr,
 };
 
 pub fn expr(sql: &str) -> Expr {
@@ -88,7 +85,7 @@ pub fn test(expected: Result<Payload>, found: Result<Payload>) {
     }
 }
 
-pub async fn run<T: 'static + Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn run<T: Debug, U: GStore<T> + GStoreMut<T>>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
     indexes: Option<Vec<IndexItem>>,
@@ -194,6 +191,38 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
     }
 }
 
+pub fn type_match(expected: &[DataType], found: Result<Payload>) {
+    let rows = match found {
+        Ok(Payload::Select {
+            labels: _expected_labels,
+            rows,
+        }) => rows,
+        _ => panic!("type match is only for Select"),
+    };
+
+    for (i, items) in rows.iter().enumerate() {
+        assert_eq!(
+            items.len(),
+            expected.len(),
+            "\n[err: size of row] row index: {}\n expected: {:?}\n found: {:?}",
+            i,
+            expected.len(),
+            items.len()
+        );
+
+        items
+            .iter()
+            .zip(expected.iter())
+            .for_each(|(value, data_type)| match value.validate_type(data_type) {
+                Ok(_) => {}
+                Err(_) => panic!(
+                    "[err: type match failed]\n expected {:?}\n found {:?}\n",
+                    data_type, value
+                ),
+            })
+    }
+}
+
 /// If you want to make your custom storage and want to run integrate tests,
 /// you should implement this `Tester` trait.
 ///
@@ -203,7 +232,7 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
 /// Actual test cases are in [/src/tests/](https://github.com/gluesql/gluesql/blob/main/src/tests/),
 /// not in `/tests/`.
 #[async_trait]
-pub trait Tester<T: 'static + Debug, U: GStore<T> + GStoreMut<T>> {
+pub trait Tester<T: Debug, U: GStore<T> + GStoreMut<T>> {
     fn new(namespace: &str) -> Self;
 
     fn get_cell(&mut self) -> Rc<RefCell<Option<U>>>;
@@ -214,8 +243,8 @@ macro_rules! test_case {
     ($name: ident, $content: expr) => {
         pub async fn $name<T, U>(mut tester: impl tests::Tester<T, U>)
         where
-            T: 'static + std::fmt::Debug,
-            U: GStore<T> + GStoreMut<T>,
+            T: std::fmt::Debug,
+            U: store::GStore<T> + store::GStoreMut<T>,
         {
             use std::rc::Rc;
 
@@ -252,11 +281,20 @@ macro_rules! test_case {
             macro_rules! count {
                 ($count: expr, $sql: expr) => {
                     match tests::run(Rc::clone(&cell), $sql, None).await.unwrap() {
-                        Payload::Select { rows, .. } => assert_eq!($count, rows.len()),
-                        Payload::Delete(num) => assert_eq!($count, num),
-                        Payload::Update(num) => assert_eq!($count, num),
+                        prelude::Payload::Select { rows, .. } => assert_eq!($count, rows.len()),
+                        prelude::Payload::Delete(num) => assert_eq!($count, num),
+                        prelude::Payload::Update(num) => assert_eq!($count, num),
                         _ => panic!("compare is only for Select, Delete and Update"),
                     };
+                };
+            }
+
+            #[allow(unused_macros)]
+            macro_rules! type_match {
+                ($expected: expr, $sql: expr) => {
+                    let found = tests::run(Rc::clone(&cell), $sql, None).await;
+
+                    tests::type_match($expected, found);
                 };
             }
 

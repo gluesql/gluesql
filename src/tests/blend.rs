@@ -1,6 +1,11 @@
 use crate::*;
 
 test_case!(blend, async move {
+    use {
+        executor::{EvaluateError, SelectError},
+        prelude::Value::*,
+    };
+
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE BlendUser (
@@ -47,8 +52,6 @@ test_case!(blend, async move {
     for insert_sql in insert_sqls.iter() {
         run!(insert_sql);
     }
-
-    use Value::*;
 
     let test_cases = vec![
         ("SELECT 1 FROM BlendUser", select!(1; I64; 1; 1; 1)),

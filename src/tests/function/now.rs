@@ -1,8 +1,6 @@
-use crate::*;
+use crate::{*, prelude::{Payload, Value::*}};
 
 test_case!(now, async move {
-    // use Value::*;
-    use crate::Value::Timestamp;
     macro_rules! t {
         ($timestamp: expr) => {
             $timestamp.parse().unwrap()

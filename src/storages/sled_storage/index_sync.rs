@@ -2,10 +2,15 @@ use {
     super::{err_into, fetch_schema, key, Snapshot},
     crate::{
         ast::Expr,
-        evaluate_stateless,
+        data::{
+            schema::{Schema, SchemaIndex},
+            Row,
+        },
+        executor::evaluate_stateless,
+        prelude::Value,
         result::{Error, Result},
+        store::IndexError,
         utils::Vector,
-        IndexError, Row, Schema, SchemaIndex, Value,
     },
     sled::{
         transaction::{
@@ -13,7 +18,7 @@ use {
         },
         IVec,
     },
-    std::{borrow::Cow, convert::TryInto},
+    std::borrow::Cow,
 };
 
 pub struct IndexSync<'a> {

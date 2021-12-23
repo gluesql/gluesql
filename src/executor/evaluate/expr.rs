@@ -5,10 +5,7 @@ use {
         data::{Literal, Value},
         result::Result,
     },
-    std::{
-        borrow::Cow,
-        convert::{TryFrom, TryInto},
-    },
+    std::borrow::Cow,
 };
 
 pub fn literal(ast_literal: &AstLiteral) -> Result<Evaluated<'_>> {
@@ -74,6 +71,7 @@ pub fn unary_op<'a>(op: &UnaryOperator, v: Evaluated<'a>) -> Result<Evaluated<'a
         UnaryOperator::Plus => v.unary_plus(),
         UnaryOperator::Minus => v.unary_minus(),
         UnaryOperator::Not => v.try_into().map(|v: bool| Evaluated::from(Value::Bool(!v))),
+        UnaryOperator::Factorial => v.unary_factorial(),
     }
 }
 

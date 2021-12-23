@@ -26,10 +26,10 @@ use {
 };
 
 #[cfg(feature = "index")]
-use {super::evaluate::evaluate, crate::ast::IndexItem, std::convert::TryInto};
+use {super::evaluate::evaluate, crate::ast::IndexItem};
 
-async fn fetch_blended<'a, T: 'static + Debug>(
-    storage: &dyn GStore<T>,
+async fn fetch_blended<'a, T: Debug>(
+    storage: &'a dyn GStore<T>,
     table: Table<'a>,
     columns: Rc<[String]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
@@ -145,31 +145,30 @@ fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-pub async fn select_with_labels<'a, T: 'static + Debug>(
+pub async fn select_with_labels<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
 ) -> Result<(Vec<String>, impl TryStream<Ok = Row, Error = Error> + 'a)> {
-    #[cfg(not(feature = "sorter"))]
-    if !query.order_by.is_empty() {
-        let order_by = query.order_by.clone();
-
-        return Err(SelectError::OrderByOnNonIndexedExprNotSupported(order_by).into());
-    }
-
     let Select {
         from: table_with_joins,
         selection: where_clause,
         projection,
         group_by,
         having,
+        order_by,
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         _ => {
             return Err(SelectError::Unreachable.into());
         }
     };
+
+    #[cfg(not(feature = "sorter"))]
+    if !order_by.is_empty() {
+        return Err(SelectError::OrderByOnNonIndexedExprNotSupported(order_by.to_vec()).into());
+    }
 
     let TableWithJoins { relation, joins } = &table_with_joins;
     let table = Table::new(relation)?;
@@ -231,7 +230,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
         None,
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-    let sort = Sort::new(storage, filter_context, &query.order_by);
+    let sort = Sort::new(storage, filter_context, order_by);
 
     let rows = fetch_blended(storage, table, columns)
         .await?
@@ -267,7 +266,7 @@ pub async fn select_with_labels<'a, T: 'static + Debug>(
     Ok((labels, rows))
 }
 
-pub async fn select<'a, T: 'static + Debug>(
+pub async fn select<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,

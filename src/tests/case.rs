@@ -1,7 +1,11 @@
 use crate::*;
 
 test_case!(case, async move {
-    use Value::{Null, Str, I64};
+    use {
+        prelude::{Payload, Value::*},
+        translate::TranslateError,
+    };
+
     let test_cases = vec![
         (
             "CREATE TABLE Item (id INTEGER, name TEXT);",

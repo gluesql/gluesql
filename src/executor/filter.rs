@@ -10,17 +10,17 @@ use {
         store::GStore,
     },
     im_rc::HashMap,
-    std::{convert::TryInto, fmt::Debug, rc::Rc},
+    std::{fmt::Debug, rc::Rc},
 };
 
-pub struct Filter<'a, T: 'static + Debug> {
+pub struct Filter<'a, T: Debug> {
     storage: &'a dyn GStore<T>,
     where_clause: Option<&'a Expr>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
 }
 
-impl<'a, T: 'static + Debug> Filter<'a, T> {
+impl<'a, T: Debug> Filter<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         where_clause: Option<&'a Expr>,
@@ -50,7 +50,7 @@ impl<'a, T: 'static + Debug> Filter<'a, T> {
     }
 }
 
-pub async fn check_expr<'a, T: 'static + Debug>(
+pub async fn check_expr<'a, T: Debug>(
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,

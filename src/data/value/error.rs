@@ -34,6 +34,9 @@ pub enum ValueError {
     #[error("failed to UUID: {0}")]
     FailedToParseUUID(String),
 
+    #[error("failed to parse Decimal: {0}")]
+    FailedToParseDecimal(String),
+
     #[error("add on non-numeric values: {0:?} + {1:?}")]
     AddOnNonNumeric(Value, Value),
 
@@ -61,6 +64,18 @@ pub enum ValueError {
     #[error("unary minus operation for non numeric value")]
     UnaryMinusOnNonNumeric,
 
+    #[error("unary factorial operation for non numeric value")]
+    FactorialOnNonNumeric,
+
+    #[error("unary factorial operation for non integer value")]
+    FactorialOnNonInteger,
+
+    #[error("unary factorial operation for negative numeric value")]
+    FactorialOnNegativeNumeric,
+
+    #[error("unary factorial operation overflow")]
+    FactorialOverflow,
+
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
@@ -79,13 +94,25 @@ pub enum ValueError {
     LiteralCastFromTextToIntegerFailed(String),
 
     #[error("literal cast failed from text to float: {0}")]
-    LiteralCastToFloatFailed(String),
+    LiteralCastFromTextToFloatFailed(String),
 
     #[error("literal cast failed to boolean: {0}")]
     LiteralCastToBooleanFailed(String),
 
+    #[error("literal cast failed to date: {0}")]
+    LiteralCastToDateFailed(String),
+
+    #[error("literal cast failed to time: {0}")]
+    LiteralCastToTimeFailed(String),
+
+    #[error("literal cast failed to timestamp: {0}")]
+    LiteralCastToTimestampFailed(String),
+
     #[error("unreachable literal cast from number to integer: {0}")]
     UnreachableLiteralCastFromNumberToInteger(String),
+
+    #[error("unreachable literal cast from number to float: {0}")]
+    UnreachableLiteralCastFromNumberToFloat(String),
 
     #[error("unimplemented literal cast: {literal} as {data_type:?}")]
     UnimplementedLiteralCast {
@@ -105,8 +132,8 @@ pub enum ValueError {
     #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
     ILikeOnNonString(Value, Value),
 
-    #[error("big edian export not supported for {0} type")]
-    BigEdianExportNotSupported(String),
+    #[error("big endian export not supported for {0} type")]
+    BigEndianExportNotSupported(String),
 
     #[error("invalid json string")]
     InvalidJsonString,
@@ -122,4 +149,12 @@ pub enum ValueError {
 
     #[error("selector requires MAP or LIST types")]
     SelectorRequiresMapOrListTypes,
+
+    #[error("overflow occurred: {lhs:?} {operator} {rhs:?}")]
+    BinaryOperationOverflow {
+        lhs: Value,
+        rhs: Value,
+        /// ['+', '-', '*', '/']
+        operator: char,
+    },
 }

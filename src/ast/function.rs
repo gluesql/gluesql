@@ -96,6 +96,8 @@ pub enum Function {
     },
     #[strum(to_string = "UNWRAP")]
     Unwrap { expr: Expr, selector: Expr },
+    #[strum(to_string = "GENERATE_UUID")]
+    GenerateUuid(),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -104,4 +106,5 @@ pub enum Aggregate {
     Sum(Expr),
     Max(Expr),
     Min(Expr),
+    Avg(Expr),
 }
