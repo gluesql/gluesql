@@ -12,7 +12,7 @@ use {
         store::GStore,
     },
     async_recursion::async_recursion,
-    chrono::prelude::*,
+    chrono::prelude::UTC,
     futures::{
         future::ready,
         stream::{self, StreamExt, TryStreamExt},
@@ -284,7 +284,6 @@ async fn evaluate_function<'a, T: Debug>(
             let v = eval_to_str!(expr).to_uppercase();
             Ok(Evaluated::from(Value::Str(v)))
         }
-        .map(Evaluated::from),
 
         Function::Sqrt(expr) => Ok(Value::F64(eval_to_float!(expr).sqrt())).map(Evaluated::from),
 
@@ -408,13 +407,8 @@ async fn evaluate_function<'a, T: Debug>(
             .map(Value::F64)
             .map(Evaluated::from),
 
-        Function::Pi() => {
-            { Ok(Evaluated::from(Value::F64(std::f64::consts::PI))) }.map(Evaluated::from)
-        }
-
-        Function::Now() => {
-            { Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))) }.map(Evaluated::from)
-        }
+        Function::Pi() => Ok(Evaluated::from(Value::F64(std::f64::consts::PI))),
+        Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
 
         Function::Trim {
             expr,
@@ -454,7 +448,6 @@ async fn evaluate_function<'a, T: Debug>(
 
             Ok(Evaluated::from(Value::F64(antilog.log(base))))
         }
-        .map(Evaluated::from),
 
         Function::Log2(expr) => Ok(eval_to_float!(expr).log2())
             .map(Value::F64)
@@ -519,7 +512,6 @@ async fn evaluate_function<'a, T: Debug>(
             let divisor = eval(divisor).await?;
             dividend.modulo(&divisor)
         }
-
         Function::Gcd { left, right } => {
             let left = eval_to_integer!(left);
             let right = eval_to_integer!(right);
