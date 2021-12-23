@@ -33,7 +33,7 @@ pub fn translate_ast_literal(sql_value: &SqlValue) -> Result<AstLiteral> {
     })
 }
 
-fn translate_datetime_field(sql_datetime_field: &SqlDateTimeField) -> DateTimeField {
+pub fn translate_datetime_field(sql_datetime_field: &SqlDateTimeField) -> DateTimeField {
     match sql_datetime_field {
         SqlDateTimeField::Year => DateTimeField::Year,
         SqlDateTimeField::Month => DateTimeField::Month,

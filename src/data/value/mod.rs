@@ -1,8 +1,8 @@
 use {
     super::{Interval, StringExt},
-    crate::{ast::DataType, result::Result},
+    crate::{ast::DataType, ast::DateTimeField, result::Result},
     binary_op::TryBinaryOperator,
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},
@@ -373,6 +373,35 @@ impl Value {
                 false => Err(ValueError::ILikeOnNonString(self.clone(), other.clone()).into()),
             },
         }
+    }
+
+    pub fn extract(&self, date_type: &DateTimeField) -> Result<Value> {
+        let value = match (self, date_type) {
+            (Value::Date(v), DateTimeField::Year) => v.year().into(),
+            (Value::Date(v), DateTimeField::Month) => v.month().into(),
+            (Value::Date(v), DateTimeField::Day) => v.day().into(),
+            (Value::Time(v), DateTimeField::Hour) => v.hour().into(),
+            (Value::Time(v), DateTimeField::Minute) => v.minute().into(),
+            (Value::Time(v), DateTimeField::Second) => v.second().into(),
+            (Value::Timestamp(v), DateTimeField::Year) => v.year().into(),
+            (Value::Timestamp(v), DateTimeField::Month) => v.month().into(),
+            (Value::Timestamp(v), DateTimeField::Day) => v.day().into(),
+            (Value::Timestamp(v), DateTimeField::Hour) => v.hour().into(),
+            (Value::Timestamp(v), DateTimeField::Minute) => v.minute().into(),
+            (Value::Timestamp(v), DateTimeField::Second) => v.second().into(),
+            (Value::Interval(v), _) => {
+                return v.extract(date_type);
+            }
+            _ => {
+                return Err(ValueError::ExtractFormatNotMatched {
+                    value: self.clone(),
+                    field: date_type.clone(),
+                }
+                .into())
+            }
+        };
+
+        Ok(Value::I64(value))
     }
 }
 

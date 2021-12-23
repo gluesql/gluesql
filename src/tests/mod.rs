@@ -92,6 +92,7 @@ macro_rules! generate_store_tests {
         glue!(function_log2, function::exp_log::log2);
         glue!(function_log10, function::exp_log::log10);
         glue!(function_exp, function::exp_log::exp);
+        glue!(function_now, function::now::now);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
@@ -112,6 +113,7 @@ macro_rules! generate_store_tests {
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
+        glue!(function_extract, function::extract::extract);
         glue!(function_radians, function::radians::radians);
         glue!(function_degrees, function::degrees::degrees);
         glue!(function_pi, function::pi::pi);
