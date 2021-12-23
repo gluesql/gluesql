@@ -393,9 +393,11 @@ impl Value {
                 return v.extract(date_type);
             }
             _ => {
-                return Err(
-                    ValueError::ExtractFormatNotMatched(self.clone(), date_type.clone()).into(),
-                )
+                return Err(ValueError::ExtractFormatNotMatched {
+                    value: self.clone(),
+                    field: date_type.clone(),
+                }
+                .into())
             }
         };
 

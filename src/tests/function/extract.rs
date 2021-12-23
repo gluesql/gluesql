@@ -1,5 +1,13 @@
 use crate::{
-    prelude::{Payload, Value::*},
+    ast::DateTimeField,
+    data::{
+        value::{
+            Value::{self, *},
+            ValueError,
+        },
+        IntervalError, LiteralError,
+    },
+    prelude::Payload,
     *,
 };
 
@@ -62,6 +70,22 @@ test_case!(extract, async move {
         (
             r#"SELECT EXTRACT(SECOND FROM INTERVAL "8" SECOND) as extract FROM Item"#,
             Ok(select!("extract" I64; 8)),
+        ),
+        (
+            r#"SELECT EXTRACT(HOUR FROM number) as extract FROM Item"#,
+            Err(ValueError::ExtractFormatNotMatched {
+                value: Value::Str("1".to_owned()),
+                field: DateTimeField::Hour,
+            }
+            .into()),
+        ),
+        (
+            r#"SELECT EXTRACT(HOUR FROM INTERVAL "7" YEAR) as extract FROM Item"#,
+            Err(IntervalError::FailedToExtract.into()),
+        ),
+        (
+            r#"SELECT EXTRACT(HOUR FROM 100) FROM Item"#,
+            Err(LiteralError::CannotExtract.into()),
         ),
     ];
 

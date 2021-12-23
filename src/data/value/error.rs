@@ -126,8 +126,8 @@ pub enum ValueError {
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(Value, Value),
 
-    #[error("extract format does not support value: EXTRACT({0:?},{1:?})")]
-    ExtractFormatNotMatched(Value, DateTimeField),
+    #[error("extract format not matched: {value:?} FROM {field:?})")]
+    ExtractFormatNotMatched { value: Value, field: DateTimeField },
 
     #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
     ILikeOnNonString(Value, Value),
