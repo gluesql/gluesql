@@ -1,8 +1,8 @@
 use {
     super::{Interval, StringExt},
     crate::{ast::DataType, ast::DateTimeField, result::Result},
-    chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     binary_op::TryBinaryOperator,
+    chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
     rust_decimal::Decimal,
     serde::{Deserialize, Serialize},

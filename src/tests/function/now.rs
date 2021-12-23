@@ -1,4 +1,7 @@
-use crate::{*, prelude::{Payload, Value::*}};
+use crate::{
+    prelude::{Payload, Value::*},
+    *,
+};
 
 test_case!(now, async move {
     macro_rules! t {
