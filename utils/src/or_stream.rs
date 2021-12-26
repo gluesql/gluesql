@@ -1,6 +1,10 @@
 use {
     core::{cmp::max, pin::Pin},
-    futures::{ready, stream::Stream, task::{Context, Poll}},
+    futures::{
+        ready,
+        stream::Stream,
+        task::{Context, Poll},
+    },
     pin_project::pin_project,
 };
 

@@ -1,0 +1,19 @@
+[package]
+name = "test-generator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gluesql-core = { path = "../core" }
+
+async-trait = "0.1"
+bigdecimal = "0.3"
+uuid = "0.8"
+
+[features]
+default = ["sorter"]
+
+sorter = ["gluesql-core/sorter"]
+alter-table = ["gluesql-core/alter-table"]
+index = ["gluesql-core/index"]
+transaction = ["gluesql-core/transaction"]

@@ -77,7 +77,6 @@ pub mod parse_sql;
 pub mod plan;
 pub mod result;
 pub mod store;
-pub mod tests;
 pub mod translate;
 
 pub mod prelude {

@@ -1,0 +1,23 @@
+[package]
+name = "gluesql-test-suite"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+gluesql-core = { version = "0.9", path = "../core" }
+memory-storage = { path = "../storages/memory_storage" }
+sled-storage = { path = "../storages/sled_storage" }
+test-generator = { path = "../test_generator" }
+
+cfg-if = "1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
+futures = "0.3"
+
+[features]
+default = []
+
+alter-table = ["gluesql-core/alter-table"]
+index = ["gluesql-core/index"]
+transaction = ["gluesql-core/transaction"]
