@@ -221,7 +221,7 @@ mod tests {
             ValueError,
         },
         crate::result::Result,
-        chrono::{NaiveDateTime, NaiveTime},
+        chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     };
 
     #[test]
@@ -359,5 +359,28 @@ mod tests {
         test_err!(Map(m));
         test_err!(List(vec![I64(1), I64(2), I64(3)]));
         test_err!(Null);
+    }
+
+    #[test]
+    fn into_nativedate() {
+        let date = "2021-12-15".parse::<NaiveDate>().unwrap();
+
+        let v: NaiveDate = (&Date(date.clone())).try_into().unwrap();
+        assert_eq!(v, date);
+
+        let timestamp: NaiveDate = (&Timestamp("2020-05-01T00:00:00".parse::<NaiveDateTime>().unwrap())).try_into().unwrap();
+        test!(timestamp);
+        //assert_eq!(v1, data);
+        
+        /*
+        assert_eq!(
+            Timestamp("2021-12-25T00:00:00".parse::<NaiveDateTime>().unwrap()).try_into(),
+            Ok(Date("2021-12-25".parse().unwrap()))
+        );
+        let v: Result<NaiveDate> = (&Str("2021-12-25".to_owned())).try_into();
+        assert_eq!(
+            v,
+            Ok(Date("2021-12-25".parse().unwrap()))
+        );*/
     }
 }
