@@ -8,7 +8,7 @@ const VALUE: u8 = 0;
 const NULL: u8 = 1;
 
 impl Value {
-    /// Value to Big-Edian for comparison purpose
+    /// Value to Big-Endian for comparison purpose
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
         let value = match self {
             Value::Bool(v) => {
@@ -18,6 +18,11 @@ impl Value {
                     vec![VALUE, 0]
                 }
             }
+            Value::I8(v) => [VALUE]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
             Value::I64(v) => [VALUE]
                 .iter()
                 .chain(v.to_be_bytes().iter())
@@ -82,10 +87,13 @@ impl Value {
                 .collect::<Vec<_>>(),
             Value::Null => vec![NULL],
             Value::Map(_) => {
-                return Err(ValueError::BigEdianExportNotSupported("MAP".to_owned()).into());
+                return Err(ValueError::BigEndianExportNotSupported("MAP".to_owned()).into());
             }
             Value::List(_) => {
-                return Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into());
+                return Err(ValueError::BigEndianExportNotSupported("LIST".to_owned()).into());
+            }
+            Value::Decimal(_) => {
+                return Err(ValueError::BigEndianExportNotSupported("Decimal".to_owned()).into());
             }
         };
 
@@ -112,7 +120,7 @@ mod tests {
     }
 
     #[test]
-    fn cmp_big_edian() {
+    fn cmp_big_endian() {
         use crate::data::{
             Interval as I,
             Value::{self, *},
@@ -128,6 +136,15 @@ mod tests {
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n2, &n1), Ordering::Less);
+        assert_eq!(cmp(&n1, &null), Ordering::Less);
+
+        let n1 = I8(3).to_cmp_be_bytes().unwrap();
+        let n2 = I8(20).to_cmp_be_bytes().unwrap();
+        let n3 = I8(100).to_cmp_be_bytes().unwrap();
+
+        assert_eq!(cmp(&n2, &n2), Ordering::Equal);
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n1), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
         let n1 = I64(3).to_cmp_be_bytes().unwrap();
@@ -220,7 +237,7 @@ mod tests {
 
         assert_eq!(
             n1,
-            Err(ValueError::BigEdianExportNotSupported("MAP".to_owned()).into())
+            Err(ValueError::BigEndianExportNotSupported("MAP".to_owned()).into())
         );
 
         let n1 = Value::parse_json_list(r#"[1, 2, 3]"#)
@@ -229,7 +246,7 @@ mod tests {
 
         assert_eq!(
             n1,
-            Err(ValueError::BigEdianExportNotSupported("LIST".to_owned()).into())
+            Err(ValueError::BigEndianExportNotSupported("LIST".to_owned()).into())
         );
     }
 }

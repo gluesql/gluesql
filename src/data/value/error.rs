@@ -1,5 +1,5 @@
 use {
-    crate::{ast::DataType, data::Value},
+    crate::{ast::DataType, ast::DateTimeField, data::Value},
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -33,6 +33,9 @@ pub enum ValueError {
 
     #[error("failed to UUID: {0}")]
     FailedToParseUUID(String),
+
+    #[error("failed to parse Decimal: {0}")]
+    FailedToParseDecimal(String),
 
     #[error("add on non-numeric values: {0:?} + {1:?}")]
     AddOnNonNumeric(Value, Value),
@@ -123,11 +126,14 @@ pub enum ValueError {
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(Value, Value),
 
+    #[error("extract format not matched: {value:?} FROM {field:?})")]
+    ExtractFormatNotMatched { value: Value, field: DateTimeField },
+
     #[error("operator doesn't exist: {0:?} ILIKE {1:?}")]
     ILikeOnNonString(Value, Value),
 
-    #[error("big edian export not supported for {0} type")]
-    BigEdianExportNotSupported(String),
+    #[error("big endian export not supported for {0} type")]
+    BigEndianExportNotSupported(String),
 
     #[error("invalid json string")]
     InvalidJsonString,
@@ -143,4 +149,12 @@ pub enum ValueError {
 
     #[error("selector requires MAP or LIST types")]
     SelectorRequiresMapOrListTypes,
+
+    #[error("overflow occurred: {lhs:?} {operator} {rhs:?}")]
+    BinaryOperationOverflow {
+        lhs: Value,
+        rhs: Value,
+        /// ['+', '-', '*', '/']
+        operator: char,
+    },
 }

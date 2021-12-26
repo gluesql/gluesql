@@ -12,6 +12,7 @@ use {
         store::GStore,
     },
     async_recursion::async_recursion,
+    chrono::prelude::Utc,
     futures::{
         future::ready,
         stream::{self, StreamExt, TryStreamExt},
@@ -104,6 +105,7 @@ pub async fn evaluate<'a, T: Debug>(
             evaluate_function(storage, context, aggregated, func).await
         }
         Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
+        Expr::Extract { field, expr } => eval(expr).await?.extract(field),
         Expr::InList {
             expr,
             list,
@@ -405,9 +407,9 @@ async fn evaluate_function<'a, T: Debug>(
             .map(Value::F64)
             .map(Evaluated::from),
 
-        Function::Pi() => {
-            { Ok(Evaluated::from(Value::F64(std::f64::consts::PI))) }.map(Evaluated::from)
-        }
+        Function::Pi() => Ok(Evaluated::from(Value::F64(std::f64::consts::PI))),
+        Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
+
         Function::Trim {
             expr,
             filter_chars,
@@ -599,7 +601,6 @@ async fn evaluate_function<'a, T: Debug>(
         .map(Evaluated::from),
     }
 }
-
 fn gcd(a: i64, b: i64) -> i64 {
     if b == 0 {
         a

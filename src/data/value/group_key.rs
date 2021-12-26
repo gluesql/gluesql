@@ -14,6 +14,7 @@ impl TryInto<GroupKey> for Value {
 
         match self {
             Bool(v) => Ok(GroupKey::Bool(v)),
+            I8(v) => Ok(GroupKey::I8(v)),
             I64(v) => Ok(GroupKey::I64(v)),
             Str(v) => Ok(GroupKey::Str(v)),
             Date(v) => Ok(GroupKey::Date(v)),
@@ -21,6 +22,7 @@ impl TryInto<GroupKey> for Value {
             Time(v) => Ok(GroupKey::Time(v)),
             Interval(v) => Ok(GroupKey::Interval(v)),
             Uuid(v) => Ok(GroupKey::Uuid(v)),
+            Decimal(v) => Ok(GroupKey::Decimal(v)),
             Null => Ok(GroupKey::None),
             F64(_) => Err(ValueError::GroupByNotSupported("FLOAT".to_owned()).into()),
             Map(_) => Err(ValueError::GroupByNotSupported("MAP".to_owned()).into()),

@@ -8,6 +8,7 @@ use {
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
+    rust_decimal::Decimal,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -30,6 +31,7 @@ pub enum ColumnValidation {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UniqueKey {
     Bool(bool),
+    I8(i8),
     I64(i64),
     Str(String),
     Date(NaiveDate),
@@ -37,6 +39,7 @@ pub enum UniqueKey {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
+    Decimal(Decimal),
 }
 
 #[derive(Debug)]

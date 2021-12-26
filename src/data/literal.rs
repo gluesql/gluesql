@@ -1,7 +1,8 @@
 use {
     super::StringExt,
+    super::Value,
     crate::{
-        ast::AstLiteral,
+        ast::{AstLiteral, DateTimeField},
         data::BigDecimalExt,
         result::{Error, Result},
     },
@@ -31,6 +32,9 @@ pub enum LiteralError {
 
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(String, String),
+
+    #[error("cannot extract from value")]
+    CannotExtract,
 }
 
 #[derive(Clone, Debug)]
@@ -244,6 +248,13 @@ impl<'a> Literal<'a> {
             _ => Err(
                 LiteralError::LikeOnNonString(format!("{:?}", self), format!("{:?}", other)).into(),
             ),
+        }
+    }
+
+    pub fn extract(&self, date_type: &DateTimeField) -> Result<Value> {
+        match self {
+            Literal::Interval(v) => v.extract(date_type),
+            _ => Err(LiteralError::CannotExtract.into()),
         }
     }
 }

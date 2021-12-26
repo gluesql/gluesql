@@ -3,6 +3,7 @@ mod primitive;
 mod string;
 
 use {
+    super::Value,
     crate::{ast::DateTimeField, result::Result},
     chrono::{Datelike, Duration, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::str::FromStr,
@@ -134,6 +135,22 @@ impl Interval {
 
     pub fn months(months: i32) -> Self {
         Interval::Month(months)
+    }
+
+    pub fn extract(&self, field: &DateTimeField) -> Result<Value> {
+        let value = match (field, *self) {
+            (DateTimeField::Year, Interval::Month(i)) => i as i64 / 12,
+            (DateTimeField::Month, Interval::Month(i)) => i as i64,
+            (DateTimeField::Day, Interval::Microsecond(i)) => i / DAY,
+            (DateTimeField::Hour, Interval::Microsecond(i)) => i / HOUR,
+            (DateTimeField::Minute, Interval::Microsecond(i)) => i / MINUTE,
+            (DateTimeField::Second, Interval::Microsecond(i)) => i / SECOND,
+            _ => {
+                return Err(IntervalError::FailedToExtract.into());
+            }
+        };
+
+        Ok(Value::I64(value))
     }
 
     pub fn days(days: i32) -> Self {

@@ -15,6 +15,9 @@ pub use self::{
 #[cfg(feature = "alter-table")]
 use ddl::translate_alter_table_operation;
 
+#[cfg(feature = "metadata")]
+use crate::ast::Variable;
+
 use {
     self::{ddl::translate_column_def, query::translate_query},
     crate::{
@@ -64,6 +67,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             if_not_exists,
             name,
             columns,
+            query,
             ..
         } => Ok(Statement::CreateTable {
             if_not_exists: *if_not_exists,
@@ -72,6 +76,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 .iter()
                 .map(translate_column_def)
                 .collect::<Result<_>>()?,
+            source: match query {
+                Some(v) => Some(translate_query(v).map(Box::new)?),
+                None => None,
+            },
         }),
         #[cfg(feature = "alter-table")]
         SqlStatement::AlterTable {
@@ -129,6 +137,17 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::Commit { .. } => Ok(Statement::Commit),
         #[cfg(feature = "transaction")]
         SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
+        #[cfg(feature = "metadata")]
+        SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
+            (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
+                "TABLES" => Ok(Statement::ShowVariable(Variable::Tables)),
+                "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
+                v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_string()).into()),
+            },
+            _ => Err(
+                TranslateError::UnsupportedShowVariableStatement(sql_statement.to_string()).into(),
+            ),
+        },
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }

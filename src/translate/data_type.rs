@@ -7,6 +7,7 @@ use {
 pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
     match sql_data_type {
         SqlDataType::Boolean => Ok(DataType::Boolean),
+        SqlDataType::Int(Some(8)) => Ok(DataType::Int8),
         SqlDataType::Int(_) => Ok(DataType::Int),
         SqlDataType::Float(_) => Ok(DataType::Float),
         SqlDataType::Text => Ok(DataType::Text),
@@ -15,6 +16,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Time => Ok(DataType::Time),
         SqlDataType::Interval => Ok(DataType::Interval),
         SqlDataType::Uuid => Ok(DataType::Uuid),
+        SqlDataType::Decimal(None, None) => Ok(DataType::Decimal),
         SqlDataType::Custom(name) => {
             let name = name.0.get(0).map(|v| v.value.to_uppercase());
 

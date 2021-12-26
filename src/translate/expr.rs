@@ -1,6 +1,6 @@
 use {
     super::{
-        ast_literal::translate_ast_literal,
+        ast_literal::{translate_ast_literal, translate_datetime_field},
         data_type::translate_data_type,
         function::translate_function,
         operator::{translate_binary_operator, translate_unary_operator},
@@ -68,6 +68,10 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         SqlExpr::Cast { expr, data_type } => Ok(Expr::Cast {
             expr: translate_expr(expr).map(Box::new)?,
             data_type: translate_data_type(data_type)?,
+        }),
+        SqlExpr::Extract { field, expr } => Ok(Expr::Extract {
+            field: translate_datetime_field(field),
+            expr: translate_expr(expr).map(Box::new)?,
         }),
         SqlExpr::Nested(expr) => translate_expr(expr).map(Box::new).map(Expr::Nested),
         SqlExpr::Value(value) => translate_ast_literal(value).map(Expr::Literal),

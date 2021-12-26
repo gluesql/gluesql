@@ -1,4 +1,7 @@
-use crate::*;
+use crate::{
+    data::value::Value::{Null, Str, I64},
+    *,
+};
 
 test_case!(create_table, async move {
     use {
@@ -46,6 +49,10 @@ test_case!(create_table, async move {
             Ok(Payload::Insert(1)),
         ),
         (
+            r#"INSERT INTO CreateTable2 VALUES (2, 2, "2");"#,
+            Ok(Payload::Insert(1)),
+        ),
+        (
             "CREATE TABLE Gluery (id SOMEWHAT);",
             Err(TranslateError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
         ),
@@ -76,6 +83,55 @@ test_case!(create_table, async move {
         (
             "CREATE TABLE Gluery (id INTEGER DEFAULT (SELECT id FROM Wow))",
             Err(EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Wow)")).into()),
+        ),
+        (
+            // Create schema only
+            "CREATE TABLE TargetTable AS SELECT * FROM CreateTable2 WHERE 1 = 0",
+            Ok(Payload::Create),
+        ),
+        (
+            "CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithData",
+            Ok(select_with_null!(
+                id     | num    | name;
+                Null     I64(1)   Str("1".to_owned());
+                I64(2)   I64(2)   Str("2".to_owned())
+            )),
+        ),
+        (
+            "CREATE TABLE TargetTableWithLimit AS SELECT * FROM CreateTable2 LIMIT 1",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithLimit",
+            Ok(select_with_null!(
+                id     | num    | name;
+                Null     I64(1)   Str("1".to_owned())
+            )),
+        ),
+        (
+            "CREATE TABLE TargetTableWithOffset AS SELECT * FROM CreateTable2 OFFSET 1",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TargetTableWithOffset",
+            Ok(select_with_null!(
+                id     | num    | name;
+                I64(2)   I64(2)   Str("2".to_owned())
+            )),
+        ),
+        (
+            // Target Table already exists
+            "CREATE TABLE TargetTableWithData AS SELECT * FROM CreateTable2",
+            Err(AlterError::TableAlreadyExists("TargetTableWithData".to_owned()).into()),
+        ),
+        (
+            // Source table does not exists
+            "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
+            Err(AlterError::CtasSourceTableNotFound("NonExistentTable".to_owned()).into()),
         ),
     ];
 

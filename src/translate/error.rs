@@ -38,6 +38,12 @@ pub enum TranslateError {
     #[error("unsupported function: {0}")]
     UnsupportedFunction(String),
 
+    #[error("unsupported SHOW VARIABLE keyword: {0}")]
+    UnsupportedShowVariableKeyword(String),
+
+    #[error("unsupported SHOW VARIABLE statement: {0}")]
+    UnsupportedShowVariableStatement(String),
+
     #[error("unsupported statement: {0}")]
     UnsupportedStatement(String),
 

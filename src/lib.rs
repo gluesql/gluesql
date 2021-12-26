@@ -36,9 +36,9 @@
 //!
 //! ## Custom Storage
 //! To get started, all you need to implement for `gluesql` is implementing three traits
-//! (two for functions, one running tests).  
-//! There are also three optional traits (`AlterTable`, `Index`, `IndexMut`, and `Transaction`),
-//! whether implementing it or not is all up to you.
+//! (two for functions, one for running tests).  
+//! There are also optional traits.
+//! Whether to implement it or not is all up to you.
 //!
 //! ### Store traits
 //! * [Store](store/trait.Store.html)
@@ -49,6 +49,7 @@
 //! * [Index](store/trait.Index.html)
 //! * [IndexMut](store/trait.IndexMut.html)
 //! * [Transaction](store/trait.Transaction.html)
+//! * [Metadata](store/trait.Metadata.html)
 //!
 //! ### Trait to run integration tests
 //! * [Tester](tests/trait.Tester.html)
@@ -90,6 +91,9 @@ pub mod prelude {
 
     #[cfg(feature = "memory-storage")]
     pub use crate::storages::MemoryStorage;
+
+    #[cfg(feature = "metadata")]
+    pub use crate::executor::PayloadVariable;
 
     pub use crate::{
         data::value::Value,

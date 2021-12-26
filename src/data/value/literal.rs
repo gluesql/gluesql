@@ -10,6 +10,7 @@ use {
         result::{Error, Result},
     },
     chrono::NaiveDate,
+    rust_decimal::Decimal,
     std::cmp::Ordering,
 };
 
@@ -17,6 +18,7 @@ impl PartialEq<Literal<'_>> for Value {
     fn eq(&self, other: &Literal<'_>) -> bool {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
+            (Value::I8(l), Literal::Number(r)) => r.to_i8().map(|r| *l == r).unwrap_or(false),
             (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
@@ -42,6 +44,9 @@ impl PartialEq<Literal<'_>> for Value {
 impl PartialOrd<Literal<'_>> for Value {
     fn partial_cmp(&self, other: &Literal<'_>) -> Option<Ordering> {
         match (self, other) {
+            (Value::I8(l), Literal::Number(r)) => {
+                r.to_i8().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
             (Value::I64(l), Literal::Number(r)) => {
                 r.to_i64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
@@ -107,6 +112,10 @@ impl Value {
                 .to_i64()
                 .map(Value::I64)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Int8, Literal::Number(v)) => v
+                .to_i8()
+                .map(Value::I8)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)
@@ -126,6 +135,11 @@ impl Value {
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
+            (DataType::Decimal, Literal::Number(v)) => v
+                .to_string()
+                .parse::<Decimal>()
+                .map(Value::Decimal)
+                .map_err(|_| ValueError::FailedToParseDecimal(v.to_string()).into()),
             (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
@@ -163,6 +177,21 @@ impl Value {
 
                 Ok(Value::I64(v))
             }
+            (DataType::Int8, Literal::Text(v)) => v
+                .parse::<i8>()
+                .map(Value::I8)
+                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
+            (DataType::Int8, Literal::Number(v)) => v
+                .to_f64()
+                .map(|v| Value::I8(v.trunc() as i8))
+                .ok_or_else(|| {
+                    ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
+                }),
+            (DataType::Int8, Literal::Boolean(v)) => {
+                let v = if *v { 1 } else { 0 };
+
+                Ok(Value::I8(v))
+            }
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
@@ -188,6 +217,7 @@ impl Value {
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Boolean, Literal::Null)
             | (DataType::Int, Literal::Null)
+            | (DataType::Int8, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
             (DataType::Date, Literal::Text(v)) => parse_date(v)
