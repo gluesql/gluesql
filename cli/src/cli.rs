@@ -72,7 +72,8 @@ where
             let command = match Command::parse(line.as_str()) {
                 Ok(command) => command,
                 Err(_) => {
-                    println!("[error] unsupported command: {}", line);
+                    println!("[error] command not supported: {}", line);
+                    println!("\n  type .help to list all available commands.\n");
                     continue;
                 }
             };
