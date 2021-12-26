@@ -45,25 +45,6 @@ where
             ($($p:tt),*) => ( writeln!(&mut self.print.output, $($p),*)?; )
         }
 
-        let temp_queries = [
-            "CREATE TABLE sample (id INTEGER, name TEXT, date DATE)",
-            r#"INSERT INTO sample VALUES
-                (1, "Foo", "2020-01-01"),
-                (2, "Bar", "1989-04-11"),
-                (3, "Hello", "1991-12-01"),
-                (4, "World", "2001-04-15"),
-                (5, "Greet", "2101-06-11"),
-                (9, "Ginger", "2050-03-01"),
-                (10, "Paint", "2000-01-11");
-            "#,
-            "CREATE TABLE test (id INTEGER);",
-            "INSERT INTO test VALUES (1), (10), (100), (200), (404);",
-        ];
-
-        for query in temp_queries {
-            self.glue.execute(query).expect("Execution failed");
-        }
-
         self.print.help()?;
 
         let mut rl = Editor::<CliHelper>::new();
