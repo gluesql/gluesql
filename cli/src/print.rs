@@ -4,7 +4,7 @@ use {
     std::io::{Result, Write},
 };
 
-pub struct Print<W> {
+pub struct Print<W: Write> {
     pub output: W,
 }
 

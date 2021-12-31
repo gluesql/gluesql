@@ -8,7 +8,6 @@ use {
     std::{
         fmt::Debug,
         io::{Result, Write},
-        marker::PhantomData,
     },
 };
 
@@ -20,7 +19,6 @@ where
 {
     glue: Glue<T, U>,
     print: Print<W>,
-    _marker: PhantomData<T>,
 }
 
 impl<T, U, W> Cli<T, U, W>
@@ -33,11 +31,7 @@ where
         let glue = Glue::new(storage);
         let print = Print::new(output);
 
-        Self {
-            glue,
-            print,
-            _marker: PhantomData,
-        }
+        Self { glue, print }
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -67,9 +61,9 @@ where
                 }
             };
 
-            rl.add_history_entry(line.as_str());
+            rl.add_history_entry(&line);
 
-            let command = match Command::parse(line.as_str()) {
+            let command = match Command::parse(&line) {
                 Ok(command) => command,
                 Err(_) => {
                     println!("[error] command not supported: {}", line);
