@@ -250,13 +250,13 @@ mod tests {
         use std::borrow::Cow;
         use std::str::FromStr;
 
-        let date = |y, m, d| chrono::NaiveDate::from_ymd(y, m, d);
+        let date = chrono::NaiveDate::from_ymd;
 
         let timestamp = |y, m, d, hh, mm, ss, ms| {
             chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
         };
 
-        let time = |hh, mm, ss, ms| chrono::NaiveTime::from_hms_milli(hh, mm, ss, ms);
+        let time = chrono::NaiveTime::from_hms_milli;
 
         macro_rules! num {
             ($num: expr) => {
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn time() {
-        let time = |h, m, s, ms| chrono::NaiveTime::from_hms_milli(h, m, s, ms);
+        let time = chrono::NaiveTime::from_hms_milli;
 
         macro_rules! test (
             ($time: literal, $result: expr) => {

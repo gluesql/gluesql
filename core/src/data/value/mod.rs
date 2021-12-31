@@ -497,8 +497,8 @@ mod tests {
             };
         }
 
-        let time = |h, m, s| NaiveTime::from_hms(h, m, s);
-        let date = |y, m, d| NaiveDate::from_ymd(y, m, d);
+        let time = NaiveTime::from_hms;
+        let date = NaiveDate::from_ymd;
         let decimal = |n: i32| Decimal(n.into());
 
         test!(add I8(1),    I8(2)    => I8(3));

@@ -310,8 +310,8 @@ mod tests {
             };
         }
 
-        let date = |y, m, d| NaiveDate::from_ymd(y, m, d);
-        let time = |h, m, s| NaiveTime::from_hms(h, m, s);
+        let date = NaiveDate::from_ymd;
+        let time = NaiveTime::from_hms;
 
         assert_eq!(Month(1).unary_minus(), Month(-1));
         assert_eq!(Microsecond(1).unary_minus(), Microsecond(-1));
