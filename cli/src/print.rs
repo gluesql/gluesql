@@ -1,6 +1,6 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
-    gluesql::prelude::{Payload, PayloadVariable},
+    gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
 };
 
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn print_payload() {
-        use gluesql::prelude::{Payload, PayloadVariable, Value};
+        use gluesql_core::prelude::{Payload, PayloadVariable, Value};
 
         let mut print = Print::new(Vec::new());
 

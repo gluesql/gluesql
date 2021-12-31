@@ -1,6 +1,7 @@
 # GlueSQL project files
-/data/
-/tmp/
+/gluesql/data/doc-db/
+/storages/**/data/
+/storages/**/tmp/
 /reports/
 
 # Vim

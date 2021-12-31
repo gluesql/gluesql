@@ -1,6 +1,6 @@
 use {
     crate::{command::Command, helper::CliHelper, print::Print},
-    gluesql::{
+    gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
     },
