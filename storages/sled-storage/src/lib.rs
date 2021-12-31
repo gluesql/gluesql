@@ -12,6 +12,9 @@ mod store;
 mod store_mut;
 mod transaction;
 
+// re-export
+pub use sled;
+
 use {
     self::snapshot::Snapshot,
     error::{err_into, tx_err_into},
@@ -21,7 +24,6 @@ use {
         store::{GStore, GStoreMut},
     },
     sled::{
-        self,
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
