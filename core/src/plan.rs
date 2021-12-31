@@ -7,9 +7,9 @@ use {
         data::{get_name, Schema, SchemaIndex, SchemaIndexOrd},
         result::Result,
         store::Store,
-        utils::Vector,
     },
     async_recursion::async_recursion,
+    gluesql_utils::Vector,
     std::fmt::Debug,
 };
 

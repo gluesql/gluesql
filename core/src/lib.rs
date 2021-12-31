@@ -67,12 +67,9 @@
 
 // re-export
 pub use chrono;
-#[cfg(feature = "sled-storage")]
-pub use sled;
 pub use sqlparser;
 
 mod glue;
-mod utils;
 
 pub mod ast;
 pub mod data;
@@ -80,18 +77,10 @@ pub mod executor;
 pub mod parse_sql;
 pub mod plan;
 pub mod result;
-pub mod storages;
 pub mod store;
-pub mod tests;
 pub mod translate;
 
 pub mod prelude {
-    #[cfg(feature = "sled-storage")]
-    pub use crate::storages::SledStorage;
-
-    #[cfg(feature = "memory-storage")]
-    pub use crate::storages::MemoryStorage;
-
     #[cfg(feature = "metadata")]
     pub use crate::executor::PayloadVariable;
 

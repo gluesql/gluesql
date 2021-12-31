@@ -8,9 +8,9 @@ use {
         data::Table,
         result::{Error, Result},
         store::GStore,
-        utils::OrStream,
     },
     futures::stream::{self, once, StreamExt, TryStream, TryStreamExt},
+    gluesql_utils::OrStream,
     std::{fmt::Debug, pin::Pin, rc::Rc},
 };
 

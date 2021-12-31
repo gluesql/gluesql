@@ -8,9 +8,9 @@ use {
         data::Value,
         result::Result,
         store::GStore,
-        utils::Vector,
     },
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
+    gluesql_utils::Vector,
     im_rc::HashMap,
     std::{cmp::Ordering, fmt::Debug, pin::Pin, rc::Rc},
 };

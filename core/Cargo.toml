@@ -41,20 +41,20 @@ metadata = []
 sorter = []
 
 [dependencies]
-regex = "1.5"
+gluesql-utils = { path = "../utils" }
+
+regex = "1"
 async-trait = "0.1"
 async-recursion = "0.3"
 cfg-if = "1"
-chrono = { version = "0.4", features = ["serde", "wasmbind"] }
-rust_decimal = { version = "1.17", features = ["serde-str"] }
 futures = "0.3"
-indexmap = "1.7"
-im-rc = "15.0"
+chrono = { version = "0.4", features = ["serde", "wasmbind"] }
+rust_decimal = { version = "1", features = ["serde-str"] }
+im-rc = "15"
 iter-enum = "1"
 itertools = "0.10"
-pin-project = "1.0"
 serde = { version = "1", features = ["derive"] }
-serde_str = "0.1.0"
+serde_str = "0.1"
 serde_json = "1"
 sqlparser = { version = "0.11", features = ["serde", "bigdecimal"] }
 thiserror = "1.0"
@@ -62,7 +62,3 @@ strum = "0.21"
 strum_macros = "0.21"
 uuid = { version = "0.8", features = ["v4"] }
 bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
-
-# [[bench]]
-# name = "sled_benchmark"
-# harness = false
