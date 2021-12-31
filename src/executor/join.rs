@@ -17,6 +17,7 @@ use {
 pub struct Join<'a, T: Debug> {
     storage: &'a dyn GStore<T>,
     join_clauses: &'a [AstJoin],
+    join_columns: Rc<[Rc<[String]>]>,
     filter_context: Option<Rc<FilterContext<'a>>>,
 }
 
@@ -28,20 +29,18 @@ impl<'a, T: Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         join_clauses: &'a [AstJoin],
+        join_columns: Rc<[Rc<[String]>]>,
         filter_context: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
         Self {
             storage,
             join_clauses,
+            join_columns,
             filter_context,
         }
     }
 
-    pub async fn apply(
-        &self,
-        init_context: Result<BlendContext<'a>>,
-        join_columns: Rc<[Rc<[String]>]>,
-    ) -> Result<Joined<'a>> {
+    pub async fn apply(&self, init_context: Result<BlendContext<'a>>) -> Result<Joined<'a>> {
         let init_context = init_context.map(Rc::new);
         let init_rows: Joined<'a> = Box::pin(stream::once(async { init_context }));
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
@@ -51,7 +50,7 @@ impl<'a, T: Debug> Join<'a, T> {
             .iter()
             .enumerate()
             .map(move |(i, join_clause)| {
-                let join_columns = Rc::clone(&join_columns[i]);
+                let join_columns = Rc::clone(&self.join_columns[i]);
 
                 Ok::<_, Error>((join_clause, join_columns))
             });
