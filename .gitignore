@@ -1,6 +1,6 @@
 # GlueSQL project files
-/data/
-/tmp/
+/test_suite/data/
+/test_suite/tmp/
 /reports/
 
 # Vim
