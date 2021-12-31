@@ -14,21 +14,18 @@ impl<T> Vector<T> {
         self
     }
 
-    #[cfg(all(feature = "alter-table", feature = "sled-storage"))]
     pub fn update(mut self, i: usize, value: T) -> Self {
         self.0[i] = value;
 
         self
     }
 
-    #[cfg(all(feature = "index", feature = "sled-storage"))]
     pub fn remove(mut self, i: usize) -> Self {
         self.0.remove(i);
 
         self
     }
 
-    #[cfg(all(feature = "index", feature = "sled-storage"))]
     pub fn reverse(mut self) -> Self {
         self.0.reverse();
 
