@@ -17,8 +17,9 @@ Developers can choose to use GlueSQL to build their own SQL database, or as an e
 
 You can use GlueSQL as an embedded SQL database.  
 GlueSQL provides two reference storage options.
-* `SledStorage` - Persistent storage engine based on [`sled`](https://github.com/spacejam/sled "sled")
-* `MemoryStorage` - Non-persistent storage engine based on `BTreeMap`
+
+- `SledStorage` - Persistent storage engine based on [`sled`](https://github.com/spacejam/sled "sled")
+- `MemoryStorage` - Non-persistent storage engine based on `BTreeMap`
 
 ### Installation
 
@@ -75,7 +76,8 @@ features = ["sorter", "alter-table", "index", "transaction"]
 ### Usage
 
 #### Two mandatory store traits to implement
-* [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/src/store/mod.rs)
+
+- [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/src/store/mod.rs)
 
 ```rust
 pub trait Store<T: Debug> {
@@ -93,7 +95,8 @@ pub trait StoreMut<T: Debug> where Self: Sized {
 ```
 
 #### Optional store traits
-* [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/src/store/index.rs) and [`Transaction`](https://github.com/gluesql/gluesql/blob/main/src/store/transaction.rs)
+
+- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/src/store/index.rs) and [`Transaction`](https://github.com/gluesql/gluesql/blob/main/src/store/transaction.rs)
 
 ```rust
 pub trait AlterTable where Self: Sized {
