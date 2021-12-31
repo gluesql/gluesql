@@ -4,12 +4,12 @@ mod metadata;
 mod transaction;
 
 use {
+    async_trait::async_trait,
     gluesql_core::{
         data::{Row, Schema},
         result::{MutResult, Result},
         store::{GStore, GStoreMut, RowIter, Store, StoreMut},
     },
-    async_trait::async_trait,
     std::{
         collections::{BTreeMap, HashMap},
         iter::empty,

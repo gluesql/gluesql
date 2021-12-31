@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::{executor::Payload, prelude::Value::*}};
+use {
+    crate::*,
+    gluesql_core::{executor::Payload, prelude::Value::*},
+};
 
 test_case!(decimal, async move {
     let test_cases = vec![

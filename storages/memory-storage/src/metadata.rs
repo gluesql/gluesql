@@ -2,8 +2,8 @@
 
 use {
     super::MemoryStorage,
-    gluesql_core::{result::Result, store::Metadata},
     async_trait::async_trait,
+    gluesql_core::{result::Result, store::Metadata},
 };
 
 #[async_trait(?Send)]
