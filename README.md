@@ -126,7 +126,7 @@ pub trait Transaction where Self: Sized {
 
 ### [GlueSQL-js](https://github.com/gluesql/gluesql-js)
 
-https://github.com/gluesql/gluesql-js  
+<https://github.com/gluesql/gluesql-js>
 Use SQL in web browsers!
 GlueSQL-js provides 3 storage options,
 
@@ -136,7 +136,7 @@ GlueSQL-js provides 3 storage options,
 
 ### [GlueSQL Sheets](https://sheets.gluesql.com)
 
-https://sheets.gluesql.com  
+<https://sheets.gluesql.com>
 Turn **Google Sheets** into a SQL database!  
 It uses Google Sheets as a storage.  
 Data is stored and updated from Google Sheets.
