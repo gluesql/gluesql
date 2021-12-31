@@ -360,7 +360,6 @@ async fn sled_transaction_gc() {
     exec!(glue1 "CREATE INDEX idx_id ON Garlic (id);");
     exec!(glue1 "INSERT INTO Garlic VALUES (1), (2);");
     exec!(glue1 "CREATE INDEX idx_gc ON Garlic (id + 2);");
-    #[cfg(feature = "alter-table")]
     exec!(glue1 "ALTER TABLE Garlic ADD COLUMN num INTEGER NULL;");
     assert_some!();
     exec!(glue1 "COMMIT;");
@@ -541,7 +540,6 @@ async fn sled_transaction_timeout_store() {
     );
 }
 
-#[cfg(feature = "alter-table")]
 #[tokio::test]
 async fn sled_transaction_timeout_alter() {
     let path = &format!("{}/transaction_timeout_alter", PATH_PREFIX);
@@ -728,7 +726,6 @@ async fn sled_transaction_timeout_index() {
     );
 }
 
-#[cfg(feature = "metadata")]
 #[test]
 fn sled_transaction_metadata() {
     macro_rules! test_tables {

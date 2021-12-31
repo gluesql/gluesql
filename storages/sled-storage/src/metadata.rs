@@ -1,5 +1,3 @@
-#![cfg(feature = "metadata")]
-
 use {
     super::{err_into, lock, SledStorage, Snapshot, State},
     async_trait::async_trait,

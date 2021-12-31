@@ -18,20 +18,24 @@ keywords = [
 
 
 [dependencies]
-gluesql-core = { version = "0.9", path = "../../core" }
+gluesql-core = { version = "0.9", path = "../../core", features = [
+	"sorter",
+	"alter-table",
+	"index",
+	"transaction",
+	"metadata",
+] }
 
 async-trait = "0.1"
 
 [dev-dependencies]
-gluesql-test-suite = { path = "../../test-suite" }
+gluesql-test-suite = { path = "../../test-suite", features = [
+	"sorter",
+	"alter-table",
+	"index",
+	"transaction",
+	"metadata",
+] }
 
 tokio = { version = "1", features = ["rt", "macros"] }
 futures = "0.3"
-
-[features]
-default = ["alter-table", "index", "transaction", "metadata"]
-
-alter-table = ["gluesql-core/alter-table", "gluesql-test-suite/alter-table"]
-index = ["gluesql-core/index", "gluesql-test-suite/index"]
-transaction = ["gluesql-core/transaction", "gluesql-test-suite/transaction"]
-metadata = ["gluesql-core/metadata", "gluesql-test-suite/metadata"]

@@ -1,5 +1,3 @@
-#![cfg(feature = "alter-table")]
-
 use {
     super::{
         error::err_into,

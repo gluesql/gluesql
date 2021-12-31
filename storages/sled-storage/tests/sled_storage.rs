@@ -1,5 +1,4 @@
 use {
-    cfg_if::cfg_if,
     gluesql_test_suite::*,
     sled::IVec,
     sled_storage::SledStorage,
@@ -43,17 +42,9 @@ impl Tester<IVec, SledStorage> for SledTester {
 generate_store_tests!(tokio::test, SledTester);
 generate_index_tests!(tokio::test, SledTester);
 generate_transaction_tests!(tokio::test, SledTester);
-
-cfg_if! {
-    if #[cfg(feature = "alter-table")] {
-        generate_alter_table_tests!(tokio::test, SledTester);
-        generate_alter_table_index_tests!(tokio::test, SledTester);
-        generate_transaction_alter_table_tests!(tokio::test, SledTester);
-        generate_transaction_index_tests!(tokio::test, SledTester);
-    }
-}
-
+generate_alter_table_tests!(tokio::test, SledTester);
+generate_alter_table_index_tests!(tokio::test, SledTester);
+generate_transaction_alter_table_tests!(tokio::test, SledTester);
+generate_transaction_index_tests!(tokio::test, SledTester);
 generate_metadata_tests!(tokio::test, SledTester);
-
-#[cfg(all(feature = "metadata"))]
 generate_transaction_metadata_tests!(tokio::test, SledTester);

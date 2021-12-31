@@ -1,16 +1,15 @@
 use {
-    gluesql_core::{result::Error, store::IndexError},
+    gluesql_core::{
+        result::Error,
+        store::{AlterTableError, IndexError},
+    },
     sled::transaction::TransactionError as SledTransactionError,
     std::{str, time},
     thiserror::Error as ThisError,
 };
 
-#[cfg(feature = "alter-table")]
-use gluesql_core::store::AlterTableError;
-
 #[derive(ThisError, Debug)]
 pub enum StorageError {
-    #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
     #[error(transparent)]
@@ -35,8 +34,6 @@ impl From<StorageError> for Error {
             Bincode(e) => Error::Storage(e),
             Str(e) => Error::Storage(Box::new(e)),
             SystemTime(e) => Error::Storage(Box::new(e)),
-
-            #[cfg(feature = "alter-table")]
             AlterTable(e) => e.into(),
             Index(e) => e.into(),
         }

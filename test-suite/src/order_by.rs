@@ -155,8 +155,8 @@ CREATE TABLE Test (
 #[cfg(not(feature = "sorter"))]
 test_case!(order_by, async move {
     use {
-        ast::{Expr, OrderByExpr},
-        executor::SelectError,
+        gluesql_core::ast::{Expr, OrderByExpr},
+        gluesql_core::executor::SelectError,
     };
 
     run!("CREATE TABLE Test (id INTEGER);");

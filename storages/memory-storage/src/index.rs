@@ -1,5 +1,3 @@
-#![cfg(feature = "index")]
-
 use {
     super::{Key, MemoryStorage},
     async_trait::async_trait,

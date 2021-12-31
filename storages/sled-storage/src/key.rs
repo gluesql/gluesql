@@ -34,7 +34,6 @@ pub fn temp_data(txid: u64, data_key: &IVec) -> IVec {
     IVec::from(key)
 }
 
-#[cfg(feature = "alter-table")]
 pub fn temp_data_str(txid: u64, data_key: &str) -> IVec {
     let key = prefix!(txid, TEMP_DATA)
         .chain(data_key.as_bytes().iter().copied())
