@@ -1,8 +1,8 @@
-#![cfg(feature = "sled-storage")]
-
 use {
     cfg_if::cfg_if,
-    gluesql::{prelude::SledStorage, sled::IVec, tests::*, *},
+    gluesql_test_suite::*,
+    sled::IVec,
+    sled_storage::SledStorage,
     std::{cell::RefCell, rc::Rc},
 };
 
@@ -53,8 +53,7 @@ cfg_if! {
     }
 }
 
-#[cfg(feature = "metadata")]
 generate_metadata_tests!(tokio::test, SledTester);
 
-#[cfg(all(feature = "transaction", feature = "metadata"))]
+#[cfg(all(feature = "metadata"))]
 generate_transaction_metadata_tests!(tokio::test, SledTester);

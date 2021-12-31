@@ -1,12 +1,12 @@
 use {
-    crate::{result::Error, store::IndexError},
+    gluesql_core::{result::Error, store::IndexError},
     sled::transaction::TransactionError as SledTransactionError,
     std::{str, time},
     thiserror::Error as ThisError,
 };
 
 #[cfg(feature = "alter-table")]
-use crate::store::AlterTableError;
+use gluesql_core::store::AlterTableError;
 
 #[derive(ThisError, Debug)]
 pub enum StorageError {

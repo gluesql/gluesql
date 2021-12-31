@@ -4,7 +4,7 @@ mod metadata;
 mod transaction;
 
 use {
-    crate::{
+    gluesql_core::{
         data::{Row, Schema},
         result::{MutResult, Result},
         store::{GStore, GStoreMut, RowIter, Store, StoreMut},

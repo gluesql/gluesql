@@ -4,15 +4,15 @@ use {
         index_sync::{build_index_key, build_index_key_prefix},
         lock, SledStorage, Snapshot, State,
     },
-    crate::{
+    async_trait::async_trait,
+    gluesql_core::{
         ast::IndexOperator,
         data::Row,
         prelude::Value,
         result::{Error, Result},
         store::{Index, IndexError, RowIter},
-        utils::Vector,
     },
-    async_trait::async_trait,
+    gluesql_utils::Vector,
     iter_enum::{DoubleEndedIterator, Iterator},
     sled::IVec,
     std::iter::{empty, once},

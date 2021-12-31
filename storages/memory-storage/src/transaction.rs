@@ -2,11 +2,11 @@
 
 use {
     super::MemoryStorage,
-    crate::{
+    async_trait::async_trait,
+    gluesql_core::{
         result::{Error, MutResult},
         store::Transaction,
     },
-    async_trait::async_trait,
 };
 
 #[async_trait(?Send)]

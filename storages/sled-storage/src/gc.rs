@@ -4,7 +4,7 @@ use {
         lock::{get_txdata_key, Lock, TxData},
         SledStorage, Snapshot,
     },
-    crate::{
+    gluesql_core::{
         data::{Row, Schema},
         result::Result,
     },

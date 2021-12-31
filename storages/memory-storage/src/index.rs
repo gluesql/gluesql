@@ -2,13 +2,13 @@
 
 use {
     super::{Key, MemoryStorage},
-    crate::{
+    async_trait::async_trait,
+    gluesql_core::{
         ast::{IndexOperator, OrderByExpr},
         data::Value,
         result::{Error, MutResult, Result},
         store::{Index, IndexMut, RowIter},
     },
-    async_trait::async_trait,
 };
 
 #[async_trait(?Send)]

@@ -1,5 +1,3 @@
-#![cfg(feature = "sled-storage")]
-
 //! # SledStorage transaction tests
 //!
 //! REPEATABLE READ or SNAPSHOT ISOLATION is a transaction level which SledStorage provides.
@@ -7,15 +5,15 @@
 //! scenarios, but not PHANTOM READ safe.
 
 use {
-    gluesql::{
+    gluesql_core::{
         executor::FetchError,
         prelude::{Value::*, *},
         result::Error,
-        storages::sled_storage,
         store::StoreMut,
-        tests::test_indexes,
         *,
     },
+    gluesql_test_suite::*,
+    sled_storage::{self, SledStorage},
     std::{
         fs,
         time::{Duration, SystemTime, UNIX_EPOCH},

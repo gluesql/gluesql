@@ -4,3 +4,29 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+gluesql-core = { version = "0.9", path = "../../core", features = ["index", "transaction"] }
+gluesql-utils = { path = "../../utils" }
+
+async-trait = "0.1"
+iter-enum = "1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+bincode = "1"
+sled = "0.34"
+
+[dev-dependencies]
+gluesql-test-suite = { path = "../../test-suite", features = ["index", "transaction"] }
+
+criterion = "0.3"
+tokio = { version = "1", features = ["rt", "macros"] }
+cfg-if = "1"
+
+[features]
+default = ["alter-table", "metadata"]
+
+alter-table = ["gluesql-core/alter-table", "gluesql-test-suite/alter-table"]
+metadata = ["gluesql-core/metadata", "gluesql-test-suite/metadata"]
+
+[[bench]]
+name = "sled_benchmark"
+harness = false

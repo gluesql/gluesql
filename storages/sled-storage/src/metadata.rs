@@ -2,12 +2,12 @@
 
 use {
     super::{err_into, lock, SledStorage, Snapshot, State},
-    crate::{
+    async_trait::async_trait,
+    gluesql_core::{
         data::Schema,
         result::{Error, Result},
         store::Metadata,
     },
-    async_trait::async_trait,
     std::str,
 };
 

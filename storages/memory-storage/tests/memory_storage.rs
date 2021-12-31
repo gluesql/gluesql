@@ -1,7 +1,6 @@
-#![cfg(feature = "memory-storage")]
-
 use {
-    gluesql::{prelude::MemoryStorage, storages::memory_storage::Key, tests::*, *},
+    gluesql_test_suite::*,
+    memory_storage::{Key, MemoryStorage},
     std::{cell::RefCell, rc::Rc},
 };
 
@@ -48,7 +47,7 @@ macro_rules! test {
 #[test]
 fn memory_storage_index() {
     use futures::executor::block_on;
-    use gluesql::{
+    use gluesql_core::{
         prelude::Glue,
         result::{Error, Result},
         store::{Index, Store},
@@ -88,7 +87,7 @@ fn memory_storage_index() {
 #[cfg(feature = "transaction")]
 #[test]
 fn memory_storage_transaction() {
-    use gluesql::{prelude::Glue, result::Error};
+    use gluesql_core::{prelude::Glue, result::Error};
 
     let storage = MemoryStorage::default();
     let mut glue = Glue::new(storage);

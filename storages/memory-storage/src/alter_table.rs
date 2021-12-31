@@ -2,15 +2,14 @@
 
 use {
     super::MemoryStorage,
-    crate::{
+    async_trait::async_trait,
+    gluesql_core::{
         ast::ColumnDef,
         data::{schema::ColumnDefExt, Value},
-        result::Result,
-        result::{MutResult, TrySelf},
+        result::{MutResult, Result, TrySelf},
         store::AlterTable,
         store::AlterTableError,
     },
-    async_trait::async_trait,
 };
 
 impl MemoryStorage {
@@ -59,7 +58,7 @@ impl MemoryStorage {
         let default = column_def.get_default();
         let value = match (default, nullable) {
             (Some(expr), _) => {
-                let evaluated = crate::executor::evaluate_stateless(None, expr)?;
+                let evaluated = gluesql_core::executor::evaluate_stateless(None, expr)?;
 
                 evaluated.try_into_value(data_type, nullable)?
             }

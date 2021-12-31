@@ -4,3 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+gluesql-core = { version = "0.9", path = "../../core" }
+
+async-trait = "0.1"
+
+[dev-dependencies]
+gluesql-test-suite = { path = "../../test-suite" }
+
+tokio = { version = "1", features = ["rt", "macros"] }
+futures = "0.3"
+
+[features]
+default = ["alter-table", "index", "transaction", "metadata"]
+
+alter-table = ["gluesql-core/alter-table", "gluesql-test-suite/alter-table"]
+index = ["gluesql-core/index", "gluesql-test-suite/index"]
+transaction = ["gluesql-core/transaction", "gluesql-test-suite/transaction"]
+metadata = ["gluesql-core/metadata", "gluesql-test-suite/metadata"]

@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use gluesql::prelude::{Glue, SledStorage};
+use gluesql_core::prelude::Glue;
+use sled_storage::SledStorage;
 use std::convert::TryFrom;
 
 const ITEM_SIZE: u32 = 5000;

@@ -8,7 +8,8 @@ use {
         transaction::TxPayload,
         SledStorage, Snapshot,
     },
-    crate::{
+    async_trait::async_trait,
+    gluesql_core::{
         ast::ColumnDef,
         data::{
             schema::{ColumnDefExt, Schema},
@@ -17,9 +18,8 @@ use {
         executor::evaluate_stateless,
         result::{MutResult, Result, TrySelf},
         store::{AlterTable, AlterTableError},
-        utils::Vector,
     },
-    async_trait::async_trait,
+    gluesql_utils::Vector,
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
 };
