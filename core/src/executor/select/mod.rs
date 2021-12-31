@@ -204,11 +204,11 @@ pub async fn select_with_labels<'a, T: Debug>(
         .map(|(_, columns)| columns)
         .map(Rc::from)
         .collect::<Vec<_>>();
-    let join_columns = Rc::from(join_columns);
 
     let join = Rc::new(Join::new(
         storage,
         joins,
+        join_columns,
         filter_context.as_ref().map(Rc::clone),
     ));
     let aggregate = Aggregator::new(
@@ -235,10 +235,9 @@ pub async fn select_with_labels<'a, T: Debug>(
     let rows = fetch_blended(storage, table, columns)
         .await?
         .then(move |blend_context| {
-            let join_columns = Rc::clone(&join_columns);
             let join = Rc::clone(&join);
 
-            async move { join.apply(blend_context, join_columns).await }
+            async move { join.apply(blend_context).await }
         })
         .try_flatten()
         .try_filter_map(move |blend_context| {
