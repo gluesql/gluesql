@@ -17,7 +17,7 @@ use {
 pub struct Join<'a, T: Debug> {
     storage: &'a dyn GStore<T>,
     join_clauses: &'a [AstJoin],
-    join_columns: Rc<[Rc<[String]>]>,
+    join_columns: Vec<Rc<[String]>>,
     filter_context: Option<Rc<FilterContext<'a>>>,
 }
 
@@ -29,7 +29,7 @@ impl<'a, T: Debug> Join<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         join_clauses: &'a [AstJoin],
-        join_columns: Rc<[Rc<[String]>]>,
+        join_columns: Vec<Rc<[String]>>,
         filter_context: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
         Self {

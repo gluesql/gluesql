@@ -204,7 +204,6 @@ pub async fn select_with_labels<'a, T: Debug>(
         .map(|(_, columns)| columns)
         .map(Rc::from)
         .collect::<Vec<_>>();
-    let join_columns = Rc::from(join_columns);
 
     let join = Rc::new(Join::new(
         storage,
