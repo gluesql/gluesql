@@ -24,7 +24,7 @@ INSERT INTO TimeLog VALUES
     use chrono::{NaiveDate, NaiveTime};
     use gluesql_core::prelude::Value::*;
 
-    let t = |h, m, s, ms| NaiveTime::from_hms_milli(h, m, s, ms);
+    let t = NaiveTime::from_hms_milli;
     let i = |h, m, s, ms| {
         gluesql_core::data::Interval::milliseconds(
             (t(h, m, s, ms) - NaiveTime::from_hms(0, 0, 0)).num_milliseconds(),
