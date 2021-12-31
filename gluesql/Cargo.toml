@@ -7,7 +7,7 @@ description = "GlueSQL - Open source SQL database engine fully written in Rust w
 license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
-readme = "README.md"
+readme = "../README.md"
 keywords = [
 	"sql-database",
 	"sql",
