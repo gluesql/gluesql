@@ -1,6 +1,6 @@
 [package]
 name = "gluesql-test-suite"
-version = "0.1.0"
+version = "0.9.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
