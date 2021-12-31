@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(blend, async move {
-    use {
+    use gluesql_core::{
         executor::{EvaluateError, SelectError},
         prelude::Value::*,
     };

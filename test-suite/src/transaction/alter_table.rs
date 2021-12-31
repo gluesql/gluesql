@@ -1,6 +1,9 @@
 #![cfg(all(feature = "transaction", feature = "alter-table"))]
 
-use {crate::*, prelude::Value::*, store::AlterTableError};
+use {
+    crate::*,
+    gluesql_core::{prelude::Value::*, store::AlterTableError},
+};
 
 test_case!(alter_table_rename_table, async move {
     run!("CREATE TABLE RenameTable (id INTEGER);");

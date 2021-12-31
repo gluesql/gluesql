@@ -1,9 +1,11 @@
 use {
     crate::*,
     bigdecimal::BigDecimal,
-    data::{Literal, LiteralError, ValueError},
-    executor::{EvaluateError, UpdateError},
-    prelude::Value::{self, *},
+    gluesql_core::{
+        data::{Literal, LiteralError, ValueError},
+        executor::{EvaluateError, UpdateError},
+        prelude::Value::{self, *},
+    },
     std::borrow::Cow,
 };
 

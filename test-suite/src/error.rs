@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(error, async move {
-    use {
+    use gluesql_core::{
         data::RowError,
         executor::{EvaluateError, ExecuteError, FetchError},
         translate::TranslateError,

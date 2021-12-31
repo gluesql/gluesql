@@ -1,6 +1,9 @@
 #![cfg(all(feature = "transaction", feature = "index"))]
 
-use {crate::*, ast::IndexOperator::*, prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{ast::IndexOperator::*, prelude::Value::*},
+};
 
 test_case!(index_create, async move {
     run!("CREATE TABLE IdxCreate (id INTEGER);");

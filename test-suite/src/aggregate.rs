@@ -1,5 +1,4 @@
-use crate::*;
-use prelude::Value::*;
+use {crate::*, gluesql_core::prelude::Value::*};
 
 test_case!(aggregate, async move {
     run!(
@@ -70,7 +69,7 @@ test_case!(aggregate, async move {
         test!(Ok(expected), sql);
     }
 
-    use crate::executor::AggregateError;
+    use gluesql_core::executor::AggregateError;
     let error_cases = vec![
         (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
@@ -168,7 +167,7 @@ test_case!(group_by, async move {
         test!(Ok(expected), sql);
     }
 
-    use crate::data::ValueError;
+    use gluesql_core::data::ValueError;
     let error_cases = vec![(
         ValueError::GroupByNotSupported("FLOAT".to_owned()).into(),
         "SELECT * FROM Item GROUP BY ratio;",

@@ -3,9 +3,11 @@ use crate::*;
 test_case!(upper_lower, async move {
     use {
         crate::*,
-        executor::EvaluateError,
-        prelude::{Payload, Value::*},
-        translate::TranslateError,
+        gluesql_core::{
+            executor::EvaluateError,
+            prelude::{Payload, Value::*},
+            translate::TranslateError,
+        },
     };
 
     let test_cases = vec![

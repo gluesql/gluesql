@@ -1,5 +1,4 @@
-use crate::*;
-use prelude::*;
+use {crate::*, gluesql_core::prelude::*};
 
 test_case!(null, async move {
     run!(
@@ -37,7 +36,7 @@ CREATE TABLE NullIdx (
         "CREATE INDEX idx_flag ON NullIdx (flag)"
     );
 
-    use ast::IndexOperator::*;
+    use gluesql_core::ast::IndexOperator::*;
     use Value::*;
 
     macro_rules! date {

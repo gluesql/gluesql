@@ -1,6 +1,9 @@
 #![cfg(feature = "alter-table")]
 
-use crate::{data::Value::*, prelude::Payload, store::AlterTableError, *};
+use {
+    crate::*,
+    gluesql_core::{data::Value::*, prelude::Payload, store::AlterTableError},
+};
 
 test_case!(alter_table_rename, async move {
     let test_cases = vec![
@@ -33,7 +36,7 @@ test_case!(alter_table_rename, async move {
 });
 
 test_case!(alter_table_add_drop, async move {
-    use crate::{
+    use gluesql_core::{
         ast::*, executor::AlterError, executor::EvaluateError, store::*, translate::TranslateError,
     };
     let test_cases = vec![

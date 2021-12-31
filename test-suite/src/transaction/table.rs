@@ -1,4 +1,7 @@
-use {crate::*, executor::FetchError, prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{executor::FetchError, prelude::Value::*},
+};
 
 test_case!(create_drop_table, async move {
     // CREATE && ROLLBACK

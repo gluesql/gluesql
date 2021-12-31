@@ -1,4 +1,4 @@
-use {crate::*, prelude::*};
+use {crate::*, gluesql_core::prelude::*};
 
 test_case!(join, async move {
     let create_sqls: [&str; 2] = [

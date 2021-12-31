@@ -1,9 +1,11 @@
 #![cfg(feature = "metadata")]
 
-use crate::{
-    prelude::{Payload::ShowVariable, PayloadVariable},
-    translate::TranslateError,
-    *,
+use {
+    crate::*,
+    gluesql_core::{
+        prelude::{Payload::ShowVariable, PayloadVariable},
+        translate::TranslateError,
+    },
 };
 
 test_case!(metadata, async move {

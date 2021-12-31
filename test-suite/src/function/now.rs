@@ -1,6 +1,6 @@
-use crate::{
-    prelude::{Payload, Value::*},
-    *,
+use {
+    crate::*,
+    gluesql_core::prelude::{Payload, Value::*},
 };
 
 test_case!(now, async move {

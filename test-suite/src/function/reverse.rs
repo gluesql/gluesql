@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(reverse, async move {
-    use {
+    use gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value},
     };

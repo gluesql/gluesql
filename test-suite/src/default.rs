@@ -3,8 +3,10 @@ use crate::*;
 test_case!(default, async move {
     use {
         chrono::NaiveDate,
-        executor::EvaluateError,
-        prelude::{Payload, Value::*},
+        gluesql_core::{
+            executor::EvaluateError,
+            prelude::{Payload, Value::*},
+        },
     };
 
     let test_cases = vec![

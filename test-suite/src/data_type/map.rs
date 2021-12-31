@@ -1,8 +1,10 @@
 use {
     crate::*,
-    data::ValueError,
-    executor::EvaluateError,
-    prelude::Value::{self, *},
+    gluesql_core::{
+        data::ValueError,
+        executor::EvaluateError,
+        prelude::Value::{self, *},
+    },
 };
 
 test_case!(map, async move {

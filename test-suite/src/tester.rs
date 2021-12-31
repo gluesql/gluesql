@@ -1,13 +1,14 @@
 use {
-    crate::*,
-    ast::*,
     async_trait::async_trait,
-    parse_sql::parse_expr,
-    prelude::*,
-    result::Result,
+    gluesql_core::{
+        ast::*,
+        parse_sql::parse_expr,
+        prelude::*,
+        result::Result,
+        store::{GStore, GStoreMut},
+        translate::translate_expr,
+    },
     std::{cell::RefCell, fmt::Debug, rc::Rc},
-    store::{GStore, GStoreMut},
-    translate::translate_expr,
 };
 
 pub fn expr(sql: &str) -> Expr {
@@ -241,10 +242,10 @@ pub trait Tester<T: Debug, U: GStore<T> + GStoreMut<T>> {
 #[macro_export]
 macro_rules! test_case {
     ($name: ident, $content: expr) => {
-        pub async fn $name<T, U>(mut tester: impl tests::Tester<T, U>)
+        pub async fn $name<T, U>(mut tester: impl crate::Tester<T, U>)
         where
             T: std::fmt::Debug,
-            U: store::GStore<T> + store::GStoreMut<T>,
+            U: gluesql_core::store::GStore<T> + gluesql_core::store::GStoreMut<T>,
         {
             use std::rc::Rc;
 
@@ -266,24 +267,26 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! expr {
                 ($sql: literal) => {
-                    tests::expr($sql)
+                    crate::expr($sql)
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! run {
                 ($sql: expr) => {
-                    tests::run(Rc::clone(&cell), $sql, None).await.unwrap()
+                    crate::run(Rc::clone(&cell), $sql, None).await.unwrap()
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! count {
                 ($count: expr, $sql: expr) => {
-                    match tests::run(Rc::clone(&cell), $sql, None).await.unwrap() {
-                        prelude::Payload::Select { rows, .. } => assert_eq!($count, rows.len()),
-                        prelude::Payload::Delete(num) => assert_eq!($count, num),
-                        prelude::Payload::Update(num) => assert_eq!($count, num),
+                    match crate::run(Rc::clone(&cell), $sql, None).await.unwrap() {
+                        gluesql_core::prelude::Payload::Select { rows, .. } => {
+                            assert_eq!($count, rows.len())
+                        }
+                        gluesql_core::prelude::Payload::Delete(num) => assert_eq!($count, num),
+                        gluesql_core::prelude::Payload::Update(num) => assert_eq!($count, num),
                         _ => panic!("compare is only for Select, Delete and Update"),
                     };
                 };
@@ -292,27 +295,27 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! type_match {
                 ($expected: expr, $sql: expr) => {
-                    let found = tests::run(Rc::clone(&cell), $sql, None).await;
+                    let found = crate::run(Rc::clone(&cell), $sql, None).await;
 
-                    tests::type_match($expected, found);
+                    crate::type_match($expected, found);
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! test {
                 ($expected: expr, $sql: expr) => {
-                    let found = tests::run(Rc::clone(&cell), $sql, None).await;
+                    let found = crate::run(Rc::clone(&cell), $sql, None).await;
 
-                    tests::test($expected, found);
+                    crate::test($expected, found);
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! test_idx {
                 ($expected: expr, $indexes: expr, $sql: expr) => {
-                    let found = tests::run(Rc::clone(&cell), $sql, Some($indexes)).await;
+                    let found = crate::run(Rc::clone(&cell), $sql, Some($indexes)).await;
 
-                    tests::test($expected, found);
+                    crate::test($expected, found);
                 };
             }
 

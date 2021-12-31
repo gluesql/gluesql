@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(concat, async move {
-    use prelude::Value::*;
+    use gluesql_core::prelude::Value::*;
 
     run!(
         "

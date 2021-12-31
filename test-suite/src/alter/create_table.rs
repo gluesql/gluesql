@@ -1,10 +1,10 @@
-use crate::{
-    data::value::Value::{Null, Str, I64},
-    *,
+use {
+    crate::*,
+    gluesql_core::data::value::Value::{Null, Str, I64},
 };
 
 test_case!(create_table, async move {
-    use {
+    use gluesql_core::{
         executor::{AlterError, EvaluateError},
         prelude::Payload,
         translate::TranslateError,
@@ -76,7 +76,7 @@ test_case!(create_table, async move {
         )"#,
             Err(AlterError::UnsupportedDataTypeForUniqueColumn(
                 "ratio".to_owned(),
-                ast::DataType::Float,
+                gluesql_core::ast::DataType::Float,
             )
             .into()),
         ),

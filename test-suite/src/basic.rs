@@ -1,5 +1,4 @@
-use crate::*;
-use prelude::Value;
+use {crate::*, gluesql_core::prelude::Value};
 
 test_case!(basic, async move {
     run!(

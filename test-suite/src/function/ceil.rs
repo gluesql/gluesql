@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(ceil, async move {
-    use {
+    use gluesql_core::{
         executor::EvaluateError, executor::Payload, prelude::Value::*, translate::TranslateError,
     };
     let test_cases = vec![

@@ -1,4 +1,7 @@
-use {crate::*, data::ValueError, prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{data::ValueError, prelude::Value::*},
+};
 
 test_case!(nullable, async move {
     run!(

@@ -1,4 +1,4 @@
-use {crate::*, prelude::*};
+use {crate::*, gluesql_core::prelude::*};
 
 test_case!(synthesize, async move {
     let create_sql = "

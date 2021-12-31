@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(timestamp, async move {
-    use data::ValueError;
+    use gluesql_core::data::ValueError;
     run!(
         r#"
 CREATE TABLE TimestampLog (
@@ -26,7 +26,7 @@ INSERT INTO TimestampLog VALUES
         };
     }
 
-    use prelude::Value::*;
+    use gluesql_core::prelude::Value::*;
 
     test!(
         Ok(select!(
@@ -91,9 +91,9 @@ INSERT INTO TimestampLog VALUES
         Ok(select!(
             id  | timestamp_sub
             I64 | Interval;
-            1     data::Interval::seconds(-22_682_209);
-            2     data::Interval::seconds(1_001_908_740);
-            3     data::Interval::seconds(0)
+            1     gluesql_core::data::Interval::seconds(-22_682_209);
+            2     gluesql_core::data::Interval::seconds(1_001_908_740);
+            3     gluesql_core::data::Interval::seconds(0)
         )),
         "SELECT id, t1 - t2 AS timestamp_sub FROM TimestampLog;"
     );

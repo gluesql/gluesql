@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(generate_uuid, async move {
-    use {ast::DataType, prelude::Payload, translate::TranslateError};
+    use gluesql_core::{ast::DataType, prelude::Payload, translate::TranslateError};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id UUID)", Ok(Payload::Create)),

@@ -1,4 +1,4 @@
-use {crate::*, translate::TranslateError};
+use {crate::*, gluesql_core::translate::TranslateError};
 
 #[cfg(feature = "sorter")]
 test_case!(order_by, async move {
@@ -22,7 +22,7 @@ CREATE TABLE Test (
     "#
     );
 
-    use prelude::Value::*;
+    use gluesql_core::prelude::Value::*;
 
     test!(
         Ok(select!(

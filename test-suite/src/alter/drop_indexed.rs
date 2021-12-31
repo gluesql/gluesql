@@ -2,9 +2,11 @@
 
 use {
     crate::*,
-    ast::IndexOperator::*,
-    executor::{AlterError, FetchError},
-    prelude::Value::*,
+    gluesql_core::{
+        ast::IndexOperator::*,
+        executor::{AlterError, FetchError},
+        prelude::Value::*,
+    },
 };
 
 test_case!(drop_indexed_table, async move {

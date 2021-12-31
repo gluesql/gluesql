@@ -1,5 +1,4 @@
-use crate::*;
-use prelude::*;
+use {crate::*, gluesql_core::prelude::*};
 
 test_case!(order_by, async move {
     run!(

@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(time, async move {
-    use data::{IntervalError, ValueError};
+    use gluesql_core::data::{IntervalError, ValueError};
 
     run!(
         r#"
@@ -22,11 +22,11 @@ INSERT INTO TimeLog VALUES
     );
 
     use chrono::{NaiveDate, NaiveTime};
-    use prelude::Value::*;
+    use gluesql_core::prelude::Value::*;
 
     let t = |h, m, s, ms| NaiveTime::from_hms_milli(h, m, s, ms);
     let i = |h, m, s, ms| {
-        data::Interval::milliseconds(
+        gluesql_core::data::Interval::milliseconds(
             (t(h, m, s, ms) - NaiveTime::from_hms(0, 0, 0)).num_milliseconds(),
         )
     };
@@ -122,7 +122,7 @@ INSERT INTO TimeLog VALUES
     test!(
         Err(IntervalError::AddYearOrMonthToTime {
             time: t(13, 31, 1, 123).to_string(),
-            interval: data::Interval::years(1).into(),
+            interval: gluesql_core::data::Interval::years(1).into(),
         }
         .into()),
         r#"SELECT * FROM TimeLog WHERE time1 > time2 + INTERVAL "1" YEAR"#
@@ -131,7 +131,7 @@ INSERT INTO TimeLog VALUES
     test!(
         Err(IntervalError::SubtractYearOrMonthToTime {
             time: t(13, 31, 1, 123).to_string(),
-            interval: data::Interval::months(14).into(),
+            interval: gluesql_core::data::Interval::months(14).into(),
         }
         .into()),
         r#"SELECT * FROM TimeLog WHERE time1 > time2 - INTERVAL "1-2" YEAR TO MONTH"#

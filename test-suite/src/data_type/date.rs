@@ -19,7 +19,7 @@ INSERT INTO DateLog VALUES
 "#
     );
 
-    use prelude::Value::*;
+    use gluesql_core::prelude::Value::*;
 
     macro_rules! date {
         ($date: expr) => {
@@ -86,7 +86,7 @@ INSERT INTO DateLog VALUES
         r#"SELECT * FROM DateLog WHERE "1999-01-03" < DATE "2000-01-01";"#
     );
 
-    let days = |n| data::Interval::days(n);
+    let days = |n| gluesql_core::data::Interval::days(n);
     let timestamp = |y, m, d| chrono::NaiveDate::from_ymd(y, m, d).and_hms(0, 0, 0);
 
     test!(
@@ -106,7 +106,7 @@ INSERT INTO DateLog VALUES
     );
 
     test!(
-        Err(data::ValueError::FailedToParseDate("12345-678".to_owned()).into()),
+        Err(gluesql_core::data::ValueError::FailedToParseDate("12345-678".to_owned()).into()),
         r#"INSERT INTO DateLog VALUES (1, "12345-678", "2021-05-01")"#
     );
 });

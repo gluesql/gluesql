@@ -1,7 +1,6 @@
 #![cfg(feature = "transaction")]
 
-use crate::*;
-use prelude::*;
+use {crate::*, gluesql_core::prelude::*};
 
 test_case!(basic, async move {
     use Value::*;

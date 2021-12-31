@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(unique, async move {
-    use {executor::ValidateError, prelude::Value};
+    use gluesql_core::{executor::ValidateError, prelude::Value};
 
     run!(
         r#"

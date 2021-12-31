@@ -1,7 +1,9 @@
 use {
     crate::*,
-    executor::EvaluateError,
-    prelude::{Payload, Value::*},
+    gluesql_core::{
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+    },
 };
 
 test_case!(sqrt, async move {
@@ -54,7 +56,7 @@ test_case!(sqrt, async move {
 });
 
 test_case!(power, async move {
-    use prelude::Value::{Null, F64};
+    use gluesql_core::prelude::Value::{Null, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),

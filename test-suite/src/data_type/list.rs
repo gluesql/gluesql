@@ -1,7 +1,9 @@
 use {
     crate::*,
-    data::ValueError,
-    prelude::Value::{self, *},
+    gluesql_core::{
+        data::ValueError,
+        prelude::Value::{self, *},
+    },
 };
 
 test_case!(list, async move {

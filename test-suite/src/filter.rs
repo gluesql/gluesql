@@ -3,7 +3,7 @@ use crate::*;
 test_case!(filter, async move {
     use {
         bigdecimal::BigDecimal,
-        data::*,
+        gluesql_core::data::*,
         std::{borrow::Cow, str::FromStr},
     };
 

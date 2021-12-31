@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(basic, async move {
-    use {
+    use gluesql_core::{
         ast::IndexOperator::*,
         executor::AlterError,
         prelude::{Payload, Value::*},

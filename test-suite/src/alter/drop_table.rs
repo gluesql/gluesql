@@ -1,7 +1,9 @@
 use {
     crate::*,
-    executor::{AlterError, FetchError, Payload},
-    translate::TranslateError,
+    gluesql_core::{
+        executor::{AlterError, FetchError, Payload},
+        translate::TranslateError,
+    },
 };
 
 test_case!(drop_table, async move {
@@ -20,7 +22,7 @@ CREATE TABLE DropTable (
         run!(sql);
     }
 
-    use prelude::Value::*;
+    use gluesql_core::prelude::Value::*;
 
     let sqls = vec![
         (

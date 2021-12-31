@@ -1,11 +1,13 @@
 use {
     crate::*,
-    executor::EvaluateError,
-    prelude::{
-        Payload,
-        Value::{self, *},
+    gluesql_core::{
+        executor::EvaluateError,
+        prelude::{
+            Payload,
+            Value::{self, *},
+        },
+        translate::TranslateError,
     },
-    translate::TranslateError,
 };
 
 test_case!(sin, async move {
@@ -65,7 +67,7 @@ test_case!(sin, async move {
 });
 
 test_case!(cos, async move {
-    use prelude::Value::{self, F64};
+    use gluesql_core::prelude::Value::{self, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -123,7 +125,7 @@ test_case!(cos, async move {
 });
 
 test_case!(tan, async move {
-    use prelude::Value::{self, F64};
+    use gluesql_core::prelude::Value::{self, F64};
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -181,8 +183,8 @@ test_case!(tan, async move {
 });
 
 test_case!(asin, async move {
-    use prelude::Value::Null;
-    use prelude::Value::F64;
+    use gluesql_core::prelude::Value::Null;
+    use gluesql_core::prelude::Value::F64;
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -284,8 +286,8 @@ test_case!(acos, async move {
 });
 
 test_case!(atan, async move {
-    use prelude::Value::Null;
-    use prelude::Value::F64;
+    use gluesql_core::prelude::Value::Null;
+    use gluesql_core::prelude::Value::F64;
 
     let test_cases = vec![
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),

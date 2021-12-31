@@ -3,8 +3,10 @@ use crate::*;
 test_case!(trim, async move {
     use {
         crate::*,
-        executor::EvaluateError,
-        prelude::{Payload, Value},
+        gluesql_core::{
+            executor::EvaluateError,
+            prelude::{Payload, Value},
+        },
     };
 
     let test_cases = vec![

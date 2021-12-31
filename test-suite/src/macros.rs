@@ -11,31 +11,34 @@ macro_rules! idx {
         vec![]
     };
     ($name: path, $op: path, $sql_expr: literal) => {
-        vec![ast::IndexItem {
+        vec![gluesql_core::ast::IndexItem {
             name: stringify!($name).to_owned(),
             asc: None,
             cmp_expr: Some((
                 $op,
-                translate::translate_expr(&parse_sql::parse_expr($sql_expr).unwrap()).unwrap(),
+                gluesql_core::translate::translate_expr(
+                    &gluesql_core::parse_sql::parse_expr($sql_expr).unwrap(),
+                )
+                .unwrap(),
             )),
         }]
     };
     ($name: path) => {
-        vec![ast::IndexItem {
+        vec![gluesql_core::ast::IndexItem {
             name: stringify!($name).to_owned(),
             asc: None,
             cmp_expr: None,
         }]
     };
     ($name: path, ASC) => {
-        vec![ast::IndexItem {
+        vec![gluesql_core::ast::IndexItem {
             name: stringify!($name).to_owned(),
             asc: Some(true),
             cmp_expr: None,
         }]
     };
     ($name: path, DESC) => {
-        vec![ast::IndexItem {
+        vec![gluesql_core::ast::IndexItem {
             name: stringify!($name).to_owned(),
             asc: Some(false),
             cmp_expr: None,
@@ -50,19 +53,19 @@ macro_rules! select {
             row!($( $t )+ ; $( $v )+),
         ];
 
-        executor::Payload::Select {
+        gluesql_core::executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
         }
     });
     ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
-        executor::Payload::Select {
+        gluesql_core::executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![row!($( $t )+ ; $( $v )+ )],
         }
     );
     ( $( $c: tt )|+ $( ; )?) => (
-        executor::Payload::Select {
+        gluesql_core::executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![],
         }
@@ -86,7 +89,7 @@ macro_rules! concat_with {
 #[macro_export]
 macro_rules! select_with_null {
     ( $( $c: tt )|* ; $( $v: expr )* ) => (
-        executor::Payload::Select {
+        gluesql_core::executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![vec![$( $v ),*]],
         }
@@ -96,7 +99,7 @@ macro_rules! select_with_null {
             vec![$( $v ),*]
         ];
 
-        executor::Payload::Select {
+        gluesql_core::executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: concat_with_null!(rows ; $( $( $v2 )* );*),
         }

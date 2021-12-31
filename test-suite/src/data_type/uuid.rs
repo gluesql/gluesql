@@ -1,10 +1,12 @@
 use {
     crate::*,
-    ast::DataType,
     bigdecimal::BigDecimal,
-    data::{Literal, ValueError},
-    executor::Payload,
-    prelude::Value::*,
+    gluesql_core::{
+        ast::DataType,
+        data::{Literal, ValueError},
+        executor::Payload,
+        prelude::Value::*,
+    },
     std::borrow::Cow,
     uuid::Uuid as UUID,
 };

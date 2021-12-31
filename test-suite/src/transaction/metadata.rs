@@ -1,7 +1,6 @@
 #![cfg(all(feature = "transaction", feature = "metadata"))]
 
-use crate::*;
-use prelude::*;
+use {crate::*, gluesql_core::prelude::*};
 
 test_case!(metadata, async move {
     let tables = |v: Vec<&str>| {
