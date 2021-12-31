@@ -29,6 +29,10 @@ impl<K: Hash + Eq, V> IndexMap<K, V> {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<K: Hash + Eq, V> Default for IndexMap<K, V> {
