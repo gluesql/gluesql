@@ -17,8 +17,9 @@ Developers can choose to use GlueSQL to build their own SQL database, or as an e
 
 You can use GlueSQL as an embedded SQL database.  
 GlueSQL provides two reference storage options.
-* `SledStorage` - Persistent storage engine based on [`sled`](https://github.com/spacejam/sled "sled")
-* `MemoryStorage` - Non-persistent storage engine based on `BTreeMap`
+
+- `SledStorage` - Persistent storage engine based on [`sled`](https://github.com/spacejam/sled "sled")
+- `MemoryStorage` - Non-persistent storage engine based on `BTreeMap`
 
 ### Installation
 
@@ -65,7 +66,7 @@ default-features = false
 features = ["sorter", "alter-table", "index", "transaction"]
 ```
 
-#### Four features below are also optional.
+#### Four features below are also optional
 
 - `sorter` - ORDER BY support for non-indexed expressions.
 - `alter-table` - ALTER TABLE query support
@@ -75,7 +76,8 @@ features = ["sorter", "alter-table", "index", "transaction"]
 ### Usage
 
 #### Two mandatory store traits to implement
-* [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/src/store/mod.rs)
+
+- [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/mod.rs)
 
 ```rust
 pub trait Store<T: Debug> {
@@ -93,7 +95,8 @@ pub trait StoreMut<T: Debug> where Self: Sized {
 ```
 
 #### Optional store traits
-* [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/src/store/index.rs) and [`Transaction`](https://github.com/gluesql/gluesql/blob/main/src/store/transaction.rs)
+
+- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/core/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/index.rs) and [`Transaction`](https://github.com/gluesql/gluesql/blob/main/core/src/store/transaction.rs)
 
 ```rust
 pub trait AlterTable where Self: Sized {
@@ -123,7 +126,7 @@ pub trait Transaction where Self: Sized {
 
 ### [GlueSQL-js](https://github.com/gluesql/gluesql-js)
 
-https://github.com/gluesql/gluesql-js  
+<https://github.com/gluesql/gluesql-js>
 Use SQL in web browsers!
 GlueSQL-js provides 3 storage options,
 
@@ -133,7 +136,7 @@ GlueSQL-js provides 3 storage options,
 
 ### [GlueSQL Sheets](https://sheets.gluesql.com)
 
-https://sheets.gluesql.com  
+<https://sheets.gluesql.com>
 Turn **Google Sheets** into a SQL database!  
 It uses Google Sheets as a storage.  
 Data is stored and updated from Google Sheets.
@@ -156,7 +159,7 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 - Transaction queries: `BEGIN`, `ROLLBACK` and `COMMIT`
 - Nested select, join, aggregations ...
 
-You can see tests for the currently supported queries in [src/tests/\*](https://github.com/gluesql/gluesql/tree/main/src/tests).
+You can see tests for the currently supported queries in [test-suite/src/\*](https://github.com/gluesql/gluesql/tree/main/test-suite/src).
 
 ## Contribution
 
