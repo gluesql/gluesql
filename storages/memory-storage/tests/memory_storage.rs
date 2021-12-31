@@ -1,7 +1,7 @@
 use {
+    gluesql_test_suite::*,
     memory_storage::{Key, MemoryStorage},
     std::{cell::RefCell, rc::Rc},
-    test_generator::*,
 };
 
 struct MemoryTester {

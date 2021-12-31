@@ -15,9 +15,12 @@ bincode = "1"
 sled = "0.34"
 
 [dev-dependencies]
+gluesql-test-suite = { path = "../../test-suite" }
+
 criterion = "0.3"
+tokio = "1"
 
 [features]
 default = ["alter-table"]
 
-alter-table = ["gluesql-core/alter-table"]
+alter-table = ["gluesql-core/alter-table", "gluesql-test-suite/alter-table"]

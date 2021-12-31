@@ -8,9 +8,16 @@ gluesql-core = { version = "0.9", path = "../../core" }
 
 async-trait = "0.1"
 
+
+[dev-dependencies]
+gluesql-test-suite = { path = "../../test-suite" }
+
+tokio = "1"
+futures = "0.3"
+
 [features]
 default = ["alter-table", "index", "transaction"]
 
-alter-table = ["gluesql-core/alter-table"]
-index = ["gluesql-core/index"]
-transaction = ["gluesql-core/transaction"]
+alter-table = ["gluesql-core/alter-table", "gluesql-test-suite/alter-table"]
+index = ["gluesql-core/index", "gluesql-test-suite/index"]
+transaction = ["gluesql-core/transaction", "gluesql-test-suite/transaction"]

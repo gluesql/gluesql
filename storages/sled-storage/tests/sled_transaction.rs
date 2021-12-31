@@ -12,12 +12,12 @@ use {
         store::StoreMut,
         *,
     },
+    gluesql_test_suite::{test_indexes, *},
     sled_storage::SledStorage,
     std::{
         fs,
         time::{Duration, SystemTime, UNIX_EPOCH},
     },
-    test_generator::{test_indexes, *},
 };
 
 const PATH_PREFIX: &str = "tmp/gluesql";

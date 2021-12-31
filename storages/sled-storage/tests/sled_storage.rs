@@ -1,10 +1,10 @@
 use {
+    gluesql_test_suite::*,
     sled_storage::{
         sled::{self, IVec},
         SledStorage,
     },
     std::{cell::RefCell, rc::Rc},
-    test_generator::*,
 };
 
 struct SledTester {
