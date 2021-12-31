@@ -1,0 +1,12 @@
+[package]
+name = "gluesql-cli"
+version = "0.9.0"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+edition = "2021"
+
+[dependencies]
+gluesql = { path = "../" }
+clap = { version = "3.0.0-rc.8", features = ["derive"] }
+rustyline = "9.1"
+rustyline-derive = "0.6"
+comfy-table = "5"
