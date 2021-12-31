@@ -6,10 +6,9 @@ mod print;
 use {
     crate::cli::Cli,
     clap::Parser,
-    gluesql::{
-        prelude::{MemoryStorage, SledStorage},
-        store::{GStore, GStoreMut},
-    },
+    gluesql_core::store::{GStore, GStoreMut},
+    memory_storage::MemoryStorage,
+    sled_storage::SledStorage,
     std::{fmt::Debug, path::PathBuf},
 };
 

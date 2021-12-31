@@ -5,7 +5,10 @@ authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 edition = "2021"
 
 [dependencies]
-gluesql-core = { version = "0.9", path = "../core" }
+gluesql-core = { version = "0.9", path = "../core", features = ["alter-table", "metadata"] }
+sled-storage = { path = "../storages/sled-storage" }
+memory-storage = { path = "../storages/memory-storage" }
+
 clap = { version = "3.0.0-rc.8", features = ["derive"] }
 rustyline = "9.1"
 rustyline-derive = "0.6"
