@@ -1,7 +1,9 @@
-#[cfg(feature = "sled-storage")]
 mod sled_multi_threaded {
     use {
-        gluesql::prelude::{Glue, Payload, SledStorage, Value},
+        gluesql::{
+            prelude::{Glue, Payload, Value},
+            sled_storage::SledStorage,
+        },
         std::thread,
     };
 
@@ -62,10 +64,6 @@ mod sled_multi_threaded {
     }
 }
 
-#[cfg(feature = "sled-storage")]
 fn main() {
     sled_multi_threaded::run();
 }
-
-#[cfg(not(feature = "sled-storage"))]
-fn main() {}

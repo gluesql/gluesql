@@ -1,13 +1,9 @@
-#[cfg(feature = "sled-storage")]
 use {
-    gluesql::{
-        prelude::{Glue, SledStorage},
-        sled,
-    },
+    gluesql::{prelude::Glue, sled_storage::SledStorage},
+    sled_storage::sled,
     std::convert::TryFrom,
 };
 
-#[cfg(feature = "sled-storage")]
 fn main() {
     let config = sled::Config::default()
         .path("data/using_config")
@@ -27,6 +23,3 @@ fn main() {
 
     glue.execute(sqls).unwrap();
 }
-
-#[cfg(not(feature = "sled-storage"))]
-fn main() {}
