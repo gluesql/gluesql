@@ -1,0 +1,51 @@
+[package]
+name = "sled-storage"
+version = "0.1.0"
+edition = "2021"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
+readme = "../README.md"
+keywords = [
+	"sql-database",
+	"sql",
+	"functional",
+	"no-mut-in-the-middle",
+	"webassembly",
+]
+
+
+[dependencies]
+gluesql-core = { version = "0.9", path = "../../core", features = [
+	"sorter",
+	"index",
+	"transaction",
+	"alter-table",
+	"metadata",
+] }
+gluesql-utils = { path = "../../utils" }
+
+async-trait = "0.1"
+iter-enum = "1"
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+bincode = "1"
+sled = "0.34"
+
+[dev-dependencies]
+gluesql-test-suite = { path = "../../test-suite", features = [
+	"sorter",
+	"index",
+	"transaction",
+	"alter-table",
+	"metadata",
+] }
+
+criterion = "0.3"
+tokio = { version = "1", features = ["rt", "macros"] }
+
+[[bench]]
+name = "sled_benchmark"
+harness = false

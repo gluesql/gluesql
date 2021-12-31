@@ -2,58 +2,43 @@ name: Rust
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - run: rustup component add clippy rustfmt
-    - name: Clippy
-      run: cargo clippy --no-default-features -- -D warnings
-    - name: Clippy (alter-table)
-      run: cargo clippy --no-default-features --features alter-table -- -D warnings
-    - name: Clippy (index)
-      run: cargo clippy --no-default-features --features index -- -D warnings
-    - name: Clippy (sorter)
-      run: cargo clippy --no-default-features --features sorter -- -D warnings
-    - name: Clippy (alter-table & index)
-      run: cargo clippy --no-default-features --features "alter-table index" -- -D warnings
-    - name: Clippy (alter-table & transaction)
-      run: cargo clippy --no-default-features --features "alter-table transaction" -- -D warnings
-    - name: Clippy (index & transaction)
-      run: cargo clippy --no-default-features --features "index transaction" -- -D warnings
-    - name: Clippy (alter-table & index & transaction)
-      run: cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
-    - name: Clippy (sled-storage)
-      run: cargo clippy --no-default-features --features sled-storage -- -D warnings
-    - name: Clippy (sled-storage & sorter)
-      run: cargo clippy --no-default-features --features "sled-storage sorter" -- -D warnings
-    - name: Clippy (sled-storage & alter-table)
-      run: cargo clippy --no-default-features --features "sled-storage alter-table" -- -D warnings
-    - name: Clippy (memory-storage)
-      run: cargo clippy --no-default-features --features memory-storage -- -D warnings
-    - name: Clippy (all)
-      run: cargo clippy --all-features --all-targets -- -D warnings
-    - name: Rustfmt
-      run: cargo fmt --all -- --check
-    - name: Build
-      run: cargo build --all-features --verbose
-    - name: Run tests
-      run: cargo test --no-default-features --verbose
-    - name: Run tests with features (sled-storage)
-      run: cargo test --no-default-features --features sled-storage --verbose
-    - name: Run tests with features (sled-storage & sorter)
-      run: cargo test --no-default-features --features "sled-storage sorter" --verbose
-    - name: Run tests with features (memory-storage)
-      run: cargo test --no-default-features --features memory-storage --verbose
-    - name: Run tests with all features
-      run: cargo test --all-features --verbose
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy rustfmt
+      - name: Clippy
+        run: cargo clippy --no-default-features -- -D warnings
+      - name: Clippy (alter-table)
+        run: cargo clippy --no-default-features --features alter-table -- -D warnings
+      - name: Clippy (index)
+        run: cargo clippy --no-default-features --features index -- -D warnings
+      - name: Clippy (sorter)
+        run: cargo clippy --no-default-features --features sorter -- -D warnings
+      - name: Clippy (alter-table & index)
+        run: cargo clippy --no-default-features --features "alter-table index" -- -D warnings
+      - name: Clippy (alter-table & transaction)
+        run: cargo clippy --no-default-features --features "alter-table transaction" -- -D warnings
+      - name: Clippy (index & transaction)
+        run: cargo clippy --no-default-features --features "index transaction" -- -D warnings
+      - name: Clippy (alter-table & index & transaction)
+        run: cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
+      - name: Clippy (all)
+        run: cargo clippy --all-features --all-targets -- -D warnings
+      - name: Rustfmt
+        run: cargo fmt --all -- --check
+      - name: Build
+        run: cargo build --all-features --verbose
+      - name: Run tests
+        run: cargo test --no-default-features --verbose
+      - name: Run tests with all features
+        run: cargo test --all-features --verbose
