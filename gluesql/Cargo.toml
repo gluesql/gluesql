@@ -1,0 +1,19 @@
+[package]
+name = "gluesql"
+version = "0.9.0"
+edition = "2021"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
+readme = "README.md"
+keywords = [
+	"sql-database",
+	"sql",
+	"functional",
+	"no-mut-in-the-middle",
+	"webassembly",
+]
+
+[dependencies]
