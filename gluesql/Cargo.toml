@@ -17,3 +17,9 @@ keywords = [
 ]
 
 [dependencies]
+gluesql-core = { version = "0.9", path = "../core" }
+memory-storage = { path = "../storages/memory-storage" }
+sled-storage = { path = "../storages/sled-storage" }
+
+[dev-dependencies]
+futures = "0.3"
