@@ -16,9 +16,6 @@ keywords = [
 	"webassembly",
 ]
 
-[lib]
-path = "src/lib.rs"
-
 [dependencies]
 gluesql-core = { version = "0.9", path = "./core" }
 memory-storage = { path = "./storages/memory-storage" }
