@@ -17,23 +17,23 @@ jobs:
       - uses: actions/checkout@v2
       - run: rustup component add clippy rustfmt
       - name: Clippy
-        run: cargo clippy --no-default-features -- -D warnings
+        run: cargo clippy --workspace --no-default-features -- -D warnings
       - name: Clippy (alter-table)
-        run: cargo clippy --no-default-features --features alter-table -- -D warnings
+        run: cargo clippy --workspace --no-default-features --features alter-table -- -D warnings
       - name: Clippy (index)
-        run: cargo clippy --no-default-features --features index -- -D warnings
+        run: cargo clippy --workspace --no-default-features --features index -- -D warnings
       - name: Clippy (sorter)
-        run: cargo clippy --no-default-features --features sorter -- -D warnings
+        run: cargo clippy --workspace --no-default-features --features sorter -- -D warnings
       - name: Clippy (alter-table & index)
-        run: cargo clippy --no-default-features --features "alter-table index" -- -D warnings
+        run: cargo clippy --workspace --no-default-features --features "alter-table index" -- -D warnings
       - name: Clippy (alter-table & transaction)
-        run: cargo clippy --no-default-features --features "alter-table transaction" -- -D warnings
+        run: cargo clippy --workspace --no-default-features --features "alter-table transaction" -- -D warnings
       - name: Clippy (index & transaction)
-        run: cargo clippy --no-default-features --features "index transaction" -- -D warnings
+        run: cargo clippy --workspace --no-default-features --features "index transaction" -- -D warnings
       - name: Clippy (alter-table & index & transaction)
-        run: cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
+        run: cargo clippy --workspace --no-default-features --features "alter-table index transaction" -- -D warnings
       - name: Clippy (all)
-        run: cargo clippy --all-features --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
       - name: Rustfmt
         run: cargo fmt --all -- --check
       - name: Build
