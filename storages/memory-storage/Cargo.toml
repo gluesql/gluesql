@@ -1,10 +1,10 @@
 [package]
 name = "memory-storage"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-gluesql-core = { version = "0.9", path = "../../core", features = [
+gluesql-core = { path = "../../core", features = [
 	"alter-table",
 	"index",
 	"transaction",

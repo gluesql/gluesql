@@ -20,7 +20,7 @@ keywords = [
 all-features = true
 
 [dependencies]
-gluesql-core = { version = "0.9", path = "./core" }
+gluesql-core = { path = "./core" }
 test-suite = { path = "./test-suite", optional = true }
 memory-storage = { path = "./storages/memory-storage", optional = true, features = ["sorter"] }
 sled-storage = { path = "./storages/sled-storage", optional = true, features = ["sorter"] }

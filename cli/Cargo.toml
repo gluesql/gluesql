@@ -1,11 +1,11 @@
 [package]
 name = "gluesql-cli"
-version = "0.9.0"
+version = "0.0.0"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 edition = "2021"
 
 [dependencies]
-gluesql-core = { version = "0.9", path = "../core", features = ["alter-table", "metadata"] }
+gluesql-core = { path = "../core", features = ["alter-table", "metadata"] }
 sled-storage = { path = "../storages/sled-storage" }
 memory-storage = { path = "../storages/memory-storage" }
 

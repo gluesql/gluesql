@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-gluesql-core = { version = "0.9", path = "../../core", features = [
+gluesql-core = { path = "../../core", features = [
 	"index",
 	"transaction",
 	"alter-table",
