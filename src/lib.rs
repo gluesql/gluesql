@@ -9,6 +9,7 @@
 //! ## Examples
 //!
 //! ```
+//! #![cfg(feature = "sled-storage")]
 //! use gluesql::prelude::*;
 //!
 //! let storage = SledStorage::new("data/doc-db").unwrap();
@@ -60,9 +61,17 @@
 //! After you implement `Tester` trait, the only thing you need to do is calling `generate_tests!` macro.
 
 pub use gluesql_core;
+#[cfg(feature = "memory-storage")]
 pub use memory_storage;
+#[cfg(feature = "sled-storage")]
 pub use sled_storage;
+#[cfg(test_suite)]
+pub use test_suite;
 
 pub mod prelude {
-    pub use {gluesql_core::prelude::*, memory_storage::MemoryStorage, sled_storage::SledStorage};
+    pub use gluesql_core::prelude::*;
+    #[cfg(feature = "memory-storage")]
+    pub use memory_storage::MemoryStorage;
+    #[cfg(feature = "sled-storage")]
+    pub use sled_storage::SledStorage;
 }

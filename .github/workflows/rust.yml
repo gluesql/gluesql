@@ -35,7 +35,7 @@ jobs:
       - name: Clippy (all)
         run: cargo clippy --all-features --all-targets -- -D warnings
       - name: Rustfmt
-        run: cargo fmt --all -- --check
+        run: cargo fmt -- --check
       - name: Build
         run: cargo build --all-features --verbose
       - name: Run tests

@@ -1,21 +1,7 @@
 [package]
-name = "gluesql-test-suite"
-version = "0.9.0"
+name = "test-suite"
+version = "0.0.0"
 edition = "2021"
-authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
-readme = "../README.md"
-keywords = [
-	"sql-database",
-	"sql",
-	"functional",
-	"no-mut-in-the-middle",
-	"webassembly",
-]
-
 
 [dependencies]
 gluesql-core = { path = "../core" }
@@ -26,8 +12,6 @@ uuid = "0.8"
 chrono = "0.4"
 
 [features]
-default = ["sorter"]
-
 sorter = ["gluesql-core/sorter"]
 alter-table = ["gluesql-core/alter-table"]
 index = ["gluesql-core/index"]
