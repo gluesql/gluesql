@@ -2,43 +2,6 @@
 name = "gluesql-core"
 version = "0.9.0"
 edition = "2021"
-authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
-description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-license = "Apache-2.0"
-repository = "https://github.com/gluesql/gluesql"
-documentation = "https://docs.rs/gluesql/"
-readme = "../README.md"
-keywords = [
-	"sql-database",
-	"sql",
-	"functional",
-	"no-mut-in-the-middle",
-	"webassembly",
-]
-
-[package.metadata.docs.rs]
-all-features = true
-
-[features]
-default = ["sorter"]
-
-# optional: ALTER TABLE
-# you can include whether ALTER TABLE support or not for your custom database implementation.
-alter-table = []
-
-# optional: INDEX
-index = []
-
-# optional: TRANSACTION
-transaction = []
-
-# optional: METADATA
-# e.g. SHOW TABLES;
-metadata = []
-
-# optional: ORDER BY for non-indexed expressions
-# disable this feature if you use GlueSQL for big data analysis.
-sorter = []
 
 [dependencies]
 gluesql-utils = { path = "../utils" }
@@ -60,3 +23,22 @@ thiserror = "1.0"
 strum_macros = "0.21"
 uuid = { version = "0.8", features = ["v4"] }
 bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
+
+[features]
+# optional: ALTER TABLE
+# you can include whether ALTER TABLE support or not for your custom database implementation.
+alter-table = []
+
+# optional: INDEX
+index = []
+
+# optional: TRANSACTION
+transaction = []
+
+# optional: METADATA
+# e.g. SHOW TABLES;
+metadata = []
+
+# optional: ORDER BY for non-indexed expressions
+# disable this feature if you use GlueSQL for big data analysis.
+sorter = []

@@ -1,8 +1,8 @@
 use {
-    gluesql_test_suite::*,
     sled::IVec,
     sled_storage::SledStorage,
     std::{cell::RefCell, rc::Rc},
+    test_suite::*,
 };
 
 struct SledTester {

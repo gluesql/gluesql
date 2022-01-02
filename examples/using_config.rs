@@ -1,3 +1,4 @@
+#[cfg(sled_storage)]
 use {
     gluesql::{prelude::Glue, sled_storage::SledStorage},
     sled_storage::sled,
@@ -5,21 +6,24 @@ use {
 };
 
 fn main() {
-    let config = sled::Config::default()
-        .path("data/using_config")
-        .temporary(true)
-        .mode(sled::Mode::HighThroughput);
+    #[cfg(sled_storage)]
+    {
+        let config = sled::Config::default()
+            .path("data/using_config")
+            .temporary(true)
+            .mode(sled::Mode::HighThroughput);
 
-    let storage = SledStorage::try_from(config).unwrap();
+        let storage = SledStorage::try_from(config).unwrap();
 
-    let mut glue = Glue::new(storage);
+        let mut glue = Glue::new(storage);
 
-    let sqls = "
+        let sqls = "
         CREATE TABLE Glue (id INTEGER);
         INSERT INTO Glue VALUES (100);
         INSERT INTO Glue VALUES (200);
         DROP TABLE Glue;
     ";
 
-    glue.execute(sqls).unwrap();
+        glue.execute(sqls).unwrap();
+    }
 }

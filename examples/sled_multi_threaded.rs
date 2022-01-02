@@ -1,3 +1,4 @@
+#[cfg(sled_storage)]
 mod sled_multi_threaded {
     use {
         gluesql::{
@@ -65,5 +66,6 @@ mod sled_multi_threaded {
 }
 
 fn main() {
+    #[cfg(sled_storage)]
     sled_multi_threaded::run();
 }

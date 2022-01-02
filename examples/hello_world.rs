@@ -1,3 +1,4 @@
+#[cfg(sled_storage)]
 mod hello_world {
     use gluesql::{
         prelude::{Glue, Payload, Value},
@@ -62,5 +63,6 @@ mod hello_world {
 }
 
 fn main() {
+    #[cfg(sled_storage)]
     hello_world::run();
 }

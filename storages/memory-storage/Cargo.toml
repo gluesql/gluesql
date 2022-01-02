@@ -19,7 +19,6 @@ keywords = [
 
 [dependencies]
 gluesql-core = { version = "0.9", path = "../../core", features = [
-	"sorter",
 	"alter-table",
 	"index",
 	"transaction",
@@ -29,7 +28,7 @@ gluesql-core = { version = "0.9", path = "../../core", features = [
 async-trait = "0.1"
 
 [dev-dependencies]
-gluesql-test-suite = { path = "../../test-suite", features = [
+test-suite = { path = "../../test-suite", features = [
 	"sorter",
 	"alter-table",
 	"index",
@@ -39,3 +38,6 @@ gluesql-test-suite = { path = "../../test-suite", features = [
 
 tokio = { version = "1", features = ["rt", "macros"] }
 futures = "0.3"
+
+[features]
+sorter = ["gluesql-core/sorter"]
