@@ -62,3 +62,4 @@ futures = "0.3"
 
 [workspace]
 members = ["core", "storages/*", "test-suite", "utils", "cli"]
+default-members = ["core", "storages/*", "test-suite", "utils", "cli"]
