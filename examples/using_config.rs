@@ -1,4 +1,4 @@
-#[cfg(sled_storage)]
+#[cfg(feature = "sled-storage")]
 use {
     gluesql::{prelude::Glue, sled_storage::SledStorage},
     sled_storage::sled,
@@ -6,7 +6,7 @@ use {
 };
 
 fn main() {
-    #[cfg(sled_storage)]
+    #[cfg(feature = "sled-storage")]
     {
         let config = sled::Config::default()
             .path("data/using_config")

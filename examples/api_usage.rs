@@ -1,4 +1,4 @@
-#[cfg(sled_storage)]
+#[cfg(feature = "sled-storage")]
 mod api_usage {
     use {
         futures::executor::block_on,
@@ -66,6 +66,6 @@ mod api_usage {
 }
 
 fn main() {
-    #[cfg(sled_storage)]
+    #[cfg(feature = "sled-storage")]
     api_usage::run();
 }

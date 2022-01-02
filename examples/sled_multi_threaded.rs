@@ -1,4 +1,4 @@
-#[cfg(sled_storage)]
+#[cfg(feature = "sled-storage")]
 mod sled_multi_threaded {
     use {
         gluesql::{
@@ -66,6 +66,6 @@ mod sled_multi_threaded {
 }
 
 fn main() {
-    #[cfg(sled_storage)]
+    #[cfg(feature = "sled-storage")]
     sled_multi_threaded::run();
 }

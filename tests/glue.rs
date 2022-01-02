@@ -68,7 +68,7 @@ async fn basic_async<T: Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>
     );
 }
 
-#[cfg(sled_storage)]
+#[cfg(feature = "sled-storage")]
 #[test]
 fn sled_basic() {
     use sled_storage::{sled, SledStorage};
@@ -83,7 +83,7 @@ fn sled_basic() {
     basic(glue);
 }
 
-#[cfg(memory_storage)]
+#[cfg(feature = "memory-storage")]
 #[test]
 fn memory_basic() {
     use memory_storage::MemoryStorage;
@@ -94,7 +94,7 @@ fn memory_basic() {
     basic(glue);
 }
 
-#[cfg(memory_storage)]
+#[cfg(feature = "memory-storage")]
 #[test]
 fn memory_basic_async() {
     use futures::executor::block_on;
