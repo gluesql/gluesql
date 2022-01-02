@@ -1,4 +1,4 @@
-#![cfg(any(memory_storage, sled_storage))]
+#![cfg(any(feature = "memory-storage", feature = "sled-storage"))]
 use {
     gluesql_core::{
         executor::Payload,
