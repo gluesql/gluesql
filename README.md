@@ -33,7 +33,7 @@ gluesql = "0.9"
 ### Usage
 
 ```rust
-use gluesql::*;
+use gluesql::prelude::*;
 
 fn main() {
     let storage = SledStorage::new("data/doc-db").unwrap();
