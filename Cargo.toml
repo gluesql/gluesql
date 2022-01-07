@@ -22,13 +22,12 @@ all-features = true
 [dependencies]
 gluesql-core = { path = "./core" }
 test-suite = { path = "./test-suite", optional = true }
-memory-storage = { path = "./storages/memory-storage", optional = true, features = ["sorter"] }
-sled-storage = { path = "./storages/sled-storage", optional = true, features = ["sorter"] }
+memory-storage = { path = "./storages/memory-storage", optional = true }
+sled-storage = { path = "./storages/sled-storage", optional = true }
 
 [features]
 # DB User
 default = [
-	"gluesql-core/sorter",
 	"gluesql-core/alter-table",
 	"gluesql-core/index",
 	"gluesql-core/transaction",
@@ -52,10 +51,6 @@ transaction = ["gluesql-core/transaction", "test-suite/transaction"]
 # optional: METADATA
 # e.g. SHOW TABLES;
 metadata = ["gluesql-core/metadata", "test-suite/metadata"]
-
-# optional: ORDER BY for non-indexed expressions
-# disable this feature if you use GlueSQL for big data analysis.
-sorter = ["gluesql-core/sorter", "test-suite/sorter"]
 
 [dev-dependencies]
 futures = "0.3"

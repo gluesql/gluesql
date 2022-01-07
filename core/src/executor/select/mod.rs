@@ -165,11 +165,6 @@ pub async fn select_with_labels<'a, T: Debug>(
         }
     };
 
-    #[cfg(not(feature = "sorter"))]
-    if !order_by.is_empty() {
-        return Err(SelectError::OrderByOnNonIndexedExprNotSupported(order_by.to_vec()).into());
-    }
-
     let TableWithJoins { relation, joins } = &table_with_joins;
     let table = Table::new(relation)?;
 

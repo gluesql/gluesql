@@ -38,7 +38,3 @@ transaction = []
 # optional: METADATA
 # e.g. SHOW TABLES;
 metadata = []
-
-# optional: ORDER BY for non-indexed expressions
-# disable this feature if you use GlueSQL for big data analysis.
-sorter = []

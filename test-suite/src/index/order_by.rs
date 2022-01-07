@@ -89,7 +89,6 @@ CREATE TABLE Test (
     );
 });
 
-#[cfg(feature = "sorter")]
 test_case!(order_by_multi, async move {
     run!(
         r#"

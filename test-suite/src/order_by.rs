@@ -1,6 +1,5 @@
 use {crate::*, gluesql_core::translate::TranslateError};
 
-#[cfg(feature = "sorter")]
 test_case!(order_by, async move {
     run!(
         r#"
@@ -149,31 +148,5 @@ CREATE TABLE Test (
     test!(
         Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into()),
         "SELECT * FROM Test ORDER BY id NULLS FIRST"
-    );
-});
-
-#[cfg(not(feature = "sorter"))]
-test_case!(order_by, async move {
-    use {
-        gluesql_core::ast::{Expr, OrderByExpr},
-        gluesql_core::executor::SelectError,
-    };
-
-    run!("CREATE TABLE Test (id INTEGER);");
-
-    test!(
-        Err(
-            SelectError::OrderByOnNonIndexedExprNotSupported(vec![OrderByExpr {
-                expr: Expr::Identifier("id".to_owned()),
-                asc: Some(false),
-            }])
-            .into()
-        ),
-        "SELECT * FROM Test ORDER BY id DESC"
-    );
-
-    test!(
-        Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into()),
-        "SELECT * FROM Test ORDER BY id NULLS LAST"
     );
 });
