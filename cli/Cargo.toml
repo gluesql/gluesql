@@ -4,6 +4,10 @@ version = "0.9.0"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 edition = "2021"
 
+[[bin]]
+name = "gluesql"
+path = "src/main.rs"
+
 [dependencies]
 gluesql-core = { path = "../core", features = ["alter-table", "metadata"] }
 sled-storage = { path = "../storages/sled-storage" }
