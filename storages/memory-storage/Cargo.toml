@@ -15,7 +15,6 @@ async-trait = "0.1"
 
 [dev-dependencies]
 test-suite = { path = "../../test-suite", features = [
-	"sorter",
 	"alter-table",
 	"index",
 	"transaction",
@@ -24,6 +23,3 @@ test-suite = { path = "../../test-suite", features = [
 
 tokio = { version = "1", features = ["rt", "macros"] }
 futures = "0.3"
-
-[features]
-sorter = ["gluesql-core/sorter"]

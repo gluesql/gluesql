@@ -21,7 +21,6 @@ sled = "0.34"
 
 [dev-dependencies]
 test-suite = { path = "../../test-suite", features = [
-	"sorter",
 	"index",
 	"transaction",
 	"alter-table",
@@ -34,6 +33,3 @@ tokio = { version = "1", features = ["rt", "macros"] }
 [[bench]]
 name = "sled_benchmark"
 harness = false
-
-[features]
-sorter = ["gluesql-core/sorter"]

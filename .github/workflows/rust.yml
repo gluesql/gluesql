@@ -22,8 +22,6 @@ jobs:
         run: cargo clippy --no-default-features --features alter-table -- -D warnings
       - name: Clippy (index)
         run: cargo clippy --no-default-features --features index -- -D warnings
-      - name: Clippy (sorter)
-        run: cargo clippy --no-default-features --features sorter -- -D warnings
       - name: Clippy (alter-table & index)
         run: cargo clippy --no-default-features --features "alter-table index" -- -D warnings
       - name: Clippy (alter-table & transaction)

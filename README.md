@@ -63,12 +63,11 @@ fn main() {
 [dependencies.gluesql]
 version = "0.9"
 default-features = false
-features = ["sorter", "alter-table", "index", "transaction"]
+features = ["alter-table", "index", "transaction"]
 ```
 
-#### Four features below are also optional
+#### Three features below are also optional
 
-- `sorter` - ORDER BY support for non-indexed expressions.
 - `alter-table` - ALTER TABLE query support
 - `index` - CREATE INDEX & DROP INDEX, index support
 - `transaction` - BEGIN, ROLLBACK and COMMIT, transaction support
