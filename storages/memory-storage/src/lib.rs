@@ -10,6 +10,7 @@ use {
         result::{MutResult, Result},
         store::{GStore, GStoreMut, RowIter, Store, StoreMut},
     },
+    serde::{Deserialize, Serialize},
     std::{
         collections::{BTreeMap, HashMap},
         iter::empty,
@@ -22,16 +23,16 @@ pub struct Key {
     pub id: u64,
 }
 
-#[derive(Debug, Clone)]
-struct Item {
-    schema: Schema,
-    rows: BTreeMap<u64, Row>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Item {
+    pub schema: Schema,
+    pub rows: BTreeMap<u64, Row>,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct MemoryStorage {
-    id_counter: u64,
-    items: HashMap<String, Item>,
+    pub id_counter: u64,
+    pub items: HashMap<String, Item>,
 }
 
 #[async_trait(?Send)]

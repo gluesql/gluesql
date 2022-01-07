@@ -12,6 +12,7 @@ gluesql-core = { path = "../../core", features = [
 ] }
 
 async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 test-suite = { path = "../../test-suite", features = [
