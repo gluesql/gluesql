@@ -15,11 +15,10 @@ test_case!(metadata, async move {
         )))
     };
 
-    let found = run!("SHOW VERSION;");
-    let expected = ShowVariable(PayloadVariable::Version(
-        env!("CARGO_PKG_VERSION").to_owned(),
+    assert!(matches!(
+        run!("SHOW VERSION;"),
+        ShowVariable(PayloadVariable::Version(_))
     ));
-    assert_eq!(expected, found);
 
     test!(tables(Vec::new()), "SHOW TABLES");
 

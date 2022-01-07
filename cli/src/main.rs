@@ -13,7 +13,7 @@ use {
 };
 
 #[derive(Parser, Debug)]
-#[clap(about, version)]
+#[clap(name = "gluesql", about, version)]
 struct Args {
     /// sled-storage path to load
     #[clap(short, long, parse(from_os_str))]
