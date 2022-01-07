@@ -16,6 +16,10 @@ keywords = [
 	"webassembly",
 ]
 
+[[bin]]
+name = "gluesql"
+path = "cli"
+
 [package.metadata.docs.rs]
 all-features = true
 
