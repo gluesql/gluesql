@@ -36,18 +36,18 @@
 //! Whether to implement it or not is all up to you.
 //!
 //! ### Store traits
-//! * [Store](/gluesql_core/store/trait.Store.html)
-//! * [StoreMut](/gluesql_core/store/trait.StoreMut.html)
+//! * [Store](core/store/trait.Store.html)
+//! * [StoreMut](core/store/trait.StoreMut.html)
 //!
 //! ### Optional Store traits
-//! * [AlterTable](/gluesql_core/store/trait.AlterTable.html)
-//! * [Index](/gluesql_core/store/trait.Index.html)
-//! * [IndexMut](/gluesql_core/store/trait.IndexMut.html)
-//! * [Transaction](/gluesql_core/store/trait.Transaction.html)
-//! * [Metadata](/gluesql_core/store/trait.Metadata.html)
+//! * [AlterTable](core/store/trait.AlterTable.html)
+//! * [Index](core/store/trait.Index.html)
+//! * [IndexMut](core/store/trait.IndexMut.html)
+//! * [Transaction](core/store/trait.Transaction.html)
+//! * [Metadata](core/store/trait.Metadata.html)
 //!
 //! ### Trait to run integration tests
-//! * [Tester](/test_suite/trait.Tester.html)
+//! * [Tester](test_suite/trait.Tester.html)
 //!
 //! ## Tests
 //! `gluesql` provides integration tests as a module.  
@@ -60,13 +60,24 @@
 //!
 //! After you implement `Tester` trait, the only thing you need to do is calling `generate_tests!` macro.
 
-pub use gluesql_core;
+pub mod core {
+    pub use gluesql_core::*;
+}
+
 #[cfg(feature = "memory-storage")]
-pub use memory_storage;
+pub mod memory_storage {
+    pub use memory_storage::*;
+}
+
 #[cfg(feature = "sled-storage")]
-pub use sled_storage;
-#[cfg(test_suite)]
-pub use test_suite;
+pub mod sled_storage {
+    pub use sled_storage::*;
+}
+
+#[cfg(feature = "test-suite")]
+pub mod test_suite {
+    pub use test_suite::*;
+}
 
 pub mod prelude {
     pub use gluesql_core::prelude::*;
