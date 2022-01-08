@@ -35,6 +35,7 @@ default = [
 	"gluesql-core/index",
 	"gluesql-core/transaction",
 	"gluesql-core/metadata",
+	"test-suite",
 	"memory-storage",
 	"sled-storage",
 ]
