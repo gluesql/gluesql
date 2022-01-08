@@ -16,11 +16,11 @@ keywords = [
 	"webassembly",
 ]
 
-[lib]
-doc = true
-
 [package.metadata.docs.rs]
 all-features = true
+
+[lib]
+doc = true
 
 [dependencies]
 gluesql-core = { path = "./core" }
