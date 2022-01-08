@@ -1,8 +1,9 @@
 name: Coverage
 
-on: 
+on:
   push:
     branches:
+      - "main"
       - "**"
   pull_request:
     branches:
@@ -11,25 +12,24 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-jobs: 
+jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - name: Setup Rust
-      uses: hecrj/setup-rust-action@v1
-    - name: Install Tarpaulin
-      uses: actions-rs/install@v0.1
-      with:
-        crate: cargo-tarpaulin
-        version: latest
-        use-tool-cache: true
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Generate Code Coverage
-      run: |
-        cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml --exclude-files cli
-    - name: Upload to codecov.io
-      uses: codecov/codecov-action@v2
-      with:
-        fail_ci_if_error: true
-        
+      - name: Setup Rust
+        uses: hecrj/setup-rust-action@v1
+      - name: Install Tarpaulin
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-tarpaulin
+          version: latest
+          use-tool-cache: true
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Generate Code Coverage
+        run: |
+          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml --exclude-files cli
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true
