@@ -10,7 +10,7 @@
 ## SQL Database Engine as a Library
 
 GlueSQL is a SQL database library written in Rust.  
-It provides a parser ([sqlparser-rs](https://github.com/ballista-compute/sqlparser-rs)), execution layer, and optional storages ([`sled`](https://github.com/spacejam/sled) or `memory`) packaged into a single library.  
+It provides a parser ([sqlparser-rs](https://github.com/sqlparser-rs/sqlparser-rs)), execution layer, and optional storages ([`sled`](https://github.com/spacejam/sled) or `memory`) packaged into a single library.  
 Developers can choose to use GlueSQL to build their own SQL database, or as an embedded SQL database using the default storage engine.
 
 ## Standalone Mode
@@ -23,12 +23,18 @@ GlueSQL provides two reference storage options.
 
 ### Installation
 
-In your `Cargo.toml`:
 
+* `Cargo.toml`
 ```toml
 [dependencies]
-gluesql = "0.9"
+gluesql = "0.10"
 ```
+
+* CLI application
+```
+$ cargo install gluesql
+```
+
 
 ### Usage
 
@@ -61,16 +67,17 @@ fn main() {
 
 ```toml
 [dependencies.gluesql]
-version = "0.9"
+version = "0.10"
 default-features = false
-features = ["alter-table", "index", "transaction"]
+features = ["alter-table", "index", "transaction", "metadata"]
 ```
 
-#### Three features below are also optional
+#### Four features below are also optional
 
 - `alter-table` - ALTER TABLE query support
-- `index` - CREATE INDEX & DROP INDEX, index support
+- `index` - CREATE INDEX and DROP INDEX, index support
 - `transaction` - BEGIN, ROLLBACK and COMMIT, transaction support
+- `metadata` - SHOW TABLES and SHOW VERSION support
 
 ### Usage
 
@@ -95,7 +102,7 @@ pub trait StoreMut<T: Debug> where Self: Sized {
 
 #### Optional store traits
 
-- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/core/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/index.rs) and [`Transaction`](https://github.com/gluesql/gluesql/blob/main/core/src/store/transaction.rs)
+- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/core/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/index.rs), [`Transaction`](https://github.com/gluesql/gluesql/blob/main/core/src/store/transaction.rs) and [`Metadata`](https://github.com/gluesql/gluesql/blob/main/core/src/store/metadata.rs)
 
 ```rust
 pub trait AlterTable where Self: Sized {
@@ -119,7 +126,34 @@ pub trait Transaction where Self: Sized {
     async fn rollback(..) -> ..;
     async fn commit(..) -> ..;
 }
+
+pub trait Metadata {
+    fn version(&self) -> String;
+    async fn schema_names(&self) -> ..;
+}
 ```
+
+## SQL Features
+
+GlueSQL currently supports a limited subset of queries. It's being actively developed.
+
+
+#### Data Types
+- **Numeric** `INT8`, `INTEGER`, `FLOAT`, `DECIMAL`
+- **Date** `DATE`, `TIMESTAMP`, `TIME` `INTERVAL`
+- `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`
+
+#### Queries
+- `CREATE TABLE`, `DROP TABLE`
+- `ALTER TABLE` - `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
+- `CREATE INDEX`, `DROP INDEX`
+- `INSERT`, `UPDATE`, `DELETE`, `SELECT`
+- `GROUP BY`, `HAVING`
+- `ORDER BY`
+- Transaction queries: `BEGIN`, `ROLLBACK` and `COMMIT`
+- Nested select, join, aggregations ...
+
+You can see tests for the currently supported queries in [test-suite/src/\*](https://github.com/gluesql/gluesql/tree/main/test-suite/src).
 
 ## Use Cases
 
@@ -145,26 +179,10 @@ Data is stored and updated from Google Sheets.
 - Add SQL layer to NoSQL databases: Redis, CouchDB...
 - Build new SQL database management system
 
-## SQL Features
-
-GlueSQL currently supports a limited subset of queries. It's being actively developed.
-
-- `CREATE TABLE` with 8 types: `INTEGER`, `FLOAT`, `BOOLEAN`, `TEXT`, `DATE`, `TIMESTAMP`, `TIME` and `INTERVAL`.
-- `ALTER TABLE` with 4 operations: `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
-- `CREATE INDEX`, `DROP INDEX`
-- `INSERT`, `UPDATE`, `DELETE`, `SELECT`, `DROP TABLE`
-- `GROUP BY`, `HAVING`
-- `ORDER BY`
-- Transaction queries: `BEGIN`, `ROLLBACK` and `COMMIT`
-- Nested select, join, aggregations ...
-
-You can see tests for the currently supported queries in [test-suite/src/\*](https://github.com/gluesql/gluesql/tree/main/test-suite/src).
-
 ## Contribution
 
 There are a few simple rules to follow.
 
-- No `mut` keywords in `src/executor` and `src/data`.
-- Iterator should not be evaluated in the middle of execution layer.
+- No `mut` keywords in the `core` workspace (except `glue.rs`).
 - Every error must have corresponding integration test cases to generate.  
   (except for `Unreachable-` and `Conflict-` error types)
