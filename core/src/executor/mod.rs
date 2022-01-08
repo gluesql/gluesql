@@ -7,6 +7,7 @@ mod fetch;
 mod filter;
 mod join;
 mod limit;
+mod query;
 mod select;
 mod sort;
 mod update;

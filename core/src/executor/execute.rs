@@ -2,14 +2,15 @@ use {
     super::{
         alter::{create_table, drop_table},
         fetch::{fetch, fetch_columns},
-        select::{select, select_with_labels},
+        query::query,
+        select::select_with_labels,
         update::Update,
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{Query, SetExpr, Statement, Values},
+        ast::Statement,
         data::{get_name, Row, Schema, Value},
-        result::{MutResult, Result},
+        result::MutResult,
         store::{GStore, GStoreMut},
     },
     futures::stream::TryStreamExt,
@@ -181,33 +182,7 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
                 let column_defs = Rc::from(column_defs);
                 let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
 
-                let rows = match &source.body {
-                    SetExpr::Values(Values(values_list)) => values_list
-                        .iter()
-                        .map(|values| Row::new(&column_defs, columns, values))
-                        .collect::<Result<Vec<Row>>>()?,
-                    SetExpr::Select(select_query) => {
-                        let query = || Query {
-                            body: SetExpr::Select(select_query.clone()),
-                            limit: None,
-                            offset: None,
-                        };
-
-                        select(&storage, &query(), None)
-                            .await?
-                            .and_then(|row| {
-                                let column_defs = Rc::clone(&column_defs);
-
-                                async move {
-                                    row.validate(&column_defs)?;
-
-                                    Ok(row)
-                                }
-                            })
-                            .try_collect::<Vec<_>>()
-                            .await?
-                    }
-                };
+                let rows = query(source.as_ref(), column_defs, columns, &storage).await?;
 
                 validate_unique(&storage, table_name, column_validation, rows.iter()).await?;
 
