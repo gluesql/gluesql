@@ -14,30 +14,27 @@ jobs:
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: 'latest'
+          mdbook-version: "latest"
 
       - name: Build mdbook
         run: mdbook build book
 
       - name: Clone gluesql.org
-        run:
-          git clone https://github.com/gluesql/gluesql.github.io.git &&
+        run: git clone https://github.com/gluesql/gluesql.github.io.git &&
           cd gluesql.github.io &&
           git checkout gh-pages
 
       - name: Update mdbook to gluesql.org
-        run:
-          rm -rf gluesql.github.io/book &&
+        run: rm -rf gluesql.github.io/book &&
           mv book/book gluesql.github.io
 
       - name: Prepare
         run: git config --global user.email "taehoon.moon@outlook.com" && git config --global user.name "Taehoon Moon"
 
       - name: Commit and deploy
-        run:
-          cd gluesql.github.io &&
+        run: cd gluesql.github.io &&
           git add book &&
           git diff-index --quiet HEAD || (
-            git commit -m "Update book!" &&
-            git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
+          git commit -m "Update book!" &&
+          git push https://panarch:${{ secrets.GLUESQL_ORG }}@github.com/gluesql/gluesql.github.io.git
           )
