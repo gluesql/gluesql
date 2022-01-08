@@ -23,7 +23,6 @@ GlueSQL provides two reference storage options.
 
 ### Installation
 
-
 * `Cargo.toml`
 ```toml
 [dependencies]
@@ -34,7 +33,6 @@ gluesql = "0.10"
 ```
 $ cargo install gluesql
 ```
-
 
 ### Usage
 
@@ -128,15 +126,14 @@ pub trait Transaction where Self: Sized {
 }
 
 pub trait Metadata {
-    fn version(&self) -> String;
-    async fn schema_names(&self) -> ..;
+    fn version(..) -> String;
+    async fn schema_names(..) -> ..;
 }
 ```
 
 ## SQL Features
 
 GlueSQL currently supports a limited subset of queries. It's being actively developed.
-
 
 #### Data Types
 - **Numeric** `INT8`, `INTEGER`, `FLOAT`, `DECIMAL`
