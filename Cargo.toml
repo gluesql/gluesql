@@ -19,9 +19,6 @@ keywords = [
 [package.metadata.docs.rs]
 all-features = true
 
-[lib]
-doc = true
-
 [dependencies]
 gluesql-core = { path = "./core" }
 test-suite = { path = "./test-suite", optional = true }
