@@ -9,7 +9,7 @@
 //! ## Examples
 //!
 //! ```
-//! #![cfg(feature = "sled-storage")]
+//! #![cfg(feature = "gluesql_sled_storage")]
 //! use gluesql::prelude::*;
 //!
 //! let storage = SledStorage::new("data/doc-db").unwrap();
@@ -66,17 +66,17 @@ pub mod core {
 
 #[cfg(feature = "gluesql_memory_storage")]
 pub mod memory_storage {
-    pub use memory_storage::*;
+    pub use gluesql_memory_storage::*;
 }
 
 #[cfg(feature = "gluesql_sled_storage")]
 pub mod sled_storage {
-    pub use sled_storage::*;
+    pub use gluesql_sled_storage::*;
 }
 
 #[cfg(feature = "gluesql-test-suite")]
 pub mod test_suite {
-    pub use test_suite::*;
+    pub use gluesql_test_suite::*;
 }
 
 pub mod prelude {

@@ -1,4 +1,4 @@
-#![cfg(any(feature = "memory-storage", feature = "sled-storage"))]
+#![cfg(any(feature = "gluesql_memory_storage", feature = "gluesql_sled_storage"))]
 use {
     gluesql_core::{
         executor::Payload,
@@ -68,10 +68,10 @@ async fn basic_async<T: Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>
     );
 }
 
-#[cfg(feature = "sled-storage")]
+#[cfg(feature = "gluesql_sled_storage")]
 #[test]
 fn sled_basic() {
-    use sled_storage::{sled, SledStorage};
+    use gluesql_sled_storage::{sled, SledStorage};
 
     let config = sled::Config::default()
         .path("data/using_config")
@@ -83,10 +83,10 @@ fn sled_basic() {
     basic(glue);
 }
 
-#[cfg(feature = "memory-storage")]
+#[cfg(feature = "gluesql_memory_storage")]
 #[test]
 fn memory_basic() {
-    use memory_storage::MemoryStorage;
+    use gluesql_memory_storage::MemoryStorage;
 
     let storage = MemoryStorage::default();
     let glue = Glue::new(storage);
@@ -94,12 +94,11 @@ fn memory_basic() {
     basic(glue);
 }
 
-#[cfg(feature = "memory-storage")]
+#[cfg(feature = "gluesql_memory_storage")]
 #[test]
 fn memory_basic_async() {
     use futures::executor::block_on;
-
-    use memory_storage::MemoryStorage;
+    use gluesql_memory_storage::MemoryStorage;
 
     let storage = MemoryStorage::default();
     let glue = Glue::new(storage);
