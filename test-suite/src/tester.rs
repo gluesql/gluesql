@@ -231,7 +231,7 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
 /// * [tests/memory_storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/memory-storage/tests/memory_storage.rs)
 /// * [tests/sled_storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/sled-storage/tests/sled_storage.rs)
 ///
-/// Actual test cases are in [test-suite/src/tests/](https://github.com/gluesql/gluesql/blob/main/test-suite/src/),
+/// Actual test cases are in [test-suite/src/](https://github.com/gluesql/gluesql/blob/main/test-suite/src/),
 /// not in `/tests/`.
 #[async_trait]
 pub trait Tester<T: Debug, U: GStore<T> + GStoreMut<T>> {
