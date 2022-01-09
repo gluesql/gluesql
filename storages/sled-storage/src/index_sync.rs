@@ -11,7 +11,6 @@ use {
         result::{Error, Result},
         store::IndexError,
     },
-    gluesql_utils::Vector,
     sled::{
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
@@ -19,6 +18,7 @@ use {
         IVec,
     },
     std::borrow::Cow,
+    utils::Vector,
 };
 
 pub struct IndexSync<'a> {

@@ -17,9 +17,9 @@ use {
         result::{MutResult, Result, TrySelf},
         store::{AlterTable, AlterTableError},
     },
-    gluesql_utils::Vector,
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
+    utils::Vector,
 };
 
 #[async_trait(?Send)]

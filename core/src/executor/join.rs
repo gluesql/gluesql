@@ -10,8 +10,8 @@ use {
         store::GStore,
     },
     futures::stream::{self, once, StreamExt, TryStream, TryStreamExt},
-    gluesql_utils::OrStream,
     std::{fmt::Debug, pin::Pin, rc::Rc},
+    utils::OrStream,
 };
 
 pub struct Join<'a, T: Debug> {

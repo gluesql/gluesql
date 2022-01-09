@@ -6,12 +6,12 @@ use {
         store::Store,
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    gluesql_utils::Vector,
     im_rc::HashSet,
     rust_decimal::Decimal,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
+    utils::Vector,
 };
 
 #[derive(ThisError, Debug, PartialEq, Serialize)]
