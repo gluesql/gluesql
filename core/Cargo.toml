@@ -9,7 +9,7 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-gluesql-utils = { path = "../utils", version = "0.10.1" }
+utils = { package = "gluesql-utils", path = "../utils", version = "0.10.1" }
 
 regex = "1"
 async-trait = "0.1"

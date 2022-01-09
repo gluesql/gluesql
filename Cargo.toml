@@ -21,10 +21,13 @@ all-features = true
 
 [dependencies]
 gluesql-core = { path = "./core", version = "0.10.1" }
-gluesql-cli = { path = "./cli", version = "0.10.1", optional = true }
-gluesql-test-suite = { path = "./test-suite", version = "0.10.1", optional = true }
-gluesql_memory_storage = { path = "./storages/memory-storage", version = "0.10.1", optional = true }
-gluesql_sled_storage = { path = "./storages/sled-storage", version = "0.10.1", optional = true }
+cli = { package = "gluesql-cli", path = "./cli", version = "0.10.1", optional = true }
+test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.10.1", optional = true }
+memory-storage = { package = "gluesql_memory_storage", path = "./storages/memory-storage", version = "0.10.1", optional = true }
+sled-storage = { package = "gluesql_sled_storage", path = "./storages/sled-storage", version = "0.10.1", optional = true }
+
+[dev-dependencies]
+futures = "0.3"
 
 [features]
 # DB User
@@ -33,30 +36,27 @@ default = [
 	"gluesql-core/index",
 	"gluesql-core/transaction",
 	"gluesql-core/metadata",
-	"gluesql-test-suite",
-	"gluesql-cli",
-	"gluesql_memory_storage",
-	"gluesql_sled_storage",
+	"cli",
+	"test-suite",
+	"memory-storage",
+	"sled-storage",
 ]
 
 # Storage Maker
 
 # optional: ALTER TABLE
 # you can include whether ALTER TABLE support or not for your custom database implementation.
-alter-table = ["gluesql-core/alter-table", "gluesql-test-suite/alter-table"]
+alter-table = ["gluesql-core/alter-table", "test-suite/alter-table"]
 
 # optional: INDEX
-index = ["gluesql-core/index", "gluesql-test-suite/index"]
+index = ["gluesql-core/index", "test-suite/index"]
 
 # optional: TRANSACTION
-transaction = ["gluesql-core/transaction", "gluesql-test-suite/transaction"]
+transaction = ["gluesql-core/transaction", "test-suite/transaction"]
 
 # optional: METADATA
 # e.g. SHOW TABLES;
-metadata = ["gluesql-core/metadata", "gluesql-test-suite/metadata"]
-
-[dev-dependencies]
-futures = "0.3"
+metadata = ["gluesql-core/metadata", "test-suite/metadata"]
 
 [workspace]
 members = ["core", "storages/*", "test-suite", "utils", "cli"]

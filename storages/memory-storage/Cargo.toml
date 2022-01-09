@@ -19,7 +19,7 @@ async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
-gluesql-test-suite = { path = "../../test-suite", version = "0.10.1", features = [
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.10.1", features = [
 	"alter-table",
 	"index",
 	"transaction",

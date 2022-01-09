@@ -15,7 +15,7 @@ gluesql-core = { path = "../../core", version = "0.10.1", features = [
 	"alter-table",
 	"metadata",
 ] }
-gluesql-utils = { path = "../../utils", version = "0.10.1" }
+utils = { package = "gluesql-utils", path = "../../utils", version = "0.10.1" }
 async-trait = "0.1"
 iter-enum = "1"
 serde = { version = "1", features = ["derive"] }
@@ -24,7 +24,7 @@ bincode = "1"
 sled = "0.34"
 
 [dev-dependencies]
-gluesql-test-suite = { path = "../../test-suite", version = "0.10.1", features = [
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.10.1", features = [
 	"index",
 	"transaction",
 	"alter-table",
