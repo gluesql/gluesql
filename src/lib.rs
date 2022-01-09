@@ -1,7 +1,7 @@
 //! # GlueSQL
 //!
 //! `gluesql` is a SQL database library written in Rust.  
-//! It provides a parser ([sqlparser-rs](https://github.com/ballista-compute/sqlparser-rs)), execution layer,
+//! It provides a parser ([sqlparser-rs](https://github.com/sqlparser-rs/sqlparser-rs)), execution layer,
 //! and optional storages ([`sled`](https://github.com/spacejam/sled) or `memory`) packaged into a single library.  
 //! Developers can choose to use GlueSQL to build their own SQL database,
 //! or as an embedded SQL database using the default storage engine.
@@ -36,37 +36,48 @@
 //! Whether to implement it or not is all up to you.
 //!
 //! ### Store traits
-//! * [Store](store/trait.Store.html)
-//! * [StoreMut](store/trait.StoreMut.html)
+//! * [Store](core/store/trait.Store.html)
+//! * [StoreMut](core/store/trait.StoreMut.html)
 //!
 //! ### Optional Store traits
-//! * [AlterTable](store/trait.AlterTable.html)
-//! * [Index](store/trait.Index.html)
-//! * [IndexMut](store/trait.IndexMut.html)
-//! * [Transaction](store/trait.Transaction.html)
-//! * [Metadata](store/trait.Metadata.html)
+//! * [AlterTable](core/store/trait.AlterTable.html)
+//! * [Index](core/store/trait.Index.html)
+//! * [IndexMut](core/store/trait.IndexMut.html)
+//! * [Transaction](core/store/trait.Transaction.html)
+//! * [Metadata](core/store/trait.Metadata.html)
 //!
 //! ### Trait to run integration tests
-//! * [Tester](tests/trait.Tester.html)
+//! * [Tester](test_suite/trait.Tester.html)
 //!
 //! ## Tests
 //! `gluesql` provides integration tests as a module.  
 //! Developers who wants to make their own custom storages can import and run those tests.  
-//! `/tests/` might look quite empty, but actual test cases exist in `src/tests/`.  
+//! `/tests/` might look quite empty, but actual test cases exist in `test-suite` workspace.
 //!
 //! Example code to see,
-//! * [tests/sled_storage.rs](https://github.com/gluesql/gluesql/blob/main/tests/sled_storage.rs)
-//! * [tests/memory_storage.rs](https://github.com/gluesql/gluesql/blob/main/tests/memory_storage.rs)
+//! * [tests/memory_storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/memory-storage/tests/memory_storage.rs)
+//! * [tests/sled_storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/sled-storage/tests/sled_storage.rs)
 //!
 //! After you implement `Tester` trait, the only thing you need to do is calling `generate_tests!` macro.
 
-pub use gluesql_core;
+pub mod core {
+    pub use gluesql_core::*;
+}
+
 #[cfg(feature = "memory-storage")]
-pub use memory_storage;
+pub mod memory_storage {
+    pub use memory_storage::*;
+}
+
 #[cfg(feature = "sled-storage")]
-pub use sled_storage;
-#[cfg(test_suite)]
-pub use test_suite;
+pub mod sled_storage {
+    pub use sled_storage::*;
+}
+
+#[cfg(feature = "test-suite")]
+pub mod test_suite {
+    pub use test_suite::*;
+}
 
 pub mod prelude {
     pub use gluesql_core::prelude::*;

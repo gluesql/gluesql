@@ -228,9 +228,10 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
 /// you should implement this `Tester` trait.
 ///
 /// To see how to use it,
-/// * [tests/sled_storage.rs](https://github.com/gluesql/gluesql/blob/main/tests/sled_storage.rs)
+/// * [tests/memory_storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/memory-storage/tests/memory_storage.rs)
+/// * [tests/sled_storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/sled-storage/tests/sled_storage.rs)
 ///
-/// Actual test cases are in [/src/tests/](https://github.com/gluesql/gluesql/blob/main/src/tests/),
+/// Actual test cases are in [test-suite/src/](https://github.com/gluesql/gluesql/blob/main/test-suite/src/),
 /// not in `/tests/`.
 #[async_trait]
 pub trait Tester<T: Debug, U: GStore<T> + GStoreMut<T>> {

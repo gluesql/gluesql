@@ -1,6 +1,6 @@
 [package]
 name = "gluesql"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
@@ -32,6 +32,7 @@ default = [
 	"gluesql-core/index",
 	"gluesql-core/transaction",
 	"gluesql-core/metadata",
+	"test-suite",
 	"memory-storage",
 	"sled-storage",
 ]
