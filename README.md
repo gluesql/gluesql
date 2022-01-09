@@ -136,7 +136,7 @@ pub trait Metadata {
 GlueSQL currently supports a limited subset of queries. It's being actively developed.
 
 #### Data Types
-- **Numeric** `INT8`, `INTEGER`, `FLOAT`, `DECIMAL`
+- **Numeric** `INT(8)`, `INTEGER`, `FLOAT`, `DECIMAL`
 - **Date** `DATE`, `TIMESTAMP`, `TIME` `INTERVAL`
 - `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`
 
