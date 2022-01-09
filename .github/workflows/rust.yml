@@ -39,4 +39,4 @@ jobs:
       - name: Run tests
         run: cargo test --no-default-features --verbose
       - name: Run tests with all features
-        run: cargo test --all-features --verbose
+        run: cargo test --all-features --all-targets --verbose
