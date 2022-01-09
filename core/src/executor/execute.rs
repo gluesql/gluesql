@@ -7,7 +7,7 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{Query, SetExpr, Statement, Values},
+        ast::{SetExpr, Statement, Values},
         data::{get_name, Row, Schema, Value},
         result::{MutResult, Result},
         store::{GStore, GStoreMut},
@@ -186,14 +186,8 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
                         .iter()
                         .map(|values| Row::new(&column_defs, columns, values))
                         .collect::<Result<Vec<Row>>>()?,
-                    SetExpr::Select(select_query) => {
-                        let query = || Query {
-                            body: SetExpr::Select(select_query.clone()),
-                            limit: None,
-                            offset: None,
-                        };
-
-                        select(&storage, &query(), None)
+                    SetExpr::Select(_) => {
+                        select(&storage, &source, None)
                             .await?
                             .and_then(|row| {
                                 let column_defs = Rc::clone(&column_defs);
