@@ -9,8 +9,8 @@ use {
         store::Store,
     },
     async_recursion::async_recursion,
-    gluesql_utils::Vector,
     std::fmt::Debug,
+    utils::Vector,
 };
 
 pub async fn plan<T: Debug>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {

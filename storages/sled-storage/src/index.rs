@@ -12,10 +12,10 @@ use {
         result::{Error, Result},
         store::{Index, IndexError, RowIter},
     },
-    gluesql_utils::Vector,
     iter_enum::{DoubleEndedIterator, Iterator},
     sled::IVec,
     std::iter::{empty, once},
+    utils::Vector,
 };
 
 #[async_trait(?Send)]

@@ -6,10 +6,10 @@ use {
         executor::context::BlendContext,
         result::Result,
     },
-    gluesql_utils::{IndexMap, Vector},
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
     std::{cmp::Ordering, rc::Rc},
+    utils::{IndexMap, Vector},
 };
 type Group = Rc<Vec<GroupKey>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
