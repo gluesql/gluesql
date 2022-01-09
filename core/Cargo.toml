@@ -8,7 +8,7 @@ gluesql-utils = { path = "../utils" }
 
 regex = "1"
 async-trait = "0.1"
-async-recursion = "0.3"
+async-recursion = "1"
 cfg-if = "1"
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde", "wasmbind"] }
@@ -20,7 +20,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlparser = { version = "0.11", features = ["serde", "bigdecimal"] }
 thiserror = "1.0"
-strum_macros = "0.21"
+strum_macros = "0.23"
 uuid = { version = "0.8", features = ["v4"] }
 bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
 
