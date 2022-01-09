@@ -9,8 +9,7 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-gluesql-core = "0.10.0"
-
+gluesql-core = { path = "../core", version = "0.10.0" }
 async-trait = "0.1"
 bigdecimal = "0.3"
 uuid = "0.8"
