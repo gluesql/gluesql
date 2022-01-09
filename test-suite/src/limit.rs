@@ -52,6 +52,18 @@ test_case!(limit, async move {
                 5     1
             ),
         ),
+        (
+            "INSERT INTO Test SELECT * FROM Test OFFSET 1;",
+            Payload::Insert(7),
+        ),
+        (
+            "INSERT INTO Test SELECT * FROM Test LIMIT 1;",
+            Payload::Insert(1),
+        ),
+        (
+            "INSERT INTO Test SELECT * FROM Test ORDER BY id LIMIT 1 OFFSET 1;",
+            Payload::Insert(1),
+        ),
     ];
 
     for (sql, expected) in test_cases {
