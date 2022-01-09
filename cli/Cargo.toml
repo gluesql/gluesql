@@ -8,11 +8,6 @@ license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
-[[bin]]
-name = "gluesql"
-path = "src/main.rs"
-doc = false
-
 [dependencies]
 gluesql-core = { path = "../core", version = "0.10.0", features = ["alter-table", "metadata"] }
 gluesql_sled_storage = { path = "../storages/sled-storage", version = "0.10.0" }

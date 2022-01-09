@@ -21,6 +21,7 @@ all-features = true
 
 [dependencies]
 gluesql-core = { path = "./core", version = "0.10.0" }
+gluesql-cli = { path = "./cli", version = "0.10.0", optional = true }
 gluesql-test-suite = { path = "./test-suite", version = "0.10.0", optional = true }
 gluesql_memory_storage = { path = "./storages/memory-storage", version = "0.10.0", optional = true }
 gluesql_sled_storage = { path = "./storages/sled-storage", version = "0.10.0", optional = true }
@@ -33,6 +34,7 @@ default = [
 	"gluesql-core/transaction",
 	"gluesql-core/metadata",
 	"gluesql-test-suite",
+	"gluesql-cli",
 	"gluesql_memory_storage",
 	"gluesql_sled_storage",
 ]
