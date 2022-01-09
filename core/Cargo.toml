@@ -2,9 +2,14 @@
 name = "gluesql-core"
 version = "0.10.0"
 edition = "2021"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-gluesql-utils = { path = "../utils" }
+gluesql-utils = "0.10.0"
 
 regex = "1"
 async-trait = "0.1"

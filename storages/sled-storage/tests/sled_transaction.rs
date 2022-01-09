@@ -12,12 +12,12 @@ use {
         store::StoreMut,
         *,
     },
-    sled_storage::{self, SledStorage},
+    gluesql_sled_storage::{self, SledStorage, State},
+    gluesql_test_suite::*,
     std::{
         fs,
         time::{Duration, SystemTime, UNIX_EPOCH},
     },
-    test_suite::*,
 };
 
 const PATH_PREFIX: &str = "tmp/gluesql";
@@ -381,7 +381,7 @@ async fn sled_transaction_gc() {
     exec!(glue1 "BEGIN;");
 
     let mut storage = glue1.storage.unwrap();
-    storage.state = sled_storage::State::Transaction {
+    storage.state = State::Transaction {
         txid: 0,
         created_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)

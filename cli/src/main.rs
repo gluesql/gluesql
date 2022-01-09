@@ -7,8 +7,8 @@ use {
     crate::cli::Cli,
     clap::Parser,
     gluesql_core::store::{GStore, GStoreMut},
-    memory_storage::MemoryStorage,
-    sled_storage::SledStorage,
+    gluesql_memory_storage::MemoryStorage,
+    gluesql_sled_storage::SledStorage,
     std::{fmt::Debug, path::PathBuf},
 };
 
