@@ -187,7 +187,7 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
                         .map(|values| Row::new(&column_defs, columns, values))
                         .collect::<Result<Vec<Row>>>()?,
                     SetExpr::Select(_) => {
-                        select(&storage, &source, None)
+                        select(&storage, source, None)
                             .await?
                             .and_then(|row| {
                                 let column_defs = Rc::clone(&column_defs);
