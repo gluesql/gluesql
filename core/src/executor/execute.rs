@@ -25,6 +25,7 @@ use super::alter::alter_table;
 #[cfg(feature = "index")]
 use super::alter::{create_index, drop_index};
 
+use crate::executor::query::Queried;
 #[cfg(feature = "metadata")]
 use crate::{ast::Variable, result::TrySelf};
 
@@ -182,7 +183,10 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
                 let column_defs = Rc::from(column_defs);
                 let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
 
-                let rows = query(source.as_ref(), column_defs, columns, &storage).await?;
+                let rows = match query(source.as_ref(), column_defs, columns, &storage).await? {
+                    Queried::Values(rows) => rows,
+                    Queried::Select(rows) => rows,
+                };
 
                 validate_unique(&storage, table_name, column_validation, rows.iter()).await?;
 

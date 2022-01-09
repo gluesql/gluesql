@@ -10,8 +10,8 @@ use {
     std::{fmt::Debug, rc::Rc},
 };
 pub enum Queried {
-    Select { rows: Vec<Row> },
-    Values { values: Vec<Row> },
+    Select(Vec<Row>),
+    Values(Vec<Row>),
 }
 
 pub async fn query<T: Debug, U: GStore<T> + GStoreMut<T>>(
@@ -19,14 +19,14 @@ pub async fn query<T: Debug, U: GStore<T> + GStoreMut<T>>(
     column_defs: Rc<[ColumnDef]>,
     columns: &[String],
     storage: &U,
-) -> Result<Vec<Row>> {
+) -> Result<Queried> {
     match &source.body {
         SetExpr::Values(Values(values_list)) => {
             let values = values_list
                 .iter()
                 .map(|values| Row::new(&column_defs, columns, values))
                 .collect::<Result<Vec<Row>>>()?;
-            Ok(values)
+            Ok(Queried::Values(values))
         }
         SetExpr::Select(select_query) => {
             let selected = select(storage, &source, None)
@@ -42,7 +42,7 @@ pub async fn query<T: Debug, U: GStore<T> + GStoreMut<T>>(
                 })
                 .try_collect::<Vec<_>>()
                 .await?;
-            Ok(selected)
+            Ok(Queried::Select(selected))
         }
     }
 }
