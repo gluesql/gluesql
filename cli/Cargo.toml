@@ -1,6 +1,6 @@
 [package]
 name = "gluesql-cli"
-version = "0.10.1"
+version = "0.10.2"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
@@ -9,9 +9,9 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-gluesql-core = { path = "../core", version = "0.10.1", features = ["alter-table", "metadata"] }
-gluesql_sled_storage = { path = "../storages/sled-storage", version = "0.10.1" }
-gluesql_memory_storage = { path = "../storages/memory-storage", version = "0.10.1" }
+gluesql-core = { path = "../core", version = "0.10.2", features = ["alter-table", "metadata"] }
+gluesql_sled_storage = { path = "../storages/sled-storage", version = "0.10.2" }
+gluesql_memory_storage = { path = "../storages/memory-storage", version = "0.10.2" }
 
 clap = { version = "3.0.1", features = ["derive"] }
 rustyline = "9.1"
