@@ -1,14 +1,15 @@
 mod error;
 mod evaluated;
 mod expr;
+mod function;
 mod stateless;
 
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function, TrimWhereField},
+        ast::{Aggregate, Expr, Function},
         data::Value,
-        result::{Error, Result},
+        result::Result,
         store::GStore,
     },
     async_recursion::async_recursion,
@@ -18,13 +19,7 @@ use {
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
-    std::{
-        borrow::Cow,
-        cmp::{max, min},
-        fmt::Debug,
-        rc::Rc,
-    },
-    uuid::Uuid,
+    std::{borrow::Cow, fmt::Debug, rc::Rc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
@@ -204,6 +199,8 @@ async fn evaluate_function<'a, T: Debug>(
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     func: &'a Function,
 ) -> Result<Evaluated<'a>> {
+    use function as f;
+
     let eval = |expr| {
         let context = context.as_ref().map(Rc::clone);
         let aggregated = aggregated.as_ref().map(Rc::clone);
@@ -211,400 +208,147 @@ async fn evaluate_function<'a, T: Debug>(
         evaluate(storage, context, aggregated, expr)
     };
 
-    enum Nullable<T> {
-        Value(T),
-        Null,
-    }
-
-    let eval_to_str = |expr| async move {
-        match eval(expr).await?.try_into()? {
-            Value::Str(s) => Ok(Nullable::Value(s)),
-            Value::Null => Ok(Nullable::Null),
-            _ => {
-                Err::<_, Error>(EvaluateError::FunctionRequiresStringValue(func.to_string()).into())
-            }
-        }
-    };
-
-    let eval_to_float = |expr| async move {
-        match eval(expr).await?.try_into()? {
-            Value::I64(v) => Ok(Nullable::Value(v as f64)),
-            Value::F64(v) => Ok(Nullable::Value(v)),
-            Value::Null => Ok(Nullable::Null),
-            _ => {
-                Err::<_, Error>(EvaluateError::FunctionRequiresFloatValue(func.to_string()).into())
-            }
-        }
-    };
-
-    let eval_to_integer = |expr| async move {
-        match eval(expr).await?.try_into()? {
-            Value::I64(number) => Ok(Nullable::Value(number)),
-            Value::Null => Ok(Nullable::Null),
-            _ => Err::<_, Error>(
-                EvaluateError::FunctionRequiresIntegerValue(func.to_string()).into(),
-            ),
-        }
-    };
-
-    macro_rules! eval_to_str {
-        ($v : expr) => {
-            match eval_to_str($v).await? {
-                Nullable::Value(s) => s,
-                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
-            }
-        };
-    }
-
-    macro_rules! eval_to_float {
-        ($v : expr) => {
-            match eval_to_float($v).await? {
-                Nullable::Value(f) => f,
-                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
-            }
-        };
-    }
-
-    macro_rules! eval_to_integer {
-        ($v : expr) => {
-            match eval_to_integer($v).await? {
-                Nullable::Value(i) => i,
-                Nullable::Null => return Ok(Evaluated::from(Value::Null)),
-            }
-        };
-    }
+    let name = || func.to_string();
 
     match func {
-        Function::Lower(expr) => {
-            let v = eval_to_str!(expr).to_lowercase();
-            Ok(Evaluated::from(Value::Str(v)))
-        }
-
-        Function::Upper(expr) => {
-            let v = eval_to_str!(expr).to_uppercase();
-            Ok(Evaluated::from(Value::Str(v)))
-        }
-
-        Function::Sqrt(expr) => Ok(Value::F64(eval_to_float!(expr).sqrt())).map(Evaluated::from),
-
-        Function::Power { expr, power } => {
-            let number = eval_to_float!(expr);
-            let power = eval_to_float!(power);
-
-            Ok(Evaluated::from(Value::F64(number.powf(power) as f64)))
-        }
-
+        // --- text ---
+        Function::Lower(expr) => f::lower(name(), eval(expr).await?),
+        Function::Upper(expr) => f::upper(name(), eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
-            let name = if matches!(func, Function::Left { .. }) {
-                "LEFT"
-            } else {
-                "RIGHT"
-            };
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
 
-            let string = eval_to_str!(expr);
-
-            let size = match eval(size).await?.try_into()? {
-                Value::I64(number) => usize::try_from(number)
-                    .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()))?,
-                Value::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-                _ => {
-                    return Err(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into());
-                }
-            };
-
-            let converted = if name == "LEFT" {
-                string.get(..size).map(|v| v.to_string()).unwrap_or(string)
-            } else {
-                let start_pos = if size > string.len() {
-                    0
-                } else {
-                    string.len() - size
-                };
-
-                string
-                    .get(start_pos..)
-                    .map(|value| value.to_string())
-                    .unwrap_or(string)
-            };
-
-            Ok(Evaluated::from(Value::Str(converted)))
+            f::left_or_right(name(), expr, size)
         }
-
-        Function::ASin(expr) | Function::ACos(expr) | Function::ATan(expr) => {
-            let float_number = eval_to_float!(expr);
-
-            let trigonometric = |func, value| match func {
-                Function::ASin(_) => f64::asin(value),
-                Function::ACos(_) => f64::acos(value),
-                _ => f64::atan(value),
-            };
-
-            Ok(Value::F64(trigonometric(func.to_owned(), float_number))).map(Evaluated::from)
-        }
-
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
-            let name = if matches!(func, Function::Lpad { .. }) {
-                "LPAD"
-            } else {
-                "RPAD"
-            };
-
-            let string = eval_to_str!(expr);
-
-            let size = match eval(size).await?.try_into()? {
-                Value::I64(number) => usize::try_from(number)
-                    .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.to_owned()))?,
-                Value::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-                _ => {
-                    return Err(EvaluateError::FunctionRequiresIntegerValue(name.to_owned()).into());
-                }
-            };
-
+            let expr = eval(expr).await?;
+            let size = eval(size).await?;
             let fill = match fill {
-                Some(expr) => eval_to_str!(expr),
-                None => " ".to_string(),
+                Some(v) => Some(eval(v).await?),
+                None => None,
             };
 
-            let result = if size > string.len() {
-                let padding_size = size - string.len();
-                let repeat_count = padding_size / fill.len();
-                let plus_count = padding_size % fill.len();
-                let fill = fill.repeat(repeat_count) + &fill[0..plus_count];
-
-                if name == "LPAD" {
-                    fill + &string
-                } else {
-                    string + &fill
-                }
-            } else {
-                string[0..size].to_string()
-            };
-
-            Ok(Evaluated::from(Value::Str(result)))
+            f::lpad_or_rpad(name(), expr, size, fill)
         }
-
-        Function::Ceil(expr) => Ok(eval_to_float!(expr).ceil())
-            .map(Value::F64)
-            .map(Evaluated::from),
-
-        Function::Round(expr) => Ok(eval_to_float!(expr).round())
-            .map(Value::F64)
-            .map(Evaluated::from),
-
-        Function::Floor(expr) => Ok(eval_to_float!(expr).floor())
-            .map(Value::F64)
-            .map(Evaluated::from),
-
-        Function::Radians(expr) => Ok(eval_to_float!(expr).to_radians())
-            .map(Value::F64)
-            .map(Evaluated::from),
-
-        Function::Degrees(expr) => Ok(eval_to_float!(expr).to_degrees())
-            .map(Value::F64)
-            .map(Evaluated::from),
-
-        Function::Pi() => Ok(Evaluated::from(Value::F64(std::f64::consts::PI))),
-        Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
-
         Function::Trim {
             expr,
             filter_chars,
             trim_where_field,
         } => {
-            let expr_str = eval_to_str!(expr);
-            let expr_str = expr_str.as_str();
-
+            let expr = eval(expr).await?;
             let filter_chars = match filter_chars {
-                Some(expr) => eval_to_str!(expr).chars().collect::<Vec<_>>(),
-                None => vec![' '],
+                Some(v) => Some(eval(v).await?),
+                None => None,
             };
 
-            Ok(Value::Str(
-                match trim_where_field {
-                    Some(TrimWhereField::Both) => expr_str.trim_matches(&filter_chars[..]),
-                    Some(TrimWhereField::Leading) => expr_str.trim_start_matches(&filter_chars[..]),
-                    Some(TrimWhereField::Trailing) => expr_str.trim_end_matches(&filter_chars[..]),
-                    None => return Ok(Evaluated::from(Value::Str(expr_str.trim().to_owned()))),
-                }
-                .to_owned(),
-            ))
-            .map(Evaluated::from)
+            f::trim(name(), expr, filter_chars, trim_where_field)
         }
-        Function::Exp(expr) => Ok(eval_to_float!(expr).exp())
-            .map(Value::F64)
-            .map(Evaluated::from),
+        Function::Ltrim { expr, chars } => {
+            let expr = eval(expr).await?;
+            let chars = match chars {
+                Some(v) => Some(eval(v).await?),
+                None => None,
+            };
 
-        Function::Ln(expr) => Ok(eval_to_float!(expr).ln())
-            .map(Value::F64)
-            .map(Evaluated::from),
+            f::ltrim(name(), expr, chars)
+        }
+        Function::Rtrim { expr, chars } => {
+            let expr = eval(expr).await?;
+            let chars = match chars {
+                Some(v) => Some(eval(v).await?),
+                None => None,
+            };
 
+            f::rtrim(name(), expr, chars)
+        }
+        Function::Reverse(expr) => {
+            let expr = eval(expr).await?;
+
+            f::reverse(name(), expr)
+        }
+        Function::Repeat { expr, num } => {
+            let expr = eval(expr).await?;
+            let num = eval(num).await?;
+
+            f::repeat(name(), expr, num)
+        }
+        Function::Substr { expr, start, count } => {
+            let expr = eval(expr).await?;
+            let start = eval(start).await?;
+            let count = match count {
+                Some(v) => Some(eval(v).await?),
+                None => None,
+            };
+
+            f::substr(name(), expr, start, count)
+        }
+
+        // --- float ---
+        Function::Sqrt(expr) => f::sqrt(name(), eval(expr).await?),
+        Function::Power { expr, power } => {
+            let expr = eval(expr).await?;
+            let power = eval(power).await?;
+
+            f::power(name(), expr, power)
+        }
+        Function::Ceil(expr) => f::ceil(name(), eval(expr).await?),
+        Function::Round(expr) => f::round(name(), eval(expr).await?),
+        Function::Floor(expr) => f::floor(name(), eval(expr).await?),
+        Function::Radians(expr) => f::radians(name(), eval(expr).await?),
+        Function::Degrees(expr) => f::degrees(name(), eval(expr).await?),
+        Function::Pi() => Ok(Value::F64(std::f64::consts::PI)),
+        Function::Exp(expr) => f::exp(name(), eval(expr).await?),
         Function::Log { antilog, base } => {
-            let antilog = eval_to_float!(antilog);
-            let base = eval_to_float!(base);
+            let antilog = eval(antilog).await?;
+            let base = eval(base).await?;
 
-            Ok(Evaluated::from(Value::F64(antilog.log(base))))
+            f::log(name(), antilog, base)
         }
+        Function::Ln(expr) => f::ln(name(), eval(expr).await?),
+        Function::Log2(expr) => f::log2(name(), eval(expr).await?),
+        Function::Log10(expr) => f::log10(name(), eval(expr).await?),
+        Function::Sin(expr) => f::sin(name(), eval(expr).await?),
+        Function::Cos(expr) => f::cos(name(), eval(expr).await?),
+        Function::Tan(expr) => f::tan(name(), eval(expr).await?),
+        Function::ASin(expr) => f::asin(name(), eval(expr).await?),
+        Function::ACos(expr) => f::acos(name(), eval(expr).await?),
+        Function::ATan(expr) => f::atan(name(), eval(expr).await?),
 
-        Function::Log2(expr) => Ok(eval_to_float!(expr).log2())
-            .map(Value::F64)
-            .map(Evaluated::from),
-
-        Function::Log10(expr) => Ok(eval_to_float!(expr).log10())
-            .map(Value::F64)
-            .map(Evaluated::from),
-
-        Function::Sin(expr) | Function::Cos(expr) | Function::Tan(expr) => {
-            let float_number = eval_to_float!(expr);
-
-            let trigonometric = |func, value| match func {
-                Function::Sin(_) => f64::sin(value),
-                Function::Cos(_) => f64::cos(value),
-                _ => f64::tan(value),
-            };
-
-            Ok(Value::F64(trigonometric(func.to_owned(), float_number))).map(Evaluated::from)
-        }
+        // --- integer ---
         Function::Div { dividend, divisor } => {
-            let name = "DIV";
+            let dividend = eval(dividend).await?;
+            let divisor = eval(divisor).await?;
 
-            let dividend = match eval(dividend).await?.try_into()? {
-                Value::F64(number) => number,
-                Value::I64(number) => number as f64,
-                Value::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-                _ => {
-                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
-                        name.to_owned(),
-                    )
-                    .into());
-                }
-            };
-
-            let divisor = match eval(divisor).await?.try_into()? {
-                Value::F64(number) => match number {
-                    x if x == 0.0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
-                    _ => number,
-                },
-                Value::I64(number) => match number {
-                    0 => return Err(EvaluateError::DivisorShouldNotBeZero.into()),
-                    _ => number as f64,
-                },
-                Value::Null => {
-                    return Ok(Evaluated::from(Value::Null));
-                }
-                _ => {
-                    return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(
-                        name.to_owned(),
-                    )
-                    .into());
-                }
-            };
-
-            Ok(Evaluated::from(Value::I64((dividend / divisor) as i64)))
+            f::div(name(), dividend, divisor)
         }
         Function::Mod { dividend, divisor } => {
             let dividend = eval(dividend).await?;
             let divisor = eval(divisor).await?;
-            dividend.modulo(&divisor)
+
+            return dividend.modulo(&divisor);
         }
         Function::Gcd { left, right } => {
-            let left = eval_to_integer!(left);
-            let right = eval_to_integer!(right);
+            let left = eval(left).await?;
+            let right = eval(right).await?;
 
-            Ok(Evaluated::from(Value::I64(gcd(left, right))))
+            f::gcd(name(), left, right)
         }
         Function::Lcm { left, right } => {
-            let left = eval_to_integer!(left);
-            let right = eval_to_integer!(right);
+            let left = eval(left).await?;
+            let right = eval(right).await?;
 
-            fn lcm(a: i64, b: i64) -> i64 {
-                a * b / gcd(a, b)
-            }
-
-            Ok(Evaluated::from(Value::I64(lcm(left, right))))
+            f::lcm(name(), left, right)
         }
-        Function::Ltrim { expr, chars } | Function::Rtrim { expr, chars } => {
-            let name = if matches!(func, Function::Ltrim { .. }) {
-                "LTRIM"
-            } else {
-                "RTRIM"
-            };
-            let pattern: Result<Vec<char>> = match chars {
-                Some(chars) => Ok(eval_to_str!(chars).chars().collect::<Vec<char>>()),
-                None => Ok(" ".chars().collect::<Vec<char>>()),
-            };
 
-            let string = eval_to_str!(expr);
-            if name == "LTRIM" {
-                Ok(Value::Str(
-                    string.trim_start_matches(&pattern?[..]).to_string(),
-                ))
-            } else {
-                Ok(Value::Str(
-                    string.trim_end_matches(&pattern?[..]).to_string(),
-                ))
-            }
-            .map(Evaluated::from)
-        }
-        Function::Reverse(expr) => Ok(eval_to_str!(expr).chars().rev().collect::<String>())
-            .map(Value::Str)
-            .map(Evaluated::from),
-
-        Function::Substr { expr, start, count } => {
-            let string = eval_to_str!(expr);
-            let start = eval_to_integer!(start) - 1;
-
-            let count = match count {
-                Some(v) => eval_to_integer!(v),
-                None => string.len() as i64,
-            };
-
-            let end = if count < 0 {
-                return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
-            } else {
-                min(max(start + count, 0) as usize, string.len())
-            };
-
-            let start = min(max(start, 0) as usize, string.len());
-            let string = String::from(&string[start..end]);
-            Ok(Evaluated::from(Value::Str(string)))
-        }
+        // --- etc ---
         Function::Unwrap { expr, selector } => {
-            let evaluated = eval(expr).await?;
+            let expr = eval(expr).await?;
+            let selector = eval(selector).await?;
 
-            if evaluated.is_null() {
-                return Ok(Evaluated::from(Value::Null));
-            }
-
-            let value = match &evaluated {
-                Evaluated::Value(value) => value.as_ref(),
-                _ => {
-                    return Err(EvaluateError::FunctionRequiresMapValue(func.to_string()).into());
-                }
-            };
-
-            let selector = eval_to_str!(selector);
-            value.selector(&selector).map(Evaluated::from)
+            f::unwrap(name(), expr, selector)
         }
-        .map(Evaluated::from),
-        Function::GenerateUuid() => Ok(Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))),
-        Function::Repeat { expr, num } => {
-            let expr = eval_to_str!(expr);
-            let num = eval_to_integer!(num) as usize;
-            Ok(Value::Str(expr.repeat(num)))
-        }
-        .map(Evaluated::from),
+        Function::GenerateUuid() => Ok(f::generate_uuid()),
+        Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
     }
-}
-fn gcd(a: i64, b: i64) -> i64 {
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
-    }
+    .map(Evaluated::from)
 }

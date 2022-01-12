@@ -58,8 +58,8 @@ test_case!(default, async move {
             Ok(Payload::Insert(1)),
         ),
         (
-            "INSERT INTO FunctionTest VALUES (GENERATE_UUID(), SIN(1))",
-            Err(EvaluateError::UnsupportedStatelessExpr(expr!("SIN(1)")).into()),
+            "INSERT INTO FunctionTest VALUES (GENERATE_UUID(), (SELECT id FROM Foo))",
+            Err(EvaluateError::UnsupportedStatelessExpr(expr!("(SELECT id FROM Foo)")).into()),
         ),
     ];
 
