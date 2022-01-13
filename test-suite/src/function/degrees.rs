@@ -8,7 +8,10 @@ test_case!(degrees, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE SingleItem (id FLOAT DEFAULT DEGREES(90))",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),

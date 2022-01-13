@@ -10,7 +10,12 @@ test_case!(trim, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
+        (
+            r#"CREATE TABLE Item (
+                name TEXT DEFAULT TRIM(LEADING "a" FROM "aabc") || TRIM("   good  ")
+            )"#,
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO Item VALUES
                 ("      Left blank"),

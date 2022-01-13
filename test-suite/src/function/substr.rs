@@ -10,7 +10,10 @@ test_case!(substr, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
+        (
+            r#"CREATE TABLE Item (name TEXT DEFAULT SUBSTR("abc", 0, 2))"#,
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO Item VALUES ("Blop mc blee"), ("B"), ("Steven the &long named$ folken!")"#,
             Ok(Payload::Insert(3)),

@@ -7,7 +7,10 @@ test_case!(pi, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE SingleItem (id FLOAT DEFAULT PI())",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),

@@ -8,7 +8,10 @@ use {
 
 test_case!(sqrt, async move {
     let test_cases = vec![
-        ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE SingleItem (id FLOAT DEFAULT SQRT(4))",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),
@@ -59,7 +62,10 @@ test_case!(power, async move {
     use gluesql_core::prelude::Value::{Null, F64};
 
     let test_cases = vec![
-        ("CREATE TABLE SingleItem (id FLOAT)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE SingleItem (id FLOAT DEFAULT POWER(3, 4))",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),

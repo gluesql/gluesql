@@ -5,7 +5,10 @@ test_case!(ceil, async move {
         executor::EvaluateError, executor::Payload, prelude::Value::*, translate::TranslateError,
     };
     let test_cases = vec![
-        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE SingleItem (id INTEGER DEFAULT CEIL(0.5))",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),

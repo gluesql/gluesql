@@ -10,8 +10,8 @@ test_case!(gcd_lcm, async move {
         (
             r#"
         CREATE TABLE GcdI64 (
-            left INTEGER NULL DEFAULT true,
-            right INTEGER NULL DEFAULT true
+            left INTEGER NULL DEFAULT GCD(3, 4),
+            right INTEGER NULL DEFAULT LCM(10, 2)
          )"#,
             Ok(Payload::Create),
         ),

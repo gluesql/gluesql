@@ -11,7 +11,10 @@ test_case!(now, async move {
     }
 
     let test_cases = vec![
-        ("CREATE TABLE Item (time TIMESTAMP)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE Item (time TIMESTAMP DEFAULT NOW())",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO Item VALUES
                 ("2021-10-13T06:42:40.364832862"),
