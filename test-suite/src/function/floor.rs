@@ -8,7 +8,10 @@ test_case!(floor, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE SingleItem (id INTEGER DEFAULT FLOOR(3.3))",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),

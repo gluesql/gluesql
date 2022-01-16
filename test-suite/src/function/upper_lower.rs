@@ -12,7 +12,10 @@ test_case!(upper_lower, async move {
 
     let test_cases = vec![
         (
-            "CREATE TABLE Item (name TEXT, opt_name TEXT NULL)",
+            r#"CREATE TABLE Item (
+                name TEXT DEFAULT UPPER("abc"),
+                opt_name TEXT NULL DEFAULT LOWER("ABC")
+            )"#,
             Ok(Payload::Create),
         ),
         (

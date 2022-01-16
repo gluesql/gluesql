@@ -10,7 +10,10 @@ test_case!(ltrim_rtrim, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
+        (
+            r#"CREATE TABLE Item (name TEXT DEFAULT RTRIM(LTRIM("   abc   ")))"#,
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO Item VALUES (" zzzytest"), ("testxxzx ")"#,
             Ok(Payload::Insert(2)),

@@ -8,7 +8,10 @@ test_case!(lpad_rpad, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
+        (
+            r#"CREATE TABLE Item (name TEXT DEFAULT LPAD("a", 5) || LPAD("b", 3))"#,
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO Item VALUES ("hello")"#,
             Ok(Payload::Insert(1)),

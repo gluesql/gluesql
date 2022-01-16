@@ -11,7 +11,10 @@ test_case!(div_mod, async move {
     let eval_mod = |dividend, divisor| dividend % divisor;
     let test_cases = vec![
         (
-            "CREATE TABLE FloatDiv (dividend FLOAT, divisor FLOAT)",
+            "CREATE TABLE FloatDiv (
+                dividend FLOAT DEFAULT MOD(30, 11),
+                divisor FLOAT DEFAULT DIV(3, 2)
+            )",
             Ok(Payload::Create),
         ),
         (

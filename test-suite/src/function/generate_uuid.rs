@@ -4,7 +4,10 @@ test_case!(generate_uuid, async move {
     use gluesql_core::{ast::DataType, prelude::Payload, translate::TranslateError};
 
     let test_cases = vec![
-        ("CREATE TABLE SingleItem (id UUID)", Ok(Payload::Create)),
+        (
+            "CREATE TABLE SingleItem (id UUID DEFAULT GENERATE_UUID())",
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO SingleItem VALUES (GENERATE_UUID())"#,
             Ok(Payload::Insert(1)),

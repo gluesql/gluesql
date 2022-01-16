@@ -11,7 +11,7 @@ test_case!(map, async move {
     run!(
         r#"
 CREATE TABLE MapType (
-    id INTEGER,
+    id INTEGER NULL DEFAULT UNWRAP(NULL, "a"),
     nested MAP
 )"#
     );

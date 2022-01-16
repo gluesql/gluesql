@@ -8,7 +8,10 @@ test_case!(repeat, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
+        (
+            r#"CREATE TABLE Item (name TEXT DEFAULT REPEAT("hello", 2))"#,
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO Item VALUES ("hello")"#,
             Ok(Payload::Insert(1)),

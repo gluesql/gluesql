@@ -7,7 +7,10 @@ test_case!(reverse, async move {
     };
 
     let test_cases = vec![
-        ("CREATE TABLE Item (name TEXT)", Ok(Payload::Create)),
+        (
+            r#"CREATE TABLE Item (name TEXT DEFAULT REVERSE("world"))"#,
+            Ok(Payload::Create),
+        ),
         (
             r#"INSERT INTO Item VALUES ("Let's meet")"#,
             Ok(Payload::Insert(1)),
