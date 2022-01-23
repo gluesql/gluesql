@@ -2,7 +2,7 @@
   "name": "rust_bump_script",
   "version": "0.10.2",
   "main": "bump_script.js",
-  "repository": "git@github.com:gluesql/gluesq.git",
+  "repository": "https://github.com/gluesql/gluesql",
   "author": "Jiseok CHOI <jiseok.dev@gmail.com>",
   "license": "Apache-2.0",
   "dependencies": {
