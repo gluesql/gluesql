@@ -200,12 +200,13 @@ pub async fn select_with_labels<'a, T: Debug>(
         .map(Rc::from)
         .collect::<Vec<_>>();
 
-    let join = Rc::new(Join::new(
+    let join = Join::new(
         storage,
         joins,
         join_columns,
         filter_context.as_ref().map(Rc::clone),
-    ));
+    );
+
     let aggregate = Aggregator::new(
         storage,
         projection,
@@ -227,24 +228,18 @@ pub async fn select_with_labels<'a, T: Debug>(
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
     let sort = Sort::new(storage, filter_context, order_by);
 
-    let rows = fetch_blended(storage, table, columns)
-        .await?
-        .then(move |blend_context| {
-            let join = Rc::clone(&join);
+    let rows = fetch_blended(storage, table, columns).await?;
+    let rows = join.apply(rows).await?;
+    let rows = rows.try_filter_map(move |blend_context| {
+        let filter = Rc::clone(&filter);
 
-            async move { join.apply(blend_context).await }
-        })
-        .try_flatten()
-        .try_filter_map(move |blend_context| {
-            let filter = Rc::clone(&filter);
-
-            async move {
-                filter
-                    .check(Rc::clone(&blend_context))
-                    .await
-                    .map(|pass| pass.then(|| blend_context))
-            }
-        });
+        async move {
+            filter
+                .check(Rc::clone(&blend_context))
+                .await
+                .map(|pass| pass.then(|| blend_context))
+        }
+    });
 
     let rows = aggregate.apply(rows).await?;
     let rows = sort
