@@ -9,7 +9,7 @@ use {
         result::{Error, Result},
         store::GStore,
     },
-    futures::stream::{self, once, StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, once, Stream, StreamExt, TryStream, TryStreamExt},
     std::{fmt::Debug, pin::Pin, rc::Rc},
     utils::OrStream,
 };
@@ -40,7 +40,23 @@ impl<'a, T: Debug> Join<'a, T> {
         }
     }
 
-    pub async fn apply(&self, init_context: Result<BlendContext<'a>>) -> Result<Joined<'a>> {
+    pub async fn apply(
+        self,
+        rows: impl Stream<Item = Result<BlendContext<'a>>> + 'a,
+    ) -> Result<Joined<'a>> {
+        let join = Rc::new(self);
+        let rows = rows
+            .then(move |blend_context| {
+                let join = Rc::clone(&join);
+
+                async move { join.apply_row(blend_context).await }
+            })
+            .try_flatten();
+
+        Ok(Box::pin(rows))
+    }
+
+    async fn apply_row(&self, init_context: Result<BlendContext<'a>>) -> Result<Joined<'a>> {
         let init_context = init_context.map(Rc::new);
         let init_rows: Joined<'a> = Box::pin(stream::once(async { init_context }));
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
