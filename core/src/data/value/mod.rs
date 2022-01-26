@@ -100,7 +100,7 @@ impl Value {
             Value::I8(_) => matches!(data_type, DataType::Int8),
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::F64(_) => matches!(data_type, DataType::Float),
-            Value::Decimal(_) => matches!(data_type, DataType::Decimal),
+            Value::Decimal(_) => matches!(data_type, DataType::Decimal(_,_)),
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
             Value::Str(_) => matches!(data_type, DataType::Text),
             Value::Date(_) => matches!(data_type, DataType::Date),
@@ -137,7 +137,7 @@ impl Value {
             (DataType::Int8, Value::I8(_))
             | (DataType::Int, Value::I64(_))
             | (DataType::Float, Value::F64(_))
-            | (DataType::Decimal, Value::Decimal(_))
+            | (DataType::Decimal(_,_), Value::Decimal(_))
             | (DataType::Boolean, Value::Bool(_))
             | (DataType::Text, Value::Str(_))
             | (DataType::Date, Value::Date(_))
