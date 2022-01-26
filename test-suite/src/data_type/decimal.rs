@@ -21,6 +21,10 @@ test_case!(decimal, async move {
                 1.into()
             )),
         ),
+        (
+            "CREATE TABLE DECIMAL_EXTENDED (d1 DECIMAL(5), d2 DECIMAL(5,2))",
+            Ok(Payload::Create),
+        )
     ];
 
     for (sql, expected) in test_cases.into_iter() {

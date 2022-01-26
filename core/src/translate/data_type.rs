@@ -16,7 +16,9 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Time => Ok(DataType::Time),
         SqlDataType::Interval => Ok(DataType::Interval),
         SqlDataType::Uuid => Ok(DataType::Uuid),
-        SqlDataType::Decimal(None, None) => Ok(DataType::Decimal),
+        // SqlDataType::Decimal(None, None) => Ok(DataType::Decimal),
+        // SqlDataType::Decimal(_, None) => Ok(DataType::Decimal),
+        SqlDataType::Decimal(_, _) => Ok(DataType::Decimal),
         SqlDataType::Custom(name) => {
             let name = name.0.get(0).map(|v| v.value.to_uppercase());
 
