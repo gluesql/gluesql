@@ -28,6 +28,21 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
         .into());
     }
 
+    match data_type {
+        DataType::Decimal(None, None) => (),
+        DataType::Decimal(_p, None) => (),
+        DataType::Decimal(p, s) => {
+            if *p < *s {
+                return Err(AlterError::UnsupportedDecimalScale(
+                    (*s).unwrap().to_string(),
+                    (*p).unwrap().to_string(),
+                )
+                .into());
+            }
+        }
+        _ => (),
+    }
+
     let default = options
         .iter()
         .find_map(|ColumnOptionDef { option, .. }| match option {

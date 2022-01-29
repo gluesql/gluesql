@@ -9,6 +9,7 @@ use validate::validate;
 #[cfg(feature = "alter-table")]
 pub use alter_table::alter_table;
 pub use error::AlterError;
+pub use error::CreateError;
 #[cfg(feature = "index")]
 pub use index::{create_index, drop_index};
 pub use table::{create_table, drop_table};

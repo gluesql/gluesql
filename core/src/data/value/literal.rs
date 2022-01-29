@@ -135,7 +135,7 @@ impl Value {
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
-            (DataType::Decimal(_,_), Literal::Number(v)) => v
+            (DataType::Decimal(_, _), Literal::Number(v)) => v
                 .to_string()
                 .parse::<Decimal>()
                 .map(Value::Decimal)
