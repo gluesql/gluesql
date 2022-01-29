@@ -24,10 +24,6 @@ test_case!(decimal, async move {
         (
             "CREATE TABLE ILLEGAL_DECIMAL (d1 DECIMAL(1,4))",
             Err(AlterError::UnsupportedDecimalScale("4".to_owned(), "1".to_owned()).into()),
-            // Err(ValueError::IncompatibleDataType {
-            //     data_type: DataType::Decimal(Some(1),Some(4)).clone(),
-            //     value: Value::Decimal(0.into()).clone(),
-            // }).into(),
         ),
         (
             "CREATE TABLE DECIMAL_EXTENDED (d1 DECIMAL(5), d2 DECIMAL(5,2))",
