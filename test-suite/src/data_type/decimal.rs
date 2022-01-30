@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{executor::AlterError, executor::Payload, prelude::Value::*},
+    gluesql_core::{executor::AlterError, executor::Payload, prelude::Value::*, data::ValueError},
 };
 
 test_case!(decimal, async move {
@@ -26,8 +26,16 @@ test_case!(decimal, async move {
             Err(AlterError::UnsupportedDecimalScale("4".to_owned(), "1".to_owned()).into()),
         ),
         (
-            "CREATE TABLE DECIMAL_EXTENDED (d1 DECIMAL(5), d2 DECIMAL(5,2))",
+            "CREATE TABLE DECIMAL_PRECISION (d1 DECIMAL(5))",
             Ok(Payload::Create),
+        ),
+        (
+            "INSERT INTO DECIMAL_PRECISION (d1) VALUES (12345)",
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "INSERT INTO DECIMAL_PRECISION (d1) VALUES (123456)",
+            Err(ValueError::FailedToParseDecimal("123456".to_owned()).into()),
         ),
     ];
 

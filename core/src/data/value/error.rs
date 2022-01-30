@@ -37,6 +37,9 @@ pub enum ValueError {
     #[error("failed to parse Decimal: {0}")]
     FailedToParseDecimal(String),
 
+    #[error("decimal with no precision not supported")]
+    NoPrecisionDecimalNotSupported,
+
     #[error("add on non-numeric values: {0:?} + {1:?}")]
     AddOnNonNumeric(Value, Value),
 

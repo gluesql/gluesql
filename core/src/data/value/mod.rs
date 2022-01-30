@@ -20,6 +20,7 @@ mod literal;
 mod selector;
 mod unique_key;
 mod uuid;
+mod decimal;
 
 pub use error::ValueError;
 
