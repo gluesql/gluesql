@@ -6,17 +6,14 @@ use {
         },
         data::{get_name, Schema, SchemaIndex, SchemaIndexOrd},
         result::Result,
-        store::Store,
     },
-    async_recursion::async_recursion,
-    std::fmt::Debug,
+    std::collections::HashMap,
     utils::Vector,
 };
 
-pub async fn plan<T: Debug>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
+pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Result<Statement> {
     match statement {
-        Statement::Query(query) => plan_query(storage, *query)
-            .await
+        Statement::Query(query) => plan_query(schema_map, *query)
             .map(Box::new)
             .map(Statement::Query),
         _ => Ok(statement),
@@ -53,7 +50,7 @@ impl Indexes {
     }
 }
 
-async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
+fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Query> {
     let Query {
         body,
         limit,
@@ -76,8 +73,20 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
         TableFactor::Table { name, .. } => name,
     };
     let table_name = get_name(table_name)?;
+    /*
     let indexes = match storage.fetch_schema(table_name).await? {
         Some(Schema { indexes, .. }) => Indexes(indexes),
+        None => {
+            return Ok(Query {
+                body: SetExpr::Select(select),
+                limit,
+                offset,
+            });
+        }
+    };
+    */
+    let indexes = match schema_map.get(table_name) {
+        Some(Schema { indexes, .. }) => Indexes(indexes.clone()),
         None => {
             return Ok(Query {
                 body: SetExpr::Select(select),
@@ -132,7 +141,7 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
             })
         }
         _ => {
-            let select = plan_select(storage, &indexes, *select).await?;
+            let select = plan_select(schema_map, &indexes, *select)?;
             let body = SetExpr::Select(Box::new(select));
             let query = Query {
                 body,
@@ -145,8 +154,8 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
     }
 }
 
-async fn plan_select<T: Debug>(
-    storage: &dyn Store<T>,
+fn plan_select(
+    schema_map: &HashMap<String, Schema>,
     indexes: &Indexes,
     select: Select,
 ) -> Result<Select> {
@@ -173,7 +182,7 @@ async fn plan_select<T: Debug>(
         }
     };
 
-    match plan_index(storage, indexes, selection).await? {
+    match plan_index(schema_map, indexes, selection)? {
         Planned::Expr(selection) => Ok(Select {
             projection,
             from,
@@ -225,23 +234,20 @@ enum Planned {
     Expr(Expr),
 }
 
-#[async_recursion(?Send)]
-async fn plan_index<T: Debug>(
-    storage: &dyn Store<T>,
+fn plan_index(
+    schema_map: &HashMap<String, Schema>,
     indexes: &Indexes,
     selection: Expr,
 ) -> Result<Planned> {
     match selection {
-        Expr::Nested(expr) => plan_index(storage, indexes, *expr).await,
+        Expr::Nested(expr) => plan_index(schema_map, indexes, *expr),
         Expr::IsNull(expr) => Ok(search_is_null(indexes, true, expr)),
         Expr::IsNotNull(expr) => Ok(search_is_null(indexes, false, expr)),
-        Expr::Subquery(query) => plan_query(storage, *query)
-            .await
+        Expr::Subquery(query) => plan_query(schema_map, *query)
             .map(Box::new)
             .map(Expr::Subquery)
             .map(Planned::Expr),
-        Expr::Exists(query) => plan_query(storage, *query)
-            .await
+        Expr::Exists(query) => plan_query(schema_map, *query)
             .map(Box::new)
             .map(Expr::Exists)
             .map(Planned::Expr),
@@ -249,8 +255,7 @@ async fn plan_index<T: Debug>(
             expr,
             subquery,
             negated,
-        } => plan_query(storage, *subquery)
-            .await
+        } => plan_query(schema_map, *subquery)
             .map(Box::new)
             .map(|subquery| Expr::InSubquery {
                 expr,
@@ -263,7 +268,7 @@ async fn plan_index<T: Debug>(
             op: BinaryOperator::And,
             right,
         } => {
-            let left = match plan_index(storage, indexes, *left).await? {
+            let left = match plan_index(schema_map, indexes, *left)? {
                 Planned::Expr(selection) => selection,
                 Planned::IndexedExpr {
                     index_name,
@@ -289,7 +294,7 @@ async fn plan_index<T: Debug>(
                 }
             };
 
-            match plan_index(storage, indexes, *right).await? {
+            match plan_index(schema_map, indexes, *right)? {
                 Planned::Expr(expr) => Ok(Planned::Expr(Expr::BinaryOp {
                     left: Box::new(left),
                     op: BinaryOperator::And,
