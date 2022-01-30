@@ -1,6 +1,8 @@
 use {
     crate::*,
     gluesql_core::{executor::AlterError, executor::Payload, prelude::Value::*, data::ValueError},
+    rust_decimal::prelude::*,  
+    rust_decimal::Decimal,
 };
 
 test_case!(decimal, async move {
@@ -36,6 +38,26 @@ test_case!(decimal, async move {
         (
             "INSERT INTO DECIMAL_PRECISION (d1) VALUES (123456)",
             Err(ValueError::FailedToParseDecimal("123456".to_owned()).into()),
+        ),
+        (
+            "CREATE TABLE DECIMAL_PRECISION_SCALE (d1 DECIMAL(5,2))",
+            Ok(Payload::Create),
+        ),
+        (
+            "INSERT INTO DECIMAL_PRECISION_SCALE (d1) VALUES (1234.56)",
+            Err(ValueError::FailedToParseDecimal("1234.56".to_owned()).into()),
+        ),
+        (
+            "INSERT INTO DECIMAL_PRECISION_SCALE (d1) VALUES (123.456)",
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "SELECT d1 AS d1 FROM DECIMAL_PRECISION_SCALE",
+            Ok(select!(
+                d1
+                Decimal;
+                rust_decimal::Decimal::from_str("123.46").unwrap()
+            ))
         ),
     ];
 
