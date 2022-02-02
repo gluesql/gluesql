@@ -12,6 +12,7 @@ use {
 mod big_endian;
 mod binary_op;
 mod date;
+mod decimal;
 mod error;
 mod group_key;
 mod into;
@@ -20,7 +21,6 @@ mod literal;
 mod selector;
 mod unique_key;
 mod uuid;
-mod decimal;
 
 pub use error::ValueError;
 
@@ -101,14 +101,11 @@ impl Value {
             Value::I8(_) => matches!(data_type, DataType::Int8),
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::F64(_) => matches!(data_type, DataType::Float),
-            Value::Decimal(_) => {
-                // matches!(data_type, DataType::Decimal(_,_))
-                match data_type {
-                    DataType::Decimal(None, None) => true,
-                    DataType::Decimal(p, s) => p.unwrap() >= s.unwrap(), //(*v).to_u64() < (10^(p.unwrap()-s.unwrap())),
-                    _ => false,
-                }
-            }
+            Value::Decimal(_) => match data_type {
+                DataType::Decimal(None, None) => true,
+                DataType::Decimal(p, s) => p.unwrap() >= s.unwrap(),
+                _ => false,
+            },
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
             Value::Str(_) => matches!(data_type, DataType::Text),
             Value::Date(_) => matches!(data_type, DataType::Date),

@@ -1,8 +1,7 @@
 use {
     crate::*,
-    gluesql_core::{executor::AlterError, executor::Payload, prelude::Value::*, data::ValueError},
-    rust_decimal::prelude::*,  
-    rust_decimal::Decimal,
+    gluesql_core::{data::ValueError, executor::AlterError, executor::Payload, prelude::Value::*},
+    rust_decimal::prelude::*,
 };
 
 test_case!(decimal, async move {
@@ -57,7 +56,7 @@ test_case!(decimal, async move {
                 d1
                 Decimal;
                 rust_decimal::Decimal::from_str("123.46").unwrap()
-            ))
+            )),
         ),
     ];
 
