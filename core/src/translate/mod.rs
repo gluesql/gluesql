@@ -157,7 +157,9 @@ fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
     let SqlAssignment { id, value } = sql_assignment;
 
     if id.len() > 1 {
-        return Err(TranslateError::JoinOnUpdateNotSupported.into());
+        return Err(
+            TranslateError::CompoundIndentOnUpdateNotSupported(sql_assignment.to_string()).into(),
+        );
     }
 
     Ok(Assignment {
@@ -170,18 +172,18 @@ fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
     })
 }
 
-fn translate_object_name(sql_object_name: &SqlObjectName) -> ObjectName {
-    ObjectName(translate_idents(&sql_object_name.0))
-}
-
 fn translate_table_with_join(table: &TableWithJoins) -> Result<ObjectName> {
     if !table.joins.is_empty() {
         return Err(TranslateError::JoinOnUpdateNotSupported.into());
     }
     match &table.relation {
-        TableFactor::Table { name, .. } => Ok(ObjectName(translate_idents(&name.0))),
-        _ => Err(TranslateError::JoinOnUpdateNotSupported.into()),
+        TableFactor::Table { name, .. } => Ok(translate_object_name(name)),
+        t => Err(TranslateError::UnsupportedTableFactor(t.to_string()).into()),
     }
+}
+
+fn translate_object_name(sql_object_name: &SqlObjectName) -> ObjectName {
+    ObjectName(translate_idents(&sql_object_name.0))
 }
 
 fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {

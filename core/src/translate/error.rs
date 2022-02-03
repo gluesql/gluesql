@@ -14,6 +14,9 @@ pub enum TranslateError {
     #[error("unimplemented - join on update not supported")]
     JoinOnUpdateNotSupported,
 
+    #[error("unimplemented - compound identifier on update not supported: {0}")]
+    CompoundIndentOnUpdateNotSupported(String),
+
     #[error("too many params in drop index")]
     TooManyParamsInDropIndex,
 
@@ -85,4 +88,7 @@ pub enum TranslateError {
 
     #[error("unsupported alter table operation: {0}")]
     UnsupportedAlterTableOperation(String),
+
+    #[error("unsupported table factor: {0}")]
+    UnsupportedTableFactor(String),
 }
