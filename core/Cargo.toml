@@ -1,33 +1,33 @@
 [package]
+name = "gluesql-core"
+version = "0.10.2"
+edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
-documentation = "https://docs.rs/gluesql/"
-edition = "2021"
 license = "Apache-2.0"
-name = "gluesql-core"
 repository = "https://github.com/gluesql/gluesql"
-version = "0.10.2"
+documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-utils = {package = "gluesql-utils", path = "../utils", version = "0.10.2"}
+utils = { package = "gluesql-utils", path = "../utils", version = "0.10.2" }
 
-async-recursion = "1"
+regex = "1"
 async-trait = "0.1"
-bigdecimal = {version = "0.3", features = ["serde", "string-only"]}
+async-recursion = "1"
 cfg-if = "1"
-chrono = {version = "0.4", features = ["serde", "wasmbind"]}
 futures = "0.3"
+chrono = { version = "0.4", features = ["serde", "wasmbind"] }
+rust_decimal = { version = "1", features = ["serde-str"] }
 im-rc = "15"
 iter-enum = "1"
 itertools = "0.10"
-regex = "1"
-rust_decimal = {version = "1", features = ["serde-str"]}
-serde = {version = "1", features = ["derive"]}
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlparser = {version = "0.13", features = ["serde", "bigdecimal"]}
-strum_macros = "0.23"
+sqlparser = { version = "0.13", features = ["serde", "bigdecimal"] }
 thiserror = "1.0"
-uuid = {version = "0.8", features = ["v4"]}
+strum_macros = "0.23"
+uuid = { version = "0.8", features = ["v4"] }
+bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
 
 [features]
 # optional: ALTER TABLE
