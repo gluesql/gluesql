@@ -11,6 +11,12 @@ pub enum TranslateError {
     #[error("unimplemented - composite index is not supported")]
     CompositeIndexNotSupported,
 
+    #[error("unimplemented - join on update not supported")]
+    JoinOnUpdateNotSupported,
+
+    #[error("unimplemented - compound identifier on update not supported: {0}")]
+    CompoundIdentOnUpdateNotSupported(String),
+
     #[error("too many params in drop index")]
     TooManyParamsInDropIndex,
 
@@ -59,6 +65,9 @@ pub enum TranslateError {
     #[error("unreachable unary operator: {0}")]
     UnreachableUnaryOperator(String),
 
+    #[error("unreachable empty ident")]
+    UnreachableEmptyIdent,
+
     #[error("unsupported binary operator: {0}")]
     UnsupportedBinaryOperator(String),
 
@@ -79,4 +88,7 @@ pub enum TranslateError {
 
     #[error("unsupported alter table operation: {0}")]
     UnsupportedAlterTableOperation(String),
+
+    #[error("unsupported table factor: {0}")]
+    UnsupportedTableFactor(String),
 }

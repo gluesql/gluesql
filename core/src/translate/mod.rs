@@ -14,6 +14,7 @@ pub use self::{
 
 #[cfg(feature = "alter-table")]
 use ddl::translate_alter_table_operation;
+use sqlparser::ast::{TableFactor, TableWithJoins};
 
 #[cfg(feature = "metadata")]
 use crate::ast::Variable;
@@ -44,12 +45,12 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             source: translate_query(source).map(Box::new)?,
         }),
         SqlStatement::Update {
-            table_name,
+            table,
             assignments,
             selection,
             ..
         } => Ok(Statement::Update {
-            table_name: translate_object_name(table_name),
+            table_name: translate_table_with_join(table)?,
             assignments: assignments
                 .iter()
                 .map(translate_assignment)
@@ -155,10 +156,30 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
     let SqlAssignment { id, value } = sql_assignment;
 
+    if id.len() > 1 {
+        return Err(
+            TranslateError::CompoundIdentOnUpdateNotSupported(sql_assignment.to_string()).into(),
+        );
+    }
+
     Ok(Assignment {
-        id: id.value.to_owned(),
+        id: id
+            .get(0)
+            .ok_or(TranslateError::UnreachableEmptyIdent)?
+            .value
+            .to_owned(),
         value: translate_expr(value)?,
     })
+}
+
+fn translate_table_with_join(table: &TableWithJoins) -> Result<ObjectName> {
+    if !table.joins.is_empty() {
+        return Err(TranslateError::JoinOnUpdateNotSupported.into());
+    }
+    match &table.relation {
+        TableFactor::Table { name, .. } => Ok(translate_object_name(name)),
+        t => Err(TranslateError::UnsupportedTableFactor(t.to_string()).into()),
+    }
 }
 
 fn translate_object_name(sql_object_name: &SqlObjectName) -> ObjectName {
