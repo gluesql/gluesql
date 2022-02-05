@@ -15,7 +15,7 @@ pub enum TranslateError {
     JoinOnUpdateNotSupported,
 
     #[error("unimplemented - compound identifier on update not supported: {0}")]
-    CompoundIndentOnUpdateNotSupported(String),
+    CompoundIdentOnUpdateNotSupported(String),
 
     #[error("too many params in drop index")]
     TooManyParamsInDropIndex,

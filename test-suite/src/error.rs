@@ -71,6 +71,18 @@ test_case!(error, async move {
             "SELECT * FROM TableA CROSS JOIN TableA as A;",
         ),
         (
+            TranslateError::JoinOnUpdateNotSupported.into(),
+            "UPDATE TableA INNER JOIN TableA ON 1 = 1 SET 1 = 1",
+        ),
+        (
+            TranslateError::UnsupportedTableFactor("(SELECT * FROM TableA)".to_owned()).into(),
+            "UPDATE (SELECT * FROM TableA) SET 1 = 1",
+        ),
+        (
+            TranslateError::CompoundIdentOnUpdateNotSupported("TableA.id = 1".to_owned()).into(),
+            "UPDATE TableA SET TableA.id = 1 WHERE id = 1",
+        ),
+        (
             EvaluateError::NestedSelectRowNotFound.into(),
             "SELECT * FROM TableA WHERE id = (SELECT id FROM TableA WHERE id = 2);",
         ),

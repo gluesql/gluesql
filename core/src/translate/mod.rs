@@ -158,7 +158,7 @@ fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
 
     if id.len() > 1 {
         return Err(
-            TranslateError::CompoundIndentOnUpdateNotSupported(sql_assignment.to_string()).into(),
+            TranslateError::CompoundIdentOnUpdateNotSupported(sql_assignment.to_string()).into(),
         );
     }
 
