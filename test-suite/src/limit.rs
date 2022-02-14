@@ -64,6 +64,18 @@ test_case!(limit, async move {
             "INSERT INTO Test SELECT * FROM Test ORDER BY id LIMIT 1 OFFSET 1;",
             Payload::Insert(1),
         ),
+        (
+            "INSERT INTO Test VALUES (1), (2), (3), (4) LIMIT 1;",
+            Payload::Insert(1),
+        ),
+        (
+            "INSERT INTO Test VALUES (1), (2), (3), (4) OFFSET 1;",
+            Payload::Insert(3),
+        ),
+        (
+            "INSERT INTO Test VALUES (1), (2), (3), (4) LIMIT 3 OFFSET 2;",
+            Payload::Insert(2),
+        ),
     ];
 
     for (sql, expected) in test_cases {
