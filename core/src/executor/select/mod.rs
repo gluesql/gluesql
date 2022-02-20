@@ -22,13 +22,13 @@ use {
     },
     futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
-    std::{fmt::Debug, iter::once, rc::Rc},
+    std::{iter::once, rc::Rc},
 };
 
 #[cfg(feature = "index")]
 use {super::evaluate::evaluate, crate::ast::IndexItem};
 
-async fn fetch_blended<'a, T: Debug>(
+async fn fetch_blended<'a, T>(
     storage: &'a dyn GStore<T>,
     table: Table<'a>,
     columns: Rc<[String]>,
@@ -145,7 +145,7 @@ fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-pub async fn select_with_labels<'a, T: Debug>(
+pub async fn select_with_labels<'a, T>(
     storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
@@ -255,7 +255,7 @@ pub async fn select_with_labels<'a, T: Debug>(
     Ok((labels, rows))
 }
 
-pub async fn select<'a, T: Debug>(
+pub async fn select<'a, T>(
     storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,

@@ -21,7 +21,7 @@ use {
         },
         IVec,
     },
-    std::{fmt::Debug, result::Result as StdResult},
+    std::result::Result as StdResult,
 };
 
 macro_rules! transaction {
@@ -166,7 +166,7 @@ impl SledStorage {
                 .collect::<Result<Vec<_>>>()
         };
 
-        fn rollback_items<T: Debug + Clone + Serialize + DeserializeOwned>(
+        fn rollback_items<T: Clone + Serialize + DeserializeOwned>(
             tree: &TransactionalTree,
             txid: u64,
             items: &[(IVec, IVec)],

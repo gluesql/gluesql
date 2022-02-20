@@ -39,7 +39,7 @@ pub enum IndexError {
 }
 
 #[async_trait(?Send)]
-pub trait Index<T: Debug> {
+pub trait Index<T> {
     async fn scan_indexed_data(
         &self,
         table_name: &str,
@@ -50,7 +50,7 @@ pub trait Index<T: Debug> {
 }
 
 #[async_trait(?Send)]
-pub trait IndexMut<T: Debug>
+pub trait IndexMut<T>
 where
     Self: Sized,
 {
