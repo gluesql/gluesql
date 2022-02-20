@@ -43,17 +43,17 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut<T>: StoreMut<T> + IndexMut<T> + AlterTable + Transaction {}
+        pub trait GStoreMut<T>: StoreMut<T> + IndexMut + AlterTable + Transaction {}
     } else if #[cfg(all(feature = "alter-table", feature = "index"))] {
-        pub trait GStoreMut<T>: StoreMut<T> + IndexMut<T> + AlterTable {}
+        pub trait GStoreMut<T>: StoreMut<T> + IndexMut + AlterTable {}
     } else if #[cfg(all(feature = "alter-table", feature = "transaction"))] {
         pub trait GStoreMut<T>: StoreMut<T> + Transaction + AlterTable {}
     } else if #[cfg(all(feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut<T>: StoreMut<T> + IndexMut<T> + Transaction {}
+        pub trait GStoreMut<T>: StoreMut<T> + IndexMut + Transaction {}
     } else if #[cfg(feature = "alter-table")] {
         pub trait GStoreMut<T>: StoreMut<T> + AlterTable {}
     } else if #[cfg(feature = "index")] {
-        pub trait GStoreMut<T>: StoreMut<T> + IndexMut<T> {}
+        pub trait GStoreMut<T>: StoreMut<T> + IndexMut {}
     } else if #[cfg(feature = "transaction")] {
         pub trait GStoreMut<T>: StoreMut<T> + Transaction {}
     } else {

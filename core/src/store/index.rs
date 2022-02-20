@@ -50,7 +50,7 @@ pub trait Index<T> {
 }
 
 #[async_trait(?Send)]
-pub trait IndexMut<T>
+pub trait IndexMut
 where
     Self: Sized,
 {
