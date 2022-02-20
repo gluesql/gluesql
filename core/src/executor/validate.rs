@@ -90,7 +90,7 @@ impl UniqueConstraint {
 }
 
 pub async fn validate_unique<T: Debug>(
-    storage: &impl Store<T>,
+    storage: &impl Store<Key = T>,
     table_name: &str,
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,

@@ -31,7 +31,7 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(all(feature = "metadata", feature = "index"))] {
-        pub trait GStore<T: Debug>: Store<T> + Metadata + Index<T> {}
+        pub trait GStore<T: Debug>: Store<Key = T> + Metadata + Index<T> {}
     } else if #[cfg(feature = "metadata")] {
         pub trait GStore<T: Debug>: Store<T> + Metadata {}
     } else if #[cfg(feature = "index")] {
@@ -74,10 +74,12 @@ pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait(?Send)]
-pub trait Store<T: Debug> {
+pub trait Store {
+    type Key;
+
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter<T>>;
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter<Self::Key>>;
 }
 
 /// By implementing `StoreMut` trait,
