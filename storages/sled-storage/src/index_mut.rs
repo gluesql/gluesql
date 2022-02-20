@@ -14,11 +14,8 @@ use {
         result::{Error, MutResult, Result, TrySelf},
         store::{IndexError, IndexMut, Store},
     },
-    sled::{
-        transaction::{
-            ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
-        },
-        IVec,
+    sled::transaction::{
+        ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
     },
     std::iter::once,
 };
@@ -39,7 +36,7 @@ fn fetch_schema(
 }
 
 #[async_trait(?Send)]
-impl IndexMut<IVec> for SledStorage {
+impl IndexMut for SledStorage {
     async fn create_index(
         self,
         table_name: &str,
