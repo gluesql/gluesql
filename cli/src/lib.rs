@@ -33,7 +33,7 @@ pub fn run() {
         run(MemoryStorage::default());
     }
 
-    fn run<T: Debug, U: GStore<T> + GStoreMut<T>>(storage: U) {
+    fn run<T, U: GStore<T> + GStoreMut<T>>(storage: U) {
         let output = std::io::stdout();
         let mut cli = Cli::new(storage, output);
 

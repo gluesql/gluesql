@@ -9,11 +9,10 @@ use {
         store::Store,
     },
     async_recursion::async_recursion,
-    std::fmt::Debug,
     utils::Vector,
 };
 
-pub async fn plan<T: Debug>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
+pub async fn plan<T>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
     match statement {
         Statement::Query(query) => plan_query(storage, *query)
             .await
@@ -53,7 +52,7 @@ impl Indexes {
     }
 }
 
-async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
+async fn plan_query<T>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
     let Query {
         body,
         limit,
@@ -145,7 +144,7 @@ async fn plan_query<T: Debug>(storage: &dyn Store<T>, query: Query) -> Result<Qu
     }
 }
 
-async fn plan_select<T: Debug>(
+async fn plan_select<T>(
     storage: &dyn Store<T>,
     indexes: &Indexes,
     select: Select,
@@ -226,7 +225,7 @@ enum Planned {
 }
 
 #[async_recursion(?Send)]
-async fn plan_index<T: Debug>(
+async fn plan_index<T>(
     storage: &dyn Store<T>,
     indexes: &Indexes,
     selection: Expr,

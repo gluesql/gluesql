@@ -15,12 +15,12 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
-    std::{fmt::Debug, pin::Pin, rc::Rc},
+    std::{pin::Pin, rc::Rc},
 };
 
 pub use {error::AggregateError, hash::GroupKey};
 
-pub struct Aggregator<'a, T: Debug> {
+pub struct Aggregator<'a, T> {
     storage: &'a dyn GStore<T>,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
@@ -31,7 +31,7 @@ pub struct Aggregator<'a, T: Debug> {
 type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
     + 'a;
 
-impl<'a, T: Debug> Aggregator<'a, T> {
+impl<'a, T> Aggregator<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         fields: &'a [SelectItem],

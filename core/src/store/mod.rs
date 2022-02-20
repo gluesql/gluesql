@@ -31,33 +31,33 @@ cfg_if! {
 
 cfg_if! {
     if #[cfg(all(feature = "metadata", feature = "index"))] {
-        pub trait GStore<T: Debug>: Store<T> + Metadata + Index<T> {}
+        pub trait GStore<T>: Store<T> + Metadata + Index<T> {}
     } else if #[cfg(feature = "metadata")] {
-        pub trait GStore<T: Debug>: Store<T> + Metadata {}
+        pub trait GStore<T>: Store<T> + Metadata {}
     } else if #[cfg(feature = "index")] {
-        pub trait GStore<T: Debug>: Store<T> + Index<T> {}
+        pub trait GStore<T>: Store<T> + Index<T> {}
     } else {
-        pub trait GStore<T: Debug>: Store<T> {}
+        pub trait GStore<T>: Store<T> {}
     }
 }
 
 cfg_if! {
     if #[cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut<T: Debug>: StoreMut<T> + IndexMut<T> + AlterTable + Transaction {}
+        pub trait GStoreMut<T>: StoreMut<T> + IndexMut<T> + AlterTable + Transaction {}
     } else if #[cfg(all(feature = "alter-table", feature = "index"))] {
-        pub trait GStoreMut<T: Debug>: StoreMut<T> + IndexMut<T> + AlterTable {}
+        pub trait GStoreMut<T>: StoreMut<T> + IndexMut<T> + AlterTable {}
     } else if #[cfg(all(feature = "alter-table", feature = "transaction"))] {
-        pub trait GStoreMut<T: Debug>: StoreMut<T> + Transaction + AlterTable {}
+        pub trait GStoreMut<T>: StoreMut<T> + Transaction + AlterTable {}
     } else if #[cfg(all(feature = "index", feature = "transaction"))] {
-        pub trait GStoreMut<T: Debug>: StoreMut<T> + IndexMut<T> + Transaction {}
+        pub trait GStoreMut<T>: StoreMut<T> + IndexMut<T> + Transaction {}
     } else if #[cfg(feature = "alter-table")] {
-        pub trait GStoreMut<T: Debug>: StoreMut<T> + AlterTable {}
+        pub trait GStoreMut<T>: StoreMut<T> + AlterTable {}
     } else if #[cfg(feature = "index")] {
-        pub trait GStoreMut<T: Debug>: StoreMut<T> + IndexMut<T> {}
+        pub trait GStoreMut<T>: StoreMut<T> + IndexMut<T> {}
     } else if #[cfg(feature = "transaction")] {
-        pub trait GStoreMut<T: Debug>: StoreMut<T> + Transaction {}
+        pub trait GStoreMut<T>: StoreMut<T> + Transaction {}
     } else {
-        pub trait GStoreMut<T: Debug>: Store<T> + StoreMut<T> {}
+        pub trait GStoreMut<T>: Store<T> + StoreMut<T> {}
     }
 }
 
@@ -67,14 +67,13 @@ use {
         result::{MutResult, Result},
     },
     async_trait::async_trait,
-    std::fmt::Debug,
 };
 
 pub type RowIter<T> = Box<dyn Iterator<Item = Result<(T, Row)>>>;
 
 /// By implementing `Store` trait, you can run `SELECT` query.
 #[async_trait(?Send)]
-pub trait Store<T: Debug> {
+pub trait Store<T> {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter<T>>;
@@ -83,7 +82,7 @@ pub trait Store<T: Debug> {
 /// By implementing `StoreMut` trait,
 /// you can run `INSERT`, `CREATE TABLE`, `DELETE`, `UPDATE` and `DROP TABLE` queries.
 #[async_trait(?Send)]
-pub trait StoreMut<T: Debug>
+pub trait StoreMut<T>
 where
     Self: Sized,
 {

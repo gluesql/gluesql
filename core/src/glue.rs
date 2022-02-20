@@ -9,15 +9,15 @@ use {
         translate::translate,
     },
     futures::executor::block_on,
-    std::{fmt::Debug, marker::PhantomData},
+    std::marker::PhantomData,
 };
 
-pub struct Glue<T: Debug, U: GStore<T> + GStoreMut<T>> {
+pub struct Glue<T, U: GStore<T> + GStoreMut<T>> {
     _marker: PhantomData<T>,
     pub storage: Option<U>,
 }
 
-impl<T: Debug, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
+impl<T, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
     pub fn new(storage: U) -> Self {
         let storage = Some(storage);
 
