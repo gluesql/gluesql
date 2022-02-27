@@ -19,13 +19,13 @@ use {
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
-    std::{borrow::Cow, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, rc::Rc},
 };
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
-pub async fn evaluate<'a, T: Debug>(
+pub async fn evaluate<'a, T>(
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
@@ -193,7 +193,7 @@ pub async fn evaluate<'a, T: Debug>(
     }
 }
 
-async fn evaluate_function<'a, T: Debug>(
+async fn evaluate_function<'a, T>(
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,

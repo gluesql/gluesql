@@ -25,7 +25,7 @@ impl Index<Key> for MemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl IndexMut<Key> for MemoryStorage {
+impl IndexMut for MemoryStorage {
     async fn create_index(
         self,
         _table_name: &str,

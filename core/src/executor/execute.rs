@@ -9,10 +9,11 @@ use {
     crate::{
         ast::{SetExpr, Statement, Values},
         data::{get_name, Row, Schema, Value},
-        result::{MutResult, Result},
+        executor::limit::Limit,
+        result::MutResult,
         store::{GStore, GStoreMut},
     },
-    futures::stream::TryStreamExt,
+    futures::stream::{self, TryStreamExt},
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -72,7 +73,7 @@ pub enum PayloadVariable {
 }
 
 #[cfg(feature = "transaction")]
-pub async fn execute_atomic<T: Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn execute_atomic<T, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     statement: &Statement,
 ) -> MutResult<U, Payload> {
@@ -101,7 +102,7 @@ pub async fn execute_atomic<T: Debug, U: GStore<T> + GStoreMut<T>>(
     }
 }
 
-pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     statement: &Statement,
 ) -> MutResult<U, Payload> {
@@ -182,10 +183,15 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
                 let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
 
                 let rows = match &source.body {
-                    SetExpr::Values(Values(values_list)) => values_list
-                        .iter()
-                        .map(|values| Row::new(&column_defs, columns, values))
-                        .collect::<Result<Vec<Row>>>()?,
+                    SetExpr::Values(Values(values_list)) => {
+                        let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
+                        let rows = values_list
+                            .iter()
+                            .map(|values| Row::new(&column_defs, columns, values));
+                        let rows = stream::iter(rows);
+                        let rows = limit.apply(rows);
+                        rows.try_collect::<Vec<_>>().await?
+                    }
                     SetExpr::Select(_) => {
                         select(&storage, source, None)
                             .await?

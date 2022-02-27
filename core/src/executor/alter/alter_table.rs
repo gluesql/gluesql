@@ -8,7 +8,6 @@ use {
         result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
-    std::fmt::Debug,
 };
 
 #[cfg(feature = "index")]
@@ -21,7 +20,7 @@ use {
     futures::stream::{self, TryStreamExt},
 };
 
-pub async fn alter_table<T: Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn alter_table<T, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     name: &ObjectName,
     operation: &AlterTableOperation,

@@ -8,8 +8,8 @@ use pin_project::pin_project;
 #[derive(Debug)]
 enum State {
     Initial,
-    InSt1,
-    InSt2,
+    St1,
+    St2,
 }
 
 #[pin_project]
@@ -23,7 +23,7 @@ pub struct OrStream<St1, St2> {
     state: State,
 }
 
-use State::{InSt1, InSt2, Initial};
+use State::{Initial, St1, St2};
 
 impl<St1, St2> OrStream<St1, St2>
 where
@@ -52,18 +52,18 @@ where
         match this.state {
             Initial => match ready!(this.stream1.poll_next(cx)) {
                 item @ Some(_) => {
-                    *this.state = InSt1;
+                    *this.state = St1;
 
                     Poll::Ready(item)
                 }
                 None => {
-                    *this.state = InSt2;
+                    *this.state = St2;
 
                     this.stream2.poll_next(cx)
                 }
             },
-            InSt1 => this.stream1.poll_next(cx),
-            InSt2 => this.stream2.poll_next(cx),
+            St1 => this.stream1.poll_next(cx),
+            St2 => this.stream2.poll_next(cx),
         }
     }
 
@@ -80,8 +80,8 @@ where
                 }
                 i1_hint => i1_hint,
             },
-            InSt1 => self.stream1.size_hint(),
-            InSt2 => self.stream2.size_hint(),
+            St1 => self.stream1.size_hint(),
+            St2 => self.stream2.size_hint(),
         }
     }
 }

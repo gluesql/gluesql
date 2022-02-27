@@ -1,14 +1,11 @@
 #![cfg(any(feature = "memory-storage", feature = "sled-storage"))]
-use {
-    gluesql_core::{
-        executor::Payload,
-        prelude::{Glue, Value},
-        store::{GStore, GStoreMut},
-    },
-    std::fmt::Debug,
+use gluesql_core::{
+    executor::Payload,
+    prelude::{Glue, Value},
+    store::{GStore, GStoreMut},
 };
 
-fn basic<T: Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+fn basic<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
     assert_eq!(
         glue.execute("DROP TABLE IF EXISTS api_test"),
         Ok(Payload::DropTable)
@@ -53,7 +50,7 @@ fn basic<T: Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
     );
 }
 
-async fn basic_async<T: Debug, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+async fn basic_async<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
     assert_eq!(
         glue.execute_async("DROP TABLE IF EXISTS api_test").await,
         Ok(Payload::DropTable)

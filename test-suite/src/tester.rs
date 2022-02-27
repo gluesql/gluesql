@@ -8,7 +8,7 @@ use {
         store::{GStore, GStoreMut},
         translate::translate_expr,
     },
-    std::{cell::RefCell, fmt::Debug, rc::Rc},
+    std::{cell::RefCell, rc::Rc},
 };
 
 pub fn expr(sql: &str) -> Expr {
@@ -86,7 +86,7 @@ pub fn test(expected: Result<Payload>, found: Result<Payload>) {
     }
 }
 
-pub async fn run<T: Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn run<T, U: GStore<T> + GStoreMut<T>>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
     indexes: Option<Vec<IndexItem>>,
@@ -234,7 +234,7 @@ pub fn type_match(expected: &[DataType], found: Result<Payload>) {
 /// Actual test cases are in [test-suite/src/](https://github.com/gluesql/gluesql/blob/main/test-suite/src/),
 /// not in `/tests/`.
 #[async_trait]
-pub trait Tester<T: Debug, U: GStore<T> + GStoreMut<T>> {
+pub trait Tester<T, U: GStore<T> + GStoreMut<T>> {
     fn new(namespace: &str) -> Self;
 
     fn get_cell(&mut self) -> Rc<RefCell<Option<U>>>;

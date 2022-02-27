@@ -8,18 +8,18 @@ test_case!(unary_operator, async move {
 
     let test_cases = vec![
         (
-            "CREATE TABLE Test (v1 INT, v2 FLOAT, v3 TEXT, v4 INT, v5 INT)",
+            "CREATE TABLE Test (v1 INT, v2 FLOAT, v3 TEXT, v4 INT, v5 INT, v6 INT(8))",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Test VALUES (10, 10.5, "hello", -5, 1000)"#,
+            r#"INSERT INTO Test VALUES (10, 10.5, "hello", -5, 1000, 20)"#,
             Ok(Payload::Insert(1)),
         ),
         (
-            "SELECT -v1 as v1, -v2 as v2, v3, -v4 as v4 FROM Test",
+            "SELECT -v1 as v1, -v2 as v2, v3, -v4 as v4, -v6 as v6 FROM Test",
             Ok(select_with_null!(
-                v1      |   v2          |   v3                      |   v4;
-                I64(-10)    F64(-10.5)      Str("hello".to_owned())     I64(5)
+                v1      |   v2          |   v3                      |   v4      |  v6;
+                I64(-10)    F64(-10.5)      Str("hello".to_owned())     I64(5)     I8(-20)
             )),
         ),
         (
@@ -84,6 +84,14 @@ test_case!(unary_operator, async move {
         ),
         (
             "SELECT v5! as v5 FROM Test",
+            Err(ValueError::FactorialOverflow.into()),
+        ),
+        (
+            "SELECT (-v6)! as v6 FROM Test",
+            Err(ValueError::FactorialOnNegativeNumeric.into()),
+        ),
+        (
+            "SELECT (v6 * 100)! as v6 FROM Test",
             Err(ValueError::FactorialOverflow.into()),
         ),
         (

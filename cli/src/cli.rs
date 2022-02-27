@@ -5,15 +5,11 @@ use {
         store::{GStore, GStoreMut},
     },
     rustyline::{error::ReadlineError, Editor},
-    std::{
-        fmt::Debug,
-        io::{Result, Write},
-    },
+    std::io::{Result, Write},
 };
 
 pub struct Cli<T, U, W>
 where
-    T: Debug,
     U: GStore<T> + GStoreMut<T>,
     W: Write,
 {
@@ -23,7 +19,6 @@ where
 
 impl<T, U, W> Cli<T, U, W>
 where
-    T: Debug,
     U: GStore<T> + GStoreMut<T>,
     W: Write,
 {

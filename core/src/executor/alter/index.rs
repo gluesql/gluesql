@@ -8,10 +8,9 @@ use {
         result::MutResult,
         store::{GStore, GStoreMut},
     },
-    std::fmt::Debug,
 };
 
-pub async fn create_index<T: Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn create_index<T, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     table_name: &ObjectName,
     index_name: &ObjectName,
@@ -70,7 +69,7 @@ fn validate_index_expr(columns: &[String], expr: &Expr) -> (bool, bool) {
     }
 }
 
-pub async fn drop_index<T: Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn drop_index<T, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     table_name: &ObjectName,
     index_name: &ObjectName,

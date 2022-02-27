@@ -10,11 +10,11 @@ use {
         store::GStore,
     },
     futures::stream::{self, once, Stream, StreamExt, TryStream, TryStreamExt},
-    std::{fmt::Debug, pin::Pin, rc::Rc},
+    std::{pin::Pin, rc::Rc},
     utils::OrStream,
 };
 
-pub struct Join<'a, T: Debug> {
+pub struct Join<'a, T> {
     storage: &'a dyn GStore<T>,
     join_clauses: &'a [AstJoin],
     join_columns: Vec<Rc<[String]>>,
@@ -25,7 +25,7 @@ type JoinItem<'a> = Rc<BlendContext<'a>>;
 type Joined<'a> =
     Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
 
-impl<'a, T: Debug> Join<'a, T> {
+impl<'a, T> Join<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         join_clauses: &'a [AstJoin],
@@ -96,7 +96,7 @@ impl<'a, T: Debug> Join<'a, T> {
     }
 }
 
-async fn join<'a, T: Debug>(
+async fn join<'a, T>(
     storage: &'a dyn GStore<T>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
@@ -146,7 +146,7 @@ async fn join<'a, T: Debug>(
     }
 }
 
-async fn fetch_joined<'a, T: Debug>(
+async fn fetch_joined<'a, T>(
     storage: &'a dyn GStore<T>,
     table_name: &'a str,
     table_alias: &'a str,

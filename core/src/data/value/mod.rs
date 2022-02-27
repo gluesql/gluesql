@@ -348,6 +348,9 @@ impl Value {
         use Value::*;
 
         let factorial_function = |a: i64| -> Result<i64> {
+            if a.is_negative() {
+                return Err(ValueError::FactorialOnNegativeNumeric.into());
+            }
             (1..(a + 1))
                 .into_iter()
                 .try_fold(1i64, |mul, x| mul.checked_mul(x))
@@ -355,8 +358,8 @@ impl Value {
         };
 
         match self {
-            I64(a) if *a >= 0 => factorial_function(*a).map(I64),
-            I64(_) => Err(ValueError::FactorialOnNegativeNumeric.into()),
+            I8(a) => factorial_function(*a as i64).map(I64),
+            I64(a) => factorial_function(*a).map(I64),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),

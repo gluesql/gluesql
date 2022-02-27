@@ -12,16 +12,16 @@ use {
     },
     futures::stream::{self, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    std::{fmt::Debug, rc::Rc},
+    std::rc::Rc,
 };
 
-pub struct Blend<'a, T: Debug> {
+pub struct Blend<'a, T> {
     storage: &'a dyn GStore<T>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
-impl<'a, T: Debug> Blend<'a, T> {
+impl<'a, T> Blend<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         filter_context: Option<Rc<FilterContext<'a>>>,
