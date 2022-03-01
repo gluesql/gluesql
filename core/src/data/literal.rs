@@ -282,7 +282,7 @@ mod tests {
         matches!(num(1).add(&Null), Ok(Null));
         matches!(mon(1).add(&Null), Ok(Null));
 
-        //substract test
+        // subtract test
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         matches!(Null.subtract(&num(2)), Ok(Null));
         matches!(Null.subtract(&mon(3)), Ok(Null));
