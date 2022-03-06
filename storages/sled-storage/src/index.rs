@@ -19,7 +19,9 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Index<IVec> for SledStorage {
+impl Index for SledStorage {
+    type Key = IVec;
+
     async fn scan_indexed_data(
         &self,
         table_name: &str,

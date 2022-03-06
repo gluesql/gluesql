@@ -12,7 +12,7 @@ use {
     utils::Vector,
 };
 
-pub async fn plan<T>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
+pub async fn plan<T>(storage: &dyn Store<Key = T>, statement: Statement) -> Result<Statement> {
     match statement {
         Statement::Query(query) => plan_query(storage, *query)
             .await
@@ -52,7 +52,7 @@ impl Indexes {
     }
 }
 
-async fn plan_query<T>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
+async fn plan_query<T>(storage: &dyn Store<Key = T>, query: Query) -> Result<Query> {
     let Query {
         body,
         limit,
@@ -145,7 +145,7 @@ async fn plan_query<T>(storage: &dyn Store<T>, query: Query) -> Result<Query> {
 }
 
 async fn plan_select<T>(
-    storage: &dyn Store<T>,
+    storage: &dyn Store<Key = T>,
     indexes: &Indexes,
     select: Select,
 ) -> Result<Select> {
@@ -226,7 +226,7 @@ enum Planned {
 
 #[async_recursion(?Send)]
 async fn plan_index<T>(
-    storage: &dyn Store<T>,
+    storage: &dyn Store<Key = T>,
     indexes: &Indexes,
     selection: Expr,
 ) -> Result<Planned> {

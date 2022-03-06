@@ -39,14 +39,16 @@ pub enum IndexError {
 }
 
 #[async_trait(?Send)]
-pub trait Index<T> {
+pub trait Index {
+    type Key;
+
     async fn scan_indexed_data(
         &self,
         table_name: &str,
         index_name: &str,
         asc: Option<bool>,
         cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter<T>>;
+    ) -> Result<RowIter<Self::Key>>;
 }
 
 #[async_trait(?Send)]

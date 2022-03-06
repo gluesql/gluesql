@@ -36,7 +36,9 @@ pub struct MemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl Store<Key> for MemoryStorage {
+impl Store for MemoryStorage {
+    type Key = Key;
+
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.items
             .get(table_name)
@@ -70,7 +72,9 @@ impl Store<Key> for MemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl StoreMut<Key> for MemoryStorage {
+impl StoreMut for MemoryStorage {
+    type Key = Key;
+
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let mut storage = self;
 

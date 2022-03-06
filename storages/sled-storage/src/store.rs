@@ -10,7 +10,9 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Store<IVec> for SledStorage {
+impl Store for SledStorage {
+    type Key = IVec;
+
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let (txid, created_at, temp) = match self.state {
             State::Transaction {

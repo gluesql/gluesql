@@ -10,7 +10,9 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Index<Key> for MemoryStorage {
+impl Index for MemoryStorage {
+    type Key = Key;
+
     async fn scan_indexed_data(
         &self,
         _table_name: &str,
