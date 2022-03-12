@@ -32,6 +32,15 @@ impl<T> Vector<T> {
         self
     }
 
+    pub fn sort(mut self) -> Self
+    where
+        T: std::cmp::Ord,
+    {
+        self.0.sort();
+
+        self
+    }
+
     pub fn sort_by<F>(mut self, compare: F) -> Self
     where
         F: FnMut(&T, &T) -> std::cmp::Ordering,
@@ -64,6 +73,15 @@ impl<T> IntoIterator for Vector<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl<T> FromIterator<T> for Vector<T> {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        Self(iter.into_iter().collect())
     }
 }
 

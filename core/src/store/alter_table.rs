@@ -1,5 +1,8 @@
 use {
-    crate::{ast::ColumnDef, result::MutResult},
+    crate::{
+        ast::ColumnDef,
+        result::{Error, MutResult},
+    },
     async_trait::async_trait,
     serde::Serialize,
     std::fmt::Debug,
@@ -29,21 +32,37 @@ pub trait AlterTable
 where
     Self: Sized,
 {
-    async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()>;
+    async fn rename_schema(self, _table_name: &str, _new_table_name: &str) -> MutResult<Self, ()> {
+        let msg = "[Storage] AlterTable::rename_schema is not supported".to_owned();
+
+        Err((self, Error::StorageMsg(msg)))
+    }
 
     async fn rename_column(
         self,
-        table_name: &str,
-        old_column_name: &str,
-        new_column_name: &str,
-    ) -> MutResult<Self, ()>;
+        _table_name: &str,
+        _old_column_name: &str,
+        _new_column_name: &str,
+    ) -> MutResult<Self, ()> {
+        let msg = "[Storage] AlterTable::rename_column is not supported".to_owned();
 
-    async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()>;
+        Err((self, Error::StorageMsg(msg)))
+    }
+
+    async fn add_column(self, _table_name: &str, _column_def: &ColumnDef) -> MutResult<Self, ()> {
+        let msg = "[Storage] AlterTable::add_column is not supported".to_owned();
+
+        Err((self, Error::StorageMsg(msg)))
+    }
 
     async fn drop_column(
         self,
-        table_name: &str,
-        column_name: &str,
-        if_exists: bool,
-    ) -> MutResult<Self, ()>;
+        _table_name: &str,
+        _column_name: &str,
+        _if_exists: bool,
+    ) -> MutResult<Self, ()> {
+        let msg = "[Storage] AlterTable::drop_column is not supported".to_owned();
+
+        Err((self, Error::StorageMsg(msg)))
+    }
 }

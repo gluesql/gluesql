@@ -1,15 +1,22 @@
+mod context;
+mod evaluable;
+mod expr;
 mod index;
+mod join;
 mod schema;
 
-use {
-    crate::{ast::Statement, result::Result, store::Store},
-    std::fmt::Debug,
-};
+#[cfg(test)]
+mod mock;
 
-pub use {index::plan as plan_index, schema::fetch_schema_map};
+use crate::{ast::Statement, result::Result, store::Store};
 
-pub async fn plan<T: Debug>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
+pub use {index::plan as plan_index, join::plan as plan_join, schema::fetch_schema_map};
+
+pub async fn plan<T>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
 
-    plan_index(&schema_map, statement)
+    let statement = plan_index(&schema_map, statement)?;
+    let statement = plan_join(&schema_map, statement);
+
+    Ok(statement)
 }

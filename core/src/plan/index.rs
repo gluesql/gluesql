@@ -73,18 +73,6 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         TableFactor::Table { name, .. } => name,
     };
     let table_name = get_name(table_name)?;
-    /*
-    let indexes = match storage.fetch_schema(table_name).await? {
-        Some(Schema { indexes, .. }) => Indexes(indexes),
-        None => {
-            return Ok(Query {
-                body: SetExpr::Select(select),
-                limit,
-                offset,
-            });
-        }
-    };
-    */
     let indexes = match schema_map.get(table_name) {
         Some(Schema { indexes, .. }) => Indexes(indexes.clone()),
         None => {
