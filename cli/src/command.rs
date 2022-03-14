@@ -3,17 +3,26 @@ pub enum Command {
     Help,
     Quit,
     Execute(String),
+    ExecuteFromFile(String)
 }
 
 impl Command {
     pub fn parse(line: &str) -> Result<Self, ()> {
-        match line.trim_start().trim_end_matches(|c| c == ' ' || c == ';') {
-            ".help" => Ok(Self::Help),
-            ".quit" => Ok(Self::Quit),
-            ".tables" => Ok(Self::Execute("SHOW TABLES".to_owned())),
-            ".version" => Ok(Self::Execute("SHOW VERSION".to_owned())),
-            _ if line.starts_with('.') => Err(()),
-            sql => Ok(Self::Execute(sql.to_owned())),
+        let line = line.trim_start().trim_end_matches(|c| c == ' ' || c == ';');
+        // We detect if the line is a command or not
+        if line.starts_with('.') {
+            let params: Vec<&str> = line.split_whitespace()
+                                        .collect();
+            match params[0] {
+                ".help" => Ok(Self::Help),
+                ".quit" => Ok(Self::Quit),
+                ".tables" => Ok(Self::Execute("SHOW TABLES".to_owned())),
+                ".version" => Ok(Self::Execute("SHOW VERSION".to_owned())),
+                ".execute" if params.len() == 2 => Ok(Self::ExecuteFromFile(params[1].to_owned())),
+                _ => Err(()),
+            }
+        } else {
+            Ok(Self::Execute(line.to_owned()))
         }
     }
 }

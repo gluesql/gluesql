@@ -8,6 +8,9 @@ use {
     std::io::{Result, Write},
 };
 
+use std::fs::File;
+use std::io::Read;
+
 pub struct Cli<T, U, W>
 where
     U: GStore<T> + GStoreMut<T>,
@@ -82,6 +85,30 @@ where
                         println!("[error] {}\n", e);
                     }
                 },
+                Command::ExecuteFromFile(filename) => {
+                    if let Err(e) = self.load(&filename) {
+                        println!("[error] {}\n", e);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn load(&mut self, filename: &str) -> Result<()> {
+        let mut sqls = String::new();
+        // We open the file
+        File::open(filename)?.read_to_string(&mut sqls)?;
+        // We get all the sql query
+        for sql in sqls.split(";\n") {
+            if sql.trim().len() > 0 {
+                match self.glue.execute(&(sql.to_owned() + ";")) {
+                    Ok(payload) => self.print.payload(payload)?,
+                    Err(e) => {
+                        println!("[error] {}\n", e);
+                    }
+                }
             }
         }
 

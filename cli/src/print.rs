@@ -57,11 +57,12 @@ impl<W: Write> Print<W> {
 
     pub fn help(&mut self) -> Result<()> {
         const HEADER: [&str; 2] = ["command", "description"];
-        const CONTENT: [[&str; 2]; 4] = [
+        const CONTENT: [[&str; 2]; 5] = [
             [".help", "show help"],
             [".quit", "quit program"],
             [".tables", "show table names"],
             [".version", "show version"],
+            [".execute FILE", "execute SQL from a file"],
         ];
 
         let mut table = get_table(HEADER);
@@ -92,14 +93,15 @@ mod tests {
         let mut print = Print::new(Vec::new());
 
         let expected = "
-╭─────────────────────────────╮
-│ command    description      │
-╞═════════════════════════════╡
-│ .help      show help        │
-│ .quit      quit program     │
-│ .tables    show table names │
-│ .version   show version     │
-╰─────────────────────────────╯";
+╭─────────────────────────────────────────╮
+│ command         description             │
+╞═════════════════════════════════════════╡
+│ .help           show help               │
+│ .quit           quit program            │
+│ .tables         show table names        │
+│ .version        show version            │
+│ .execute FILE   execute SQL from a file │
+╰─────────────────────────────────────────╯";
         let found = {
             print.help().unwrap();
 
