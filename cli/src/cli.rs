@@ -6,8 +6,8 @@ use {
     },
     rustyline::{error::ReadlineError, Editor},
     std::{
-        io::{Result, Write, Read},
         fs::File,
+        io::{Read, Result, Write},
     },
 };
 
@@ -99,7 +99,7 @@ where
     pub fn load(&mut self, filename: &str) -> Result<()> {
         let mut sqls = String::new();
         File::open(filename)?.read_to_string(&mut sqls)?;
-        for sql in sqls.split(";\n").filter(|sql| sql.trim().len() > 0) {
+        for sql in sqls.split(";\n").filter(|sql| !sql.trim().is_empty()) {
             match self.glue.execute(sql) {
                 Ok(payload) => self.print.payload(payload)?,
                 Err(e) => {

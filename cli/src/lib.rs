@@ -31,7 +31,10 @@ pub fn run() {
         let path = path.as_path().to_str().expect("wrong path");
 
         println!("[sled-storage] connected to {}", path);
-        run(SledStorage::new(path).expect("failed to load sled-storage"), args.execute);
+        run(
+            SledStorage::new(path).expect("failed to load sled-storage"),
+            args.execute,
+        );
     } else {
         println!("[memory-storage] initialized");
         run(MemoryStorage::default(), args.execute);
@@ -42,7 +45,6 @@ pub fn run() {
         let mut cli = Cli::new(storage, output);
 
         if let Some(path) = input {
-            
             if let Err(e) = cli.load(path.as_path().to_str().expect("wrong path")) {
                 println!("[error] {}\n", e);
             };

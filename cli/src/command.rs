@@ -3,7 +3,7 @@ pub enum Command {
     Help,
     Quit,
     Execute(String),
-    ExecuteFromFile(String)
+    ExecuteFromFile(String),
 }
 
 impl Command {
@@ -11,8 +11,7 @@ impl Command {
         let line = line.trim_start().trim_end_matches(|c| c == ' ' || c == ';');
         // We detect if the line is a command or not
         if line.starts_with('.') {
-            let params: Vec<&str> = line.split_whitespace()
-                                        .collect();
+            let params: Vec<&str> = line.split_whitespace().collect();
             match params[0] {
                 ".help" => Ok(Self::Help),
                 ".quit" => Ok(Self::Quit),
