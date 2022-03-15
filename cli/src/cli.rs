@@ -8,6 +8,7 @@ use {
     std::{
         fs::File,
         io::{Read, Result, Write},
+        path::Path,
     },
 };
 
@@ -96,7 +97,7 @@ where
         Ok(())
     }
 
-    pub fn load(&mut self, filename: &str) -> Result<()> {
+    pub fn load<P: AsRef<Path>>(&mut self, filename: P) -> Result<()> {
         let mut sqls = String::new();
         File::open(filename)?.read_to_string(&mut sqls)?;
         for sql in sqls.split(";\n").filter(|sql| !sql.trim().is_empty()) {

@@ -45,7 +45,7 @@ pub fn run() {
         let mut cli = Cli::new(storage, output);
 
         if let Some(path) = input {
-            if let Err(e) = cli.load(path.as_path().to_str().expect("wrong path")) {
+            if let Err(e) = cli.load(path.as_path()) {
                 println!("[error] {}\n", e);
             };
         }
