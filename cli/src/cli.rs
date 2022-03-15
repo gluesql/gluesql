@@ -5,7 +5,11 @@ use {
         store::{GStore, GStoreMut},
     },
     rustyline::{error::ReadlineError, Editor},
-    std::io::{Result, Write},
+    std::{
+        fs::File,
+        io::{Read, Result, Write},
+        path::Path,
+    },
 };
 
 pub struct Cli<T, U, W>
@@ -82,6 +86,27 @@ where
                         println!("[error] {}\n", e);
                     }
                 },
+                Command::ExecuteFromFile(filename) => {
+                    if let Err(e) = self.load(&filename) {
+                        println!("[error] {}\n", e);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn load<P: AsRef<Path>>(&mut self, filename: P) -> Result<()> {
+        let mut sqls = String::new();
+        File::open(filename)?.read_to_string(&mut sqls)?;
+        for sql in sqls.split(";\n").filter(|sql| !sql.trim().is_empty()) {
+            match self.glue.execute(sql) {
+                Ok(payload) => self.print.payload(payload)?,
+                Err(e) => {
+                    println!("[error] {}\n", e);
+                    break;
+                }
             }
         }
 
