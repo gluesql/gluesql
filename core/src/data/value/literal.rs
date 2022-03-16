@@ -460,4 +460,41 @@ mod tests {
             Value::Decimal(Decimal::new(200, 0))
         );
     }
+
+    #[test]
+    fn try_from() {
+        use {
+            crate::data::Interval as I,
+            std::{borrow::Cow, str::FromStr},
+        };
+
+        macro_rules! text {
+            ($text: expr) => {
+                Literal::Text(Cow::Owned($text.to_owned()))
+            };
+        }
+
+        macro_rules! num {
+            ($num: expr) => {
+                &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        macro_rules! test {
+            ($from: expr, $expected: expr) => {
+                assert_eq!(Value::try_from($from), Ok($expected));
+            };
+        }
+
+        test!(text!("hello"), Value::Str("hello".to_owned()));
+        test!(&text!("hallo"), Value::Str("hallo".to_owned()));
+        test!(num!("1234567890"), Value::I64(1234567890));
+        test!(num!("12345678.90"), Value::F64(12345678.90));
+        test!(&Literal::Boolean(false), Value::Bool(false));
+        test!(
+            &Literal::Interval(I::Month(1)),
+            Value::Interval(I::Month(1))
+        );
+        assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
+    }
 }
