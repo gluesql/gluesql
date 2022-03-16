@@ -349,4 +349,115 @@ mod tests {
         test!("03:30:37.123 PM", time(15, 30, 37, 123));
         test!("9:30:37.917 AM", time(9, 30, 37, 917));
     }
+
+    #[test]
+    fn try_from_literal() {
+        use {
+            crate::{ast::DataType, data::Interval as I},
+            chrono::NaiveDate,
+            rust_decimal::Decimal,
+            std::{borrow::Cow, str::FromStr},
+        };
+
+        macro_rules! num {
+            ($num: expr) => {
+                Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        macro_rules! text {
+            ($text: expr) => {
+                Literal::Text(Cow::Owned($text.to_owned()))
+            };
+        }
+
+        macro_rules! test {
+            ($to: expr, $from: expr, $expected: expr) => {
+                assert_eq!(Value::try_from_literal(&$to, &$from), Ok($expected));
+            };
+        }
+
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+
+        test!(DataType::Boolean, Literal::Boolean(true), Value::Bool(true));
+        test!(DataType::Int, num!("123456789"), Value::I64(123456789));
+        test!(DataType::Int8, num!("64"), Value::I8(64));
+        test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
+        test!(
+            DataType::Text,
+            text!("Good!"),
+            Value::Str("Good!".to_owned())
+        );
+        test!(
+            DataType::Date,
+            text!("2015-09-05"),
+            Value::Date(NaiveDate::from_ymd(2015, 9, 5))
+        );
+        test!(
+            DataType::Timestamp,
+            text!("2022-12-20 10:00:00.987"),
+            Value::Timestamp(timestamp(2022, 12, 20, 10, 0, 0, 987))
+        );
+        test!(
+            DataType::Time,
+            text!("12:00:35"),
+            Value::Time(chrono::NaiveTime::from_hms_milli(12, 0, 35, 0))
+        );
+        test!(
+            DataType::Interval,
+            Literal::Interval(I::Month(1)),
+            Value::Interval(I::Month(1))
+        );
+        test!(
+            DataType::Interval,
+            Literal::Interval(I::Microsecond(1234567890)),
+            Value::Interval(I::Microsecond(1234567890))
+        );
+        test!(
+            DataType::Uuid,
+            text!("936DA01F9ABD4d9d80C702AF85C822A8"),
+            Value::Uuid(195965723427462096757863453463987888808)
+        );
+        assert_eq!(
+            Value::try_from_literal(
+                &DataType::Map,
+                &text!(
+                    r#"{
+            "name": "John Doe",
+            "age": 43
+        }"#
+                )
+            ),
+            Value::parse_json_map(
+                r#"{
+            "name": "John Doe",
+            "age": 43
+        }"#
+            )
+        );
+        assert_eq!(
+            Value::try_from_literal(
+                &DataType::List,
+                &text!(
+                    r#"[
+            "+44 1234567",
+            "+44 2345678"
+        ]"#
+                )
+            ),
+            Value::parse_json_list(
+                r#"[
+            "+44 1234567",
+            "+44 2345678"
+        ]"#
+            )
+        );
+        test!(
+            DataType::Decimal,
+            num!("200"),
+            Value::Decimal(Decimal::new(200, 0))
+        );
+    }
 }
