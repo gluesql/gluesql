@@ -497,4 +497,112 @@ mod tests {
         );
         assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
     }
+
+    #[test]
+    fn try_cast_from_literal() {
+        use {
+            crate::{ast::DataType, data::Interval as I},
+            chrono::NaiveDate,
+            std::{borrow::Cow, str::FromStr},
+        };
+
+        macro_rules! text {
+            ($text: expr) => {
+                Literal::Text(Cow::Owned($text.to_owned()))
+            };
+        }
+
+        macro_rules! num {
+            ($num: expr) => {
+                &Literal::Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
+            };
+        }
+
+        macro_rules! test {
+            ($to: expr, $from: expr, $expected: expr) => {
+                assert_eq!(Value::try_cast_from_literal(&$to, &$from), Ok($expected))
+            };
+        }
+
+        macro_rules! test_null {
+            ($to: expr, $from: expr) => {
+                assert!(matches!(
+                    Value::try_cast_from_literal(&$to, &$from),
+                    Ok(Value::Null)
+                ))
+            };
+        }
+
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+
+        test!(
+            DataType::Boolean,
+            Literal::Boolean(false),
+            Value::Bool(false)
+        );
+        test!(DataType::Boolean, text!("false"), Value::Bool(false));
+        test!(DataType::Boolean, text!("true"), Value::Bool(true));
+        test!(DataType::Boolean, num!("0"), Value::Bool(false));
+        test!(DataType::Boolean, num!("1"), Value::Bool(true));
+        test!(DataType::Int, text!("1234567890"), Value::I64(1234567890));
+        test!(DataType::Int, num!("1234567890"), Value::I64(1234567890));
+        test!(DataType::Int, Literal::Boolean(true), Value::I64(1));
+        test!(DataType::Int, Literal::Boolean(false), Value::I64(0));
+        test!(DataType::Int8, text!("127"), Value::I8(127));
+        test!(DataType::Int8, num!("125"), Value::I8(125));
+        test!(DataType::Int8, Literal::Boolean(true), Value::I8(1));
+        test!(DataType::Int8, Literal::Boolean(false), Value::I8(0));
+        test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
+        test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
+        test!(DataType::Float, Literal::Boolean(true), Value::F64(1.0));
+        test!(DataType::Float, Literal::Boolean(false), Value::F64(0.0));
+        test!(
+            DataType::Text,
+            num!("1234567890"),
+            Value::Str("1234567890".to_owned())
+        );
+        test!(DataType::Text, text!("Cow"), Value::Str("Cow".to_owned()));
+        test!(
+            DataType::Text,
+            Literal::Boolean(true),
+            Value::Str("TRUE".to_owned())
+        );
+        test!(
+            DataType::Text,
+            Literal::Boolean(false),
+            Value::Str("FALSE".to_owned())
+        );
+        test!(
+            DataType::Interval,
+            text!(r#""+22-10" YEAR TO MONTH"#),
+            Value::Interval(I::Month(274))
+        );
+        test!(
+            DataType::Uuid,
+            text!("936DA01F9ABD4d9d80C702AF85C822A8"),
+            Value::Uuid(195965723427462096757863453463987888808)
+        );
+        test_null!(DataType::Boolean, Literal::Null);
+        test_null!(DataType::Int, Literal::Null);
+        test_null!(DataType::Int8, Literal::Null);
+        test_null!(DataType::Float, Literal::Null);
+        test_null!(DataType::Text, Literal::Null);
+        test!(
+            DataType::Date,
+            text!("2015-09-05"),
+            Value::Date(NaiveDate::from_ymd(2015, 9, 5))
+        );
+        test!(
+            DataType::Time,
+            text!("12:00:35"),
+            Value::Time(chrono::NaiveTime::from_hms_milli(12, 0, 35, 0))
+        );
+        test!(
+            DataType::Timestamp,
+            text!("2022-12-20 10:00:00.987"),
+            Value::Timestamp(timestamp(2022, 12, 20, 10, 0, 0, 987))
+        );
+    }
 }
