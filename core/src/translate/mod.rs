@@ -10,6 +10,7 @@ mod query;
 pub use self::{
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
+    query::translate_query,
 };
 
 #[cfg(feature = "alter-table")]
@@ -20,7 +21,7 @@ use sqlparser::ast::{TableFactor, TableWithJoins};
 use crate::ast::Variable;
 
 use {
-    self::{ddl::translate_column_def, query::translate_query},
+    self::ddl::translate_column_def,
     crate::{
         ast::{Assignment, ObjectName, Statement},
         result::Result,
