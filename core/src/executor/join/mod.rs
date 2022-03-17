@@ -55,18 +55,14 @@ impl<'a, T> Join<'a, T> {
         self,
         rows: impl Stream<Item = Result<BlendContext<'a>>> + 'a,
     ) -> Result<Joined<'a>> {
-        let init_rows: Joined<'a> = Box::pin(rows.map(|row| row.map(Rc::new)));
+        let init_rows: Joined = Box::pin(rows.map(|row| row.map(Rc::new)));
         let joins = self
             .join_clauses
             .iter()
-            .enumerate()
-            .map(move |(i, join_clause)| {
-                let join_columns = Rc::clone(&self.join_columns[i]);
-
-                Ok::<_, Error>((join_clause, join_columns))
-            });
+            .zip(self.join_columns.iter().map(Rc::clone));
 
         stream::iter(joins)
+            .map(Ok)
             .try_fold(init_rows, |rows, (join_clause, join_columns)| {
                 let filter_context = self.filter_context.as_ref().map(Rc::clone);
 
@@ -205,7 +201,7 @@ async fn join<'a, T>(
                 }
             };
 
-            let rows: Joined<'a> = match join_operator {
+            let rows: Joined = match join_operator {
                 JoinOperator::Inner => Box::pin(rows),
                 JoinOperator::LeftOuter => {
                     let init_rows = once(async { Ok(init_context) });
