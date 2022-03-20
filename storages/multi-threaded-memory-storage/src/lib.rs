@@ -48,6 +48,12 @@ impl MultiThreadedMemoryStorage {
     }
 }
 
+impl Default for MultiThreadedMemoryStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait(?Send)]
 impl Store<Key> for MultiThreadedMemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
