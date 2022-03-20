@@ -39,6 +39,15 @@ pub struct MultiThreadedMemoryStorage {
     pub items: Arc<RwLock<HashMap<String, Item>>>,
 }
 
+impl MultiThreadedMemoryStorage {
+    pub fn new() -> Self {
+        Self {
+            id_counter: AtomicU64::new(0),
+            items: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
 #[async_trait(?Send)]
 impl Store<Key> for MultiThreadedMemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
