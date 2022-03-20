@@ -34,13 +34,13 @@ pub struct Item {
 }
 
 #[derive(Debug)]
-pub struct MemoryStorage {
+pub struct MultiThreadedMemoryStorage {
     pub id_counter: AtomicU64,
     pub items: Arc<RwLock<HashMap<String, Item>>>,
 }
 
 #[async_trait(?Send)]
-impl Store<Key> for MemoryStorage {
+impl Store<Key> for MultiThreadedMemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let items = Arc::clone(&self.items);
         let schema = items
@@ -80,7 +80,7 @@ impl Store<Key> for MemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl StoreMut<Key> for MemoryStorage {
+impl StoreMut<Key> for MultiThreadedMemoryStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let storage = self;
 
@@ -145,5 +145,5 @@ impl StoreMut<Key> for MemoryStorage {
     }
 }
 
-impl GStore<Key> for MemoryStorage {}
-impl GStoreMut<Key> for MemoryStorage {}
+impl GStore<Key> for MultiThreadedMemoryStorage {}
+impl GStoreMut<Key> for MultiThreadedMemoryStorage {}

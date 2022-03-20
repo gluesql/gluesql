@@ -1,5 +1,5 @@
 use {
-    super::MemoryStorage,
+    super::MultiThreadedMemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
@@ -12,7 +12,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl AlterTable for MemoryStorage {
+impl AlterTable for MultiThreadedMemoryStorage {
     async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
         let storage = self;
         let items = Arc::clone(&storage.items);
@@ -62,7 +62,7 @@ impl AlterTable for MemoryStorage {
 }
 
 async fn rename_column(
-    storage: &MemoryStorage,
+    storage: &MultiThreadedMemoryStorage,
     table_name: &str,
     old_column_name: &str,
     new_column_name: &str,
@@ -87,7 +87,7 @@ async fn rename_column(
 }
 
 async fn add_column(
-    storage: &MemoryStorage,
+    storage: &MultiThreadedMemoryStorage,
     table_name: &str,
     column_def: &ColumnDef,
 ) -> Result<()> {
@@ -137,7 +137,7 @@ async fn add_column(
 }
 
 async fn drop_column(
-    storage: &MemoryStorage,
+    storage: &MultiThreadedMemoryStorage,
     table_name: &str,
     column_name: &str,
     if_exists: bool,

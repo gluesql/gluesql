@@ -1,5 +1,5 @@
 use {
-    super::MemoryStorage,
+    super::MultiThreadedMemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
         result::{Error, MutResult},
@@ -8,7 +8,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Transaction for MemoryStorage {
+impl Transaction for MultiThreadedMemoryStorage {
     async fn begin(self, autocommit: bool) -> MutResult<Self, bool> {
         if autocommit {
             return Ok((self, false));

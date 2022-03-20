@@ -1,5 +1,5 @@
 use {
-    super::{Key, MemoryStorage},
+    super::{Key, MultiThreadedMemoryStorage},
     async_trait::async_trait,
     gluesql_core::{
         ast::{IndexOperator, OrderByExpr},
@@ -10,7 +10,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Index<Key> for MemoryStorage {
+impl Index<Key> for MultiThreadedMemoryStorage {
     async fn scan_indexed_data(
         &self,
         _table_name: &str,
@@ -25,7 +25,7 @@ impl Index<Key> for MemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl IndexMut for MemoryStorage {
+impl IndexMut for MultiThreadedMemoryStorage {
     async fn create_index(
         self,
         _table_name: &str,
