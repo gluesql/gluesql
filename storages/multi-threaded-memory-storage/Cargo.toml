@@ -1,0 +1,30 @@
+[package]
+name = "gluesql-multi-threaded-memory-storage"
+version = "0.10.2"
+edition = "2021"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
+
+[dependencies]
+gluesql-core = { path = "../../core", version = "0.10.2", features = [
+	"alter-table",
+	"index",
+	"transaction",
+	"metadata",
+] }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["sync"] }
+
+[dev-dependencies]
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.10.2", features = [
+	"alter-table",
+	"index",
+	"transaction",
+	"metadata",
+] }
+futures = "0.3"
+tokio = { version = "1", features = ["rt", "macros"] }
