@@ -1,12 +1,12 @@
 use {
-    super::MultiThreadedMemoryStorage,
+    super::SharedMemoryStorage,
     async_trait::async_trait,
     gluesql_core::{result::Result, store::Metadata},
     std::sync::Arc,
 };
 
 #[async_trait(?Send)]
-impl Metadata for MultiThreadedMemoryStorage {
+impl Metadata for SharedMemoryStorage {
     async fn schema_names(&self) -> Result<Vec<String>> {
         let items = Arc::clone(&self.items);
         let items = items.read().await;

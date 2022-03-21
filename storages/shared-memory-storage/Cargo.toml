@@ -1,5 +1,5 @@
 [package]
-name = "gluesql-multi-threaded-memory-storage"
+name = "gluesql-shared-memory-storage"
 version = "0.10.2"
 edition = "2021"
 authors = [

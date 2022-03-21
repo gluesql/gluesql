@@ -1,5 +1,5 @@
 use {
-    super::{Key, MultiThreadedMemoryStorage},
+    super::{Key, SharedMemoryStorage},
     async_trait::async_trait,
     gluesql_core::{
         ast::{IndexOperator, OrderByExpr},
@@ -10,7 +10,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Index<Key> for MultiThreadedMemoryStorage {
+impl Index<Key> for SharedMemoryStorage {
     async fn scan_indexed_data(
         &self,
         _table_name: &str,
@@ -19,13 +19,13 @@ impl Index<Key> for MultiThreadedMemoryStorage {
         _cmp_value: Option<(&IndexOperator, Value)>,
     ) -> Result<RowIter<Key>> {
         Err(Error::StorageMsg(
-            "[Multi-Threaded MemoryStorage] index is not supported".to_owned(),
+            "[Shared MemoryStorage] index is not supported".to_owned(),
         ))
     }
 }
 
 #[async_trait(?Send)]
-impl IndexMut for MultiThreadedMemoryStorage {
+impl IndexMut for SharedMemoryStorage {
     async fn create_index(
         self,
         _table_name: &str,
@@ -34,14 +34,14 @@ impl IndexMut for MultiThreadedMemoryStorage {
     ) -> MutResult<Self, ()> {
         Err((
             self,
-            Error::StorageMsg("[Multi-Threaded MemoryStorage] index is not supported".to_owned()),
+            Error::StorageMsg("[Shared MemoryStorage] index is not supported".to_owned()),
         ))
     }
 
     async fn drop_index(self, _table_name: &str, _index_name: &str) -> MutResult<Self, ()> {
         Err((
             self,
-            Error::StorageMsg("[Multi-Threaded MemoryStorage] index is not supported".to_owned()),
+            Error::StorageMsg("[Shared MemoryStorage] index is not supported".to_owned()),
         ))
     }
 }

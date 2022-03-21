@@ -1,5 +1,5 @@
 use {
-    super::MultiThreadedMemoryStorage,
+    super::SharedMemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
         result::{Error, MutResult},
@@ -8,7 +8,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Transaction for MultiThreadedMemoryStorage {
+impl Transaction for SharedMemoryStorage {
     async fn begin(self, autocommit: bool) -> MutResult<Self, bool> {
         if autocommit {
             return Ok((self, false));
@@ -16,27 +16,21 @@ impl Transaction for MultiThreadedMemoryStorage {
 
         Err((
             self,
-            Error::StorageMsg(
-                "[Multi-Threaded MemoryStorage] transaction is not supported".to_owned(),
-            ),
+            Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned()),
         ))
     }
 
     async fn rollback(self) -> MutResult<Self, ()> {
         Err((
             self,
-            Error::StorageMsg(
-                "[Multi-Threaded MemoryStorage] transaction is not supported".to_owned(),
-            ),
+            Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned()),
         ))
     }
 
     async fn commit(self) -> MutResult<Self, ()> {
         Err((
             self,
-            Error::StorageMsg(
-                "[Multi-Threaded MemoryStorage] transaction is not supported".to_owned(),
-            ),
+            Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned()),
         ))
     }
 }

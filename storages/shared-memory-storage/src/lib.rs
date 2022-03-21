@@ -34,12 +34,12 @@ pub struct Item {
 }
 
 #[derive(Debug)]
-pub struct MultiThreadedMemoryStorage {
+pub struct SharedMemoryStorage {
     pub id_counter: AtomicU64,
     pub items: Arc<RwLock<HashMap<String, Item>>>,
 }
 
-impl MultiThreadedMemoryStorage {
+impl SharedMemoryStorage {
     pub fn new() -> Self {
         Self {
             id_counter: AtomicU64::new(0),
@@ -48,14 +48,14 @@ impl MultiThreadedMemoryStorage {
     }
 }
 
-impl Default for MultiThreadedMemoryStorage {
+impl Default for SharedMemoryStorage {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[async_trait(?Send)]
-impl Store<Key> for MultiThreadedMemoryStorage {
+impl Store<Key> for SharedMemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let items = Arc::clone(&self.items);
         let schema = items
@@ -95,7 +95,7 @@ impl Store<Key> for MultiThreadedMemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl StoreMut<Key> for MultiThreadedMemoryStorage {
+impl StoreMut<Key> for SharedMemoryStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let storage = self;
 
@@ -160,5 +160,5 @@ impl StoreMut<Key> for MultiThreadedMemoryStorage {
     }
 }
 
-impl GStore<Key> for MultiThreadedMemoryStorage {}
-impl GStoreMut<Key> for MultiThreadedMemoryStorage {}
+impl GStore<Key> for SharedMemoryStorage {}
+impl GStoreMut<Key> for SharedMemoryStorage {}
