@@ -18,16 +18,24 @@ impl Value {
                     vec![VALUE, 0]
                 }
             }
-            Value::I8(v) => [VALUE]
-                .iter()
-                .chain(v.to_be_bytes().iter())
-                .copied()
-                .collect::<Vec<_>>(),
-            Value::I64(v) => [VALUE]
-                .iter()
-                .chain(v.to_be_bytes().iter())
-                .copied()
-                .collect::<Vec<_>>(),
+            Value::I8(v) => {
+                let sign = if *v >= 0 { 1 } else { 0 };
+
+                [VALUE, sign]
+                    .iter()
+                    .chain(v.to_be_bytes().iter())
+                    .copied()
+                    .collect::<Vec<_>>()
+            }
+            Value::I64(v) => {
+                let sign = if *v >= 0 { 1 } else { 0 };
+
+                [VALUE, sign]
+                    .iter()
+                    .chain(v.to_be_bytes().iter())
+                    .copied()
+                    .collect::<Vec<_>>()
+            }
             Value::F64(v) => [VALUE]
                 .iter()
                 .chain(v.to_be_bytes().iter())
@@ -138,23 +146,35 @@ mod tests {
         assert_eq!(cmp(&n2, &n1), Ordering::Less);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = I8(3).to_cmp_be_bytes().unwrap();
-        let n2 = I8(20).to_cmp_be_bytes().unwrap();
-        let n3 = I8(100).to_cmp_be_bytes().unwrap();
+        let n1 = I8(-100).to_cmp_be_bytes().unwrap();
+        let n2 = I8(-10).to_cmp_be_bytes().unwrap();
+        let n3 = I8(0).to_cmp_be_bytes().unwrap();
+        let n4 = I8(3).to_cmp_be_bytes().unwrap();
+        let n5 = I8(20).to_cmp_be_bytes().unwrap();
+        let n6 = I8(100).to_cmp_be_bytes().unwrap();
 
-        assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
-        assert_eq!(cmp(&n3, &n1), Ordering::Greater);
-        assert_eq!(cmp(&n1, &null), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n6), Ordering::Less);
+        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
+        assert_eq!(cmp(&n4, &n5), Ordering::Less);
+        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
+        assert_eq!(cmp(&n4, &null), Ordering::Less);
 
-        let n1 = I64(3).to_cmp_be_bytes().unwrap();
-        let n2 = I64(20).to_cmp_be_bytes().unwrap();
-        let n3 = I64(100).to_cmp_be_bytes().unwrap();
+        let n1 = I64(-123).to_cmp_be_bytes().unwrap();
+        let n2 = I64(-11).to_cmp_be_bytes().unwrap();
+        let n3 = I64(0).to_cmp_be_bytes().unwrap();
+        let n4 = I64(3).to_cmp_be_bytes().unwrap();
+        let n5 = I64(20).to_cmp_be_bytes().unwrap();
+        let n6 = I64(100).to_cmp_be_bytes().unwrap();
 
-        assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
-        assert_eq!(cmp(&n3, &n1), Ordering::Greater);
-        assert_eq!(cmp(&n1, &null), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n6), Ordering::Less);
+        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
+        assert_eq!(cmp(&n4, &n5), Ordering::Less);
+        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
+        assert_eq!(cmp(&n4, &null), Ordering::Less);
 
         let n1 = F64(3.0).to_cmp_be_bytes().unwrap();
         let n2 = F64(100.0).to_cmp_be_bytes().unwrap();
