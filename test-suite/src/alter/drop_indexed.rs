@@ -61,7 +61,7 @@ CREATE TABLE Test (
     "#
     );
 
-    // create indexes
+    // create indices
     run!("CREATE INDEX idx_name ON Test (num + 1)");
     run!("CREATE INDEX idx_id ON Test (id)");
     run!("CREATE INDEX idx_typed_string ON Test ((id))");
@@ -69,7 +69,7 @@ CREATE TABLE Test (
     run!("CREATE INDEX idx_unary_op ON Test (-id);");
     run!("CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));");
 
-    // check indexes working
+    // check indices working
     test!(
         Err(AlterError::IdentifierNotFound(expr!("100")).into()),
         "CREATE INDEX idx_literal ON Test (100)"
@@ -163,5 +163,5 @@ CREATE TABLE Test (
     );
 
     // Only idx_name remains.
-    assert_eq!(1, schema!("Test").indexes.len());
+    assert_eq!(1, schema!("Test").indices.len());
 });

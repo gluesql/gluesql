@@ -38,7 +38,7 @@ macro_rules! test_idx {
     ($glue: ident $sql: literal, $idx: expr, $result: expr) => {
         let statement = $glue.plan($sql).await.unwrap();
 
-        test_indexes(&statement, Some($idx));
+        test_indices(&statement, Some($idx));
         assert_eq!($glue.execute_stmt(statement), $result);
     };
 }

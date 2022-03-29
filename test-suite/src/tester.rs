@@ -89,7 +89,7 @@ pub fn test(expected: Result<Payload>, found: Result<Payload>) {
 pub async fn run<T, U: GStore<T> + GStoreMut<T>>(
     cell: Rc<RefCell<Option<U>>>,
     sql: &str,
-    indexes: Option<Vec<IndexItem>>,
+    indices: Option<Vec<IndexItem>>,
 ) -> Result<Payload> {
     let storage = cell.replace(None).unwrap();
 
@@ -111,7 +111,7 @@ pub async fn run<T, U: GStore<T> + GStoreMut<T>>(
     let statement = try_run!(translate(&parsed[0]));
     let statement = try_run!(plan(&storage, statement).await);
 
-    test_indexes(&statement, indexes);
+    test_indices(&statement, indices);
 
     match execute(storage, &statement).await {
         Ok((storage, payload)) => {
@@ -127,13 +127,13 @@ pub async fn run<T, U: GStore<T> + GStoreMut<T>>(
     }
 }
 
-pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
-    if let Some(expected) = indexes {
-        let found = find_indexes(statement);
+pub fn test_indices(statement: &Statement, indices: Option<Vec<IndexItem>>) {
+    if let Some(expected) = indices {
+        let found = find_indices(statement);
 
         if expected.len() != found.len() {
             panic!(
-                "num of indexes does not match: expected({}) != found({})",
+                "num of indices does not match: expected({}) != found({})",
                 expected.len(),
                 found.len(),
             );
@@ -150,19 +150,19 @@ pub fn test_indexes(statement: &Statement, indexes: Option<Vec<IndexItem>>) {
     }
 }
 
-fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
-    fn find_expr_indexes(expr: &Expr) -> Vec<&IndexItem> {
+fn find_indices(statement: &Statement) -> Vec<&IndexItem> {
+    fn find_expr_indices(expr: &Expr) -> Vec<&IndexItem> {
         match expr {
             Expr::Subquery(query)
             | Expr::Exists(query)
             | Expr::InSubquery {
                 subquery: query, ..
-            } => find_query_indexes(query),
+            } => find_query_indices(query),
             _ => vec![],
         }
     }
 
-    fn find_query_indexes(query: &Query) -> Vec<&IndexItem> {
+    fn find_query_indices(query: &Query) -> Vec<&IndexItem> {
         let select = match &query.body {
             SetExpr::Select(select) => select,
             _ => {
@@ -170,24 +170,24 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
             }
         };
 
-        let selection_indexes = select
+        let selection_indices = select
             .selection
             .as_ref()
-            .map(find_expr_indexes)
+            .map(find_expr_indices)
             .unwrap_or_default();
 
-        let table_indexes = match &select.from.relation {
+        let table_indices = match &select.from.relation {
             TableFactor::Table {
                 index: Some(index), ..
             } => vec![index],
             _ => vec![],
         };
 
-        [selection_indexes, table_indexes].concat()
+        [selection_indices, table_indices].concat()
     }
 
     match statement {
-        Statement::Query(query) => find_query_indexes(query),
+        Statement::Query(query) => find_query_indices(query),
         _ => vec![],
     }
 }
@@ -313,8 +313,8 @@ macro_rules! test_case {
 
             #[allow(unused_macros)]
             macro_rules! test_idx {
-                ($expected: expr, $indexes: expr, $sql: expr) => {
-                    let found = crate::run(Rc::clone(&cell), $sql, Some($indexes)).await;
+                ($expected: expr, $indices: expr, $sql: expr) => {
+                    let found = crate::run(Rc::clone(&cell), $sql, Some($indices)).await;
 
                     crate::test($expected, found);
                 };

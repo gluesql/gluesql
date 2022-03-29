@@ -43,7 +43,7 @@ pub async fn create_table<T, U: GStore<T> + GStoreMut<T>>(
         let schema = Schema {
             table_name: target_table_name.to_string(),
             column_defs: target_columns_defs,
-            indexes: vec![],
+            indices: vec![],
         };
 
         for column_def in &schema.column_defs {

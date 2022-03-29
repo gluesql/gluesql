@@ -66,13 +66,13 @@ impl IndexMut for SledStorage {
             let (schema_snapshot, schema) = schema_snapshot.delete(txid);
             let Schema {
                 column_defs,
-                indexes,
+                indices,
                 ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            if indexes.iter().any(|index| index.name == index_name) {
+            if indices.iter().any(|index| index.name == index_name) {
                 return Err(IndexError::IndexNameAlreadyExists(index_name.to_owned()).into())
                     .map_err(ConflictableTransactionError::Abort);
             }
@@ -83,7 +83,7 @@ impl IndexMut for SledStorage {
                 order: SchemaIndexOrd::Both,
             };
 
-            let indexes = indexes
+            let indices = indices
                 .into_iter()
                 .chain(once(index.clone()))
                 .collect::<Vec<_>>();
@@ -91,7 +91,7 @@ impl IndexMut for SledStorage {
             let schema = Schema {
                 table_name: table_name.to_owned(),
                 column_defs,
-                indexes,
+                indices,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
@@ -141,13 +141,13 @@ impl IndexMut for SledStorage {
             let (schema_snapshot, schema) = schema_snapshot.delete(txid);
             let Schema {
                 column_defs,
-                indexes,
+                indices,
                 ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
-            let (index, indexes): (Vec<_>, _) = indexes
+            let (index, indices): (Vec<_>, _) = indices
                 .into_iter()
                 .partition(|index| index.name == index_name);
 
@@ -162,7 +162,7 @@ impl IndexMut for SledStorage {
             let schema = Schema {
                 table_name: table_name.to_owned(),
                 column_defs,
-                indexes,
+                indices,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);

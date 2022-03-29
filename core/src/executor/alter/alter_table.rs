@@ -56,8 +56,8 @@ pub async fn alter_table<T, U: GStore<T> + GStoreMut<T>>(
         } => {
             #[cfg(feature = "index")]
             let storage = {
-                let indexes = match storage.fetch_schema(table_name).await {
-                    Ok(Some(Schema { indexes, .. })) => indexes,
+                let indices = match storage.fetch_schema(table_name).await {
+                    Ok(Some(Schema { indices, .. })) => indices,
                     Ok(None) => {
                         return Err((
                             storage,
@@ -69,12 +69,12 @@ pub async fn alter_table<T, U: GStore<T> + GStoreMut<T>>(
                     }
                 };
 
-                let indexes = indexes
+                let indices = indices
                     .iter()
                     .filter(|SchemaIndex { expr, .. }| find_column(expr, column_name))
                     .map(Ok);
 
-                stream::iter(indexes)
+                stream::iter(indices)
                     .try_fold(storage, |storage, SchemaIndex { name, .. }| async move {
                         storage
                             .drop_index(table_name, name)

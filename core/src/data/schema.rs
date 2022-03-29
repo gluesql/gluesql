@@ -22,7 +22,7 @@ pub struct SchemaIndex {
 pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,
-    pub indexes: Vec<SchemaIndex>,
+    pub indices: Vec<SchemaIndex>,
 }
 
 pub trait ColumnDefExt {

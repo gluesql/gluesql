@@ -26,7 +26,7 @@ pub struct IndexSync<'a> {
     txid: u64,
     table_name: &'a str,
     columns: Vec<String>,
-    indexes: Cow<'a, Vec<SchemaIndex>>,
+    indices: Cow<'a, Vec<SchemaIndex>>,
 }
 
 impl<'a> IndexSync<'a> {
@@ -34,7 +34,7 @@ impl<'a> IndexSync<'a> {
         let Schema {
             table_name,
             column_defs,
-            indexes,
+            indices,
             ..
         } = schema;
 
@@ -43,14 +43,14 @@ impl<'a> IndexSync<'a> {
             .map(|column_def| column_def.name.to_owned())
             .collect::<Vec<_>>();
 
-        let indexes = Cow::Borrowed(indexes);
+        let indices = Cow::Borrowed(indices);
 
         Self {
             tree,
             txid,
             table_name,
             columns,
-            indexes,
+            indices,
         }
     }
 
@@ -61,7 +61,7 @@ impl<'a> IndexSync<'a> {
     ) -> sled::transaction::ConflictableTransactionResult<Self, Error> {
         let Schema {
             column_defs,
-            indexes,
+            indices,
             ..
         } = fetch_schema(tree, table_name)
             .map(|(_, snapshot)| snapshot)?
@@ -81,12 +81,12 @@ impl<'a> IndexSync<'a> {
             txid,
             table_name,
             columns,
-            indexes: Cow::Owned(indexes),
+            indices: Cow::Owned(indices),
         })
     }
 
     pub fn insert(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
-        for index in self.indexes.iter() {
+        for index in self.indices.iter() {
             self.insert_index(index, data_key, row)?;
         }
 
@@ -119,7 +119,7 @@ impl<'a> IndexSync<'a> {
         old_row: &Row,
         new_row: &Row,
     ) -> ConflictableTransactionResult<(), Error> {
-        for index in self.indexes.iter() {
+        for index in self.indices.iter() {
             let SchemaIndex {
                 name: index_name,
                 expr: index_expr,
@@ -150,7 +150,7 @@ impl<'a> IndexSync<'a> {
     }
 
     pub fn delete(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
-        for index in self.indexes.iter() {
+        for index in self.indices.iter() {
             self.delete_index(index, data_key, row)?;
         }
 

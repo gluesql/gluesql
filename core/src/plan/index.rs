@@ -20,9 +20,9 @@ pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Resul
     }
 }
 
-struct Indexes(Vec<SchemaIndex>);
+struct Indices(Vec<SchemaIndex>);
 
-impl Indexes {
+impl Indices {
     fn find(&self, target: &Expr) -> Option<String> {
         self.0
             .iter()
@@ -73,8 +73,8 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         TableFactor::Table { name, .. } => name,
     };
     let table_name = get_name(table_name)?;
-    let indexes = match schema_map.get(table_name) {
-        Some(Schema { indexes, .. }) => Indexes(indexes.clone()),
+    let indices = match schema_map.get(table_name) {
+        Some(Schema { indices, .. }) => Indices(indices.clone()),
         None => {
             return Ok(Query {
                 body: SetExpr::Select(select),
@@ -85,7 +85,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
     };
 
     let index = select.order_by.last().and_then(|value_expr| {
-        indexes.find_ordered(value_expr).map(|name| IndexItem {
+        indices.find_ordered(value_expr).map(|name| IndexItem {
             name,
             asc: value_expr.asc,
             cmp_expr: None,
@@ -129,7 +129,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             })
         }
         _ => {
-            let select = plan_select(schema_map, &indexes, *select)?;
+            let select = plan_select(schema_map, &indices, *select)?;
             let body = SetExpr::Select(Box::new(select));
             let query = Query {
                 body,
@@ -144,7 +144,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
 
 fn plan_select(
     schema_map: &HashMap<String, Schema>,
-    indexes: &Indexes,
+    indices: &Indices,
     select: Select,
 ) -> Result<Select> {
     let Select {
@@ -170,7 +170,7 @@ fn plan_select(
         }
     };
 
-    match plan_index(schema_map, indexes, selection)? {
+    match plan_index(schema_map, indices, selection)? {
         Planned::Expr(selection) => Ok(Select {
             projection,
             from,
@@ -224,13 +224,13 @@ enum Planned {
 
 fn plan_index(
     schema_map: &HashMap<String, Schema>,
-    indexes: &Indexes,
+    indices: &Indices,
     selection: Expr,
 ) -> Result<Planned> {
     match selection {
-        Expr::Nested(expr) => plan_index(schema_map, indexes, *expr),
-        Expr::IsNull(expr) => Ok(search_is_null(indexes, true, expr)),
-        Expr::IsNotNull(expr) => Ok(search_is_null(indexes, false, expr)),
+        Expr::Nested(expr) => plan_index(schema_map, indices, *expr),
+        Expr::IsNull(expr) => Ok(search_is_null(indices, true, expr)),
+        Expr::IsNotNull(expr) => Ok(search_is_null(indices, false, expr)),
         Expr::Subquery(query) => plan_query(schema_map, *query)
             .map(Box::new)
             .map(Expr::Subquery)
@@ -256,7 +256,7 @@ fn plan_index(
             op: BinaryOperator::And,
             right,
         } => {
-            let left = match plan_index(schema_map, indexes, *left)? {
+            let left = match plan_index(schema_map, indices, *left)? {
                 Planned::Expr(selection) => selection,
                 Planned::IndexedExpr {
                     index_name,
@@ -282,7 +282,7 @@ fn plan_index(
                 }
             };
 
-            match plan_index(schema_map, indexes, *right)? {
+            match plan_index(schema_map, indices, *right)? {
                 Planned::Expr(expr) => Ok(Planned::Expr(Expr::BinaryOp {
                     left: Box::new(left),
                     op: BinaryOperator::And,
@@ -316,33 +316,33 @@ fn plan_index(
             left,
             op: BinaryOperator::Gt,
             right,
-        } => Ok(search_index_op(indexes, IndexOperator::Gt, left, right)),
+        } => Ok(search_index_op(indices, IndexOperator::Gt, left, right)),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::Lt,
             right,
-        } => Ok(search_index_op(indexes, IndexOperator::Lt, left, right)),
+        } => Ok(search_index_op(indices, IndexOperator::Lt, left, right)),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::GtEq,
             right,
-        } => Ok(search_index_op(indexes, IndexOperator::GtEq, left, right)),
+        } => Ok(search_index_op(indices, IndexOperator::GtEq, left, right)),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::LtEq,
             right,
-        } => Ok(search_index_op(indexes, IndexOperator::LtEq, left, right)),
+        } => Ok(search_index_op(indices, IndexOperator::LtEq, left, right)),
         Expr::BinaryOp {
             left,
             op: BinaryOperator::Eq,
             right,
-        } => Ok(search_index_op(indexes, IndexOperator::Eq, left, right)),
+        } => Ok(search_index_op(indices, IndexOperator::Eq, left, right)),
         _ => Ok(Planned::Expr(selection)),
     }
 }
 
-fn search_is_null(indexes: &Indexes, null: bool, expr: Box<Expr>) -> Planned {
-    match indexes.find(expr.as_ref()) {
+fn search_is_null(indices: &Indices, null: bool, expr: Box<Expr>) -> Planned {
+    match indices.find(expr.as_ref()) {
         Some(index_name) => {
             let index_op = if null {
                 IndexOperator::Eq
@@ -370,12 +370,12 @@ fn search_is_null(indexes: &Indexes, null: bool, expr: Box<Expr>) -> Planned {
 }
 
 fn search_index_op(
-    indexes: &Indexes,
+    indices: &Indices,
     index_op: IndexOperator,
     left: Box<Expr>,
     right: Box<Expr>,
 ) -> Planned {
-    if let Some(index_name) = indexes
+    if let Some(index_name) = indices
         .find(left.as_ref())
         .and_then(|index_name| is_stateless(right.as_ref()).then(|| index_name))
     {
@@ -385,7 +385,7 @@ fn search_index_op(
             index_value_expr: *right,
             selection: None,
         }
-    } else if let Some(index_name) = indexes
+    } else if let Some(index_name) = indices
         .find(right.as_ref())
         .and_then(|index_name| is_stateless(left.as_ref()).then(|| index_name))
     {
@@ -396,9 +396,9 @@ fn search_index_op(
             selection: None,
         }
     } else if let Expr::Nested(left) = *left {
-        search_index_op(indexes, index_op, left, right)
+        search_index_op(indices, index_op, left, right)
     } else if let Expr::Nested(right) = *right {
-        search_index_op(indexes, index_op, left, right)
+        search_index_op(indices, index_op, left, right)
     } else {
         Planned::Expr(Expr::BinaryOp {
             left,
