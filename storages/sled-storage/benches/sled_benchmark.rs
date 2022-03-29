@@ -13,7 +13,7 @@ pub fn bench_insert(c: &mut Criterion) {
     let _ = std::fs::remove_dir_all(path);
 
     let config = sled::Config::default()
-        .path(path.to_string())
+        .path(path)
         .temporary(true)
         .mode(sled::Mode::HighThroughput);
 
@@ -56,7 +56,7 @@ pub fn bench_select(c: &mut Criterion) {
     let _ = std::fs::remove_dir_all(path);
 
     let config = sled::Config::default()
-        .path(path.to_string())
+        .path(path)
         .temporary(true)
         .mode(sled::Mode::HighThroughput);
 
@@ -126,7 +126,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
     let _ = std::fs::remove_dir_all(path);
 
     let config = sled::Config::default()
-        .path(path.to_string())
+        .path(path)
         .temporary(true)
         .mode(sled::Mode::HighThroughput);
 

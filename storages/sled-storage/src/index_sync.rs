@@ -65,8 +65,7 @@ impl<'a> IndexSync<'a> {
             ..
         } = fetch_schema(tree, table_name)
             .map(|(_, snapshot)| snapshot)?
-            .map(|snapshot| snapshot.extract(txid, None))
-            .flatten()
+            .and_then(|snapshot| snapshot.extract(txid, None))
             .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()))
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;

@@ -30,8 +30,7 @@ impl Store<IVec> for SledStorage {
             .map(|v| bincode::deserialize(&v))
             .transpose()
             .map_err(err_into)?
-            .map(|snapshot: Snapshot<Schema>| snapshot.extract(txid, lock_txid))
-            .flatten();
+            .and_then(|snapshot: Snapshot<Schema>| snapshot.extract(txid, lock_txid));
 
         if temp {
             lock::unregister(&self.tree, txid)?;
