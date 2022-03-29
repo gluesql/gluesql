@@ -81,8 +81,7 @@ impl Interval {
 
                 timestamp
                     .with_year(year)
-                    .map(|d| d.with_month(month as u32))
-                    .flatten()
+                    .and_then(|d| d.with_month(month as u32))
                     .ok_or_else(|| IntervalError::DateOverflow { year, month }.into())
             }
             Interval::Microsecond(n) => Ok(*timestamp + Duration::microseconds(*n)),
@@ -99,8 +98,7 @@ impl Interval {
 
                 timestamp
                     .with_year(year)
-                    .map(|d| d.with_month(month as u32))
-                    .flatten()
+                    .and_then(|d| d.with_month(month as u32))
                     .ok_or_else(|| IntervalError::DateOverflow { year, month }.into())
             }
             Interval::Microsecond(n) => Ok(*timestamp - Duration::microseconds(*n)),

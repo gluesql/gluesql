@@ -175,8 +175,7 @@ async fn join<'a, T>(
                     )
                     .await
                     .map(Option::<HashKey>::try_from)??
-                    .map(|hash_key| rows_map.get(&hash_key))
-                    .flatten();
+                    .and_then(|hash_key| rows_map.get(&hash_key));
 
                     match rows {
                         None => Rows::Empty(empty()),

@@ -33,8 +33,7 @@ pub fn evaluate_stateless<'a>(
             let value = columns
                 .iter()
                 .position(|column| column == ident)
-                .map(|index| row.get_value(index))
-                .flatten();
+                .and_then(|index| row.get_value(index));
 
             match value {
                 Some(value) => Ok(value.clone()),

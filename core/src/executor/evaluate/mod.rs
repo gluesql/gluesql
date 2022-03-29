@@ -87,8 +87,7 @@ pub async fn evaluate<'a, T>(
         }
         Expr::Aggregate(aggr) => match aggregated
             .as_ref()
-            .map(|aggregated| aggregated.get(aggr.as_ref()))
-            .flatten()
+            .and_then(|aggregated| aggregated.get(aggr.as_ref()))
         {
             Some(value) => Ok(Evaluated::from(value.clone())),
             None => Err(EvaluateError::UnreachableEmptyAggregateValue(*aggr.clone()).into()),

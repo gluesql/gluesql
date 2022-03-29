@@ -25,8 +25,8 @@ impl StringExt for String {
         Ok(Regex::new(&format!(
             "^{}$",
             regex::escape(match_pattern.as_str())
-                .replace("%", ".*")
-                .replace("_", ".")
+                .replace('%', ".*")
+                .replace('_', ".")
         ))
         .map_err(|_| StringExtError::UnreachablePatternParsing)?
         .is_match(match_string.as_str()))
