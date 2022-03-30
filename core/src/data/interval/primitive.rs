@@ -201,5 +201,9 @@ mod tests {
 
         assert_eq!(Month(8) / 4.0, Month(2));
         assert_eq!(8.0 / Month(4), Month(2));
+
+        assert_eq!(Microsecond(2) * 3_f64, Microsecond(6));
+        assert_eq!(2_f64 * Microsecond(3), Microsecond(6));
+
     }
 }
