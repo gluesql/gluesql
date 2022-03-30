@@ -172,15 +172,12 @@ mod tests {
     use super::Interval;
 
     #[test]
-    fn arithmetic() {
+    fn arithmetic_month() {
         use Interval::*;
 
         assert_eq!(Month(2) * 3_i8, Month(6));
         assert_eq!(2_i8 * Month(3), Month(6));
-
-        assert_eq!(Microsecond(2) * 3_i8, Microsecond(6));
-        assert_eq!(2_i8 * Microsecond(3), Microsecond(6));
-
+       
         assert_eq!(Month(2) * 3_i32, Month(6));
         assert_eq!(2_i32 * Month(3), Month(6));
 
@@ -201,9 +198,18 @@ mod tests {
 
         assert_eq!(Month(8) / 4.0, Month(2));
         assert_eq!(8.0 / Month(4), Month(2));
+    }
+
+    #[test]
+    fn arithmetic_microsecond() {
+        use Interval::*;
+
+        assert_eq!(Microsecond(2) * 3_i8, Microsecond(6));
+        assert_eq!(2_i8 * Microsecond(3), Microsecond(6));
 
         assert_eq!(Microsecond(2) * 3_f64, Microsecond(6));
         assert_eq!(2_f64 * Microsecond(3), Microsecond(6));
 
     }
+
 }
