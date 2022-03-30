@@ -22,6 +22,9 @@ addons:
       - binutils-dev
       - libiberty-dev
 
+codecov:
+  token: f44c5a65-679a-4354-88d7-77015e894794
+
 after_success: |
   wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
   tar xzf master.tar.gz &&
