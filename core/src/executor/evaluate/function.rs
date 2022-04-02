@@ -215,6 +215,14 @@ pub fn substr(
 
 // --- float ---
 
+pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
+    Ok(Value::F64(eval_to_float!(name, n).abs()))
+}
+
+pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
+    Ok(Value::F64(eval_to_float!(name, n).signum()))
+}
+
 pub fn sqrt(name: String, n: Evaluated<'_>) -> Result<Value> {
     Ok(Value::F64(eval_to_float!(name, n).sqrt()))
 }

@@ -33,6 +33,8 @@ impl Function {
             | Self::Log2(expr)
             | Self::Log10(expr)
             | Self::Sqrt(expr)
+            | Self::ABS(expr)
+            | Self::Sign(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {
@@ -170,6 +172,20 @@ mod tests {
         test(r#"RTRIM("world  ")"#, &[r#""world  ""#]);
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
+
+        test(r#"ABS(1)"#, &["1"]);
+        test(r#"ABS(-1)"#, &["-1"]);
+        test(r#"ABS(2)"#, &["2"]);
+        test(r#"ABS(-2)"#, &["-2"]);
+        test(r#"ABS(3.0)"#, &["3.0"]);
+        test(r#"ABS(-3.0)"#, &["-3.0"]);
+
+        test(r#"SIGN(1)"#, &["1"]);
+        test(r#"SIGN(-1)"#, &["-1"]);
+        test(r#"SIGN(2)"#, &["2"]);
+        test(r#"SIGN(-2)"#, &["-2"]);
+        test(r#"SIGN(3.0)"#, &["3.0"]);
+        test(r#"SIGN(-3.0)"#, &["-3.0"]);
 
         // Double
         test(r#"LEFT("hello", 2)"#, &[r#""hello""#, "2"]);
