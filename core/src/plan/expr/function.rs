@@ -33,7 +33,7 @@ impl Function {
             | Self::Log2(expr)
             | Self::Log10(expr)
             | Self::Sqrt(expr)
-            | Self::ABS(expr)
+            | Self::Abs(expr)
             | Self::Sign(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }

@@ -7,7 +7,7 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
 pub enum Function {
     #[strum(to_string = "ABS")]
-    ABS(Expr),
+    Abs(Expr),
     #[strum(to_string = "LOWER")]
     Lower(Expr),
     #[strum(to_string = "UPPER")]

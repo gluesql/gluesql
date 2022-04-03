@@ -190,7 +190,7 @@ fn evaluate_function<'a>(
 
             f::power(name(), expr, power)
         }
-        Function::ABS(expr) => f::abs(name(), eval(expr)?),
+        Function::Abs(expr) => f::abs(name(), eval(expr)?),
         Function::Sign(expr) => f::sign(name(), eval(expr)?),
         Function::Ceil(expr) => f::ceil(name(), eval(expr)?),
         Function::Round(expr) => f::round(name(), eval(expr)?),
