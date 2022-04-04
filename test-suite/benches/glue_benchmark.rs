@@ -30,10 +30,13 @@ fn setup_a(glue: &mut Glue<IVec, SledStorage>) {
 	",
     )
     .unwrap();
-    (0..10_000).into_iter().for_each(|pk| {
-        glue.execute(&format!("INSERT INTO A VALUES ({pk})", pk = pk))
-            .unwrap();
-    });
+    let values = (0..10_000).into_iter().map(|pk| {
+        format!(
+            "({pk})",
+            pk = pk
+        )
+    }).collect::<Vec<String>>().join(",");
+	glue.execute(&format!("INSERT INTO A VALUES {values}", values=values)).unwrap();
 }
 
 fn setup_b(glue: &mut Glue<IVec, SledStorage>) {
@@ -53,15 +56,15 @@ fn setup_b(glue: &mut Glue<IVec, SledStorage>) {
 	",
     )
     .unwrap();
-    (0..100_000).into_iter().for_each(|pk| {
-        glue.execute(&format!(
-            "INSERT INTO B VALUES ({pk}, {fk}, {val})",
+    let values = (0..100_000).into_iter().map(|pk| {
+        format!(
+            "({pk}, {fk}, {val})",
             pk = pk,
             fk = fastrand::i64(0..10_000),
             val = fastrand::f64()
-        ))
-        .unwrap();
-    });
+        )
+    }).collect::<Vec<String>>().join(",");
+	glue.execute(&format!("INSERT INTO B VALUES {values}", values=values)).unwrap();
 }
 
 fn setup_c(glue: &mut Glue<IVec, SledStorage>) {
@@ -75,22 +78,26 @@ fn setup_c(glue: &mut Glue<IVec, SledStorage>) {
 	",
     )
     .unwrap();
-    (0..100_000).into_iter().for_each(|pk| {
-        glue.execute(&format!(
-            "INSERT INTO C VALUES ({pk}, {fk}, {val})",
+    let values = (0..100_000).into_iter().map(|pk| {
+        format!(
+            "({pk}, {fk}, {val})",
             pk = pk,
             fk = fastrand::i64(0..10_000),
             val = fastrand::f64()
-        ))
-        .unwrap();
-    });
+        )
+    }).collect::<Vec<String>>().join(",");
+	glue.execute(&format!("INSERT INTO C VALUES {values}", values=values)).unwrap();
 }
 
 fn setup() -> Glue<IVec, SledStorage> {
     let mut glue = setup_glue();
+   	println!("Glue made");
     setup_a(&mut glue);
+    println!("A made");
     setup_b(&mut glue);
+    println!("B made");
     setup_c(&mut glue);
+    println!("C made");
     glue
 }
 
@@ -202,8 +209,8 @@ fn bench(criterion: &mut Criterion) {
 }
 
 criterion_group! {
-    name = benches;
+    name = glue_benchmark;
     config = Criterion::default().noise_threshold(0.05).sample_size(10).warm_up_time(Duration::from_secs(5)).measurement_time(Duration::from_secs(10));
     targets = bench
 }
-criterion_main!(benches);
+criterion_main!(glue_benchmark);
