@@ -15,8 +15,18 @@ bigdecimal = "0.3"
 uuid = "0.8"
 chrono = "0.4"
 
+[dev-dependencies]
+criterion = {version = "0.3.5", features = ["html_reports"] }
+gluesql = "0"
+fastrand = "1"
+sled = "0"
+
 [features]
 alter-table = ["gluesql-core/alter-table"]
 index = ["gluesql-core/index"]
 transaction = ["gluesql-core/transaction"]
 metadata = ["gluesql-core/metadata"]
+
+[[bench]]
+name = "glue_benchmark"
+harness = false

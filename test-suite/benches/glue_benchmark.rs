@@ -1,6 +1,11 @@
-use gluesql::prelude::*;
+use {
+	criterion::*,
+	gluesql::prelude::*,
+	std::time::Duration,
+	sled::IVec,
+};
 
-fn setup_glue() -> Glue {
+fn setup_glue() -> Glue<IVec, SledStorage> {
 	let path = "data/sled_bench";
 
 	match std::fs::remove_dir_all(&path) {
@@ -11,14 +16,12 @@ fn setup_glue() -> Glue {
 	}
 
 	let storage = SledStorage::new(&path)
-		.map(Storage::new_sled)
 		.expect("Create Storage");
 
 	Glue::new(storage)
 }
 
-fn setup_a(glue: &mut Glue) {
-	let rows: Vec<Vec<Value>> = (0..10_000).into_iter().map(|pk| vec![pk.into()]).collect();
+fn setup_a(glue: &mut Glue<IVec, SledStorage>) {
 	glue.execute(
 		"
 		CREATE TABLE A (
@@ -33,15 +36,10 @@ fn setup_a(glue: &mut Glue) {
 	",
 	)
 	.unwrap();
-	glue.insert_vec(String::from("A"), vec![String::from("pk")], rows)
-		.unwrap();
+	(0..10_000).into_iter().for_each(|pk| {glue.execute(&format!("INSERT INTO A VALUES ({pk})", pk=pk)).unwrap();});
 }
 
-fn setup_b(glue: &mut Glue) {
-	let rows: Vec<Vec<Value>> = (0..100_000)
-		.into_iter()
-		.map(|_row| vec![fastrand::i64(0..10_000).into(), fastrand::f64().into()])
-		.collect();
+fn setup_b(glue: &mut Glue<IVec, SledStorage>) {
 	glue.execute(
 		"
 		CREATE TABLE B (
@@ -58,19 +56,10 @@ fn setup_b(glue: &mut Glue) {
 	",
 	)
 	.unwrap();
-	glue.insert_vec(
-		String::from("B"),
-		vec![String::from("fk"), String::from("val")],
-		rows,
-	)
-	.unwrap();
+	(0..100_000).into_iter().for_each(|_| {glue.execute(&format!("INSERT INTO B VALUES ({fk}, {val})", fk=fastrand::i64(0..10_000), val=fastrand::f64())).unwrap();});
 }
 
-fn setup_c(glue: &mut Glue) {
-	let rows: Vec<Vec<Value>> = (0..100_000)
-		.into_iter()
-		.map(|_row| vec![fastrand::i64(0..10_000).into(), fastrand::f64().into()])
-		.collect();
+fn setup_c(glue: &mut Glue<IVec, SledStorage>) {
 	glue.execute(
 		"
 		CREATE TABLE C (
@@ -81,15 +70,10 @@ fn setup_c(glue: &mut Glue) {
 	",
 	)
 	.unwrap();
-	glue.insert_vec(
-		String::from("C"),
-		vec![String::from("fk"), String::from("val")],
-		rows,
-	)
-	.unwrap();
+	(0..100_000).into_iter().for_each(|_| {glue.execute(&format!("INSERT INTO C VALUES ({fk}, {val})", fk=fastrand::i64(0..10_000), val=fastrand::f64())).unwrap();});
 }
 
-fn setup() -> Glue {
+fn setup() -> Glue<IVec, SledStorage> {
 	let mut glue = setup_glue();
 	setup_a(&mut glue);
 	setup_b(&mut glue);

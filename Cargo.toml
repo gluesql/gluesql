@@ -28,7 +28,6 @@ sled-storage = { package = "gluesql_sled_storage", path = "./storages/sled-stora
 
 [dev-dependencies]
 futures = "0.3"
-criterion = {version = "0.3.5", features = ["html_reports"] }
 
 [features]
 # DB User
@@ -62,7 +61,3 @@ metadata = ["gluesql-core/metadata", "test-suite/metadata"]
 [workspace]
 members = ["core", "storages/*", "test-suite", "utils", "cli"]
 default-members = ["core", "storages/*", "test-suite", "utils", "cli"]
-
-[[bench]]
-name = "bench"
-harness = false
