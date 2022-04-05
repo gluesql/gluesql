@@ -6,11 +6,11 @@ test_case!(abs, async move {
     };
     let test_cases = vec![
         (
-            "CREATE TABLE SingleItem (id INTEGER)",
+            "CREATE TABLE SingleItem (id integer, int8 int(8), dec decimal)",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO SingleItem VALUES (0)"#,
+            r#"INSERT INTO SingleItem VALUES (0, -1, -2)"#,
             Ok(Payload::Insert(1)),
         ),
         (
@@ -59,6 +59,19 @@ test_case!(abs, async move {
                 "ABS1"        | "ABS2"                   | "ABS3";
                 I64           | I64                      | I64;
                 0_i64.abs()        i64::abs(-0)               i64::from(0).abs()
+            )),
+        ),
+
+        (
+            "SELECT ABS(id) AS ABS1, 
+                    ABS(int8) AS ABS2, 
+                    ABS(dec) AS ABS3 
+            FROM SingleItem",
+
+            Ok(select!(
+                "ABS1"        | "ABS2"                   | "ABS3";
+                I64           | I8                      |  Decimal;
+                0_i64.abs()        i8::abs(1)              2.into()
             )),
         ),
 

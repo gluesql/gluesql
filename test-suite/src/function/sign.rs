@@ -13,27 +13,29 @@ test_case!(sign, async move {
             r#"INSERT INTO SingleItem VALUES (0)"#,
             Ok(Payload::Insert(1)),
         ),
+
         (
-            "SELECT SIGN(1) AS SIGN1, 
-                    SIGN(-1) AS SIGN2, 
-                    SIGN(+1) AS SIGN3 
+            "SELECT SIGN(2) AS SIGN1, 
+                    SIGN(-2) AS SIGN2, 
+                    SIGN(+2) AS SIGN3 
             FROM SingleItem",
             Ok(select!(
                 "SIGN1"        | "SIGN2"                   | "SIGN3";
-                F64           | F64                      | F64;
-                1_f64.signum()        f64::signum(-1_f64)            f64::from(1).signum()
+                I8             | I8                        | I8;
+                i8::from(1)             i8::from(-1)         i8::from(1)
             )),
         ),
+
         (
-            "SELECT SIGN(1.0) AS SIGN1, 
-                    SIGN(-1.0) AS SIGN2, 
-                    SIGN(+1.0) AS SIGN3 
+            "SELECT SIGN(2.0) AS SIGN1, 
+                    SIGN(-2.0) AS SIGN2, 
+                    SIGN(+2.0) AS SIGN3 
             FROM SingleItem",
 
             Ok(select!(
                 "SIGN1"        | "SIGN2"                   | "SIGN3";
-                F64           | F64                      | F64;
-                1.0_f64.signum()  f64::signum(-1.0_f64)         f64::from(1.0).signum()
+                I8           | I8                      | I8;
+                i8::from(1)             i8::from(-1)         i8::from(1)
             )),
         ),
         
@@ -45,8 +47,8 @@ test_case!(sign, async move {
 
             Ok(select!(
                 "SIGN1"        | "SIGN2"                   | "SIGN3";
-                F64           | F64                      | F64;
-                0_f64.signum()  f64::from(0.0).signum()         f64::from(0.0).signum()
+                I8           | I8                      | I8;
+                i8::from(0)             i8::from(0)         i8::from(0)
             )),
         ),
         (
@@ -57,10 +59,11 @@ test_case!(sign, async move {
 
             Ok(select!(
                 "SIGN1"        | "SIGN2"                   | "SIGN3";
-                F64           | F64                      | F64;
-                0_f64.signum()        f64::signum(0_f64)               f64::from(0).signum()
+                I8           | I8                      | I8;
+                i8::from(0)             i8::from(0)         i8::from(0)
             )),
         ),
+
         (
             "SELECT SIGN('string') AS SIGN FROM SingleItem",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("SIGN")).into()),
