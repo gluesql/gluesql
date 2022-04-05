@@ -232,7 +232,9 @@ pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
 
 pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
     let x = eval_to_float!(name, n);
-    if x == 0.0 {return Ok(Value::I8(0))}
+    if x == 0.0 {
+        return Ok(Value::I8(0));
+    }
     Ok(Value::I8(x.signum() as i8))
 }
 
