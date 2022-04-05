@@ -21,7 +21,9 @@ pub struct ObjectName(pub Vec<String>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
-    ShowColumns{ table_name: ObjectName, },
+    ShowColumns {
+        table_name: ObjectName,
+    },
     /// SELECT
     Query(Box<Query>),
     /// INSERT

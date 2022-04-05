@@ -150,9 +150,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 TranslateError::UnsupportedShowVariableStatement(sql_statement.to_string()).into(),
             ),
         },
-        SqlStatement::ShowColumns {
-           table_name, ..
-        } => Ok(Statement::ShowColumns {
+        SqlStatement::ShowColumns { table_name, .. } => Ok(Statement::ShowColumns {
             table_name: translate_object_name(table_name),
         }),
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),

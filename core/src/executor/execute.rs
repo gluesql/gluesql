@@ -36,7 +36,9 @@ pub enum ExecuteError {
 
 #[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
-    ShowColumns{rows: Vec<Vec<String>>,},
+    ShowColumns {
+        rows: Vec<Vec<String>>,
+    },
     Create,
     Insert(usize),
     Select {
@@ -327,28 +329,26 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
             }
         },
         #[cfg(feature = "metadata")]
-        Statement::ShowColumns {
-            table_name,
-        } => {
-              let keys = try_block!(storage, {
-                  let table_name = get_name(table_name)?;
-                  let Schema { column_defs, .. } = storage
-                      .fetch_schema(table_name)
-                      .await?
-                      .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+        Statement::ShowColumns { table_name } => {
+            let keys = try_block!(storage, {
+                let table_name = get_name(table_name)?;
+                let Schema { column_defs, .. } = storage
+                    .fetch_schema(table_name)
+                    .await?
+                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
-                  Ok(column_defs)
-              });
+                Ok(column_defs)
+            });
 
-              let mut output:Vec<Vec<String>>= vec![vec![]];
-              
-              for key in keys {
-                 let mut row = Vec::new();
-                 row.push(key.name);
-                 row.push(format!("{:?}", key.data_type));
-                 output.push(row);
-              }
-              Ok((storage,  Payload::ShowColumns { rows: output}))
-        },
+            let mut output: Vec<Vec<String>> = vec![vec![]];
+
+            for key in keys {
+                let mut row = Vec::new();
+                row.push(key.name);
+                row.push(format!("{:?}", key.data_type));
+                output.push(row);
+            }
+            Ok((storage, Payload::ShowColumns { rows: output }))
+        }
     }
 }
