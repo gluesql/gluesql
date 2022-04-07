@@ -222,7 +222,7 @@ pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
         Value::Decimal(v) => Ok(Value::Decimal(v.abs())),
         Value::F64(v) => Ok(Value::F64(v.abs())),
         Value::Null => Ok(Value::Null),
-        _ => Err(EvaluateError::FunctionRequiresFloatValue(name).into())
+        _ => Err(EvaluateError::FunctionRequiresFloatValue(name).into()),
     }
 }
 

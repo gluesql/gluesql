@@ -29,7 +29,6 @@ test_case!(abs, async move {
                     ABS(-1.0) AS ABS2, 
                     ABS(+1.0) AS ABS3 
             FROM SingleItem",
-
             Ok(select!(
                 "ABS1"        | "ABS2"                   | "ABS3";
                 F64           | F64                      | F64;
@@ -41,40 +40,34 @@ test_case!(abs, async move {
                     ABS(-0.0) AS ABS2, 
                     ABS(+0.0) AS ABS3 
             FROM SingleItem",
-
             Ok(select!(
                 "ABS1"        | "ABS2"                   | "ABS3";
                 F64           | F64                      | F64;
                 0.0_f64.abs()  f64::abs(-0.0_f64)         f64::from(0.0).abs()
             )),
         ),
-
         (
             "SELECT ABS(0) AS ABS1, 
                     ABS(-0) AS ABS2, 
                     ABS(+0) AS ABS3 
             FROM SingleItem",
-
             Ok(select!(
                 "ABS1"        | "ABS2"                   | "ABS3";
                 I64           | I64                      | I64;
                 0_i64.abs()        i64::abs(-0)               i64::from(0).abs()
             )),
         ),
-
         (
             "SELECT ABS(id) AS ABS1, 
                     ABS(int8) AS ABS2, 
                     ABS(dec) AS ABS3 
             FROM SingleItem",
-
             Ok(select!(
                 "ABS1"        | "ABS2"                   | "ABS3";
                 I64           | I8                      |  Decimal;
                 0_i64.abs()        i8::abs(1)              2.into()
             )),
         ),
-
         (
             "SELECT ABS('string') AS ABS FROM SingleItem",
             Err(EvaluateError::FunctionRequiresFloatValue(String::from("ABS")).into()),
