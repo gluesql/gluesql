@@ -84,7 +84,7 @@ macro_rules! generate_store_tests {
         glue!(function_math_function_sin, function::math_function::sin);
         glue!(function_math_function_cos, function::math_function::cos);
         glue!(function_math_function_tan, function::math_function::tan);
-        glue!(function_abs, function::abs::abs),
+        glue!(function_abs, function::abs::abs);
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
         glue!(function_floor, function::floor::floor);
