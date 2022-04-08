@@ -39,6 +39,15 @@ impl<W: Write> Print<W> {
 
                 writeln!(self.output, "{}\n", table)?;
             }
+            Payload::ShowColumns { rows } => {
+                let mut table = get_table(vec!["Field", "Type"]);
+                for values in rows {
+                    let values: Vec<String> = values.into_iter().map(Into::into).collect();
+                    table.add_row(values);
+                }
+
+                writeln!(self.output, "{}\n", table)?;
+            }
             Payload::Select { labels, rows } => {
                 let mut table = get_table(labels);
                 for values in rows {
