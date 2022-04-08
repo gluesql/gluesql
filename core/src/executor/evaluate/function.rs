@@ -215,29 +215,6 @@ pub fn substr(
 
 // --- float ---
 
-pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
-    match n.try_into()? {
-        Value::I8(v) => Ok(Value::I8(v.abs())),
-        Value::I64(v) => Ok(Value::I64(v.abs())),
-        Value::Decimal(v) => Ok(Value::Decimal(v.abs())),
-        Value::F64(v) => Ok(Value::F64(v.abs())),
-        Value::Null => {
-            return Ok(Value::Null);
-        }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresFloatValue(name).into());
-        }
-    }
-}
-
-pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
-    let x = eval_to_float!(name, n);
-    if x == 0.0 {
-        return Ok(Value::I8(0));
-    }
-    Ok(Value::I8(x.signum() as i8))
-}
-
 pub fn sqrt(name: String, n: Evaluated<'_>) -> Result<Value> {
     Ok(Value::F64(eval_to_float!(name, n).sqrt()))
 }

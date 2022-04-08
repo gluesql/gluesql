@@ -6,8 +6,6 @@ use {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
 pub enum Function {
-    #[strum(to_string = "ABS")]
-    Abs(Expr),
     #[strum(to_string = "LOWER")]
     Lower(Expr),
     #[strum(to_string = "UPPER")]
@@ -90,8 +88,6 @@ pub enum Function {
     Reverse(Expr),
     #[strum(to_string = "REPEAT")]
     Repeat { expr: Expr, num: Expr },
-    #[strum(to_string = "SIGN")]
-    Sign(Expr),
     #[strum(to_string = "SUBSTR")]
     Substr {
         expr: Expr,
