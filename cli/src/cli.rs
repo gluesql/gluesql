@@ -100,7 +100,7 @@ where
     pub fn load<P: AsRef<Path>>(&mut self, filename: P) -> Result<()> {
         let mut sqls = String::new();
         File::open(filename)?.read_to_string(&mut sqls)?;
-        for sql in sqls.split(";\n").filter(|sql| !sql.trim().is_empty()) {
+        for sql in sqls.split(';').filter(|sql| !sql.trim().is_empty()) {
             match self.glue.execute(sql) {
                 Ok(payload) => self.print.payload(payload)?,
                 Err(e) => {
