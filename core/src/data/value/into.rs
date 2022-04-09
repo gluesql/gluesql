@@ -591,12 +591,14 @@ mod tests {
         );
     }
 
-    /*
     #[test]
     fn try_into_interval() {
-        unimplemented!();
+        assert_eq!(
+            (&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())).try_into() as Result<I>,
+            Ok(I::Month(274))
+        )
     }
-    */
+
     #[test]
     fn try_into_u128() {
         let uuid = 195965723427462096757863453463987888808;
