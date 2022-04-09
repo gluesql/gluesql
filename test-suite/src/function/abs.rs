@@ -32,7 +32,7 @@ test_case!(abs, async move {
             Ok(select!(
                 "ABS1"        | "ABS2"                   | "ABS3";
                 F64           | F64                      | F64;
-                1.0_f64.abs()  f64::abs(-1.0_f64)         f64::from(1.0).abs()
+                1.0_f64.abs()  f64::abs(-1.0_f64)         f64::from(1).abs()
             )),
         ),
         (
@@ -43,7 +43,7 @@ test_case!(abs, async move {
             Ok(select!(
                 "ABS1"        | "ABS2"                   | "ABS3";
                 F64           | F64                      | F64;
-                0.0_f64.abs()  f64::abs(-0.0_f64)         f64::from(0.0).abs()
+                0.0_f64.abs()  f64::abs(-0.0_f64)         f64::from(0).abs()
             )),
         ),
         (

@@ -18,7 +18,7 @@ test_case!(sign, async move {
             Ok(select!(
                 "SIGN1"        | "SIGN2"                   | "SIGN3";
                 I8             | I8                        | I8;
-                i8::from(1)             i8::from(-1)         i8::from(1)
+                1_i8            f64::signum(-2.0) as i8                1_i8
             )),
         ),
         (
@@ -28,8 +28,8 @@ test_case!(sign, async move {
             FROM SingleItem",
             Ok(select!(
                 "SIGN1"        | "SIGN2"                   | "SIGN3";
-                I8           | I8                      | I8;
-                i8::from(1)             i8::from(-1)         i8::from(1)
+                I8             | I8                        | I8;
+                1_i8            f64::signum(-2.0) as i8                 1_i8
             )),
         ),
         (
@@ -40,7 +40,7 @@ test_case!(sign, async move {
             Ok(select!(
                 "SIGN1"        | "SIGN2"                   | "SIGN3";
                 I8           | I8                      | I8;
-                i8::from(0)             i8::from(0)         i8::from(0)
+                0_i8             0_i8         0_i8
             )),
         ),
         (
@@ -51,7 +51,7 @@ test_case!(sign, async move {
             Ok(select!(
                 "SIGN1"        | "SIGN2"                   | "SIGN3";
                 I8           | I8                      | I8;
-                i8::from(0)             i8::from(0)         i8::from(0)
+                0_i8             0_i8         0_i8
             )),
         ),
         (
