@@ -596,9 +596,10 @@ mod tests {
     fn try_into_interval() {
         unimplemented!();
     }
+    */
     #[test]
     fn try_into_u128() {
         let uuid = 195965723427462096757863453463987888808;
-        assert_eq!(&Value::Uuid(uuid).try_into() as Result<u128>, Ok(uuid))
-    }*/
+        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid))
+    }
 }
