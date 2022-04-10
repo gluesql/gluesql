@@ -319,6 +319,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 selector,
             })))
         }
+        "ABS" => translate_function_one_arg(Function::Abs, args, name),
+        "SIGN" => translate_function_one_arg(Function::Sign, args, name),
         "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
