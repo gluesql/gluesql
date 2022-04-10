@@ -62,4 +62,7 @@ pub enum Expr {
         when_then: Vec<(Expr, Expr)>,
         else_result: Option<Box<Expr>>,
     },
+    VariableArgs {   // used for concat function
+        args: Vec<Expr>,
+    },
 }

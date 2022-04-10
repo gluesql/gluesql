@@ -189,6 +189,12 @@ pub async fn evaluate<'a, T>(
                 None => Ok(Evaluated::from(Value::Null)),
             }
         }
+        Expr::VariableArgs {
+            args,
+        } => {
+            // todo ????o
+
+        }
     }
 }
 
@@ -211,6 +217,7 @@ async fn evaluate_function<'a, T>(
 
     match func {
         // --- text ---
+        Function::Concat {expr} => f::concat(name(), eval(expr).await?),
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {

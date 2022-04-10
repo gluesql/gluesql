@@ -15,7 +15,8 @@ impl Function {
 
         match self {
             Self::Now() | Function::Pi() | Function::GenerateUuid() => Exprs::Empty(empty()),
-            Self::Lower(expr)
+            Self::Concat(expr)
+            | Self::Lower(expr)
             | Self::Upper(expr)
             | Self::Sin(expr)
             | Self::Cos(expr)
@@ -221,5 +222,17 @@ mod tests {
             r#"SUBSTR('   >++++("<   ', 3, 11)"#,
             &[r#"'   >++++("<   '"#, "3", "11"],
         );
+
+        // Variable Arguments
+        test(
+            r#"CONCAT('abc', 'def')"#, &["abc", "def"]
+        );
+        test(
+            r#"CONCAT('abc', NULL)"#, &["abc", NULL]
+        );
+        test(
+            r#"CONCAT('abc', 'def', 'ghi')"#, &["abc", "def", "ghi"]
+        );
+
     }
 }
