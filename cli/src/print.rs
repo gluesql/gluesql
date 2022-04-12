@@ -251,5 +251,54 @@ mod tests {
                 ],
             }
         );
+
+		 test!(
+            "
+╭──────────────╮
+│ Field   Type │
+╞══════════════╡
+│ id      Int  │
+│ name    Text │
+╰──────────────╯",
+            Payload::ShowColumns {
+                rows: vec![
+                    vec![
+                        "id".to_string(),
+                        "Int".to_string(),
+                    ],
+					vec![
+                        "name".to_string(),
+                        "Text".to_string(),
+                    ],
+                ],
+            }
+        );
+		
+		test!(
+            "
+╭────────────────╮
+│ Field     Type │
+╞════════════════╡
+│ id        Int  │
+│ name      Text │
+│ isabear   Bool │
+╰────────────────╯",
+            Payload::ShowColumns {
+                rows: vec![
+                    vec![
+                        "id".to_string(),
+                        "Int".to_string(),
+                    ],
+					vec![
+                        "name".to_string(),
+                        "Text".to_string(),
+                    ],
+					vec![
+					     "isabear".to_string(),
+						 "Bool".to_string(),
+					],
+                ],
+            }
+        );
     }
 }
