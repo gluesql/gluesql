@@ -312,23 +312,6 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
 
             Ok((storage, Payload::Select { labels, rows }))
         }
-
-        //- Metadata
-        #[cfg(feature = "metadata")]
-        Statement::ShowVariable(variable) => match variable {
-            Variable::Tables => storage
-                .schema_names()
-                .await
-                .map(|table_names| Payload::ShowVariable(PayloadVariable::Tables(table_names)))
-                .try_self(storage),
-            Variable::Version => {
-                let version = storage.version();
-                let payload = Payload::ShowVariable(PayloadVariable::Version(version));
-
-                Ok((storage, payload))
-            }
-        },
-        #[cfg(feature = "metadata")]
         Statement::ShowColumns { table_name } => {
             let keys = try_block!(storage, {
                 let table_name = get_name(table_name)?;
@@ -350,5 +333,20 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
             }
             Ok((storage, Payload::ShowColumns { rows: output }))
         }
+        //- Metadata
+        #[cfg(feature = "metadata")]
+        Statement::ShowVariable(variable) => match variable {
+            Variable::Tables => storage
+                .schema_names()
+                .await
+                .map(|table_names| Payload::ShowVariable(PayloadVariable::Tables(table_names)))
+                .try_self(storage),
+            Variable::Version => {
+                let version = storage.version();
+                let payload = Payload::ShowVariable(PayloadVariable::Version(version));
+
+                Ok((storage, payload))
+            }
+        },
     }
 }
