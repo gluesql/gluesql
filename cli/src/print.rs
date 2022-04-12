@@ -252,7 +252,7 @@ mod tests {
             }
         );
 
-		 test!(
+        test!(
             "
 ╭──────────────╮
 │ Field   Type │
@@ -262,19 +262,13 @@ mod tests {
 ╰──────────────╯",
             Payload::ShowColumns {
                 rows: vec![
-                    vec![
-                        "id".to_string(),
-                        "Int".to_string(),
-                    ],
-					vec![
-                        "name".to_string(),
-                        "Text".to_string(),
-                    ],
+                    vec!["id".to_string(), "Int".to_string(),],
+                    vec!["name".to_string(), "Text".to_string(),],
                 ],
             }
         );
-		
-		test!(
+
+        test!(
             "
 ╭────────────────╮
 │ Field     Type │
@@ -285,18 +279,9 @@ mod tests {
 ╰────────────────╯",
             Payload::ShowColumns {
                 rows: vec![
-                    vec![
-                        "id".to_string(),
-                        "Int".to_string(),
-                    ],
-					vec![
-                        "name".to_string(),
-                        "Text".to_string(),
-                    ],
-					vec![
-					     "isabear".to_string(),
-						 "Bool".to_string(),
-					],
+                    vec!["id".to_string(), "Int".to_string(),],
+                    vec!["name".to_string(), "Text".to_string(),],
+                    vec!["isabear".to_string(), "Bool".to_string(),],
                 ],
             }
         );
