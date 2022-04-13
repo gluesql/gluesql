@@ -126,7 +126,16 @@ fn evaluate_function<'a>(
 
     match func {
         // --- text ---
-        Function::Concat(args) => f::concat(name(), args),   //, eval(expr)?),
+        Function::Concat(expr, expr2, expr3) => {
+			let e=eval(expr)?;
+			let e2=eval(expr2)?;
+			
+			let e3=match expr3 {
+				Option(v) => eval(expr3)?;
+				_ => Value::Null;
+			}
+			f::concat(name(), e, e2, e3),   //, eval(expr)?),
+		}
         Function::Lower(expr) => f::lower(name(), eval(expr)?),
         Function::Upper(expr) => f::upper(name(), eval(expr)?),
         Function::Left { expr, size } | Function::Right { expr, size } => {

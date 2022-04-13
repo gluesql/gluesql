@@ -6,12 +6,11 @@ use {
 impl Function {
     pub fn as_exprs(&self) -> impl ExactSizeIterator<Item = &Expr> {
         #[derive(iter_enum::Iterator, iter_enum::ExactSizeIterator)]
-        enum Exprs<I0, I1, I2, I3, In> {
+        enum Exprs<I0, I1, I2, I3> {
             Empty(I0),
             Single(I1),
             Double(I2),
             Tripple(I3),
-			VariableArgs(In),
         }
 
         match self {
@@ -115,7 +114,7 @@ impl Function {
                 start: expr2,
                 count: Some(expr3),
             } => Exprs::Tripple([expr, expr2, expr3].into_iter()),
-			Self::Concat (args) => Exprs::VariableArgs(args),
+			Self::Concat (expr, expr2, expr3) => Exprs::Tripple([expr, expr2, expr3].into_iter()),
         }
     }
 }
