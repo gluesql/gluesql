@@ -11,7 +11,7 @@ impl Function {
             Single(I1),
             Double(I2),
             Tripple(I3),
-	    }
+        }
 
         match self {
             Self::Now() | Function::Pi() | Function::GenerateUuid() => Exprs::Empty(empty()),
@@ -114,7 +114,7 @@ impl Function {
                 start: expr2,
                 count: Some(expr3),
             } => Exprs::Tripple([expr, expr2, expr3].into_iter()),
-			Self::Concat (expr, expr2, expr3) => Exprs::Tripple([expr, expr2, expr3].into_iter()),
+            Self::Concat(expr, expr2, expr3) => Exprs::Tripple([expr, expr2, expr3].into_iter()),
         }
     }
 }
@@ -224,17 +224,12 @@ mod tests {
         );
 
         // Variable Arguments
-        test(
-            r#"CONCAT('abc', 'def')"#, &["abc", "def"]
-        );
-		
+        test(r#"CONCAT('abc', 'def')"#, &["abc", "def"]);
+
         //test(
         //    r#"CONCAT('abc', NULL)"#, &["abc", Value::NULL]
         //);
-		
-        test(
-            r#"CONCAT('abc', 'def', 'ghi')"#, &["abc", "def", "ghi"]
-        );
 
+        test(r#"CONCAT('abc', 'def', 'ghi')"#, &["abc", "def", "ghi"]);
     }
 }
