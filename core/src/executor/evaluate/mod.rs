@@ -189,20 +189,21 @@ pub async fn evaluate<'a, T>(
                 None => Ok(Evaluated::from(Value::Null)),
             }
         }
-        Expr::VariableArgs {
-            args,
-        } => {
-			   let _s:String;
-			   for expr in args {
-				   let v = eval(expr).await?;
-				   if !v.is_null() {
-				       _s+=format!("{:}", v);
-				   }
-			   }
-			   Ok(Evaluated::from(Value::Str(_s)));
-            // todo ????o
+		
+        //Expr::VariableArgs {
+        //    args,
+        //} => {
+		//	   let _s:String;
+		//	   for expr in args {
+		//		   let v = eval(expr).await?;
+		//		   if !v.is_null() {
+		//		    //   _s+=format!("{:}", v);
+		//		   }
+		//	   }
+		//	   Ok(Evaluated::from(Value::Str(_s)));
+         //   // todo ????o
 
-        }
+        //}
     }
 }
 
@@ -229,9 +230,9 @@ async fn evaluate_function<'a, T>(
 			let e1 = eval(expr1).await?;
 			let e2 = eval(expr2).await?;
 			let e3 = match expr3 {
-			   Some (v) => Some(eval(v).await?),
-			   None => Value::Null,
-			}
+			   Option::Some (v) => eval(v).await?,
+			   _ => Evaluated::Value(Cow::Owned(Value::Null)),
+			};
 			f::concat(name(), e1, e2, e3)   // _s).await?),
 		},
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),

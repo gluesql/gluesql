@@ -131,10 +131,10 @@ fn evaluate_function<'a>(
 			let e2=eval(expr2)?;
 			
 			let e3=match expr3 {
-				Option(v) => eval(expr3)?;
-				_ => Value::Null;
-			}
-			f::concat(name(), e, e2, e3),   //, eval(expr)?),
+				Option::Some(v) => eval(expr3)?,
+				_ => Evaluated::Value(Cow::Borrowed(Value::Str("".to_string())))
+			};
+			f::concat(name(), e, e2, e3)   //, eval(expr)?),
 		}
         Function::Lower(expr) => f::lower(name(), eval(expr)?),
         Function::Upper(expr) => f::upper(name(), eval(expr)?),
