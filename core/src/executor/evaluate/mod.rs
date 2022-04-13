@@ -189,21 +189,6 @@ pub async fn evaluate<'a, T>(
                 None => Ok(Evaluated::from(Value::Null)),
             }
         }
-		
-        //Expr::VariableArgs {
-        //    args,
-        //} => {
-		//	   let _s:String;
-		//	   for expr in args {
-		//		   let v = eval(expr).await?;
-		//		   if !v.is_null() {
-		//		    //   _s+=format!("{:}", v);
-		//		   }
-		//	   }
-		//	   Ok(Evaluated::from(Value::Str(_s)));
-         //   // todo ????o
-
-        //}
     }
 }
 
@@ -226,13 +211,12 @@ async fn evaluate_function<'a, T>(
 
     match func {
         // --- text ---
-        Function::Concat(expr1, expr2, expr3) => { //f::concat(name(), args)
-			let e1 = eval(expr1).await?;
+        Function::Concat( expr, expr2, expr3) => { 
+			let e1 = eval(expr).await?;
 			let e2 = eval(expr2).await?;
-			let e3 = match expr3 {
-			   Option::Some (v) => eval(v).await?,
-			   _ => Evaluated::Value(Cow::Owned(Value::Null)),
-			};
+			
+			let e3 = eval(expr3).await?;
+            
 			f::concat(name(), e1, e2, e3)   // _s).await?),
 		},
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),

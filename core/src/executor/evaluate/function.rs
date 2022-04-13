@@ -50,16 +50,17 @@ macro_rules! eval_to_float {
 
 // --- text ---
 
-pub fn concat(name:String, expr1:Evaluated<'_>, expr2:Evaluated<'_>, expr3:Evaluated<'_>) -> Result<Value> {  //, expr: Evaluated<'_>) -> Result<Value> {
-    let _s:String=eval_to_str!(name, expr1) + eval_to_str!(name, expr2);
+pub fn concat(name:String, expr1:Evaluated<'_>, expr2:Evaluated<'_>, expr3:Evaluated<'_>) -> Result<Value> {
+    let mut s:String=eval_to_str!(name, expr1);
+	let s1:String = eval_to_str!(name, expr2);
+    s.push_str(&s1);
+	
 	//let _value:Value = expr3.try_into();
 	
-	//match expr3.try_into() {
-	//   Ok(s) => if s != Value::Null { _s += eval_to_str!(name, s)}	
-	//}
+	let s2:String = eval_to_str!(name, expr3);
+	s.push_str(&s2);
 	
-	Ok(Value::Str(_s))
-    //Ok(Value::Str(eval_to_str!(name, expr).to_lowercase()))
+	Ok(Value::Str(s))
 }
 
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {

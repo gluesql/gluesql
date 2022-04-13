@@ -1,4 +1,4 @@
- {
+ use {
     super::{
         Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query,
         UnaryOperator,
@@ -61,8 +61,5 @@ pub enum Expr {
         operand: Option<Box<Expr>>,
         when_then: Vec<(Expr, Expr)>,
         else_result: Option<Box<Expr>>,
-    },
-    VariableArgs {   // used for concat function
-        args: Vec<Expr>,
     },
 }

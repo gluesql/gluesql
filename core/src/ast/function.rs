@@ -37,8 +37,8 @@ pub enum Function {
     #[strum(to_string = "CEIL")]
     Ceil(Expr),
     #[strum(to_string = "CONCAT")]
-    Concat(Expr, Expr, Option<Expr>),
-    #[strum(to_string = "ROUND")]
+    Concat (Expr, Expr, Expr),
+	#[strum(to_string = "ROUND")]
     Round(Expr),
     #[strum(to_string = "FLOOR")]
     Floor(Expr),

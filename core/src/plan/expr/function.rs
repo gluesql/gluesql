@@ -11,7 +11,7 @@ impl Function {
             Single(I1),
             Double(I2),
             Tripple(I3),
-        }
+	    }
 
         match self {
             Self::Now() | Function::Pi() | Function::GenerateUuid() => Exprs::Empty(empty()),
