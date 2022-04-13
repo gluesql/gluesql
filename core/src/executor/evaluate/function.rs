@@ -50,8 +50,9 @@ macro_rules! eval_to_float {
 
 // --- text ---
 
-pub fn concat(name:String, expr: Evaluated<'_>) -> Result<Value> {
-    println!("{}", expr)
+pub fn concat(name:String, args:Vec<Evaluated<'_>>) -> Result<Value> {  //, expr: Evaluated<'_>) -> Result<Value> {
+    println!("{}", name);
+	Ok(Value::Str(name))
     //Ok(Value::Str(eval_to_str!(name, expr).to_lowercase()))
 }
 

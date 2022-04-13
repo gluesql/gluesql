@@ -192,6 +192,14 @@ pub async fn evaluate<'a, T>(
         Expr::VariableArgs {
             args,
         } => {
+			   let _s:String="";
+			   for expr in args {
+				   let v = eval(expr).await?;
+				   if !v.is_null() {
+				       _s+=v;
+				   }
+			   }
+			   Ok(Evaluated::from(Value::String(_s)));
             // todo ????o
 
         }
@@ -217,7 +225,13 @@ async fn evaluate_function<'a, T>(
 
     match func {
         // --- text ---
-        Function::Concat {expr} => f::concat(name(), eval(expr).await?),
+        Function::Concat(args) => { f::concat(name(), args)
+			 //let _s:Vec<Evaluated>;
+			 //for _e in expr {
+			//	_s.push(eval(_e).await?); 
+			 //}
+			// f::concat(name(), _s)   // _s).await?),
+		},
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {

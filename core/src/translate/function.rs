@@ -143,19 +143,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
     match name.as_str() {
         "CONCAT" =>  {
-            match args.len() {
-                 0 | 1 => {
-                    // invalid number of arguments ?
-                    println!("only 1 or 2 args");
-                 },
-                 _ => {
-                   let _s:String="";
-                   for _expr in args {
-                       _s+=_expr;
-                   }
-                   Ok(Expr::Function( ))
-                 }
-            } // match args.len()
+			let _vec = Vec<>;
+			for _v in args {
+				_vec.push(translate_expr(_v)?);
+			}
+            Ok(Expr::Func(Function::Concat(VariableArgs(_s))));
         }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
         "UPPER" => translate_function_one_arg(Function::Upper, args, name),
