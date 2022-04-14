@@ -1,8 +1,10 @@
 /*
-- [x] Add initial test cases at `test-suite/src/inline_view.rs`
-- [] Fix UnsupportedQueryTableFactor at `core/src/translate/query.rs`
-- [] Add TableFactor::Derived
--
+- [ ] Add initial test cases at `test-suite/src/inline_view.rs`
+- [ ] Add `TableFactor::Derived {subquery, alias}` at `core/src/ast/query.rs`
+- [ ] Fix UnsupportedQueryTableFactor -> Return TableFactor::Derived at `core/src/translate/query.rs`
+- [ ] Should we separate TableFactor to TableFactorEvaluate and TableFactorTranslate?
+- [ ] Sth to do in plan?
+- [ ] Impl if relation == Derived, select(subquery) in `select_with_label` at `core/src/executor/select/mod.rs`
 */
 
 use {

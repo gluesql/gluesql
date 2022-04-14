@@ -1,3 +1,5 @@
+use crate::result::Error;
+
 use {
     crate::{
         ast::{IndexItem, ObjectName, TableAlias, TableFactor},
@@ -30,6 +32,7 @@ impl<'a> Table<'a> {
 
                 Ok(Self { name, alias, index })
             }
+            TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
         }
     }
 

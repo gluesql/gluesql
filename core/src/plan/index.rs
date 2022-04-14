@@ -1,3 +1,5 @@
+use crate::{data::TableError, result::Error};
+
 use {
     crate::{
         ast::{
@@ -71,6 +73,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
     let TableWithJoins { relation, .. } = &select.from;
     let table_name = match relation {
         TableFactor::Table { name, .. } => name,
+        TableFactor::Derived { .. } => return Err(Error::Table(TableError::Unreachable)),
     };
     let table_name = get_name(table_name)?;
     let indexes = match schema_map.get(table_name) {
@@ -106,6 +109,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
+                TableFactor::Derived { .. } => return Err(Error::Table(TableError::Unreachable)),
             };
 
             let from = TableWithJoins {
@@ -188,6 +192,7 @@ fn plan_select(
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
+                TableFactor::Derived { .. } => return Err(Error::Table(TableError::Unreachable)),
             };
 
             let index = Some(IndexItem {

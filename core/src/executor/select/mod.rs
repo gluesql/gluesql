@@ -166,6 +166,7 @@ pub async fn select_with_labels<'a, T>(
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
+    // if relation == Derived, select(subquery)
     let table = Table::new(relation)?;
 
     let columns = fetch_columns(storage, table.get_name()).await?;

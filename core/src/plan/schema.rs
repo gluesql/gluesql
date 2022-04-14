@@ -1,3 +1,5 @@
+use crate::{data::TableError, result::Error};
+
 use {
     super::expr::PlanExpr,
     crate::{
@@ -176,14 +178,16 @@ async fn scan_table_factor<T>(
     storage: &dyn Store<T>,
     table_factor: &TableFactor,
 ) -> Result<Vec<Schema>> {
-    let table_name = match table_factor {
-        TableFactor::Table { name, .. } => name,
-    };
-    let table_name = get_name(table_name)?;
-    let schema = storage.fetch_schema(table_name).await?;
-    let schema_list = schema.map(|schema| vec![schema]).unwrap_or_else(Vec::new);
+    match table_factor {
+        TableFactor::Table { name, .. } => {
+            let table_name = get_name(name)?;
+            let schema = storage.fetch_schema(table_name).await?;
+            let schema_list = schema.map(|schema| vec![schema]).unwrap_or_else(Vec::new);
 
-    Ok(schema_list)
+            Ok(schema_list)
+        }
+        TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+    }
 }
 
 #[async_recursion(?Send)]
