@@ -58,6 +58,10 @@ pub enum TableFactor {
         /// Query planner result
         index: Option<IndexItem>,
     },
+    Derived {
+        subquery: Query,
+        alias: Option<TableAlias>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -143,6 +143,17 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                 }),
             index: None, // query execution plan
         }),
+        SqlTableFactor::Derived {
+            subquery, alias, ..
+        } => Ok(TableFactor::Derived {
+            subquery: translate_query(subquery).unwrap(),
+            alias: alias
+                .as_ref()
+                .map(|SqlTableAlias { name, columns }| TableAlias {
+                    name: name.value.to_owned(),
+                    columns: translate_idents(columns),
+                }),
+        }),
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
     }
 }
