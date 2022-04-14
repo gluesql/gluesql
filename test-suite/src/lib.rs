@@ -19,6 +19,7 @@ pub mod nested_select;
 pub mod nullable;
 pub mod order_by;
 pub mod ordering;
+pub mod showcolumns;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
