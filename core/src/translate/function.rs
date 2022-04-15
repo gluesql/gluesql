@@ -73,6 +73,24 @@ fn check_len_range(
     }
 }
 
+fn check_len_min(
+    name: String,
+    found: usize,
+    expected_minimum: usize,
+) -> Result<()> {
+    if found >= expected_minimum {
+        Ok(())
+    } else {
+        Err(TranslateError::FunctionArgsLengthNotWithinRange {
+            name,
+            expected_minimum,
+            expected_maximum,
+            found,
+        }
+        .into())
+    }
+}
+
 fn translate_function_zero_arg(func: Function, args: Vec<&SqlExpr>, name: String) -> Result<Expr> {
     check_len(name, args.len(), 0)?;
 
@@ -143,7 +161,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
     match name.as_str() {
         "CONCAT" => {
-            check_len_range(name, args.len(), 2, 255)?;
+            check_len_min(name, args.len(), 1)?;
             let mut exprs: Vec<Expr> = vec![];
             for arg in args {
                 exprs.push(translate_expr(arg)?);

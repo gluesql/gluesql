@@ -130,6 +130,7 @@ fn evaluate_function<'a>(
             let exprs = exprs.iter().map(eval).collect::<Result<_>>()?;
 
             f::concat(name(), exprs)
+        }
         Function::Lower(expr) => f::lower(name(), eval(expr)?),
         Function::Upper(expr) => f::upper(name(), eval(expr)?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
