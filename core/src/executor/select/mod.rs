@@ -2,6 +2,9 @@ mod blend;
 mod error;
 
 pub use error::SelectError;
+use futures::TryFutureExt;
+
+use crate::ast::TableFactor;
 
 use {
     self::blend::Blend,
@@ -166,94 +169,100 @@ pub async fn select_with_labels<'a, T>(
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
-    // if relation == Derived, select(subquery)
-    let table = Table::new(relation)?;
+    match relation {
+        TableFactor::Table { .. } => {
+            let table = Table::new(relation)?;
 
-    let columns = fetch_columns(storage, table.get_name()).await?;
-    let join_columns = stream::iter(joins.iter())
-        .map(Ok::<_, Error>)
-        .and_then(|join| {
-            let table = Table::new(&join.relation);
+            let columns = fetch_columns(storage, table.get_name()).await?;
+            let join_columns = stream::iter(joins.iter())
+                .map(Ok::<_, Error>)
+                .and_then(|join| {
+                    let table = Table::new(&join.relation);
 
-            async move {
-                let table = table?;
-                let table_alias = table.get_alias();
-                let table_name = table.get_name();
+                    async move {
+                        let table = table?;
+                        let table_alias = table.get_alias();
+                        let table_name = table.get_name();
 
-                let columns = fetch_columns(storage, table_name).await?;
+                        let columns = fetch_columns(storage, table_name).await?;
 
-                Ok((table_alias, columns))
-            }
-        })
-        .try_collect::<Vec<_>>()
-        .await?;
+                        Ok((table_alias, columns))
+                    }
+                })
+                .try_collect::<Vec<_>>()
+                .await?;
 
-    let labels = if with_labels {
-        get_labels(projection, table.get_alias(), &columns, &join_columns)?
-    } else {
-        vec![]
-    };
+            let labels = if with_labels {
+                get_labels(projection, table.get_alias(), &columns, &join_columns)?
+            } else {
+                vec![]
+            };
 
-    let columns = Rc::from(columns);
-    let join_columns = join_columns
-        .into_iter()
-        .map(|(_, columns)| columns)
-        .map(Rc::from)
-        .collect::<Vec<_>>();
+            let columns = Rc::from(columns);
+            let join_columns = join_columns
+                .into_iter()
+                .map(|(_, columns)| columns)
+                .map(Rc::from)
+                .collect::<Vec<_>>();
 
-    let join = Join::new(
-        storage,
-        joins,
-        join_columns,
-        filter_context.as_ref().map(Rc::clone),
-    );
+            let join = Join::new(
+                storage,
+                joins,
+                join_columns,
+                filter_context.as_ref().map(Rc::clone),
+            );
 
-    let aggregate = Aggregator::new(
-        storage,
-        projection,
-        group_by,
-        having.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
-    );
-    let blend = Rc::new(Blend::new(
-        storage,
-        filter_context.as_ref().map(Rc::clone),
-        projection,
-    ));
-    let filter = Rc::new(Filter::new(
-        storage,
-        where_clause.as_ref(),
-        filter_context.as_ref().map(Rc::clone),
-        None,
-    ));
-    let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-    let sort = Sort::new(storage, filter_context, order_by);
+            let aggregate = Aggregator::new(
+                storage,
+                projection,
+                group_by,
+                having.as_ref(),
+                filter_context.as_ref().map(Rc::clone),
+            );
+            let blend = Rc::new(Blend::new(
+                storage,
+                filter_context.as_ref().map(Rc::clone),
+                projection,
+            ));
+            let filter = Rc::new(Filter::new(
+                storage,
+                where_clause.as_ref(),
+                filter_context.as_ref().map(Rc::clone),
+                None,
+            ));
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+            let sort = Sort::new(storage, filter_context, order_by);
 
-    let rows = fetch_blended(storage, table, columns).await?;
-    let rows = join.apply(rows).await?;
-    let rows = rows.try_filter_map(move |blend_context| {
-        let filter = Rc::clone(&filter);
+            let rows = fetch_blended(storage, table, columns).await?;
+            let rows = join.apply(rows).await?;
+            let rows = rows.try_filter_map(move |blend_context| {
+                let filter = Rc::clone(&filter);
 
-        async move {
-            filter
-                .check(Rc::clone(&blend_context))
-                .await
-                .map(|pass| pass.then(|| blend_context))
+                async move {
+                    filter
+                        .check(Rc::clone(&blend_context))
+                        .await
+                        .map(|pass| pass.then(|| blend_context))
+                }
+            });
+
+            let rows = aggregate.apply(rows).await?;
+            let rows = sort
+                .apply(rows)
+                .await?
+                .and_then(move |(aggregated, context)| {
+                    let blend = Rc::clone(&blend);
+
+                    async move { blend.apply(aggregated, context).await }
+                });
+            let rows = limit.apply(rows);
+
+            Ok((labels, rows))
         }
-    });
-
-    let rows = aggregate.apply(rows).await?;
-    let rows = sort
-        .apply(rows)
-        .await?
-        .and_then(move |(aggregated, context)| {
-            let blend = Rc::clone(&blend);
-
-            async move { blend.apply(aggregated, context).await }
-        });
-    let rows = limit.apply(rows);
-
-    Ok((labels, rows))
+        TableFactor::Derived { subquery, alias } => {
+            return select_with_labels(storage, subquery, None, false)
+        }
+    }
 }
 
 pub async fn select<'a, T>(
