@@ -90,4 +90,31 @@ test_case!(concat, async move {
         FROM
             Concat;"#
     );
+
+    test!(
+        Ok(select!(
+           myc
+           Str;
+           "abcd".to_owned()
+        )),
+        r#"select concat("ab", "cd") as myc from Concat;"#
+    );
+
+    test!(
+        Ok(select!(
+           myconcat
+           Str;
+           "abcdef".to_owned()
+        )),
+        r#"select concat("ab", "cd", "ef") as myconcat from Concat;"#
+    );
+
+    test!(
+        Ok(select!(
+           myconcat
+           Str;
+           "abcdef".to_owned()
+        )),
+        r#"select concat("ab", "cd", NULL, "ef") as myconcat from Concat;"#
+    );
 });

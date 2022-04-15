@@ -6,11 +6,12 @@ use {
 impl Function {
     pub fn as_exprs(&self) -> impl ExactSizeIterator<Item = &Expr> {
         #[derive(iter_enum::Iterator, iter_enum::ExactSizeIterator)]
-        enum Exprs<I0, I1, I2, I3> {
+        enum Exprs<I0, I1, I2, I3, I4> {
             Empty(I0),
             Single(I1),
             Double(I2),
             Tripple(I3),
+            VariableArgs(I4),
         }
 
         match self {
@@ -114,7 +115,7 @@ impl Function {
                 start: expr2,
                 count: Some(expr3),
             } => Exprs::Tripple([expr, expr2, expr3].into_iter()),
-            Self::Concat(expr, expr2, expr3) => Exprs::Tripple([expr, expr2, expr3].into_iter()),
+            Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
         }
     }
 }
@@ -222,14 +223,5 @@ mod tests {
             r#"SUBSTR('   >++++("<   ', 3, 11)"#,
             &[r#"'   >++++("<   '"#, "3", "11"],
         );
-
-        // Variable Arguments
-        test(r#"CONCAT('abc', 'def')"#, &["abc", "def"]);
-
-        //test(
-        //    r#"CONCAT('abc', NULL)"#, &["abc", Value::NULL]
-        //);
-
-        test(r#"CONCAT('abc', 'def', 'ghi')"#, &["abc", "def", "ghi"]);
     }
 }

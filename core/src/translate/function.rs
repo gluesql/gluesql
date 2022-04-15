@@ -143,13 +143,12 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
     match name.as_str() {
         "CONCAT" => {
-            let expr1 = translate_expr(args[0])?;
-            let expr2 = translate_expr(args[1])?;
-            let expr3 = translate_expr(args[2])?;
-
-            Ok(Expr::Function(Box::new(Function::Concat(
-                expr1, expr2, expr3,
-            ))))
+            check_len_range(name, args.len(), 2, 255)?;
+            let mut exprs: Vec<Expr> = vec![];
+            for arg in args {
+                exprs.push(translate_expr(arg)?);
+            }
+            Ok(Expr::Function(Box::new(Function::Concat(exprs))))
         }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
         "UPPER" => translate_function_one_arg(Function::Upper, args, name),

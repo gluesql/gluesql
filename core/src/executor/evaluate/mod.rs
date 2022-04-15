@@ -211,13 +211,13 @@ async fn evaluate_function<'a, T>(
 
     match func {
         // --- text ---
-        Function::Concat(expr, expr2, expr3) => {
-            let e1 = eval(expr).await?;
-            let e2 = eval(expr2).await?;
+        Function::Concat(exprs) => {
+            let mut vec: Vec<Evaluated<'_>> = vec![];
+            for expr in exprs {
+                vec.push(eval(expr).await?);
+            }
 
-            let e3 = eval(expr3).await?;
-
-            f::concat(name(), e1, e2, e3) // _s).await?),
+            f::concat(name(), vec) // _s).await?),
         }
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),

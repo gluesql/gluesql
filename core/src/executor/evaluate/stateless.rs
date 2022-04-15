@@ -126,13 +126,13 @@ fn evaluate_function<'a>(
 
     match func {
         // --- text ---
-        Function::Concat(expr, expr2, expr3) => {
-            let e1 = eval(expr)?;
-            let e2 = eval(expr2)?;
+        Function::Concat(exprs) => {
+            let mut vec: Vec<Evaluated<'_>> = vec![];
+            for expr in exprs {
+                vec.push(eval(expr)?);
+            }
 
-            let e3 = eval(expr3)?;
-
-            f::concat(name(), e1, e2, e3) //, eval(expr)?),
+            f::concat(name(), vec) // _s).await?),
         }
         Function::Lower(expr) => f::lower(name(), eval(expr)?),
         Function::Upper(expr) => f::upper(name(), eval(expr)?),
