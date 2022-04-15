@@ -56,7 +56,7 @@ pub fn concat(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Value> {
     for expr in exprs {
         match expr.try_into()? {
             Value::Str(value) => s.push_str(&value),
-            Value::Null => {}
+            Value::Null => return Ok(Value::Null),
             _ => {
                 return Err(EvaluateError::FunctionRequiresStringValue(name).into());
             }
