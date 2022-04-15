@@ -77,10 +77,9 @@ fn check_len_min(name: String, found: usize, expected_minimum: usize) -> Result<
     if found >= expected_minimum {
         Ok(())
     } else {
-        Err(TranslateError::FunctionArgsLengthNotWithinRange {
+        Err(TranslateError::FunctionArgsLengthNotMatchingMin {
             name,
             expected_minimum,
-            expected_maximum,
             found,
         }
         .into())
