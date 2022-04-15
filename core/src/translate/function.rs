@@ -73,11 +73,7 @@ fn check_len_range(
     }
 }
 
-fn check_len_min(
-    name: String,
-    found: usize,
-    expected_minimum: usize,
-) -> Result<()> {
+fn check_len_min(name: String, found: usize, expected_minimum: usize) -> Result<()> {
     if found >= expected_minimum {
         Ok(())
     } else {
