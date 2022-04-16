@@ -223,5 +223,17 @@ mod tests {
             r#"SUBSTR('   >++++("<   ', 3, 11)"#,
             &[r#"'   >++++("<   '"#, "3", "11"],
         );
+
+        //VariableArgs
+        test(r#"CONCAT("abc")"#, &[r#""abc""#]);
+
+        test(r#"CONCAT("abc", "123")"#, &[r#""abc""#, r#""123""#]);
+
+        test(r#"CONCAT("a", "b", "c")"#, &[r#""a""#, r#""b""#, r#""c""#]);
+
+        test(
+            r#"CONCAT("gluesql", " ", "is", " ", "cool")"#,
+            &[r#""gluesql""#, r#"" ""#, r#""is""#, r#"" ""#, r#""cool""#],
+        );
     }
 }

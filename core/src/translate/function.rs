@@ -157,10 +157,10 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     match name.as_str() {
         "CONCAT" => {
             check_len_min(name, args.len(), 1)?;
-            let mut exprs: Vec<Expr> = vec![];
-            for arg in args {
-                exprs.push(translate_expr(arg)?);
-            }
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
             Ok(Expr::Function(Box::new(Function::Concat(exprs))))
         }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
