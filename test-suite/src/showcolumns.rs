@@ -1,7 +1,7 @@
 use crate::*;
 
 test_case!(showcolumns, async move {
-    use gluesql_core::prelude::Value::*;
+    use gluesql_core::{executor::ExecuteError, prelude::Value::*};
 
     run!(
         "
@@ -26,5 +26,10 @@ test_case!(showcolumns, async move {
             "null_value".to_owned()   "Text".to_owned()
         )),
         r#"Show columns from mytable"#
+    );
+
+    test!(
+        Err(ExecuteError::TableNotFound("mytable1".to_owned()).into()),
+        r#"Show columns from mytable1"#
     );
 });

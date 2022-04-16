@@ -7,7 +7,7 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{SetExpr, Statement, Values},
+        ast::{DataType, SetExpr, Statement, Values},
         data::{get_name, Row, Schema, Value},
         executor::limit::Limit,
         result::MutResult,
@@ -37,7 +37,7 @@ pub enum ExecuteError {
 #[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
     ShowColumns {
-        rows: Vec<Vec<String>>,
+        rows: Vec<(String, DataType)>,
     },
     Create,
     Insert(usize),
@@ -323,14 +323,11 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
                 Ok(column_defs)
             });
 
-            let mut output: Vec<Vec<String>> = vec![vec![]];
+            let output: Vec<(String, DataType)> = keys
+                .into_iter()
+                .map(|key| (key.name, key.data_type))
+                .collect();
 
-            for key in keys {
-                let mut row = Vec::new();
-                row.push(key.name);
-                row.push(format!("{:?}", key.data_type));
-                output.push(row);
-            }
             Ok((storage, Payload::ShowColumns { rows: output }))
         }
         //- Metadata

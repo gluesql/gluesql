@@ -1,5 +1,6 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
+    gluesql_core::ast::DataType,
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
 };
@@ -41,9 +42,8 @@ impl<W: Write> Print<W> {
             }
             Payload::ShowColumns { rows } => {
                 let mut table = get_table(vec!["Field", "Type"]);
-                for values in rows {
-                    let values: Vec<String> = values.into_iter().map(Into::into).collect();
-                    table.add_row(values);
+                for (field, fieldtype) in rows {
+                    table.add_row([field, fieldtype.to_string()]);
                 }
 
                 writeln!(self.output, "{}\n", table)?;
@@ -254,22 +254,6 @@ mod tests {
 
         test!(
             "
-╭──────────────╮
-│ Field   Type │
-╞══════════════╡
-│ id      Int  │
-│ name    Text │
-╰──────────────╯",
-            Payload::ShowColumns {
-                rows: vec![
-                    vec!["id".to_string(), "Int".to_string(),],
-                    vec!["name".to_string(), "Text".to_string(),],
-                ],
-            }
-        );
-
-        test!(
-            "
 ╭────────────────╮
 │ Field     Type │
 ╞════════════════╡
@@ -279,9 +263,9 @@ mod tests {
 ╰────────────────╯",
             Payload::ShowColumns {
                 rows: vec![
-                    vec!["id".to_string(), "Int".to_string(),],
-                    vec!["name".to_string(), "Text".to_string(),],
-                    vec!["isabear".to_string(), "Bool".to_string(),],
+                    ("id".to_string(), DataType::Int),
+                    ("name".to_string(), DataType::Text),
+                    ("isabear".to_string(), DataType::Boolean),
                 ],
             }
         );
