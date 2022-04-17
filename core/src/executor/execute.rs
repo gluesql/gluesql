@@ -36,9 +36,7 @@ pub enum ExecuteError {
 
 #[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
-    ShowColumns {
-        rows: Vec<(String, DataType)>,
-    },
+    ShowColumns(Vec<(String, DataType)>),
     Create,
     Insert(usize),
     Select {
@@ -328,7 +326,7 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
                 .map(|key| (key.name, key.data_type))
                 .collect();
 
-            Ok((storage, Payload::ShowColumns { rows: output }))
+            Ok((storage, Payload::ShowColumns(output)))
         }
         //- Metadata
         #[cfg(feature = "metadata")]
