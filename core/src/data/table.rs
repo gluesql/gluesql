@@ -33,6 +33,18 @@ impl<'a> Table<'a> {
                 Ok(Self { name, alias, index })
             }
             TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+            // TableFactor::Derived { subquery, alias } => {
+            //     let alias = alias.as_ref().map(|TableAlias { name, .. }| name);
+            //     select(subquery, None, false)
+            //     select(storage, subquery, context)
+
+            //     let name = alias.unwrap();
+            //     Ok(Self {
+            //         name,
+            //         alias,
+            //         index: None,
+            //     })
+            // }
         }
     }
 

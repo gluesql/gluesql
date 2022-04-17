@@ -1,10 +1,15 @@
 mod blend;
 mod error;
 
+use std::pin::Pin;
+
+use async_recursion::async_recursion;
 pub use error::SelectError;
-use futures::TryFutureExt;
+use futures::{Future, TryFutureExt};
 
 use crate::ast::TableFactor;
+
+use super::evaluate::Evaluated;
 
 use {
     self::blend::Blend,
@@ -125,7 +130,7 @@ fn get_labels<'a>(
                 Labeled::Wildcard(labels)
             }
             SelectItem::QualifiedWildcard(target) => {
-                let target_table_alias = try_into!(get_name(target));
+                let target_table_alias = try_into!(get_name(&target));
 
                 if table_alias == target_table_alias {
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));
@@ -148,12 +153,18 @@ fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
+#[async_recursion(?Send)]
 pub async fn select_with_labels<'a, T>(
     storage: &'a dyn GStore<T>,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
 ) -> Result<(Vec<String>, impl TryStream<Ok = Row, Error = Error> + 'a)> {
+    // Should we add Future here?
+    //  Result<(
+    //     Vec<String>,
+    //     Pin<Box<dyn Future<Output = impl TryStream<Ok = Row, Error = Error> + 'a>>>,
+    // )>
     let Select {
         from: table_with_joins,
         selection: where_clause,
@@ -260,7 +271,49 @@ pub async fn select_with_labels<'a, T>(
             Ok((labels, rows))
         }
         TableFactor::Derived { subquery, alias } => {
-            return select_with_labels(storage, subquery, None, false)
+            let (columns, inline_view) = select_with_labels(storage, subquery, None, true).await?;
+            let inline_view = inline_view.try_collect::<Vec<_>>().await?;
+            let columns = Rc::from(columns);
+            // let columns = Rc::clone(columns);
+            let rows = inline_view.into_iter().map(move |row| {
+                let columns = Rc::clone(&columns);
+                Ok(Rc::from(BlendContext::new(
+                    "sys$inline_view$01",
+                    columns,
+                    Some(row),
+                    None,
+                )))
+            });
+            let rows = stream::iter(rows);
+
+            let aggregate = Aggregator::new(
+                storage,
+                projection,
+                group_by,
+                having.as_ref(),
+                filter_context.as_ref().map(Rc::clone),
+            );
+            let blend = Rc::new(Blend::new(
+                storage,
+                filter_context.as_ref().map(Rc::clone),
+                projection,
+            ));
+
+            let sort = Sort::new(storage, filter_context, order_by);
+
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+            let rows = aggregate.apply(rows).await?;
+            let rows = sort
+                .apply(rows)
+                .await?
+                .and_then(move |(aggregated, context)| {
+                    let blend = Rc::clone(&blend);
+
+                    async move { blend.apply(aggregated, context).await }
+                });
+
+            let rows = limit.apply(rows);
+            Ok((vec![], rows))
         }
     }
 }
