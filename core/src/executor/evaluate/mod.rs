@@ -212,12 +212,8 @@ async fn evaluate_function<'a, T>(
     match func {
         // --- text ---
         Function::Concat(exprs) => {
-            let mut vec: Vec<Evaluated<'_>> = vec![];
-            for expr in exprs {
-                vec.push(eval(expr).await?);
-            }
-
-            f::concat(name(), vec) // _s).await?),
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::concat(name(), exprs)
         }
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),

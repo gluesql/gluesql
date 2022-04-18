@@ -1,7 +1,9 @@
 use crate::*;
 
 test_case!(concat, async move {
+    use gluesql_core::executor::EvaluateError;
     use gluesql_core::prelude::Value::*;
+    use gluesql_core::translate::TranslateError;
 
     run!(
         "
@@ -115,5 +117,20 @@ test_case!(concat, async move {
            Null
         )),
         r#"select concat("ab", "cd", NULL, "ef") as myconcat from Concat;"#
+    );
+    // test with non string arguments
+    test!(
+        Err(EvaluateError::FunctionRequiresStringValue("CONCAT".to_string()).into()),
+        r#"select concat(123, 456) as myconcat from Concat;"#
+    );
+    // test with zero arguments
+    test!(
+        Err(TranslateError::FunctionArgsLengthNotMatchingMin {
+            name: "CONCAT".to_owned(),
+            expected_minimum: 1,
+            found: 0
+        }
+        .into()),
+        r#"select concat() as myconcat from Concat;"#
     );
 });
