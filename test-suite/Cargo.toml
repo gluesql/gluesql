@@ -14,7 +14,7 @@ async-trait = "0.1"
 bigdecimal = "0.3"
 uuid = "0.8"
 chrono = "0.4"
-
+rust_decimal = "1"
 [features]
 alter-table = ["gluesql-core/alter-table"]
 index = ["gluesql-core/index"]

@@ -6,6 +6,7 @@ use {
         executor::Payload,
         prelude::Value::{self, *},
     },
+    rust_decimal::Decimal as Dec,
 };
 
 test_case!(cast_literal, async move {
@@ -14,6 +15,14 @@ test_case!(cast_literal, async move {
     let test_cases = vec![
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
+        (
+            "CREATE TABLE test (mytext TEXT, myint8 int(8), myint int, myfloat float, mydec decimal, mybool boolean, mydate date)",
+            Ok(Payload::Create),
+        ),
+        (
+            r#"INSERT INTO test VALUES ("foobar", -2, 2, 2.0, 2.0, true, "2001-09-11")"#,
+            Ok(Payload::Insert(1)),
+        ),
         (
             r#"SELECT CAST("TRUE" AS BOOLEAN) AS cast FROM Item"#,
             Ok(select!(cast Bool; true)),
@@ -73,6 +82,105 @@ test_case!(cast_literal, async move {
         (
             r#"SELECT CAST(NULL AS FLOAT) AS cast FROM Item"#,
             Ok(select_with_null!(cast; Null)),
+        ),
+        (
+            r#"SELECT CAST(true AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(1,0))),
+        ),
+        (
+            r#"SELECT CAST(false AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(0,0))),
+        ),
+        (
+            r#"SELECT CAST(number AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(1,0))),
+        ),
+        (
+            r#"SELECT CAST("1.1" AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(11,1))),
+        ),
+        (
+            r#"SELECT CAST(1 AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(10, 1))),
+        ),
+        (
+            r#"SELECT CAST(-1 AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(-10, 1))),
+        ),
+        (
+            r#"SELECT CAST("foo" AS Decimal) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastFromTextToDecimalFailed("foo".to_owned()).into()),
+        ),
+        (
+            r#"SELECT CAST(NULL AS Decimal) AS cast FROM Item"#,
+            Ok(select_with_null!(cast; Null)),
+        ),
+        (
+            r#"SELECT CAST(true AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(1,0))),
+        ),
+        (
+            r#"SELECT CAST(false AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(0,0))),
+        ),
+        (
+            r#"SELECT CAST(number AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(1,0))),
+        ),
+        (
+            r#"SELECT CAST("1.1" AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(11,1))),
+        ),
+        (
+            r#"SELECT CAST(1 AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(10, 1))),
+        ),
+        (
+            r#"SELECT CAST(-1 AS decimal) AS cast FROM Item"#,
+            Ok(select!(cast Decimal; Dec::new(-10, 1))),
+        ),
+        (
+            r#"SELECT CAST("foo" AS Decimal) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastFromTextToDecimalFailed("foo".to_owned()).into()),
+        ),
+        (
+            r#"SELECT CAST(NULL AS Decimal) AS cast FROM Item"#,
+            Ok(select_with_null!(cast; Null)),
+        ),
+        (
+            r#"SELECT CAST(mytext AS Decimal) AS cast FROM test"#,
+            Err(ValueError::ImpossibleCast.into()),
+            //Err(ValueError::LiteralCastFromTextToDecimalFailed("foo".to_owned()).into()),
+        ),
+        (
+            r#"SELECT CAST(myint8 AS Decimal) AS cast FROM test"#,
+            Ok(select!(cast Decimal; Dec::new(-2,0))),
+        ),
+        (
+            r#"SELECT CAST(myint AS Decimal) AS cast FROM test"#,
+            Ok(select!(cast Decimal; Dec::new(2,0))),
+        ),
+        (
+            r#"SELECT CAST(myfloat AS Decimal) AS cast FROM test"#,
+            Ok(select!(cast Decimal; Dec::new(2,0))),
+        ),
+        (
+            r#"SELECT CAST(mydec AS Decimal) AS cast FROM test"#,
+            Ok(select!(cast Decimal; Dec::new(2,0))),
+        ),
+        (
+            r#"SELECT CAST(mybool AS Decimal) AS cast FROM test"#,
+            Ok(select!(cast Decimal; Dec::new(1,0))),
+        ),
+
+        (
+            r#"SELECT CAST(not(mybool) AS Decimal) AS cast FROM test"#,
+            Ok(select!(cast Decimal; Dec::new(0,0))),
+        ),
+
+        (
+            r#"SELECT CAST(mydate AS Decimal) AS cast FROM test"#,
+            Err(ValueError::ImpossibleCast.into()),
         ),
         (
             r#"SELECT CAST(1 AS TEXT) AS cast FROM Item"#,
