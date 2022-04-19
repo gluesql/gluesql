@@ -1,9 +1,11 @@
 use {
     super::TryBinaryOperator,
     crate::{data::ValueError, prelude::Value, result::Result},
+	rust_decimal::prelude::Decimal as Dec,
     std::cmp::Ordering,
     Value::*,
 };
+
 
 impl PartialOrd<Value> for i64 {
     fn partial_cmp(&self, rhs: &Value) -> Option<Ordering> {
@@ -11,6 +13,7 @@ impl PartialOrd<Value> for i64 {
             I8(rhs) => PartialOrd::partial_cmp(self, &(*rhs as i64)),
             I64(rhs) => PartialOrd::partial_cmp(self, rhs),
             F64(rhs) => PartialOrd::partial_cmp(&(*self as f64), rhs),
+			Decimal(other) => Dec::from(*self).partial_cmp(other),
             _ => None,
         }
     }
@@ -26,6 +29,7 @@ impl TryBinaryOperator for i64 {
             I8(rhs) => Ok(I64(lhs + rhs as i64)),
             I64(rhs) => Ok(I64(lhs + rhs)),
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
+		    Decimal(rhs) => Ok(Decimal(Dec::from(lhs) + rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::AddOnNonNumeric(I64(lhs), rhs.clone()).into()),
         }
@@ -38,6 +42,7 @@ impl TryBinaryOperator for i64 {
             I8(rhs) => Ok(I64(lhs - rhs as i64)),
             I64(rhs) => Ok(I64(lhs - rhs)),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
+			Decimal(rhs) => Ok(Decimal(Dec::from(lhs) - rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::SubtractOnNonNumeric(I64(lhs), rhs.clone()).into()),
         }
@@ -51,6 +56,7 @@ impl TryBinaryOperator for i64 {
             I64(rhs) => Ok(I64(lhs * rhs)),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
+			Decimal(rhs) => Ok(Decimal(Dec::from(lhs) * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::MultiplyOnNonNumeric(I64(lhs), rhs.clone()).into()),
         }
@@ -63,6 +69,7 @@ impl TryBinaryOperator for i64 {
             I8(rhs) => Ok(I64(lhs / rhs as i64)),
             I64(rhs) => Ok(I64(lhs / rhs)),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
+			Decimal(rhs) => Ok(Decimal(Dec::from(lhs) / rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::DivideOnNonNumeric(I64(lhs), rhs.clone()).into()),
         }
@@ -77,19 +84,6 @@ impl TryBinaryOperator for i64 {
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::ModuloOnNonNumeric(I64(lhs), rhs.clone()).into()),
-        }
-    }
-}
-
-impl PartialEq<Value> for f64 {
-    fn eq(&self, other: &Value) -> bool {
-        let lhs = *self;
-
-        match *other {
-            I8(rhs) => lhs == rhs as f64,
-            I64(rhs) => lhs == rhs as f64,
-            F64(rhs) => lhs == rhs,
-            _ => false,
         }
     }
 }

@@ -91,6 +91,7 @@ impl Value {
             Value::I8(v) => *v == 0,
             Value::I64(v) => *v == 0,
             Value::F64(v) => *v == 0.0,
+            Value::Decimal(v) => *v == Decimal::ZERO,
             _ => false,
         }
     }
@@ -176,7 +177,7 @@ impl Value {
             (I8(a), b) => a.try_add(b),
             (I64(a), b) => a.try_add(b),
             (F64(a), b) => a.try_add(b),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a + b)),
+            (Decimal(a), b) => a.try_add(b),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
             (Date(a), Interval(b)) => b.add_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
@@ -189,7 +190,6 @@ impl Value {
             | (Null, Date(_))
             | (Null, Timestamp(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
@@ -207,7 +207,7 @@ impl Value {
             (I8(a), _) => a.try_subtract(other),
             (I64(a), _) => a.try_subtract(other),
             (F64(a), _) => a.try_subtract(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a - b)),
+            (Decimal(a), _) => a.try_subtract(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
             (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.subtract_from_timestamp(a).map(Timestamp),
@@ -235,7 +235,6 @@ impl Value {
             | (Null, Timestamp(_))
             | (Null, Time(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
@@ -252,7 +251,7 @@ impl Value {
             (I8(a), _) => a.try_multiply(other),
             (I64(a), _) => a.try_multiply(other),
             (F64(a), _) => a.try_multiply(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a * b)),
+            (Decimal(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
@@ -261,7 +260,6 @@ impl Value {
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
@@ -279,7 +277,7 @@ impl Value {
             (I8(a), _) => a.try_divide(other),
             (I64(a), _) => a.try_divide(other),
             (F64(a), _) => a.try_divide(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a / b)),
+            (Decimal(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
@@ -288,7 +286,6 @@ impl Value {
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Interval(_), Null)
-            | (Decimal(_), Null)
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
         }
@@ -305,13 +302,10 @@ impl Value {
             (I8(a), _) => a.try_modulo(other),
             (I64(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a % b)),
-            (Null, I8(_))
-            | (Null, I64(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Decimal(_), Null)
-            | (Null, Null) => Ok(Null),
+            (Decimal(a), _) => a.try_modulo(other),
+            (Null, I8(_)) | (Null, I64(_)) | (Null, F64(_)) | (Null, Decimal(_)) | (Null, Null) => {
+                Ok(Null)
+            }
             _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
         }
     }

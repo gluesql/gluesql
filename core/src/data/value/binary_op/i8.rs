@@ -1,6 +1,7 @@
 use {
     super::TryBinaryOperator,
     crate::{data::ValueError, prelude::Value, result::Result},
+    rust_decimal::prelude::Decimal as Dec,
     std::cmp::Ordering,
     Value::*,
 };
@@ -11,7 +12,8 @@ impl PartialEq<Value> for i8 {
             I8(other) => self == other,
             I64(other) => &(*self as i64) == other,
             F64(other) => &(*self as f64) == other,
-            _ => false,
+			Decimal(other) => Dec::from(*self) == *other,
+			_ => false,
         }
     }
 }
@@ -22,6 +24,7 @@ impl PartialOrd<Value> for i8 {
             I8(other) => self.partial_cmp(other),
             I64(other) => (*self as i64).partial_cmp(other),
             F64(other) => (*self as f64).partial_cmp(other),
+            Decimal(other) => Dec::from(*self).partial_cmp(other),
             _ => None,
         }
     }
@@ -47,6 +50,7 @@ impl TryBinaryOperator for i8 {
                 .map(I8),
             I64(rhs) => Ok(I64(lhs as i64 + rhs)),
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
+            Decimal(rhs) => Ok(Decimal(Dec::from(lhs) + rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::AddOnNonNumeric(I8(lhs), rhs.clone()).into()),
         }
@@ -69,6 +73,8 @@ impl TryBinaryOperator for i8 {
                 .map(I8),
             I64(rhs) => Ok(I64(lhs as i64 - rhs)),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
+            Decimal(rhs) => Ok(Decimal(Dec::from(lhs) - rhs)),
+    
             Null => Ok(Null),
             _ => Err(ValueError::SubtractOnNonNumeric(I8(lhs), rhs.clone()).into()),
         }
@@ -91,6 +97,7 @@ impl TryBinaryOperator for i8 {
                 .map(I8),
             I64(rhs) => Ok(I64(lhs as i64 * rhs)),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
+			Decimal(rhs) => Ok(Decimal(Dec::from(lhs) * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::MultiplyOnNonNumeric(I8(lhs), rhs.clone()).into()),
@@ -114,6 +121,8 @@ impl TryBinaryOperator for i8 {
                 .map(I8),
             I64(rhs) => Ok(I64(lhs as i64 / rhs)),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
+	        Decimal(rhs) => Ok(Decimal(Dec::from(lhs) / rhs)),
+    
             Null => Ok(Null),
             _ => Err(ValueError::DivideOnNonNumeric(I8(lhs), rhs.clone()).into()),
         }
