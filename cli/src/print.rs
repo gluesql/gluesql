@@ -39,6 +39,14 @@ impl<W: Write> Print<W> {
 
                 writeln!(self.output, "{}\n", table)?;
             }
+            Payload::ShowColumns(columns) => {
+                let mut table = get_table(vec!["Field", "Type"]);
+                for (field, fieldtype) in columns {
+                    table.add_row([field, fieldtype.to_string()]);
+                }
+
+                writeln!(self.output, "{}\n", table)?;
+            }
             Payload::Select { labels, rows } => {
                 let mut table = get_table(labels);
                 for values in rows {
@@ -116,6 +124,7 @@ mod tests {
 
     #[test]
     fn print_payload() {
+        use gluesql_core::ast::DataType;
         use gluesql_core::prelude::{Payload, PayloadVariable, Value};
 
         let mut print = Print::new(Vec::new());
@@ -241,6 +250,52 @@ mod tests {
                     ],
                 ],
             }
+        );
+
+        test!(
+            "
+╭───────────────────╮
+│ Field     Type    │
+╞═══════════════════╡
+│ id        Int     │
+│ name      Text    │
+│ isabear   Boolean │
+╰───────────────────╯",
+            Payload::ShowColumns(vec![
+                ("id".to_string(), DataType::Int),
+                ("name".to_string(), DataType::Text),
+                ("isabear".to_string(), DataType::Boolean),
+            ],)
+        );
+
+        test!(
+            "
+╭────────────────────╮
+│ Field    Type      │
+╞════════════════════╡
+│ id       Int8      │
+│ calc1    Float     │
+│ cost     Decimal   │
+│ DOB      Date      │
+│ clock    Time      │
+│ tstamp   Timestamp │
+│ ival     Interval  │
+│ uuid     Uuid      │
+│ hash     Map       │
+│ mylist   List      │
+╰────────────────────╯",
+            Payload::ShowColumns(vec![
+                ("id".to_string(), DataType::Int8),
+                ("calc1".to_string(), DataType::Float),
+                ("cost".to_string(), DataType::Decimal),
+                ("DOB".to_string(), DataType::Date),
+                ("clock".to_string(), DataType::Time),
+                ("tstamp".to_string(), DataType::Timestamp),
+                ("ival".to_string(), DataType::Interval),
+                ("uuid".to_string(), DataType::Uuid),
+                ("hash".to_string(), DataType::Map),
+                ("mylist".to_string(), DataType::List),
+            ],)
         );
     }
 }
