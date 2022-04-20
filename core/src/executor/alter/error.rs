@@ -28,4 +28,7 @@ pub enum AlterError {
 
     #[error("identifier not found: {0:#?}")]
     IdentifierNotFound(Expr),
+
+    #[error("NUMERIC scale '{0}' must be between 0 and between precision {1}")]
+    UnsupportedDecimalScale(String, String),
 }

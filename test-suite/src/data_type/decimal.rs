@@ -1,6 +1,7 @@
 use {
     crate::*,
-    gluesql_core::{executor::Payload, prelude::Value::*},
+    gluesql_core::{data::ValueError, executor::AlterError, executor::Payload, prelude::Value::*},
+    rust_decimal::prelude::*,
 };
 
 test_case!(decimal, async move {
@@ -19,6 +20,42 @@ test_case!(decimal, async move {
                 decimal_field
                 Decimal;
                 1.into()
+            )),
+        ),
+        (
+            "CREATE TABLE ILLEGAL_DECIMAL (d1 DECIMAL(1,4))",
+            Err(AlterError::UnsupportedDecimalScale("4".to_owned(), "1".to_owned()).into()),
+        ),
+        (
+            "CREATE TABLE DECIMAL_PRECISION (d1 DECIMAL(5))",
+            Ok(Payload::Create),
+        ),
+        (
+            "INSERT INTO DECIMAL_PRECISION (d1) VALUES (12345)",
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "INSERT INTO DECIMAL_PRECISION (d1) VALUES (123456)",
+            Err(ValueError::FailedToParseDecimal("123456".to_owned()).into()),
+        ),
+        (
+            "CREATE TABLE DECIMAL_PRECISION_SCALE (d1 DECIMAL(5,2))",
+            Ok(Payload::Create),
+        ),
+        (
+            "INSERT INTO DECIMAL_PRECISION_SCALE (d1) VALUES (1234.56)",
+            Err(ValueError::FailedToParseDecimal("1234.56".to_owned()).into()),
+        ),
+        (
+            "INSERT INTO DECIMAL_PRECISION_SCALE (d1) VALUES (123.456)",
+            Ok(Payload::Insert(1)),
+        ),
+        (
+            "SELECT d1 AS d1 FROM DECIMAL_PRECISION_SCALE",
+            Ok(select!(
+                d1
+                Decimal;
+                rust_decimal::Decimal::from_str("123.46").unwrap()
             )),
         ),
     ];
