@@ -19,6 +19,7 @@ pub mod nested_select;
 pub mod nullable;
 pub mod order_by;
 pub mod ordering;
+pub mod showcolumns;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
@@ -105,6 +106,7 @@ macro_rules! generate_store_tests {
         glue!(ordering, ordering::ordering);
         glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
+        glue!(showcolumns, showcolumns::showcolumns);
         glue!(int8, data_type::int8::int8);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);
