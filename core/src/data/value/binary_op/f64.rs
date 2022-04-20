@@ -132,10 +132,7 @@ mod tests {
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
-        assert_eq!(
-            base.partial_cmp(&Decimal(Dec::from(1))),
-            Some(Ordering::Equal)
-        );
+        assert_eq!(base.partial_cmp(&Decimal(Dec::ONE)), Some(Ordering::Equal));
 
         assert_eq!(base.partial_cmp(&Bool(true)), None);
     }
@@ -213,6 +210,9 @@ mod tests {
         assert!(matches!(base.try_divide(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_divide(&I64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(
+            matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+        );
+        assert!(
             matches!(base.try_divide(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon )
         );
 
@@ -229,6 +229,9 @@ mod tests {
 
         assert!(matches!(base.try_modulo(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_modulo(&I64(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
+        assert!(
+            matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+        );
         assert!(
             matches!(base.try_modulo(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
         );
