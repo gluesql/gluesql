@@ -1,7 +1,7 @@
 use {
     super::TryBinaryOperator,
     crate::{data::ValueError, prelude::Value, result::Result},
-	rust_decimal::prelude::Decimal as Dec,
+    rust_decimal::prelude::Decimal as Dec,
     std::cmp::Ordering,
     Value::*,
 };
@@ -14,7 +14,7 @@ impl PartialEq<Value> for f64 {
             I8(rhs) => lhs == rhs as f64,
             I64(rhs) => lhs == rhs as f64,
             F64(rhs) => lhs == rhs,
-			Decimal(rhs) => Dec::from_f64_retain(lhs).unwrap() == rhs,
+            Decimal(rhs) => Dec::from_f64_retain(lhs).unwrap() == rhs,
             _ => false,
         }
     }
@@ -26,7 +26,7 @@ impl PartialOrd<Value> for f64 {
             I8(rhs) => self.partial_cmp(&(rhs as f64)),
             I64(rhs) => self.partial_cmp(&(rhs as f64)),
             F64(rhs) => self.partial_cmp(&rhs),
-			Decimal(rhs) => (Dec::from_f64_retain(*self)).partial_cmp(&(Some(rhs))),
+            Decimal(rhs) => (Dec::from_f64_retain(*self)).partial_cmp(&(Some(rhs))),
             _ => None,
         }
     }
@@ -42,7 +42,7 @@ impl TryBinaryOperator for f64 {
             I8(rhs) => Ok(F64(lhs + rhs as f64)),
             I64(rhs) => Ok(F64(lhs + rhs as f64)),
             F64(rhs) => Ok(F64(lhs + rhs)),
-			Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() + rhs)),
+            Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() + rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::AddOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -55,7 +55,7 @@ impl TryBinaryOperator for f64 {
             I8(rhs) => Ok(F64(lhs - rhs as f64)),
             I64(rhs) => Ok(F64(lhs - rhs as f64)),
             F64(rhs) => Ok(F64(lhs - rhs)),
-			Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() - rhs)),
+            Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() - rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::SubtractOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -69,7 +69,7 @@ impl TryBinaryOperator for f64 {
             I64(rhs) => Ok(F64(lhs * rhs as f64)),
             F64(rhs) => Ok(F64(lhs * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
-			Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() * rhs)),
+            Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::MultiplyOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -82,7 +82,7 @@ impl TryBinaryOperator for f64 {
             I8(rhs) => Ok(F64(lhs / rhs as f64)),
             I64(rhs) => Ok(F64(lhs / rhs as f64)),
             F64(rhs) => Ok(F64(lhs / rhs)),
-			Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() / rhs)),
+            Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() / rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::DivideOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -95,6 +95,9 @@ impl TryBinaryOperator for f64 {
             I8(rhs) => Ok(F64(lhs % rhs as f64)),
             I64(rhs) => Ok(F64(lhs % rhs as f64)),
             F64(rhs) => Ok(F64(lhs % rhs)),
+            Decimal(rhs) => Ok(Decimal(
+                Dec::from_f64_retain(lhs).unwrap().checked_rem(rhs).unwrap(),
+            )),
             Null => Ok(Null),
             _ => Err(ValueError::ModuloOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -106,11 +109,10 @@ mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
         crate::data::ValueError,
+        rust_decimal::prelude::Decimal as Dec,
         std::cmp::Ordering,
-		rust_decimal::prelude::Decimal as Dec,
     };
 
-    
     #[test]
     fn eq() {
         let base = 1.0_f64;
@@ -118,7 +120,7 @@ mod tests {
         assert_eq!(base, I8(1));
         assert_eq!(base, I64(1));
         assert_eq!(base, F64(1.0));
-		assert_eq!(base, Decimal(Dec::from(1)));
+        assert_eq!(base, Decimal(Dec::from(1)));
 
         assert_ne!(base, Bool(true));
     }
@@ -130,21 +132,26 @@ mod tests {
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
-        assert_eq!(base.partial_cmp(&Decimal(Dec::from(1))), Some(Ordering::Equal));
+        assert_eq!(
+            base.partial_cmp(&Decimal(Dec::from(1))),
+            Some(Ordering::Equal)
+        );
 
         assert_eq!(base.partial_cmp(&Bool(true)), None);
     }
 
     #[test]
     fn try_add() {
-		const DEC_EPSILON:Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
 
         let base = 1.0_f64;
 
         assert!(matches!(base.try_add(&I8(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_add(&I64(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
-        assert!(matches!(base.try_add(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::TWO).abs() < DEC_EPSILON));
+        assert!(
+            matches!(base.try_add(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::TWO).abs() < dec_epislon)
+        );
 
         assert_eq!(
             base.try_add(&Bool(true)),
@@ -154,7 +161,7 @@ mod tests {
 
     #[test]
     fn try_subtract() {
-		const DEC_EPSILON:Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
 
         let base = 1.0_f64;
 
@@ -166,9 +173,8 @@ mod tests {
             matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_subtract(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < DEC_EPSILON )
+            matches!(base.try_subtract(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
         );
-
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
@@ -178,7 +184,7 @@ mod tests {
 
     #[test]
     fn try_multiply() {
-		const DEC_EPSILON:Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1.0_f64;
 
         assert!(matches!(base.try_multiply(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
@@ -189,7 +195,7 @@ mod tests {
             matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_multiply(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < DEC_EPSILON )
+            matches!(base.try_multiply(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon )
         );
 
         assert_eq!(
@@ -200,12 +206,14 @@ mod tests {
 
     #[test]
     fn try_divide() {
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+
         let base = 1.0_f64;
 
         assert!(matches!(base.try_divide(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_divide(&I64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(
-            matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+            matches!(base.try_divide(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon )
         );
 
         assert_eq!(
@@ -216,12 +224,13 @@ mod tests {
 
     #[test]
     fn try_modulo() {
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1.0_f64;
 
         assert!(matches!(base.try_modulo(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_modulo(&I64(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
         assert!(
-            matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+            matches!(base.try_modulo(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
         );
 
         assert_eq!(

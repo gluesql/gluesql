@@ -12,7 +12,7 @@ impl PartialEq<Value> for Dec {
             I8(other) => *self == Dec::from(*other),
             I64(other) => *self == Dec::from(*other),
             F64(other) => *self == Dec::from_f64_retain(*other).unwrap(),
-			Decimal(other) => *self == *other,
+            Decimal(other) => *self == *other,
             _ => false,
         }
     }
@@ -92,125 +92,166 @@ impl TryBinaryOperator for Dec {
         match *rhs {
             I8(rhs) => Ok(Decimal(lhs.checked_rem(Dec::from(rhs)).unwrap())),
             I64(rhs) => Ok(Decimal(lhs.checked_rem(Dec::from(rhs)).unwrap())),
-            F64(rhs) => Ok(Decimal(lhs.checked_rem(Dec::from_f64_retain(rhs).unwrap()).unwrap())),
-            Decimal(rhs) => Ok(Decimal(lhs.checked_rem(Dec::from(rhs)).unwrap())),
+            F64(rhs) => Ok(Decimal(
+                lhs.checked_rem(Dec::from_f64_retain(rhs).unwrap()).unwrap(),
+            )),
+            Decimal(rhs) => Ok(Decimal(lhs.checked_rem(rhs).unwrap())),
             Null => Ok(Null),
             _ => Err(ValueError::ModuloOnNonNumeric(Decimal(lhs), rhs.clone()).into()),
         }
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
         crate::data::ValueError,
+        rust_decimal::prelude::Decimal as Dec,
         std::cmp::Ordering,
     };
 
     #[test]
     fn eq() {
-        let base = 1.0_f64;
+        let base = Dec::ONE;
 
         assert_eq!(base, I8(1));
         assert_eq!(base, I64(1));
         assert_eq!(base, F64(1.0));
+        assert_eq!(base, Decimal(Dec::ONE));
 
         assert_ne!(base, Bool(true));
     }
 
     #[test]
     fn partial_cmp() {
-        let base = 1.0_f64;
+        let base = Dec::ONE;
 
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&Decimal(Dec::ONE)), Some(Ordering::Equal));
 
         assert_eq!(base.partial_cmp(&Bool(true)), None);
     }
 
     #[test]
     fn try_add() {
-        let base = 1.0_f64;
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+        let base = Dec::ONE;
 
-        assert!(matches!(base.try_add(&I8(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
-        assert!(matches!(base.try_add(&I64(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
-        assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
+        assert!(
+            matches!(base.try_add(&I8(1)), Ok(Decimal(x)) if (x - Dec::TWO).abs() < dec_epislon )
+        );
+        assert!(
+            matches!(base.try_add(&I64(1)), Ok(Decimal(x)) if (x - Dec::TWO).abs() < dec_epislon )
+        );
+        assert!(
+            matches!(base.try_add(&F64(1.0)), Ok(Decimal(x)) if (x - Dec::TWO).abs() < dec_epislon )
+        );
+        assert!(
+            matches!(base.try_add(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::TWO).abs() < dec_epislon )
+        );
 
         assert_eq!(
             base.try_add(&Bool(true)),
-            Err(ValueError::AddOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::AddOnNonNumeric(Decimal(Dec::ONE), Bool(true)).into())
         );
     }
 
     #[test]
     fn try_subtract() {
-        let base = 1.0_f64;
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+        let base = Dec::ONE;
 
-        assert!(matches!(base.try_subtract(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
         assert!(
-            matches!(base.try_subtract(&I64(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+            matches!(base.try_subtract(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon  )
         );
         assert!(
-            matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+            matches!(base.try_subtract(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
+        );
+        assert!(
+            matches!(base.try_subtract(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon  )
+        );
+        assert!(
+            matches!(base.try_subtract(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
         );
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
-            Err(ValueError::SubtractOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::SubtractOnNonNumeric(Decimal(Dec::ONE), Bool(true)).into())
         );
     }
 
     #[test]
     fn try_multiply() {
-        let base = 1.0_f64;
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+        let base = Dec::ONE;
 
-        assert!(matches!(base.try_multiply(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(
-            matches!(base.try_multiply(&I64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+            matches!(base.try_multiply(&I8(1)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon  )
         );
         assert!(
-            matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+            matches!(base.try_multiply(&I64(1)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon )
+        );
+        assert!(
+            matches!(base.try_multiply(&F64(1.0)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon  )
+        );
+        assert!(
+            matches!(base.try_multiply(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon )
         );
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
-            Err(ValueError::MultiplyOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::MultiplyOnNonNumeric(Decimal(Dec::ONE), Bool(true)).into())
         );
     }
 
     #[test]
     fn try_divide() {
-        let base = 1.0_f64;
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+        let base = Dec::ONE;
 
-        assert!(matches!(base.try_divide(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
-        assert!(matches!(base.try_divide(&I64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(
-            matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+            matches!(base.try_divide(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon  )
+        );
+        assert!(
+            matches!(base.try_divide(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon  )
+        );
+        assert!(
+            matches!(base.try_divide(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon  )
+        );
+        assert!(
+            matches!(base.try_divide(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ONE).abs() < dec_epislon )
         );
 
         assert_eq!(
             base.try_divide(&Bool(true)),
-            Err(ValueError::DivideOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::DivideOnNonNumeric(Decimal(Dec::ONE), Bool(true)).into())
         );
     }
 
     #[test]
     fn try_modulo() {
-        let base = 1.0_f64;
+        let dec_epislon: Dec = Dec::from_f64_retain(f64::EPSILON).unwrap();
+        let base = Dec::ONE;
 
-        assert!(matches!(base.try_modulo(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
-        assert!(matches!(base.try_modulo(&I64(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
         assert!(
-            matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+            matches!(base.try_modulo(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
+        );
+        assert!(
+            matches!(base.try_modulo(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
+        );
+        assert!(
+            matches!(base.try_modulo(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
+        );
+        assert!(
+            matches!(base.try_modulo(&Decimal(Dec::ONE)), Ok(Decimal(x)) if (x - Dec::ZERO).abs() < dec_epislon )
         );
 
         assert_eq!(
             base.try_modulo(&Bool(true)),
-            Err(ValueError::ModuloOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::ModuloOnNonNumeric(Decimal(Dec::ONE), Bool(true)).into())
         );
     }
 }
-*/

@@ -1,6 +1,7 @@
 use {
     crate::*,
     gluesql_core::{executor::Payload, prelude::Value::*},
+    rust_decimal::prelude::Decimal as Dec,
 };
 
 test_case!(decimal, async move {
@@ -18,7 +19,87 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                1.into()
+                Dec::ONE
+            )),
+        ),
+        (
+            r#"SELECT decimal_field +1 as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::TWO
+            )),
+        ),
+        (
+            r#"SELECT 1+ decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::TWO
+            )),
+        ),
+        (
+            r#"SELECT decimal_field -1 as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::ZERO
+            )),
+        ),
+        (
+            r#"SELECT 1- decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::ZERO
+            )),
+        ),
+        (
+            r#"SELECT decimal_field * 2 as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::TWO
+            )),
+        ),
+        (
+            r#"SELECT 2* decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::TWO
+            )),
+        ),
+        (
+            r#"SELECT decimal_field/2 as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::from_f64_retain(0.5f64).unwrap()
+            )),
+        ),
+        (
+            r#"SELECT 2/decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::TWO
+            )),
+        ),
+        (
+            r#"SELECT 2%decimal_field  as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::ZERO
+            )),
+        ),
+        (
+            r#"SELECT decimal_field % 2  as decimal_field FROM DECIMAL_ITEM"#,
+            Ok(select!(
+                decimal_field
+                Decimal;
+                Dec::ONE
             )),
         ),
     ];
