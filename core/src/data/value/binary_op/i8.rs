@@ -1,6 +1,10 @@
 use {
     super::TryBinaryOperator,
-    crate::{data::ValueError, prelude::Value, result::{Result, Error}},
+    crate::{
+        data::ValueError,
+        prelude::Value,
+        result::{Error, Result},
+    },
     rust_decimal::prelude::Decimal as Dec,
     std::cmp::Ordering,
     Value::*,
@@ -135,11 +139,9 @@ impl TryBinaryOperator for i8 {
             I8(rhs) => Ok(I8(lhs % rhs)),
             I64(rhs) => Ok(I64(lhs as i64 % rhs)),
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
-            Decimal(rhs) => {
-               match Dec::from(lhs).checked_rem(rhs) {
-                 Some(x) => Ok(Decimal(x)),
-                    None => Err(Error::OverflowError("%".to_string())),
-               }
+            Decimal(rhs) => match Dec::from(lhs).checked_rem(rhs) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(Error::OverflowError("%".to_string())),
             },
             Null => Ok(Null),
             _ => Err(ValueError::ModuloOnNonNumeric(I8(lhs), rhs.clone()).into()),
