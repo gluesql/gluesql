@@ -1,6 +1,6 @@
 use {
     super::TryBinaryOperator,
-    crate::{data::ValueError, prelude::Value, result::Result},
+    crate::{data::ValueError, prelude::Value, result::{Result, Error}},
     rust_decimal::prelude::Decimal as Dec,
     std::cmp::Ordering,
     Value::*,
@@ -14,7 +14,12 @@ impl PartialEq<Value> for f64 {
             I8(rhs) => lhs == rhs as f64,
             I64(rhs) => lhs == rhs as f64,
             F64(rhs) => lhs == rhs,
-            Decimal(rhs) => Dec::from_f64_retain(lhs).unwrap() == rhs,
+            Decimal(rhs) => {
+                 match Dec::from_f64_retain(lhs) {
+                    Some(x) => x == rhs,
+                         _  => false,
+                 }
+            }
             _ => false,
         }
     }
@@ -26,7 +31,12 @@ impl PartialOrd<Value> for f64 {
             I8(rhs) => self.partial_cmp(&(rhs as f64)),
             I64(rhs) => self.partial_cmp(&(rhs as f64)),
             F64(rhs) => self.partial_cmp(&rhs),
-            Decimal(rhs) => (Dec::from_f64_retain(*self)).partial_cmp(&(Some(rhs))),
+            Decimal(rhs) => {
+                 match Dec::from_f64_retain(*self) {
+                    Some (x) => x.partial_cmp(&rhs),
+                    None  => None,
+                 }
+            },
             _ => None,
         }
     }
@@ -42,7 +52,12 @@ impl TryBinaryOperator for f64 {
             I8(rhs) => Ok(F64(lhs + rhs as f64)),
             I64(rhs) => Ok(F64(lhs + rhs as f64)),
             F64(rhs) => Ok(F64(lhs + rhs)),
-            Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() + rhs)),
+            Decimal(rhs) => {
+                match Dec::from_f64_retain(lhs) {
+                   Some(x) => Ok(Decimal(x + rhs)),
+                      None => Err(Error::OverflowError("%".to_string())),
+                }
+            },
             Null => Ok(Null),
             _ => Err(ValueError::AddOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -55,7 +70,12 @@ impl TryBinaryOperator for f64 {
             I8(rhs) => Ok(F64(lhs - rhs as f64)),
             I64(rhs) => Ok(F64(lhs - rhs as f64)),
             F64(rhs) => Ok(F64(lhs - rhs)),
-            Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() - rhs)),
+            Decimal(rhs) => {
+                match Dec::from_f64_retain(lhs) {
+                   Some(x) => Ok(Decimal(x - rhs)),
+                      None => Err(Error::OverflowError("%".to_string())),
+                }
+            },
             Null => Ok(Null),
             _ => Err(ValueError::SubtractOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -69,7 +89,12 @@ impl TryBinaryOperator for f64 {
             I64(rhs) => Ok(F64(lhs * rhs as f64)),
             F64(rhs) => Ok(F64(lhs * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
-            Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() * rhs)),
+            Decimal(rhs) => {
+                match Dec::from_f64_retain(lhs) {
+                   Some(x) => Ok(Decimal(x * rhs)),
+                      None => Err(Error::OverflowError("%".to_string())),
+                }
+            },
             Null => Ok(Null),
             _ => Err(ValueError::MultiplyOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -82,7 +107,12 @@ impl TryBinaryOperator for f64 {
             I8(rhs) => Ok(F64(lhs / rhs as f64)),
             I64(rhs) => Ok(F64(lhs / rhs as f64)),
             F64(rhs) => Ok(F64(lhs / rhs)),
-            Decimal(rhs) => Ok(Decimal(Dec::from_f64_retain(lhs).unwrap() / rhs)),
+            Decimal(rhs) => {
+                match Dec::from_f64_retain(lhs) {
+                   Some(x) => Ok(Decimal(x / rhs)),
+                      None => Err(Error::OverflowError("%".to_string())),
+                }
+            },
             Null => Ok(Null),
             _ => Err(ValueError::DivideOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
@@ -95,9 +125,16 @@ impl TryBinaryOperator for f64 {
             I8(rhs) => Ok(F64(lhs % rhs as f64)),
             I64(rhs) => Ok(F64(lhs % rhs as f64)),
             F64(rhs) => Ok(F64(lhs % rhs)),
-            Decimal(rhs) => Ok(Decimal(
-                Dec::from_f64_retain(lhs).unwrap().checked_rem(rhs).unwrap(),
-            )),
+            Decimal(rhs) => {
+               match Dec::from_f64_retain(lhs) {
+                   Some(x) => match x.checked_rem(rhs) {
+                                   Some(y) => Ok(Decimal(y)),
+                                         _ => Err(Error::OverflowError("%".to_string())),
+                                },
+                      None => Err(Error::OverflowError("%".to_string())),
+               }
+            },
+
             Null => Ok(Null),
             _ => Err(ValueError::ModuloOnNonNumeric(F64(lhs), rhs.clone()).into()),
         }
