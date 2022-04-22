@@ -150,7 +150,6 @@ test_case!(cast_literal, async move {
         (
             r#"SELECT CAST(mytext AS Decimal) AS cast FROM test"#,
             Err(ValueError::ImpossibleCast.into()),
-            //Err(ValueError::LiteralCastFromTextToDecimalFailed("foo".to_owned()).into()),
         ),
         (
             r#"SELECT CAST(myint8 AS Decimal) AS cast FROM test"#,
