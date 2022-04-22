@@ -37,23 +37,15 @@ pub enum ValueError {
     #[error("failed to parse Decimal: {0}")]
     FailedToParseDecimal(String),
 
-    #[error("add on non-numeric values: {0:?} + {1:?}")]
-    AddOnNonNumeric(Value, Value),
-
-    #[error("subtract on non-numeric values: {0:?} - {1:?}")]
-    SubtractOnNonNumeric(Value, Value),
-
-    #[error("multiply on non-numeric values: {0:?} * {1:?}")]
-    MultiplyOnNonNumeric(Value, Value),
-
-    #[error("divide on non-numeric values: {0:?} / {1:?}")]
-    DivideOnNonNumeric(Value, Value),
+    #[error("non-numeric values {lhs:?} {operator:?} {rhs:?}")]
+    NonNumericMathOperation {
+        lhs: Value,
+        rhs: Value,
+        operator: String,
+    },
 
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
-
-    #[error("modulo on non-numeric values: {0:?} % {1:?}")]
-    ModuloOnNonNumeric(Value, Value),
 
     #[error("{0} type cannot be grouped by")]
     GroupByNotSupported(String),

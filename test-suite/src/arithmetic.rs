@@ -75,23 +75,48 @@ test_case!(arithmetic, async move {
 
     let test_cases = vec![
         (
-            ValueError::AddOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: "+".to_string(),
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name + id < 1",
         ),
         (
-            ValueError::SubtractOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: "-".to_string(),
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name - id < 1",
         ),
         (
-            ValueError::MultiplyOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: "*".to_string(),
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name * id < 1",
         ),
         (
-            ValueError::DivideOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: "/".to_string(),
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name / id < 1",
         ),
         (
-            ValueError::ModuloOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: "%".to_string(),
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name % id < 1",
         ),
         (

@@ -48,7 +48,12 @@ impl TryBinaryOperator for i8 {
             I64(rhs) => Ok(I64(lhs as i64 + rhs)),
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::AddOnNonNumeric(I8(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: "+".to_string(),
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -70,7 +75,12 @@ impl TryBinaryOperator for i8 {
             I64(rhs) => Ok(I64(lhs as i64 - rhs)),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(I8(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: "-".to_string(),
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -93,7 +103,12 @@ impl TryBinaryOperator for i8 {
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(I8(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: "*".to_string(),
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -115,7 +130,12 @@ impl TryBinaryOperator for i8 {
             I64(rhs) => Ok(I64(lhs as i64 / rhs)),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(I8(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: "/".to_string(),
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -127,20 +147,12 @@ impl TryBinaryOperator for i8 {
             I64(rhs) => Ok(I64(lhs as i64 % rhs)),
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(I8(lhs), rhs.clone()).into()),
-        }
-    }
-}
-
-impl PartialEq<Value> for i64 {
-    fn eq(&self, other: &Value) -> bool {
-        let lhs = *self;
-
-        match *other {
-            I8(rhs) => lhs == rhs as i64,
-            I64(rhs) => lhs == rhs,
-            F64(rhs) => lhs as f64 == rhs,
-            _ => false,
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: "%".to_string(),
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 }
@@ -185,7 +197,12 @@ mod tests {
 
         assert_eq!(
             base.try_add(&Bool(true)),
-            Err(ValueError::AddOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: "+".to_string(),
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -201,7 +218,12 @@ mod tests {
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
-            Err(ValueError::SubtractOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: "-".to_string(),
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -217,7 +239,12 @@ mod tests {
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
-            Err(ValueError::MultiplyOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: "*".to_string(),
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -233,7 +260,12 @@ mod tests {
 
         assert_eq!(
             base.try_divide(&Bool(true)),
-            Err(ValueError::DivideOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: "/".to_string(),
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -249,7 +281,12 @@ mod tests {
 
         assert_eq!(
             base.try_modulo(&Bool(true)),
-            Err(ValueError::ModuloOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: "%".to_string(),
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 }
