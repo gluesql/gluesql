@@ -6,7 +6,7 @@ use {
         executor::Payload,
         prelude::Value::{self, *},
     },
-    rust_decimal::Decimal as Dec,
+    rust_decimal::Decimal,
 };
 
 test_case!(cast_literal, async move {
@@ -85,27 +85,27 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(true AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(1,0))),
+            Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
         (
             r#"SELECT CAST(false AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(0,0))),
+            Ok(select!(cast Decimal; Decimal::new(0,0))),
         ),
         (
             r#"SELECT CAST(number AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(1,0))),
+            Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
         (
             r#"SELECT CAST("1.1" AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(11,1))),
+            Ok(select!(cast Decimal; Decimal::new(11,1))),
         ),
         (
             r#"SELECT CAST(1 AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(10, 1))),
+            Ok(select!(cast Decimal; Decimal::new(10, 1))),
         ),
         (
             r#"SELECT CAST(-1 AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(-10, 1))),
+            Ok(select!(cast Decimal; Decimal::new(-10, 1))),
         ),
         (
             r#"SELECT CAST("foo" AS Decimal) AS cast FROM Item"#,
@@ -117,27 +117,27 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(true AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(1,0))),
+            Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
         (
             r#"SELECT CAST(false AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(0,0))),
+            Ok(select!(cast Decimal; Decimal::new(0,0))),
         ),
         (
             r#"SELECT CAST(number AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(1,0))),
+            Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
         (
             r#"SELECT CAST("1.1" AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(11,1))),
+            Ok(select!(cast Decimal; Decimal::new(11,1))),
         ),
         (
             r#"SELECT CAST(1 AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(10, 1))),
+            Ok(select!(cast Decimal; Decimal::new(10, 1))),
         ),
         (
             r#"SELECT CAST(-1 AS decimal) AS cast FROM Item"#,
-            Ok(select!(cast Decimal; Dec::new(-10, 1))),
+            Ok(select!(cast Decimal; Decimal::new(-10, 1))),
         ),
         (
             r#"SELECT CAST("foo" AS Decimal) AS cast FROM Item"#,
@@ -153,28 +153,28 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(myint8 AS Decimal) AS cast FROM test"#,
-            Ok(select!(cast Decimal; Dec::new(-2,0))),
+            Ok(select!(cast Decimal; Decimal::new(-2,0))),
         ),
         (
             r#"SELECT CAST(myint AS Decimal) AS cast FROM test"#,
-            Ok(select!(cast Decimal; Dec::new(2,0))),
+            Ok(select!(cast Decimal; Decimal::new(2,0))),
         ),
         (
             r#"SELECT CAST(myfloat AS Decimal) AS cast FROM test"#,
-            Ok(select!(cast Decimal; Dec::new(2,0))),
+            Ok(select!(cast Decimal; Decimal::new(2,0))),
         ),
         (
             r#"SELECT CAST(mydec AS Decimal) AS cast FROM test"#,
-            Ok(select!(cast Decimal; Dec::new(2,0))),
+            Ok(select!(cast Decimal; Decimal::new(2,0))),
         ),
         (
             r#"SELECT CAST(mybool AS Decimal) AS cast FROM test"#,
-            Ok(select!(cast Decimal; Dec::new(1,0))),
+            Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
 
         (
             r#"SELECT CAST(not(mybool) AS Decimal) AS cast FROM test"#,
-            Ok(select!(cast Decimal; Dec::new(0,0))),
+            Ok(select!(cast Decimal; Decimal::new(0,0))),
         ),
 
         (
