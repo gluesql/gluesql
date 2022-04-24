@@ -55,8 +55,19 @@ pub fn concat(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Value> {
 
     for expr in exprs {
         match expr.try_into()? {
+            Value::Bool(value) => s.push_str(&value.to_string()),
+            Value::Date(value) => s.push_str(&value.to_string()),
+            Value::Decimal(value) => s.push_str(&value.to_string()),
+            Value::I8(value) => s.push_str(&value.to_string()),
+            Value::I64(value) => s.push_str(&value.to_string()),
+            Value::F64(value) => s.push_str(&value.to_string()),
             Value::Str(value) => s.push_str(&value),
-            Value::Null => return Ok(Value::Null),
+            Value::Timestamp(value) => s.push_str(&value.to_string()),
+            //Value::Interval(value) => s.push_str(&value.to_string()),
+            Value::Uuid(value) => s.push_str(&value.to_string()),
+            //Value::Map(value) => s.push_str(value.to_string()),
+            //Value::List(value) => s.push_str(value.to_string()),
+            Value::Null => {},  // ignore null values
             _ => {
                 return Err(EvaluateError::FunctionRequiresStringValue(name).into());
             }

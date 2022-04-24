@@ -112,16 +112,21 @@ test_case!(concat, async move {
     );
 
     test!(
-        Ok(select_with_null!(
-           myconcat;
-           Null
+        Ok(select!(
+           myconcat
+           Str;
+           "abcdef".to_owned()
         )),
         r#"select concat("ab", "cd", NULL, "ef") as myconcat from Concat;"#
     );
     // test with non string arguments
     test!(
-        Err(EvaluateError::FunctionRequiresStringValue("CONCAT".to_string()).into()),
-        r#"select concat(123, 456) as myconcat from Concat;"#
+        Ok(select!(
+           myconcat
+           Str;
+           "1234563.14".to_owned()
+        )),
+        r#"select concat(123, 456, 3.14) as myconcat from Concat;"#
     );
     // test with zero arguments
     test!(
