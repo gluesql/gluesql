@@ -67,7 +67,7 @@ pub fn concat(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Value> {
             Value::Uuid(value) => s.push_str(&value.to_string()),
             //Value::Map(value) => s.push_str(value.to_string()),
             //Value::List(value) => s.push_str(value.to_string()),
-            Value::Null => {},  // ignore null values
+            Value::Null => {} // ignore null values
             _ => {
                 return Err(EvaluateError::FunctionRequiresStringValue(name).into());
             }
