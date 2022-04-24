@@ -55,7 +55,6 @@ impl TryBinaryOperator for f64 {
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x + rhs)),
                 _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
-
             },
             Null => Ok(Null),
             _ => Err(ValueError::AddOnNonNumeric(F64(lhs), rhs.clone()).into()),
