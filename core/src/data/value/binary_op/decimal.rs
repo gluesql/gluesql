@@ -130,7 +130,7 @@ impl TryBinaryOperator for Decimal {
             },
             Decimal(rhs) => match lhs.checked_rem(rhs) {
                 Some(x) => Ok(Decimal(x)),
-                None => Err(Error::OverflowError("%".to_string())),
+                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
             },
 
             Null => Ok(Null),
