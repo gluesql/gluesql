@@ -2,7 +2,7 @@ use {
     crate::*,
     bigdecimal::BigDecimal,
     gluesql_core::{
-        data::{Literal, LiteralError, ValueError},
+        data::{Literal, LiteralError, NumericBinaryOperator, ValueError},
         executor::{EvaluateError, UpdateError},
         prelude::Value::{self, *},
     },
@@ -77,7 +77,7 @@ test_case!(arithmetic, async move {
         (
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
-                operator: "+".to_string(),
+                operator: NumericBinaryOperator::Add,
                 rhs: Value::I64(1),
             }
             .into(),
@@ -86,7 +86,7 @@ test_case!(arithmetic, async move {
         (
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
-                operator: "-".to_string(),
+                operator: NumericBinaryOperator::Subtract,
                 rhs: Value::I64(1),
             }
             .into(),
@@ -95,7 +95,7 @@ test_case!(arithmetic, async move {
         (
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
-                operator: "*".to_string(),
+                operator: NumericBinaryOperator::Multiply,
                 rhs: Value::I64(1),
             }
             .into(),
@@ -104,7 +104,7 @@ test_case!(arithmetic, async move {
         (
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
-                operator: "/".to_string(),
+                operator: NumericBinaryOperator::Divide,
                 rhs: Value::I64(1),
             }
             .into(),
@@ -113,7 +113,7 @@ test_case!(arithmetic, async move {
         (
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
-                operator: "%".to_string(),
+                operator: NumericBinaryOperator::Modulo,
                 rhs: Value::I64(1),
             }
             .into(),

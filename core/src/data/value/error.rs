@@ -2,6 +2,7 @@ use {
     crate::{ast::DataType, ast::DateTimeField, data::Value},
     serde::Serialize,
     std::fmt::Debug,
+    strum_macros::Display,
     thiserror::Error,
 };
 
@@ -37,11 +38,11 @@ pub enum ValueError {
     #[error("failed to parse Decimal: {0}")]
     FailedToParseDecimal(String),
 
-    #[error("non-numeric values {lhs:?} {operator:?} {rhs:?}")]
+    #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
     NonNumericMathOperation {
         lhs: Value,
         rhs: Value,
-        operator: String,
+        operator: NumericBinaryOperator,
     },
 
     #[error("the divisor should not be zero")]
@@ -149,4 +150,18 @@ pub enum ValueError {
         /// ['+', '-', '*', '/']
         operator: char,
     },
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Display)]
+pub enum NumericBinaryOperator {
+    #[strum(to_string = "+")]
+    Add,
+    #[strum(to_string = "-")]
+    Subtract,
+    #[strum(to_string = "*")]
+    Multiply,
+    #[strum(to_string = "/")]
+    Divide,
+    #[strum(to_string = "%")]
+    Modulo,
 }

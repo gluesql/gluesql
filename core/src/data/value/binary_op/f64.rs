@@ -1,6 +1,10 @@
 use {
     super::TryBinaryOperator,
-    crate::{data::ValueError, prelude::Value, result::Result},
+    crate::{
+        data::{NumericBinaryOperator, ValueError},
+        prelude::Value,
+        result::Result,
+    },
     std::cmp::Ordering,
     Value::*,
 };
@@ -42,7 +46,7 @@ impl TryBinaryOperator for f64 {
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
-                operator: "+".to_string(),
+                operator: NumericBinaryOperator::Add,
                 rhs: rhs.clone(),
             }
             .into()),
@@ -59,7 +63,7 @@ impl TryBinaryOperator for f64 {
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
-                operator: "-".to_string(),
+                operator: NumericBinaryOperator::Subtract,
                 rhs: rhs.clone(),
             }
             .into()),
@@ -77,7 +81,7 @@ impl TryBinaryOperator for f64 {
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
-                operator: "*".to_string(),
+                operator: NumericBinaryOperator::Multiply,
                 rhs: rhs.clone(),
             }
             .into()),
@@ -94,7 +98,7 @@ impl TryBinaryOperator for f64 {
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
-                operator: "/".to_string(),
+                operator: NumericBinaryOperator::Divide,
                 rhs: rhs.clone(),
             }
             .into()),
@@ -111,7 +115,7 @@ impl TryBinaryOperator for f64 {
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: F64(lhs),
-                operator: "%".to_string(),
+                operator: NumericBinaryOperator::Modulo,
                 rhs: rhs.clone(),
             }
             .into()),
@@ -123,7 +127,7 @@ impl TryBinaryOperator for f64 {
 mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
-        crate::data::ValueError,
+        crate::data::{NumericBinaryOperator, ValueError},
         std::cmp::Ordering,
     };
 
@@ -161,7 +165,7 @@ mod tests {
             base.try_add(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: F64(1.0),
-                operator: "+".to_string(),
+                operator: NumericBinaryOperator::Add,
                 rhs: Bool(true)
             }
             .into())
@@ -184,7 +188,7 @@ mod tests {
             base.try_subtract(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: F64(1.0),
-                operator: "-".to_string(),
+                operator: NumericBinaryOperator::Subtract,
                 rhs: Bool(true)
             }
             .into())
@@ -207,7 +211,7 @@ mod tests {
             base.try_multiply(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: F64(1.0),
-                operator: "*".to_string(),
+                operator: NumericBinaryOperator::Multiply,
                 rhs: Bool(true)
             }
             .into())
@@ -228,7 +232,7 @@ mod tests {
             base.try_divide(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: F64(1.0),
-                operator: "/".to_string(),
+                operator: NumericBinaryOperator::Divide,
                 rhs: Bool(true)
             }
             .into())
@@ -249,7 +253,7 @@ mod tests {
             base.try_modulo(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: F64(1.0),
-                operator: "%".to_string(),
+                operator: NumericBinaryOperator::Modulo,
                 rhs: Bool(true)
             }
             .into())

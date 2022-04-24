@@ -21,6 +21,7 @@ mod selector;
 mod unique_key;
 mod uuid;
 
+pub use error::NumericBinaryOperator;
 pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -197,7 +198,7 @@ impl Value {
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
-                operator: "+".to_string(),
+                operator: NumericBinaryOperator::Add,
                 rhs: other.clone(),
             }
             .into()),
@@ -248,7 +249,7 @@ impl Value {
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
-                operator: "-".to_string(),
+                operator: NumericBinaryOperator::Subtract,
                 rhs: other.clone(),
             }
             .into()),
@@ -276,7 +277,7 @@ impl Value {
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
-                operator: "*".to_string(),
+                operator: NumericBinaryOperator::Multiply,
                 rhs: other.clone(),
             }
             .into()),
@@ -307,7 +308,7 @@ impl Value {
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
-                operator: "/".to_string(),
+                operator: NumericBinaryOperator::Divide,
                 rhs: other.clone(),
             }
             .into()),
@@ -334,7 +335,7 @@ impl Value {
             | (Null, Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
-                operator: "%".to_string(),
+                operator: NumericBinaryOperator::Modulo,
                 rhs: other.clone(),
             }
             .into()),
