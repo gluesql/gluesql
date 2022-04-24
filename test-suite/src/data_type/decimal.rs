@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{executor::Payload, prelude::Value::*},
-    rust_decimal::prelude::Decimal as Dec,
+    rust_decimal::prelude::Decimal,
 };
 
 test_case!(decimal, async move {
@@ -19,7 +19,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::ONE
+                Decimal::ONE
             )),
         ),
         (
@@ -27,7 +27,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::TWO
+                Decimal::TWO
             )),
         ),
         (
@@ -35,7 +35,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::TWO
+                Decimal::TWO
             )),
         ),
         (
@@ -43,7 +43,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::ZERO
+                Decimal::ZERO
             )),
         ),
         (
@@ -51,7 +51,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::ZERO
+                Decimal::ZERO
             )),
         ),
         (
@@ -59,7 +59,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::TWO
+                Decimal::TWO
             )),
         ),
         (
@@ -67,7 +67,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::TWO
+                Decimal::TWO
             )),
         ),
         (
@@ -75,7 +75,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::from_f64_retain(0.5f64).unwrap()
+                Decimal::from_f64_retain(0.5f64).unwrap()
             )),
         ),
         (
@@ -83,7 +83,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::TWO
+                Decimal::TWO
             )),
         ),
         (
@@ -91,7 +91,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::ZERO
+                Decimal::ZERO
             )),
         ),
         (
@@ -99,7 +99,7 @@ test_case!(decimal, async move {
             Ok(select!(
                 decimal_field
                 Decimal;
-                Dec::ONE
+                Decimal::ONE
             )),
         ),
     ];
