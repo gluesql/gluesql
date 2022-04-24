@@ -147,8 +147,7 @@ pub enum ValueError {
     BinaryOperationOverflow {
         lhs: Value,
         rhs: Value,
-        /// ['+', '-', '*', '/']
-        operator: char,
+        operator: NumericBinaryOperator,
     },
 }
 

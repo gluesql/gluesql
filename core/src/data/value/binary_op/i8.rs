@@ -44,7 +44,7 @@ impl TryBinaryOperator for i8 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
                         rhs: I8(rhs),
-                        operator: '+',
+                        operator: NumericBinaryOperator::Add,
                     }
                     .into()
                 })
@@ -71,7 +71,7 @@ impl TryBinaryOperator for i8 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
                         rhs: I8(rhs),
-                        operator: '-',
+                        operator: NumericBinaryOperator::Subtract,
                     }
                     .into()
                 })
@@ -98,7 +98,7 @@ impl TryBinaryOperator for i8 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
                         rhs: I8(rhs),
-                        operator: '*',
+                        operator: NumericBinaryOperator::Multiply,
                     }
                     .into()
                 })
@@ -126,7 +126,7 @@ impl TryBinaryOperator for i8 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
                         rhs: I8(rhs),
-                        operator: '/',
+                        operator: NumericBinaryOperator::Divide,
                     }
                     .into()
                 })
