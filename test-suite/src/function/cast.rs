@@ -16,7 +16,7 @@ test_case!(cast_literal, async move {
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
         (
-            "CREATE TABLE test (mytext TEXT, myint8 int(8), myint int, myfloat float, mydec decimal, mybool boolean, mydate date)",
+            "CREATE TABLE test (mytext Text, myint8 Int(8), myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
             Ok(Payload::Create),
         ),
         (
@@ -84,27 +84,27 @@ test_case!(cast_literal, async move {
             Ok(select_with_null!(cast; Null)),
         ),
         (
-            r#"SELECT CAST(true AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(true AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
         (
-            r#"SELECT CAST(false AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(false AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(0,0))),
         ),
         (
-            r#"SELECT CAST(number AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(number AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
         (
-            r#"SELECT CAST("1.1" AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST("1.1" AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(11,1))),
         ),
         (
-            r#"SELECT CAST(1 AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(1 AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(10, 1))),
         ),
         (
-            r#"SELECT CAST(-1 AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(-1 AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(-10, 1))),
         ),
         (
@@ -116,27 +116,27 @@ test_case!(cast_literal, async move {
             Ok(select_with_null!(cast; Null)),
         ),
         (
-            r#"SELECT CAST(true AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(true AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
         (
-            r#"SELECT CAST(false AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(false AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(0,0))),
         ),
         (
-            r#"SELECT CAST(number AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(number AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(1,0))),
         ),
         (
-            r#"SELECT CAST("1.1" AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST("1.1" AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(11,1))),
         ),
         (
-            r#"SELECT CAST(1 AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(1 AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(10, 1))),
         ),
         (
-            r#"SELECT CAST(-1 AS decimal) AS cast FROM Item"#,
+            r#"SELECT CAST(-1 AS Decimal) AS cast FROM Item"#,
             Ok(select!(cast Decimal; Decimal::new(-10, 1))),
         ),
         (
