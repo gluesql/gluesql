@@ -75,14 +75,15 @@ pub async fn evaluate<'a, T>(
                 .take(2)
                 .try_collect::<Vec<_>>()
                 .await?;
-            match evaluations.len() {
-                0 => Err(EvaluateError::NestedSelectRowNotFound.into()),
-                1 => evaluations
-                    .into_iter()
-                    .next()
-                    .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into())),
-                _ => Err(EvaluateError::MoreThanOneRowReturned.into()),
+
+            if evaluations.len() > 1 {
+                return Err(EvaluateError::MoreThanOneRowReturned.into());
             }
+
+            evaluations
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))
         }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
