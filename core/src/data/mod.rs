@@ -16,5 +16,5 @@ pub use {
     schema::{Schema, SchemaIndex, SchemaIndexOrd},
     string_ext::{StringExt, StringExtError},
     table::{get_name, Table, TableError},
-    value::{Value, ValueError},
+    value::{NumericBinaryOperator, Value, ValueError},
 };
