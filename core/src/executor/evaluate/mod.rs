@@ -69,17 +69,19 @@ pub async fn evaluate<'a, T>(
             .map(Evaluated::from)
         }
         Expr::Subquery(query) => {
-            let mut stream = select(storage, query, context.as_ref().map(Rc::clone))
+            let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
                 .await?
-                .map_ok(|row| row.take_first_value().map(Evaluated::from));
-            let first = stream
-                .next()
-                .await
-                .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))?;
-            let second = stream.next().await;
-            match second {
-                Some(_) => Err(EvaluateError::MoreThanOneRowReturned.into()),
-                None => first,
+                .map_ok(|row| row.take_first_value().map(Evaluated::from))
+                .take(2)
+                .try_collect::<Vec<_>>()
+                .await?;
+            match evaluations.len() {
+                0 => Err(EvaluateError::NestedSelectRowNotFound.into()),
+                1 => evaluations
+                    .into_iter()
+                    .nth(0)
+                    .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into())),
+                _ => Err(EvaluateError::MoreThanOneRowReturned.into()),
             }
         }
         Expr::BinaryOp { op, left, right } => {
