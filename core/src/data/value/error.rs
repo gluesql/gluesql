@@ -2,6 +2,7 @@ use {
     crate::{ast::DataType, ast::DateTimeField, data::Value},
     serde::Serialize,
     std::fmt::Debug,
+    strum_macros::Display,
     thiserror::Error,
 };
 
@@ -37,23 +38,15 @@ pub enum ValueError {
     #[error("failed to parse Decimal: {0}")]
     FailedToParseDecimal(String),
 
-    #[error("add on non-numeric values: {0:?} + {1:?}")]
-    AddOnNonNumeric(Value, Value),
-
-    #[error("subtract on non-numeric values: {0:?} - {1:?}")]
-    SubtractOnNonNumeric(Value, Value),
-
-    #[error("multiply on non-numeric values: {0:?} * {1:?}")]
-    MultiplyOnNonNumeric(Value, Value),
-
-    #[error("divide on non-numeric values: {0:?} / {1:?}")]
-    DivideOnNonNumeric(Value, Value),
+    #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
+    NonNumericMathOperation {
+        lhs: Value,
+        rhs: Value,
+        operator: NumericBinaryOperator,
+    },
 
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
-
-    #[error("modulo on non-numeric values: {0:?} % {1:?}")]
-    ModuloOnNonNumeric(Value, Value),
 
     #[error("{0} type cannot be grouped by")]
     GroupByNotSupported(String),
@@ -154,7 +147,20 @@ pub enum ValueError {
     BinaryOperationOverflow {
         lhs: Value,
         rhs: Value,
-        /// ['+', '-', '*', '/']
-        operator: char,
+        operator: NumericBinaryOperator,
     },
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Display)]
+pub enum NumericBinaryOperator {
+    #[strum(to_string = "+")]
+    Add,
+    #[strum(to_string = "-")]
+    Subtract,
+    #[strum(to_string = "*")]
+    Multiply,
+    #[strum(to_string = "/")]
+    Divide,
+    #[strum(to_string = "%")]
+    Modulo,
 }
