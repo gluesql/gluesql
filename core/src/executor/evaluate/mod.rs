@@ -79,7 +79,7 @@ pub async fn evaluate<'a, T>(
                 0 => Err(EvaluateError::NestedSelectRowNotFound.into()),
                 1 => evaluations
                     .into_iter()
-                    .nth(0)
+                    .next()
                     .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into())),
                 _ => Err(EvaluateError::MoreThanOneRowReturned.into()),
             }
