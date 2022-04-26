@@ -50,31 +50,29 @@ macro_rules! eval_to_float {
 
 // --- text ---
 
-pub fn concat(name: String, exprs: Vec<Evaluated<'_>>) -> Result<Value> {
-    let mut s = String::from("");
+pub fn concat(_name: String, exprs: Vec<Evaluated<'_>>) -> Result<Value> {
+    let mut s = Value::Str("".to_string());
 
     for expr in exprs {
         match expr.try_into()? {
-            Value::Bool(value) => s.push_str(&value.to_string()),
-            Value::Date(value) => s.push_str(&value.to_string()),
-            Value::Decimal(value) => s.push_str(&value.to_string()),
-            Value::I8(value) => s.push_str(&value.to_string()),
-            Value::I64(value) => s.push_str(&value.to_string()),
-            Value::F64(value) => s.push_str(&value.to_string()),
-            Value::Str(value) => s.push_str(&value),
-            Value::Timestamp(value) => s.push_str(&value.to_string()),
-            //Value::Interval(value) => s.push_str(&value.to_string()),
-            Value::Uuid(value) => s.push_str(&value.to_string()),
-            //Value::Map(value) => s.push_str(value.to_string()),
-            //Value::List(value) => s.push_str(value.to_string()),
-            Value::Null => {} // ignore null values
-            _ => {
-                return Err(EvaluateError::FunctionRequiresStringValue(name).into());
-            }
+            Value::Str(x) => s=s.concat(&Value::Str(x)),
+            Value::Null => {}, // ignore null values
+            Value::Bool(x) => s=s.concat(&Value::Bool(x)),
+            Value::Date(x) => s=s.concat(&Value::Date(x)),
+            Value::Decimal(x) => s=s.concat(&Value::Decimal(x)),
+            Value::I8(x) => s=s.concat(&Value::I8(x)),
+            Value::I64(x) => s=s.concat(&Value::I64(x)),
+            Value::F64(x) => s=s.concat(&Value::F64(x)),
+            Value::Timestamp(x) => s=s.concat(&Value::Timestamp(x)),
+            Value::Time(x) => s=s.concat(&Value::Time(x)),
+            Value::Uuid(x) => s=s.concat(&Value::Uuid(x)),
+            Value::Interval(x) => s=s.concat(&Value::Interval(x)),
+            Value::Map(x) => s=s.concat(&Value::Map(x)),
+            Value::List(x) => s=s.concat(&Value::List(x)),
         }
     }
 
-    Ok(Value::Str(s))
+    Ok(s)
 }
 
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {
