@@ -1,7 +1,7 @@
 use {
     super::TryBinaryOperator,
     crate::{
-        data::ValueError,
+        data::{NumericBinaryOperator, ValueError},
         prelude::Value,
         result::{Error, Result},
     },
@@ -9,6 +9,20 @@ use {
     std::cmp::Ordering,
     Value::*,
 };
+
+impl PartialEq<Value> for i64 {
+    fn eq(&self, other: &Value) -> bool {
+        let lhs = *self;
+
+        match *other {
+            I8(rhs) => lhs == rhs as i64,
+            I64(rhs) => lhs == rhs,
+            F64(rhs) => lhs as f64 == rhs,
+            Decimal(rhs) => Decimal::from(lhs) == rhs,
+            _ => false,
+        }
+    }
+}
 
 impl PartialOrd<Value> for i64 {
     fn partial_cmp(&self, rhs: &Value) -> Option<Ordering> {
@@ -34,7 +48,12 @@ impl TryBinaryOperator for i64 {
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::AddOnNonNumeric(I64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I64(lhs),
+                operator: NumericBinaryOperator::Add,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -47,7 +66,12 @@ impl TryBinaryOperator for i64 {
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(I64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I64(lhs),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -61,7 +85,12 @@ impl TryBinaryOperator for i64 {
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(I64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I64(lhs),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -74,7 +103,12 @@ impl TryBinaryOperator for i64 {
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(I64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I64(lhs),
+                operator: NumericBinaryOperator::Divide,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -90,7 +124,12 @@ impl TryBinaryOperator for i64 {
                 None => Err(Error::OverflowError("%".to_string())),
             },
             Null => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(I64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I64(lhs),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 }
@@ -99,7 +138,7 @@ impl TryBinaryOperator for i64 {
 mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
-        crate::data::ValueError,
+        crate::data::{NumericBinaryOperator, ValueError},
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
     };
@@ -146,7 +185,12 @@ mod tests {
 
         assert_eq!(
             base.try_add(&Bool(true)),
-            Err(ValueError::AddOnNonNumeric(I64(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I64(1),
+                operator: NumericBinaryOperator::Add,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -167,7 +211,12 @@ mod tests {
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
-            Err(ValueError::SubtractOnNonNumeric(I64(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I64(1),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -188,7 +237,12 @@ mod tests {
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
-            Err(ValueError::MultiplyOnNonNumeric(I64(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I64(1),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -206,7 +260,12 @@ mod tests {
 
         assert_eq!(
             base.try_divide(&Bool(true)),
-            Err(ValueError::DivideOnNonNumeric(I64(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I64(1),
+                operator: NumericBinaryOperator::Divide,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -225,7 +284,12 @@ mod tests {
         );
         assert_eq!(
             base.try_modulo(&Bool(true)),
-            Err(ValueError::ModuloOnNonNumeric(I64(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I64(1),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 }

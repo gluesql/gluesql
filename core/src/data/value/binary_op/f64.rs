@@ -1,7 +1,7 @@
 use {
     super::TryBinaryOperator,
     crate::{
-        data::ValueError,
+        data::{NumericBinaryOperator, ValueError},
         prelude::Value,
         result::{Error, Result},
     },
@@ -57,7 +57,12 @@ impl TryBinaryOperator for f64 {
                 _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
             },
             Null => Ok(Null),
-            _ => Err(ValueError::AddOnNonNumeric(F64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: F64(lhs),
+                operator: NumericBinaryOperator::Add,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -73,7 +78,12 @@ impl TryBinaryOperator for f64 {
                 _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
             },
             Null => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(F64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: F64(lhs),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -90,7 +100,12 @@ impl TryBinaryOperator for f64 {
                 _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
             },
             Null => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(F64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: F64(lhs),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -106,7 +121,12 @@ impl TryBinaryOperator for f64 {
                 _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
             },
             Null => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(F64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: F64(lhs),
+                operator: NumericBinaryOperator::Divide,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -126,7 +146,12 @@ impl TryBinaryOperator for f64 {
             },
 
             Null => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(F64(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: F64(lhs),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 }
@@ -135,7 +160,7 @@ impl TryBinaryOperator for f64 {
 mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
-        crate::data::ValueError,
+        crate::data::{NumericBinaryOperator, ValueError},
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
     };
@@ -182,7 +207,12 @@ mod tests {
 
         assert_eq!(
             base.try_add(&Bool(true)),
-            Err(ValueError::AddOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: F64(1.0),
+                operator: NumericBinaryOperator::Add,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -205,7 +235,12 @@ mod tests {
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
-            Err(ValueError::SubtractOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: F64(1.0),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -227,7 +262,12 @@ mod tests {
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
-            Err(ValueError::MultiplyOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: F64(1.0),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -248,7 +288,12 @@ mod tests {
 
         assert_eq!(
             base.try_divide(&Bool(true)),
-            Err(ValueError::DivideOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: F64(1.0),
+                operator: NumericBinaryOperator::Divide,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -268,7 +313,12 @@ mod tests {
 
         assert_eq!(
             base.try_modulo(&Bool(true)),
-            Err(ValueError::ModuloOnNonNumeric(F64(1.0), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: F64(1.0),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 }

@@ -1,7 +1,7 @@
 use {
     super::TryBinaryOperator,
     crate::{
-        data::ValueError,
+        data::{NumericBinaryOperator, ValueError},
         prelude::Value,
         result::{Error, Result},
     },
@@ -55,7 +55,12 @@ impl TryBinaryOperator for Decimal {
             },
             Decimal(rhs) => Ok(Decimal(lhs + rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::AddOnNonNumeric(Decimal(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(lhs),
+                operator: NumericBinaryOperator::Add,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -69,10 +74,14 @@ impl TryBinaryOperator for Decimal {
                 Some(x) => Ok(Decimal(lhs - x)),
                 _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
             },
-
             Decimal(rhs) => Ok(Decimal(lhs - rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(Decimal(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(lhs),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -88,7 +97,12 @@ impl TryBinaryOperator for Decimal {
             },
             Decimal(rhs) => Ok(Decimal(lhs * rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(Decimal(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(lhs),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -105,7 +119,12 @@ impl TryBinaryOperator for Decimal {
 
             Decimal(rhs) => Ok(Decimal(lhs / rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(Decimal(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(lhs),
+                operator: NumericBinaryOperator::Divide,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -134,7 +153,12 @@ impl TryBinaryOperator for Decimal {
             },
 
             Null => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(Decimal(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(lhs),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 }
@@ -143,7 +167,7 @@ impl TryBinaryOperator for Decimal {
 mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
-        crate::data::ValueError,
+        crate::data::{NumericBinaryOperator, ValueError},
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
     };
@@ -195,7 +219,12 @@ mod tests {
 
         assert_eq!(
             base.try_add(&Bool(true)),
-            Err(ValueError::AddOnNonNumeric(Decimal(Decimal::ONE), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(base),
+                operator: NumericBinaryOperator::Add,
+                rhs: Bool(true).clone(),
+            }
+            .into()),
         );
     }
 
@@ -219,7 +248,12 @@ mod tests {
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
-            Err(ValueError::SubtractOnNonNumeric(Decimal(Decimal::ONE), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(base),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: Bool(true).clone(),
+            }
+            .into()),
         );
     }
 
@@ -243,7 +277,12 @@ mod tests {
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
-            Err(ValueError::MultiplyOnNonNumeric(Decimal(Decimal::ONE), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(base),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: Bool(true).clone(),
+            }
+            .into()),
         );
     }
 
@@ -267,7 +306,12 @@ mod tests {
 
         assert_eq!(
             base.try_divide(&Bool(true)),
-            Err(ValueError::DivideOnNonNumeric(Decimal(Decimal::ONE), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(base),
+                operator: NumericBinaryOperator::Divide,
+                rhs: Bool(true).clone(),
+            }
+            .into()),
         );
     }
 
@@ -291,7 +335,12 @@ mod tests {
 
         assert_eq!(
             base.try_modulo(&Bool(true)),
-            Err(ValueError::ModuloOnNonNumeric(Decimal(Decimal::ONE), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: Decimal(base),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: Bool(true).clone(),
+            }
+            .into()),
         );
     }
 }

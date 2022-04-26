@@ -2,7 +2,7 @@ use {
     crate::*,
     bigdecimal::BigDecimal,
     gluesql_core::{
-        data::{Literal, LiteralError, ValueError},
+        data::{Literal, LiteralError, NumericBinaryOperator, ValueError},
         executor::{EvaluateError, UpdateError},
         prelude::Value::{self, *},
     },
@@ -75,23 +75,48 @@ test_case!(arithmetic, async move {
 
     let test_cases = vec![
         (
-            ValueError::AddOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: NumericBinaryOperator::Add,
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name + id < 1",
         ),
         (
-            ValueError::SubtractOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name - id < 1",
         ),
         (
-            ValueError::MultiplyOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name * id < 1",
         ),
         (
-            ValueError::DivideOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: NumericBinaryOperator::Divide,
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name / id < 1",
         ),
         (
-            ValueError::ModuloOnNonNumeric(Value::Str("A".to_owned()), Value::I64(1)).into(),
+            ValueError::NonNumericMathOperation {
+                lhs: Value::Str("A".to_owned()),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: Value::I64(1),
+            }
+            .into(),
             "SELECT * FROM Arith WHERE name % id < 1",
         ),
         (

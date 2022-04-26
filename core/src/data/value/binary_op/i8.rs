@@ -1,7 +1,7 @@
 use {
     super::TryBinaryOperator,
     crate::{
-        data::ValueError,
+        data::{NumericBinaryOperator, ValueError},
         prelude::Value,
         result::{Error, Result},
     },
@@ -47,7 +47,7 @@ impl TryBinaryOperator for i8 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
                         rhs: I8(rhs),
-                        operator: '+',
+                        operator: NumericBinaryOperator::Add,
                     }
                     .into()
                 })
@@ -56,7 +56,12 @@ impl TryBinaryOperator for i8 {
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::AddOnNonNumeric(I8(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: NumericBinaryOperator::Add,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -70,7 +75,7 @@ impl TryBinaryOperator for i8 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
                         rhs: I8(rhs),
-                        operator: '-',
+                        operator: NumericBinaryOperator::Subtract,
                     }
                     .into()
                 })
@@ -80,7 +85,12 @@ impl TryBinaryOperator for i8 {
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
 
             Null => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(I8(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -94,7 +104,7 @@ impl TryBinaryOperator for i8 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
                         rhs: I8(rhs),
-                        operator: '*',
+                        operator: NumericBinaryOperator::Multiply,
                     }
                     .into()
                 })
@@ -104,7 +114,12 @@ impl TryBinaryOperator for i8 {
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(I8(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -118,7 +133,7 @@ impl TryBinaryOperator for i8 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
                         rhs: I8(rhs),
-                        operator: '/',
+                        operator: NumericBinaryOperator::Divide,
                     }
                     .into()
                 })
@@ -128,7 +143,12 @@ impl TryBinaryOperator for i8 {
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
 
             Null => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(I8(lhs), rhs.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: NumericBinaryOperator::Divide,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 
@@ -144,21 +164,12 @@ impl TryBinaryOperator for i8 {
                 None => Err(Error::OverflowError("%".to_string())),
             },
             Null => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(I8(lhs), rhs.clone()).into()),
-        }
-    }
-}
-
-impl PartialEq<Value> for i64 {
-    fn eq(&self, other: &Value) -> bool {
-        let lhs = *self;
-
-        match *other {
-            I8(rhs) => lhs == rhs as i64,
-            I64(rhs) => lhs == rhs,
-            F64(rhs) => lhs as f64 == rhs,
-            Decimal(rhs) => Decimal::from(lhs) == rhs,
-            _ => false,
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: I8(lhs),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: rhs.clone(),
+            }
+            .into()),
         }
     }
 }
@@ -167,7 +178,7 @@ impl PartialEq<Value> for i64 {
 mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
-        crate::data::ValueError,
+        crate::data::{NumericBinaryOperator, ValueError},
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
     };
@@ -214,7 +225,12 @@ mod tests {
 
         assert_eq!(
             base.try_add(&Bool(true)),
-            Err(ValueError::AddOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: NumericBinaryOperator::Add,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -234,7 +250,12 @@ mod tests {
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
-            Err(ValueError::SubtractOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -254,7 +275,12 @@ mod tests {
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
-            Err(ValueError::MultiplyOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -274,7 +300,12 @@ mod tests {
 
         assert_eq!(
             base.try_divide(&Bool(true)),
-            Err(ValueError::DivideOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: NumericBinaryOperator::Divide,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 
@@ -294,7 +325,12 @@ mod tests {
 
         assert_eq!(
             base.try_modulo(&Bool(true)),
-            Err(ValueError::ModuloOnNonNumeric(I8(1), Bool(true)).into())
+            Err(ValueError::NonNumericMathOperation {
+                lhs: I8(1),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: Bool(true)
+            }
+            .into())
         );
     }
 }
