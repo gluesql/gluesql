@@ -9,6 +9,7 @@ test_case!(error, async move {
 
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
+    run!("INSERT INTO TableA (id) VALUES (9);");
 
     let test_cases = vec![
         (
@@ -85,6 +86,10 @@ test_case!(error, async move {
         (
             EvaluateError::NestedSelectRowNotFound.into(),
             "SELECT * FROM TableA WHERE id = (SELECT id FROM TableA WHERE id = 2);",
+        ),
+        (
+            EvaluateError::MoreThanOneRowReturned.into(),
+            "select (select id from TableA) as id from TableA",
         ),
         (
             EvaluateError::ValueNotFound("noname".to_owned()).into(),

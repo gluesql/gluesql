@@ -21,6 +21,7 @@ mod selector;
 mod unique_key;
 mod uuid;
 
+pub use error::NumericBinaryOperator;
 pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -195,7 +196,12 @@ impl Value {
             | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::AddOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Add,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -241,7 +247,12 @@ impl Value {
             | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -264,7 +275,12 @@ impl Value {
             | (Decimal(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -290,7 +306,12 @@ impl Value {
             | (Interval(_), Null)
             | (Decimal(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Divide,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -312,7 +333,12 @@ impl Value {
             | (Null, Decimal(_))
             | (Decimal(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
