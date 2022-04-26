@@ -34,9 +34,6 @@ pub enum Error {
     #[error("OverflowError: {0}")]
     OverflowError(String),
 
-    #[error("failed to convert Float to Decimal: {0}")]
-    F64ToDecimalConversionError(String),
-
     #[error(transparent)]
     Translate(#[from] TranslateError),
 

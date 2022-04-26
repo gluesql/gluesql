@@ -18,10 +18,9 @@ impl PartialEq<Value> for f64 {
             I8(rhs) => lhs == rhs as f64,
             I64(rhs) => lhs == rhs as f64,
             F64(rhs) => lhs == rhs,
-            Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
-                Some(x) => x == rhs,
-                _ => false,
-            },
+            Decimal(rhs) => Decimal::from_f64_retain(lhs)
+                .map(|x| rhs == x)
+                .unwrap_or(false),
             _ => false,
         }
     }
@@ -33,10 +32,9 @@ impl PartialOrd<Value> for f64 {
             I8(rhs) => self.partial_cmp(&(rhs as f64)),
             I64(rhs) => self.partial_cmp(&(rhs as f64)),
             F64(rhs) => self.partial_cmp(&rhs),
-            Decimal(rhs) => match Decimal::from_f64_retain(*self) {
-                Some(x) => x.partial_cmp(&rhs),
-                None => None,
-            },
+            Decimal(rhs) => Decimal::from_f64_retain(*self)
+                .map(|x| x.partial_cmp(&rhs))
+                .unwrap_or(None),
             _ => None,
         }
     }
@@ -54,7 +52,7 @@ impl TryBinaryOperator for f64 {
             F64(rhs) => Ok(F64(lhs + rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x + rhs)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -75,7 +73,7 @@ impl TryBinaryOperator for f64 {
             F64(rhs) => Ok(F64(lhs - rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x - rhs)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -97,7 +95,7 @@ impl TryBinaryOperator for f64 {
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x * rhs)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -118,7 +116,7 @@ impl TryBinaryOperator for f64 {
             F64(rhs) => Ok(F64(lhs / rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x / rhs)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -142,7 +140,7 @@ impl TryBinaryOperator for f64 {
                     Some(y) => Ok(Decimal(y)),
                     None => Err(Error::OverflowError("%".to_string())),
                 },
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
             },
 
             Null => Ok(Null),
@@ -194,15 +192,13 @@ mod tests {
 
     #[test]
     fn try_add() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
-
         let base = 1.0_f64;
 
         assert!(matches!(base.try_add(&I8(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_add(&I64(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
         assert!(
-            matches!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::TWO).abs() < dec_epislon)
+            matches!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::TWO)
         );
 
         assert_eq!(
@@ -218,8 +214,6 @@ mod tests {
 
     #[test]
     fn try_subtract() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
-
         let base = 1.0_f64;
 
         assert!(matches!(base.try_subtract(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
@@ -230,7 +224,7 @@ mod tests {
             matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
 
         assert_eq!(
@@ -246,7 +240,6 @@ mod tests {
 
     #[test]
     fn try_multiply() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1.0_f64;
 
         assert!(matches!(base.try_multiply(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
@@ -257,7 +250,7 @@ mod tests {
             matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_multiply(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon )
+            matches!(base.try_multiply(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(
@@ -273,8 +266,6 @@ mod tests {
 
     #[test]
     fn try_divide() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
-
         let base = 1.0_f64;
 
         assert!(matches!(base.try_divide(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
@@ -283,7 +274,7 @@ mod tests {
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon )
+            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(
@@ -299,7 +290,6 @@ mod tests {
 
     #[test]
     fn try_modulo() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1.0_f64;
 
         assert!(matches!(base.try_modulo(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
@@ -308,7 +298,7 @@ mod tests {
             matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
 
         assert_eq!(

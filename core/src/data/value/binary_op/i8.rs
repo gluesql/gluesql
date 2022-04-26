@@ -212,7 +212,6 @@ mod tests {
 
     #[test]
     fn try_add() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1_i8;
 
         assert!(matches!(base.try_add(&I8(1)), Ok(I8(x)) if x == 2 ));
@@ -220,7 +219,7 @@ mod tests {
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
         assert!(
-            matches!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::TWO).abs() < dec_epislon)
+            matches!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::TWO)
         );
 
         assert_eq!(
@@ -236,7 +235,6 @@ mod tests {
 
     #[test]
     fn try_subtract() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1_i8;
 
         assert!(matches!(base.try_subtract(&I8(1)), Ok(I8(x)) if x == 0 ));
@@ -245,7 +243,7 @@ mod tests {
             matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
 
         assert_eq!(
@@ -261,7 +259,6 @@ mod tests {
 
     #[test]
     fn try_multiply() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1_i8;
 
         assert!(matches!(base.try_multiply(&I8(1)), Ok(I8(x)) if x == 1 ));
@@ -270,7 +267,7 @@ mod tests {
             matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_multiply(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon )
+            matches!(base.try_multiply(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(
@@ -286,7 +283,6 @@ mod tests {
 
     #[test]
     fn try_divide() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1_i8;
 
         assert!(matches!(base.try_divide(&I8(1)), Ok(I8(x)) if x == 1 ));
@@ -295,7 +291,7 @@ mod tests {
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon )
+            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(
@@ -311,7 +307,6 @@ mod tests {
 
     #[test]
     fn try_modulo() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = 1_i8;
 
         assert!(matches!(base.try_modulo(&I8(1)), Ok(I8(x)) if x == 0 ));
@@ -320,7 +315,7 @@ mod tests {
             matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );
         assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
 
         assert_eq!(

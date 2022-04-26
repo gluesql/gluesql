@@ -15,10 +15,9 @@ impl PartialEq<Value> for Decimal {
         match other {
             I8(other) => *self == Decimal::from(*other),
             I64(other) => *self == Decimal::from(*other),
-            F64(other) => match Decimal::from_f64_retain(*other) {
-                Some(x) => *self == x,
-                _ => false,
-            },
+            F64(other) => Decimal::from_f64_retain(*other)
+                .map(|x| *self == x)
+                .unwrap_or(false),
             Decimal(other) => *self == *other,
             _ => false,
         }
@@ -51,7 +50,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs + Decimal::from(rhs))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => Ok(Decimal(lhs + x)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
             },
             Decimal(rhs) => Ok(Decimal(lhs + rhs)),
             Null => Ok(Null),
@@ -72,7 +71,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => Ok(Decimal(lhs - x)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
             },
             Decimal(rhs) => Ok(Decimal(lhs - rhs)),
             Null => Ok(Null),
@@ -93,7 +92,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs * Decimal::from(rhs))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => Ok(Decimal(lhs * x)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
             },
             Decimal(rhs) => Ok(Decimal(lhs * rhs)),
             Null => Ok(Null),
@@ -114,7 +113,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => Ok(Decimal(lhs / x)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
             },
 
             Decimal(rhs) => Ok(Decimal(lhs / rhs)),
@@ -145,11 +144,11 @@ impl TryBinaryOperator for Decimal {
                     Some(y) => Ok(Decimal(y)),
                     None => Err(Error::OverflowError("%".to_string())),
                 },
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
             },
             Decimal(rhs) => match lhs.checked_rem(rhs) {
                 Some(x) => Ok(Decimal(x)),
-                _ => Err(Error::F64ToDecimalConversionError(rhs.to_string())),
+                _ => Err(Error::OverflowError("%".to_string())),
             },
 
             Null => Ok(Null),
@@ -201,20 +200,13 @@ mod tests {
 
     #[test]
     fn try_add() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = Decimal::ONE;
 
+        assert!(matches!(base.try_add(&I8(1)), Ok(Decimal(x)) if x == Decimal::TWO ));
+        assert!(matches!(base.try_add(&I64(1)), Ok(Decimal(x)) if x == Decimal::TWO));
+        assert!(matches!(base.try_add(&F64(1.0)), Ok(Decimal(x)) if x == Decimal::TWO));
         assert!(
-            matches!(base.try_add(&I8(1)), Ok(Decimal(x)) if (x - Decimal::TWO).abs() < dec_epislon )
-        );
-        assert!(
-            matches!(base.try_add(&I64(1)), Ok(Decimal(x)) if (x - Decimal::TWO).abs() < dec_epislon )
-        );
-        assert!(
-            matches!(base.try_add(&F64(1.0)), Ok(Decimal(x)) if (x - Decimal::TWO).abs() < dec_epislon )
-        );
-        assert!(
-            matches!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::TWO).abs() < dec_epislon )
+            matches!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::TWO)
         );
 
         assert_eq!(
@@ -230,20 +222,19 @@ mod tests {
 
     #[test]
     fn try_subtract() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = Decimal::ONE;
 
         assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon  )
+            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
         assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
         assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon  )
+            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
         assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
 
         assert_eq!(
@@ -259,20 +250,13 @@ mod tests {
 
     #[test]
     fn try_multiply() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = Decimal::ONE;
 
+        assert!(matches!(base.try_multiply(&I8(1)), Ok(Decimal(x)) if x == Decimal::ONE));
+        assert!(matches!(base.try_multiply(&I64(1)), Ok(Decimal(x)) if x == Decimal::ONE));
+        assert!(matches!(base.try_multiply(&F64(1.0)), Ok(Decimal(x)) if x == Decimal::ONE));
         assert!(
-            matches!(base.try_multiply(&I8(1)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon  )
-        );
-        assert!(
-            matches!(base.try_multiply(&I64(1)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon )
-        );
-        assert!(
-            matches!(base.try_multiply(&F64(1.0)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon  )
-        );
-        assert!(
-            matches!(base.try_multiply(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon )
+            matches!(base.try_multiply(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(
@@ -288,20 +272,19 @@ mod tests {
 
     #[test]
     fn try_divide() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = Decimal::ONE;
 
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon  )
+            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon  )
+            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon  )
+            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
         assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ONE).abs() < dec_epislon )
+            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
         );
 
         assert_eq!(
@@ -317,20 +300,19 @@ mod tests {
 
     #[test]
     fn try_modulo() {
-        let dec_epislon: Decimal = Decimal::from_f64_retain(f64::EPSILON).unwrap();
         let base = Decimal::ONE;
 
         assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
         assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
         assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
         assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if (x - Decimal::ZERO).abs() < dec_epislon )
+            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
         );
 
         assert_eq!(
