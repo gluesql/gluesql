@@ -51,28 +51,13 @@ macro_rules! eval_to_float {
 // --- text ---
 
 pub fn concat(_name: String, exprs: Vec<Evaluated<'_>>) -> Result<Value> {
-    let mut s = Value::Str("".to_string());
-
-    for expr in exprs {
-        match expr.try_into()? {
-            Value::Str(x) => s = s.concat(&Value::Str(x)),
-            Value::Null => {} // ignore null values
-            Value::Bool(x) => s = s.concat(&Value::Bool(x)),
-            Value::Date(x) => s = s.concat(&Value::Date(x)),
-            Value::Decimal(x) => s = s.concat(&Value::Decimal(x)),
-            Value::I8(x) => s = s.concat(&Value::I8(x)),
-            Value::I64(x) => s = s.concat(&Value::I64(x)),
-            Value::F64(x) => s = s.concat(&Value::F64(x)),
-            Value::Timestamp(x) => s = s.concat(&Value::Timestamp(x)),
-            Value::Time(x) => s = s.concat(&Value::Time(x)),
-            Value::Uuid(x) => s = s.concat(&Value::Uuid(x)),
-            Value::Interval(x) => s = s.concat(&Value::Interval(x)),
-            Value::Map(x) => s = s.concat(&Value::Map(x)),
-            Value::List(x) => s = s.concat(&Value::List(x)),
-        }
-    }
-
-    Ok(s)
+    exprs
+        .into_iter()
+        .map(|expr| expr.try_into())
+        .filter(|value| !matches!(value, Ok(Value::Null)))
+        .try_fold(Value::Str("".to_owned()), |left, right| {
+            Ok(left.concat(&right?))
+        })
 }
 
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {
