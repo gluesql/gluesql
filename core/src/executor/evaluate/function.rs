@@ -55,20 +55,20 @@ pub fn concat(_name: String, exprs: Vec<Evaluated<'_>>) -> Result<Value> {
 
     for expr in exprs {
         match expr.try_into()? {
-            Value::Str(x) => s=s.concat(&Value::Str(x)),
-            Value::Null => {}, // ignore null values
-            Value::Bool(x) => s=s.concat(&Value::Bool(x)),
-            Value::Date(x) => s=s.concat(&Value::Date(x)),
-            Value::Decimal(x) => s=s.concat(&Value::Decimal(x)),
-            Value::I8(x) => s=s.concat(&Value::I8(x)),
-            Value::I64(x) => s=s.concat(&Value::I64(x)),
-            Value::F64(x) => s=s.concat(&Value::F64(x)),
-            Value::Timestamp(x) => s=s.concat(&Value::Timestamp(x)),
-            Value::Time(x) => s=s.concat(&Value::Time(x)),
-            Value::Uuid(x) => s=s.concat(&Value::Uuid(x)),
-            Value::Interval(x) => s=s.concat(&Value::Interval(x)),
-            Value::Map(x) => s=s.concat(&Value::Map(x)),
-            Value::List(x) => s=s.concat(&Value::List(x)),
+            Value::Str(x) => s = s.concat(&Value::Str(x)),
+            Value::Null => {} // ignore null values
+            Value::Bool(x) => s = s.concat(&Value::Bool(x)),
+            Value::Date(x) => s = s.concat(&Value::Date(x)),
+            Value::Decimal(x) => s = s.concat(&Value::Decimal(x)),
+            Value::I8(x) => s = s.concat(&Value::I8(x)),
+            Value::I64(x) => s = s.concat(&Value::I64(x)),
+            Value::F64(x) => s = s.concat(&Value::F64(x)),
+            Value::Timestamp(x) => s = s.concat(&Value::Timestamp(x)),
+            Value::Time(x) => s = s.concat(&Value::Time(x)),
+            Value::Uuid(x) => s = s.concat(&Value::Uuid(x)),
+            Value::Interval(x) => s = s.concat(&Value::Interval(x)),
+            Value::Map(x) => s = s.concat(&Value::Map(x)),
+            Value::List(x) => s = s.concat(&Value::List(x)),
         }
     }
 
