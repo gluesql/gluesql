@@ -10,7 +10,7 @@ impl Function {
             Empty(I0),
             Single(I1),
             Double(I2),
-            Tripple(I3),
+            Triple(I3),
             VariableArgs(I4),
         }
 
@@ -114,7 +114,7 @@ impl Function {
                 expr,
                 start: expr2,
                 count: Some(expr3),
-            } => Exprs::Tripple([expr, expr2, expr3].into_iter()),
+            } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
         }
     }
@@ -210,7 +210,7 @@ mod tests {
         test("REPEAT(column, 2)", &["column", "2"]);
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
 
-        // Tripple
+        // Triple
         test(
             r#"LPAD(name, 20, '>")++++<')"#,
             &["name", "20", r#"'>")++++<'"#],

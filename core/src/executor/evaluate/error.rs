@@ -60,4 +60,7 @@ pub enum EvaluateError {
 
     #[error("negative substring length not allowed")]
     NegativeSubstrLenNotAllowed,
+
+    #[error("subquery returns more than one row")]
+    MoreThanOneRowReturned,
 }

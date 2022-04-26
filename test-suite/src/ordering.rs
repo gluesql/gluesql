@@ -35,7 +35,7 @@ test_case!(ordering, async move {
         (0, "SELECT * FROM Operator WHERE 3 > 3;"),
         (
             5,
-            "SELECT * FROM Operator o1 WHERE 3 > (SELECT id FROM Operator WHERE o1.id < 100);",
+            "SELECT * FROM Operator o1 WHERE 3 > (SELECT MIN(id) FROM Operator WHERE o1.id < 100);",
         ),
         (2, "SELECT * FROM Operator WHERE name < \"Azzzzzzzzzz\";"),
         (1, "SELECT * FROM Operator WHERE name < \"Az\";"),
