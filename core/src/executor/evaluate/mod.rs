@@ -224,7 +224,7 @@ async fn evaluate_function<'a, T>(
         // --- text ---
         Function::Concat(exprs) => {
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
-            f::concat(name(), exprs)
+            f::concat(exprs)
         }
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),

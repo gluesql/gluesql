@@ -50,7 +50,7 @@ macro_rules! eval_to_float {
 
 // --- text ---
 
-pub fn concat(_name: String, exprs: Vec<Evaluated<'_>>) -> Result<Value> {
+pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Value> {
     exprs
         .into_iter()
         .map(|expr| expr.try_into())
