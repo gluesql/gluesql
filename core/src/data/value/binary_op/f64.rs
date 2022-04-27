@@ -52,7 +52,7 @@ impl TryBinaryOperator for f64 {
             F64(rhs) => Ok(F64(lhs + rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x + rhs)),
-                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs).into()),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -73,7 +73,7 @@ impl TryBinaryOperator for f64 {
             F64(rhs) => Ok(F64(lhs - rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x - rhs)),
-                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs).into()),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -95,7 +95,7 @@ impl TryBinaryOperator for f64 {
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x * rhs)),
-                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs).into()),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -116,7 +116,7 @@ impl TryBinaryOperator for f64 {
             F64(rhs) => Ok(F64(lhs / rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => Ok(Decimal(x / rhs)),
-                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs).into()),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -140,7 +140,7 @@ impl TryBinaryOperator for f64 {
                     Some(y) => Ok(Decimal(y)),
                     None => Err(Error::OverflowError("%".to_string())),
                 },
-                _ => Err(ValueError::F64ToDecimalConversionError(lhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(lhs).into()),
             },
 
             Null => Ok(Null),

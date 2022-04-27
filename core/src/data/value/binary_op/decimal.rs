@@ -50,7 +50,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs + Decimal::from(rhs))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => Ok(Decimal(lhs + x)),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
             },
             Decimal(rhs) => Ok(Decimal(lhs + rhs)),
             Null => Ok(Null),
@@ -71,7 +71,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => Ok(Decimal(lhs - x)),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
             },
             Decimal(rhs) => Ok(Decimal(lhs - rhs)),
             Null => Ok(Null),
@@ -92,7 +92,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs * Decimal::from(rhs))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => Ok(Decimal(lhs * x)),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
             },
             Decimal(rhs) => Ok(Decimal(lhs * rhs)),
             Null => Ok(Null),
@@ -113,7 +113,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => Ok(Decimal(lhs / x)),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
             },
 
             Decimal(rhs) => Ok(Decimal(lhs / rhs)),
@@ -144,7 +144,7 @@ impl TryBinaryOperator for Decimal {
                     Some(y) => Ok(Decimal(y)),
                     None => Err(Error::OverflowError("%".to_string())),
                 },
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs)),
+                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
             },
             Decimal(rhs) => match lhs.checked_rem(rhs) {
                 Some(x) => Ok(Decimal(x)),
