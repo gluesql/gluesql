@@ -1,3 +1,5 @@
+#![cfg(target_arch = "wasm32")]
+
 use {
     gluesql_core::prelude::{Payload, PayloadVariable},
     serde_json::{json, Value as Json},
