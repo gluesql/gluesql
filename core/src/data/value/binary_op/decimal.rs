@@ -29,10 +29,9 @@ impl PartialOrd<Value> for Decimal {
         match *other {
             I8(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             I64(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
-            F64(rhs) => match Decimal::from_f64_retain(rhs) {
-                Some(x) => self.partial_cmp(&x),
-                _ => None,
-            },
+            F64(rhs) => Decimal::from_f64_retain(rhs)
+                .map(|x| self.partial_cmp(&x))
+                .unwrap_or(None),
             Decimal(rhs) => self.partial_cmp(&rhs),
             _ => None,
         }
@@ -48,10 +47,9 @@ impl TryBinaryOperator for Decimal {
         match *rhs {
             I8(rhs) => Ok(Decimal(lhs + Decimal::from(rhs))),
             I64(rhs) => Ok(Decimal(lhs + Decimal::from(rhs))),
-            F64(rhs) => match Decimal::from_f64_retain(rhs) {
-                Some(x) => Ok(Decimal(lhs + x)),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
-            },
+            F64(rhs) => Decimal::from_f64_retain(rhs)
+                .map(|x| Ok(Decimal(lhs + x)))
+                .unwrap_or_else(|| Err(ValueError::F64ToDecimalConversionError(rhs).into())),
             Decimal(rhs) => Ok(Decimal(lhs + rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -69,10 +67,9 @@ impl TryBinaryOperator for Decimal {
         match *rhs {
             I8(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
             I64(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
-            F64(rhs) => match Decimal::from_f64_retain(rhs) {
-                Some(x) => Ok(Decimal(lhs - x)),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
-            },
+            F64(rhs) => Decimal::from_f64_retain(rhs)
+                .map(|x| Ok(Decimal(lhs - x)))
+                .unwrap_or_else(|| Err(ValueError::F64ToDecimalConversionError(rhs).into())),
             Decimal(rhs) => Ok(Decimal(lhs - rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -90,10 +87,9 @@ impl TryBinaryOperator for Decimal {
         match *rhs {
             I8(rhs) => Ok(Decimal(lhs * Decimal::from(rhs))),
             I64(rhs) => Ok(Decimal(lhs * Decimal::from(rhs))),
-            F64(rhs) => match Decimal::from_f64_retain(rhs) {
-                Some(x) => Ok(Decimal(lhs * x)),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
-            },
+            F64(rhs) => Decimal::from_f64_retain(rhs)
+                .map(|x| Ok(Decimal(lhs * x)))
+                .unwrap_or_else(|| Err(ValueError::F64ToDecimalConversionError(rhs).into())),
             Decimal(rhs) => Ok(Decimal(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -111,11 +107,9 @@ impl TryBinaryOperator for Decimal {
         match *rhs {
             I8(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
             I64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            F64(rhs) => match Decimal::from_f64_retain(rhs) {
-                Some(x) => Ok(Decimal(lhs / x)),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
-            },
-
+            F64(rhs) => Decimal::from_f64_retain(rhs)
+                .map(|x| Ok(Decimal(lhs / x)))
+                .unwrap_or_else(|| Err(ValueError::F64ToDecimalConversionError(rhs).into())),
             Decimal(rhs) => Ok(Decimal(lhs / rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -131,26 +125,25 @@ impl TryBinaryOperator for Decimal {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => match lhs.checked_rem(Decimal::from(rhs)) {
-                Some(x) => Ok(Decimal(x)),
-                None => Err(Error::OverflowError("%".to_string())),
-            },
-            I64(rhs) => match lhs.checked_rem(Decimal::from(rhs)) {
-                Some(x) => Ok(Decimal(x)),
-                None => Err(Error::OverflowError("%".to_string())),
-            },
+            I8(rhs) => lhs
+                .checked_rem(Decimal::from(rhs))
+                .map(|x| Ok(Decimal(x)))
+                .unwrap_or_else(|| Err(Error::OverflowError("%".to_string()))),
+            I64(rhs) => lhs
+                .checked_rem(Decimal::from(rhs))
+                .map(|x| Ok(Decimal(x)))
+                .unwrap_or_else(|| Err(Error::OverflowError("%".to_string()))),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
-                Some(x) => match lhs.checked_rem(x) {
-                    Some(y) => Ok(Decimal(y)),
-                    None => Err(Error::OverflowError("%".to_string())),
-                },
+                Some(x) => lhs
+                    .checked_rem(x)
+                    .map(|y| Ok(Decimal(y)))
+                    .unwrap_or_else(|| Err(Error::OverflowError("%".to_string()))),
                 _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
             },
-            Decimal(rhs) => match lhs.checked_rem(rhs) {
-                Some(x) => Ok(Decimal(x)),
-                _ => Err(Error::OverflowError("%".to_string())),
-            },
-
+            Decimal(rhs) => lhs
+                .checked_rem(rhs)
+                .map(|x| Ok(Decimal(x)))
+                .unwrap_or_else(|| Err(Error::OverflowError("%".to_string()))),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(lhs),
