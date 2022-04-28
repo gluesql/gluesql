@@ -110,7 +110,6 @@ pub enum ValueError {
     #[error("unreachable literal cast from number to float: {0}")]
     UnreachableLiteralCastFromNumberToFloat(String),
 
-
     #[error("unimplemented literal cast: {literal} as {data_type:?}")]
     UnimplementedLiteralCast {
         data_type: DataType,
