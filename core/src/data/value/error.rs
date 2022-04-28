@@ -24,7 +24,7 @@ pub enum ValueError {
     FailedToParseNumber,
 
     #[error("failed to convert Float to Decimal: {0}")]
-    F64ToDecimalConversionError(f64),
+    FloatToDecimalConversionFailure(f64),
 
     #[error("failed to parse date: {0}")]
     FailedToParseDate(String),

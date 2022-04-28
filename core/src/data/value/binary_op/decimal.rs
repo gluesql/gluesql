@@ -3,7 +3,7 @@ use {
     crate::{
         data::{NumericBinaryOperator, ValueError},
         prelude::Value,
-        result::{Error, Result},
+        result::Result,
     },
     rust_decimal::prelude::Decimal,
     std::cmp::Ordering,
@@ -49,7 +49,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs + Decimal::from(rhs))),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs + x)))
-                .unwrap_or_else(|| Err(ValueError::F64ToDecimalConversionError(rhs).into())),
+                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
             Decimal(rhs) => Ok(Decimal(lhs + rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -69,7 +69,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs - x)))
-                .unwrap_or_else(|| Err(ValueError::F64ToDecimalConversionError(rhs).into())),
+                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
             Decimal(rhs) => Ok(Decimal(lhs - rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -89,7 +89,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs * Decimal::from(rhs))),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs * x)))
-                .unwrap_or_else(|| Err(ValueError::F64ToDecimalConversionError(rhs).into())),
+                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
             Decimal(rhs) => Ok(Decimal(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -109,7 +109,7 @@ impl TryBinaryOperator for Decimal {
             I64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs / x)))
-                .unwrap_or_else(|| Err(ValueError::F64ToDecimalConversionError(rhs).into())),
+                .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
             Decimal(rhs) => Ok(Decimal(lhs / rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -128,22 +128,23 @@ impl TryBinaryOperator for Decimal {
             I8(rhs) => lhs
                 .checked_rem(Decimal::from(rhs))
                 .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| Err(Error::OverflowError("%".to_string()))),
+                .unwrap_or_else(|| Err(ValueError::BinaryOperationOverflow{lhs:Decimal(lhs), operator:NumericBinaryOperator::Modulo, rhs:I8(rhs)}.into())),
             I64(rhs) => lhs
                 .checked_rem(Decimal::from(rhs))
                 .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| Err(Error::OverflowError("%".to_string()))),
+                .unwrap_or_else(|| Err(ValueError::BinaryOperationOverflow{lhs:Decimal(lhs), operator:NumericBinaryOperator::Modulo, rhs:I64(rhs)}.into())),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => lhs
                     .checked_rem(x)
                     .map(|y| Ok(Decimal(y)))
-                    .unwrap_or_else(|| Err(Error::OverflowError("%".to_string()))),
-                _ => Err(ValueError::F64ToDecimalConversionError(rhs).into()),
+                    .unwrap_or_else(|| Err(ValueError::BinaryOperationOverflow{lhs:Decimal(lhs), operator:NumericBinaryOperator::Modulo, rhs:F64(rhs)}.into())),
+                _ => Err(ValueError::FloatToDecimalConversionFailure(rhs).into()),
             },
             Decimal(rhs) => lhs
                 .checked_rem(rhs)
                 .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| Err(Error::OverflowError("%".to_string()))),
+                .unwrap_or_else(|| 
+                    Err(ValueError::BinaryOperationOverflow{lhs:Decimal(lhs), operator:NumericBinaryOperator::Modulo, rhs:Decimal(rhs)}.into())),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(lhs),
@@ -195,19 +196,17 @@ mod tests {
     fn try_add() {
         let base = Decimal::ONE;
 
-        assert!(matches!(base.try_add(&I8(1)), Ok(Decimal(x)) if x == Decimal::TWO ));
-        assert!(matches!(base.try_add(&I64(1)), Ok(Decimal(x)) if x == Decimal::TWO));
-        assert!(matches!(base.try_add(&F64(1.0)), Ok(Decimal(x)) if x == Decimal::TWO));
-        assert!(
-            matches!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::TWO)
-        );
+        assert_eq!(base.try_add(&I8(1)), Ok(Decimal(Decimal::TWO)));
+        assert_eq!(base.try_add(&I64(1)), Ok(Decimal(Decimal::TWO)));
+        assert_eq!(base.try_add(&F64(1.0)), Ok(Decimal(Decimal::TWO)));
+        assert_eq!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(Decimal::TWO)));
 
         assert_eq!(
             base.try_add(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(base),
                 operator: NumericBinaryOperator::Add,
-                rhs: Bool(true).clone(),
+                rhs: Bool(true),
             }
             .into()),
         );
@@ -217,25 +216,17 @@ mod tests {
     fn try_subtract() {
         let base = Decimal::ONE;
 
-        assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
-        );
-        assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
-        );
-        assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
-        );
-        assert!(
-            matches!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
-        );
+        assert_eq!(base.try_subtract(&I8(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_subtract(&I64(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_subtract(&F64(1.0)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_subtract(&Decimal(Decimal::ONE)), Ok(Decimal(Decimal::ZERO)));
 
         assert_eq!(
             base.try_subtract(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(base),
                 operator: NumericBinaryOperator::Subtract,
-                rhs: Bool(true).clone(),
+                rhs: Bool(true),
             }
             .into()),
         );
@@ -245,19 +236,17 @@ mod tests {
     fn try_multiply() {
         let base = Decimal::ONE;
 
-        assert!(matches!(base.try_multiply(&I8(1)), Ok(Decimal(x)) if x == Decimal::ONE));
-        assert!(matches!(base.try_multiply(&I64(1)), Ok(Decimal(x)) if x == Decimal::ONE));
-        assert!(matches!(base.try_multiply(&F64(1.0)), Ok(Decimal(x)) if x == Decimal::ONE));
-        assert!(
-            matches!(base.try_multiply(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
-        );
+        assert_eq!(base.try_multiply(&I8(1)), Ok(Decimal(Decimal::ONE)));
+        assert_eq!(base.try_multiply(&I64(1)), Ok(Decimal(Decimal::ONE)));
+        assert_eq!(base.try_multiply(&F64(1.0)), Ok(Decimal(Decimal::ONE)));
+        assert_eq!(base.try_multiply(&Decimal(Decimal::ONE)), Ok(Decimal(Decimal::ONE)));
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(base),
                 operator: NumericBinaryOperator::Multiply,
-                rhs: Bool(true).clone(),
+                rhs: Bool(true),
             }
             .into()),
         );
@@ -267,25 +256,17 @@ mod tests {
     fn try_divide() {
         let base = Decimal::ONE;
 
-        assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
-        );
-        assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
-        );
-        assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
-        );
-        assert!(
-            matches!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ONE)
-        );
+        assert_eq!(base.try_divide(&I8(1)), Ok(Decimal(Decimal::ONE)));
+        assert_eq!(base.try_divide(&I64(1)), Ok(Decimal(Decimal::ONE)));
+        assert_eq!(base.try_divide(&F64(1.0)), Ok(Decimal(Decimal::ONE)));
+        assert_eq!(base.try_divide(&Decimal(Decimal::ONE)), Ok(Decimal(Decimal::ONE)));
 
         assert_eq!(
             base.try_divide(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(base),
                 operator: NumericBinaryOperator::Divide,
-                rhs: Bool(true).clone(),
+                rhs: Bool(true),
             }
             .into()),
         );
@@ -295,25 +276,17 @@ mod tests {
     fn try_modulo() {
         let base = Decimal::ONE;
 
-        assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
-        );
-        assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
-        );
-        assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
-        );
-        assert!(
-            matches!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::ZERO)
-        );
+        assert_eq!(base.try_modulo(&I8(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_modulo(&I64(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_modulo(&F64(1.0)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_modulo(&Decimal(Decimal::ONE)), Ok(Decimal(Decimal::ZERO)));
 
         assert_eq!(
             base.try_modulo(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(base),
                 operator: NumericBinaryOperator::Modulo,
-                rhs: Bool(true).clone(),
+                rhs: Bool(true),
             }
             .into()),
         );
