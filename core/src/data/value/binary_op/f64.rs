@@ -135,8 +135,14 @@ impl TryBinaryOperator for f64 {
                 Some(x) => x
                     .checked_rem(rhs)
                     .map(|y| Ok(Decimal(y)))
-                    .unwrap_or_else(|| 
-                        Err(ValueError::BinaryOperationOverflow{lhs:F64(lhs), operator:NumericBinaryOperator::Modulo, rhs:Decimal(rhs)}.into())),
+                    .unwrap_or_else(|| {
+                        Err(ValueError::BinaryOperationOverflow {
+                            lhs: F64(lhs),
+                            operator: NumericBinaryOperator::Modulo,
+                            rhs: Decimal(rhs),
+                        }
+                        .into())
+                    }),
                 _ => Err(ValueError::FloatToDecimalConversionFailure(lhs).into()),
             },
             Null => Ok(Null),

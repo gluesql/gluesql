@@ -121,7 +121,12 @@ impl TryBinaryOperator for i64 {
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
             Decimal(rhs) => match Decimal::from(lhs).checked_rem(rhs) {
                 Some(x) => Ok(Decimal(x)),
-                None => Err(ValueError::BinaryOperationOverflow{lhs:I64(lhs), operator:NumericBinaryOperator::Modulo, rhs:Decimal(rhs)}.into()),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    operator: NumericBinaryOperator::Modulo,
+                    rhs: Decimal(rhs),
+                }
+                .into()),
             },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
