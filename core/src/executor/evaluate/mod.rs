@@ -68,12 +68,23 @@ pub async fn evaluate<'a, T>(
             }
             .map(Evaluated::from)
         }
-        Expr::Subquery(query) => select(storage, query, context.as_ref().map(Rc::clone))
-            .await?
-            .map_ok(|row| row.take_first_value().map(Evaluated::from))
-            .next()
-            .await
-            .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))?,
+        Expr::Subquery(query) => {
+            let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
+                .await?
+                .map_ok(|row| row.take_first_value().map(Evaluated::from))
+                .take(2)
+                .try_collect::<Vec<_>>()
+                .await?;
+
+            if evaluations.len() > 1 {
+                return Err(EvaluateError::MoreThanOneRowReturned.into());
+            }
+
+            evaluations
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))
+        }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
             let right = eval(right).await?;
@@ -211,6 +222,10 @@ async fn evaluate_function<'a, T>(
 
     match func {
         // --- text ---
+        Function::Concat(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::concat(exprs)
+        }
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {

@@ -27,6 +27,13 @@ pub enum TranslateError {
         found: usize,
     },
 
+    #[error("function {name} requires at least {expected_minimum} argument(s), found: {found}")]
+    FunctionArgsLengthNotMatchingMin {
+        name: String,
+        expected_minimum: usize,
+        found: usize,
+    },
+
     #[error("function args.length not matching: {name}, expected: {expected_minimum} ~ {expected_maximum}, found: {found}")]
     FunctionArgsLengthNotWithinRange {
         name: String,

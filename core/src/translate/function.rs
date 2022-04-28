@@ -73,6 +73,19 @@ fn check_len_range(
     }
 }
 
+fn check_len_min(name: String, found: usize, expected_minimum: usize) -> Result<()> {
+    if found >= expected_minimum {
+        Ok(())
+    } else {
+        Err(TranslateError::FunctionArgsLengthNotMatchingMin {
+            name,
+            expected_minimum,
+            found,
+        }
+        .into())
+    }
+}
+
 fn translate_function_zero_arg(func: Function, args: Vec<&SqlExpr>, name: String) -> Result<Expr> {
     check_len(name, args.len(), 0)?;
 
@@ -142,6 +155,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         .collect::<Result<Vec<_>>>()?;
 
     match name.as_str() {
+        "CONCAT" => {
+            check_len_min(name, args.len(), 1)?;
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Concat(exprs))))
+        }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
         "UPPER" => translate_function_one_arg(Function::Upper, args, name),
         "LEFT" => {
