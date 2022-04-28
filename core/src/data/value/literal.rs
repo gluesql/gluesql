@@ -212,7 +212,7 @@ impl Value {
                 .to_string()
                 .parse::<Decimal>()
                 .map(Value::Decimal)
-                .map_err(|_| ValueError::FailedToParseDecimal(v.to_string()).into()),
+                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
             (DataType::Decimal, Literal::Boolean(v)) => {
                 let v = if *v { Decimal::ONE } else { Decimal::ZERO };
 
