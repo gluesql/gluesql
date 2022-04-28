@@ -222,6 +222,10 @@ async fn evaluate_function<'a, T>(
 
     match func {
         // --- text ---
+        Function::Concat(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::concat(exprs)
+        }
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {

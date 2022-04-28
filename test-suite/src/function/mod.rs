@@ -1,6 +1,7 @@
 pub mod abs;
 pub mod cast;
 pub mod ceil;
+pub mod concat;
 pub mod degrees;
 pub mod div_mod;
 pub mod exp_log;
