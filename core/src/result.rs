@@ -33,7 +33,6 @@ pub enum Error {
 
     //#[error("OverflowError: {0}")]
     //OverflowError(String),
-
     #[error(transparent)]
     Translate(#[from] TranslateError),
 
