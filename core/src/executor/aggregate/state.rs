@@ -1,7 +1,7 @@
 use {
     super::{error::AggregateError, hash::GroupKey},
     crate::{
-        ast::{Aggregate, Expr},
+        ast::{Aggregate, CountArgExpr, Expr},
         data::Value,
         executor::context::BlendContext,
         result::Result,
@@ -27,8 +27,12 @@ impl<'a> AggrValue {
         let value = value.clone();
 
         match aggr {
-            Aggregate::Count(expr) => AggrValue::Count {
-                wildcard: matches!(expr, Expr::Wildcard),
+            Aggregate::Count(CountArgExpr::Wildcard) => AggrValue::Count {
+                wildcard: true,
+                count: 1,
+            },
+            Aggregate::Count(CountArgExpr::Expr(_)) => AggrValue::Count {
+                wildcard: false,
                 count: 1,
             },
             Aggregate::Sum(_) => AggrValue::Sum(value),
@@ -192,8 +196,8 @@ impl<'a> State<'a> {
         };
 
         let value = match aggr {
-            Aggregate::Count(Expr::Wildcard) => &Value::Null,
-            Aggregate::Count(expr)
+            Aggregate::Count(CountArgExpr::Wildcard) => &Value::Null,
+            Aggregate::Count(CountArgExpr::Expr(expr))
             | Aggregate::Sum(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)

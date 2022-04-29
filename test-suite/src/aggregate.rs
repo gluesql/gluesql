@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{executor::AggregateError, prelude::Value::*, translate::TranslateError},
+};
 
 test_case!(aggregate, async move {
     run!(
@@ -69,7 +72,6 @@ test_case!(aggregate, async move {
         test!(Ok(expected), sql);
     }
 
-    use gluesql_core::executor::AggregateError;
     let error_cases = vec![
         (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
@@ -82,6 +84,14 @@ test_case!(aggregate, async move {
         (
             AggregateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",
+        ),
+        (
+            TranslateError::QualifiedWildcardInCountNotSupported("Foo.*".to_owned()).into(),
+            "SELECT COUNT(Foo.*) FROM Item;",
+        ),
+        (
+            TranslateError::WildcardFunctionArgNotAccepted.into(),
+            "SELECT SUM(*) FROM Item;",
         ),
     ];
 

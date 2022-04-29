@@ -46,9 +46,6 @@ pub enum EvaluateError {
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),
 
-    #[error("unreachable wildcard expression")]
-    UnreachableWildcardExpr,
-
     #[error("unreachable empty context")]
     UnreachableEmptyContext,
 

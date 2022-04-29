@@ -22,10 +22,7 @@ pub enum PlanExpr<'a> {
 impl<'a> From<&'a Expr> for PlanExpr<'a> {
     fn from(expr: &'a Expr) -> Self {
         match expr {
-            Expr::Literal(_)
-            | Expr::TypedString { .. }
-            | Expr::Wildcard
-            | Expr::QualifiedWildcard(_) => PlanExpr::None,
+            Expr::Literal(_) | Expr::TypedString { .. } => PlanExpr::None,
             Expr::Identifier(ident) => PlanExpr::Identifier(ident),
             Expr::CompoundIdentifier(idents) => PlanExpr::CompoundIdentifier(idents),
             Expr::Nested(expr)
@@ -34,7 +31,10 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
             | Expr::Extract { expr, .. }
             | Expr::IsNull(expr)
             | Expr::IsNotNull(expr) => PlanExpr::Expr(expr),
-            Expr::Aggregate(aggregate) => PlanExpr::Expr(aggregate.as_expr()),
+            Expr::Aggregate(aggregate) => match aggregate.as_expr() {
+                Some(expr) => PlanExpr::Expr(expr),
+                None => PlanExpr::None,
+            },
             Expr::BinaryOp { left, right, .. } => PlanExpr::TwoExprs(left, right),
             Expr::Between {
                 expr, low, high, ..
@@ -107,8 +107,7 @@ mod tests {
             PlanExpr::None
         );
         assert_eq!(PlanExpr::from(&expr("100")), PlanExpr::None);
-        assert_eq!(PlanExpr::from(&expr("*")), PlanExpr::None);
-        assert_eq!(PlanExpr::from(&expr("Foo.*")), PlanExpr::None);
+        assert_eq!(PlanExpr::from(&expr("COUNT(*)")), PlanExpr::None);
 
         // PlanExpr::Identifier
         let actual = expr("id");
@@ -122,6 +121,11 @@ mod tests {
         test!(actual, expected);
 
         // PlanExpr::Expr
+        let actual = expr("SUM(id)");
+        let expected = expr("id");
+        let expected = PlanExpr::Expr(&expected);
+        test!(actual, expected);
+
         let actual = expr("(100)");
         let expected = expr("100");
         let expected = PlanExpr::Expr(&expected);
