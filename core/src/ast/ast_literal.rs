@@ -24,6 +24,22 @@ pub enum DateTimeField {
     Hour,
     Minute,
     Second,
+    Century,
+    Decade,
+    Week,
+    Dow, //day of week
+    Doy, //day of year
+    Epoch,
+    Isodow,
+    Isoyear,
+    Julian,
+    Microseconds,
+    Millenium,
+    Milliseconds,
+    Quarter,
+    Timezone,
+    TimezoneHour,
+    TimezoneMinute,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

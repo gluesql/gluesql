@@ -41,6 +41,22 @@ pub fn translate_datetime_field(sql_datetime_field: &SqlDateTimeField) -> DateTi
         SqlDateTimeField::Hour => DateTimeField::Hour,
         SqlDateTimeField::Minute => DateTimeField::Minute,
         SqlDateTimeField::Second => DateTimeField::Second,
+        SqlDateTimeField::Century => DateTimeField::Century,
+        SqlDateTimeField::Decade => DateTimeField::Decade,
+        SqlDateTimeField::Week => DateTimeField::Week,
+        SqlDateTimeField::Dow => DateTimeField::Dow, //Day of Week
+        SqlDateTimeField::Doy => DateTimeField::Doy, //Day of Year
+        SqlDateTimeField::Epoch => DateTimeField::Epoch,
+        SqlDateTimeField::Isodow => DateTimeField::Isodow,
+        SqlDateTimeField::Isoyear => DateTimeField::Isoyear,
+        SqlDateTimeField::Julian => DateTimeField::Julian,
+        SqlDateTimeField::Microseconds => DateTimeField::Microseconds,
+        SqlDateTimeField::Millenium => DateTimeField::Millenium,
+        SqlDateTimeField::Milliseconds => DateTimeField::Milliseconds,
+        SqlDateTimeField::Quarter => DateTimeField::Quarter,
+        SqlDateTimeField::Timezone => DateTimeField::Timezone,
+        SqlDateTimeField::TimezoneHour => DateTimeField::TimezoneHour,
+        SqlDateTimeField::TimezoneMinute => DateTimeField::TimezoneMinute,
     }
 }
 
