@@ -45,6 +45,12 @@ pub enum TranslateError {
     #[error("named function arg is not supported")]
     NamedFunctionArgNotSupported,
 
+    #[error("wildcard function arg is not accepted")]
+    WildcardFunctionArgNotAccepted,
+
+    #[error("qualified wildcard is not supported - COUNT({0})")]
+    QualifiedWildcardInCountNotSupported(String),
+
     #[error("order by - NULLS (FIRST | LAST) is not supported")]
     OrderByNullsFirstOrLastNotSupported,
 

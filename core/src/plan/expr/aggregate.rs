@@ -1,13 +1,14 @@
-use crate::ast::{Aggregate, Expr};
+use crate::ast::{Aggregate, CountArgExpr, Expr};
 
 impl Aggregate {
-    pub fn as_expr(&self) -> &Expr {
+    pub fn as_expr(&self) -> Option<&Expr> {
         match self {
-            Aggregate::Count(expr)
+            Aggregate::Count(CountArgExpr::Wildcard) => None,
+            Aggregate::Count(CountArgExpr::Expr(expr))
             | Aggregate::Sum(expr)
             | Aggregate::Max(expr)
             | Aggregate::Min(expr)
-            | Aggregate::Avg(expr) => expr,
+            | Aggregate::Avg(expr) => Some(expr),
         }
     }
 }
@@ -32,24 +33,26 @@ mod tests {
 
     #[test]
     fn as_expr() {
+        assert_eq!(parse("COUNT(*)").as_expr(), None);
+
         let actual = parse("COUNT(id)");
         let expected = Expr::Identifier("id".to_owned());
-        assert_eq!(actual.as_expr(), &expected);
+        assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("SUM(id)");
         let expected = Expr::Identifier("id".to_owned());
-        assert_eq!(actual.as_expr(), &expected);
+        assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("MAX(id)");
         let expected = Expr::Identifier("id".to_owned());
-        assert_eq!(actual.as_expr(), &expected);
+        assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("MIN(id)");
         let expected = Expr::Identifier("id".to_owned());
-        assert_eq!(actual.as_expr(), &expected);
+        assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("AVG(id)");
         let expected = Expr::Identifier("id".to_owned());
-        assert_eq!(actual.as_expr(), &expected);
+        assert_eq!(actual.as_expr(), Some(&expected));
     }
 }
