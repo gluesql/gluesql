@@ -328,11 +328,12 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
                 .collect();
 
             Ok((storage, Payload::ShowColumns(output)))
-        },
-        Statement::ShowIndexes{table_name} => {
+        }
+        Statement::ShowIndexes { table_name } => {
             println!("todo: show indexes from {:?}", table_name);
-			Ok((storage, Payload::ShowIndexes(vec![])))
-        },
+            let v: Vec<(String, String)> = Vec::new();
+            Ok((storage, Payload::ShowIndexes(v)))
+        }
         //- Metadata
         #[cfg(feature = "metadata")]
         Statement::ShowVariable(variable) => match variable {
@@ -347,10 +348,6 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
 
                 Ok((storage, payload))
             }
-        },
-        Statement::ShowIndexes{ table_name, ..} => {
-            println!("todo: show indexes from {:?}", table_name);
-			Ok((storage, Payload::ShowIndexes {rows: vec![vec![]]}))
         },
     }
 }

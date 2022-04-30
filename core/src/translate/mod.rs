@@ -154,8 +154,8 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             table_name: translate_object_name(table_name),
         }),
         SqlStatement::ShowIndexes { table_name, .. } => Ok(Statement::ShowIndexes {
-			table_name:translate_object_name(table_name),
-		}),
+            table_name: translate_object_name(table_name),
+        }),
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }

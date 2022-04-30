@@ -99,9 +99,9 @@ pub enum Statement {
     /// SHOW VARIABLE
     #[cfg(feature = "metadata")]
     ShowVariable(Variable),
-	ShowIndexes {
-		table_name: ObjectName,
-	},
+    ShowIndexes {
+        table_name: ObjectName,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
