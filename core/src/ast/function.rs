@@ -108,9 +108,15 @@ pub enum Function {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Aggregate {
-    Count(Expr),
+    Count(CountArgExpr),
     Sum(Expr),
     Max(Expr),
     Min(Expr),
     Avg(Expr),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CountArgExpr {
+    Expr(Expr),
+    Wildcard,
 }
