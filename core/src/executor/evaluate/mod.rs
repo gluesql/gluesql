@@ -174,9 +174,6 @@ pub async fn evaluate<'a, T>(
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
-        Expr::Wildcard | Expr::QualifiedWildcard(_) => {
-            Err(EvaluateError::UnreachableWildcardExpr.into())
-        }
         Expr::Case {
             operand,
             when_then,

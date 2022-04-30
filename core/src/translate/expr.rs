@@ -20,8 +20,6 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             Some(_) => Ok(Expr::Literal(AstLiteral::QuotedString(ident.value.clone()))),
             None => Ok(Expr::Identifier(ident.value.clone())),
         },
-        SqlExpr::Wildcard => Ok(Expr::Wildcard),
-        SqlExpr::QualifiedWildcard(idents) => Ok(Expr::QualifiedWildcard(translate_idents(idents))),
         SqlExpr::CompoundIdentifier(idents) => {
             Ok(Expr::CompoundIdentifier(translate_idents(idents)))
         }
