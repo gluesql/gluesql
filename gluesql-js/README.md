@@ -23,7 +23,7 @@ npm install gluesql
 
 #### JavaScript modules
 ```javascript
-import { gluesql } from 'https://cdn.jsdelivr.net/npm/gluesql@0.10.2-rc.0/gluesql.js';
+import { gluesql } from 'https://cdn.jsdelivr.net/npm/gluesql@0.10.2-rc.2/gluesql.js';
 ```
 
 ## Usage
