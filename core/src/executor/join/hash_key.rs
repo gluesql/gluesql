@@ -12,7 +12,13 @@ use {
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum HashKey {
     I8(i8),
+    I32(i32),
     I64(i64),
+    I128(i128),
+    U8(u8),
+    U32(u32),
+    U64(u64),
+    U128(u128),
     Bool(bool),
     Str(String),
     Date(NaiveDate),
@@ -30,7 +36,13 @@ impl From<Value> for Option<HashKey> {
         match value {
             Bool(v) => Some(HashKey::Bool(v)),
             I8(v) => Some(HashKey::I8(v)),
+            I32(v) => Some(HashKey::I32(v)),
             I64(v) => Some(HashKey::I64(v)),
+            I128(v) => Some(HashKey::I128(v)),
+            U8(v) => Some(HashKey::U8(v)),
+            U32(v) => Some(HashKey::U32(v)),
+            U64(v) => Some(HashKey::U64(v)),
+            U128(v) => Some(HashKey::U128(v)),
             Str(v) => Some(HashKey::Str(v)),
             Date(v) => Some(HashKey::Date(v)),
             Timestamp(v) => Some(HashKey::Timestamp(v)),

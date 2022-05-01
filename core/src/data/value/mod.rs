@@ -28,7 +28,13 @@ pub use error::ValueError;
 pub enum Value {
     Bool(bool),
     I8(i8),
+    I32(i32),
     I64(i64),
+    I128(i128),
+    U8(u8),
+    U32(u32),
+    U64(u64),
+    U128(u128),
     F64(f64),
     Decimal(Decimal),
     Str(String),
@@ -99,7 +105,13 @@ impl Value {
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
         let valid = match self {
             Value::I8(_) => matches!(data_type, DataType::Int8),
+            Value::I32(_) => matches!(data_type, DataType::Int32),
             Value::I64(_) => matches!(data_type, DataType::Int),
+            Value::I128(_) => matches!(data_type, DataType::Int128),
+            Value::U8(_) => matches!(data_type, DataType::UInt8),
+            Value::U32(_) => matches!(data_type, DataType::UInt32),
+            Value::U64(_) => matches!(data_type, DataType::UInt),
+            Value::U128(_) => matches!(data_type, DataType::UInt128),
             Value::F64(_) => matches!(data_type, DataType::Float),
             Value::Decimal(_) => matches!(data_type, DataType::Decimal),
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
@@ -136,7 +148,13 @@ impl Value {
     pub fn cast(&self, data_type: &DataType) -> Result<Self> {
         match (data_type, self) {
             (DataType::Int8, Value::I8(_))
+            | (DataType::Int32, Value::I32(_))
             | (DataType::Int, Value::I64(_))
+            | (DataType::Int128, Value::I128(_))
+            | (DataType::UInt8, Value::U8(_))
+            | (DataType::UInt32, Value::U32(_))
+            | (DataType::UInt, Value::U64(_))
+            | (DataType::UInt128, Value::U128(_))
             | (DataType::Float, Value::F64(_))
             | (DataType::Decimal, Value::Decimal(_))
             | (DataType::Boolean, Value::Bool(_))
@@ -150,7 +168,13 @@ impl Value {
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
             (DataType::Int8, value) => value.try_into().map(Value::I8),
+            (DataType::Int32, value) => value.try_into().map(Value::I32),
             (DataType::Int, value) => value.try_into().map(Value::I64),
+            (DataType::Int128, value) => value.try_into().map(Value::I128),
+            (DataType::UInt8, value) => value.try_into().map(Value::U8),
+            (DataType::UInt32, value) => value.try_into().map(Value::U32),
+            (DataType::UInt, value) => value.try_into().map(Value::U64),
+            (DataType::UInt128, value) => value.try_into().map(Value::U128),
             (DataType::Float, value) => value.try_into().map(Value::F64),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),

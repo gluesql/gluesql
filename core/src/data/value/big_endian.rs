@@ -27,6 +27,15 @@ impl Value {
                     .copied()
                     .collect::<Vec<_>>()
             }
+            Value::I32(v) => {
+                let sign = if *v >= 0 { 1 } else { 0 };
+
+                [VALUE, sign]
+                    .iter()
+                    .chain(v.to_be_bytes().iter())
+                    .copied()
+                    .collect::<Vec<_>>()
+            }
             Value::I64(v) => {
                 let sign = if *v >= 0 { 1 } else { 0 };
 
@@ -36,6 +45,35 @@ impl Value {
                     .copied()
                     .collect::<Vec<_>>()
             }
+            Value::I128(v) => {
+                let sign = if *v >= 0 { 1 } else { 0 };
+
+                [VALUE, sign]
+                    .iter()
+                    .chain(v.to_be_bytes().iter())
+                    .copied()
+                    .collect::<Vec<_>>()
+            }
+            Value::U8(v) => [VALUE]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Value::U32(v) => [VALUE]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Value::U64(v) => [VALUE]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Value::U128(v) => [VALUE]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
             Value::F64(v) => [VALUE]
                 .iter()
                 .chain(v.to_be_bytes().iter())

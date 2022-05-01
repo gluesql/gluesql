@@ -6,12 +6,13 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
+        data::{value::uuid::parse_uuid, Interval, Literal},
         result::{Error, Result},
     },
     chrono::NaiveDate,
     rust_decimal::Decimal,
     std::cmp::Ordering,
+    bigdecimal::ToPrimitive,
 };
 
 impl PartialEq<Literal<'_>> for Value {
@@ -116,6 +117,30 @@ impl Value {
                 .to_i8()
                 .map(Value::I8)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Int32, Literal::Number(v)) => v
+                 .to_i32()
+                 .map(Value::I32)
+                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Int128, Literal::Number(v)) => v
+                 .to_i128()
+                 .map(Value::I128)
+                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::UInt, Literal::Number(v)) => v
+                .to_u64()
+                .map(Value::U64)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::UInt8, Literal::Number(v)) => v
+                .to_u8()
+                .map(Value::U8)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::UInt32, Literal::Number(v)) => v
+                 .to_u32()
+                 .map(Value::U32)
+                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::UInt128, Literal::Number(v)) => v
+                 .to_u128()
+                 .map(Value::U128)
+                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)

@@ -12,7 +12,13 @@ use {
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum GroupKey {
     I8(i8),
+    I32(i32),
     I64(i64),
+    I128(i128),
+    U8(u8),
+    U32(u32),
+    U64(u64),
+    U128(u128),
     Bool(bool),
     Str(String),
     Date(NaiveDate),

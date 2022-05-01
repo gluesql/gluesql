@@ -37,7 +37,13 @@ impl TryFrom<Value> for JsonValue {
         match value {
             Value::Bool(v) => Ok(JsonValue::Bool(v)),
             Value::I8(v) => Ok(v.into()),
+            Value::I32(v) => Ok(v.into()),
             Value::I64(v) => Ok(v.into()),
+            Value::I128(v) => Ok(v.to_string().into()),
+            Value::U8(v) => Ok(v.into()),
+            Value::U32(v) => Ok(v.into()),
+            Value::U64(v) => Ok(v.into()),
+            Value::U128(v) => Ok(v.to_string().into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
