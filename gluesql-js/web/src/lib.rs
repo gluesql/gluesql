@@ -61,7 +61,7 @@ impl Glue {
             let mut storage: MemoryStorage = cell.replace(None).unwrap();
 
             for query in queries.iter() {
-                let statement = translate(query); //.map_err(|error| JsValue::from_str(&format!("{error}")))?;
+                let statement = translate(query);
                 let statement = match statement {
                     Ok(statement) => statement,
                     Err(error) => {
