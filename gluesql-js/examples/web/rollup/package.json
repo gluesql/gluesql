@@ -1,0 +1,24 @@
+{
+  "name": "gluesql-js-web-rollup-example",
+  "version": "0.1.0",
+  "description": "GlueSQL javascript rollup example",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gluesql/gluesql.git"
+  },
+  "author": "Taehoon Moon",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/gluesql/gluesql/issues"
+  },
+  "homepage": "https://github.com/gluesql/gluesql#readme",
+  "scripts": {
+    "build": "rollup -c"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^13.2.1",
+    "gluesql": "file:../../../",
+    "rollup": "^2.70.2"
+  }
+}
