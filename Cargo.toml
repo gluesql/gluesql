@@ -19,6 +19,11 @@ keywords = [
 [package.metadata.docs.rs]
 all-features = true
 
+# ref. https://github.com/rustwasm/wasm-pack/issues/1111
+# enable this only for gluesql-js build
+# [profile.release]
+# opt-level = "s"
+
 [dependencies]
 gluesql-core = { path = "./core", version = "0.10.2" }
 cli = { package = "gluesql-cli", path = "./cli", version = "0.10.2", optional = true }
@@ -59,5 +64,5 @@ transaction = ["gluesql-core/transaction", "test-suite/transaction"]
 metadata = ["gluesql-core/metadata", "test-suite/metadata"]
 
 [workspace]
-members = ["core", "storages/*", "test-suite", "utils", "cli"]
-default-members = ["core", "storages/*", "test-suite", "utils", "cli"]
+members = ["core", "storages/*", "test-suite", "utils", "cli", "gluesql-js/web"]
+default-members = ["core", "storages/*", "test-suite", "utils", "cli", "gluesql-js/web"]
