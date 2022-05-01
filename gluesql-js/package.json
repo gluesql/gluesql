@@ -1,0 +1,26 @@
+{
+  "name": "gluesql",
+  "version": "0.10.2-rc.0",
+  "description": "GlueSQL is quite sticky, it attaches to anywhere",
+  "browser": "gluesql.js",
+  "main": "gluesql.node.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gluesql/gluesql.git"
+  },
+  "keywords": [
+    "SQL",
+    "Database",
+    "SQL.js",
+    "websql",
+    "rust",
+    "webassembly",
+    "wasm"
+  ],
+  "author": "Taehoon Moon",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/gluesql/gluesql/issues"
+  },
+  "homepage": "https://github.com/gluesql/gluesql#readme"
+}
