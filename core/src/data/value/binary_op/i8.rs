@@ -64,23 +64,39 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
-            I32(rhs) => Ok(I32(lhs as i32 + rhs)),
-            I64(rhs) => Ok(I64(lhs as i64 + rhs)),
-            I128(rhs) => Ok(I128(lhs as i128 + rhs)),
-            U8(rhs) => lhs
+            I32(rhs) => (lhs as i32)
                 .checked_add(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
-                        rhs: U8(rhs),
+                        rhs: I32(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
                     .into()
                 })
-                .map(I8),
-            U32(rhs) => Ok(U32(lhs as u32 + rhs)),
-            U64(rhs) => Ok(U64(lhs as u64 + rhs)),
-            U128(rhs) => Ok(U128(lhs as u128 + rhs)),
+                .map(I32),
+            I64(rhs) => (lhs as i64)
+                .checked_add(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I128(rhs) => (lhs as i128)
+                .checked_add(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: I128(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
@@ -111,20 +127,6 @@ impl TryBinaryOperator for i8 {
             I32(rhs) => Ok(I32(lhs as i32 - rhs)),
             I64(rhs) => Ok(I64(lhs as i64 - rhs)),
             I128(rhs) => Ok(I128(lhs as i128 - rhs)),
-            U8(rhs) => lhs
-                .checked_sub(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: U8(rhs),
-                        operator: NumericBinaryOperator::Subtract,
-                    }
-                    .into()
-                })
-                .map(I8),
-            U32(rhs) => Ok(U32(lhs as u32 - rhs)),
-            U64(rhs) => Ok(U64(lhs as u64 - rhs)),
-            U128(rhs) => Ok(U128(lhs as u128 - rhs)),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
 
@@ -153,24 +155,21 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
-            I32(rhs) => Ok(I32(lhs as i32 * rhs)),
-            I64(rhs) => Ok(I64(lhs as i64 * rhs)),
-            I128(rhs) => Ok(I128(lhs as i128 * rhs)),
-            U8(rhs) => lhs
+            I32(rhs) => (lhs as i32)
                 .checked_mul(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
                         lhs: I8(lhs),
-                        rhs: U8(rhs),
+                        rhs: I32(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
                     .into()
                 })
-                .map(I8),
-
-            U32(rhs) => Ok(U32(lhs as u32 * rhs)),
-            U64(rhs) => Ok(U64(lhs as u64 * rhs)),
-            U128(rhs) => Ok(U128(lhs as u128 * rhs)),
+                .map(I32),
+                
+            I32(rhs) => Ok(I32(lhs as i32 * rhs)),
+            I64(rhs) => Ok(I64(lhs as i64 * rhs)),
+            I128(rhs) => Ok(I128(lhs as i128 * rhs)),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
@@ -202,19 +201,6 @@ impl TryBinaryOperator for i8 {
             I32(rhs) => Ok(I32(lhs as i32 / rhs)),
             I64(rhs) => Ok(I64(lhs as i64 / rhs)),
             I128(rhs) => Ok(I128(lhs as i128 / rhs)),
-            U8(rhs) =>  Ok(U8((lhs as i16) / (rhs as u16)).to_i8()
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: U8(rhs),
-                        operator: NumericBinaryOperator::Divide,
-                    }
-                    .into()
-                }).map(i8),
-            U32(rhs) => Ok(U32(lhs as u32 / rhs)),
-            U64(rhs) => Ok(U64(lhs as u64 / rhs)),
-            U128(rhs) => Ok(U128(lhs as u128 / rhs)),
-
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
 
