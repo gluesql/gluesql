@@ -14,7 +14,13 @@ impl PartialEq<Value> for i8 {
     fn eq(&self, other: &Value) -> bool {
         match other {
             I8(other) => self == other,
+            I32(other) => &(*self as i32) == other,
             I64(other) => &(*self as i64) == other,
+            I128(other) => &(*self as i128) == other,
+            U8(other) => &(*self as u8) == other,
+            U32(other) => &(*self as u32) == other,
+            U64(other) => &(*self as u64) == other,
+            U128(other) => &(*self as u128) == other,
             F64(other) => &(*self as f64) == other,
             Decimal(other) => Decimal::from(*self) == *other,
             _ => false,
@@ -26,7 +32,13 @@ impl PartialOrd<Value> for i8 {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match other {
             I8(other) => self.partial_cmp(other),
+            I32(other) => (*self as i32).partial_cmp(other),
             I64(other) => (*self as i64).partial_cmp(other),
+            I128(other) => (*self as i128).partial_cmp(other),
+            U8(other) => (*self as u8).partial_cmp(other),
+            U32(other) => (*self as u32).partial_cmp(other),
+            U64(other) => (*self as u64).partial_cmp(other),
+            U128(other) => (*self as u128).partial_cmp(other),
             F64(other) => (*self as f64).partial_cmp(other),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
@@ -52,7 +64,23 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I32(rhs) => Ok(I32(lhs as i32 + rhs)),
             I64(rhs) => Ok(I64(lhs as i64 + rhs)),
+            I128(rhs) => Ok(I128(lhs as i128 + rhs)),
+            U8(rhs) => lhs
+                .checked_add(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(I8),
+            U32(rhs) => Ok(U32(lhs as u32 + rhs)),
+            U64(rhs) => Ok(U64(lhs as u64 + rhs)),
+            U128(rhs) => Ok(U128(lhs as u128 + rhs)),
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
@@ -80,7 +108,23 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I32(rhs) => Ok(I32(lhs as i32 - rhs)),
             I64(rhs) => Ok(I64(lhs as i64 - rhs)),
+            I128(rhs) => Ok(I128(lhs as i128 - rhs)),
+            U8(rhs) => lhs
+                .checked_sub(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I8),
+            U32(rhs) => Ok(U32(lhs as u32 - rhs)),
+            U64(rhs) => Ok(U64(lhs as u64 - rhs)),
+            U128(rhs) => Ok(U128(lhs as u128 - rhs)),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
 
@@ -109,7 +153,24 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I32(rhs) => Ok(I32(lhs as i32 * rhs)),
             I64(rhs) => Ok(I64(lhs as i64 * rhs)),
+            I128(rhs) => Ok(I128(lhs as i128 * rhs)),
+            U8(rhs) => lhs
+                .checked_mul(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I8),
+
+            U32(rhs) => Ok(U32(lhs as u32 * rhs)),
+            U64(rhs) => Ok(U64(lhs as u64 * rhs)),
+            U128(rhs) => Ok(U128(lhs as u128 * rhs)),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
@@ -138,7 +199,22 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I32(rhs) => Ok(I32(lhs as i32 / rhs)),
             I64(rhs) => Ok(I64(lhs as i64 / rhs)),
+            I128(rhs) => Ok(I128(lhs as i128 / rhs)),
+            U8(rhs) =>  Ok(U8((lhs as i16) / (rhs as u16)).to_i8()
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                }).map(i8),
+            U32(rhs) => Ok(U32(lhs as u32 / rhs)),
+            U64(rhs) => Ok(U64(lhs as u64 / rhs)),
+            U128(rhs) => Ok(U128(lhs as u128 / rhs)),
+
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
 
@@ -157,7 +233,13 @@ impl TryBinaryOperator for i8 {
 
         match *rhs {
             I8(rhs) => Ok(I8(lhs % rhs)),
+            I32(rhs) => Ok(I32(lhs as i32 % rhs)),
             I64(rhs) => Ok(I64(lhs as i64 % rhs)),
+            I128(rhs) => Ok(I128(lhs as i128 % rhs)),
+            U8(rhs) => Ok(U8(lhs as u8 % rhs)),
+            U32(rhs) => Ok(U32(lhs as u32 % rhs)),
+            U64(rhs) => Ok(U64(lhs as u64 % rhs)),
+            U128(rhs) => Ok(U128(lhs as u128 % rhs)),
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
             Decimal(rhs) => match Decimal::from(lhs).checked_rem(rhs) {
                 Some(x) => Ok(Decimal(x)),
@@ -193,7 +275,13 @@ mod tests {
         let base = 1_i8;
 
         assert_eq!(base, I8(1));
+        assert_eq!(base, I32(1));
         assert_eq!(base, I64(1));
+        assert_eq!(base, I128(1));
+        assert_eq!(base, U8(1));
+        assert_eq!(base, U32(1));
+        assert_eq!(base, U64(1));
+        assert_eq!(base, U128(1));
         assert_eq!(base, F64(1.0));
         assert_eq!(base, Decimal(Decimal::ONE));
 
@@ -205,7 +293,13 @@ mod tests {
         let base = 1_i8;
 
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&U8(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&U32(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&U64(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&U128(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
         assert_eq!(
             base.partial_cmp(&Decimal(Decimal::ONE)),
@@ -220,7 +314,13 @@ mod tests {
         let base = 1_i8;
 
         assert!(matches!(base.try_add(&I8(1)), Ok(I8(x)) if x == 2 ));
+        assert!(matches!(base.try_add(&I32(1)), Ok(I32(x)) if x == 2 ));
         assert!(matches!(base.try_add(&I64(1)), Ok(I64(x)) if x == 2 ));
+        assert!(matches!(base.try_add(&I128(1)), Ok(I128(x)) if x == 2 ));
+        assert!(matches!(base.try_add(&U8(1)), Ok(U8(x)) if x == 2 ));
+        assert!(matches!(base.try_add(&U32(1)), Ok(U32(x)) if x == 2 ));
+        assert!(matches!(base.try_add(&U64(1)), Ok(U64(x)) if x == 2 ));
+        assert!(matches!(base.try_add(&U128(1)), Ok(U128(x)) if x == 2 ));
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
         assert!(
@@ -243,7 +343,13 @@ mod tests {
         let base = 1_i8;
 
         assert!(matches!(base.try_subtract(&I8(1)), Ok(I8(x)) if x == 0 ));
+        assert!(matches!(base.try_subtract(&I32(1)), Ok(I32(x)) if x == 0 ));
         assert!(matches!(base.try_subtract(&I64(1)), Ok(I64(x)) if x == 0 ));
+        assert!(matches!(base.try_subtract(&I128(1)), Ok(I128(x)) if x == 0 ));
+        assert!(matches!(base.try_subtract(&U8(1)), Ok(U8(x)) if x == 0 ));
+        assert!(matches!(base.try_subtract(&U32(1)), Ok(U32(x)) if x == 0 ));
+        assert!(matches!(base.try_subtract(&U64(1)), Ok(U64(x)) if x == 0 ));
+        assert!(matches!(base.try_subtract(&U128(1)), Ok(U128(x)) if x == 0 ));
         assert!(
             matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );
@@ -267,7 +373,13 @@ mod tests {
         let base = 1_i8;
 
         assert!(matches!(base.try_multiply(&I8(1)), Ok(I8(x)) if x == 1 ));
+        assert!(matches!(base.try_multiply(&I32(1)), Ok(I32(x)) if x == 1 ));
         assert!(matches!(base.try_multiply(&I64(1)), Ok(I64(x)) if x == 1 ));
+        assert!(matches!(base.try_multiply(&I128(1)), Ok(I128(x)) if x == 1 ));
+        assert!(matches!(base.try_multiply(&U8(1)), Ok(U8(x)) if x == 1 ));
+        assert!(matches!(base.try_multiply(&U32(1)), Ok(U32(x)) if x == 1 ));
+        assert!(matches!(base.try_multiply(&U64(1)), Ok(U64(x)) if x == 1 ));
+        assert!(matches!(base.try_multiply(&U128(1)), Ok(U128(x)) if x == 1 ));
         assert!(
             matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
@@ -291,7 +403,13 @@ mod tests {
         let base = 1_i8;
 
         assert!(matches!(base.try_divide(&I8(1)), Ok(I8(x)) if x == 1 ));
+        assert!(matches!(base.try_divide(&I32(1)), Ok(I32(x)) if x == 1 ));
         assert!(matches!(base.try_divide(&I64(1)), Ok(I64(x)) if x == 1 ));
+        assert!(matches!(base.try_divide(&I128(1)), Ok(I128(x)) if x == 1 ));
+        assert!(matches!(base.try_divide(&U8(1)), Ok(U8(x)) if x == 1 ));
+        assert!(matches!(base.try_divide(&U32(1)), Ok(U32(x)) if x == 1 ));
+        assert!(matches!(base.try_divide(&U64(1)), Ok(U64(x)) if x == 1 ));
+        assert!(matches!(base.try_divide(&U128(1)), Ok(U128(x)) if x == 1 ));
         assert!(
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
@@ -315,7 +433,13 @@ mod tests {
         let base = 1_i8;
 
         assert!(matches!(base.try_modulo(&I8(1)), Ok(I8(x)) if x == 0 ));
+        assert!(matches!(base.try_modulo(&I32(1)), Ok(I32(x)) if x == 0 ));
         assert!(matches!(base.try_modulo(&I64(1)), Ok(I64(x)) if x == 0 ));
+        assert!(matches!(base.try_modulo(&I128(1)), Ok(I128(x)) if x == 0 ));
+        assert!(matches!(base.try_modulo(&U8(1)), Ok(U8(x)) if x == 0 ));
+        assert!(matches!(base.try_modulo(&U32(1)), Ok(U32(x)) if x == 0 ));
+        assert!(matches!(base.try_modulo(&U64(1)), Ok(U64(x)) if x == 0 ));
+        assert!(matches!(base.try_modulo(&U128(1)), Ok(U128(x)) if x == 0 ));
         assert!(
             matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );

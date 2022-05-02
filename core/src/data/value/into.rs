@@ -664,7 +664,7 @@ mod tests {
         test!(Value::U64(0), Ok(false));
         test!(Value::U128(1), Ok(true));
         test!(Value::U128(0), Ok(false));
-        
+
         test!(Value::F64(1.0), Ok(true));
         test!(Value::F64(0.0), Ok(false));
         test!(Value::Str("true".to_owned()), Ok(true));
@@ -706,14 +706,14 @@ mod tests {
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
 
         //impossible casts
-        test!(Value::I8(3), Err(ValueError::ImpossibleCast.into());
-        test!(Value::I32(3), Err(ValueError::ImpossibleCast.into());
-        test!(Value::I64(3), Err(ValueError::ImpossibleCast.into());
-        test!(Value::I128(3), Err(ValueError::ImpossibleCast.into());
-        test!(Value::U8(3), Err(ValueError::ImpossibleCast.into());
-        test!(Value::U32(3), Err(ValueError::ImpossibleCast.into());
-        test!(Value::U64(3), Err(ValueError::ImpossibleCast.into());
-        test!(Value::U128(3), Err(ValueError::ImpossibleCast.into());
+        test!(Value::I8(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I32(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I128(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U8(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U32(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U64(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U128(3), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
