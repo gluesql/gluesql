@@ -708,10 +708,84 @@ mod tests {
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
         test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(122), Ok(122));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
+        test!(Value::F64(122.1), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
         test!(Value::Decimal(Decimal::new(123, 0)), Ok(123));
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        //impossible casts...
+        test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I32(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I128(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U8(255), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U32(255), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U64(255), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U128(255), Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
+    fn try_into_i32() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<i32>, $to)
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(122), Ok(122));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
+        test!(Value::I64(1234567890), Ok(1234567890));
+        test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.1), Ok(1234567890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
+        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
         test!(
             Value::Date(date(2021, 11, 20)),
             Err(ValueError::ImpossibleCast.into())
@@ -758,8 +832,16 @@ mod tests {
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(122), Ok(122));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.1), Ok(1234567890));
         test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
         test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
         test!(
@@ -794,6 +876,321 @@ mod tests {
     }
 
     #[test]
+    fn try_into_i128() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<i128>, $to)
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(122), Ok(122));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
+        test!(Value::I64(1234567890), Ok(1234567890));
+        test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.1), Ok(1234567890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
+        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
+    fn try_into_u8() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<u8>, $to)
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(255), Ok(255));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
+        test!(Value::F64(122.0), Ok(122));
+        test!(Value::F64(122.1), Ok(122));
+        test!(Value::Str("122".to_owned()), Ok(122));
+        test!(Value::Decimal(Decimal::new(123, 0)), Ok(123));
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        //impossible casts...
+        test!(Value::I64(256), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I32(256), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I128(256), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U32(256), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U64(256), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U128(256), Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
+    fn try_into_u32() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<u32>, $to)
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(122), Ok(122));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
+        test!(Value::I64(1234567890), Ok(1234567890));
+        test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.1), Ok(1234567890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
+        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        test!(Value::I8(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I32(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I64(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I128(-1), Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
+    fn try_into_u64() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<u64>, $to)
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(122), Ok(122));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
+        test!(Value::I64(1234567890), Ok(1234567890));
+        test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.1), Ok(1234567890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
+        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        test!(Value::I8(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I32(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I64(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I128(-1), Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
+    fn try_into_u128() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<u128>, $to)
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(122), Ok(122));
+        test!(Value::U32(122), Ok(122));
+        test!(Value::U64(122), Ok(122));
+        test!(Value::U128(122), Ok(122));
+        test!(Value::I64(1234567890), Ok(1234567890));
+        test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.1), Ok(1234567890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
+        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        let uuid = 195965723427462096757863453463987888808;
+        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
+
+        test!(Value::I8(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I32(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I64(-1), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I128(-1), Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
     fn try_into_f64() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
@@ -808,6 +1205,13 @@ mod tests {
         test!(Value::Bool(true), Ok(1.0));
         test!(Value::Bool(false), Ok(0.0));
         test!(Value::I8(122), Ok(122.0));
+        test!(Value::I32(122), Ok(122.0));
+        test!(Value::I64(122), Ok(122.0));
+        test!(Value::I128(122), Ok(122.0));
+        test!(Value::U8(122), Ok(122.0));
+        test!(Value::U32(122), Ok(122.0));
+        test!(Value::U64(122), Ok(122.0));
+        test!(Value::U128(122), Ok(122.0));
         test!(Value::I64(1234567890), Ok(1234567890.0));
         test!(Value::F64(1234567890.1), Ok(1234567890.1));
         test!(Value::Str("1234567890.1".to_owned()), Ok(1234567890.1));
@@ -910,11 +1314,5 @@ mod tests {
             (&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())).try_into() as Result<I>,
             Ok(I::Month(274))
         )
-    }
-
-    #[test]
-    fn try_into_u128() {
-        let uuid = 195965723427462096757863453463987888808;
-        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid))
     }
 }
