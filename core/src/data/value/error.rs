@@ -75,6 +75,13 @@ pub enum ValueError {
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
+    #[error("failure to convert {a:#?} to {b:#?} for value:{value:#?}")]
+    ConversionErrorFromDataTypeAToDataTypeB {
+        a: DataType,
+        b: DataType,
+        value: Value,
+    },
+
     #[error("conflict - unique constraint cannot be used for {0} type")]
     ConflictDataTypeOnUniqueConstraint(String),
 
@@ -89,6 +96,9 @@ pub enum ValueError {
     #[error("literal cast failed from text to integer: {0}")]
     LiteralCastFromTextToIntegerFailed(String),
 
+    #[error("literal cast failed from text to unsigned integer: {0}")]
+    LiteralCastFromTextToUnsignedIntegerFailed(String),
+
     #[error("literal cast failed from text to float: {0}")]
     LiteralCastFromTextToFloatFailed(String),
 
@@ -98,6 +108,9 @@ pub enum ValueError {
     #[error("literal cast failed to date: {0}")]
     LiteralCastToDateFailed(String),
 
+    #[error("literal cast from {1:#?} to ({0:#?} failed")]
+    LiteralCastToDataTypeFailed(DataType, String),
+    
     #[error("literal cast failed to time: {0}")]
     LiteralCastToTimeFailed(String),
 

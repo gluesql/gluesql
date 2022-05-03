@@ -1192,7 +1192,7 @@ mod tests {
         );
         test!(
             Value::Uuid(195965723427462096757863453463987888808),
-            Err(ValueError::ImpossibleCast.into())
+            Ok(195965723427462096757863453463987888808)
         );
         test!(
             Value::Map(HashMap::new()),

@@ -50,6 +50,7 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
     type Error = Error;
 
     fn try_from(ast_literal: &'a AstLiteral) -> Result<Self> {
+        println!("literal.rs:try_from:{:?}", ast_literal);
         let literal = match ast_literal {
             AstLiteral::Boolean(v) => Boolean(*v),
             AstLiteral::Number(v) => Number(Cow::Borrowed(v)),
