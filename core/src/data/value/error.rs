@@ -110,7 +110,7 @@ pub enum ValueError {
 
     #[error("literal cast from {1:#?} to ({0:#?} failed")]
     LiteralCastToDataTypeFailed(DataType, String),
-    
+
     #[error("literal cast failed to time: {0}")]
     LiteralCastToTimeFailed(String),
 

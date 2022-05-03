@@ -7,7 +7,7 @@ pub enum IntervalError {
 
     #[error("unsupported extract part")]
     UnsupportedExtractPart,
-    
+
     #[error("cannot add between YEAR TO MONTH and HOUR TO SECOND")]
     AddBetweenYearToMonthAndHourToSecond,
 

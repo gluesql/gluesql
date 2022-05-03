@@ -52,7 +52,9 @@ impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::I8(l), _) => l == other,
+            (Value::I32(l), _) => l == other,
             (Value::I64(l), _) => l == other,
+            //    (Value::I128(l), _) => l == other,
             (Value::F64(l), _) => l == other,
             (Value::Decimal(l), Value::Decimal(r)) => l == r,
             (Value::Bool(l), Value::Bool(r)) => l == r,
