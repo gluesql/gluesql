@@ -2,8 +2,7 @@ use crate::*;
 
 test_case!(migrate, async move {
     use gluesql_core::{
-        data::ValueError, executor::EvaluateError, prelude::Payload, prelude::Value::*,
-        translate::TranslateError,
+        executor::EvaluateError, prelude::Payload, prelude::Value::*, translate::TranslateError,
     };
 
     run!(

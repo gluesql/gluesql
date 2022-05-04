@@ -2,9 +2,11 @@ use crate::{prelude::Value, result::Result};
 
 mod decimal;
 mod f64;
+mod i128;
 mod i32;
 mod i64;
 mod i8;
+mod u8;
 
 pub trait TryBinaryOperator {
     type Rhs;
