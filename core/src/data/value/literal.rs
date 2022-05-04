@@ -20,7 +20,13 @@ impl PartialEq<Literal<'_>> for Value {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
             (Value::I8(l), Literal::Number(r)) => r.to_i8().map(|r| *l == r).unwrap_or(false),
-            (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
+            (Value::I64(l), Literal::Number(r)) => match r.to_string().contains(".") {
+                true => match l.to_f64() {
+                    Some(x) => r.to_f64().map(|r| x == r).unwrap_or(false),
+                    None => false,
+                },
+                false => r.to_i64().map(|r| *l == r).unwrap_or(false),
+            },
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {

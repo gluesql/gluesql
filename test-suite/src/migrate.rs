@@ -2,7 +2,8 @@ use crate::*;
 
 test_case!(migrate, async move {
     use gluesql_core::{
-        data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError,
+        data::ValueError, executor::EvaluateError, prelude::Payload, prelude::Value::*,
+        translate::TranslateError,
     };
 
     run!(
@@ -24,10 +25,10 @@ test_case!(migrate, async move {
     );
 
     let error_cases = vec![
-        (
-            ValueError::FailedToParseNumber.into(),
-            r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
-        ),
+        //(  this works in mysql
+        //    ValueError::FailedToParseNumber.into(),
+        //    r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
+        //),
         (
             EvaluateError::UnsupportedStatelessExpr(expr!("a.b")).into(),
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
@@ -93,4 +94,10 @@ test_case!(migrate, async move {
     let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
     let expected = select!(id | num; I64 | I64; 2 9);
     assert_eq!(expected, found);
+
+    //this insert statement works in mysql (so should we support it to?)
+    assert_eq!(
+        run!(r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#),
+        Payload::Insert(1)
+    );
 });
