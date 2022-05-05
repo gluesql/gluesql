@@ -4,6 +4,7 @@ use {
         data::{NumericBinaryOperator, ValueError},
         prelude::Value,
         result::Result,
+        ast::DataType,
     },
     rust_decimal::prelude::Decimal,
     std::cmp::Ordering,
@@ -16,7 +17,14 @@ impl PartialEq<Value> for i64 {
 
         match *other {
             I8(rhs) => lhs == rhs as i64,
+            I32(rhs) => lhs == rhs as i64,
             I64(rhs) => lhs == rhs,
+            I128(rhs) => lhs as i128 == rhs,
+            U8(rhs) => lhs == rhs as i64,
+            U32(rhs) => lhs == rhs as i64,
+            U64(rhs) => lhs as i128 == rhs as i128,
+            U128(rhs) => lhs as i128 == rhs as i128,
+            
             F64(rhs) => lhs as f64 == rhs,
             Decimal(rhs) => Decimal::from(lhs) == rhs,
             _ => false,
@@ -28,7 +36,14 @@ impl PartialOrd<Value> for i64 {
     fn partial_cmp(&self, rhs: &Value) -> Option<Ordering> {
         match rhs {
             I8(rhs) => PartialOrd::partial_cmp(self, &(*rhs as i64)),
+            I32(rhs) => PartialOrd::partial_cmp(self, &(*rhs as i64)),
             I64(rhs) => PartialOrd::partial_cmp(self, rhs),
+            I128(rhs) => PartialOrd::partial_cmp(&(*self as i128), rhs),
+            U8(rhs) => PartialOrd::partial_cmp(self, &(*rhs as i64)),
+            U32(rhs) => PartialOrd::partial_cmp(self, &(*rhs as i64)),
+            U64(rhs) => PartialOrd::partial_cmp(&(*self as i128), &(*rhs as i128)),
+            U128(rhs) => PartialOrd::partial_cmp(&(*self as i128), &(*rhs as i128)),
+            
             F64(rhs) => PartialOrd::partial_cmp(&(*self as f64), rhs),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
@@ -42,27 +57,211 @@ impl TryBinaryOperator for i64 {
     fn try_add(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
-        match *rhs {
-            I8(rhs) => Ok(I64(lhs + rhs as i64)),
-            I64(rhs) => Ok(I64(lhs + rhs)),
-            F64(rhs) => Ok(F64(lhs as f64 + rhs)),
-            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
-            Null => Ok(Null),
-            _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I64(lhs),
-                operator: NumericBinaryOperator::Add,
-                rhs: rhs.clone(),
+    match *rhs {
+        I8(rhs) => lhs
+            .checked_add(rhs as i64)
+            .ok_or_else(|| {
+                ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    rhs: I8(rhs),
+                    operator: NumericBinaryOperator::Add,
+                }
+                .into()
+            })
+            .map(I64),
+        I32(rhs) => lhs
+            .checked_add(rhs as i64)
+            .ok_or_else(|| {
+                ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    rhs: I32(rhs),
+                    operator: NumericBinaryOperator::Add,
+                }
+                .into()
+            })
+            .map(I64),
+        I64(rhs) => lhs
+            .checked_add(rhs)
+            .ok_or_else(|| {
+                ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    rhs: I64(rhs),
+                    operator: NumericBinaryOperator::Add,
+                }
+                .into()
+            })
+            .map(I64),
+        I128(rhs) => (lhs as i128)
+            .checked_add(rhs)
+            .ok_or_else(|| {
+                ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    rhs: I128(rhs),
+                    operator: NumericBinaryOperator::Add,
+                }
+                .into()
+            })
+            .map(I128),
+
+        U8(rhs) => lhs
+            .checked_add(rhs as i64)
+            .ok_or_else(|| {
+                ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    rhs: U8(rhs),
+                    operator: NumericBinaryOperator::Add,
+                }
+                .into()
+            })
+            .map(I64),
+        U32(rhs) => lhs
+            .checked_add(rhs as i64)
+            .ok_or_else(|| {
+                ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    rhs: U32(rhs),
+                    operator: NumericBinaryOperator::Add,
+                }
+                .into()
+            })
+            .map(I64),
+        U64(rhs) => (lhs as i128)
+            .checked_add(rhs as i128)
+            .ok_or_else(|| {
+                ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    rhs: U64(rhs),
+                    operator: NumericBinaryOperator::Add,
+                }
+                .into()
+            })
+            .map(I128),
+        U128(rhs) => match i128::try_from(rhs) {
+            Ok(x) => (lhs as i128).checked_add(x).map(I128).ok_or_else(|| {
+                ValueError::BinaryOperationOverflow {
+                    lhs: I64(lhs),
+                    rhs: U128(rhs),
+                    operator: NumericBinaryOperator::Add,
+                }
+                .into()
+            }),
+            Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(rhs),
             }
             .into()),
+        },
+        F64(rhs) => Ok(F64(lhs as f64 + rhs)),
+        Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
+        Null => Ok(Null),
+        _ => Err(ValueError::NonNumericMathOperation {
+            lhs: I64(lhs),
+            operator: NumericBinaryOperator::Add,
+            rhs: rhs.clone(),
         }
+        .into()),
+    }
     }
 
     fn try_subtract(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(I64(lhs - rhs as i64)),
-            I64(rhs) => Ok(I64(lhs - rhs)),
+            I8(rhs) => lhs
+                .checked_sub(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I32(rhs) => lhs
+                .checked_sub(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I32(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I64(rhs) => lhs
+                .checked_sub(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I128(rhs) => (lhs as i128)
+                .checked_sub(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I128(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I128),
+
+            U8(rhs) => lhs
+                .checked_sub(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I64),
+            U32(rhs) => lhs
+                .checked_sub(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U32(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I64),
+            U64(rhs) => (lhs as i128)
+                .checked_sub(rhs as i128)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U64(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I128),
+            U128(rhs) => match i128::try_from(rhs) {
+                Ok(x) => (lhs as i128).checked_sub(x).map(I128).ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U128(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                }),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::Int,
+                    b: DataType::Int128,
+                    value: U128(rhs),
+                }
+                .into()),
+            },
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
             Null => Ok(Null),
@@ -77,13 +276,105 @@ impl TryBinaryOperator for i64 {
 
     fn try_multiply(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
-
+        
         match *rhs {
-            I8(rhs) => Ok(I64(lhs * rhs as i64)),
-            I64(rhs) => Ok(I64(lhs * rhs)),
+            I8(rhs) => lhs
+                .checked_mul(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I32(rhs) => lhs
+                .checked_mul(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I32(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I64(rhs) => lhs
+                .checked_mul(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I128(rhs) => (lhs as i128)
+                .checked_mul(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I128(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I128),
+
+            U8(rhs) => lhs
+                .checked_mul(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I64),
+            U32(rhs) => lhs
+                .checked_mul(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U32(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I64),
+            U64(rhs) => (lhs as i128)
+                .checked_mul(rhs as i128)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U64(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I128),
+            U128(rhs) => match i128::try_from(rhs) {
+                Ok(x) => (lhs as i128).checked_mul(x).map(I128).ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U128(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                }),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::Int,
+                    b: DataType::Int128,
+                    value: U128(rhs),
+                }
+                .into()),
+            },
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
-            Interval(rhs) => Ok(Interval(lhs * rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
+            Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I64(lhs),
@@ -93,13 +384,104 @@ impl TryBinaryOperator for i64 {
             .into()),
         }
     }
-
     fn try_divide(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(I64(lhs / rhs as i64)),
-            I64(rhs) => Ok(I64(lhs / rhs)),
+            I8(rhs) => lhs
+                .checked_div(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I32(rhs) => lhs
+                .checked_div(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I32(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I64(rhs) => lhs
+                .checked_div(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I128(rhs) => (lhs as i128)
+                .checked_div(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I128(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I128),
+
+            U8(rhs) => lhs
+                .checked_div(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I64),
+            U32(rhs) => lhs
+                .checked_div(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U32(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I64),
+            U64(rhs) => (lhs as i128)
+                .checked_div(rhs as i128)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U64(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I128),
+            U128(rhs) => match i128::try_from(rhs) {
+                Ok(x) => (lhs as i128).checked_div(x).map(I128).ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U128(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                }),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::Int,
+                    b: DataType::Int128,
+                    value: U128(rhs),
+                }
+                .into()),
+            },
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
             Null => Ok(Null),
@@ -111,23 +493,106 @@ impl TryBinaryOperator for i64 {
             .into()),
         }
     }
-
     fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(I64(lhs % rhs as i64)),
-            I64(rhs) => Ok(I64(lhs % rhs)),
-            F64(rhs) => Ok(F64(lhs as f64 % rhs)),
-            Decimal(rhs) => match Decimal::from(lhs).checked_rem(rhs) {
-                Some(x) => Ok(Decimal(x)),
-                None => Err(ValueError::BinaryOperationOverflow {
-                    lhs: I64(lhs),
-                    operator: NumericBinaryOperator::Modulo,
-                    rhs: Decimal(rhs),
+            I8(rhs) => lhs
+                .checked_rem(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I32(rhs) => lhs
+                .checked_rem(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I32(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I64(rhs) => lhs
+                .checked_rem(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I64),
+            I128(rhs) => (lhs as i128)
+                .checked_rem(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: I128(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I128),
+
+            U8(rhs) => lhs
+                .checked_rem(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I64),
+            U32(rhs) => lhs
+                .checked_rem(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U32(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I64),
+            U64(rhs) => (lhs as i128)
+                .checked_rem(rhs as i128)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U64(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I128),
+            U128(rhs) => match i128::try_from(rhs) {
+                Ok(x) => (lhs as i128).checked_rem(x).map(I128).ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: U128(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                }),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::UInt128,
+                    b: DataType::Int128,
+                    value: U128(rhs),
                 }
                 .into()),
             },
+            F64(rhs) => Ok(F64(lhs as f64 % rhs)),
+            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) % rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I64(lhs),
@@ -138,6 +603,7 @@ impl TryBinaryOperator for i64 {
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {

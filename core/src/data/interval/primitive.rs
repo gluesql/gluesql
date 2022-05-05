@@ -36,6 +36,63 @@ impl Mul<i64> for Interval {
     }
 }
 
+impl Mul<i128> for Interval {
+    type Output = Self;
+
+    fn mul(self, rhs: i128) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(((v as i128) * rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(((v as i128) * rhs) as i64),
+        }
+    }
+}
+
+
+impl Mul<u8> for Interval {
+    type Output = Self;
+
+    fn mul(self, rhs: u8) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(v * rhs as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(v * rhs as i64),
+        }
+    }
+}
+
+impl Mul<u32> for Interval {
+    type Output = Self;
+
+    fn mul(self, rhs: u32) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(((v as u32) * rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(((v as u32) * rhs) as i64),
+        }
+    }
+}
+
+impl Mul<u64> for Interval {
+    type Output = Self;
+
+    fn mul(self, rhs: u64) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(((v as u64) * rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(((v as u64) * rhs) as i64),
+        }
+    }
+}
+
+impl Mul<u128> for Interval {
+    type Output = Self;
+
+    fn mul(self, rhs: u128) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(((v as u128) * rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(((v as u128) * rhs) as i64),
+        }
+    }
+}
+
+
 impl Mul<f64> for Interval {
     type Output = Self;
 
@@ -70,6 +127,47 @@ impl Mul<Interval> for i64 {
         rhs * self
     }
 }
+
+impl Mul<Interval> for i128 {
+    type Output = Interval;
+
+    fn mul(self, rhs: Interval) -> Interval {
+        rhs * self
+    }
+}
+
+impl Mul<Interval> for u8 {
+    type Output = Interval;
+
+    fn mul(self, rhs: Interval) -> Interval {
+        rhs * self
+    }
+}
+
+impl Mul<Interval> for u32 {
+    type Output = Interval;
+
+    fn mul(self, rhs: Interval) -> Interval {
+        rhs * self
+    }
+}
+
+impl Mul<Interval> for u64 {
+    type Output = Interval;
+
+    fn mul(self, rhs: Interval) -> Interval {
+        rhs * self
+    }
+}
+
+impl Mul<Interval> for u128 {
+    type Output = Interval;
+
+    fn mul(self, rhs: Interval) -> Interval {
+        rhs * self
+    }
+}
+
 
 impl Mul<Interval> for f64 {
     type Output = Interval;
@@ -112,6 +210,18 @@ impl Div<i64> for Interval {
     }
 }
 
+impl Div<i128> for Interval {
+    type Output = Self;
+
+    fn div(self, rhs: i128) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(((v as i128) / rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(((v as i128)/ rhs) as i64),
+        }
+    }
+}
+
+
 impl Div<f64> for Interval {
     type Output = Self;
 
@@ -152,6 +262,17 @@ impl Div<Interval> for i64 {
         match rhs {
             Interval::Month(v) => Interval::Month((self / (v as i64)) as i32),
             Interval::Microsecond(v) => Interval::Microsecond(self / v),
+        }
+    }
+}
+
+impl Div<Interval> for i128 {
+    type Output = Interval;
+
+    fn div(self, rhs: Interval) -> Interval {
+        match rhs {
+            Interval::Month(v) => Interval::Month(((self / (v as i128)) as i64) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond((self / (v as i128)) as i64),
         }
     }
 }
