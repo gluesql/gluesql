@@ -664,15 +664,16 @@ mod tests {
     fn try_add() {
         let base = 1_i8;
 
-        assert!(matches!(base.try_add(&I8(1)), Ok(I8(x)) if x == 2 ));
-        assert!(matches!(base.try_add(&I32(1)), Ok(I32(x)) if x == 2 ));
-        assert!(matches!(base.try_add(&I64(1)), Ok(I64(x)) if x == 2 ));
-        assert!(matches!(base.try_add(&I128(1)), Ok(I128(x)) if x == 2 ));
-        //assert!(matches!(base.try_add(&U8(1)), Ok(U8(x)) if x == 2 ));
-        //assert!(matches!(base.try_add(&U32(1)), Ok(U32(x)) if x == 2 ));
-        //assert!(matches!(base.try_add(&U64(1)), Ok(U64(x)) if x == 2 ));
-        //assert!(matches!(base.try_add(&U128(1)), Ok(U128(x)) if x == 2 ));
-        assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
+        assert_eq!(base.try_add(&I8(1)), Ok(I8(2)));
+        assert_eq!(base.try_add(&I32(1)), Ok(I32(2)));
+        assert_eq!(base.try_add(&I64(1)), Ok(I64(2)));
+        assert_eq!(base.try_add(&I128(1)), Ok(I128(2)));
+
+        assert_eq!(base.try_add(&U8(1)), Ok(I32(2)));
+        assert_eq!(base.try_add(&U32(1)), Ok(I64(2)));
+        assert_eq!(base.try_add(&U64(1)), Ok(I128(2)));
+        assert_eq!(base.try_add(&U128(1)), Ok(I128(2)));
+
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
         assert!(
             matches!(base.try_add(&Decimal(Decimal::ONE)), Ok(Decimal(x)) if x == Decimal::TWO)
@@ -693,14 +694,16 @@ mod tests {
     fn try_subtract() {
         let base = 1_i8;
 
-        assert!(matches!(base.try_subtract(&I8(1)), Ok(I8(x)) if x == 0 ));
-        assert!(matches!(base.try_subtract(&I32(1)), Ok(I32(x)) if x == 0 ));
-        assert!(matches!(base.try_subtract(&I64(1)), Ok(I64(x)) if x == 0 ));
-        assert!(matches!(base.try_subtract(&I128(1)), Ok(I128(x)) if x == 0 ));
-        //assert!(matches!(base.try_subtract(&U8(1)), Ok(U8(x)) if x == 0 ));
-        //assert!(matches!(base.try_subtract(&U32(1)), Ok(U32(x)) if x == 0 ));
-        //assert!(matches!(base.try_subtract(&U64(1)), Ok(U64(x)) if x == 0 ));
-        //assert!(matches!(base.try_subtract(&U128(1)), Ok(U128(x)) if x == 0 ));
+        assert_eq!(base.try_subtract(&I8(1)), Ok(I8(0)));
+        assert_eq!(base.try_subtract(&I32(1)), Ok(I32(0)));
+        assert_eq!(base.try_subtract(&I64(1)), Ok(I64(0)));
+        assert_eq!(base.try_subtract(&I128(1)), Ok(I128(0)));
+
+        assert_eq!(base.try_subtract(&U8(1)), Ok(I32(0)));
+        assert_eq!(base.try_subtract(&U32(1)), Ok(I64(0)));
+        assert_eq!(base.try_subtract(&U64(1)), Ok(I128(0)));
+        assert_eq!(base.try_subtract(&U128(1)), Ok(I128(0)));
+
         assert!(
             matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );

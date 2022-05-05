@@ -201,7 +201,7 @@ impl TryBinaryOperator for u32 {
                 .map(I128),
 
             U8(rhs) => lhs
-                .checked_sub(rhs as U32)
+                .checked_sub(rhs as u32)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
                         lhs: U32(lhs),
