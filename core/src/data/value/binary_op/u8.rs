@@ -13,7 +13,7 @@ use {
 impl PartialEq<Value> for u8 {
     fn eq(&self, other: &Value) -> bool {
         match other {
-            I8(other) => &(*self as i16) == &(*other as i16),
+            I8(other) => *self as i16 == *other as i16,
             I32(other) => &(*self as i32) == other,
             I64(other) => &(*self as i64) == other,
             I128(other) => &(*self as i128) == other,

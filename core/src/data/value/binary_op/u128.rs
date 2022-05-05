@@ -13,9 +13,9 @@ use {
 impl PartialEq<Value> for u128 {
     fn eq(&self, other: &Value) -> bool {
         match other {
-            I8(other) => &(*self as i128) == &(*other as i128),
-            I32(other) => &(*self as i128) == &(*other as i128),
-            I64(other) => &(*self as i128) == &(*other as i128),
+            I8(other) => *self as i128 == *other as i128,
+            I32(other) => *self as i128 == *other as i128,
+            I64(other) => *self as i128 == *other as i128,
             I128(other) => &(*self as i128) == other,
             U8(other) => self == &(*other as u128),
             U32(other) => self == &(*other as u128),
@@ -46,7 +46,6 @@ impl PartialOrd<Value> for u128 {
     }
 }
 
-
 impl TryBinaryOperator for u128 {
     type Rhs = Value;
 
@@ -58,7 +57,7 @@ impl TryBinaryOperator for u128 {
                 .checked_add(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -69,7 +68,7 @@ impl TryBinaryOperator for u128 {
                 .checked_add(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -80,7 +79,7 @@ impl TryBinaryOperator for u128 {
                 .checked_add(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -91,7 +90,7 @@ impl TryBinaryOperator for u128 {
                 .checked_add(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -103,7 +102,7 @@ impl TryBinaryOperator for u128 {
                 .checked_add(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U8(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -114,7 +113,7 @@ impl TryBinaryOperator for u128 {
                 .checked_add(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U32(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -125,7 +124,7 @@ impl TryBinaryOperator for u128 {
                 .checked_add(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U64(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -134,7 +133,7 @@ impl TryBinaryOperator for u128 {
                 .map(U128),
             U128(rhs) => lhs.checked_add(rhs).map(U128).ok_or_else(|| {
                 ValueError::BinaryOperationOverflow {
-                    lhs:U128(lhs),
+                    lhs: U128(lhs),
                     rhs: U128(rhs),
                     operator: NumericBinaryOperator::Add,
                 }
@@ -144,7 +143,7 @@ impl TryBinaryOperator for u128 {
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs:U128(lhs),
+                lhs: U128(lhs),
                 operator: NumericBinaryOperator::Add,
                 rhs: rhs.clone(),
             }
@@ -160,7 +159,7 @@ impl TryBinaryOperator for u128 {
                 .checked_sub(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -171,7 +170,7 @@ impl TryBinaryOperator for u128 {
                 .checked_sub(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -182,7 +181,7 @@ impl TryBinaryOperator for u128 {
                 .checked_sub(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -193,7 +192,7 @@ impl TryBinaryOperator for u128 {
                 .checked_sub(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -205,7 +204,7 @@ impl TryBinaryOperator for u128 {
                 .checked_sub(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U8(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -216,7 +215,7 @@ impl TryBinaryOperator for u128 {
                 .checked_sub(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U32(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -227,7 +226,7 @@ impl TryBinaryOperator for u128 {
                 .checked_sub(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U64(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -236,7 +235,7 @@ impl TryBinaryOperator for u128 {
                 .map(U128),
             U128(rhs) => lhs.checked_sub(rhs).map(U128).ok_or_else(|| {
                 ValueError::BinaryOperationOverflow {
-                    lhs:U128(lhs),
+                    lhs: U128(lhs),
                     rhs: U128(rhs),
                     operator: NumericBinaryOperator::Subtract,
                 }
@@ -248,7 +247,7 @@ impl TryBinaryOperator for u128 {
 
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs:U128(lhs),
+                lhs: U128(lhs),
                 operator: NumericBinaryOperator::Subtract,
                 rhs: rhs.clone(),
             }
@@ -264,7 +263,7 @@ impl TryBinaryOperator for u128 {
                 .checked_mul(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -275,7 +274,7 @@ impl TryBinaryOperator for u128 {
                 .checked_mul(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -286,7 +285,7 @@ impl TryBinaryOperator for u128 {
                 .checked_mul(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -297,7 +296,7 @@ impl TryBinaryOperator for u128 {
                 .checked_mul(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -309,7 +308,7 @@ impl TryBinaryOperator for u128 {
                 .checked_mul(rhs as u64)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U8(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -320,7 +319,7 @@ impl TryBinaryOperator for u128 {
                 .checked_mul(rhs as u64)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U32(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -331,7 +330,7 @@ impl TryBinaryOperator for u128 {
                 .checked_mul(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U64(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -340,7 +339,7 @@ impl TryBinaryOperator for u128 {
                 .map(U64),
             U128(rhs) => (lhs as u128).checked_mul(rhs).map(U128).ok_or_else(|| {
                 ValueError::BinaryOperationOverflow {
-                    lhs:U128(lhs),
+                    lhs: U128(lhs),
                     rhs: U128(rhs),
                     operator: NumericBinaryOperator::Multiply,
                 }
@@ -352,7 +351,7 @@ impl TryBinaryOperator for u128 {
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs:U128(lhs),
+                lhs: U128(lhs),
                 operator: NumericBinaryOperator::Multiply,
                 rhs: rhs.clone(),
             }
@@ -368,7 +367,7 @@ impl TryBinaryOperator for u128 {
                 .checked_div(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -379,7 +378,7 @@ impl TryBinaryOperator for u128 {
                 .checked_div(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -390,7 +389,7 @@ impl TryBinaryOperator for u128 {
                 .checked_div(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -401,7 +400,7 @@ impl TryBinaryOperator for u128 {
                 .checked_div(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -413,18 +412,18 @@ impl TryBinaryOperator for u128 {
                 .checked_div(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U8(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
                     .into()
                 })
-                .map(U128), 
+                .map(U128),
             U32(rhs) => lhs
                 .checked_div(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U32(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -435,7 +434,7 @@ impl TryBinaryOperator for u128 {
                 .checked_div(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U64(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -444,7 +443,7 @@ impl TryBinaryOperator for u128 {
                 .map(U128),
             U128(rhs) => lhs.checked_div(rhs).map(U128).ok_or_else(|| {
                 ValueError::BinaryOperationOverflow {
-                    lhs:U128(lhs),
+                    lhs: U128(lhs),
                     rhs: U128(rhs),
                     operator: NumericBinaryOperator::Divide,
                 }
@@ -456,7 +455,7 @@ impl TryBinaryOperator for u128 {
 
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs:U128(lhs),
+                lhs: U128(lhs),
                 operator: NumericBinaryOperator::Divide,
                 rhs: rhs.clone(),
             }
@@ -472,7 +471,7 @@ impl TryBinaryOperator for u128 {
                 .checked_rem(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -483,7 +482,7 @@ impl TryBinaryOperator for u128 {
                 .checked_rem(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -494,7 +493,7 @@ impl TryBinaryOperator for u128 {
                 .checked_rem(rhs as i128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -505,7 +504,7 @@ impl TryBinaryOperator for u128 {
                 .checked_rem(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -517,7 +516,7 @@ impl TryBinaryOperator for u128 {
                 .checked_rem(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U8(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -528,7 +527,7 @@ impl TryBinaryOperator for u128 {
                 .checked_rem(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U32(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -539,7 +538,7 @@ impl TryBinaryOperator for u128 {
                 .checked_rem(rhs as u128)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs:U128(lhs),
+                        lhs: U128(lhs),
                         rhs: U64(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -548,7 +547,7 @@ impl TryBinaryOperator for u128 {
                 .map(U128),
             U128(rhs) => lhs.checked_rem(rhs).map(U128).ok_or_else(|| {
                 ValueError::BinaryOperationOverflow {
-                    lhs:U128(lhs),
+                    lhs: U128(lhs),
                     rhs: U128(rhs),
                     operator: NumericBinaryOperator::Modulo,
                 }
@@ -559,7 +558,7 @@ impl TryBinaryOperator for u128 {
             Decimal(rhs) => match Decimal::from(lhs).checked_rem(rhs) {
                 Some(x) => Ok(Decimal(x)),
                 None => Err(ValueError::BinaryOperationOverflow {
-                    lhs:U128(lhs),
+                    lhs: U128(lhs),
                     operator: NumericBinaryOperator::Modulo,
                     rhs: Decimal(rhs),
                 }

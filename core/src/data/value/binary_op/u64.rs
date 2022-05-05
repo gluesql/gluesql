@@ -13,9 +13,9 @@ use {
 impl PartialEq<Value> for u64 {
     fn eq(&self, other: &Value) -> bool {
         match other {
-            I8(other) => &(*self as i128) == &(*other as i128),
-            I32(other) => &(*self as i128) == &(*other as i128),
-            I64(other) => &(*self as i128) == &(*other as i128),
+            I8(other) => *self as i128 == *other as i128,
+            I32(other) => *self as i128 == *other as i128,
+            I64(other) => *self as i128 == *other as i128,
             I128(other) => &(*self as i128) == other,
             U8(other) => self == &(*other as u64),
             U32(other) => self == &(*other as u64),
@@ -418,7 +418,7 @@ impl TryBinaryOperator for u64 {
                     }
                     .into()
                 })
-                .map(U64), 
+                .map(U64),
             U32(rhs) => (lhs as u64)
                 .checked_div(rhs as u64)
                 .ok_or_else(|| {
