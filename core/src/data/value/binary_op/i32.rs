@@ -270,7 +270,7 @@ impl TryBinaryOperator for i32 {
 
     fn try_multiply(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
-        
+
         match *rhs {
             I8(rhs) => lhs
                 .checked_mul(rhs as i32)
@@ -592,6 +592,5 @@ impl TryBinaryOperator for i32 {
             }
             .into()),
         }
-
     }
 }

@@ -19,7 +19,7 @@ impl PartialEq<Value> for u128 {
             I128(other) => &(*self as i128) == other,
             U8(other) => self == &(*other as u128),
             U32(other) => self == &(*other as u128),
-            U64(other) => self  == &(*other as u128),
+            U64(other) => self == &(*other as u128),
             U128(other) => self == other,
             F64(other) => (*self as f64) == *other,
             Decimal(other) => Decimal::from(*self) == *other,
