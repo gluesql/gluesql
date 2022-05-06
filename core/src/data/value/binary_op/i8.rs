@@ -623,9 +623,8 @@ mod tests {
 
     #[test]
     fn test_extremes() {
-        
-        let type_max: i8= i8::MAX;
-        let type_min: i8= i8::MIN;
+        let type_max: i8 = i8::MAX;
+        let type_min: i8 = i8::MIN;
         let type_maxi32: i32 = type_max.into();
         let type_mini32: i32 = type_min.into();
         let type_maxi64: i64 = type_max.into();
@@ -633,33 +632,44 @@ mod tests {
         let type_maxi128: i128 = type_max.into();
         let type_mini128: i128 = type_min.into();
 
-        assert_eq!(-1i8, I8(-1));  
-        assert_eq!(0i8, I8(0));  
-        assert_eq!(1i8, I8(1));  
-        assert_eq!(type_min, I8(type_min));     
+        assert_eq!(-1i8, I8(-1));
+        assert_eq!(0i8, I8(0));
+        assert_eq!(1i8, I8(1));
+        assert_eq!(type_min, I8(type_min));
         assert_eq!(type_max, I8(type_max));
 
         //try_add
-        assert_eq!(type_max.try_add(&I8(1)),
-        Err(ValueError::BinaryOperationOverflow { 
-            lhs: I8(type_max), rhs: I8(1), operator: (NumericBinaryOperator::Add) }.into())); 
+        assert_eq!(
+            type_max.try_add(&I8(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(type_max),
+                rhs: I8(1),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
 
-        assert_eq!(type_max.try_add(&I32(1)), Ok(I32(type_maxi32+1)));
+        assert_eq!(type_max.try_add(&I32(1)), Ok(I32(type_maxi32 + 1)));
         assert_eq!(type_max.try_add(&I64(1)), Ok(I64(type_maxi64 + 1)));
         assert_eq!(type_max.try_add(&I128(1)), Ok(I128(type_maxi128 + 1)));
 
-        assert_eq!(type_max.try_add(&U8(1)), Ok(I32(type_maxi32 + 1))); 
+        assert_eq!(type_max.try_add(&U8(1)), Ok(I32(type_maxi32 + 1)));
         assert_eq!(type_max.try_add(&U32(1)), Ok(I64(type_maxi64 + 1)));
         assert_eq!(type_max.try_add(&U64(1)), Ok(I128(type_maxi128 + 1)));
         assert_eq!(type_max.try_add(&U128(1)), Ok(I128(type_maxi128 + 1)));
 
-
         //try_subtract
-        assert_eq!(type_min.try_subtract(&I8(1)),
-               Err(ValueError::BinaryOperationOverflow { 
-           lhs: I8(type_min), rhs: I8(1), operator: (NumericBinaryOperator::Subtract) }.into())); 
+        assert_eq!(
+            type_min.try_subtract(&I8(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(type_min),
+                rhs: I8(1),
+                operator: (NumericBinaryOperator::Subtract)
+            }
+            .into())
+        );
 
-        assert_eq!(type_min.try_subtract(&I32(1)), Ok(I32(type_mini32 -1)));
+        assert_eq!(type_min.try_subtract(&I32(1)), Ok(I32(type_mini32 - 1)));
         assert_eq!(type_min.try_subtract(&I64(1)), Ok(I64(type_mini64 - 1)));
         assert_eq!(type_min.try_subtract(&I128(1)), Ok(I128(type_mini128 - 1)));
 
@@ -668,7 +678,7 @@ mod tests {
         assert_eq!(type_min.try_subtract(&U64(1)), Ok(I128(type_mini128 - 1)));
         assert_eq!(type_min.try_subtract(&U128(1)), Ok(I128(type_mini128 - 1)));
 
-        //try multiply 
+        //try multiply
         assert_eq!(type_max.try_multiply(&I8(1)), Ok(I8(type_max)));
         assert_eq!(type_max.try_multiply(&I32(1)), Ok(I32(type_maxi32)));
         assert_eq!(type_max.try_multiply(&I64(1)), Ok(I64(type_maxi64)));
@@ -679,19 +689,24 @@ mod tests {
         assert_eq!(type_max.try_multiply(&U64(1)), Ok(I128(type_maxi128)));
         assert_eq!(type_max.try_multiply(&U128(1)), Ok(I128(type_maxi128)));
 
-        assert_eq!(type_max.try_multiply(&I8(2)),
-           Err(ValueError::BinaryOperationOverflow { 
-            lhs: I8(type_max), rhs: I8(2), operator: (NumericBinaryOperator::Multiply) }.into())); 
+        assert_eq!(
+            type_max.try_multiply(&I8(2)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(type_max),
+                rhs: I8(2),
+                operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
 
-        assert_eq!(type_max.try_multiply(&U8(2)), Ok(I32(2*type_maxi32)));
-        assert_eq!(type_max.try_multiply(&U32(2)), Ok(I64(2*type_maxi64)));
-        assert_eq!(type_max.try_multiply(&U64(2)), Ok(I128(2*type_maxi128)));
-        assert_eq!(type_max.try_multiply(&U128(2)), Ok(I128(2*type_maxi128)));
+        assert_eq!(type_max.try_multiply(&U8(2)), Ok(I32(2 * type_maxi32)));
+        assert_eq!(type_max.try_multiply(&U32(2)), Ok(I64(2 * type_maxi64)));
+        assert_eq!(type_max.try_multiply(&U64(2)), Ok(I128(2 * type_maxi128)));
+        assert_eq!(type_max.try_multiply(&U128(2)), Ok(I128(2 * type_maxi128)));
 
-       //try_divide
-       
-       //try_modulo
-       
+        //try_divide
+
+        //try_modulo
     }
 
     #[test]

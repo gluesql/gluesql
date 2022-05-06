@@ -604,7 +604,6 @@ impl TryBinaryOperator for i64 {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use {
@@ -1062,4 +1061,3 @@ mod tests {
         );
     }
 }
-
