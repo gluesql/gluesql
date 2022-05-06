@@ -153,6 +153,7 @@ impl Value {
             (DataType::Int8, value) => value.try_into().map(Value::I8),
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Float, value) => value.try_into().map(Value::F64),
+            (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Time, value) => value.try_into().map(Value::Time),
