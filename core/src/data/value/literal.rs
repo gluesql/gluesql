@@ -204,6 +204,21 @@ impl Value {
 
                 Ok(Value::F64(v))
             }
+            (DataType::Decimal, Literal::Text(v)) => v
+                .parse::<Decimal>()
+                .map(Value::Decimal)
+                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
+            (DataType::Decimal, Literal::Number(v)) => v
+                .to_string()
+                .parse::<Decimal>()
+                .map(Value::Decimal)
+                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
+            (DataType::Decimal, Literal::Boolean(v)) => {
+                let v = if *v { Decimal::ONE } else { Decimal::ZERO };
+
+                Ok(Value::Decimal(v))
+            }
+
             (DataType::Text, Literal::Number(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Boolean(v)) => {
@@ -219,6 +234,7 @@ impl Value {
             | (DataType::Int, Literal::Null)
             | (DataType::Int8, Literal::Null)
             | (DataType::Float, Literal::Null)
+            | (DataType::Decimal, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
             (DataType::Date, Literal::Text(v)) => parse_date(v)
                 .map(Value::Date)
