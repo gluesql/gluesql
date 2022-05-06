@@ -54,81 +54,83 @@ impl TryBinaryOperator for u128 {
 
         match *rhs {
             I8(rhs) => match i128::try_from(lhs) {
-                Ok(x) => x.checked_add(rhs as i128)
-                     .ok_or_else(|| {
-                         ValueError::BinaryOperationOverflow {
-                             lhs: U128(lhs),
-                             rhs: I8(rhs),
-                             operator: NumericBinaryOperator::Add,
-                         }
-                         .into()
-                     })
-                     .map(I128),
-                 Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
-                     { 
-                     a: DataType::UInt128,
-                     b: DataType::Int128,
-                     value: U128(lhs),
-                 }.into())
-             },
+                Ok(x) => x
+                    .checked_add(rhs as i128)
+                    .ok_or_else(|| {
+                        ValueError::BinaryOperationOverflow {
+                            lhs: U128(lhs),
+                            rhs: I8(rhs),
+                            operator: NumericBinaryOperator::Add,
+                        }
+                        .into()
+                    })
+                    .map(I128),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::UInt128,
+                    b: DataType::Int128,
+                    value: U128(lhs),
+                }
+                .into()),
+            },
             I32(rhs) => match i128::try_from(lhs) {
-                Ok(x) => x.checked_add(rhs as i128)
-                     .ok_or_else(|| {
-                         ValueError::BinaryOperationOverflow {
-                             lhs: U128(lhs),
-                             rhs: I32(rhs),
-                             operator: NumericBinaryOperator::Add,
-                         }
-                         .into()
-                     })
-                     .map(I128),
-                 Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
-                     { 
-                     a: DataType::UInt128,
-                     b: DataType::Int128,
-                     value: U128(lhs),
-                 }.into())
-             },
-            
-               
+                Ok(x) => x
+                    .checked_add(rhs as i128)
+                    .ok_or_else(|| {
+                        ValueError::BinaryOperationOverflow {
+                            lhs: U128(lhs),
+                            rhs: I32(rhs),
+                            operator: NumericBinaryOperator::Add,
+                        }
+                        .into()
+                    })
+                    .map(I128),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::UInt128,
+                    b: DataType::Int128,
+                    value: U128(lhs),
+                }
+                .into()),
+            },
+
             I64(rhs) => match i128::try_from(lhs) {
-                Ok(x) => x.checked_add(rhs as i128)
-                     .ok_or_else(|| {
-                         ValueError::BinaryOperationOverflow {
-                             lhs: U128(lhs),
-                             rhs: I64(rhs),
-                             operator: NumericBinaryOperator::Add,
-                         }
-                         .into()
-                     })
-                     .map(I128),
-                 Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
-                     { 
-                     a: DataType::UInt128,
-                     b: DataType::Int128,
-                     value: U128(lhs),
-                 }.into())
-             },
-            
-            I128(rhs) => 
-            match i128::try_from(lhs) {
-                Ok(x) => x.checked_add(rhs as i128)
-                     .ok_or_else(|| {
-                         ValueError::BinaryOperationOverflow {
-                             lhs: U128(lhs),
-                             rhs: I128(rhs),
-                             operator: NumericBinaryOperator::Add,
-                         }
-                         .into()
-                     })
-                     .map(I128),
-                 Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
-                     { 
-                     a: DataType::UInt128,
-                     b: DataType::Int128,
-                     value: U128(lhs),
-                 }.into())
-             },
+                Ok(x) => x
+                    .checked_add(rhs as i128)
+                    .ok_or_else(|| {
+                        ValueError::BinaryOperationOverflow {
+                            lhs: U128(lhs),
+                            rhs: I64(rhs),
+                            operator: NumericBinaryOperator::Add,
+                        }
+                        .into()
+                    })
+                    .map(I128),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::UInt128,
+                    b: DataType::Int128,
+                    value: U128(lhs),
+                }
+                .into()),
+            },
+
+            I128(rhs) => match i128::try_from(lhs) {
+                Ok(x) => x
+                    .checked_add(rhs as i128)
+                    .ok_or_else(|| {
+                        ValueError::BinaryOperationOverflow {
+                            lhs: U128(lhs),
+                            rhs: I128(rhs),
+                            operator: NumericBinaryOperator::Add,
+                        }
+                        .into()
+                    })
+                    .map(I128),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::UInt128,
+                    b: DataType::Int128,
+                    value: U128(lhs),
+                }
+                .into()),
+            },
             U8(rhs) => lhs
                 .checked_add(rhs as u128)
                 .ok_or_else(|| {
@@ -291,7 +293,8 @@ impl TryBinaryOperator for u128 {
 
         match *rhs {
             I8(rhs) => match i128::try_from(lhs) {
-               Ok(x) => x.checked_mul(rhs as i128)
+                Ok(x) => x
+                    .checked_mul(rhs as i128)
                     .ok_or_else(|| {
                         ValueError::BinaryOperationOverflow {
                             lhs: U128(lhs),
@@ -301,67 +304,71 @@ impl TryBinaryOperator for u128 {
                         .into()
                     })
                     .map(I128),
-                Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
-                    { 
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
                     a: DataType::UInt128,
                     b: DataType::Int8,
                     value: U128(lhs),
-                }.into())
+                }
+                .into()),
             },
             I32(rhs) => match i128::try_from(lhs) {
-                Ok(x) => x.checked_mul(rhs as i128)
-                     .ok_or_else(|| {
-                         ValueError::BinaryOperationOverflow {
-                             lhs: U128(lhs),
-                             rhs: I32(rhs),
-                             operator: NumericBinaryOperator::Multiply,
-                         }
-                         .into()
-                     }).map(I128),
-                 Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
-                     { 
-                     a: DataType::UInt128,
-                     b: DataType::Int32,
-                     value: U128(lhs),
-                 }.into())
-             },
-                  
+                Ok(x) => x
+                    .checked_mul(rhs as i128)
+                    .ok_or_else(|| {
+                        ValueError::BinaryOperationOverflow {
+                            lhs: U128(lhs),
+                            rhs: I32(rhs),
+                            operator: NumericBinaryOperator::Multiply,
+                        }
+                        .into()
+                    })
+                    .map(I128),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::UInt128,
+                    b: DataType::Int32,
+                    value: U128(lhs),
+                }
+                .into()),
+            },
+
             I64(rhs) => match i128::try_from(lhs) {
-                Ok(x) => x.checked_mul(rhs as i128)
-                     .ok_or_else(|| {
-                         ValueError::BinaryOperationOverflow {
-                             lhs: U128(lhs),
-                             rhs: I64(rhs),
-                             operator: NumericBinaryOperator::Multiply,
-                         }
-                         .into()
-                     })
-                     .map(I128),
-                 Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
-                     { 
-                     a: DataType::UInt128,
-                     b: DataType::Int,
-                     value: U128(lhs),
-                 }.into())
-             },
+                Ok(x) => x
+                    .checked_mul(rhs as i128)
+                    .ok_or_else(|| {
+                        ValueError::BinaryOperationOverflow {
+                            lhs: U128(lhs),
+                            rhs: I64(rhs),
+                            operator: NumericBinaryOperator::Multiply,
+                        }
+                        .into()
+                    })
+                    .map(I128),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::UInt128,
+                    b: DataType::Int,
+                    value: U128(lhs),
+                }
+                .into()),
+            },
             I128(rhs) => match i128::try_from(lhs) {
-                Ok(x) => x.checked_mul(rhs as i128)
-                     .ok_or_else(|| {
-                         ValueError::BinaryOperationOverflow {
-                             lhs: U128(lhs),
-                             rhs: I128(rhs),
-                             operator: NumericBinaryOperator::Multiply,
-                         }
-                         .into()
-                     })
-                     .map(I128),
-                 Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
-                     { 
-                     a: DataType::UInt128,
-                     b: DataType::Int128,
-                     value: U128(lhs),
-                 }.into())
-             },
+                Ok(x) => x
+                    .checked_mul(rhs as i128)
+                    .ok_or_else(|| {
+                        ValueError::BinaryOperationOverflow {
+                            lhs: U128(lhs),
+                            rhs: I128(rhs),
+                            operator: NumericBinaryOperator::Multiply,
+                        }
+                        .into()
+                    })
+                    .map(I128),
+                Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                    a: DataType::UInt128,
+                    b: DataType::Int128,
+                    value: U128(lhs),
+                }
+                .into()),
+            },
             U8(rhs) => lhs
                 .checked_mul(rhs as u128)
                 .ok_or_else(|| {
@@ -638,7 +645,7 @@ mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
         crate::data::{NumericBinaryOperator, ValueError},
-        crate::prelude::{DataType, },
+        crate::prelude::DataType,
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
     };
@@ -724,20 +731,21 @@ mod tests {
             .into())
         );
 
-        assert_eq!(type_max.try_add(&U128(1)), 
-        Err(ValueError::BinaryOperationOverflow {
-            lhs: U128(type_max),
-            rhs: U128(1),
-            operator: (NumericBinaryOperator::Add)
-        }
-        .into())
-    );
+        assert_eq!(
+            type_max.try_add(&U128(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U128(type_max),
+                rhs: U128(1),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
         //try_subtract
         assert_eq!(type_min.try_subtract(&I8(1)), Ok(I128(-1)));
         assert_eq!(type_min.try_subtract(&I32(1)), Ok(I128(-1)));
         assert_eq!(type_min.try_subtract(&I64(1)), Ok(I128(-1)));
         assert_eq!(type_min.try_subtract(&I128(1)), Ok(I128(-1)));
- 
+
         assert_eq!(
             type_min.try_subtract(&U8(1)),
             Err(ValueError::BinaryOperationOverflow {
@@ -779,7 +787,7 @@ mod tests {
         );
 
         //try multiply
-        
+
         assert_eq!(type_max.try_multiply(&U8(1)), Ok(U128(type_max)));
         assert_eq!(type_max.try_multiply(&U32(1)), Ok(U128(type_max)));
         assert_eq!(type_max.try_multiply(&U64(1)), Ok(U128(type_max)));
@@ -788,7 +796,7 @@ mod tests {
         // now lets throw an error converting from u128 to i128*
         assert_eq!(
             type_max.try_multiply(&I8(2)),
-            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB  {
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
                 a: DataType::UInt128,
                 b: DataType::Int8,
                 value: U128(type_max),
@@ -798,7 +806,7 @@ mod tests {
 
         assert_eq!(
             type_max.try_multiply(&I32(2)),
-            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB  {
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
                 a: DataType::UInt128,
                 b: DataType::Int32,
                 value: U128(type_max),
@@ -808,7 +816,7 @@ mod tests {
 
         assert_eq!(
             type_max.try_multiply(&I64(2)),
-            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB  {
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
                 a: DataType::UInt128,
                 b: DataType::Int,
                 value: U128(type_max),
@@ -818,7 +826,7 @@ mod tests {
 
         assert_eq!(
             type_max.try_multiply(&I128(2)),
-            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB  {
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
                 a: DataType::UInt128,
                 b: DataType::Int128,
                 value: U128(type_max),
