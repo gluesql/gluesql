@@ -304,7 +304,7 @@ impl TryBinaryOperator for u128 {
                 Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
                     { 
                     a: DataType::UInt128,
-                    b: DataType::Int128,
+                    b: DataType::Int8,
                     value: U128(lhs),
                 }.into())
             },
@@ -321,7 +321,7 @@ impl TryBinaryOperator for u128 {
                  Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
                      { 
                      a: DataType::UInt128,
-                     b: DataType::Int128,
+                     b: DataType::Int32,
                      value: U128(lhs),
                  }.into())
              },
@@ -340,7 +340,7 @@ impl TryBinaryOperator for u128 {
                  Err(_) =>Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB 
                      { 
                      a: DataType::UInt128,
-                     b: DataType::Int128,
+                     b: DataType::Int,
                      value: U128(lhs),
                  }.into())
              },
@@ -779,56 +779,54 @@ mod tests {
         );
 
         //try multiply
-        //assert_eq!(type_max.try_multiply(&I8(1)), Ok(I128(type_max)));
-        //assert_eq!(type_max.try_multiply(&I32(1)), Ok(I128(type_max)));
-        //assert_eq!(type_max.try_multiply(&I64(1)), Ok(I128(type_max)));
-        //assert_eq!(type_max.try_multiply(&I128(1)), Ok(I128(type_max)));
-
+        
         assert_eq!(type_max.try_multiply(&U8(1)), Ok(U128(type_max)));
         assert_eq!(type_max.try_multiply(&U32(1)), Ok(U128(type_max)));
         assert_eq!(type_max.try_multiply(&U64(1)), Ok(U128(type_max)));
         assert_eq!(type_max.try_multiply(&U128(1)), Ok(U128(type_max)));
 
+        // now lets throw an error converting from u128 to i128*
         assert_eq!(
             type_max.try_multiply(&I8(2)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: U128(type_max),
-                rhs: I8(2),
-                operator: (NumericBinaryOperator::Multiply)
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB  {
+                a: DataType::UInt128,
+                b: DataType::Int8,
+                value: U128(type_max),
             }
             .into())
         );
 
         assert_eq!(
             type_max.try_multiply(&I32(2)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: U128(type_max),
-                rhs: I32(2),
-                operator: (NumericBinaryOperator::Multiply)
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB  {
+                a: DataType::UInt128,
+                b: DataType::Int32,
+                value: U128(type_max),
             }
             .into())
         );
 
         assert_eq!(
             type_max.try_multiply(&I64(2)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: U128(type_max),
-                rhs: I64(2),
-                operator: (NumericBinaryOperator::Multiply)
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB  {
+                a: DataType::UInt128,
+                b: DataType::Int,
+                value: U128(type_max),
             }
             .into())
         );
 
         assert_eq!(
             type_max.try_multiply(&I128(2)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: U128(type_max),
-                rhs: I128(2),
-                operator: (NumericBinaryOperator::Multiply)
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB  {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(type_max),
             }
             .into())
         );
 
+        // now lets try Binary Overflow errors with U128
         assert_eq!(
             type_max.try_multiply(&U8(2)),
             Err(ValueError::BinaryOperationOverflow {
