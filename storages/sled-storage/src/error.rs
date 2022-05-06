@@ -23,6 +23,8 @@ pub enum StorageError {
     Str(#[from] str::Utf8Error),
     #[error(transparent)]
     SystemTime(#[from] time::SystemTimeError),
+    #[error(transparent)]
+    TryFromSlice(#[from] std::array::TryFromSliceError),
 }
 
 impl From<StorageError> for Error {
@@ -34,6 +36,7 @@ impl From<StorageError> for Error {
             Bincode(e) => Error::Storage(e),
             Str(e) => Error::Storage(Box::new(e)),
             SystemTime(e) => Error::Storage(Box::new(e)),
+            TryFromSlice(e) => Error::Storage(Box::new(e)),
             AlterTable(e) => e.into(),
             Index(e) => e.into(),
         }
