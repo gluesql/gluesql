@@ -669,10 +669,12 @@ mod tests {
             .into())
         );
 
+        // these are fine since they are not i8 (ie, i32, i64, i128)
         assert_eq!(type_min.try_subtract(&I32(1)), Ok(I32(type_mini32 - 1)));
         assert_eq!(type_min.try_subtract(&I64(1)), Ok(I64(type_mini64 - 1)));
         assert_eq!(type_min.try_subtract(&I128(1)), Ok(I128(type_mini128 - 1)));
 
+        //the smallest is a i32 since we have unsigned numbers
         assert_eq!(type_min.try_subtract(&U8(1)), Ok(I32(type_mini32 - 1)));
         assert_eq!(type_min.try_subtract(&U32(1)), Ok(I64(type_mini64 - 1)));
         assert_eq!(type_min.try_subtract(&U64(1)), Ok(I128(type_mini128 - 1)));
@@ -850,7 +852,6 @@ mod tests {
         assert_eq!(base.try_multiply(&U128(2)), Ok(I128(6)));
 
         assert_eq!(base.try_multiply(&I8(-1)), Ok(I8(-3)));
-        assert_eq!(base.try_multiply(&I32(-1)), Ok(I32(-3)));
         assert_eq!(base.try_multiply(&I32(-1)), Ok(I32(-3)));
         assert_eq!(base.try_multiply(&I64(-1)), Ok(I64(-3)));
         assert_eq!(base.try_multiply(&I128(-1)), Ok(I128(-3)));

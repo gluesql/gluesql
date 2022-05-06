@@ -618,7 +618,7 @@ mod tests {
         let type_max: i64 = i64::MAX;
         let type_min: i64 = i64::MIN;
         let type_maxi64: i64 = type_max.into();
-        let type_mini64: i64 = type_min.into();
+        // let type_mini64: i64 = type_min.into();
         let type_maxi128: i128 = type_max.into();
         let type_mini128: i128 = type_min.into();
 

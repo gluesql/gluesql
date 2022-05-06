@@ -87,6 +87,10 @@ impl TryBinaryOperator for Decimal {
             I32(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
             I64(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
             I128(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
+            U8(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
+            U32(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
+            U64(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
+            U128(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs - x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
@@ -135,6 +139,10 @@ impl TryBinaryOperator for Decimal {
             I32(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
             I64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
             I128(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
+            U8(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
+            U32(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
+            U64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
+            U128(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs / x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
@@ -362,10 +370,10 @@ mod tests {
         assert_eq!(base.try_subtract(&I32(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_subtract(&I64(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_subtract(&I128(1)), Ok(Decimal(Decimal::ZERO)));
-        //assert_eq!(base.try_subtract(&U8(1)), Ok(Decimal(Decimal::ZERO)));
-        //assert_eq!(base.try_subtract(&U32(1)), Ok(Decimal(Decimal::ZERO)));
-        //assert_eq!(base.try_subtract(&U64(1)), Ok(Decimal(Decimal::ZERO)));
-        //assert_eq!(base.try_subtract(&U128(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_subtract(&U8(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_subtract(&U32(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_subtract(&U64(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_subtract(&U128(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_subtract(&F64(1.0)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(
             base.try_subtract(&Decimal(Decimal::ONE)),

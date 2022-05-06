@@ -640,6 +640,7 @@ mod tests {
             .into())
         );
 
+        // these are in i64 and i128 so their range is larger than i32
         assert_eq!(type_max.try_add(&I64(1)), Ok(I64(type_maxi64 + 1)));
         assert_eq!(type_max.try_add(&I128(1)), Ok(I128(type_maxi128 + 1)));
 
