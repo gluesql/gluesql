@@ -16,9 +16,8 @@ impl Store<IVec> for SledStorage {
             State::Transaction {
                 txid, created_at, ..
             } => (txid, created_at, false),
-            State::Idle => {
-                lock::register(&self.tree).map(|(txid, created_at)| (txid, created_at, true))?
-            }
+            State::Idle => lock::register(&self.tree, self.id_offset)
+                .map(|(txid, created_at)| (txid, created_at, true))?,
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
