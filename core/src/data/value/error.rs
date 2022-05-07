@@ -92,6 +92,9 @@ pub enum ValueError {
     #[error("literal cast failed from text to float: {0}")]
     LiteralCastFromTextToFloatFailed(String),
 
+    #[error("literal cast failed from text to decimal: {0}")]
+    LiteralCastFromTextToDecimalFailed(String),
+
     #[error("literal cast failed to boolean: {0}")]
     LiteralCastToBooleanFailed(String),
 
