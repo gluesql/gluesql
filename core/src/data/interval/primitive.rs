@@ -218,6 +218,50 @@ impl Div<i128> for Interval {
     }
 }
 
+impl Div<u8> for Interval {
+    type Output = Self;
+
+    fn div(self, rhs: u8) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month((v as u8 / rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond((v as u8 / rhs) as i64),
+        }
+    }
+}
+
+impl Div<u32> for Interval {
+    type Output = Self;
+
+    fn div(self, rhs: u32) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month((v as u32 / rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(v / rhs as i64),
+        }
+    }
+}
+
+impl Div<u64> for Interval {
+    type Output = Self;
+
+    fn div(self, rhs: u64) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(((v as u64) / rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond((v as u64 / rhs) as i64),
+        }
+    }
+}
+
+impl Div<u128> for Interval {
+    type Output = Self;
+
+    fn div(self, rhs: u128) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(((v as u128) / rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(((v as u128) / rhs) as i64),
+        }
+    }
+}
+
 impl Div<f64> for Interval {
     type Output = Self;
 
@@ -273,6 +317,50 @@ impl Div<Interval> for i128 {
     }
 }
 
+impl Div<Interval> for u8 {
+    type Output = Interval;
+
+    fn div(self, rhs: Interval) -> Interval {
+        match rhs {
+            Interval::Month(v) => Interval::Month(self as i32 / v),
+            Interval::Microsecond(v) => Interval::Microsecond(self as i64 / v),
+        }
+    }
+}
+
+impl Div<Interval> for u32 {
+    type Output = Interval;
+
+    fn div(self, rhs: Interval) -> Interval {
+        match rhs {
+            Interval::Month(v) => Interval::Month((self / (v as u32)) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(self as i64 / v),
+        }
+    }
+}
+
+impl Div<Interval> for u64 {
+    type Output = Interval;
+
+    fn div(self, rhs: Interval) -> Interval {
+        match rhs {
+            Interval::Month(v) => Interval::Month((self / (v as u64)) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond((self / (v as u64)) as i64),
+        }
+    }
+}
+
+impl Div<Interval> for u128 {
+    type Output = Interval;
+
+    fn div(self, rhs: Interval) -> Interval {
+        match rhs {
+            Interval::Month(v) => Interval::Month(((self / (v as u128)) as i64) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond((self / (v as u128)) as i64),
+        }
+    }
+}
+
 impl Div<Interval> for f64 {
     type Output = Interval;
 
@@ -301,6 +389,21 @@ mod tests {
         assert_eq!(Month(2) * 3_i64, Month(6));
         assert_eq!(2_i64 * Month(3), Month(6));
 
+        assert_eq!(Month(2) * 3_i128, Month(6));
+        assert_eq!(2_i128 * Month(3), Month(6));
+
+        assert_eq!(Month(2) * 3_u8, Month(6));
+        assert_eq!(2_u8 * Month(3), Month(6));
+
+        assert_eq!(Month(2) * 3_u32, Month(6));
+        assert_eq!(2_u32 * Month(3), Month(6));
+
+        assert_eq!(Month(2) * 3_u64, Month(6));
+        assert_eq!(2_u64 * Month(3), Month(6));
+
+        assert_eq!(Month(2) * 3_u128, Month(6));
+        assert_eq!(2_u128 * Month(3), Month(6));
+
         assert_eq!(Month(2) * 3.0, Month(6));
         assert_eq!(2.0 * Month(3), Month(6));
 
@@ -312,6 +415,21 @@ mod tests {
 
         assert_eq!(Month(6) / 3_i64, Month(2));
         assert_eq!(6_i64 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_i128, Month(2));
+        assert_eq!(6_i128 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_u8, Month(2));
+        assert_eq!(6_u8 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_u32, Month(2));
+        assert_eq!(6_u32 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_u64, Month(2));
+        assert_eq!(6_u64 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_u128, Month(2));
+        assert_eq!(6_u128 / Month(2), Month(3));
 
         assert_eq!(Month(8) / 4.0, Month(2));
         assert_eq!(8.0 / Month(4), Month(2));

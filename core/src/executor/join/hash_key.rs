@@ -89,6 +89,13 @@ mod tests {
     fn value_to_hash_key() {
         assert!(convert("True").is_some());
         assert!(convert("CAST(11 AS INT(8))").is_some());
+        assert!(convert("CAST(11 AS Int(32))").is_some());
+        assert!(convert("CAST(11 AS Int)").is_some());
+        assert!(convert("CAST(11 AS Int(128))").is_some());
+        assert!(convert("CAST(11 AS Int(8) UNSIGNED)").is_some());
+        assert!(convert("CAST(11 AS Int(32) UNSIGNED)").is_some());
+        assert!(convert("CAST(11 AS Int UNSIGNED)").is_some());
+        assert!(convert("CAST(11 AS Int(128) UNSIGNED)").is_some());
         assert!(convert("2048").is_some());
         assert!(convert(r#""Hello World""#).is_some());
         assert!(convert(r#"DATE "2022-03-03""#).is_some());
