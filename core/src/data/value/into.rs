@@ -218,6 +218,45 @@ impl TryInto<f64> for Value {
     }
 }
 
+impl TryInto<Decimal> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Decimal> {
+        Ok(match self {
+            Value::Bool(value) => {
+                if *value {
+                    Decimal::ONE
+                } else {
+                    Decimal::ZERO
+                }
+            }
+            Value::I8(value) => Decimal::from_i8(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::I64(value) => Decimal::from_i64(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::F64(value) => Decimal::from_f64(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::Str(value) => {
+                Decimal::from_str(value).map_err(|_| ValueError::ImpossibleCast)?
+            }
+            Value::Decimal(value) => *value,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
+impl TryInto<Decimal> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Decimal> {
+        (&self).try_into()
+    }
+}
+
 impl TryInto<NaiveDate> for &Value {
     type Error = Error;
 

@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>GlueSQL Javascript example</title>
+    <script type="module">
+      import { gluesql } from './gluesql.js';
+
+      async function run() {
+        let db = await gluesql();
+        db = await gluesql();
+        const result = await db.query(`
+          CREATE TABLE Foo (id INTEGER, name TEXT);
+          INSERT INTO Foo VALUES (1, "hello"), (2, "world");
+          SELECT *, id as wow_id FROM Foo;
+        `);
+
+        for (const item of result) {
+          const node = document.createElement('code');
+
+          node.innerHTML = `
+            type: ${item.type}
+            <br>
+            ${item.affected ? `affected: ${item.affected}` : ''}
+            ${item.rows ? `rows: ${JSON.stringify(item.rows)}` : ''}
+          `;
+
+          // node.innerHTML = JSON.stringify(item, null, '\r\n');
+              
+          console.log(item);
+          document.querySelector('#box').append(node);
+        }
+      }
+
+      run();
+    </script>
+  </head>
+<style>
+body {
+  padding: 0;
+  margin: 0;
+}
+
+#box {
+  display: flex;
+  flex-direction: column;
+  padding: 90px 20px 80px 20px;
+  background-color: #222;
+
+  color: white;
+}
+
+code {
+  margin: 5px;
+  padding: 10px;
+  font-family: monospace;
+  border: 1px solid white;
+}
+
+</style>
+  <body>
+    <div id="box">
+    </div>
+  </body>
+</html>
