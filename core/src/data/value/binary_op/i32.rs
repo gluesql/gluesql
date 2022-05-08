@@ -602,6 +602,7 @@ mod tests {
         crate::data::{NumericBinaryOperator, ValueError},
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
+        bigdecimal::ToPrimitive,
     };
 
     #[test]
@@ -645,6 +646,26 @@ mod tests {
         assert_eq!(type_max.try_add(&I128(1)), Ok(I128(type_maxi128 + 1)));
 
         assert_eq!(
+            type_max.try_add(&I64(i64::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(type_max),
+                rhs: I64(i64::MAX),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
+
+        assert_eq!(
+            type_max.try_add(&I128(i128::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(type_max),
+                rhs: I128(i128::MAX),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
+
+        assert_eq!(
             type_max.try_add(&U8(1)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I32(type_max),
@@ -658,6 +679,10 @@ mod tests {
         assert_eq!(type_max.try_add(&U64(1)), Ok(I128(type_maxi128 + 1)));
         assert_eq!(type_max.try_add(&U128(1)), Ok(I128(type_maxi128 + 1)));
 
+        assert_eq!(type_max.try_add(&U32(u32::MAX)), Ok(I64(type_maxi64 + u32::MAX.to_i64().unwrap())));
+        assert_eq!(type_max.try_add(&U64(u64::MAX)), Ok(I128(type_maxi128 + u64::MAX.to_i128().unwrap())));
+        assert_eq!(type_max.try_add(&U128(u128::MAX/4)), Ok(I128(type_maxi128 + (u128::MAX/4).to_i128().unwrap())));
+        
         //try_subtract
         assert_eq!(
             type_min.try_subtract(&I8(1)),
@@ -681,6 +706,24 @@ mod tests {
 
         assert_eq!(type_min.try_subtract(&I64(1)), Ok(I64(type_mini64 - 1)));
         assert_eq!(type_min.try_subtract(&I128(1)), Ok(I128(type_mini128 - 1)));
+
+        assert_eq!(type_min.try_subtract(&I64(i64::MAX)), 
+        Err(ValueError::BinaryOperationOverflow {
+            lhs: I32(type_min),
+            rhs: I64(i64::MAX),
+            operator: (NumericBinaryOperator::Subtract)
+        }
+        .into())
+    );
+        
+    assert_eq!(type_min.try_subtract(&I128(i128::MAX)), 
+        Err(ValueError::BinaryOperationOverflow {
+            lhs: I32(type_min),
+            rhs: I128(i128::MAX),
+            operator: (NumericBinaryOperator::Subtract)
+        }
+        .into())
+    );
 
         assert_eq!(
             type_min.try_subtract(&U8(1)),
@@ -743,6 +786,54 @@ mod tests {
 
         assert_eq!(type_max.try_multiply(&I64(2)), Ok(I64(2 * type_maxi64)));
         assert_eq!(type_max.try_multiply(&I128(2)), Ok(I128(2 * type_maxi128)));
+
+        assert_eq!(
+            type_max.try_multiply(&I64(i64::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(type_max),
+                rhs: I64(i64::MAX),
+                operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
+
+        assert_eq!(
+            type_max.try_multiply(&I128(i128::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(type_max),
+                rhs: I128(i128::MAX),
+                operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
+
+        assert_eq!(
+            type_max.try_multiply(&U8(u8::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(type_max),
+                rhs: U8(u8::MAX),
+                operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
+
+        // max i32 * max u32 does not overflow!!
+        assert_eq!(
+            type_max.try_multiply(&U32(u32::MAX)), Ok(I64(type_maxi64 * u32::MAX.to_i64().unwrap())));
+       
+        assert_eq!(
+            type_max.try_multiply(&U64(u64::MAX)), Ok(I128(type_maxi128 * u64::MAX.to_i128().unwrap())));
+       
+        
+        assert_eq!(
+            type_max.try_multiply(&U128(u128::MAX/4)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(type_max),
+                rhs: U128(u128::MAX/4),
+                operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
     }
 
     #[test]
