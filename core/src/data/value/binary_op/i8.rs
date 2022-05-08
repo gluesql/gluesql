@@ -660,12 +660,6 @@ mod tests {
         assert_eq!(type_max.try_add(&U64(1)), Ok(I128(type_maxi128 + 1)));
         assert_eq!(type_max.try_add(&U128(1)), Ok(I128(type_maxi128 + 1)));
 
-        // max i8 value + u8 largest value doesn't cause overflow..
-        assert_eq!(
-            type_max.try_add(&U8(u8::MAX)),
-            Ok(I32(type_maxi32 + u8::MAX.to_i32().unwrap()))
-        );
-
         assert_eq!(
             type_max.try_add(&I8(i8::MAX)),
             Err(ValueError::BinaryOperationOverflow {
@@ -704,6 +698,11 @@ mod tests {
                 operator: (NumericBinaryOperator::Add)
             }
             .into())
+        );
+
+        assert_eq!(
+            type_max.try_add(&U32(u32::MAX)),
+            Ok(I64(type_maxi64 + u32::MAX.to_i64().unwrap()))
         );
 
         assert_eq!(
@@ -808,6 +807,16 @@ mod tests {
                 lhs: I8(type_min),
                 rhs: U128(i128::MAX.to_u128().unwrap()),
                 operator: (NumericBinaryOperator::Subtract)
+            }
+            .into())
+        );
+
+        assert_eq!(
+            type_min.try_subtract(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX),
             }
             .into())
         );
