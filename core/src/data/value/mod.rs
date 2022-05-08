@@ -476,6 +476,7 @@ mod tests {
     use {
         super::{Interval, Value::*},
         crate::data::value::uuid::parse_uuid,
+        rust_decimal::Decimal,
     };
 
     #[allow(clippy::eq_op)]
@@ -545,6 +546,26 @@ mod tests {
             Decimal(one).partial_cmp(&Decimal(two)),
             Some(Ordering::Less)
         );
+    }
+
+    #[test]
+    fn is_zero() {
+       for i in -1..2 {
+        assert_eq!(I8(i.into()).is_zero(), i==0);
+        assert_eq!(I32(i.into()).is_zero(), i==0);
+        assert_eq!(I64(i.into()).is_zero(), i==0);
+        assert_eq!(I128(i.into()).is_zero(), i==0);
+        assert_eq!(F64(i.into()).is_zero(), i==0);
+        assert_eq!(Decimal(i.into()).is_zero(), i==0);
+        
+       }
+
+       for i in 0..2 {
+        assert_eq!(U8(i.into()).is_zero(), i==0);  
+        assert_eq!(U32(i.into()).is_zero(), i==0);  
+        assert_eq!(U64(i.into()).is_zero(), i==0);  
+        assert_eq!(U128(i.into()).is_zero(), i==0);  
+       }
     }
 
     #[test]
@@ -807,7 +828,13 @@ mod tests {
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(I8(1)                 => Int8          , I8(1));
+        cast!(I32(1)                 => Int8          , I32(1));
         cast!(I64(1)                => Int          , I64(1));
+        cast!(I128(1)                 => Int8          , I128(1));
+        cast!(U8(1)                 => UInt8          , U8(1));
+        cast!(U32(1)                 => UInt32          , U32(1));
+        cast!(U64(1)                => UInt          , U64(1));
+        cast!(U128(1)                 => UInt128          , U128(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
         cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
 
@@ -816,8 +843,20 @@ mod tests {
         cast!(Str("FALSE".to_owned())   => Boolean, Bool(false));
         cast!(I8(1)                     => Boolean, Bool(true));
         cast!(I8(0)                     => Boolean, Bool(false));
+        cast!(I32(1)                     => Boolean, Bool(true));
+        cast!(I32(0)                     => Boolean, Bool(false));
         cast!(I64(1)                    => Boolean, Bool(true));
         cast!(I64(0)                    => Boolean, Bool(false));
+        cast!(I128(1)                    => Boolean, Bool(true));
+        cast!(I128(0)                    => Boolean, Bool(false));
+        cast!(U8(1)                     => Boolean, Bool(true));
+        cast!(U8(0)                     => Boolean, Bool(false));
+        cast!(U32(1)                     => Boolean, Bool(true));
+        cast!(U32(0)                     => Boolean, Bool(false));
+        cast!(U64(1)                    => Boolean, Bool(true));
+        cast!(U64(0)                    => Boolean, Bool(false));
+        cast!(U128(1)                    => Boolean, Bool(true));
+        cast!(U128(0)                    => Boolean, Bool(false));
         cast!(F64(1.0)                  => Boolean, Bool(true));
         cast!(F64(0.0)                  => Boolean, Bool(false));
         cast!(Null                      => Boolean, Null);
@@ -907,10 +946,24 @@ mod tests {
         assert!(Bool(true).validate_type(&D::Int).is_err());
         assert!(I8(1).validate_type(&D::Int8).is_ok());
         assert!(I8(1).validate_type(&D::Text).is_err());
+        assert!(I32(1).validate_type(&D::Int32).is_ok());
+        assert!(I32(1).validate_type(&D::Text).is_err());
         assert!(I64(1).validate_type(&D::Int).is_ok());
         assert!(I64(1).validate_type(&D::Text).is_err());
+        assert!(I128(1).validate_type(&D::Int128).is_ok());
+        assert!(I128(1).validate_type(&D::Text).is_err());
+        assert!(U8(1).validate_type(&D::UInt8).is_ok());
+        assert!(U8(1).validate_type(&D::Text).is_err());
+        assert!(U32(1).validate_type(&D::UInt32).is_ok());
+        assert!(U32(1).validate_type(&D::Text).is_err());
+        assert!(U64(1).validate_type(&D::UInt).is_ok());
+        assert!(U64(1).validate_type(&D::Text).is_err());
+        assert!(U128(1).validate_type(&D::UInt128).is_ok());
+        assert!(U128(1).validate_type(&D::Text).is_err());
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
         assert!(F64(1.0).validate_type(&D::Int).is_err());
+        assert!(Decimal(rust_decimal::Decimal::ONE).validate_type(&D::Decimal).is_ok());
+        assert!(Decimal(rust_decimal::Decimal::ONE).validate_type(&D::Int).is_err());
         assert!(Str("a".to_owned()).validate_type(&D::Text).is_ok());
         assert!(Str("a".to_owned()).validate_type(&D::Int).is_err());
         assert!(date.validate_type(&D::Date).is_ok());
