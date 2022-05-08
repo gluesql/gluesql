@@ -131,16 +131,19 @@ mod tests {
             Ok(JsonValue::Number(100.into()))
         );
         // this doesn't work
-       // assert_eq!(Value::I128(i128::MAX).try_into(), Ok(JsonValue::Number(i128::MAX.into())));
+        // assert_eq!(Value::I128(i128::MAX).try_into(), Ok(JsonValue::Number(i128::MAX.into())));
         assert_eq!(Value::U8(16).try_into(), Ok(JsonValue::Number(16u8.into())));
-        assert_eq!(Value::U32(16).try_into(), Ok(JsonValue::Number(16u32.into())));
+        assert_eq!(
+            Value::U32(16).try_into(),
+            Ok(JsonValue::Number(16u32.into()))
+        );
         assert_eq!(
             Value::U64(100).try_into(),
             Ok(JsonValue::Number(100u64.into()))
         );
         //this doesn't work
         //assert_eq!(Value::U128(u128::MAX).try_into(), Ok(JsonValue::Number(u128::MAX.into())));
-        
+
         assert_eq!(
             Value::F64(1.23).try_into(),
             Ok(JsonValue::Number(JsonNumber::from_f64(1.23).unwrap()))

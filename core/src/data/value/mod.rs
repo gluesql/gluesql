@@ -476,7 +476,6 @@ mod tests {
     use {
         super::{Interval, Value::*},
         crate::data::value::uuid::parse_uuid,
-        rust_decimal::Decimal,
     };
 
     #[allow(clippy::eq_op)]
@@ -550,22 +549,21 @@ mod tests {
 
     #[test]
     fn is_zero() {
-       for i in -1..2 {
-        assert_eq!(I8(i.into()).is_zero(), i==0);
-        assert_eq!(I32(i.into()).is_zero(), i==0);
-        assert_eq!(I64(i.into()).is_zero(), i==0);
-        assert_eq!(I128(i.into()).is_zero(), i==0);
-        assert_eq!(F64(i.into()).is_zero(), i==0);
-        assert_eq!(Decimal(i.into()).is_zero(), i==0);
-        
-       }
+        for i in -1..2 {
+            assert_eq!(I8(i.into()).is_zero(), i == 0);
+            assert_eq!(I32(i.into()).is_zero(), i == 0);
+            assert_eq!(I64(i.into()).is_zero(), i == 0);
+            assert_eq!(I128(i.into()).is_zero(), i == 0);
+            assert_eq!(F64(i.into()).is_zero(), i == 0);
+            assert_eq!(Decimal(i.into()).is_zero(), i == 0);
+        }
 
-       for i in 0..2 {
-        assert_eq!(U8(i.into()).is_zero(), i==0);  
-        assert_eq!(U32(i.into()).is_zero(), i==0);  
-        assert_eq!(U64(i.into()).is_zero(), i==0);  
-        assert_eq!(U128(i.into()).is_zero(), i==0);  
-       }
+        for i in 0..2 {
+            assert_eq!(U8(i.into()).is_zero(), i == 0);
+            assert_eq!(U32(i.into()).is_zero(), i == 0);
+            assert_eq!(U64(i.into()).is_zero(), i == 0);
+            assert_eq!(U128(i.into()).is_zero(), i == 0);
+        }
     }
 
     #[test]
@@ -962,8 +960,12 @@ mod tests {
         assert!(U128(1).validate_type(&D::Text).is_err());
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
         assert!(F64(1.0).validate_type(&D::Int).is_err());
-        assert!(Decimal(rust_decimal::Decimal::ONE).validate_type(&D::Decimal).is_ok());
-        assert!(Decimal(rust_decimal::Decimal::ONE).validate_type(&D::Int).is_err());
+        assert!(Decimal(rust_decimal::Decimal::ONE)
+            .validate_type(&D::Decimal)
+            .is_ok());
+        assert!(Decimal(rust_decimal::Decimal::ONE)
+            .validate_type(&D::Int)
+            .is_err());
         assert!(Str("a".to_owned()).validate_type(&D::Text).is_ok());
         assert!(Str("a".to_owned()).validate_type(&D::Int).is_err());
         assert!(date.validate_type(&D::Date).is_ok());
