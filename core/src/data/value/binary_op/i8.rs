@@ -700,9 +700,15 @@ mod tests {
             .into())
         );
 
+        // i8 max + u32 max does not overflow!
         assert_eq!(
             type_max.try_add(&U32(u32::MAX)),
             Ok(I64(type_maxi64 + u32::MAX.to_i64().unwrap()))
+        );
+
+        assert_eq!(
+            type_max.try_add(&U64(u64::MAX)),
+            Ok(I128(type_maxi128 + u64::MAX.to_i128().unwrap()))
         );
 
         assert_eq!(
@@ -896,6 +902,16 @@ mod tests {
             .into())
         );
 
+        assert_eq!(
+            type_max.try_multiply(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
+            }
+            .into())
+        );
+
         assert_eq!(type_max.try_multiply(&U8(2)), Ok(I32(2 * type_maxi32)));
         assert_eq!(type_max.try_multiply(&U32(2)), Ok(I64(2 * type_maxi64)));
         assert_eq!(type_max.try_multiply(&U64(2)), Ok(I128(2 * type_maxi128)));
@@ -903,7 +919,25 @@ mod tests {
 
         //try_divide, can this over/under flow???
 
+        assert_eq!(
+            type_max.try_divide(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
+            }
+            .into())
+        );
         //try_modulo, cn this over/under flow??
+        assert_eq!(
+            type_max.try_modulo(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
+            }
+            .into())
+        );
     }
 
     #[test]

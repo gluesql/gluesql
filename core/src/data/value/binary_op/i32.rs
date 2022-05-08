@@ -600,6 +600,7 @@ mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
         crate::data::{NumericBinaryOperator, ValueError},
+        crate::prelude::DataType,
         bigdecimal::ToPrimitive,
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
@@ -845,6 +846,28 @@ mod tests {
                 lhs: I32(type_max),
                 rhs: U128(u128::MAX / 4),
                 operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
+
+        //try_divide, can this over/under flow???
+
+        assert_eq!(
+            type_max.try_divide(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
+            }
+            .into())
+        );
+        //try_modulo, cn this over/under flow??
+        assert_eq!(
+            type_max.try_modulo(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
             }
             .into())
         );

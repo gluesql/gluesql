@@ -471,7 +471,7 @@ impl TryBinaryOperator for i128 {
                     .into()
                 }),
                 Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
-                    a: DataType::Int128,
+                    a: DataType::UInt128,
                     b: DataType::Int128,
                     value: U128(rhs),
                 }
@@ -604,6 +604,7 @@ mod tests {
     use {
         super::{TryBinaryOperator, Value::*},
         crate::data::{NumericBinaryOperator, ValueError},
+        crate::prelude::DataType,
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
     };
@@ -866,6 +867,28 @@ mod tests {
                 lhs: I128(type_max),
                 rhs: U128(2),
                 operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
+
+        //try_divide, can this over/under flow???
+
+        assert_eq!(
+            type_max.try_divide(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
+            }
+            .into())
+        );
+        //try_modulo, cn this over/under flow??
+        assert_eq!(
+            type_max.try_modulo(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
             }
             .into())
         );

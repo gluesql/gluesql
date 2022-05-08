@@ -433,5 +433,53 @@ mod tests {
 
         assert_eq!(Month(8) / 4.0, Month(2));
         assert_eq!(8.0 / Month(4), Month(2));
+
+        assert_eq!(Microsecond(2) * 3_i8, Microsecond(6));
+        assert_eq!(2_i8 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_i32, Microsecond(6));
+        assert_eq!(2_i32 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_i64, Microsecond(6));
+        assert_eq!(2_i64 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_i128, Microsecond(6));
+        assert_eq!(2_i128 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_u8, Microsecond(6));
+        assert_eq!(2_u8 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_u32, Microsecond(6));
+        assert_eq!(2_u32 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_u64, Microsecond(6));
+        assert_eq!(2_u64 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_u128, Microsecond(6));
+        assert_eq!(2_u128 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(6) / 3_i8, Microsecond(2));
+        assert_eq!(6_i8 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_i32, Microsecond(2));
+        assert_eq!(6_i32 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_i64, Microsecond(2));
+        assert_eq!(6_i64 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_i128, Microsecond(2));
+        assert_eq!(6_i128 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_u8, Microsecond(2));
+        assert_eq!(6_u8 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_u32, Microsecond(2));
+        assert_eq!(6_u32 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_u64, Microsecond(2));
+        assert_eq!(6_u64 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_u128, Microsecond(2));
+        assert_eq!(6_u128 / Microsecond(2), Microsecond(3));
     }
 }

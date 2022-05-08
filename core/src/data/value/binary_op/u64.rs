@@ -733,10 +733,6 @@ mod tests {
         );
 
         assert_eq!(type_max.try_multiply(&U128(2)), Ok(U128(2 * type_maxu128)));
-
-        //try_divide
-
-        //try_modulo
     }
 
     #[test]

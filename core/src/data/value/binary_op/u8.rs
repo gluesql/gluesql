@@ -703,12 +703,6 @@ mod tests {
         assert_eq!(type_max.try_multiply(&U32(2)), Ok(U32(2 * type_maxu32)));
         assert_eq!(type_max.try_multiply(&U64(2)), Ok(U64(2 * type_maxu64)));
         assert_eq!(type_max.try_multiply(&U128(2)), Ok(U128(2 * type_maxu128)));
-
-        //try_divide
-        // put some test cases here..
-
-        //try_modulo
-        // put some test cases here.
     }
 
     #[test]

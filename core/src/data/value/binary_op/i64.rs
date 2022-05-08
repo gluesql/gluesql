@@ -476,7 +476,7 @@ impl TryBinaryOperator for i64 {
                     .into()
                 }),
                 Err(_) => Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
-                    a: DataType::Int,
+                    a: DataType::UInt128,
                     b: DataType::Int128,
                     value: U128(rhs),
                 }
@@ -849,6 +849,28 @@ mod tests {
 
         assert_eq!(
             type_max.try_multiply(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
+            }
+            .into())
+        );
+
+        //try_divide, can this over/under flow???
+
+        assert_eq!(
+            type_max.try_divide(&U128(u128::MAX)),
+            Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
+                a: DataType::UInt128,
+                b: DataType::Int128,
+                value: U128(u128::MAX)
+            }
+            .into())
+        );
+        //try_modulo, cn this over/under flow??
+        assert_eq!(
+            type_max.try_modulo(&U128(u128::MAX)),
             Err(ValueError::ConversionErrorFromDataTypeAToDataTypeB {
                 a: DataType::UInt128,
                 b: DataType::Int128,

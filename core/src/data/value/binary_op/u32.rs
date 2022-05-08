@@ -721,10 +721,6 @@ mod tests {
         //use don't overflow because they use U64 and U128
         assert_eq!(type_max.try_multiply(&U64(2)), Ok(U64(2 * type_maxu64)));
         assert_eq!(type_max.try_multiply(&U128(2)), Ok(U128(2 * type_maxu128)));
-
-        //try_divide
-
-        //try_modulo
     }
 
     #[test]
