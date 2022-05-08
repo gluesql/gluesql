@@ -660,6 +660,22 @@ mod tests {
         assert_eq!(type_max.try_add(&U64(1)), Ok(I128(type_maxi128 + 1)));
         assert_eq!(type_max.try_add(&U128(1)), Ok(I128(type_maxi128 + 1)));
 
+        // max i8 value + u8 largest value doesn't cause overflow..
+        assert_eq!(
+            type_max.try_add(&U8(u8::MAX)),
+            Ok(I32(type_maxi32 + u8::MAX.to_i32().unwrap()))
+        );
+
+        assert_eq!(
+            type_max.try_add(&I8(i8::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(type_max),
+                rhs: I8(i8::MAX),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
+
         assert_eq!(
             type_max.try_add(&I32(i32::MAX)),
             Err(ValueError::BinaryOperationOverflow {
@@ -727,6 +743,16 @@ mod tests {
         assert_eq!(type_min.try_subtract(&I128(1)), Ok(I128(type_mini128 - 1)));
 
         assert_eq!(
+            type_min.try_subtract(&I8(i8::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(type_min),
+                rhs: I8(i8::MAX),
+                operator: (NumericBinaryOperator::Subtract)
+            }
+            .into())
+        );
+
+        assert_eq!(
             type_min.try_subtract(&I32(i32::MAX)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I8(type_min),
@@ -761,6 +787,20 @@ mod tests {
         assert_eq!(type_min.try_subtract(&U32(1)), Ok(I64(type_mini64 - 1)));
         assert_eq!(type_min.try_subtract(&U64(1)), Ok(I128(type_mini128 - 1)));
         assert_eq!(type_min.try_subtract(&U128(1)), Ok(I128(type_mini128 - 1)));
+
+        // smallest i8 value - largest U8/U32/U64 value doesn't cause an overflow (underflow).
+        assert_eq!(
+            i8::MIN.try_subtract(&U8(u8::MAX)),
+            Ok(I32(type_mini32 - u8::MAX.to_i32().unwrap()))
+        );
+        assert_eq!(
+            i8::MIN.try_subtract(&U32(u32::MAX)),
+            Ok(I64(type_mini64 - u32::MAX.to_i64().unwrap()))
+        );
+        assert_eq!(
+            i8::MIN.try_subtract(&U64(u64::MAX)),
+            Ok(I128(type_mini128 - u64::MAX.to_i128().unwrap()))
+        );
 
         assert_eq!(
             type_min.try_subtract(&U128(i128::MAX.to_u128().unwrap())),
@@ -823,6 +863,20 @@ mod tests {
         assert_eq!(type_max.try_multiply(&U64(1)), Ok(I128(type_maxi128)));
         assert_eq!(type_max.try_multiply(&U128(1)), Ok(I128(type_maxi128)));
 
+        // i8 max * u8/u32/u64 max values and no overflow!!
+        assert_eq!(
+            type_max.try_multiply(&U8(u8::MAX)),
+            Ok(I32(type_maxi32 * u8::MAX.to_i32().unwrap()))
+        );
+        assert_eq!(
+            type_max.try_multiply(&U32(u32::MAX)),
+            Ok(I64(type_maxi64 * u32::MAX.to_i64().unwrap()))
+        );
+        assert_eq!(
+            type_max.try_multiply(&U64(u64::MAX)),
+            Ok(I128(type_maxi128 * u64::MAX.to_i128().unwrap()))
+        );
+
         assert_eq!(
             type_max.try_multiply(&U128(i128::MAX.to_u128().unwrap())),
             Err(ValueError::BinaryOperationOverflow {
@@ -838,9 +892,9 @@ mod tests {
         assert_eq!(type_max.try_multiply(&U64(2)), Ok(I128(2 * type_maxi128)));
         assert_eq!(type_max.try_multiply(&U128(2)), Ok(I128(2 * type_maxi128)));
 
-        //try_divide
+        //try_divide, can this over/under flow???
 
-        //try_modulo
+        //try_modulo, cn this over/under flow??
     }
 
     #[test]

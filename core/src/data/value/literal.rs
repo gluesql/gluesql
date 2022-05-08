@@ -275,9 +275,9 @@ impl Value {
             (DataType::UInt, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
-                Ok(Value::I64(v))
+                Ok(Value::U64(v))
             }
-            (DataType::UInt8, Literal::Text(v)) => v.parse::<i8>().map(Value::I8).map_err(|_| {
+            (DataType::UInt8, Literal::Text(v)) => v.parse::<u8>().map(Value::U8).map_err(|_| {
                 ValueError::LiteralCastFromTextToUnsignedIntegerFailed(v.to_string()).into()
             }),
             (DataType::UInt8, Literal::Number(v)) => match v.to_u8() {
@@ -510,6 +510,7 @@ mod tests {
             rust_decimal::Decimal,
             std::{borrow::Cow, str::FromStr},
         };
+        //use crate::result::Error::Value;
 
         macro_rules! num {
             ($num: expr) => {
@@ -536,6 +537,25 @@ mod tests {
         test!(DataType::Boolean, Literal::Boolean(true), Value::Bool(true));
         test!(DataType::Int, num!("123456789"), Value::I64(123456789));
         test!(DataType::Int8, num!("64"), Value::I8(64));
+        test!(DataType::Int32, num!("64"), Value::I32(64));
+        test!(DataType::Int128, num!("64"), Value::I128(64));
+
+        test!(DataType::UInt, num!("123456789"), Value::U64(123456789));
+        test!(DataType::UInt8, num!("64"), Value::U8(64));
+        test!(DataType::UInt32, num!("64"), Value::U32(64));
+        test!(DataType::UInt128, num!("64"), Value::U128(64));
+
+        /* I cannot get this to work...  maybe some help?
+        assert_eq!(Value::try_from_literal(&DataType::Int, &num!(&(i64::MAX+1).to_string())),
+        Err(ValueError::FailedToParseNumber).into());
+        assert_eq!(Value::try_from_literal(&DataType::Int8, &num!("128")),
+        Err(ValueError::FailedToParseNumber).into());
+        assert_eq!(Value::try_from_literal(&DataType::Int32, &num!(&(i32::MAX+1).to_string())),
+        Err(ValueError::FailedToParseNumber).into());
+        assert_eq!(Value::try_from_literal(&DataType::Int128, &num!(&(i128::MAX+1).to_string())),
+        Err(ValueError::FailedToParseNumber).into());
+        */
+
         test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
         test!(
             DataType::Text,
