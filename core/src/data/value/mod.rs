@@ -1,6 +1,7 @@
 use {
     super::{Interval, StringExt},
     crate::{ast::DataType, ast::DateTimeField, result::Result},
+    bigdecimal::ToPrimitive,
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
@@ -219,7 +220,13 @@ impl Value {
 
         match (self, other) {
             (I8(a), b) => a.try_add(b),
+            (I32(a), b) => a.try_add(b),
             (I64(a), b) => a.try_add(b),
+            (I128(a), b) => a.try_add(b),
+            (U8(a), b) => a.try_add(b),
+            (U32(a), b) => a.try_add(b),
+            (U64(a), b) => a.try_add(b),
+            (U128(a), b) => a.try_add(b),
             (F64(a), b) => a.try_add(b),
             (Decimal(a), b) => a.try_add(b),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
@@ -228,7 +235,13 @@ impl Value {
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
             (Null, I8(_))
+            | (Null, I32(_))
             | (Null, I64(_))
+            | (Null, I128(_))
+            | (Null, U8(_))
+            | (Null, U32(_))
+            | (Null, U64(_))
+            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Date(_))
@@ -254,7 +267,13 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_subtract(other),
+            (I32(a), _) => a.try_subtract(other),
             (I64(a), _) => a.try_subtract(other),
+            (I128(a), _) => a.try_subtract(other),
+            (U8(a), _) => a.try_subtract(other),
+            (U32(a), _) => a.try_subtract(other),
+            (U64(a), _) => a.try_subtract(other),
+            (U128(a), _) => a.try_subtract(other),
             (F64(a), _) => a.try_subtract(other),
             (Decimal(a), _) => a.try_subtract(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
@@ -277,7 +296,13 @@ impl Value {
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
             (Null, I8(_))
+            | (Null, I32(_))
             | (Null, I64(_))
+            | (Null, I128(_))
+            | (Null, U8(_))
+            | (Null, U32(_))
+            | (Null, U64(_))
+            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Date(_))
@@ -303,14 +328,26 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_multiply(other),
+            (I32(a), _) => a.try_multiply(other),
             (I64(a), _) => a.try_multiply(other),
+            (I128(a), _) => a.try_multiply(other),
+            (U8(a), _) => a.try_multiply(other),
+            (U32(a), _) => a.try_multiply(other),
+            (U64(a), _) => a.try_multiply(other),
+            (U128(a), _) => a.try_multiply(other),
             (F64(a), _) => a.try_multiply(other),
             (Decimal(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
             (Null, I8(_))
+            | (Null, I32(_))
             | (Null, I64(_))
+            | (Null, I128(_))
+            | (Null, U8(_))
+            | (Null, U32(_))
+            | (Null, U64(_))
+            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Interval(_))
@@ -334,14 +371,26 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_divide(other),
+            (I32(a), _) => a.try_divide(other),
             (I64(a), _) => a.try_divide(other),
+            (I128(a), _) => a.try_divide(other),
+            (U8(a), _) => a.try_divide(other),
+            (U32(a), _) => a.try_divide(other),
+            (U64(a), _) => a.try_divide(other),
+            (U128(a), _) => a.try_divide(other),
             (F64(a), _) => a.try_divide(other),
             (Decimal(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
             (Null, I8(_))
+            | (Null, I32(_))
             | (Null, I64(_))
+            | (Null, I128(_))
+            | (Null, U8(_))
+            | (Null, U32(_))
+            | (Null, U64(_))
+            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Interval(_), Null)
@@ -364,12 +413,26 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_modulo(other),
+            (I32(a), _) => a.try_modulo(other),
             (I64(a), _) => a.try_modulo(other),
+            (I128(a), _) => a.try_modulo(other),
+            (U8(a), _) => a.try_modulo(other),
+            (U32(a), _) => a.try_modulo(other),
+            (U64(a), _) => a.try_modulo(other),
+            (U128(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), _) => a.try_modulo(other),
-            (Null, I8(_)) | (Null, I64(_)) | (Null, F64(_)) | (Null, Decimal(_)) | (Null, Null) => {
-                Ok(Null)
-            }
+            (Null, I8(_))
+            | (Null, I32(_))
+            | (Null, I64(_))
+            | (Null, I128(_))
+            | (Null, U8(_))
+            | (Null, U32(_))
+            | (Null, U64(_))
+            | (Null, U128(_))
+            | (Null, F64(_))
+            | (Null, Decimal(_))
+            | (Null, Null) => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: self.clone(),
                 operator: NumericBinaryOperator::Modulo,
@@ -387,7 +450,8 @@ impl Value {
         use Value::*;
 
         match self {
-            I8(_) | I64(_) | F64(_) | Interval(_) | Decimal(_) => Ok(self.clone()),
+            I8(_) | I32(_) | I64(_) | I128(_) | U8(_) | U32(_) | U64(_) | U128(_) | F64(_)
+            | Interval(_) | Decimal(_) => Ok(self.clone()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryPlusOnNonNumeric.into()),
         }
@@ -398,7 +462,9 @@ impl Value {
 
         match self {
             I8(a) => Ok(I8(-a)),
+            I32(a) => Ok(I32(-a)),
             I64(a) => Ok(I64(-a)),
+            I128(a) => Ok(I128(-a)),
             F64(a) => Ok(F64(-a)),
             Decimal(a) => Ok(Decimal(-a)),
             Interval(a) => Ok(Interval(a.unary_minus())),
@@ -410,19 +476,25 @@ impl Value {
     pub fn unary_factorial(&self) -> Result<Value> {
         use Value::*;
 
-        let factorial_function = |a: i64| -> Result<i64> {
+        let factorial_function = |a: i64| -> Result<u128> {
             if a.is_negative() {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
-            (1..(a + 1))
+            (1u128..(a.to_u128().unwrap() + 1u128))
                 .into_iter()
-                .try_fold(1i64, |mul, x| mul.checked_mul(x))
+                .try_fold(1u128, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         };
 
         match self {
-            I8(a) => factorial_function(*a as i64).map(I64),
-            I64(a) => factorial_function(*a).map(I64),
+            I8(a) => factorial_function(*a as i64).map(U128),
+            I32(a) => factorial_function(*a as i64).map(U128),
+            I64(a) => factorial_function(*a).map(U128),
+            I128(a) => factorial_function(*a as i64).map(U128),
+            U8(a) => factorial_function(*a as i64).map(U128),
+            U32(a) => factorial_function(*a as i64).map(U128),
+            U64(a) => factorial_function(*a as i64).map(U128),
+            U128(a) => factorial_function(*a as i64).map(U128),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
@@ -488,7 +560,13 @@ mod tests {
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
         assert_eq!(I8(1), I8(1));
+        assert_eq!(I32(1), I32(1));
         assert_eq!(I64(1), I64(1));
+        assert_eq!(I128(1), I128(1));
+        assert_eq!(U8(1), U8(1));
+        assert_eq!(U32(1), U32(1));
+        assert_eq!(U64(1), U64(1));
+        assert_eq!(U128(1), U128(1));
         assert_eq!(I64(1), F64(1.0));
         assert_eq!(F64(1.0), I64(1));
         assert_eq!(F64(6.11), F64(6.11));
@@ -587,7 +665,25 @@ mod tests {
         let decimal = |n: i32| Decimal(n.into());
 
         test!(add I8(1),    I8(2)    => I8(3));
-        test!(add I8(1),    I64(2)   => I64(3));
+        test!(add I8(1),    I32(2)   => I32(3));
+        test!(add I8(1),    I64(2)    => I64(3));
+        test!(add I8(1),    I128(2)   => I128(3));
+
+        test!(add I32(1),    I8(2)    => I32(3));
+        test!(add I32(1),    I32(2)   => I32(3));
+        test!(add I32(1),    I64(2)    => I64(3));
+        test!(add I32(1),    I128(2)   => I128(3));
+
+        test!(add I64(1),    I8(2)    => I64(3));
+        test!(add I64(1),    I32(2)   => I64(3));
+        test!(add I64(1),    I64(2)    => I64(3));
+        test!(add I64(1),    I128(2)   => I128(3));
+
+        test!(add I128(1),    I8(2)    => I128(3));
+        test!(add I128(1),    I32(2)   => I128(3));
+        test!(add I128(1),    I64(2)    => I128(3));
+        test!(add I128(1),    I128(2)   => I128(3));
+
         test!(add I8(1),    F64(2.0) => F64(3.0));
 
         test!(add I64(1),   I64(2)   => I64(3));

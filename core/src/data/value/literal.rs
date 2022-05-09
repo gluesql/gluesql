@@ -726,6 +726,35 @@ mod tests {
         test!(DataType::Int8, num!("125"), Value::I8(125));
         test!(DataType::Int8, Literal::Boolean(true), Value::I8(1));
         test!(DataType::Int8, Literal::Boolean(false), Value::I8(0));
+        test!(DataType::Int32, text!("1234567890"), Value::I32(1234567890));
+        test!(DataType::Int32, num!("1234567890"), Value::I32(1234567890));
+        test!(DataType::Int32, Literal::Boolean(true), Value::I32(1));
+        test!(DataType::Int32, Literal::Boolean(false), Value::I32(0));
+        test!(DataType::Int128, text!("127"), Value::I128(127));
+        test!(DataType::Int128, num!("125"), Value::I128(125));
+        test!(DataType::Int128, Literal::Boolean(true), Value::I128(1));
+        test!(DataType::Int128, Literal::Boolean(false), Value::I128(0));
+        test!(DataType::UInt, text!("1234567890"), Value::U64(1234567890));
+        test!(DataType::UInt, num!("1234567890"), Value::U64(1234567890));
+        test!(DataType::UInt, Literal::Boolean(true), Value::U64(1));
+        test!(DataType::UInt, Literal::Boolean(false), Value::U64(0));
+        test!(DataType::UInt8, text!("127"), Value::U8(127));
+        test!(DataType::UInt8, num!("125"), Value::U8(125));
+        test!(DataType::UInt8, Literal::Boolean(true), Value::U8(1));
+        test!(DataType::UInt8, Literal::Boolean(false), Value::U8(0));
+        test!(
+            DataType::UInt32,
+            text!("1234567890"),
+            Value::U32(1234567890)
+        );
+        test!(DataType::UInt32, num!("1234567890"), Value::U32(1234567890));
+        test!(DataType::UInt32, Literal::Boolean(true), Value::U32(1));
+        test!(DataType::UInt32, Literal::Boolean(false), Value::U32(0));
+        test!(DataType::UInt128, text!("127"), Value::U128(127));
+        test!(DataType::UInt128, num!("125"), Value::U128(125));
+        test!(DataType::UInt128, Literal::Boolean(true), Value::U128(1));
+        test!(DataType::UInt128, Literal::Boolean(false), Value::U128(0));
+
         test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
         test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
         test!(DataType::Float, Literal::Boolean(true), Value::F64(1.0));
