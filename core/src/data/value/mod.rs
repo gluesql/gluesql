@@ -632,35 +632,34 @@ mod tests {
         assert_eq!(I8(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(I8(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(I8(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-       
+
         assert_eq!(I32(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(I32(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(I32(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-     
+
         assert_eq!(I64(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(I64(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(I64(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-  
+
         assert_eq!(I128(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(I128(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(I128(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-  
+
         assert_eq!(U8(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(U8(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(U8(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-       
+
         assert_eq!(U32(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(U32(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(U32(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-     
+
         assert_eq!(U64(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(U64(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(U64(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-  
+
         assert_eq!(U128(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(U128(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(U128(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-  
     }
 
     #[test]
@@ -710,7 +709,7 @@ mod tests {
         test!(add I8(1),    U32(2)   => I64(3));
         test!(add I8(1),    U64(2)    => I128(3));
         test!(add I8(1),    U128(2)   => I128(3));
-        
+
         test!(add I32(1),    I8(2)    => I32(3));
         test!(add I32(1),    I32(2)   => I32(3));
         test!(add I32(1),    I64(2)    => I64(3));
@@ -746,7 +745,7 @@ mod tests {
         test!(add U8(1),    U32(2)   => U32(3));
         test!(add U8(1),    U64(2)    => U64(3));
         test!(add U8(1),    U128(2)   => U128(3));
-        
+
         test!(add U32(1),    I8(2)    => I64(3));
         test!(add U32(1),    I32(2)   => U32(3));
         test!(add U32(1),    I64(2)    => I64(3));
@@ -774,7 +773,6 @@ mod tests {
         test!(add U128(1),    U64(2)    => U128(3));
         test!(add U128(1),    U128(2)   => U128(3));
 
-        
         test!(add I8(1),    F64(2.0) => F64(3.0));
 
         test!(add I64(1),   I64(2)   => I64(3));
@@ -957,7 +955,7 @@ mod tests {
         test!(multiply I8(3),    U32(2)    => I64(6));
         test!(multiply I8(3),    U64(2)   => I128(6));
         test!(multiply I8(3),    U128(2)    => I128(6));
-        
+
         test!(multiply U8(3),    I8(2)    => I32(6));
         test!(multiply U8(3),    I32(2)    => I64(6));
         test!(multiply U8(3),    I64(2)   => I64(6));
@@ -1021,7 +1019,6 @@ mod tests {
         test!(multiply U128(3),    U64(2)   => U128(6));
         test!(multiply U128(3),    U128(2)    => U128(6));
 
-
         test!(multiply I8(3),    F64(2.0) => F64(6.0));
 
         test!(multiply I64(3),   I64(2)   => I64(6));
@@ -1049,7 +1046,7 @@ mod tests {
         test!(divide I8(6),    U32(2)   => I64(3));
         test!(divide I8(6),    U64(2)   => I128(3));
         test!(divide I8(6),    U128(2)  => I128(3));
-        
+
         test!(divide I32(6),    I8(2)    => I32(3));
         test!(divide I32(6),    I32(2)   => I32(3));
         test!(divide I32(6),    I64(2)   => I64(3));
@@ -1058,7 +1055,7 @@ mod tests {
         test!(divide I32(6),    U32(2)   => I64(3));
         test!(divide I32(6),    U64(2)   => I128(3));
         test!(divide I32(6),    U128(2)  => I128(3));
-        
+
         test!(divide I64(6),    I8(2)    => I64(3));
         test!(divide I64(6),    I32(2)   => I64(3));
         test!(divide I64(6),    I64(2)   => I64(3));
@@ -1067,7 +1064,7 @@ mod tests {
         test!(divide I64(6),    U32(2)   => I64(3));
         test!(divide I64(6),    U64(2)   => I128(3));
         test!(divide I64(6),    U128(2)  => I128(3));
-        
+
         test!(divide I128(6),    I8(2)    => I128(3));
         test!(divide I128(6),    I32(2)   => I128(3));
         test!(divide I128(6),    I64(2)   => I128(3));
@@ -1076,7 +1073,7 @@ mod tests {
         test!(divide I128(6),    U32(2)   => I128(3));
         test!(divide I128(6),    U64(2)   => I128(3));
         test!(divide I128(6),    U128(2)  => I128(3));
-        
+
         test!(divide U8(6),    I8(2)    => I32(3));
         test!(divide U8(6),    I32(2)   => I32(3));
         test!(divide U8(6),    I64(2)   => I64(3));
@@ -1085,7 +1082,7 @@ mod tests {
         test!(divide U8(6),    U32(2)   => U32(3));
         test!(divide U8(6),    U64(2)   => U64(3));
         test!(divide U8(6),    U128(2)  => U128(3));
-        
+
         test!(divide U32(6),    I8(2)    => I64(3));
         test!(divide U32(6),    I32(2)   => I64(3));
         test!(divide U32(6),    I64(2)   => I64(3));
@@ -1094,7 +1091,7 @@ mod tests {
         test!(divide U32(6),    U32(2)   => U64(3));
         test!(divide U32(6),    U64(2)   => U64(3));
         test!(divide U32(6),    U128(2)  => U128(3));
-        
+
         test!(divide U64(6),    I8(2)    => I128(3));
         test!(divide U64(6),    I32(2)   => I128(3));
         test!(divide U64(6),    I64(2)   => I128(3));
@@ -1103,7 +1100,7 @@ mod tests {
         test!(divide U64(6),    U32(2)   => I128(3));
         test!(divide U64(6),    U64(2)   => I128(3));
         test!(divide U64(6),    U128(2)  => I128(3));
-        
+
         test!(divide I128(6),    I8(2)    => I128(3));
         test!(divide I128(6),    I32(2)   => I128(3));
         test!(divide I128(6),    I64(2)   => I128(3));
@@ -1122,7 +1119,6 @@ mod tests {
         test!(divide U128(6),    U64(2)   => U128(3));
         test!(divide U128(6),    U128(2)  => U128(3));
 
-
         test!(divide I8(6),    F64(2.0) => F64(3.0));
 
         test!(divide I64(6),   I64(2)   => I64(3));
@@ -1137,8 +1133,6 @@ mod tests {
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
-
-
         test!(modulo I8(6),    I8(4)    => I8(2));
         test!(modulo I8(6),    I32(4)   => I32(2));
         test!(modulo I8(6),    I64(4)   => I64(2));
@@ -1147,7 +1141,7 @@ mod tests {
         test!(modulo I8(6),    U32(4)   => I64(2));
         test!(modulo I8(6),    U64(4)   => I128(2));
         test!(modulo I8(6),    U128(4)  => I128(2));
-        
+
         test!(modulo I32(6),    I8(4)    => I32(2));
         test!(modulo I32(6),    I32(4)   => I32(2));
         test!(modulo I32(6),    I64(4)   => I64(2));
@@ -1156,7 +1150,7 @@ mod tests {
         test!(modulo I32(6),    U32(4)   => I64(2));
         test!(modulo I32(6),    U64(4)   => I128(2));
         test!(modulo I32(6),    U128(4)  => I128(2));
-        
+
         test!(modulo I64(6),    I8(4)    => I64(2));
         test!(modulo I64(6),    I32(4)   => I64(2));
         test!(modulo I64(6),    I64(4)   => I64(2));
@@ -1165,7 +1159,7 @@ mod tests {
         test!(modulo I64(6),    U32(4)   => I64(2));
         test!(modulo I64(6),    U64(4)   => I128(2));
         test!(modulo I64(6),    U128(4)  => I128(2));
-        
+
         test!(modulo I128(6),    I8(4)    => I128(2));
         test!(modulo I128(6),    I32(4)   => I128(2));
         test!(modulo I128(6),    I64(4)   => I128(2));
@@ -1174,7 +1168,7 @@ mod tests {
         test!(modulo I128(6),    U32(4)   => I128(2));
         test!(modulo I128(6),    U64(4)   => I128(2));
         test!(modulo I128(6),    U128(4)  => I128(2));
-        
+
         test!(modulo U8(6),    I8(4)    => I32(2));
         test!(modulo U8(6),    I32(4)   => I32(2));
         test!(modulo U8(6),    I64(4)   => I64(2));
@@ -1183,7 +1177,7 @@ mod tests {
         test!(modulo U8(6),    U32(4)   => U32(2));
         test!(modulo U8(6),    U64(4)   => U64(2));
         test!(modulo U8(6),    U128(4)  => U128(2));
-        
+
         test!(modulo U32(6),    I8(4)    => I64(2));
         test!(modulo U32(6),    I32(4)   => I64(2));
         test!(modulo U32(6),    I64(4)   => I64(2));
@@ -1192,7 +1186,7 @@ mod tests {
         test!(modulo U32(6),    U32(4)   => U64(2));
         test!(modulo U32(6),    U64(4)   => U64(2));
         test!(modulo U32(6),    U128(4)  => U128(2));
-        
+
         test!(modulo U64(6),    I8(4)    => I128(2));
         test!(modulo U64(6),    I32(4)   => I128(2));
         test!(modulo U64(6),    I64(4)   => I128(2));
@@ -1201,7 +1195,7 @@ mod tests {
         test!(modulo U64(6),    U32(4)   => I128(2));
         test!(modulo U64(6),    U64(4)   => I128(2));
         test!(modulo U64(6),    U128(4)  => I128(2));
-        
+
         test!(modulo I128(6),    I8(4)    => I128(2));
         test!(modulo I128(6),    I32(4)   => I128(2));
         test!(modulo I128(6),    I64(4)   => I128(2));
@@ -1219,7 +1213,6 @@ mod tests {
         test!(modulo U128(6),    U32(4)   => U128(2));
         test!(modulo U128(6),    U64(4)   => U128(2));
         test!(modulo U128(6),    U128(4)  => U128(2));
-
 
         test!(modulo I64(6),   I64(2)   => I64(0));
         test!(modulo I64(6),   F64(2.0) => F64(0.0));
@@ -1493,5 +1486,18 @@ mod tests {
             }
             .into()),
         );
+    }
+
+    #[test]
+    fn test_factorial() {
+        assert_eq!(I8(5).unary_factorial(), Ok(U128(120)));
+        assert_eq!(I32(5).unary_factorial(), Ok(U128(120)));
+        assert_eq!(I64(5).unary_factorial(), Ok(U128(120)));
+        assert_eq!(I128(5).unary_factorial(), Ok(U128(120)));
+
+        assert_eq!(U8(5).unary_factorial(), Ok(U128(120)));
+        assert_eq!(U32(5).unary_factorial(), Ok(U128(120)));
+        assert_eq!(U64(5).unary_factorial(), Ok(U128(120)));
+        assert_eq!(U128(5).unary_factorial(), Ok(U128(120)));
     }
 }
