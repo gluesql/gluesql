@@ -135,18 +135,91 @@ impl TryBinaryOperator for Decimal {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            I32(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            I64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            I128(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            U8(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            U32(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            U64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            U128(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
+            I8(rhs) => match lhs.checked_div(Decimal::from(rhs)) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: I8(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
+            I32(rhs) => match lhs.checked_div(Decimal::from(rhs)) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: I32(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
+            I64(rhs) => match lhs.checked_div(Decimal::from(rhs)) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: I64(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
+            I128(rhs) => match lhs.checked_div(Decimal::from(rhs)) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: I128(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
+            U8(rhs) => match lhs.checked_div(Decimal::from(rhs)) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: U8(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
+            U32(rhs) => match lhs.checked_div(Decimal::from(rhs)) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: U32(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
+            U64(rhs) => match lhs.checked_div(Decimal::from(rhs)) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: U64(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
+            U128(rhs) => match lhs.checked_div(Decimal::from(rhs)) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: U128(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
+
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs / x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
-            Decimal(rhs) => Ok(Decimal(lhs / rhs)),
+            Decimal(rhs) => match lhs.checked_div(rhs) {
+                Some(x) => Ok(Decimal(x)),
+                None => Err(ValueError::BinaryOperationOverflow {
+                    lhs: Decimal(lhs),
+                    rhs: Decimal(rhs),
+                    operator: NumericBinaryOperator::Divide,
+                }
+                .into()),
+            },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(lhs),
@@ -296,178 +369,197 @@ mod tests {
 
     #[test]
     fn test_extremes() {
-        let base = Decimal::ONE:
-            assert_eq!(
-                base.try_modulo(Decimal::ZERO),
-                Err(BinaryOperationOverflow {
-                    lhs: Decimal(base),
-                    rhs: Decimal(Decimal::ZERO),
-                    operator: NumericBinaryOperator::Modulo,
-                })
-            );
+        let base = Decimal::ONE;
+        assert_eq!(
+            base.try_modulo(&Decimal(Decimal::ZERO)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: Decimal(Decimal::ZERO),
+                operator: NumericBinaryOperator::Modulo,
+            }
+            .into())
+        );
 
         // try divide overflow
         assert_eq!(
-            base.try_divide(I8(0)),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&I8(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: I8(0),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_divide(I32(0)),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&I32(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: I32(0),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_divide(I64(0)),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&I64(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: I64(0),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_divide(I128(0)),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&I128(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: I128(0),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_divide(Decimal::ZERO),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&Decimal(Decimal::ZERO)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: Decimal(Decimal::ZERO),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_divide(U8(0)),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&U8(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: U8(0),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_divide(U32(0)),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&U32(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: U32(0),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_divide(U64(0)),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&U64(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: U64(0),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_divide(U128(0)),
-            Err(BinaryOperationOverflow {
+            base.try_divide(&U128(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: U128(0),
                 operator: NumericBinaryOperator::Divide,
-            })
+            }
+            .into())
         );
 
         // try modulo overflow
         assert_eq!(
-            base.try_modulo(I8(0)),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&I8(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: I8(0),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_modulo(I32(0)),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&I32(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: I32(0),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_modulo(I64(0)),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&I64(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: I64(0),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_modulo(I128(0)),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&I128(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: I128(0),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_modulo(Decimal::ZERO),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&Decimal(Decimal::ZERO)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: Decimal(Decimal::ZERO),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_modulo(U8(0)),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&U8(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: U8(0),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_modulo(U32(0)),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&U32(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: U32(0),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_modulo(U64(0)),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&U64(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: U64(0),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
 
         assert_eq!(
-            base.try_modulo(U128(0)),
-            Err(BinaryOperationOverflow {
+            base.try_modulo(&U128(0)),
+            Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(base),
                 rhs: U128(0),
                 operator: NumericBinaryOperator::Modulo,
-            })
+            }
+            .into())
         );
     }
 
