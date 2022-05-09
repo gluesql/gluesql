@@ -219,7 +219,9 @@ impl Value {
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
             (DataType::Int8, Literal::Number(v)) => match v.to_i8() {
                 Some(x) => Ok(Value::I8(x)),
-                None => Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int8, v.to_string()).into()),
+                None => Err(
+                    ValueError::LiteralCastToDataTypeFailed(DataType::Int8, v.to_string()).into(),
+                ),
             },
             (DataType::Int8, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
