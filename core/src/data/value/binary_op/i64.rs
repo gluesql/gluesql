@@ -664,6 +664,15 @@ mod tests {
         assert_eq!(type_max.try_add(&I128(1)), Ok(I128(type_maxi128 + 1)));
 
         assert_eq!(
+            type_max.try_add(&I128(i128::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I64(type_max),
+                rhs: I128(i128::MAX),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
+        assert_eq!(
             type_max.try_add(&U8(1)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I64(type_max),
