@@ -114,6 +114,9 @@ pub enum ValueError {
     #[error("literal cast from {1:#?} to ({0:#?} failed")]
     LiteralCastToDataTypeFailed(DataType, String),
 
+    #[error("literal cast failed to Int(8): {0}")]
+    LiteralCastToInt8Failed(String),
+
     #[error("literal cast failed to time: {0}")]
     LiteralCastToTimeFailed(String),
 
