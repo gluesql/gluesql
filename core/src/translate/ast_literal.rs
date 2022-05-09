@@ -25,10 +25,12 @@ pub fn translate_ast_literal(sql_value: &SqlValue) -> Result<AstLiteral> {
             value: value.to_owned(),
             leading_field: leading_field
                 .as_ref()
-                .map(|x| translate_datetime_field(x).unwrap()),
+                .map(translate_datetime_field)
+                .transpose()?,
             last_field: last_field
                 .as_ref()
-                .map(|x| translate_datetime_field(x).unwrap()),
+                .map(translate_datetime_field)
+                .transpose()?,
         },
         SqlValue::Null => AstLiteral::Null,
         _ => {
