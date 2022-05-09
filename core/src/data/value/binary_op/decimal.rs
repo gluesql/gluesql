@@ -295,6 +295,183 @@ mod tests {
     };
 
     #[test]
+    fn test_extremes() {
+        let base = Decimal::ONE:
+            assert_eq!(
+                base.try_modulo(Decimal::ZERO),
+                Err(BinaryOperationOverflow {
+                    lhs: Decimal(base),
+                    rhs: Decimal(Decimal::ZERO),
+                    operator: NumericBinaryOperator::Modulo,
+                })
+            );
+
+        // try divide overflow
+        assert_eq!(
+            base.try_divide(I8(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I8(0),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        assert_eq!(
+            base.try_divide(I32(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I32(0),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        assert_eq!(
+            base.try_divide(I64(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I64(0),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        assert_eq!(
+            base.try_divide(I128(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I128(0),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        assert_eq!(
+            base.try_divide(Decimal::ZERO),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: Decimal(Decimal::ZERO),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        assert_eq!(
+            base.try_divide(U8(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: U8(0),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        assert_eq!(
+            base.try_divide(U32(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: U32(0),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        assert_eq!(
+            base.try_divide(U64(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: U64(0),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        assert_eq!(
+            base.try_divide(U128(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: U128(0),
+                operator: NumericBinaryOperator::Divide,
+            })
+        );
+
+        // try modulo overflow
+        assert_eq!(
+            base.try_modulo(I8(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I8(0),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+
+        assert_eq!(
+            base.try_modulo(I32(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I32(0),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+
+        assert_eq!(
+            base.try_modulo(I64(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I64(0),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+
+        assert_eq!(
+            base.try_modulo(I128(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I128(0),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+
+        assert_eq!(
+            base.try_modulo(Decimal::ZERO),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: Decimal(Decimal::ZERO),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+
+        assert_eq!(
+            base.try_modulo(U8(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: U8(0),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+
+        assert_eq!(
+            base.try_modulo(U32(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: U32(0),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+
+        assert_eq!(
+            base.try_modulo(U64(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: U64(0),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+
+        assert_eq!(
+            base.try_modulo(U128(0)),
+            Err(BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: U128(0),
+                operator: NumericBinaryOperator::Modulo,
+            })
+        );
+    }
+
+    #[test]
     fn eq() {
         let base = Decimal::ONE;
 
