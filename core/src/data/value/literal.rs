@@ -181,12 +181,10 @@ impl Value {
                 .parse::<i8>()
                 .map(Value::I8)
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int8, Literal::Number(v)) => v
-                .to_f64()
-                .map(|v| Value::I8(v.trunc() as i8))
-                .ok_or_else(|| {
-                    ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
-                }),
+            (DataType::Int8, Literal::Number(v)) => match v.to_i8() {
+                Some(x) => Ok(Value::I8(x)),
+                None => Err(ValueError::LiteralCastToInt8Failed(v.to_string()).into()),
+            },
             (DataType::Int8, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
