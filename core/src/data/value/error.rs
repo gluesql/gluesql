@@ -165,6 +165,9 @@ pub enum ValueError {
     #[error("selector requires MAP or LIST types")]
     SelectorRequiresMapOrListTypes,
 
+    #[error("signed operation on unsigned type")]
+    SignOperationOnUnsignedType,
+
     #[error("overflow occurred: {lhs:?} {operator} {rhs:?}")]
     BinaryOperationOverflow {
         lhs: Value,

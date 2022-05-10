@@ -468,6 +468,9 @@ impl Value {
             F64(a) => Ok(F64(-a)),
             Decimal(a) => Ok(Decimal(-a)),
             Interval(a) => Ok(Interval(a.unary_minus())),
+            U8(_) | U32(_) | U64(_) | U128(_) => {
+                Err(ValueError::SignOperationOnUnsignedType.into())
+            }
             Null => Ok(Null),
             _ => Err(ValueError::UnaryMinusOnNonNumeric.into()),
         }
@@ -546,8 +549,10 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use {
+        super::ValueError,
         super::{Interval, Value::*},
         crate::data::value::uuid::parse_uuid,
+        rust_decimal::Decimal,
     };
 
     #[allow(clippy::eq_op)]
@@ -594,6 +599,14 @@ mod tests {
     fn cmp() {
         use chrono::{NaiveDate, NaiveTime};
         use std::cmp::Ordering;
+
+        assert_eq!(
+            Bool(true).partial_cmp(&Bool(false)),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(Bool(true).partial_cmp(&Bool(true)), Some(Ordering::Equal));
+        assert_eq!(Bool(false).partial_cmp(&Bool(false)), Some(Ordering::Equal));
+        assert_eq!(Bool(false).partial_cmp(&Bool(true)), Some(Ordering::Less));
 
         let date = Date(NaiveDate::from_ymd(2020, 5, 1));
         let timestamp = Timestamp(NaiveDate::from_ymd(2020, 3, 1).and_hms(0, 0, 0));
@@ -1319,9 +1332,9 @@ mod tests {
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(I8(1)                 => Int8          , I8(1));
-        cast!(I32(1)                 => Int8          , I32(1));
+        cast!(I32(1)                 => Int32          , I32(1));
         cast!(I64(1)                => Int          , I64(1));
-        cast!(I128(1)                 => Int8          , I128(1));
+        cast!(I128(1)                 => Int128          , I128(1));
         cast!(U8(1)                 => UInt8          , U8(1));
         cast!(U32(1)                 => UInt32          , U32(1));
         cast!(U64(1)                => UInt          , U64(1));
@@ -1359,11 +1372,23 @@ mod tests {
         cast!(Str("11".to_owned())  => Int8, I8(11));
         cast!(Null                  => Int8, Null);
 
+        cast!(Bool(true)            => Int32, I32(1));
+        cast!(Bool(false)           => Int32, I32(0));
+        cast!(F64(1.1)              => Int32, I32(1));
+        cast!(Str("11".to_owned())  => Int32, I32(11));
+        cast!(Null                  => Int32, Null);
+
         cast!(Bool(true)            => Int, I64(1));
         cast!(Bool(false)           => Int, I64(0));
         cast!(F64(1.1)              => Int, I64(1));
         cast!(Str("11".to_owned())  => Int, I64(11));
         cast!(Null                  => Int, Null);
+
+        cast!(Bool(true)            => Int128, I128(1));
+        cast!(Bool(false)           => Int128, I128(0));
+        cast!(F64(1.1)              => Int128, I128(1));
+        cast!(Str("11".to_owned())  => Int128, I128(11));
+        cast!(Null                  => Int128, Null);
 
         // Float
         cast!(Bool(true)            => Float, F64(1.0));
@@ -1485,6 +1510,42 @@ mod tests {
                 value: Bool(true),
             }
             .into()),
+        );
+    }
+
+    #[test]
+    fn test_unary_minus() {
+        assert_eq!(I8(1).unary_minus(), Ok(I8(-1)));
+        assert_eq!(I32(1).unary_minus(), Ok(I32(-1)));
+        assert_eq!(I64(1).unary_minus(), Ok(I64(-1)));
+        assert_eq!(I128(1).unary_minus(), Ok(I128(-1)));
+
+        assert_eq!(
+            U8(1).unary_minus(),
+            Err(ValueError::SignOperationOnUnsignedType.into())
+        );
+        assert_eq!(
+            U32(1).unary_minus(),
+            Err(ValueError::SignOperationOnUnsignedType.into())
+        );
+        assert_eq!(
+            U64(1).unary_minus(),
+            Err(ValueError::SignOperationOnUnsignedType.into())
+        );
+        assert_eq!(
+            U128(1).unary_minus(),
+            Err(ValueError::SignOperationOnUnsignedType.into())
+        );
+
+        assert_eq!(F64(1.0).unary_minus(), Ok(F64(-1.0)));
+        assert_eq!(
+            Decimal(Decimal::ONE).unary_minus(),
+            Ok(Decimal(-Decimal::ONE))
+        );
+
+        assert_eq!(
+            Str("abc".to_string()).unary_minus(),
+            Err(ValueError::UnaryMinusOnNonNumeric.into())
         );
     }
 
