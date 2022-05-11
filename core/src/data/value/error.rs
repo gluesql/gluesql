@@ -23,6 +23,9 @@ pub enum ValueError {
     #[error("failed to parse number")]
     FailedToParseNumber,
 
+    #[error("failed to convert Float to Decimal: {0}")]
+    FloatToDecimalConversionFailure(f64),
+
     #[error("failed to parse date: {0}")]
     FailedToParseDate(String),
 
@@ -89,11 +92,17 @@ pub enum ValueError {
     #[error("literal cast failed from text to float: {0}")]
     LiteralCastFromTextToFloatFailed(String),
 
+    #[error("literal cast failed from text to decimal: {0}")]
+    LiteralCastFromTextToDecimalFailed(String),
+
     #[error("literal cast failed to boolean: {0}")]
     LiteralCastToBooleanFailed(String),
 
     #[error("literal cast failed to date: {0}")]
     LiteralCastToDateFailed(String),
+
+    #[error("literal cast failed to Int(8): {0}")]
+    LiteralCastToInt8Failed(String),
 
     #[error("literal cast failed to time: {0}")]
     LiteralCastToTimeFailed(String),

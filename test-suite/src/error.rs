@@ -40,6 +40,10 @@ test_case!(error, async move {
             "SELECT 1 COLLATE TableA FROM TableA;",
         ),
         (
+            TranslateError::UnsupportedDateTimeField("MICROSECONDS".to_owned()).into(),
+            r#"Select extract(microseconds from "2011-01-1") from TableA;"#,
+        ),
+        (
             ExecuteError::TableNotFound("Nothing".to_owned()).into(),
             "INSERT INTO Nothing VALUES (1);",
         ),

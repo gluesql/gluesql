@@ -35,6 +35,7 @@ macro_rules! transaction {
             Ok(v) => {
                 let storage = Self {
                     tree: $self.tree,
+                    id_offset: $self.id_offset,
                     state: State::Idle,
                     tx_timeout: $self.tx_timeout,
                 };
@@ -64,7 +65,7 @@ impl Transaction for SledStorage {
 
                 Ok((self, autocommit))
             }
-            (State::Idle, _) => match lock::register(&self.tree) {
+            (State::Idle, _) => match lock::register(&self.tree, self.id_offset) {
                 Ok((txid, created_at)) => {
                     let state = State::Transaction {
                         txid,

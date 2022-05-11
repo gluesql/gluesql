@@ -181,12 +181,10 @@ impl Value {
                 .parse::<i8>()
                 .map(Value::I8)
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int8, Literal::Number(v)) => v
-                .to_f64()
-                .map(|v| Value::I8(v.trunc() as i8))
-                .ok_or_else(|| {
-                    ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
-                }),
+            (DataType::Int8, Literal::Number(v)) => match v.to_i8() {
+                Some(x) => Ok(Value::I8(x)),
+                None => Err(ValueError::LiteralCastToInt8Failed(v.to_string()).into()),
+            },
             (DataType::Int8, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
@@ -204,6 +202,21 @@ impl Value {
 
                 Ok(Value::F64(v))
             }
+            (DataType::Decimal, Literal::Text(v)) => v
+                .parse::<Decimal>()
+                .map(Value::Decimal)
+                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
+            (DataType::Decimal, Literal::Number(v)) => v
+                .to_string()
+                .parse::<Decimal>()
+                .map(Value::Decimal)
+                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
+            (DataType::Decimal, Literal::Boolean(v)) => {
+                let v = if *v { Decimal::ONE } else { Decimal::ZERO };
+
+                Ok(Value::Decimal(v))
+            }
+
             (DataType::Text, Literal::Number(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Boolean(v)) => {
@@ -219,6 +232,7 @@ impl Value {
             | (DataType::Int, Literal::Null)
             | (DataType::Int8, Literal::Null)
             | (DataType::Float, Literal::Null)
+            | (DataType::Decimal, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
             (DataType::Date, Literal::Text(v)) => parse_date(v)
                 .map(Value::Date)

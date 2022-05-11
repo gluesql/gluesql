@@ -23,8 +23,14 @@ pub fn translate_ast_literal(sql_value: &SqlValue) -> Result<AstLiteral> {
             ..
         } => AstLiteral::Interval {
             value: value.to_owned(),
-            leading_field: leading_field.as_ref().map(translate_datetime_field),
-            last_field: last_field.as_ref().map(translate_datetime_field),
+            leading_field: leading_field
+                .as_ref()
+                .map(translate_datetime_field)
+                .transpose()?,
+            last_field: last_field
+                .as_ref()
+                .map(translate_datetime_field)
+                .transpose()?,
         },
         SqlValue::Null => AstLiteral::Null,
         _ => {
@@ -33,15 +39,20 @@ pub fn translate_ast_literal(sql_value: &SqlValue) -> Result<AstLiteral> {
     })
 }
 
-pub fn translate_datetime_field(sql_datetime_field: &SqlDateTimeField) -> DateTimeField {
-    match sql_datetime_field {
+pub fn translate_datetime_field(sql_datetime_field: &SqlDateTimeField) -> Result<DateTimeField> {
+    Ok(match sql_datetime_field {
         SqlDateTimeField::Year => DateTimeField::Year,
         SqlDateTimeField::Month => DateTimeField::Month,
         SqlDateTimeField::Day => DateTimeField::Day,
         SqlDateTimeField::Hour => DateTimeField::Hour,
         SqlDateTimeField::Minute => DateTimeField::Minute,
         SqlDateTimeField::Second => DateTimeField::Second,
-    }
+        _ => {
+            return Err(
+                TranslateError::UnsupportedDateTimeField(sql_datetime_field.to_string()).into(),
+            )
+        }
+    })
 }
 
 pub fn translate_trim_where_field(sql_trim_where_field: &SqlTrimWhereField) -> TrimWhereField {

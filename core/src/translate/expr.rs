@@ -68,7 +68,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             data_type: translate_data_type(data_type)?,
         }),
         SqlExpr::Extract { field, expr } => Ok(Expr::Extract {
-            field: translate_datetime_field(field),
+            field: translate_datetime_field(field)?,
             expr: translate_expr(expr).map(Box::new)?,
         }),
         SqlExpr::Nested(expr) => translate_expr(expr).map(Box::new).map(Expr::Nested),

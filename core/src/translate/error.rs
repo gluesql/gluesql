@@ -72,6 +72,9 @@ pub enum TranslateError {
     #[error("unsupported data type: {0}")]
     UnsupportedDataType(String),
 
+    #[error("unsupported datetime field: {0}")]
+    UnsupportedDateTimeField(String),
+
     #[error("unsupported ast literal: {0}")]
     UnsupportedAstLiteral(String),
 
