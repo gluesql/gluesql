@@ -2,16 +2,17 @@ use {
     crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr},
     serde::{Deserialize, Serialize},
     std::fmt::Debug,
+    strum_macros::Display,
 };
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Display)]
 pub enum SchemaIndexOrd {
     Asc,
     Desc,
     Both,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SchemaIndex {
     pub name: String,
     pub expr: Expr,

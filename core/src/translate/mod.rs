@@ -146,14 +146,30 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_string()).into()),
             },
+            (3, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
+                //   AST: [ShowVariable { variable: [Ident { value: "indexes", quote_style: None },
+                //     Ident { value: "from", quote_style: None }, Ident { value: "mytable", quote_style: None }] }]
+                "INDEXES" => match variable.get(2) {
+                    Some(tablename) => {
+                        Ok(Statement::ShowIndexes(ObjectName(Vec::from([tablename
+                            .value
+                            .to_string()]))))
+                    }
+                    _ => Err(TranslateError::UnsupportedShowVariableStatement(
+                        sql_statement.to_string(),
+                    )
+                    .into()),
+                },
+                _ => Err(TranslateError::UnsupportedShowVariableStatement(
+                    sql_statement.to_string(),
+                )
+                .into()),
+            },
             _ => Err(
                 TranslateError::UnsupportedShowVariableStatement(sql_statement.to_string()).into(),
             ),
         },
         SqlStatement::ShowColumns { table_name, .. } => Ok(Statement::ShowColumns {
-            table_name: translate_object_name(table_name),
-        }),
-        SqlStatement::ShowIndexes { table_name, .. } => Ok(Statement::ShowIndexes {
             table_name: translate_object_name(table_name),
         }),
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
