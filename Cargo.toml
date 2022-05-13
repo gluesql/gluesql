@@ -1,6 +1,6 @@
 [package]
 name = "gluesql"
-version = "0.10.2"
+version = "0.11.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
@@ -25,11 +25,11 @@ all-features = true
 # opt-level = "s"
 
 [dependencies]
-gluesql-core = { path = "./core", version = "0.10.2" }
-cli = { package = "gluesql-cli", path = "./cli", version = "0.10.2", optional = true }
-test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.10.2", optional = true }
-memory-storage = { package = "gluesql_memory_storage", path = "./storages/memory-storage", version = "0.10.2", optional = true }
-sled-storage = { package = "gluesql_sled_storage", path = "./storages/sled-storage", version = "0.10.2", optional = true }
+gluesql-core = { path = "./core", version = "0.11.0" }
+cli = { package = "gluesql-cli", path = "./cli", version = "0.11.0", optional = true }
+test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = "0.11.0", optional = true }
+memory-storage = { package = "gluesql_memory_storage", path = "./storages/memory-storage", version = "0.11.0", optional = true }
+sled-storage = { package = "gluesql_sled_storage", path = "./storages/sled-storage", version = "0.11.0", optional = true }
 
 [dev-dependencies]
 futures = "0.3"
