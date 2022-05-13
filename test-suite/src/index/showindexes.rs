@@ -3,10 +3,11 @@ use crate::*;
 test_case!(showindexes, async move {
     use gluesql_core::{
        // ast::IndexOperator::*,
-       // executor::AlterError,
+        executor::ExecuteError,
         prelude::{Payload,},
         data::{SchemaIndex, SchemaIndexOrd,},
         ast::{Expr, BinaryOperator,},
+
        // store::IndexError,
        // translate::TranslateError,
     };
@@ -53,5 +54,7 @@ CREATE TABLE Test (
                                    right: Box::new(Expr::Identifier("num".to_string())) }},
              ])),
           "show indexes from Test");
+
+    test!(Err(ExecuteError::TableNotFound("NoTable".to_string()).into()), "show indexes from NoTable");
 
 });
