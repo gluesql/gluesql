@@ -1,6 +1,5 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
-    gluesql_core::ast::Expr,
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
 };
@@ -49,13 +48,9 @@ impl<W: Write> Print<W> {
                 writeln!(self.output, "{}\n", table)?;
             }
             Payload::ShowIndexes(indexes) => {
-                let mut table = get_table(vec!["Index Name", "Order", "Definition"]);
+                let mut table = get_table(vec!["Index Name", "Order"]);
                 for schema in indexes {
-                    let expr: String = match schema.expr {
-                        Expr::Identifier(x) => x.to_string(),
-                        _ => schema.expr.to_string(),
-                    };
-                    table.add_row([schema.name, schema.order.to_string(), expr.to_string()]);
+                    table.add_row([schema.name, schema.order.to_string()]);
                 }
                 writeln!(self.output, "{}\n", table)?;
             }

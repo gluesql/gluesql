@@ -2,14 +2,10 @@ use crate::*;
 
 test_case!(showindexes, async move {
     use gluesql_core::{
-       // ast::IndexOperator::*,
+        ast::{BinaryOperator, Expr},
+        data::{SchemaIndex, SchemaIndexOrd},
         executor::ExecuteError,
-        prelude::{Payload,},
-        data::{SchemaIndex, SchemaIndexOrd,},
-        ast::{Expr, BinaryOperator,},
-
-       // store::IndexError,
-       // translate::TranslateError,
+        prelude::Payload,
     };
 
     run!(
@@ -43,18 +39,33 @@ CREATE TABLE Test (
         "CREATE INDEX idx_id2 ON Test (id + num)"
     );
 
-    test!(Ok(Payload::ShowIndexes(
-        vec![
-        SchemaIndex{name:"idx_id".to_string(), order:SchemaIndexOrd::Both, 
-                 expr:Expr::Identifier("id".to_string())},
-             SchemaIndex { name: "idx_name".to_string(), 
-                 expr: Expr::Identifier("name".to_string()), order: SchemaIndexOrd::Both }, 
-             SchemaIndex { name: "idx_id2".to_string(), order: SchemaIndexOrd::Both, 
-                 expr: Expr::BinaryOp { left: Box::new(Expr::Identifier("id".to_string())), op: BinaryOperator::Plus, 
-                                   right: Box::new(Expr::Identifier("num".to_string())) }},
-             ])),
-          "show indexes from Test");
+    test!(
+        Ok(Payload::ShowIndexes(vec![
+            SchemaIndex {
+                name: "idx_id".to_string(),
+                order: SchemaIndexOrd::Both,
+                expr: Expr::Identifier("id".to_string())
+            },
+            SchemaIndex {
+                name: "idx_name".to_string(),
+                expr: Expr::Identifier("name".to_string()),
+                order: SchemaIndexOrd::Both
+            },
+            SchemaIndex {
+                name: "idx_id2".to_string(),
+                order: SchemaIndexOrd::Both,
+                expr: Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("id".to_string())),
+                    op: BinaryOperator::Plus,
+                    right: Box::new(Expr::Identifier("num".to_string()))
+                }
+            },
+        ])),
+        "show indexes from Test"
+    );
 
-    test!(Err(ExecuteError::TableNotFound("NoTable".to_string()).into()), "show indexes from NoTable");
-
+    test!(
+        Err(ExecuteError::TableNotFound("NoTable".to_string()).into()),
+        "show indexes from NoTable"
+    );
 });
