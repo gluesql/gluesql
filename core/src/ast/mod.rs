@@ -2,6 +2,7 @@ mod ast_literal;
 mod data_type;
 mod ddl;
 mod expr;
+mod expr_decoder;
 mod function;
 mod operator;
 mod query;

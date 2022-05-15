@@ -1,6 +1,7 @@
 use {
     bigdecimal::BigDecimal,
     serde::{Deserialize, Serialize},
+    strum_macros::Display,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -16,7 +17,7 @@ pub enum AstLiteral {
     Null,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
 pub enum DateTimeField {
     Year,
     Month,
