@@ -51,9 +51,6 @@ pub enum ValueError {
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
 
-    #[error("{0} type cannot be grouped by")]
-    GroupByNotSupported(String),
-
     #[error("unary plus operation for non numeric value")]
     UnaryPlusOnNonNumeric,
 
@@ -74,9 +71,6 @@ pub enum ValueError {
 
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
-
-    #[error("conflict - unique constraint cannot be used for {0} type")]
-    ConflictDataTypeOnUniqueConstraint(String),
 
     // Cast errors from value to value
     #[error("impossible cast")]
