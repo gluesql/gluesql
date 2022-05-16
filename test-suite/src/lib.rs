@@ -19,6 +19,7 @@ pub mod nested_select;
 pub mod nullable;
 pub mod order_by;
 pub mod ordering;
+pub mod showcolumns;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
@@ -78,12 +79,14 @@ macro_rules! generate_store_tests {
         glue!(function_ltrim_rtrim, function::ltrim_rtrim::ltrim_rtrim);
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
+        glue!(function_concat, function::concat::concat);
         glue!(function_math_function_asin, function::math_function::asin);
         glue!(function_math_function_acos, function::math_function::acos);
         glue!(function_math_function_atan, function::math_function::atan);
         glue!(function_math_function_sin, function::math_function::sin);
         glue!(function_math_function_cos, function::math_function::cos);
         glue!(function_math_function_tan, function::math_function::tan);
+        glue!(function_abs, function::abs::abs);
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
         glue!(function_floor, function::floor::floor);
@@ -93,6 +96,7 @@ macro_rules! generate_store_tests {
         glue!(function_log10, function::exp_log::log10);
         glue!(function_exp, function::exp_log::exp);
         glue!(function_now, function::now::now);
+        glue!(function_sign, function::sign::sign);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
@@ -103,6 +107,7 @@ macro_rules! generate_store_tests {
         glue!(ordering, ordering::ordering);
         glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
+        glue!(showcolumns, showcolumns::showcolumns);
         glue!(int8, data_type::int8::int8);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);

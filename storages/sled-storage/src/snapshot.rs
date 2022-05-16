@@ -13,7 +13,7 @@ struct SnapshotItem<T> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Snapshot<T>(Vec<SnapshotItem<T>>);
 
-impl<T: Debug + Clone> Snapshot<T> {
+impl<T: Clone> Snapshot<T> {
     pub fn new(txid: u64, data: T) -> Self {
         Self(vec![SnapshotItem {
             data,

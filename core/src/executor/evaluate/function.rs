@@ -50,6 +50,16 @@ macro_rules! eval_to_float {
 
 // --- text ---
 
+pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Value> {
+    exprs
+        .into_iter()
+        .map(|expr| expr.try_into())
+        .filter(|value| !matches!(value, Ok(Value::Null)))
+        .try_fold(Value::Str("".to_owned()), |left, right| {
+            Ok(left.concat(&right?))
+        })
+}
+
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {
     Ok(Value::Str(eval_to_str!(name, expr).to_lowercase()))
 }
@@ -214,6 +224,25 @@ pub fn substr(
 }
 
 // --- float ---
+
+pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
+    match n.try_into()? {
+        Value::I8(v) => Ok(Value::I8(v.abs())),
+        Value::I64(v) => Ok(Value::I64(v.abs())),
+        Value::Decimal(v) => Ok(Value::Decimal(v.abs())),
+        Value::F64(v) => Ok(Value::F64(v.abs())),
+        Value::Null => Ok(Value::Null),
+        _ => Err(EvaluateError::FunctionRequiresFloatValue(name).into()),
+    }
+}
+
+pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
+    let x = eval_to_float!(name, n);
+    if x == 0.0 {
+        return Ok(Value::I8(0));
+    }
+    Ok(Value::I8(x.signum() as i8))
+}
 
 pub fn sqrt(name: String, n: Evaluated<'_>) -> Result<Value> {
     Ok(Value::F64(eval_to_float!(name, n).sqrt()))

@@ -5,8 +5,8 @@ use {
     },
     crate::{
         ast::{
-            Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr, TableAlias,
-            TableFactor, TableWithJoins, Values,
+            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SelectItem, SetExpr,
+            TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
     },
@@ -179,5 +179,6 @@ fn translate_join(sql_join: &SqlJoin) -> Result<Join> {
     Ok(Join {
         relation: translate_table_factor(relation)?,
         join_operator,
+        join_executor: JoinExecutor::NestedLoop,
     })
 }

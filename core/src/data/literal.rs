@@ -133,7 +133,7 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn add<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+    pub fn add(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
             (Interval(l), Interval(r)) => l.add(r).map(Interval),
@@ -150,7 +150,7 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn subtract<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+    pub fn subtract(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() - r.as_ref()))),
             (Interval(l), Interval(r)) => l.subtract(r).map(Interval),
@@ -167,7 +167,7 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn multiply<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+    pub fn multiply(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
             (Number(l), Interval(r)) | (Interval(r), Number(l)) => {
@@ -192,7 +192,7 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn divide<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+    pub fn divide(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => {
                 if *r.as_ref() == 0.into() {
@@ -224,7 +224,7 @@ impl<'a> Literal<'a> {
         }
     }
 
-    pub fn modulo<'b>(&self, other: &Literal<'a>) -> Result<Literal<'b>> {
+    pub fn modulo(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => {
                 if *r.as_ref() == 0.into() {
@@ -282,7 +282,7 @@ mod tests {
         matches!(num(1).add(&Null), Ok(Null));
         matches!(mon(1).add(&Null), Ok(Null));
 
-        //substract test
+        // subtract test
         assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         matches!(Null.subtract(&num(2)), Ok(Null));
         matches!(Null.subtract(&mon(3)), Ok(Null));

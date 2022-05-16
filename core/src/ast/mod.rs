@@ -10,7 +10,7 @@ pub use ast_literal::{AstLiteral, DateTimeField, TrimWhereField};
 pub use data_type::DataType;
 pub use ddl::*;
 pub use expr::Expr;
-pub use function::{Aggregate, Function};
+pub use function::{Aggregate, CountArgExpr, Function};
 pub use operator::*;
 pub use query::*;
 
@@ -21,6 +21,9 @@ pub struct ObjectName(pub Vec<String>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
+    ShowColumns {
+        table_name: ObjectName,
+    },
     /// SELECT
     Query(Box<Query>),
     /// INSERT

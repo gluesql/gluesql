@@ -3,15 +3,15 @@ use {
     crate::{
         ast::{IndexOperator, OrderByExpr},
         data::Value,
-        result::{MutResult, Result},
+        result::{Error, MutResult, Result},
     },
     async_trait::async_trait,
     serde::Serialize,
     std::fmt::Debug,
-    thiserror::Error,
+    thiserror::Error as ThisError,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum IndexError {
     #[error("table not found: {0}")]
     TableNotFound(String),
@@ -39,27 +39,39 @@ pub enum IndexError {
 }
 
 #[async_trait(?Send)]
-pub trait Index<T: Debug> {
+pub trait Index<T> {
     async fn scan_indexed_data(
         &self,
-        table_name: &str,
-        index_name: &str,
-        asc: Option<bool>,
-        cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter<T>>;
+        _table_name: &str,
+        _index_name: &str,
+        _asc: Option<bool>,
+        _cmp_value: Option<(&IndexOperator, Value)>,
+    ) -> Result<RowIter<T>> {
+        Err(Error::StorageMsg(
+            "[Storage] Index::scan_indexed_data is not supported".to_owned(),
+        ))
+    }
 }
 
 #[async_trait(?Send)]
-pub trait IndexMut<T: Debug>
+pub trait IndexMut
 where
     Self: Sized,
 {
     async fn create_index(
         self,
-        table_name: &str,
-        index_name: &str,
-        column: &OrderByExpr,
-    ) -> MutResult<Self, ()>;
+        _table_name: &str,
+        _index_name: &str,
+        _column: &OrderByExpr,
+    ) -> MutResult<Self, ()> {
+        let msg = "[Storage] Index::create_index is not supported".to_owned();
 
-    async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()>;
+        Err((self, Error::StorageMsg(msg)))
+    }
+
+    async fn drop_index(self, _table_name: &str, _index_name: &str) -> MutResult<Self, ()> {
+        let msg = "[Storage] Index::drop_index is not supported".to_owned();
+
+        Err((self, Error::StorageMsg(msg)))
+    }
 }

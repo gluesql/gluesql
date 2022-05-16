@@ -18,6 +18,10 @@ struct Args {
     /// sled-storage path to load
     #[clap(short, long, parse(from_os_str))]
     path: Option<PathBuf>,
+
+    /// SQL file to execute
+    #[clap(short, long, parse(from_os_str))]
+    execute: Option<PathBuf>,
 }
 
 pub fn run() {
@@ -27,15 +31,24 @@ pub fn run() {
         let path = path.as_path().to_str().expect("wrong path");
 
         println!("[sled-storage] connected to {}", path);
-        run(SledStorage::new(path).expect("failed to load sled-storage"));
+        run(
+            SledStorage::new(path).expect("failed to load sled-storage"),
+            args.execute,
+        );
     } else {
         println!("[memory-storage] initialized");
-        run(MemoryStorage::default());
+        run(MemoryStorage::default(), args.execute);
     }
 
-    fn run<T: Debug, U: GStore<T> + GStoreMut<T>>(storage: U) {
+    fn run<T, U: GStore<T> + GStoreMut<T>>(storage: U, input: Option<PathBuf>) {
         let output = std::io::stdout();
         let mut cli = Cli::new(storage, output);
+
+        if let Some(path) = input {
+            if let Err(e) = cli.load(path.as_path()) {
+                println!("[error] {}\n", e);
+            };
+        }
 
         if let Err(e) = cli.run() {
             eprintln!("{}", e);

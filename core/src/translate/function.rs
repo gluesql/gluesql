@@ -4,12 +4,12 @@ use {
         TranslateError,
     },
     crate::{
-        ast::{Aggregate, Expr, Function, ObjectName, TrimWhereField},
+        ast::{Aggregate, CountArgExpr, Expr, Function, ObjectName, TrimWhereField},
         result::Result,
     },
     sqlparser::ast::{
         Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
-        TrimWhereField as SqlTrimWhereField,
+        FunctionArgExpr as SqlFunctionArgExpr, TrimWhereField as SqlTrimWhereField,
     },
 };
 
@@ -67,6 +67,19 @@ fn check_len_range(
             name,
             expected_minimum,
             expected_maximum,
+            found,
+        }
+        .into())
+    }
+}
+
+fn check_len_min(name: String, found: usize, expected_minimum: usize) -> Result<()> {
+    if found >= expected_minimum {
+        Ok(())
+    } else {
+        Err(TranslateError::FunctionArgsLengthNotMatchingMin {
+            name,
+            expected_minimum,
             found,
         }
         .into())
@@ -131,17 +144,57 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
         names[0].to_uppercase()
     };
-    let args = args
+
+    let function_args = args
         .iter()
         .map(|arg| match arg {
             SqlFunctionArg::Named { .. } => {
                 Err(TranslateError::NamedFunctionArgNotSupported.into())
             }
-            SqlFunctionArg::Unnamed(expr) => Ok(expr),
+            SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    if name.as_str() == "COUNT" {
+        check_len(name, args.len(), 1)?;
+
+        let count_arg = match function_args[0] {
+            SqlFunctionArgExpr::Expr(expr) => CountArgExpr::Expr(translate_expr(expr)?),
+            SqlFunctionArgExpr::QualifiedWildcard(idents) => {
+                let ObjectName(idents) = translate_object_name(idents);
+                let idents = format!("{}.*", idents.join("."));
+
+                return Err(TranslateError::QualifiedWildcardInCountNotSupported(idents).into());
+            }
+            SqlFunctionArgExpr::Wildcard => CountArgExpr::Wildcard,
+        };
+
+        return Ok(Expr::Aggregate(Box::new(Aggregate::Count(count_arg))));
+    }
+
+    let args = function_args
+        .iter()
+        .map(|function_arg| match function_arg {
+            SqlFunctionArgExpr::Expr(expr) => Ok(expr),
+            SqlFunctionArgExpr::Wildcard | SqlFunctionArgExpr::QualifiedWildcard(_) => {
+                Err(TranslateError::WildcardFunctionArgNotAccepted.into())
+            }
         })
         .collect::<Result<Vec<_>>>()?;
 
     match name.as_str() {
+        "SUM" => translate_aggrecate_one_arg(Aggregate::Sum, args, name),
+        "MIN" => translate_aggrecate_one_arg(Aggregate::Min, args, name),
+        "MAX" => translate_aggrecate_one_arg(Aggregate::Max, args, name),
+        "AVG" => translate_aggrecate_one_arg(Aggregate::Avg, args, name),
+        "CONCAT" => {
+            check_len_min(name, args.len(), 1)?;
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Concat(exprs))))
+        }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
         "UPPER" => translate_function_one_arg(Function::Upper, args, name),
         "LEFT" => {
@@ -257,11 +310,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "RTRIM" => {
             translate_function_trim(|expr, chars| Function::Rtrim { expr, chars }, args, name)
         }
-        "COUNT" => translate_aggrecate_one_arg(Aggregate::Count, args, name),
-        "SUM" => translate_aggrecate_one_arg(Aggregate::Sum, args, name),
-        "MIN" => translate_aggrecate_one_arg(Aggregate::Min, args, name),
-        "MAX" => translate_aggrecate_one_arg(Aggregate::Max, args, name),
-        "AVG" => translate_aggrecate_one_arg(Aggregate::Avg, args, name),
         "DIV" => {
             check_len(name, args.len(), 2)?;
 
@@ -319,6 +367,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 selector,
             })))
         }
+        "ABS" => translate_function_one_arg(Function::Abs, args, name),
+        "SIGN" => translate_function_one_arg(Function::Sign, args, name),
         "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }

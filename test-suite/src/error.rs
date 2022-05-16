@@ -9,6 +9,7 @@ test_case!(error, async move {
 
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
+    run!("INSERT INTO TableA (id) VALUES (9);");
 
     let test_cases = vec![
         (
@@ -37,6 +38,10 @@ test_case!(error, async move {
         (
             TranslateError::UnsupportedExpr("1 COLLATE TableA".to_owned()).into(),
             "SELECT 1 COLLATE TableA FROM TableA;",
+        ),
+        (
+            TranslateError::UnsupportedDateTimeField("MICROSECONDS".to_owned()).into(),
+            r#"Select extract(microseconds from "2011-01-1") from TableA;"#,
         ),
         (
             ExecuteError::TableNotFound("Nothing".to_owned()).into(),
@@ -71,8 +76,24 @@ test_case!(error, async move {
             "SELECT * FROM TableA CROSS JOIN TableA as A;",
         ),
         (
+            TranslateError::JoinOnUpdateNotSupported.into(),
+            "UPDATE TableA INNER JOIN TableA ON 1 = 1 SET 1 = 1",
+        ),
+        (
+            TranslateError::UnsupportedTableFactor("(SELECT * FROM TableA)".to_owned()).into(),
+            "UPDATE (SELECT * FROM TableA) SET 1 = 1",
+        ),
+        (
+            TranslateError::CompoundIdentOnUpdateNotSupported("TableA.id = 1".to_owned()).into(),
+            "UPDATE TableA SET TableA.id = 1 WHERE id = 1",
+        ),
+        (
             EvaluateError::NestedSelectRowNotFound.into(),
             "SELECT * FROM TableA WHERE id = (SELECT id FROM TableA WHERE id = 2);",
+        ),
+        (
+            EvaluateError::MoreThanOneRowReturned.into(),
+            "select (select id from TableA) as id from TableA",
         ),
         (
             EvaluateError::ValueNotFound("noname".to_owned()).into(),

@@ -2,6 +2,7 @@ use {
     crate::{ast::DataType, ast::DateTimeField, data::Value},
     serde::Serialize,
     std::fmt::Debug,
+    strum_macros::Display,
     thiserror::Error,
 };
 
@@ -22,6 +23,9 @@ pub enum ValueError {
     #[error("failed to parse number")]
     FailedToParseNumber,
 
+    #[error("failed to convert Float to Decimal: {0}")]
+    FloatToDecimalConversionFailure(f64),
+
     #[error("failed to parse date: {0}")]
     FailedToParseDate(String),
 
@@ -37,26 +41,15 @@ pub enum ValueError {
     #[error("failed to parse Decimal: {0}")]
     FailedToParseDecimal(String),
 
-    #[error("decimal with no precision not supported")]
-    NoPrecisionDecimalNotSupported,
-
-    #[error("add on non-numeric values: {0:?} + {1:?}")]
-    AddOnNonNumeric(Value, Value),
-
-    #[error("subtract on non-numeric values: {0:?} - {1:?}")]
-    SubtractOnNonNumeric(Value, Value),
-
-    #[error("multiply on non-numeric values: {0:?} * {1:?}")]
-    MultiplyOnNonNumeric(Value, Value),
-
-    #[error("divide on non-numeric values: {0:?} / {1:?}")]
-    DivideOnNonNumeric(Value, Value),
+    #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
+    NonNumericMathOperation {
+        lhs: Value,
+        rhs: Value,
+        operator: NumericBinaryOperator,
+    },
 
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
-
-    #[error("modulo on non-numeric values: {0:?} % {1:?}")]
-    ModuloOnNonNumeric(Value, Value),
 
     #[error("{0} type cannot be grouped by")]
     GroupByNotSupported(String),
@@ -99,11 +92,17 @@ pub enum ValueError {
     #[error("literal cast failed from text to float: {0}")]
     LiteralCastFromTextToFloatFailed(String),
 
+    #[error("literal cast failed from text to decimal: {0}")]
+    LiteralCastFromTextToDecimalFailed(String),
+
     #[error("literal cast failed to boolean: {0}")]
     LiteralCastToBooleanFailed(String),
 
     #[error("literal cast failed to date: {0}")]
     LiteralCastToDateFailed(String),
+
+    #[error("literal cast failed to Int(8): {0}")]
+    LiteralCastToInt8Failed(String),
 
     #[error("literal cast failed to time: {0}")]
     LiteralCastToTimeFailed(String),
@@ -157,7 +156,20 @@ pub enum ValueError {
     BinaryOperationOverflow {
         lhs: Value,
         rhs: Value,
-        /// ['+', '-', '*', '/']
-        operator: char,
+        operator: NumericBinaryOperator,
     },
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Display)]
+pub enum NumericBinaryOperator {
+    #[strum(to_string = "+")]
+    Add,
+    #[strum(to_string = "-")]
+    Subtract,
+    #[strum(to_string = "*")]
+    Multiply,
+    #[strum(to_string = "/")]
+    Divide,
+    #[strum(to_string = "%")]
+    Modulo,
 }

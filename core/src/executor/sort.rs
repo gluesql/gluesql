@@ -11,11 +11,11 @@ use {
     },
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     im_rc::HashMap,
-    std::{cmp::Ordering, fmt::Debug, pin::Pin, rc::Rc},
+    std::{cmp::Ordering, pin::Pin, rc::Rc},
     utils::Vector,
 };
 
-pub struct Sort<'a, T: Debug> {
+pub struct Sort<'a, T> {
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
     order_by: &'a [OrderByExpr],
@@ -26,7 +26,7 @@ type Item<'a> = Result<(
     Rc<BlendContext<'a>>,
 )>;
 
-impl<'a, T: Debug> Sort<'a, T> {
+impl<'a, T> Sort<'a, T> {
     pub fn new(
         storage: &'a dyn GStore<T>,
         context: Option<Rc<FilterContext<'a>>>,

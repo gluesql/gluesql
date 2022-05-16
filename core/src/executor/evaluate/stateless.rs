@@ -33,8 +33,7 @@ pub fn evaluate_stateless<'a>(
             let value = columns
                 .iter()
                 .position(|column| column == ident)
-                .map(|index| row.get_value(index))
-                .flatten();
+                .and_then(|index| row.get_value(index));
 
             match value {
                 Some(value) => Ok(value.clone()),
@@ -102,9 +101,6 @@ pub fn evaluate_stateless<'a>(
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
-        Expr::Wildcard | Expr::QualifiedWildcard(_) => {
-            Err(EvaluateError::UnreachableWildcardExpr.into())
-        }
         Expr::Function(func) => evaluate_function(context, func),
         _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),
     }
@@ -127,6 +123,11 @@ fn evaluate_function<'a>(
 
     match func {
         // --- text ---
+        Function::Concat(exprs) => {
+            let exprs = exprs.iter().map(eval).collect::<Result<_>>()?;
+
+            f::concat(exprs)
+        }
         Function::Lower(expr) => f::lower(name(), eval(expr)?),
         Function::Upper(expr) => f::upper(name(), eval(expr)?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
@@ -191,6 +192,8 @@ fn evaluate_function<'a>(
 
             f::power(name(), expr, power)
         }
+        Function::Abs(expr) => f::abs(name(), eval(expr)?),
+        Function::Sign(expr) => f::sign(name(), eval(expr)?),
         Function::Ceil(expr) => f::ceil(name(), eval(expr)?),
         Function::Round(expr) => f::round(name(), eval(expr)?),
         Function::Floor(expr) => f::floor(name(), eval(expr)?),

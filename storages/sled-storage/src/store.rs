@@ -16,9 +16,8 @@ impl Store<IVec> for SledStorage {
             State::Transaction {
                 txid, created_at, ..
             } => (txid, created_at, false),
-            State::Idle => {
-                lock::register(&self.tree).map(|(txid, created_at)| (txid, created_at, true))?
-            }
+            State::Idle => lock::register(&self.tree, self.id_offset)
+                .map(|(txid, created_at)| (txid, created_at, true))?,
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
@@ -30,8 +29,7 @@ impl Store<IVec> for SledStorage {
             .map(|v| bincode::deserialize(&v))
             .transpose()
             .map_err(err_into)?
-            .map(|snapshot: Snapshot<Schema>| snapshot.extract(txid, lock_txid))
-            .flatten();
+            .and_then(|snapshot: Snapshot<Schema>| snapshot.extract(txid, lock_txid));
 
         if temp {
             lock::unregister(&self.tree, txid)?;

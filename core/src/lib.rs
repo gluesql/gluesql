@@ -18,6 +18,7 @@ pub mod prelude {
     pub use crate::executor::PayloadVariable;
 
     pub use crate::{
+        ast::DataType,
         data::value::Value,
         executor::{execute, Payload},
         glue::Glue,

@@ -31,6 +31,8 @@ pub enum Error {
     #[error("parsing failed: {0}")]
     Parser(String),
 
+    //#[error("OverflowError: {0}")]
+    //OverflowError(String),
     #[error(transparent)]
     Translate(#[from] TranslateError),
 
@@ -110,11 +112,11 @@ pub trait TrySelf<V>
 where
     Self: Sized,
 {
-    fn try_self<T: Debug, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V>;
+    fn try_self<T, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V>;
 }
 
 impl<V> TrySelf<V> for Result<V> {
-    fn try_self<T: Debug, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V> {
+    fn try_self<T, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V> {
         match self {
             Ok(v) => Ok((storage, v)),
             Err(e) => Err((storage, e)),

@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Generate Code Coverage
         run: |
-          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml --exclude-files cli
+          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml --exclude-files cli --exclude gluesql-js
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:

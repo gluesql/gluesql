@@ -11,6 +11,12 @@ pub enum TranslateError {
     #[error("unimplemented - composite index is not supported")]
     CompositeIndexNotSupported,
 
+    #[error("unimplemented - join on update not supported")]
+    JoinOnUpdateNotSupported,
+
+    #[error("unimplemented - compound identifier on update not supported: {0}")]
+    CompoundIdentOnUpdateNotSupported(String),
+
     #[error("too many params in drop index")]
     TooManyParamsInDropIndex,
 
@@ -18,6 +24,13 @@ pub enum TranslateError {
     FunctionArgsLengthNotMatching {
         name: String,
         expected: usize,
+        found: usize,
+    },
+
+    #[error("function {name} requires at least {expected_minimum} argument(s), found: {found}")]
+    FunctionArgsLengthNotMatchingMin {
+        name: String,
+        expected_minimum: usize,
         found: usize,
     },
 
@@ -31,6 +44,12 @@ pub enum TranslateError {
 
     #[error("named function arg is not supported")]
     NamedFunctionArgNotSupported,
+
+    #[error("wildcard function arg is not accepted")]
+    WildcardFunctionArgNotAccepted,
+
+    #[error("qualified wildcard is not supported - COUNT({0})")]
+    QualifiedWildcardInCountNotSupported(String),
 
     #[error("order by - NULLS (FIRST | LAST) is not supported")]
     OrderByNullsFirstOrLastNotSupported,
@@ -53,11 +72,17 @@ pub enum TranslateError {
     #[error("unsupported data type: {0}")]
     UnsupportedDataType(String),
 
+    #[error("unsupported datetime field: {0}")]
+    UnsupportedDateTimeField(String),
+
     #[error("unsupported ast literal: {0}")]
     UnsupportedAstLiteral(String),
 
     #[error("unreachable unary operator: {0}")]
     UnreachableUnaryOperator(String),
+
+    #[error("unreachable empty ident")]
+    UnreachableEmptyIdent,
 
     #[error("unsupported binary operator: {0}")]
     UnsupportedBinaryOperator(String),
@@ -79,4 +104,7 @@ pub enum TranslateError {
 
     #[error("unsupported alter table operation: {0}")]
     UnsupportedAlterTableOperation(String),
+
+    #[error("unsupported table factor: {0}")]
+    UnsupportedTableFactor(String),
 }

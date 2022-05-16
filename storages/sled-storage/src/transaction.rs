@@ -21,7 +21,7 @@ use {
         },
         IVec,
     },
-    std::{fmt::Debug, result::Result as StdResult},
+    std::result::Result as StdResult,
 };
 
 macro_rules! transaction {
@@ -35,6 +35,7 @@ macro_rules! transaction {
             Ok(v) => {
                 let storage = Self {
                     tree: $self.tree,
+                    id_offset: $self.id_offset,
                     state: State::Idle,
                     tx_timeout: $self.tx_timeout,
                 };
@@ -64,7 +65,7 @@ impl Transaction for SledStorage {
 
                 Ok((self, autocommit))
             }
-            (State::Idle, _) => match lock::register(&self.tree) {
+            (State::Idle, _) => match lock::register(&self.tree, self.id_offset) {
                 Ok((txid, created_at)) => {
                     let state = State::Transaction {
                         txid,
@@ -166,7 +167,7 @@ impl SledStorage {
                 .collect::<Result<Vec<_>>>()
         };
 
-        fn rollback_items<T: Debug + Clone + Serialize + DeserializeOwned>(
+        fn rollback_items<T: Clone + Serialize + DeserializeOwned>(
             tree: &TransactionalTree,
             txid: u64,
             items: &[(IVec, IVec)],

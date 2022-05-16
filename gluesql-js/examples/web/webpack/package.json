@@ -1,0 +1,24 @@
+{
+  "name": "gluesql-js-web-webpack-example",
+  "version": "0.1.0",
+  "description": "GlueSQL javascript webpack example",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gluesql/gluesql.git"
+  },
+  "author": "Taehoon Moon",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/gluesql/gluesql/issues"
+  },
+  "homepage": "https://github.com/gluesql/gluesql#readme",
+  "scripts": {
+    "build": "webpack"
+  },
+  "devDependencies": {
+    "gluesql": "file:../../../",
+    "webpack": "^5.72.0",
+    "webpack-cli": "^4.9.2"
+  }
+}

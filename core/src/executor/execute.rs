@@ -7,12 +7,13 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{SetExpr, Statement, Values},
+        ast::{DataType, SetExpr, Statement, Values},
         data::{get_name, Row, Schema, Value},
-        result::{MutResult, Result},
+        executor::limit::Limit,
+        result::MutResult,
         store::{GStore, GStoreMut},
     },
-    futures::stream::TryStreamExt,
+    futures::stream::{self, TryStreamExt},
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -35,6 +36,7 @@ pub enum ExecuteError {
 
 #[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
+    ShowColumns(Vec<(String, DataType)>),
     Create,
     Insert(usize),
     Select {
@@ -72,7 +74,7 @@ pub enum PayloadVariable {
 }
 
 #[cfg(feature = "transaction")]
-pub async fn execute_atomic<T: Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn execute_atomic<T, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     statement: &Statement,
 ) -> MutResult<U, Payload> {
@@ -101,7 +103,7 @@ pub async fn execute_atomic<T: Debug, U: GStore<T> + GStoreMut<T>>(
     }
 }
 
-pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
+pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
     storage: U,
     statement: &Statement,
 ) -> MutResult<U, Payload> {
@@ -182,10 +184,15 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
                 let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
 
                 let rows = match &source.body {
-                    SetExpr::Values(Values(values_list)) => values_list
-                        .iter()
-                        .map(|values| Row::new(&column_defs, columns, values))
-                        .collect::<Result<Vec<Row>>>()?,
+                    SetExpr::Values(Values(values_list)) => {
+                        let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
+                        let rows = values_list
+                            .iter()
+                            .map(|values| Row::new(&column_defs, columns, values));
+                        let rows = stream::iter(rows);
+                        let rows = limit.apply(rows);
+                        rows.try_collect::<Vec<_>>().await?
+                    }
                     SetExpr::Select(_) => {
                         select(&storage, source, None)
                             .await?
@@ -303,7 +310,24 @@ pub async fn execute<T: Debug, U: GStore<T> + GStoreMut<T>>(
 
             Ok((storage, Payload::Select { labels, rows }))
         }
+        Statement::ShowColumns { table_name } => {
+            let keys = try_block!(storage, {
+                let table_name = get_name(table_name)?;
+                let Schema { column_defs, .. } = storage
+                    .fetch_schema(table_name)
+                    .await?
+                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
+                Ok(column_defs)
+            });
+
+            let output: Vec<(String, DataType)> = keys
+                .into_iter()
+                .map(|key| (key.name, key.data_type))
+                .collect();
+
+            Ok((storage, Payload::ShowColumns(output)))
+        }
         //- Metadata
         #[cfg(feature = "metadata")]
         Statement::ShowVariable(variable) => match variable {

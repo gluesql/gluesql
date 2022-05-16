@@ -144,6 +144,7 @@ impl StoreMut<IVec> for SledStorage {
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+        let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -159,7 +160,7 @@ impl StoreMut<IVec> for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             for row in tx_rows.iter() {
-                let id = tree.generate_id()?;
+                let id = id_offset + tree.generate_id()?;
                 let id = id.to_be_bytes();
                 let prefix = format!("data/{}/", table_name);
 

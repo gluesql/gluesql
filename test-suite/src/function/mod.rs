@@ -1,5 +1,7 @@
+pub mod abs;
 pub mod cast;
 pub mod ceil;
+pub mod concat;
 pub mod degrees;
 pub mod div_mod;
 pub mod exp_log;
@@ -17,6 +19,7 @@ pub mod radians;
 pub mod repeat;
 pub mod reverse;
 pub mod round;
+pub mod sign;
 pub mod sqrt_power;
 pub mod substr;
 pub mod trim;

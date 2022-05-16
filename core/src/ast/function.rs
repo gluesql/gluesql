@@ -6,6 +6,8 @@ use {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
 pub enum Function {
+    #[strum(to_string = "ABS")]
+    Abs(Expr),
     #[strum(to_string = "LOWER")]
     Lower(Expr),
     #[strum(to_string = "UPPER")]
@@ -34,6 +36,8 @@ pub enum Function {
     },
     #[strum(to_string = "CEIL")]
     Ceil(Expr),
+    #[strum(to_string = "CONCAT")]
+    Concat(Vec<Expr>),
     #[strum(to_string = "ROUND")]
     Round(Expr),
     #[strum(to_string = "FLOOR")]
@@ -88,6 +92,8 @@ pub enum Function {
     Reverse(Expr),
     #[strum(to_string = "REPEAT")]
     Repeat { expr: Expr, num: Expr },
+    #[strum(to_string = "SIGN")]
+    Sign(Expr),
     #[strum(to_string = "SUBSTR")]
     Substr {
         expr: Expr,
@@ -102,9 +108,15 @@ pub enum Function {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Aggregate {
-    Count(Expr),
+    Count(CountArgExpr),
     Sum(Expr),
     Max(Expr),
     Min(Expr),
     Avg(Expr),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CountArgExpr {
+    Expr(Expr),
+    Wildcard,
 }

@@ -22,6 +22,7 @@ mod selector;
 mod unique_key;
 mod uuid;
 
+pub use error::NumericBinaryOperator;
 pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,6 +93,7 @@ impl Value {
             Value::I8(v) => *v == 0,
             Value::I64(v) => *v == 0,
             Value::F64(v) => *v == 0.0,
+            Value::Decimal(v) => *v == Decimal::ZERO,
             _ => false,
         }
     }
@@ -156,6 +158,7 @@ impl Value {
             (DataType::Int8, value) => value.try_into().map(Value::I8),
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Float, value) => value.try_into().map(Value::F64),
+            (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Time, value) => value.try_into().map(Value::Time),
@@ -181,7 +184,7 @@ impl Value {
             (I8(a), b) => a.try_add(b),
             (I64(a), b) => a.try_add(b),
             (F64(a), b) => a.try_add(b),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a + b)),
+            (Decimal(a), b) => a.try_add(b),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
             (Date(a), Interval(b)) => b.add_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
@@ -194,13 +197,17 @@ impl Value {
             | (Null, Date(_))
             | (Null, Timestamp(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::AddOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Add,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -212,7 +219,7 @@ impl Value {
             (I8(a), _) => a.try_subtract(other),
             (I64(a), _) => a.try_subtract(other),
             (F64(a), _) => a.try_subtract(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a - b)),
+            (Decimal(a), _) => a.try_subtract(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
             (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.subtract_from_timestamp(a).map(Timestamp),
@@ -240,13 +247,17 @@ impl Value {
             | (Null, Timestamp(_))
             | (Null, Time(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -257,7 +268,7 @@ impl Value {
             (I8(a), _) => a.try_multiply(other),
             (I64(a), _) => a.try_multiply(other),
             (F64(a), _) => a.try_multiply(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a * b)),
+            (Decimal(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
@@ -266,10 +277,14 @@ impl Value {
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -284,7 +299,7 @@ impl Value {
             (I8(a), _) => a.try_divide(other),
             (I64(a), _) => a.try_divide(other),
             (F64(a), _) => a.try_divide(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a / b)),
+            (Decimal(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
@@ -293,9 +308,13 @@ impl Value {
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Interval(_), Null)
-            | (Decimal(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Divide,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -310,14 +329,16 @@ impl Value {
             (I8(a), _) => a.try_modulo(other),
             (I64(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a % b)),
-            (Null, I8(_))
-            | (Null, I64(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Decimal(_), Null)
-            | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
+            (Decimal(a), _) => a.try_modulo(other),
+            (Null, I8(_)) | (Null, I64(_)) | (Null, F64(_)) | (Null, Decimal(_)) | (Null, Null) => {
+                Ok(Null)
+            }
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -353,6 +374,9 @@ impl Value {
         use Value::*;
 
         let factorial_function = |a: i64| -> Result<i64> {
+            if a.is_negative() {
+                return Err(ValueError::FactorialOnNegativeNumeric.into());
+            }
             (1..(a + 1))
                 .into_iter()
                 .try_fold(1i64, |mul, x| mul.checked_mul(x))
@@ -360,8 +384,8 @@ impl Value {
         };
 
         match self {
-            I64(a) if *a >= 0 => factorial_function(*a).map(I64),
-            I64(_) => Err(ValueError::FactorialOnNegativeNumeric.into()),
+            I8(a) => factorial_function(*a as i64).map(I64),
+            I64(a) => factorial_function(*a).map(I64),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
