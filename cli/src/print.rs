@@ -2,6 +2,7 @@ use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
+    gluesql_core::ast::DataType,
 };
 
 pub struct Print<W: Write> {
@@ -42,7 +43,10 @@ impl<W: Write> Print<W> {
             Payload::ShowColumns(columns) => {
                 let mut table = get_table(vec!["Field", "Type"]);
                 for (field, fieldtype) in columns {
-                    table.add_row([field, fieldtype.to_string()]);
+                    match fieldtype {
+                       DataType::Decimal(p,s) => table.add_row([field, format!("Decimal({:},{:})", p.unwrap(), s.unwrap())]),
+                       _ => table.add_row([field, fieldtype.to_string()]),
+                    };
                 }
 
                 writeln!(self.output, "{}\n", table)?;
@@ -270,20 +274,20 @@ mod tests {
 
         test!(
             "
-╭────────────────────╮
-│ Field    Type      │
-╞════════════════════╡
-│ id       Int8      │
-│ calc1    Float     │
-│ cost     Decimal   │
-│ DOB      Date      │
-│ clock    Time      │
-│ tstamp   Timestamp │
-│ ival     Interval  │
-│ uuid     Uuid      │
-│ hash     Map       │
-│ mylist   List      │
-╰────────────────────╯",
+╭───────────────────────╮
+│ Field    Type         │
+╞═══════════════════════╡
+│ id       Int8         │
+│ calc1    Float        │
+│ cost     Decimal(5,2) │
+│ DOB      Date         │
+│ clock    Time         │
+│ tstamp   Timestamp    │
+│ ival     Interval     │
+│ uuid     Uuid         │
+│ hash     Map          │
+│ mylist   List         │
+╰───────────────────────╯",
             Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int8),
                 ("calc1".to_string(), DataType::Float),
