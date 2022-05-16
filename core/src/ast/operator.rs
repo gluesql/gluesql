@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-//use core::fmt::Formatter;
 use strum_macros::Display;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
@@ -50,21 +49,6 @@ pub enum BinaryOperator {
     NotLike,
     NotILike,
 }
-
-/*
-impl Display for BinaryOperator {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Plus => writeln!(f, "+"),
-            Self::Minus => writeln!(f, "-"),
-            Self::Multiply => writeln!(f, "*"),
-            Self::Divide => writeln!(f, "/"),
-            Self::Modulo => writeln!(f, "%"),
-            _ => Err(ExecuteError::UnimplementedDisplay)
-        }
-    }
-}
-*/
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IndexOperator {
