@@ -64,5 +64,5 @@ transaction = ["gluesql-core/transaction", "test-suite/transaction"]
 metadata = ["gluesql-core/metadata", "test-suite/metadata"]
 
 [workspace]
-members = ["core", "storages/*", "test-suite", "utils", "cli", "gluesql-js/web"]
-default-members = ["core", "storages/*", "test-suite", "utils", "cli", "gluesql-js/web"]
+members = ["core", "storages/*", "test-suite", "utils", "cli", "gluesql-js/web", "pm"]
+default-members = ["core", "storages/*", "test-suite", "utils", "cli", "gluesql-js/web", "pm"]
