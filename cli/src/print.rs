@@ -287,7 +287,7 @@ mod tests {
             Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int8),
                 ("calc1".to_string(), DataType::Float),
-                ("cost".to_string(), DataType::Decimal),
+                ("cost".to_string(), DataType::Decimal(Some(5), Some(2))),
                 ("DOB".to_string(), DataType::Date),
                 ("clock".to_string(), DataType::Time),
                 ("tstamp".to_string(), DataType::Timestamp),

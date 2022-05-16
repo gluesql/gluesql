@@ -9,8 +9,10 @@ use {
         data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
         result::{Error, Result},
     },
+    bigdecimal::BigDecimal,
     chrono::NaiveDate,
     std::cmp::Ordering,
+    std::str::FromStr,
 };
 
 impl PartialEq<Literal<'_>> for Value {
@@ -197,21 +199,15 @@ impl Value {
 
                 Ok(Value::F64(v))
             }
-            (DataType::Decimal, Literal::Text(v)) => v
-                .parse::<Decimal>()
-                .map(Value::Decimal)
-                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
-            (DataType::Decimal, Literal::Number(v)) => v
-                .to_string()
-                .parse::<Decimal>()
-                .map(Value::Decimal)
-                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
-            (DataType::Decimal, Literal::Boolean(v)) => {
-                let v = if *v { Decimal::ONE } else { Decimal::ZERO };
-
-                Ok(Value::Decimal(v))
-            }
-
+            (DataType::Decimal(p, s), Literal::Text(v)) => match BigDecimal::from_str(v) {
+                Ok(v) => Value::parse_decimal(p, s, &v),
+                _ => Err(ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
+            },
+            (DataType::Decimal(p, s), Literal::Number(v)) => Value::parse_decimal(p, s, v),
+            (DataType::Decimal(p, s), Literal::Boolean(v)) => match v {
+                true => Value::parse_decimal(p, s, &BigDecimal::from(1)),
+                false => Value::parse_decimal(p, s, &BigDecimal::from(0)),
+            },
             (DataType::Text, Literal::Number(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Boolean(v)) => {
@@ -227,7 +223,7 @@ impl Value {
             | (DataType::Int, Literal::Null)
             | (DataType::Int8, Literal::Null)
             | (DataType::Float, Literal::Null)
-            | (DataType::Decimal, Literal::Null)
+            | (DataType::Decimal(_, _), Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
             (DataType::Date, Literal::Text(v)) => parse_date(v)
                 .map(Value::Date)
@@ -464,7 +460,7 @@ mod tests {
             )
         );
         test!(
-            DataType::Decimal,
+            DataType::Decimal(Some(3), Some(0)),
             num!("200"),
             Value::Decimal(Decimal::new(200, 0))
         );

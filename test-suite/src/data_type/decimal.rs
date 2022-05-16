@@ -1,12 +1,8 @@
 use {
     crate::*,
-<<<<<<< HEAD
     gluesql_core::{data::ValueError, executor::AlterError, executor::Payload, prelude::Value::*},
-    rust_decimal::prelude::*,
-=======
-    gluesql_core::{executor::Payload, prelude::Value::*},
     rust_decimal::prelude::Decimal,
->>>>>>> efe46c1676fe194faffe866d396fcde04f504c37
+    std::str::FromStr,
 };
 
 test_case!(decimal, async move {
