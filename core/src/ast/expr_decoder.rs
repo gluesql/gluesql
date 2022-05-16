@@ -1,4 +1,5 @@
-use super::Expr;
+use super::{Expr, AstLiteral};
+
 
 //pub enum DecoderErrors {
 //    #[error("unimplemented Decode Expression: {:}")]
@@ -11,83 +12,193 @@ use super::Expr;
 //    *value
 //}
 
-fn decode(e: Expr) -> String {
+fn decode(e: &Expr) -> String {
     match e {
         Expr::Identifier(s) => s.to_string(),
         Expr::BinaryOp { left, op, right } => {
-            format!("{:} {:} {:}", decode(*left), op.to_string(), decode(*right))
+            format!("{:} {:} {:}", decode(&*left), op, decode(&*right))
         }
 
-        Expr::CompoundIdentifier(s) => s.iter().fold("".to_string(), |acc, x| acc + x),
-        Expr::IsNull(s) => format!("isNull({:})", *s),
-        Expr::IsNotNull(s) => format!("isNotNull({:})", *s),
+        Expr::CompoundIdentifier(s) => {
+            // is there a better way of doing this?  (ie adding '.' between each string?)
+            // tried fold and couldn't figure out how add . between each item
+            let mut str:String="".to_string();
+            for _s in s {
+                if !str.is_empty() { str+="."}
+                str+=_s;
+            
+            }
+            str
+        }
+        Expr::IsNull(s) => format!("{:} IS NULL", decode(s)),
+        Expr::IsNotNull(s) => format!("{:} IS NOT NULL", decode(s)),
         Expr::InList {
             expr,
             list,
             negated,
-        } => format!(
-            "InList({:}, {:}, negated:{:})",
-            decode(*expr),
-            (*list).iter().fold("".to_string(), |acc, x| acc + decode(*x)),
-            negated
-        ),
+        } => {
+            // is there a fold that will do this?        
+            let mut s:String = "".to_string();
+
+            for item in list {
+                if !s.is_empty() {
+                    s+=",";
+                }
+                s+=&decode(&item);
+            }
+
+            match negated {
+               true => format!("{:} NOT IN ({:})", decode(&expr), s),
+               false => format!("{:} IN ({:})", decode(&expr), s),
+            }
+        },
         //   Expr::InSubquery {expr, subquery, negated} => format!("InSubquery({:}, subquery:{:}, negated: {:})", decode(*expr),  *subquery, negated),
         Expr::Between {
             expr,
             negated,
             low,
             high,
-        } => format!(
-            "Between ({:}, negated:{:}, low:{:}, high:{:})",
-            decode(*expr),
-            negated,
-            decode(*low),
-            decode(*high)
-        ),
-        Expr::UnaryOp { op, expr } => format!("{:} {:}", op.to_string(), decode(*expr)),
+        } => match negated {
+            true => format!("{:} NOT BETWEEN {:} AND {:}", decode(&*expr),
+                      decode(&*low), decode(&*high)),
+
+            false => format!("{:} BETWEEN {:} AND {:}", decode(&*expr),
+                        decode(&*low), decode(&*high)),
+        },
+        Expr::UnaryOp { op, expr } => format!("{:}{:}", op, decode(&*expr)),
         Expr::Cast { expr, data_type } => {
-            format!("cast({:} as {:}", decode(*expr), data_type.to_string())
+            format!("cast({:} as {:})", decode(&*expr), data_type)
         }
         Expr::Extract { field, expr } => {
-            format!("extract({:} from {:}", field.to_string(), decode(*expr))
+            format!("extract({:} from \"{:}\")", field, decode(&*expr))
         }
-        Expr::Nested(expr) => format!("Nested({:})", decode(*expr)),
-        //    Expr::Literal(s) => format!("{:}", s),
-        Expr::TypedString { data_type, value } => format!("{:}({:})", data_type.to_string(), value),
-        // Expr::Function(f) => format!("{:}", *f.to_string()),
-        //  Expr::Aggregate(a) => format!("{}", *a.to_string()),
-        //   Expr::Exists(q) => format!("Exists({:})", *query),
-        //   Expr::Subquery(q) => format!("Subquery({:})", *query),
-        /*
-             Expr::Case { operand, when_then, else_result } => format!("case(operand:{:}, when_then:{:}, else_result:{:}", )
-             Case {
-            operand: Option<Box<Expr>>,
-            when_then: Vec<(Expr, Expr)>,
-            else_result: Option<Box<Expr>>,
+        Expr::Nested(expr) => format!("todo:Nested({:})", decode(&*expr)),
+        Expr::Literal(s) =>  match s {
+            AstLiteral::Boolean(b) => format!("{:}", b),
+            AstLiteral::Number(d) => format!("{:}", d),
+            AstLiteral::QuotedString(qs) => format!("\"{:}\"", qs),
+            AstLiteral::Null => "Null".to_string(),
+            AstLiteral::Interval{..} => "Interval not implemented yet..".to_string(),
         },
-        */
-        _ => format!("Unimplemented Decode Expression: {:}", e.to_string()),
+        Expr::TypedString { data_type, value } => format!("{:}(\"{:}\")", data_type, value),
+        // todo's...
+        //Expr::Function(f) => format!("{:}", *f.to_string()),
+        //Expr::Aggregate(a) => format!("{}", *a.to_string()),
+        //Expr::Exists(q) => format!("Exists({:})", *query),
+        //Expr::Subquery(q) => format!("Subquery({:})", *query),
+        
+        
+        Expr::Case { operand, when_then, else_result } => {
+            let mut str=match operand {
+                Some(s) => format!("CASE {:}", decode(s)),
+                None => format!("CASE "),
+            };
+            for (_when, _then) in when_then {
+                str+=format!("\nWHEN {:} THEN {:}", decode(_when), decode(_then)).as_str();
+            }
+
+            match else_result {
+               Some(s) => str+=format!("\nELSE {:}", decode(s)).as_str(),
+               None => str+="",   // no operation?
+            };
+            str + "\nEND"
+        },
+        _ => format!("Unimplemented Decode Expression: {:}", e),
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use super::Expr;
-    use crate::ast::expr_decoder::decode;
-    use crate::ast::BinaryOperator;
+    use bigdecimal::BigDecimal;
+    use std::str::FromStr;
+    use crate::ast::{AstLiteral, BinaryOperator, UnaryOperator, 
+                    Expr, expr_decoder::decode,
+                    DataType,DateTimeField,};
 
     #[test]
     fn basic_decoder() {
-        assert_eq!("id".to_string(), decode(Expr::Identifier("id".to_string())));
+        //Identifier
+        assert_eq!("id".to_string(), decode(&Expr::Identifier("id".to_string())));
 
+        //BinaryOp
         assert_eq!(
             "id + num",
-            decode(Expr::BinaryOp {
+            decode(&Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("id".to_string())),
                 op: BinaryOperator::Plus,
                 right: Box::new(Expr::Identifier("num".to_string()))
             })
         );
+
+        //unaryop
+        assert_eq!("-id",
+                   decode(&Expr::UnaryOp{op:UnaryOperator::Minus, 
+                    expr:Box::new(Expr::Identifier("id".to_string()))}));
+
+        //CompoundIdentifier
+        assert_eq!("id.name.first",
+            decode(&Expr::CompoundIdentifier(vec!["id".to_string(), "name".to_string(), "first".to_string()])));
+
+        //IsNUll
+        let id_expr:Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
+        assert_eq!("id IS NULL", decode(&Expr::IsNull(id_expr)));    
+  
+        //IsNotNull
+        let id_expr:Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
+        assert_eq!("id IS NOT NULL", decode(&Expr::IsNotNull(id_expr)));    
+
+        //Cast
+        //assert_eq!("cast 1.0 as int)", decode(expr));
+
+        //TypeString
+        assert_eq!(r#"Int("1")"#, 
+                   decode(&Expr::TypedString{data_type:DataType::Int, 
+                                            value:"1".to_string()}));
+
+        //extract
+        assert_eq!(r#"extract(Minute from "2022-05-05 01:02:03")"#,
+                   decode(&Expr::Extract{field:DateTimeField::Minute, 
+                    expr:Box::new(Expr::Identifier("2022-05-05 01:02:03".to_string()))}));
+
+        //between
+        assert_eq!("id BETWEEN low AND high",
+                  decode(&Expr::Between{expr:Box::new(Expr::Identifier("id".to_string())),
+                                        negated: false,
+                                        low: Box::new(Expr::Identifier("low".to_string())),
+                                        high: Box::new(Expr::Identifier("high".to_string()))})
+        );
+
+        //not between
+        assert_eq!("id NOT BETWEEN low AND high",
+        decode(&Expr::Between{expr:Box::new(Expr::Identifier("id".to_string())),
+                              negated: true,
+                              low: Box::new(Expr::Identifier("low".to_string())),
+                              high: Box::new(Expr::Identifier("high".to_string()))}));
+
+        // in list
+        assert_eq!(r#"id IN ("a","b","c")"#,
+           decode(&Expr::InList{expr:Box::new(Expr::Identifier("id".to_string())),
+                                list:vec![Expr::Literal(AstLiteral::QuotedString("a".to_string())),
+                                          Expr::Literal(AstLiteral::QuotedString("b".to_string())),
+                                          Expr::Literal(AstLiteral::QuotedString("c".to_string()))],
+                                negated:false}));
+        
+
+        //not in list
+        assert_eq!(r#"id NOT IN ("a","b","c")"#,
+           decode(&Expr::InList{expr:Box::new(Expr::Identifier("id".to_string())),
+                                list:vec![Expr::Literal(AstLiteral::QuotedString("a".to_string())),
+                                          Expr::Literal(AstLiteral::QuotedString("b".to_string())),
+                                          Expr::Literal(AstLiteral::QuotedString("c".to_string()))],
+                                negated:true}));
+
+        assert_eq!("CASE id\nWHEN 1 THEN \"a\"\nWHEN 2 THEN \"b\"\nELSE \"c\"\nEND",
+           decode(&Expr::Case{operand:Some(Box::new(Expr::Identifier("id".to_string()))),
+                  when_then:vec![(Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())), Expr::Literal(AstLiteral::QuotedString("a".to_string()))),
+                                 (Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())), Expr::Literal(AstLiteral::QuotedString("b".to_string())))],
+                  else_result:Some(Box::new(Expr::Literal(AstLiteral::QuotedString("c".to_string()))))}               
+        ));
+
     }
 }
