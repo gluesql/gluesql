@@ -1,8 +1,8 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
+    gluesql_core::ast::DataType,
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
-    gluesql_core::ast::DataType,
 };
 
 pub struct Print<W: Write> {
@@ -44,8 +44,9 @@ impl<W: Write> Print<W> {
                 let mut table = get_table(vec!["Field", "Type"]);
                 for (field, fieldtype) in columns {
                     match fieldtype {
-                       DataType::Decimal(p,s) => table.add_row([field, format!("Decimal({:},{:})", p.unwrap(), s.unwrap())]),
-                       _ => table.add_row([field, fieldtype.to_string()]),
+                        DataType::Decimal(p, s) => table
+                            .add_row([field, format!("Decimal({:},{:})", p.unwrap(), s.unwrap())]),
+                        _ => table.add_row([field, fieldtype.to_string()]),
                     };
                 }
 
