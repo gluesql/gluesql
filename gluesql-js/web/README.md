@@ -9,23 +9,22 @@ Enable `opt-level = "s"` option
 opt-level = "s"
 ```
 
-### Build (rollup)
+### Build
 ```
-yarn rollup -c
-```
+# all together
+yarn run build
 
-### Build (browser module & webpack)
-```
-wasm-pack build --target web --no-typescript --release --out-dir ../dist/web
-```
+# rollup
+yarn run build:rollup
 
-### Build (nodejs)
-```
-wasm-pack build --target nodejs --no-typescript --release --out-dir ../dist/nodejs
+# browser module & webpack
+yarn run build:browser
+
+# nodejs
+yarn run build:nodejs
 ```
 
 ### 🔬 Test in Headless Browsers with `wasm-pack test`
-
 ```
 wasm-pack test --headless --firefox --chrome
 ```
