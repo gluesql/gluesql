@@ -1,7 +1,7 @@
-use super::{AstLiteral, Expr};
+use super::{Aggregate, AstLiteral, CountArgExpr, Expr};
 
-fn decode(e: &Expr) -> String {
-    match e {
+fn decode(expr: &Expr) -> String {
+    match expr {
         Expr::Identifier(s) => s.to_string(),
         Expr::BinaryOp { left, op, right } => {
             format!("{:} {:} {:}", decode(&*left), op, decode(&*right))
@@ -41,7 +41,6 @@ fn decode(e: &Expr) -> String {
                 false => format!("{:} IN ({:})", decode(expr), s),
             }
         }
-        //   Expr::InSubquery {expr, subquery, negated} => format!("InSubquery({:}, subquery:{:}, negated: {:})", decode(*expr),  *subquery, negated),
         Expr::Between {
             expr,
             negated,
@@ -78,11 +77,6 @@ fn decode(e: &Expr) -> String {
             AstLiteral::Interval { .. } => "Interval not implemented yet..".to_string(),
         },
         Expr::TypedString { data_type, value } => format!("{:}(\"{:}\")", data_type, value),
-        // todo's...
-        //Expr::Function(f) => format!("{:}", *f.to_string()),
-        //Expr::Aggregate(a) => format!("{}", *a.to_string()),
-        //Expr::Exists(q) => format!("Exists({:})", *query),
-        //Expr::Subquery(q) => format!("Subquery({:})", *query),
         Expr::Case {
             operand,
             when_then,
@@ -102,7 +96,24 @@ fn decode(e: &Expr) -> String {
             };
             str + "\nEND"
         }
-        _ => format!("Unimplemented Decode Expression: {:}", e),
+        Expr::Aggregate(a) => match &**a {
+            Aggregate::Count(c) => match c {
+                CountArgExpr::Expr(e) => format!("Count({:})", decode(e)),
+                CountArgExpr::Wildcard => "Count(*)".to_string(),
+            },
+            Aggregate::Sum(e) => format!("Sum({:})", decode(e)),
+            Aggregate::Max(e) => format!("Max({:})", decode(e)),
+            Aggregate::Min(e) => format!("Min({:})", decode(e)),
+            Aggregate::Avg(e) => format!("Avg({:})", decode(e)),
+        },
+        Expr::Function(f) => {
+            format!("{:}(todo:args)", f)
+        }
+        // todo's...  these require enum query..
+        //Expr::InSubquery {expr, subquery, negated} => format!("InSubquery({:}, subquery:{:}, negated: {:})", decode(*expr),  *subquery, negated),
+        //Expr::Exists(q) => format!("Exists({:})", *query),
+        //Expr::Subquery(q) => format!("Subquery({:})", *query),
+        _ => format!("Unimplemented Decode Expression: {:#?}", expr),
     }
 }
 
@@ -110,8 +121,8 @@ fn decode(e: &Expr) -> String {
 mod tests {
 
     use crate::ast::{
-        expr_decoder::decode, AstLiteral, BinaryOperator, DataType, DateTimeField, Expr,
-        UnaryOperator,
+        expr_decoder::decode, Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType,
+        DateTimeField, Expr, Function, UnaryOperator,
     };
     use bigdecimal::BigDecimal;
     use std::str::FromStr;
@@ -162,7 +173,16 @@ mod tests {
         assert_eq!("id IS NOT NULL", decode(&Expr::IsNotNull(id_expr)));
 
         //Cast
-        //assert_eq!("cast 1.0 as int)", decode(expr));
+        //Expr::Cast { expr, data_type } => {
+        assert_eq!(
+            "cast(1.0 as Int)",
+            decode(&Expr::Cast {
+                expr: Box::new(Expr::Literal(AstLiteral::Number(
+                    BigDecimal::from_str("1.0").unwrap()
+                ))),
+                data_type: DataType::Int
+            })
+        );
 
         //TypeString
         assert_eq!(
@@ -250,6 +270,54 @@ mod tests {
                     "c".to_string()
                 ))))
             })
+        );
+
+        //todo..
+        assert_eq!(
+            "SIGN(todo:args)",
+            decode(&Expr::Function(Box::new(Function::Sign(Expr::Literal(
+                AstLiteral::Number(BigDecimal::from_str("1.0").unwrap())
+            )))))
+        );
+
+        //aggregate  max
+        assert_eq!(
+            "Max(id)",
+            decode(&Expr::Aggregate(Box::new(Aggregate::Max(
+                Expr::Identifier("id".to_string())
+            ))))
+        );
+
+        //aggregate count
+        assert_eq!(
+            "Count(*)",
+            decode(&Expr::Aggregate(Box::new(Aggregate::Count(
+                CountArgExpr::Wildcard
+            ))))
+        );
+
+        //aggregate min
+        assert_eq!(
+            "Min(id)",
+            decode(&Expr::Aggregate(Box::new(Aggregate::Min(
+                Expr::Identifier("id".to_string())
+            ))))
+        );
+
+        //aggregate sum
+        assert_eq!(
+            "Sum(price)",
+            decode(&Expr::Aggregate(Box::new(Aggregate::Sum(
+                Expr::Identifier("price".to_string())
+            ))))
+        );
+
+        //aggregate avg
+        assert_eq!(
+            "Avg(pay)",
+            decode(&Expr::Aggregate(Box::new(Aggregate::Avg(
+                Expr::Identifier("pay".to_string())
+            ))))
         );
     }
 }
