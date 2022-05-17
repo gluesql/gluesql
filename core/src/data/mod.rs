@@ -1,5 +1,6 @@
 mod bigdecimal_ext;
 mod interval;
+mod key;
 mod literal;
 mod row;
 mod string_ext;
@@ -11,6 +12,7 @@ pub mod value;
 pub use {
     bigdecimal_ext::BigDecimalExt,
     interval::{Interval, IntervalError},
+    key::{Key, KeyError},
     literal::{Literal, LiteralError},
     row::{Row, RowError},
     schema::{Schema, SchemaIndex, SchemaIndexOrd},

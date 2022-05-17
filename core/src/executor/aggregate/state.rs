@@ -1,8 +1,8 @@
 use {
-    super::{error::AggregateError, hash::GroupKey},
+    super::error::AggregateError,
     crate::{
         ast::{Aggregate, CountArgExpr, Expr},
-        data::Value,
+        data::{Key, Value},
         executor::context::BlendContext,
         result::Result,
     },
@@ -11,7 +11,7 @@ use {
     std::{cmp::Ordering, rc::Rc},
     utils::{IndexMap, Vector},
 };
-type Group = Rc<Vec<GroupKey>>;
+type Group = Rc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
 type Context<'a> = Rc<BlendContext<'a>>;
 enum AggrValue {
@@ -96,14 +96,14 @@ impl<'a> State<'a> {
     pub fn new() -> Self {
         State {
             index: 0,
-            group: Rc::new(vec![GroupKey::None]),
+            group: Rc::new(vec![Key::None]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
         }
     }
 
-    pub fn apply(self, index: usize, group: Vec<GroupKey>, context: Rc<BlendContext<'a>>) -> Self {
+    pub fn apply(self, index: usize, group: Vec<Key>, context: Rc<BlendContext<'a>>) -> Self {
         let group = Rc::new(group);
         let (groups, contexts) = if self.groups.contains(&group) {
             (self.groups, self.contexts)
