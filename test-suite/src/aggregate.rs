@@ -66,6 +66,10 @@ test_case!(aggregate, async move {
                 3           9
             ),
         ),
+        (
+            "select sum(quantity + age) as mysum from item",
+            select!("mysum"; I64; 32),
+        ),
     ];
 
     for (sql, expected) in test_cases {

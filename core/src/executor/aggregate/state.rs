@@ -1,7 +1,7 @@
 use {
     super::{error::AggregateError, hash::GroupKey},
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr},
+        ast::{Aggregate, BinaryOperator, CountArgExpr, Expr},
         data::Value,
         executor::context::BlendContext,
         result::Result,
@@ -175,14 +175,15 @@ impl<'a> State<'a> {
             .collect::<Result<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>>()
     }
 
-    pub fn accumulate(self, context: &BlendContext<'_>, aggr: &'a Aggregate) -> Result<Self> {
-        let get_value = |expr: &Expr| match expr {
+    pub fn accumulate_get_value(self, context: &BlendContext<'_>, expr: &Expr) -> Result<&'a Value> {
+
+        match expr {
             Expr::Identifier(ident) => context
                 .get_value(ident)
                 .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
             Expr::CompoundIdentifier(idents) => {
                 if idents.len() != 2 {
-                    return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
+                    return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone())).into();
                 }
 
                 let table_alias = &idents[0];
@@ -190,18 +191,188 @@ impl<'a> State<'a> {
 
                 context
                     .get_alias_value(table_alias, column)
-                    .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
+                    .ok_or_else(|| Err(AggregateError::ValueNotFound(column.to_string())).into())
+            },
+            _ => Err(AggregateError::OnlyIdentifierAllowed).into(),
+        }
+            /*
+            Expr::BinaryOp { left, op, right } => {
+                let left_value = match &**left {
+                    Expr::Identifier(ident) => context
+                        .get_value(&ident)
+                        .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string().into())),
+                    Expr::CompoundIdentifier(idents) => {
+                        if idents.len() != 2 {
+                            return Err(AggregateError::UnsupportedCompoundIdentifier(
+                                expr.clone(),
+                            )).into();
+                        }
+
+                        let table_alias = &idents[0];
+                        let column = &idents[1];
+
+                        context
+                            .get_alias_value(table_alias, column)
+                            .ok_or_else(|| AggregateError::ValueNotFound(column.to_string().into()))
+                    }
+                    _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
+                }.unwrap_or_else(|_| &Value::Null);
+
+                let right_value= match &**right {
+                    Expr::Identifier(ident) => context
+                        .get_value(&ident)
+                        .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string().into())),
+                    Expr::CompoundIdentifier(idents) => {
+                        if idents.len() != 2 {
+                            return Err(AggregateError::UnsupportedCompoundIdentifier(
+                                expr.clone(),
+                            )).into();
+                        }
+
+                        let table_alias = &idents[0];
+                        let column = &idents[1];
+
+                        context
+                            .get_alias_value(table_alias, column)
+                            .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()).into())
+                    }
+                    _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
+                }.unwrap_or_else(|_| &Value::Null);
+
+                let result:Result<&Value>=match op {
+                    BinaryOperator::Plus => match left_value.add(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                
+                    },
+                    BinaryOperator::Minus => match left_value.subtract(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                
+                    },
+                    BinaryOperator::Multiply => match left_value.multiply(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                
+                    },
+                    BinaryOperator::Divide => match left_value.divide(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                
+                    },
+                    BinaryOperator::Modulo => match left_value.modulo(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                    },
+                    _ => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                };
+                result
+            }
+            _ => Err(AggregateError::OnlyIdentifierAllowed),
+        }
+        */
+    }
+
+    pub fn accumulate(self, context: &BlendContext<'_>, aggr: &'a Aggregate) -> Result<Self> {
+    /*
+        let get_value = |expr: &Expr| match expr {
+            Expr::Identifier(ident) => context
+                .get_value(ident)
+                .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string()).into()),
+            Expr::CompoundIdentifier(idents) => {
+                if idents.len() != 2 {
+                    return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone())).into();
+                }
+
+                let table_alias = &idents[0];
+                let column = &idents[1];
+
+                context
+                    .get_alias_value(table_alias, column)
+                    .ok_or_else(|| AggregateError::ValueNotFound(column.to_string().into()))
+            }
+            Expr::BinaryOp { left, op, right } => {
+                let left_value = match &**left {
+                    Expr::Identifier(ident) => context
+                        .get_value(&ident)
+                        .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string().into())),
+                    Expr::CompoundIdentifier(idents) => {
+                        if idents.len() != 2 {
+                            return Err(AggregateError::UnsupportedCompoundIdentifier(
+                                expr.clone(),
+                            )).into();
+                        }
+
+                        let table_alias = &idents[0];
+                        let column = &idents[1];
+
+                        context
+                            .get_alias_value(table_alias, column)
+                            .ok_or_else(|| AggregateError::ValueNotFound(column.to_string().into()))
+                    }
+                    _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
+                }.unwrap_or_else(|_| &Value::Null);
+
+                let right_value= match &**right {
+                    Expr::Identifier(ident) => context
+                        .get_value(&ident)
+                        .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string().into())),
+                    Expr::CompoundIdentifier(idents) => {
+                        if idents.len() != 2 {
+                            return Err(AggregateError::UnsupportedCompoundIdentifier(
+                                expr.clone(),
+                            )).into();
+                        }
+
+                        let table_alias = &idents[0];
+                        let column = &idents[1];
+
+                        context
+                            .get_alias_value(table_alias, column)
+                            .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()).into())
+                    }
+                    _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
+                }.unwrap_or_else(|_| &Value::Null);
+
+                let result:Result<&Value>=match op {
+                    BinaryOperator::Plus => match left_value.add(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                
+                    },
+                    BinaryOperator::Minus => match left_value.subtract(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                
+                    },
+                    BinaryOperator::Multiply => match left_value.multiply(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                
+                    },
+                    BinaryOperator::Divide => match left_value.divide(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                
+                    },
+                    BinaryOperator::Modulo => match left_value.modulo(&right_value) {
+                        Ok(r) => Ok(&r),
+                        Err(_) => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                    },
+                    _ => Err(AggregateError::UnsupportedAggregateFunction.into()),
+                };
+                result
             }
             _ => Err(AggregateError::OnlyIdentifierAllowed),
         };
-
+         */
         let value = match aggr {
             Aggregate::Count(CountArgExpr::Wildcard) => &Value::Null,
             Aggregate::Count(CountArgExpr::Expr(expr))
             | Aggregate::Sum(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)
-            | Aggregate::Avg(expr) => get_value(expr)?,
+            | Aggregate::Avg(expr) => accumulate_get_value(context, expr)?,
         };
 
         let aggr_value = match self.get(aggr) {
