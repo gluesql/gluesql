@@ -1,6 +1,8 @@
 use {
     crate::*,
-    gluesql_core::{executor::AggregateError, prelude::Value::*, translate::TranslateError},
+    gluesql_core::{
+        data::KeyError, executor::AggregateError, prelude::Value::*, translate::TranslateError,
+    },
 };
 
 test_case!(aggregate, async move {
@@ -177,13 +179,8 @@ test_case!(group_by, async move {
         test!(Ok(expected), sql);
     }
 
-    use gluesql_core::data::ValueError;
-    let error_cases = vec![(
-        ValueError::GroupByNotSupported("FLOAT".to_owned()).into(),
-        "SELECT * FROM Item GROUP BY ratio;",
-    )];
-
-    for (error, sql) in error_cases {
-        test!(Err(error), sql);
-    }
+    test!(
+        Err(KeyError::FloatTypeKeyNotSupported.into()),
+        "SELECT * FROM Item GROUP BY ratio;"
+    );
 });

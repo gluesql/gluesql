@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        data::ValueError,
+        data::{KeyError, ValueError},
         prelude::Value::{self, *},
     },
 };
@@ -54,7 +54,7 @@ INSERT INTO ListType VALUES
     );
 
     test!(
-        Err(ValueError::GroupByNotSupported("LIST".to_owned()).into()),
+        Err(KeyError::ListTypeKeyNotSupported.into()),
         r#"SELECT id FROM ListType GROUP BY items"#
     );
     test!(
