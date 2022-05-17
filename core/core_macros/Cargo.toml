@@ -1,5 +1,5 @@
 [package]
-name = "gluesql-pm"
+name = "gluesql-core-macros"
 version = "0.11.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
