@@ -40,27 +40,9 @@ CREATE TABLE Test (
     );
 
     test!(
-        Ok(Payload::ShowIndexes(vec![
-            SchemaIndex {
-                name: "idx_id".to_string(),
-                order: SchemaIndexOrd::Both,
-                expr: Expr::Identifier("id".to_string())
-            },
-            SchemaIndex {
-                name: "idx_name".to_string(),
-                expr: Expr::Identifier("name".to_string()),
-                order: SchemaIndexOrd::Both
-            },
-            SchemaIndex {
-                name: "idx_id2".to_string(),
-                order: SchemaIndexOrd::Both,
-                expr: Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier("id".to_string())),
-                    op: BinaryOperator::Plus,
-                    right: Box::new(Expr::Identifier("num".to_string()))
-                }
-            },
-        ])),
+        Ok(Payload::ShowIndexes(vec![("idx_id".to_string(), SchemaIndexOrd::Both),
+              ("idx_name".to_string(), SchemaIndexOrd::Both),
+              ("idx_id2".to_string(), SchemaIndexOrd::Both)])),
         "show indexes from Test"
     );
 

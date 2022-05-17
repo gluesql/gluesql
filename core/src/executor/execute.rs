@@ -8,7 +8,7 @@ use {
     },
     crate::{
         ast::{DataType, SetExpr, Statement, Values},
-        data::{get_name, Row, Schema, SchemaIndex, Value},
+        data::{get_name, Row, Schema, SchemaIndexOrd, Value},
         executor::limit::Limit,
         result::MutResult,
         store::{GStore, GStoreMut},
@@ -64,7 +64,7 @@ pub enum Payload {
 
     #[cfg(feature = "metadata")]
     ShowVariable(PayloadVariable),
-    ShowIndexes(Vec<SchemaIndex>),
+    ShowIndexes(Vec<(String, SchemaIndexOrd)>),
 }
 
 #[cfg(feature = "metadata")]
@@ -346,7 +346,7 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
                 Err(e) => return Err((storage, e)),
             };
 
-            Ok((storage, Payload::ShowIndexes(indexes)))
+            Ok((storage, Payload::ShowIndexes(indexes.into_iter().map(|index| (index.name, index.order)).collect())))
         }
         //- Metadata
         #[cfg(feature = "metadata")]
