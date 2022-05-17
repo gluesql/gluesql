@@ -1,13 +1,10 @@
-mod hash_key;
-
 use {
-    self::hash_key::HashKey,
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
             JoinOperator as AstJoinOperator,
         },
-        data::{Row, Table},
+        data::{Key, Row, Table},
         executor::{
             context::{BlendContext, FilterContext},
             evaluate::evaluate,
@@ -174,8 +171,8 @@ async fn join<'a, T>(
                         value_expr,
                     )
                     .await
-                    .map(Option::<HashKey>::try_from)??
-                    .and_then(|hash_key| rows_map.get(&hash_key));
+                    .map(Key::try_from)?
+                    .map(|hash_key| rows_map.get(&hash_key))?;
 
                     match rows {
                         None => Rows::Empty(empty()),
@@ -225,7 +222,7 @@ enum JoinOperator {
 enum JoinExecutor<'a> {
     NestedLoop,
     Hash {
-        rows_map: HashMap<HashKey, Vec<Row>>,
+        rows_map: HashMap<Key, Vec<Row>>,
         value_expr: &'a Expr,
     },
 }
@@ -264,7 +261,7 @@ impl<'a> JoinExecutor<'a> {
                         filter_context,
                     ));
 
-                    let hash_key: Option<HashKey> = evaluate(
+                    let hash_key: Key = evaluate(
                         storage,
                         Some(&filter_context).map(Rc::clone),
                         None,
@@ -273,10 +270,9 @@ impl<'a> JoinExecutor<'a> {
                     .await?
                     .try_into()?;
 
-                    let hash_key = match hash_key {
-                        Some(hash_key) => hash_key,
-                        None => return Ok(None),
-                    };
+                    if matches!(hash_key, Key::None) {
+                        return Ok(None);
+                    }
 
                     match where_clause {
                         Some(expr) => check_expr(storage, Some(filter_context), None, expr)

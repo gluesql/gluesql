@@ -14,12 +14,10 @@ mod binary_op;
 mod date;
 mod decimal;
 mod error;
-mod group_key;
 mod into;
 mod json;
 mod literal;
 mod selector;
-mod unique_key;
 mod uuid;
 
 pub use error::NumericBinaryOperator;
