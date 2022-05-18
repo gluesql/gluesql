@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        data::ValueError,
+        data::{KeyError, ValueError},
         executor::EvaluateError,
         prelude::Value::{self, *},
     },
@@ -70,7 +70,7 @@ INSERT INTO MapType VALUES
         r#"SELECT UNWRAP(id, "a.b.c") FROM MapType"#
     );
     test!(
-        Err(ValueError::GroupByNotSupported("MAP".to_owned()).into()),
+        Err(KeyError::MapTypeKeyNotSupported.into()),
         r#"SELECT id FROM MapType GROUP BY nested"#
     );
     test!(
