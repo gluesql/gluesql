@@ -3,6 +3,7 @@ use {
     gluesql_core::{
         data::KeyError, executor::AggregateError, prelude::Value::*, translate::TranslateError,
     },
+    rust_decimal::Decimal,
 };
 
 test_case!(aggregate, async move {
@@ -72,9 +73,21 @@ test_case!(aggregate, async move {
             "select sum(quantity + age) as mysum from Item where quantity is not NULL and age is not NULL",
             select!("mysum"; I64; 117),
         ),
+        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(quantity * 2) as mysum from Item where quantity is not NULL",
+            select!("mysum"; Decimal; Decimal::from(94)),
+        ),
+        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(quantity * age) as mysum from Item where quantity is not NULL and age is not NULL",
+            select!("mysum"; I64; 119),
+        ),
         (   //what is the behavior if a value is nuLL?  is the result null? or is the value treated as zero?  
             "select sum(quantity + age) as mysum from Item",
-            select!("mysum"; I64; 151),
+            select_with_null!("mysum"; Null),
+        ),
+        (   //what is the behavior if a value is nuLL?  is the result null? or is the value treated as zero?  
+            "select sum(quantity * age) as mysum from Item",
+            select_with_null!("mysum"; Null),
         ),
     ];
 
@@ -92,10 +105,7 @@ test_case!(aggregate, async move {
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
         ),
-        (
-            AggregateError::OnlyIdentifierAllowed.into(),
-            "SELECT SUM(1 + 2) FROM Item;",
-        ),
+        
         (
             AggregateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",

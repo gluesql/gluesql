@@ -1,15 +1,17 @@
 use {
     super::error::AggregateError,
     crate::{
-        ast::{Aggregate, BinaryOperator, CountArgExpr, Expr},
-        data::{Key, Value},
+        ast::{Aggregate, BinaryOperator, CountArgExpr, Expr, AstLiteral,},
+        data::{Key, Value,},
         executor::context::BlendContext,
         result::Result,
     },
+    rust_decimal::Decimal,
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
     std::{cmp::Ordering, rc::Rc},
     utils::{IndexMap, Vector},
+    std::str::FromStr,
 };
 type Group = Rc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
@@ -197,10 +199,11 @@ impl<'a> State<'a> {
                     Some(x) => Ok(x),
                     None => Err(AggregateError::ValueNotFound(column.to_string()).into()),
                 }
-            }
+            },
             _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
         }
     }
+
 
     fn accumulate_get_value(&self, context: &BlendContext<'_>, expr: &Expr) -> Result<Value> {
         match expr {
@@ -215,25 +218,20 @@ impl<'a> State<'a> {
                 Ok(x) => {
                     let y: Value = x.to_owned();
                     Ok(y)
-                }
+                },
                 Err(x) => Err(x),
             },
+            Expr::Literal(x) => match x {
+                AstLiteral::Number(x) => match Decimal::from_str(&x.to_string()) {
+                       Ok(x) => Ok(Value::Decimal(x)),
+                        _ => Err(AggregateError::UnsupportedAggregateLiteral.into()),
+                },
+                _ => Err(AggregateError::UnsupportedAggregateLiteral.into()),   
+            },
             Expr::BinaryOp { left, op, right } => {
-                let left_value: &Value = self.accumulate_get_value1(context, left)?;
-                let right_value: &Value = self.accumulate_get_value1(context, right)?;
+                let left_value: &Value = &self.accumulate_get_value(context, left)?;
+                let right_value: &Value = &self.accumulate_get_value(context, right)?;
 
-                //most aggregate functions ignore NUlls.
-                let left_value: &Value = match *left_value {
-                    Value::Null => Value::I8(0).as_ref(),
-                    _ => left_value,
-                };
-
-                let right_value: &Value = match *right_value {
-                    Value::Null => Value::I8(0).as_ref(),
-                    _ => right_value,
-                };
-
-                println!("{:#?} {:#?} {:#?}", left_value, op, right_value);
                 match op {
                     BinaryOperator::Plus => left_value.add(right_value),
                     BinaryOperator::Minus => left_value.subtract(right_value),

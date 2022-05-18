@@ -16,4 +16,7 @@ pub enum AggregateError {
 
     #[error("unsupported aggregate function")]
     UnsupportedAggregateFunction,
+
+    #[error("unsupported Aggregate literal")]
+    UnsupportedAggregateLiteral,
 }
