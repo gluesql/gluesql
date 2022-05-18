@@ -66,9 +66,13 @@ test_case!(aggregate, async move {
                 3           9
             ),
         ),
-        (
-            "select sum(quantity + age) as mysum from item",
-            select!("mysum"; I64; 32),
+        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(quantity + age) as mysum from Item where quantity is not NULL and age is not NULL",
+            select!("mysum"; I64; 117),
+        ),
+        (   //what is the behavior if a value is nuLL?  is the result null? or is the value treated as zero?  
+            "select sum(quantity + age) as mysum from Item",
+            select!("mysum"; I64; 151),
         ),
     ];
 
@@ -77,6 +81,10 @@ test_case!(aggregate, async move {
     }
 
     let error_cases = vec![
+        (   // for now, ISNULL is not implemented
+            TranslateError::UnsupportedFunction("ISNULL".to_string()).into(),
+            "select sum(isnull(quantity,0)) as mysum from Item",
+        ),
         (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
