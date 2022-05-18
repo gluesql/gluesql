@@ -26,29 +26,6 @@ pub enum ColumnValidation {
     SpecifiedColumns(Rc<[ColumnDef]>, Vec<String>),
 }
 
-<<<<<<< HEAD
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum UniqueKey {
-    Bool(bool),
-    I8(i8),
-    I32(i32),
-    I64(i64),
-    I128(i128),
-    U8(u8),
-    U32(u32),
-    U64(u64),
-    U128(u128),
-    Str(String),
-    Date(NaiveDate),
-    Timestamp(NaiveDateTime),
-    Time(NaiveTime),
-    Interval(Interval),
-    Uuid(u128),
-    Decimal(Decimal),
-}
-
-=======
->>>>>>> e52c7ce6c7a3f74039bd2f76fe044705b87fe24c
 #[derive(Debug)]
 struct UniqueConstraint {
     column_index: usize,
