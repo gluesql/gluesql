@@ -83,7 +83,8 @@ test_case!(aggregate, async move {
     }
 
     let error_cases = vec![
-        (   // for now, ISNULL is not implemented
+        (
+            // for now, ISNULL is not implemented
             TranslateError::UnsupportedFunction("ISNULL".to_string()).into(),
             "select sum(isnull(quantity,0)) as mysum from Item",
         ),
