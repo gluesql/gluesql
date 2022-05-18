@@ -51,9 +51,6 @@ pub enum ValueError {
     #[error("the divisor should not be zero")]
     DivisorShouldNotBeZero,
 
-    #[error("{0} type cannot be grouped by")]
-    GroupByNotSupported(String),
-
     #[error("unary plus operation for non numeric value")]
     UnaryPlusOnNonNumeric,
 

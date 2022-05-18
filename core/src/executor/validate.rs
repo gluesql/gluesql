@@ -1,13 +1,11 @@
 use {
     crate::{
         ast::{ColumnDef, ColumnOption},
-        data::{Interval, Row, Value},
+        data::{Key, Row, Value},
         result::Result,
         store::Store,
     },
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
-    rust_decimal::Decimal,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -28,6 +26,7 @@ pub enum ColumnValidation {
     SpecifiedColumns(Rc<[ColumnDef]>, Vec<String>),
 }
 
+<<<<<<< HEAD
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UniqueKey {
     Bool(bool),
@@ -48,11 +47,13 @@ pub enum UniqueKey {
     Decimal(Decimal),
 }
 
+=======
+>>>>>>> e52c7ce6c7a3f74039bd2f76fe044705b87fe24c
 #[derive(Debug)]
 struct UniqueConstraint {
     column_index: usize,
     column_name: String,
-    keys: HashSet<UniqueKey>,
+    keys: HashSet<Key>,
 }
 
 impl UniqueConstraint {
@@ -65,12 +66,11 @@ impl UniqueConstraint {
     }
 
     fn add(self, value: &Value) -> Result<Self> {
-        let new_key = match self.check(value)? {
-            Some(new_key) => new_key,
-            None => {
-                return Ok(self);
-            }
-        };
+        let new_key = self.check(value)?;
+
+        if matches!(new_key, Key::None) {
+            return Ok(self);
+        }
 
         let keys = self.keys.update(new_key);
 
@@ -81,16 +81,17 @@ impl UniqueConstraint {
         })
     }
 
-    fn check(&self, value: &Value) -> Result<Option<UniqueKey>> {
-        match value.try_into()? {
-            Some(new_key) if self.keys.contains(&new_key) => {
-                Err(ValidateError::DuplicateEntryOnUniqueField(
-                    value.clone(),
-                    self.column_name.to_owned(),
-                )
-                .into())
-            }
-            new_key => Ok(new_key),
+    fn check(&self, value: &Value) -> Result<Key> {
+        let key = Key::try_from(value)?;
+
+        if !self.keys.contains(&key) {
+            Ok(key)
+        } else {
+            Err(ValidateError::DuplicateEntryOnUniqueField(
+                value.clone(),
+                self.column_name.to_owned(),
+            )
+            .into())
         }
     }
 }

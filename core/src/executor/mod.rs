@@ -12,14 +12,14 @@ mod sort;
 mod update;
 mod validate;
 
-pub use aggregate::{AggregateError, GroupKey};
+pub use aggregate::AggregateError;
 pub use alter::AlterError;
 pub use evaluate::{evaluate_stateless, EvaluateError};
 pub use execute::{ExecuteError, Payload};
 pub use fetch::FetchError;
 pub use select::SelectError;
 pub use update::UpdateError;
-pub use validate::{UniqueKey, ValidateError};
+pub use validate::ValidateError;
 
 #[cfg(not(feature = "transaction"))]
 pub use execute::execute;
