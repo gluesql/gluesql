@@ -2,7 +2,7 @@ use {
     super::error::EvaluateError,
     crate::{
         ast::{DataType, DateTimeField},
-        data::{Literal, Value},
+        data::{Key, Literal, Value},
         result::{Error, Result},
     },
     std::{borrow::Cow, cmp::Ordering},
@@ -33,6 +33,27 @@ impl TryInto<Value> for Evaluated<'_> {
         match self {
             Evaluated::Literal(v) => Value::try_from(v),
             Evaluated::Value(v) => Ok(v.into_owned()),
+        }
+    }
+}
+
+impl TryFrom<Evaluated<'_>> for Key {
+    type Error = Error;
+
+    fn try_from(evaluated: Evaluated<'_>) -> Result<Self> {
+        let value: Value = evaluated.try_into()?;
+
+        Self::try_from(value)
+    }
+}
+
+impl TryFrom<&Evaluated<'_>> for Key {
+    type Error = Error;
+
+    fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
+        match evaluated {
+            Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
+            Evaluated::Value(v) => v.as_ref().try_into(),
         }
     }
 }
