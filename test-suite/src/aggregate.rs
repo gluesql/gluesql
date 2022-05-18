@@ -105,7 +105,6 @@ test_case!(aggregate, async move {
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
         ),
-        
         (
             AggregateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",

@@ -1,17 +1,17 @@
 use {
     super::error::AggregateError,
     crate::{
-        ast::{Aggregate, BinaryOperator, CountArgExpr, Expr, AstLiteral,},
-        data::{Key, Value,},
+        ast::{Aggregate, AstLiteral, BinaryOperator, CountArgExpr, Expr},
+        data::{Key, Value},
         executor::context::BlendContext,
         result::Result,
     },
-    rust_decimal::Decimal,
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
+    rust_decimal::Decimal,
+    std::str::FromStr,
     std::{cmp::Ordering, rc::Rc},
     utils::{IndexMap, Vector},
-    std::str::FromStr,
 };
 type Group = Rc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
@@ -199,11 +199,10 @@ impl<'a> State<'a> {
                     Some(x) => Ok(x),
                     None => Err(AggregateError::ValueNotFound(column.to_string()).into()),
                 }
-            },
+            }
             _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
         }
     }
-
 
     fn accumulate_get_value(&self, context: &BlendContext<'_>, expr: &Expr) -> Result<Value> {
         match expr {
@@ -218,15 +217,15 @@ impl<'a> State<'a> {
                 Ok(x) => {
                     let y: Value = x.to_owned();
                     Ok(y)
-                },
+                }
                 Err(x) => Err(x),
             },
             Expr::Literal(x) => match x {
                 AstLiteral::Number(x) => match Decimal::from_str(&x.to_string()) {
-                       Ok(x) => Ok(Value::Decimal(x)),
-                        _ => Err(AggregateError::UnsupportedAggregateLiteral.into()),
+                    Ok(x) => Ok(Value::Decimal(x)),
+                    _ => Err(AggregateError::UnsupportedAggregateLiteral.into()),
                 },
-                _ => Err(AggregateError::UnsupportedAggregateLiteral.into()),   
+                _ => Err(AggregateError::UnsupportedAggregateLiteral.into()),
             },
             Expr::BinaryOp { left, op, right } => {
                 let left_value: &Value = &self.accumulate_get_value(context, left)?;
