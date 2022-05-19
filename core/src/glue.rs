@@ -59,7 +59,7 @@ impl<T, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
     pub async fn execute_stmt_async(&mut self, statement: &Statement) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
-        match execute(storage, &statement).await {
+        match execute(storage, statement).await {
             Ok((storage, payload)) => {
                 self.storage = Some(storage);
 

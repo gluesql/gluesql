@@ -58,7 +58,7 @@ impl<W: Write> Print<W> {
             Payload::Select { labels, rows } => {
                 let mut table = get_table(labels);
                 for values in rows {
-                    let values: Vec<String> = values.into_iter().map(Into::into).collect();
+                    let values: Vec<String> = values.iter().map(Into::into).collect();
 
                     table.add_row(values);
                 }

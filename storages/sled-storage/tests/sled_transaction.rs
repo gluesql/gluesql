@@ -32,9 +32,8 @@ macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
         let res = $glue.execute($sql);
         let expeced_result: Result<Payload> = $result;
-        if res.is_ok() {
+        if let Ok(r) = res {
             assert_eq!(expeced_result.is_ok(), true);
-            let r = res.unwrap();
             assert_eq!(r.len(), 1);
             assert_eq!(r[0], expeced_result.unwrap());
         } else {
