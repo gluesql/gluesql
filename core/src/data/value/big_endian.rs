@@ -170,14 +170,6 @@ mod tests {
         assert_eq!(cmp(&n6, &n4), Ordering::Greater);
         assert_eq!(cmp(&n4, &null), Ordering::Less);
 
-        assert_eq!(cmp(&n1, &n2), Ordering::Less);
-        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
-        assert_eq!(cmp(&n1, &n6), Ordering::Less);
-        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
-        assert_eq!(cmp(&n4, &n5), Ordering::Less);
-        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
-        assert_eq!(cmp(&n4, &null), Ordering::Less);
-
         let n1 = I64(-123).to_cmp_be_bytes().unwrap();
         let n2 = I64(-11).to_cmp_be_bytes().unwrap();
         let n3 = I64(0).to_cmp_be_bytes().unwrap();
@@ -200,13 +192,6 @@ mod tests {
         let n5 = I128(20).to_cmp_be_bytes().unwrap();
         let n6 = I128(100).to_cmp_be_bytes().unwrap();
 
-        assert_eq!(cmp(&n1, &n2), Ordering::Less);
-        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
-        assert_eq!(cmp(&n1, &n6), Ordering::Less);
-        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
-        assert_eq!(cmp(&n4, &n5), Ordering::Less);
-        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
-        assert_eq!(cmp(&n4, &null), Ordering::Less);
 
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);
