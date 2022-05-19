@@ -114,8 +114,8 @@ impl Div<i32> for Interval {
 
     fn div(self, rhs: i32) -> Self {
         match self {
-            Interval::Month(v) => Interval::Month(((v / rhs) as i32),
-            Interval::Microsecond(v) => Interval::Microsecond((v / rhs) as i64),
+            Interval::Month(v) => Interval::Month(v / rhs as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(v / rhs as i64),
         }
     }
 }
@@ -125,7 +125,7 @@ impl Div<i64> for Interval {
 
     fn div(self, rhs: i64) -> Self {
         match self {
-            Interval::Month(v) => Interval::Month(((v / rhs) as i32),
+            Interval::Month(v) => Interval::Month(((v as i64/ rhs) as i32),
             Interval::Microsecond(v) => Interval::Microsecond((v / rhs) as i64),
         }
     }
@@ -209,7 +209,7 @@ mod tests {
         assert_eq!(2_i8 * Month(3), Month(6));
 
         assert_eq!(Month(2) * 3_i32, Month(6));
-        assert_eq!(2_i64 * Month(3), Month(6));
+        assert_eq!(2_i32 * Month(3), Month(6));
 
         assert_eq!(Month(2) * 3_i64, Month(6));
         assert_eq!(2_i64 * Month(3), Month(6));
@@ -224,7 +224,7 @@ mod tests {
         assert_eq!(6_i8 / Month(2), Month(3));
 
         assert_eq!(Month(6) / 3_i32, Month(2));
-        assert_eq!(6_i64 / Month(2), Month(3));
+        assert_eq!(6_i32 / Month(2), Month(3));
 
         assert_eq!(Month(6) / 3_i64, Month(2));
         assert_eq!(6_i64 / Month(2), Month(3));
