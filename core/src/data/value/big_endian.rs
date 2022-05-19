@@ -192,7 +192,6 @@ mod tests {
         let n5 = I128(20).to_cmp_be_bytes().unwrap();
         let n6 = I128(100).to_cmp_be_bytes().unwrap();
 
-
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &n6), Ordering::Less);

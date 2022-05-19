@@ -175,7 +175,6 @@ impl Div<Interval> for i32 {
     }
 }
 
-
 impl Div<Interval> for i64 {
     type Output = Interval;
 
