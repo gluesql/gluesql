@@ -5,13 +5,8 @@ use strum_macros::Display;
 pub enum DataType {
     Boolean,
     Int8,
-    Int32,
     Int,
     Int128,
-    UInt8,
-    UInt32,
-    UInt,
-    UInt128,
     Float,
     Text,
     Date,
