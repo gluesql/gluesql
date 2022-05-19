@@ -27,15 +27,6 @@ impl Value {
                     .copied()
                     .collect::<Vec<_>>()
             }
-            Value::I32(v) => {
-                let sign = if *v >= 0 { 1 } else { 0 };
-
-                [VALUE, sign]
-                    .iter()
-                    .chain(v.to_be_bytes().iter())
-                    .copied()
-                    .collect::<Vec<_>>()
-            }
             Value::I64(v) => {
                 let sign = if *v >= 0 { 1 } else { 0 };
 
@@ -54,26 +45,6 @@ impl Value {
                     .copied()
                     .collect::<Vec<_>>()
             }
-            Value::U8(v) => [VALUE]
-                .iter()
-                .chain(v.to_be_bytes().iter())
-                .copied()
-                .collect::<Vec<_>>(),
-            Value::U32(v) => [VALUE]
-                .iter()
-                .chain(v.to_be_bytes().iter())
-                .copied()
-                .collect::<Vec<_>>(),
-            Value::U64(v) => [VALUE]
-                .iter()
-                .chain(v.to_be_bytes().iter())
-                .copied()
-                .collect::<Vec<_>>(),
-            Value::U128(v) => [VALUE]
-                .iter()
-                .chain(v.to_be_bytes().iter())
-                .copied()
-                .collect::<Vec<_>>(),
             Value::F64(v) => [VALUE]
                 .iter()
                 .chain(v.to_be_bytes().iter())
@@ -199,13 +170,6 @@ mod tests {
         assert_eq!(cmp(&n6, &n4), Ordering::Greater);
         assert_eq!(cmp(&n4, &null), Ordering::Less);
 
-        let n1 = I32(-100).to_cmp_be_bytes().unwrap();
-        let n2 = I32(-10).to_cmp_be_bytes().unwrap();
-        let n3 = I32(0).to_cmp_be_bytes().unwrap();
-        let n4 = I32(3).to_cmp_be_bytes().unwrap();
-        let n5 = I32(20).to_cmp_be_bytes().unwrap();
-        let n6 = I32(100).to_cmp_be_bytes().unwrap();
-
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &n6), Ordering::Less);
@@ -243,58 +207,6 @@ mod tests {
         assert_eq!(cmp(&n4, &n5), Ordering::Less);
         assert_eq!(cmp(&n6, &n4), Ordering::Greater);
         assert_eq!(cmp(&n4, &null), Ordering::Less);
-
-        let n1 = U8(0).to_cmp_be_bytes().unwrap();
-        let n2 = U8(90).to_cmp_be_bytes().unwrap();
-        let n3 = U8(100).to_cmp_be_bytes().unwrap();
-        let n4 = U8(103).to_cmp_be_bytes().unwrap();
-        let n5 = U8(120).to_cmp_be_bytes().unwrap();
-        let n6 = U8(200).to_cmp_be_bytes().unwrap();
-
-        assert_eq!(cmp(&n1, &n2), Ordering::Less);
-        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
-        assert_eq!(cmp(&n1, &n6), Ordering::Less);
-        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
-        assert_eq!(cmp(&n4, &n5), Ordering::Less);
-        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
-        assert_eq!(cmp(&n4, &null), Ordering::Less);
-
-        let n1 = U32(0).to_cmp_be_bytes().unwrap();
-        let n2 = U32(90).to_cmp_be_bytes().unwrap();
-        let n3 = U32(100).to_cmp_be_bytes().unwrap();
-        let n4 = U32(103).to_cmp_be_bytes().unwrap();
-        let n5 = U32(120).to_cmp_be_bytes().unwrap();
-        let n6 = U32(200).to_cmp_be_bytes().unwrap();
-
-        assert_eq!(cmp(&n1, &n2), Ordering::Less);
-        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
-        assert_eq!(cmp(&n1, &n6), Ordering::Less);
-        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
-        assert_eq!(cmp(&n4, &n5), Ordering::Less);
-        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
-        assert_eq!(cmp(&n4, &null), Ordering::Less);
-
-        let n1 = U64(0).to_cmp_be_bytes().unwrap();
-        let n2 = U64(90).to_cmp_be_bytes().unwrap();
-        let n3 = U64(100).to_cmp_be_bytes().unwrap();
-        let n4 = U64(103).to_cmp_be_bytes().unwrap();
-        let n5 = U64(120).to_cmp_be_bytes().unwrap();
-        let n6 = U64(200).to_cmp_be_bytes().unwrap();
-
-        assert_eq!(cmp(&n1, &n2), Ordering::Less);
-        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
-        assert_eq!(cmp(&n1, &n6), Ordering::Less);
-        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
-        assert_eq!(cmp(&n4, &n5), Ordering::Less);
-        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
-        assert_eq!(cmp(&n4, &null), Ordering::Less);
-
-        let n1 = U128(0).to_cmp_be_bytes().unwrap();
-        let n2 = U128(90).to_cmp_be_bytes().unwrap();
-        let n3 = U128(100).to_cmp_be_bytes().unwrap();
-        let n4 = U128(103).to_cmp_be_bytes().unwrap();
-        let n5 = U128(120).to_cmp_be_bytes().unwrap();
-        let n6 = U128(200).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);

@@ -25,13 +25,8 @@ pub enum KeyError {
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Key {
     I8(i8),
-    I32(i32),
     I64(i64),
     I128(i128),
-    U8(u8),
-    U32(u32),
-    U64(u64),
-    U128(u128),
     Bool(bool),
     Str(String),
     Date(NaiveDate),
@@ -52,13 +47,8 @@ impl TryFrom<Value> for Key {
         match value {
             Bool(v) => Ok(Key::Bool(v)),
             I8(v) => Ok(Key::I8(v)),
-            I32(v) => Ok(Key::I32(v)),
             I64(v) => Ok(Key::I64(v)),
             I128(v) => Ok(Key::I128(v)),
-            U8(v) => Ok(Key::U8(v)),
-            U32(v) => Ok(Key::U32(v)),
-            U64(v) => Ok(Key::U64(v)),
-            U128(v) => Ok(Key::U128(v)),
             Str(v) => Ok(Key::Str(v)),
             Date(v) => Ok(Key::Date(v)),
             Timestamp(v) => Ok(Key::Timestamp(v)),

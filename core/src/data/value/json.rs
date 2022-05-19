@@ -37,13 +37,8 @@ impl TryFrom<Value> for JsonValue {
         match value {
             Value::Bool(v) => Ok(JsonValue::Bool(v)),
             Value::I8(v) => Ok(v.into()),
-            Value::I32(v) => Ok(v.into()),
             Value::I64(v) => Ok(v.into()),
             Value::I128(v) => Ok(v.to_string().into()),
-            Value::U8(v) => Ok(v.into()),
-            Value::U32(v) => Ok(v.into()),
-            Value::U64(v) => Ok(v.into()),
-            Value::U128(v) => Ok(v.to_string().into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
@@ -125,24 +120,12 @@ mod tests {
     fn value_to_json() {
         assert_eq!(Value::Bool(true).try_into(), Ok(JsonValue::Bool(true)));
         assert_eq!(Value::I8(16).try_into(), Ok(JsonValue::Number(16.into())));
-        assert_eq!(Value::I32(16).try_into(), Ok(JsonValue::Number(16.into())));
         assert_eq!(
             Value::I64(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
         // this doesn't work
         // assert_eq!(Value::I128(i128::MAX).try_into(), Ok(JsonValue::Number(i128::MAX.into())));
-        assert_eq!(Value::U8(16).try_into(), Ok(JsonValue::Number(16u8.into())));
-        assert_eq!(
-            Value::U32(16).try_into(),
-            Ok(JsonValue::Number(16u32.into()))
-        );
-        assert_eq!(
-            Value::U64(100).try_into(),
-            Ok(JsonValue::Number(100u64.into()))
-        );
-        //this doesn't work
-        //assert_eq!(Value::U128(u128::MAX).try_into(), Ok(JsonValue::Number(u128::MAX.into())));
 
         assert_eq!(
             Value::F64(1.23).try_into(),

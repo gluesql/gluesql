@@ -27,13 +27,8 @@ pub use error::ValueError;
 pub enum Value {
     Bool(bool),
     I8(i8),
-    I32(i32),
     I64(i64),
     I128(i128),
-    U8(u8),
-    U32(u32),
-    U64(u64),
-    U128(u128),
     F64(f64),
     Decimal(Decimal),
     Str(String),
@@ -51,13 +46,8 @@ impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::I8(l), _) => l == other,
-            (Value::I32(l), _) => l == other,
             (Value::I64(l), _) => l == other,
             (Value::I128(l), _) => l == other,
-            (Value::U8(l), _) => l == other,
-            (Value::U32(l), _) => l == other,
-            (Value::U64(l), _) => l == other,
-            (Value::U128(l), _) => l == other,
             (Value::F64(l), _) => l == other,
             (Value::Decimal(l), Value::Decimal(r)) => l == r,
             (Value::Bool(l), Value::Bool(r)) => l == r,
@@ -80,13 +70,8 @@ impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::I8(l), _) => l.partial_cmp(other),
-            (Value::I32(l), _) => l.partial_cmp(other),
             (Value::I64(l), _) => l.partial_cmp(other),
             (Value::I128(l), _) => l.partial_cmp(other),
-            (Value::U8(l), _) => l.partial_cmp(other),
-            (Value::U32(l), _) => l.partial_cmp(other),
-            (Value::U64(l), _) => l.partial_cmp(other),
-            (Value::U128(l), _) => l.partial_cmp(other),
             (Value::F64(l), _) => l.partial_cmp(other),
             (Value::Decimal(l), Value::Decimal(r)) => Some(l.cmp(r)),
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
@@ -107,13 +92,8 @@ impl Value {
     pub fn is_zero(&self) -> bool {
         match self {
             Value::I8(v) => *v == 0,
-            Value::I32(v) => *v == 0,
             Value::I64(v) => *v == 0,
             Value::I128(v) => *v == 0,
-            Value::U8(v) => *v == 0,
-            Value::U32(v) => *v == 0,
-            Value::U64(v) => *v == 0,
-            Value::U128(v) => *v == 0,
             Value::F64(v) => *v == 0.0,
             Value::Decimal(v) => *v == Decimal::ZERO,
             _ => false,
@@ -123,13 +103,8 @@ impl Value {
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
         let valid = match self {
             Value::I8(_) => matches!(data_type, DataType::Int8),
-            Value::I32(_) => matches!(data_type, DataType::Int32),
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::I128(_) => matches!(data_type, DataType::Int128),
-            Value::U8(_) => matches!(data_type, DataType::UInt8),
-            Value::U32(_) => matches!(data_type, DataType::UInt32),
-            Value::U64(_) => matches!(data_type, DataType::UInt),
-            Value::U128(_) => matches!(data_type, DataType::UInt128),
             Value::F64(_) => matches!(data_type, DataType::Float),
             Value::Decimal(_) => matches!(data_type, DataType::Decimal),
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
@@ -166,13 +141,8 @@ impl Value {
     pub fn cast(&self, data_type: &DataType) -> Result<Self> {
         match (data_type, self) {
             (DataType::Int8, Value::I8(_))
-            | (DataType::Int32, Value::I32(_))
             | (DataType::Int, Value::I64(_))
             | (DataType::Int128, Value::I128(_))
-            | (DataType::UInt8, Value::U8(_))
-            | (DataType::UInt32, Value::U32(_))
-            | (DataType::UInt, Value::U64(_))
-            | (DataType::UInt128, Value::U128(_))
             | (DataType::Float, Value::F64(_))
             | (DataType::Decimal, Value::Decimal(_))
             | (DataType::Boolean, Value::Bool(_))
@@ -186,13 +156,8 @@ impl Value {
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
             (DataType::Int8, value) => value.try_into().map(Value::I8),
-            (DataType::Int32, value) => value.try_into().map(Value::I32),
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Int128, value) => value.try_into().map(Value::I128),
-            (DataType::UInt8, value) => value.try_into().map(Value::U8),
-            (DataType::UInt32, value) => value.try_into().map(Value::U32),
-            (DataType::UInt, value) => value.try_into().map(Value::U64),
-            (DataType::UInt128, value) => value.try_into().map(Value::U128),
             (DataType::Float, value) => value.try_into().map(Value::F64),
             (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
@@ -218,13 +183,8 @@ impl Value {
 
         match (self, other) {
             (I8(a), b) => a.try_add(b),
-            (I32(a), b) => a.try_add(b),
             (I64(a), b) => a.try_add(b),
             (I128(a), b) => a.try_add(b),
-            (U8(a), b) => a.try_add(b),
-            (U32(a), b) => a.try_add(b),
-            (U64(a), b) => a.try_add(b),
-            (U128(a), b) => a.try_add(b),
             (F64(a), b) => a.try_add(b),
             (Decimal(a), b) => a.try_add(b),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
@@ -233,13 +193,8 @@ impl Value {
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
             (Null, I8(_))
-            | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Date(_))
@@ -265,13 +220,8 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_subtract(other),
-            (I32(a), _) => a.try_subtract(other),
             (I64(a), _) => a.try_subtract(other),
             (I128(a), _) => a.try_subtract(other),
-            (U8(a), _) => a.try_subtract(other),
-            (U32(a), _) => a.try_subtract(other),
-            (U64(a), _) => a.try_subtract(other),
-            (U128(a), _) => a.try_subtract(other),
             (F64(a), _) => a.try_subtract(other),
             (Decimal(a), _) => a.try_subtract(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
@@ -294,13 +244,8 @@ impl Value {
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
             (Null, I8(_))
-            | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Date(_))
@@ -326,26 +271,17 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_multiply(other),
-            (I32(a), _) => a.try_multiply(other),
             (I64(a), _) => a.try_multiply(other),
             (I128(a), _) => a.try_multiply(other),
-            (U8(a), _) => a.try_multiply(other),
-            (U32(a), _) => a.try_multiply(other),
-            (U64(a), _) => a.try_multiply(other),
-            (U128(a), _) => a.try_multiply(other),
             (F64(a), _) => a.try_multiply(other),
             (Decimal(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
+            (Interval(a), I128(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
             (Null, I8(_))
-            | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Interval(_))
@@ -369,26 +305,17 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_divide(other),
-            (I32(a), _) => a.try_divide(other),
             (I64(a), _) => a.try_divide(other),
             (I128(a), _) => a.try_divide(other),
-            (U8(a), _) => a.try_divide(other),
-            (U32(a), _) => a.try_divide(other),
-            (U64(a), _) => a.try_divide(other),
-            (U128(a), _) => a.try_divide(other),
             (F64(a), _) => a.try_divide(other),
             (Decimal(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
+            (Interval(a), I128(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
             (Null, I8(_))
-            | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Interval(_), Null)
@@ -411,23 +338,13 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_modulo(other),
-            (I32(a), _) => a.try_modulo(other),
             (I64(a), _) => a.try_modulo(other),
             (I128(a), _) => a.try_modulo(other),
-            (U8(a), _) => a.try_modulo(other),
-            (U32(a), _) => a.try_modulo(other),
-            (U64(a), _) => a.try_modulo(other),
-            (U128(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), _) => a.try_modulo(other),
             (Null, I8(_))
-            | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
-            | (Null, U8(_))
-            | (Null, U32(_))
-            | (Null, U64(_))
-            | (Null, U128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Null) => Ok(Null),
@@ -448,8 +365,7 @@ impl Value {
         use Value::*;
 
         match self {
-            I8(_) | I32(_) | I64(_) | I128(_) | U8(_) | U32(_) | U64(_) | U128(_) | F64(_)
-            | Interval(_) | Decimal(_) => Ok(self.clone()),
+            I8(_) | I64(_) | I128(_) | F64(_) | Interval(_) | Decimal(_) => Ok(self.clone()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryPlusOnNonNumeric.into()),
         }
@@ -460,15 +376,11 @@ impl Value {
 
         match self {
             I8(a) => Ok(I8(-a)),
-            I32(a) => Ok(I32(-a)),
             I64(a) => Ok(I64(-a)),
             I128(a) => Ok(I128(-a)),
             F64(a) => Ok(F64(-a)),
             Decimal(a) => Ok(Decimal(-a)),
             Interval(a) => Ok(Interval(a.unary_minus())),
-            U8(_) | U32(_) | U64(_) | U128(_) => {
-                Err(ValueError::SignOperationOnUnsignedType.into())
-            }
             Null => Ok(Null),
             _ => Err(ValueError::UnaryMinusOnNonNumeric.into()),
         }
@@ -477,25 +389,20 @@ impl Value {
     pub fn unary_factorial(&self) -> Result<Value> {
         use Value::*;
 
-        let factorial_function = |a: i64| -> Result<u128> {
+        let factorial_function = |a: i64| -> Result<i128> {
             if a.is_negative() {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
-            (1u128..(a.to_u128().unwrap() + 1u128))
+            (1i128..(a.to_i128().unwrap() + 1i128))
                 .into_iter()
-                .try_fold(1u128, |mul, x| mul.checked_mul(x))
+                .try_fold(1i128, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         };
 
         match self {
-            I8(a) => factorial_function(*a as i64).map(U128),
-            I32(a) => factorial_function(*a as i64).map(U128),
-            I64(a) => factorial_function(*a).map(U128),
-            I128(a) => factorial_function(*a as i64).map(U128),
-            U8(a) => factorial_function(*a as i64).map(U128),
-            U32(a) => factorial_function(*a as i64).map(U128),
-            U64(a) => factorial_function(*a as i64).map(U128),
-            U128(a) => factorial_function(*a as i64).map(U128),
+            I8(a) => factorial_function(*a as i64).map(I128),
+            I64(a) => factorial_function(*a).map(I128),
+            I128(a) => factorial_function(*a as i64).map(I128),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
@@ -563,13 +470,8 @@ mod tests {
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
         assert_eq!(I8(1), I8(1));
-        assert_eq!(I32(1), I32(1));
         assert_eq!(I64(1), I64(1));
         assert_eq!(I128(1), I128(1));
-        assert_eq!(U8(1), U8(1));
-        assert_eq!(U32(1), U32(1));
-        assert_eq!(U64(1), U64(1));
-        assert_eq!(U128(1), U128(1));
         assert_eq!(I64(1), F64(1.0));
         assert_eq!(F64(1.0), I64(1));
         assert_eq!(F64(6.11), F64(6.11));
@@ -644,10 +546,6 @@ mod tests {
         assert_eq!(I8(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(I8(0).partial_cmp(&I8(1)), Some(Ordering::Less));
 
-        assert_eq!(I32(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(I32(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(I32(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-
         assert_eq!(I64(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(I64(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(I64(0).partial_cmp(&I8(1)), Some(Ordering::Less));
@@ -655,40 +553,16 @@ mod tests {
         assert_eq!(I128(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
         assert_eq!(I128(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
         assert_eq!(I128(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-
-        assert_eq!(U8(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(U8(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(U8(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-
-        assert_eq!(U32(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(U32(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(U32(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-
-        assert_eq!(U64(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(U64(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(U64(0).partial_cmp(&I8(1)), Some(Ordering::Less));
-
-        assert_eq!(U128(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
-        assert_eq!(U128(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
-        assert_eq!(U128(0).partial_cmp(&I8(1)), Some(Ordering::Less));
     }
 
     #[test]
     fn is_zero() {
         for i in -1..2 {
             assert_eq!(I8(i).is_zero(), i == 0);
-            assert_eq!(I32(i.into()).is_zero(), i == 0);
             assert_eq!(I64(i.into()).is_zero(), i == 0);
             assert_eq!(I128(i.into()).is_zero(), i == 0);
             assert_eq!(F64(i.into()).is_zero(), i == 0);
             assert_eq!(Decimal(i.into()).is_zero(), i == 0);
-        }
-
-        for i in 0..2 {
-            assert_eq!(U8(i).is_zero(), i == 0);
-            assert_eq!(U32(i.into()).is_zero(), i == 0);
-            assert_eq!(U64(i.into()).is_zero(), i == 0);
-            assert_eq!(U128(i.into()).is_zero(), i == 0);
         }
     }
 
@@ -713,76 +587,16 @@ mod tests {
         let decimal = |n: i32| Decimal(n.into());
 
         test!(add I8(1),    I8(2)    => I8(3));
-        test!(add I8(1),    I32(2)   => I32(3));
         test!(add I8(1),    I64(2)    => I64(3));
         test!(add I8(1),    I128(2)   => I128(3));
-        test!(add I8(1),    U8(2)    => I32(3));
-        test!(add I8(1),    U32(2)   => I64(3));
-        test!(add I8(1),    U64(2)    => I128(3));
-        test!(add I8(1),    U128(2)   => I128(3));
-
-        test!(add I32(1),    I8(2)    => I32(3));
-        test!(add I32(1),    I32(2)   => I32(3));
-        test!(add I32(1),    I64(2)    => I64(3));
-        test!(add I32(1),    I128(2)   => I128(3));
-        test!(add I32(1),    U8(2)    => I32(3));
-        test!(add I32(1),    U32(2)   => I64(3));
-        test!(add I32(1),    U64(2)    => I128(3));
-        test!(add I32(1),    U128(2)   => I128(3));
 
         test!(add I64(1),    I8(2)    => I64(3));
-        test!(add I64(1),    I32(2)   => I64(3));
         test!(add I64(1),    I64(2)    => I64(3));
         test!(add I64(1),    I128(2)   => I128(3));
-        test!(add I64(1),    U8(2)    => I64(3));
-        test!(add I64(1),    U32(2)   => I64(3));
-        test!(add I64(1),    U64(2)    => I128(3));
-        test!(add I64(1),    U128(2)   => I128(3));
 
         test!(add I128(1),    I8(2)    => I128(3));
-        test!(add I128(1),    I32(2)   => I128(3));
         test!(add I128(1),    I64(2)    => I128(3));
         test!(add I128(1),    I128(2)   => I128(3));
-        test!(add I128(1),    U8(2)    => I128(3));
-        test!(add I128(1),    U32(2)   => I128(3));
-        test!(add I128(1),    U64(2)    => I128(3));
-        test!(add I128(1),    U128(2)   => I128(3));
-
-        test!(add U8(1),    I8(2)    => I32(3));
-        test!(add U8(1),    I32(2)   => I32(3));
-        test!(add U8(1),    I64(2)    => I64(3));
-        test!(add U8(1),    I128(2)   => I128(3));
-        test!(add U8(1),    U8(2)    => U8(3));
-        test!(add U8(1),    U32(2)   => U32(3));
-        test!(add U8(1),    U64(2)    => U64(3));
-        test!(add U8(1),    U128(2)   => U128(3));
-
-        test!(add U32(1),    I8(2)    => I64(3));
-        test!(add U32(1),    I32(2)   => U32(3));
-        test!(add U32(1),    I64(2)    => I64(3));
-        test!(add U32(1),    I128(2)   => I128(3));
-        test!(add U32(1),    U8(2)    => U32(3));
-        test!(add U32(1),    U32(2)   => U32(3));
-        test!(add U32(1),    U64(2)    => U64(3));
-        test!(add U32(1),    U128(2)   => U128(3));
-
-        test!(add U64(1),    I8(2)    => I128(3));
-        test!(add U64(1),    I32(2)   => U64(3));
-        test!(add U64(1),    I64(2)    => I128(3));
-        test!(add U64(1),    I128(2)   => I128(3));
-        test!(add U64(1),    U8(2)    => U64(3));
-        test!(add U64(1),    U32(2)   => U64(3));
-        test!(add U64(1),    U64(2)    => U64(3));
-        test!(add U64(1),    U128(2)   => U128(3));
-
-        test!(add U128(1),    I8(2)    => I128(3));
-        test!(add U128(1),    I32(2)   => I128(3));
-        test!(add U128(1),    I64(2)    => I128(3));
-        test!(add U128(1),    I128(2)   => I128(3));
-        test!(add U128(1),    U8(2)    => U128(3));
-        test!(add U128(1),    U32(2)   => U128(3));
-        test!(add U128(1),    U64(2)    => U128(3));
-        test!(add U128(1),    U128(2)   => U128(3));
 
         test!(add I8(1),    F64(2.0) => F64(3.0));
 
@@ -829,84 +643,15 @@ mod tests {
         test!(add mon!(1),    mon!(2)    => mon!(3));
 
         test!(subtract I8(3),    I8(2)    => I8(1));
-        test!(subtract I8(3),    I32(2)   => I32(1));
         test!(subtract I8(3),    I64(2)    => I64(1));
         test!(subtract I8(3),    I128(2)   => I128(1));
 
-        test!(subtract I8(3),    U8(2)    => I32(1));
-        test!(subtract I8(3),    U32(2)   => I64(1));
-        test!(subtract I8(3),    U64(2)    => I128(1));
-        test!(subtract I8(3),    U128(2)   => I128(1));
-
-        test!(subtract I32(3),    I8(2)    => I32(1));
-        test!(subtract I32(3),    I32(2)   => I32(1));
-        test!(subtract I32(3),    I64(2)    => I64(1));
-        test!(subtract I32(3),    I128(2)   => I128(1));
-
-        test!(subtract I32(3),    U8(2)    => I32(1));
-        test!(subtract I32(3),    U32(2)   => I64(1));
-        test!(subtract I32(3),    U64(2)    => I128(1));
-        test!(subtract I32(3),    U128(2)   => I128(1));
-
         test!(subtract I64(3),    I8(2)    => I64(1));
-        test!(subtract I64(3),    I32(2)   => I64(1));
         test!(subtract I64(3),    I64(2)    => I64(1));
         test!(subtract I64(3),    I128(2)   => I128(1));
 
-        test!(subtract I64(3),    U8(2)    => I64(1));
-        test!(subtract I64(3),    U32(2)   => I128(1));
-        test!(subtract I64(3),    U64(2)    => I128(1));
-        test!(subtract I64(3),    U128(2)   => I128(1));
-
-        test!(subtract I128(3),    I8(2)    => I32(1));
-        test!(subtract I128(3),    I32(2)   => I32(1));
         test!(subtract I128(3),    I64(2)    => I64(1));
         test!(subtract I128(3),    I128(2)   => I128(1));
-
-        test!(subtract I128(3),    U8(2)    => I128(1));
-        test!(subtract I128(3),    U32(2)   => I128(1));
-        test!(subtract I128(3),    U64(2)    => I128(1));
-        test!(subtract I128(3),    U128(2)   => I128(1));
-
-        test!(subtract U8(3),    I8(2)    => I32(1));
-        test!(subtract U8(3),    I32(2)   => I64(1));
-        test!(subtract U8(3),    I64(2)    => I64(1));
-        test!(subtract U8(3),    I128(2)   => I128(1));
-
-        test!(subtract U8(3),    U8(2)    => U8(1));
-        test!(subtract U8(3),    U32(2)   => U32(1));
-        test!(subtract U8(3),    U64(2)    => U64(1));
-        test!(subtract U8(3),    U128(2)   => U128(1));
-
-        test!(subtract U32(3),    I8(2)    => I64(1));
-        test!(subtract U32(3),    I32(2)   => I64(1));
-        test!(subtract U32(3),    I64(2)    => I64(1));
-        test!(subtract U32(3),    I128(2)   => I128(1));
-
-        test!(subtract U32(3),    U8(2)    => U32(1));
-        test!(subtract U32(3),    U32(2)   => U32(1));
-        test!(subtract U32(3),    U64(2)    => U64(1));
-        test!(subtract U32(3),    U128(2)   => U128(1));
-
-        test!(subtract U64(3),    I8(2)    => I128(1));
-        test!(subtract U64(3),    I32(2)   => I128(1));
-        test!(subtract U64(3),    I64(2)    => I128(1));
-        test!(subtract U64(3),    I128(2)   => I128(1));
-
-        test!(subtract U64(3),    U8(2)    => U64(1));
-        test!(subtract U64(3),    U32(2)   => U64(1));
-        test!(subtract U64(3),    U64(2)    => U64(1));
-        test!(subtract U64(3),    U128(2)   => U128(1));
-
-        test!(subtract U128(3),    I8(2)    => I128(1));
-        test!(subtract U128(3),    I32(2)   => I128(1));
-        test!(subtract U128(3),    I64(2)    => I128(1));
-        test!(subtract U128(3),    I128(2)   => I128(1));
-
-        test!(subtract U128(3),    U8(2)    => U128(1));
-        test!(subtract U128(3),    U32(2)   => U128(1));
-        test!(subtract U128(3),    U64(2)    => U128(1));
-        test!(subtract U128(3),    U128(2)   => U128(1));
 
         test!(subtract I8(3),    F64(2.0) => F64(1.0));
 
@@ -959,76 +704,16 @@ mod tests {
         test!(subtract mon!(1),  mon!(2)  => mon!(-1));
 
         test!(multiply I8(3),    I8(2)    => I8(6));
-        test!(multiply I8(3),    I32(2)    => I32(6));
         test!(multiply I8(3),    I64(2)   => I64(6));
         test!(multiply I8(3),    I128(2)    => I128(6));
-        test!(multiply I8(3),    U8(2)    => I32(6));
-        test!(multiply I8(3),    U32(2)    => I64(6));
-        test!(multiply I8(3),    U64(2)   => I128(6));
-        test!(multiply I8(3),    U128(2)    => I128(6));
-
-        test!(multiply U8(3),    I8(2)    => I32(6));
-        test!(multiply U8(3),    I32(2)    => I64(6));
-        test!(multiply U8(3),    I64(2)   => I64(6));
-        test!(multiply U8(3),    I128(2)    => I128(6));
-        test!(multiply U8(3),    U8(2)    => U8(6));
-        test!(multiply U8(3),    U32(2)    => I64(6));
-        test!(multiply U8(3),    U64(2)   => I64(6));
-        test!(multiply U8(3),    U128(2)    => U128(6));
-
-        test!(multiply I32(3),    I8(2)    => I32(6));
-        test!(multiply I32(3),    I32(2)    => I32(6));
-        test!(multiply I32(3),    I64(2)   => I64(6));
-        test!(multiply I32(3),    I128(2)    => I128(6));
-        test!(multiply I32(3),    U8(2)    => I32(6));
-        test!(multiply I32(3),    U32(2)    => I64(6));
-        test!(multiply I32(3),    U64(2)   => I128(6));
-        test!(multiply I32(3),    U128(2)    => I128(6));
-
-        test!(multiply U32(3),    I8(2)    => I64(6));
-        test!(multiply U32(3),    I32(2)    => I64(6));
-        test!(multiply U32(3),    I64(2)   => I64(6));
-        test!(multiply U32(3),    I128(2)    => I128(6));
-        test!(multiply U32(3),    U8(2)    => U32(6));
-        test!(multiply U32(3),    U32(2)    => U32(6));
-        test!(multiply U32(3),    U64(2)   => U64(6));
-        test!(multiply U32(3),    U128(2)    => U128(6));
 
         test!(multiply I64(3),    I8(2)    => I64(6));
-        test!(multiply I64(3),    I32(2)    => I64(6));
         test!(multiply I64(3),    I64(2)   => I64(6));
         test!(multiply I64(3),    I128(2)    => I128(6));
-        test!(multiply I64(3),    U8(2)    => I64(6));
-        test!(multiply I64(3),    U32(2)    => I64(6));
-        test!(multiply I64(3),    U64(2)   => I128(6));
-        test!(multiply I64(3),    U128(2)    => I128(6));
-
-        test!(multiply U64(3),    I8(2)    => I128(6));
-        test!(multiply U64(3),    I32(2)    => I128(6));
-        test!(multiply U64(3),    I64(2)   => I128(6));
-        test!(multiply U64(3),    I128(2)    => I128(6));
-        test!(multiply U64(3),    U8(2)    => U64(6));
-        test!(multiply U64(3),    U32(2)    => U64(6));
-        test!(multiply U64(3),    U64(2)   => U64(6));
-        test!(multiply U64(3),    U128(2)    => U128(6));
 
         test!(multiply I128(3),    I8(2)    => I128(6));
-        test!(multiply I128(3),    I32(2)    => I128(6));
         test!(multiply I128(3),    I64(2)   => I128(6));
         test!(multiply I128(3),    I128(2)    => I128(6));
-        test!(multiply I128(3),    U8(2)    => I128(6));
-        test!(multiply I128(3),    U32(2)    => I128(6));
-        test!(multiply I128(3),    U64(2)   => I128(6));
-        test!(multiply I128(3),    U128(2)    => I128(6));
-
-        test!(multiply U128(3),    I8(2)    => I128(6));
-        test!(multiply U128(3),    I32(2)    => I128(6));
-        test!(multiply U128(3),    I64(2)   => I128(6));
-        test!(multiply U128(3),    I128(2)    => I128(6));
-        test!(multiply U128(3),    U8(2)    => U128(6));
-        test!(multiply U128(3),    U32(2)    => U128(6));
-        test!(multiply U128(3),    U64(2)   => U128(6));
-        test!(multiply U128(3),    U128(2)    => U128(6));
 
         test!(multiply I8(3),    F64(2.0) => F64(6.0));
 
@@ -1050,85 +735,20 @@ mod tests {
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
         test!(divide I8(6),    I8(2)    => I8(3));
-        test!(divide I8(6),    I32(2)   => I32(3));
         test!(divide I8(6),    I64(2)   => I64(3));
         test!(divide I8(6),    I128(2)  => I128(3));
-        test!(divide I8(6),    U8(2)    => I32(3));
-        test!(divide I8(6),    U32(2)   => I64(3));
-        test!(divide I8(6),    U64(2)   => I128(3));
-        test!(divide I8(6),    U128(2)  => I128(3));
-
-        test!(divide I32(6),    I8(2)    => I32(3));
-        test!(divide I32(6),    I32(2)   => I32(3));
-        test!(divide I32(6),    I64(2)   => I64(3));
-        test!(divide I32(6),    I128(2)  => I128(3));
-        test!(divide I32(6),    U8(2)    => I32(3));
-        test!(divide I32(6),    U32(2)   => I64(3));
-        test!(divide I32(6),    U64(2)   => I128(3));
-        test!(divide I32(6),    U128(2)  => I128(3));
 
         test!(divide I64(6),    I8(2)    => I64(3));
-        test!(divide I64(6),    I32(2)   => I64(3));
         test!(divide I64(6),    I64(2)   => I64(3));
         test!(divide I64(6),    I128(2)  => I128(3));
-        test!(divide I64(6),    U8(2)    => I64(3));
-        test!(divide I64(6),    U32(2)   => I64(3));
-        test!(divide I64(6),    U64(2)   => I128(3));
-        test!(divide I64(6),    U128(2)  => I128(3));
 
         test!(divide I128(6),    I8(2)    => I128(3));
-        test!(divide I128(6),    I32(2)   => I128(3));
         test!(divide I128(6),    I64(2)   => I128(3));
         test!(divide I128(6),    I128(2)  => I128(3));
-        test!(divide I128(6),    U8(2)    => I128(3));
-        test!(divide I128(6),    U32(2)   => I128(3));
-        test!(divide I128(6),    U64(2)   => I128(3));
-        test!(divide I128(6),    U128(2)  => I128(3));
-
-        test!(divide U8(6),    I8(2)    => I32(3));
-        test!(divide U8(6),    I32(2)   => I32(3));
-        test!(divide U8(6),    I64(2)   => I64(3));
-        test!(divide U8(6),    I128(2)  => I128(3));
-        test!(divide U8(6),    U8(2)    => U8(3));
-        test!(divide U8(6),    U32(2)   => U32(3));
-        test!(divide U8(6),    U64(2)   => U64(3));
-        test!(divide U8(6),    U128(2)  => U128(3));
-
-        test!(divide U32(6),    I8(2)    => I64(3));
-        test!(divide U32(6),    I32(2)   => I64(3));
-        test!(divide U32(6),    I64(2)   => I64(3));
-        test!(divide U32(6),    I128(2)  => I128(3));
-        test!(divide U32(6),    U8(2)    => U32(3));
-        test!(divide U32(6),    U32(2)   => U64(3));
-        test!(divide U32(6),    U64(2)   => U64(3));
-        test!(divide U32(6),    U128(2)  => U128(3));
-
-        test!(divide U64(6),    I8(2)    => I128(3));
-        test!(divide U64(6),    I32(2)   => I128(3));
-        test!(divide U64(6),    I64(2)   => I128(3));
-        test!(divide U64(6),    I128(2)  => I128(3));
-        test!(divide U64(6),    U8(2)    => I128(3));
-        test!(divide U64(6),    U32(2)   => I128(3));
-        test!(divide U64(6),    U64(2)   => I128(3));
-        test!(divide U64(6),    U128(2)  => I128(3));
 
         test!(divide I128(6),    I8(2)    => I128(3));
-        test!(divide I128(6),    I32(2)   => I128(3));
         test!(divide I128(6),    I64(2)   => I128(3));
         test!(divide I128(6),    I128(2)  => I128(3));
-        test!(divide I128(6),    U8(2)    => I128(3));
-        test!(divide I128(6),    U32(2)   => I128(3));
-        test!(divide I128(6),    U64(2)   => I128(3));
-        test!(divide I128(6),    U128(2)  => I128(3));
-
-        test!(divide U128(6),    I8(2)    => I128(3));
-        test!(divide U128(6),    I32(2)   => I128(3));
-        test!(divide U128(6),    I64(2)   => I128(3));
-        test!(divide U128(6),    I128(2)  => I128(3));
-        test!(divide U128(6),    U8(2)    => U128(3));
-        test!(divide U128(6),    U32(2)   => U128(3));
-        test!(divide U128(6),    U64(2)   => U128(3));
-        test!(divide U128(6),    U128(2)  => U128(3));
 
         test!(divide I8(6),    F64(2.0) => F64(3.0));
 
@@ -1145,85 +765,16 @@ mod tests {
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
         test!(modulo I8(6),    I8(4)    => I8(2));
-        test!(modulo I8(6),    I32(4)   => I32(2));
         test!(modulo I8(6),    I64(4)   => I64(2));
         test!(modulo I8(6),    I128(4)  => I128(2));
-        test!(modulo I8(6),    U8(4)    => I32(2));
-        test!(modulo I8(6),    U32(4)   => I64(2));
-        test!(modulo I8(6),    U64(4)   => I128(2));
-        test!(modulo I8(6),    U128(4)  => I128(2));
-
-        test!(modulo I32(6),    I8(4)    => I32(2));
-        test!(modulo I32(6),    I32(4)   => I32(2));
-        test!(modulo I32(6),    I64(4)   => I64(2));
-        test!(modulo I32(6),    I128(4)  => I128(2));
-        test!(modulo I32(6),    U8(4)    => I32(2));
-        test!(modulo I32(6),    U32(4)   => I64(2));
-        test!(modulo I32(6),    U64(4)   => I128(2));
-        test!(modulo I32(6),    U128(4)  => I128(2));
 
         test!(modulo I64(6),    I8(4)    => I64(2));
-        test!(modulo I64(6),    I32(4)   => I64(2));
         test!(modulo I64(6),    I64(4)   => I64(2));
         test!(modulo I64(6),    I128(4)  => I128(2));
-        test!(modulo I64(6),    U8(4)    => I64(2));
-        test!(modulo I64(6),    U32(4)   => I64(2));
-        test!(modulo I64(6),    U64(4)   => I128(2));
-        test!(modulo I64(6),    U128(4)  => I128(2));
 
         test!(modulo I128(6),    I8(4)    => I128(2));
-        test!(modulo I128(6),    I32(4)   => I128(2));
         test!(modulo I128(6),    I64(4)   => I128(2));
         test!(modulo I128(6),    I128(4)  => I128(2));
-        test!(modulo I128(6),    U8(4)    => I128(2));
-        test!(modulo I128(6),    U32(4)   => I128(2));
-        test!(modulo I128(6),    U64(4)   => I128(2));
-        test!(modulo I128(6),    U128(4)  => I128(2));
-
-        test!(modulo U8(6),    I8(4)    => I32(2));
-        test!(modulo U8(6),    I32(4)   => I32(2));
-        test!(modulo U8(6),    I64(4)   => I64(2));
-        test!(modulo U8(6),    I128(4)  => I128(2));
-        test!(modulo U8(6),    U8(4)    => U8(2));
-        test!(modulo U8(6),    U32(4)   => U32(2));
-        test!(modulo U8(6),    U64(4)   => U64(2));
-        test!(modulo U8(6),    U128(4)  => U128(2));
-
-        test!(modulo U32(6),    I8(4)    => I64(2));
-        test!(modulo U32(6),    I32(4)   => I64(2));
-        test!(modulo U32(6),    I64(4)   => I64(2));
-        test!(modulo U32(6),    I128(4)  => I128(2));
-        test!(modulo U32(6),    U8(4)    => U32(2));
-        test!(modulo U32(6),    U32(4)   => U64(2));
-        test!(modulo U32(6),    U64(4)   => U64(2));
-        test!(modulo U32(6),    U128(4)  => U128(2));
-
-        test!(modulo U64(6),    I8(4)    => I128(2));
-        test!(modulo U64(6),    I32(4)   => I128(2));
-        test!(modulo U64(6),    I64(4)   => I128(2));
-        test!(modulo U64(6),    I128(4)  => I128(2));
-        test!(modulo U64(6),    U8(4)    => I128(2));
-        test!(modulo U64(6),    U32(4)   => I128(2));
-        test!(modulo U64(6),    U64(4)   => I128(2));
-        test!(modulo U64(6),    U128(4)  => I128(2));
-
-        test!(modulo I128(6),    I8(4)    => I128(2));
-        test!(modulo I128(6),    I32(4)   => I128(2));
-        test!(modulo I128(6),    I64(4)   => I128(2));
-        test!(modulo I128(6),    I128(4)  => I128(2));
-        test!(modulo I128(6),    U8(4)    => I128(2));
-        test!(modulo I128(6),    U32(4)   => I128(2));
-        test!(modulo I128(6),    U64(4)   => I128(2));
-        test!(modulo I128(6),    U128(4)  => I128(2));
-
-        test!(modulo U128(6),    I8(4)    => I128(2));
-        test!(modulo U128(6),    I32(4)   => I128(2));
-        test!(modulo U128(6),    I64(4)   => I128(2));
-        test!(modulo U128(6),    I128(4)  => I128(2));
-        test!(modulo U128(6),    U8(4)    => U128(2));
-        test!(modulo U128(6),    U32(4)   => U128(2));
-        test!(modulo U128(6),    U64(4)   => U128(2));
-        test!(modulo U128(6),    U128(4)  => U128(2));
 
         test!(modulo I64(6),   I64(2)   => I64(0));
         test!(modulo I64(6),   F64(2.0) => F64(0.0));
@@ -1330,13 +881,8 @@ mod tests {
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
         cast!(I8(1)                 => Int8          , I8(1));
-        cast!(I32(1)                 => Int32          , I32(1));
         cast!(I64(1)                => Int          , I64(1));
         cast!(I128(1)                 => Int128          , I128(1));
-        cast!(U8(1)                 => UInt8          , U8(1));
-        cast!(U32(1)                 => UInt32          , U32(1));
-        cast!(U64(1)                => UInt          , U64(1));
-        cast!(U128(1)                 => UInt128          , U128(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
         cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
 
@@ -1345,20 +891,10 @@ mod tests {
         cast!(Str("FALSE".to_owned())   => Boolean, Bool(false));
         cast!(I8(1)                     => Boolean, Bool(true));
         cast!(I8(0)                     => Boolean, Bool(false));
-        cast!(I32(1)                     => Boolean, Bool(true));
-        cast!(I32(0)                     => Boolean, Bool(false));
         cast!(I64(1)                    => Boolean, Bool(true));
         cast!(I64(0)                    => Boolean, Bool(false));
         cast!(I128(1)                    => Boolean, Bool(true));
         cast!(I128(0)                    => Boolean, Bool(false));
-        cast!(U8(1)                     => Boolean, Bool(true));
-        cast!(U8(0)                     => Boolean, Bool(false));
-        cast!(U32(1)                     => Boolean, Bool(true));
-        cast!(U32(0)                     => Boolean, Bool(false));
-        cast!(U64(1)                    => Boolean, Bool(true));
-        cast!(U64(0)                    => Boolean, Bool(false));
-        cast!(U128(1)                    => Boolean, Bool(true));
-        cast!(U128(0)                    => Boolean, Bool(false));
         cast!(F64(1.0)                  => Boolean, Bool(true));
         cast!(F64(0.0)                  => Boolean, Bool(false));
         cast!(Null                      => Boolean, Null);
@@ -1369,12 +905,6 @@ mod tests {
         cast!(F64(1.1)              => Int8, I8(1));
         cast!(Str("11".to_owned())  => Int8, I8(11));
         cast!(Null                  => Int8, Null);
-
-        cast!(Bool(true)            => Int32, I32(1));
-        cast!(Bool(false)           => Int32, I32(0));
-        cast!(F64(1.1)              => Int32, I32(1));
-        cast!(Str("11".to_owned())  => Int32, I32(11));
-        cast!(Null                  => Int32, Null);
 
         cast!(Bool(true)            => Int, I64(1));
         cast!(Bool(false)           => Int, I64(0));
@@ -1460,20 +990,10 @@ mod tests {
         assert!(Bool(true).validate_type(&D::Int).is_err());
         assert!(I8(1).validate_type(&D::Int8).is_ok());
         assert!(I8(1).validate_type(&D::Text).is_err());
-        assert!(I32(1).validate_type(&D::Int32).is_ok());
-        assert!(I32(1).validate_type(&D::Text).is_err());
         assert!(I64(1).validate_type(&D::Int).is_ok());
         assert!(I64(1).validate_type(&D::Text).is_err());
         assert!(I128(1).validate_type(&D::Int128).is_ok());
         assert!(I128(1).validate_type(&D::Text).is_err());
-        assert!(U8(1).validate_type(&D::UInt8).is_ok());
-        assert!(U8(1).validate_type(&D::Text).is_err());
-        assert!(U32(1).validate_type(&D::UInt32).is_ok());
-        assert!(U32(1).validate_type(&D::Text).is_err());
-        assert!(U64(1).validate_type(&D::UInt).is_ok());
-        assert!(U64(1).validate_type(&D::Text).is_err());
-        assert!(U128(1).validate_type(&D::UInt128).is_ok());
-        assert!(U128(1).validate_type(&D::Text).is_err());
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
         assert!(F64(1.0).validate_type(&D::Int).is_err());
         assert!(Decimal(rust_decimal::Decimal::ONE)
@@ -1514,26 +1034,8 @@ mod tests {
     #[test]
     fn test_unary_minus() {
         assert_eq!(I8(1).unary_minus(), Ok(I8(-1)));
-        assert_eq!(I32(1).unary_minus(), Ok(I32(-1)));
         assert_eq!(I64(1).unary_minus(), Ok(I64(-1)));
         assert_eq!(I128(1).unary_minus(), Ok(I128(-1)));
-
-        assert_eq!(
-            U8(1).unary_minus(),
-            Err(ValueError::SignOperationOnUnsignedType.into())
-        );
-        assert_eq!(
-            U32(1).unary_minus(),
-            Err(ValueError::SignOperationOnUnsignedType.into())
-        );
-        assert_eq!(
-            U64(1).unary_minus(),
-            Err(ValueError::SignOperationOnUnsignedType.into())
-        );
-        assert_eq!(
-            U128(1).unary_minus(),
-            Err(ValueError::SignOperationOnUnsignedType.into())
-        );
 
         assert_eq!(F64(1.0).unary_minus(), Ok(F64(-1.0)));
         assert_eq!(
@@ -1549,14 +1051,8 @@ mod tests {
 
     #[test]
     fn test_factorial() {
-        assert_eq!(I8(5).unary_factorial(), Ok(U128(120)));
-        assert_eq!(I32(5).unary_factorial(), Ok(U128(120)));
-        assert_eq!(I64(5).unary_factorial(), Ok(U128(120)));
-        assert_eq!(I128(5).unary_factorial(), Ok(U128(120)));
-
-        assert_eq!(U8(5).unary_factorial(), Ok(U128(120)));
-        assert_eq!(U32(5).unary_factorial(), Ok(U128(120)));
-        assert_eq!(U64(5).unary_factorial(), Ok(U128(120)));
-        assert_eq!(U128(5).unary_factorial(), Ok(U128(120)));
+        assert_eq!(I8(5).unary_factorial(), Ok(I128(120)));
+        assert_eq!(I64(5).unary_factorial(), Ok(I128(120)));
+        assert_eq!(I128(5).unary_factorial(), Ok(I128(120)));
     }
 }

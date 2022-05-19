@@ -128,29 +128,9 @@ impl Value {
                 .to_i8()
                 .map(Value::I8)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            (DataType::Int32, Literal::Number(v)) => v
-                .to_i32()
-                .map(Value::I32)
-                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Int128, Literal::Number(v)) => v
                 .to_i128()
                 .map(Value::I128)
-                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            (DataType::UInt, Literal::Number(v)) => v
-                .to_u64()
-                .map(Value::U64)
-                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            (DataType::UInt8, Literal::Number(v)) => v
-                .to_u8()
-                .map(Value::U8)
-                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            (DataType::UInt32, Literal::Number(v)) => v
-                .to_u32()
-                .map(Value::U32)
-                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            (DataType::UInt128, Literal::Number(v)) => v
-                .to_u128()
-                .map(Value::U128)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
@@ -228,23 +208,6 @@ impl Value {
 
                 Ok(Value::I8(v))
             }
-            (DataType::Int32, Literal::Text(v)) => v
-                .parse::<i32>()
-                .map(Value::I32)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int32, Literal::Number(v)) => match v.to_i32() {
-                Some(x) => Ok(Value::I32(x)),
-                None => Err(ValueError::LiteralCastToDataTypeFailed(
-                    DataType::Int32,
-                    v.to_string(),
-                )
-                .into()),
-            },
-            (DataType::Int32, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
-
-                Ok(Value::I32(v))
-            }
             (DataType::Int128, Literal::Text(v)) => v
                 .parse::<i128>()
                 .map(Value::I128)
@@ -261,72 +224,6 @@ impl Value {
                 let v = if *v { 1 } else { 0 };
 
                 Ok(Value::I128(v))
-            }
-            (DataType::UInt, Literal::Text(v)) => v
-                .parse::<u64>()
-                .map(Value::U64)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::UInt, Literal::Number(v)) => match v.to_u64() {
-                Some(x) => Ok(Value::U64(x)),
-                None => Err(
-                    ValueError::LiteralCastToDataTypeFailed(DataType::UInt, v.to_string()).into(),
-                ),
-            },
-            (DataType::UInt, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
-
-                Ok(Value::U64(v))
-            }
-            (DataType::UInt8, Literal::Text(v)) => v.parse::<u8>().map(Value::U8).map_err(|_| {
-                ValueError::LiteralCastFromTextToUnsignedIntegerFailed(v.to_string()).into()
-            }),
-            (DataType::UInt8, Literal::Number(v)) => match v.to_u8() {
-                Some(x) => Ok(Value::U8(x)),
-                None => Err(ValueError::LiteralCastToDataTypeFailed(
-                    DataType::UInt8,
-                    v.to_string(),
-                )
-                .into()),
-            },
-            (DataType::UInt8, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
-
-                Ok(Value::U8(v))
-            }
-            (DataType::UInt32, Literal::Text(v)) => {
-                v.parse::<u32>().map(Value::U32).map_err(|_| {
-                    ValueError::LiteralCastFromTextToUnsignedIntegerFailed(v.to_string()).into()
-                })
-            }
-            (DataType::UInt32, Literal::Number(v)) => match v.to_u32() {
-                Some(x) => Ok(Value::U32(x)),
-                None => Err(ValueError::LiteralCastToDataTypeFailed(
-                    DataType::UInt32,
-                    v.to_string(),
-                )
-                .into()),
-            },
-            (DataType::UInt32, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
-
-                Ok(Value::U32(v))
-            }
-            (DataType::UInt128, Literal::Text(v)) => v
-                .parse::<u128>()
-                .map(Value::U128)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::UInt128, Literal::Number(v)) => match v.to_u128() {
-                Some(x) => Ok(Value::U128(x)),
-                None => Err(ValueError::LiteralCastToDataTypeFailed(
-                    DataType::UInt128,
-                    v.to_string(),
-                )
-                .into()),
-            },
-            (DataType::UInt128, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
-
-                Ok(Value::U128(v))
             }
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
@@ -537,24 +434,7 @@ mod tests {
         test!(DataType::Boolean, Literal::Boolean(true), Value::Bool(true));
         test!(DataType::Int, num!("123456789"), Value::I64(123456789));
         test!(DataType::Int8, num!("64"), Value::I8(64));
-        test!(DataType::Int32, num!("64"), Value::I32(64));
         test!(DataType::Int128, num!("64"), Value::I128(64));
-
-        test!(DataType::UInt, num!("123456789"), Value::U64(123456789));
-        test!(DataType::UInt8, num!("64"), Value::U8(64));
-        test!(DataType::UInt32, num!("64"), Value::U32(64));
-        test!(DataType::UInt128, num!("64"), Value::U128(64));
-
-        /* I cannot get this to work...  maybe some help?
-        assert_eq!(Value::try_from_literal(&DataType::Int, &num!(&(i64::MAX+1).to_string())),
-        Err(ValueError::FailedToParseNumber).into());
-        assert_eq!(Value::try_from_literal(&DataType::Int8, &num!("128")),
-        Err(ValueError::FailedToParseNumber).into());
-        assert_eq!(Value::try_from_literal(&DataType::Int32, &num!(&(i32::MAX+1).to_string())),
-        Err(ValueError::FailedToParseNumber).into());
-        assert_eq!(Value::try_from_literal(&DataType::Int128, &num!(&(i128::MAX+1).to_string())),
-        Err(ValueError::FailedToParseNumber).into());
-        */
 
         test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
         test!(
@@ -726,34 +606,10 @@ mod tests {
         test!(DataType::Int8, num!("125"), Value::I8(125));
         test!(DataType::Int8, Literal::Boolean(true), Value::I8(1));
         test!(DataType::Int8, Literal::Boolean(false), Value::I8(0));
-        test!(DataType::Int32, text!("1234567890"), Value::I32(1234567890));
-        test!(DataType::Int32, num!("1234567890"), Value::I32(1234567890));
-        test!(DataType::Int32, Literal::Boolean(true), Value::I32(1));
-        test!(DataType::Int32, Literal::Boolean(false), Value::I32(0));
         test!(DataType::Int128, text!("127"), Value::I128(127));
         test!(DataType::Int128, num!("125"), Value::I128(125));
         test!(DataType::Int128, Literal::Boolean(true), Value::I128(1));
         test!(DataType::Int128, Literal::Boolean(false), Value::I128(0));
-        test!(DataType::UInt, text!("1234567890"), Value::U64(1234567890));
-        test!(DataType::UInt, num!("1234567890"), Value::U64(1234567890));
-        test!(DataType::UInt, Literal::Boolean(true), Value::U64(1));
-        test!(DataType::UInt, Literal::Boolean(false), Value::U64(0));
-        test!(DataType::UInt8, text!("127"), Value::U8(127));
-        test!(DataType::UInt8, num!("125"), Value::U8(125));
-        test!(DataType::UInt8, Literal::Boolean(true), Value::U8(1));
-        test!(DataType::UInt8, Literal::Boolean(false), Value::U8(0));
-        test!(
-            DataType::UInt32,
-            text!("1234567890"),
-            Value::U32(1234567890)
-        );
-        test!(DataType::UInt32, num!("1234567890"), Value::U32(1234567890));
-        test!(DataType::UInt32, Literal::Boolean(true), Value::U32(1));
-        test!(DataType::UInt32, Literal::Boolean(false), Value::U32(0));
-        test!(DataType::UInt128, text!("127"), Value::U128(127));
-        test!(DataType::UInt128, num!("125"), Value::U128(125));
-        test!(DataType::UInt128, Literal::Boolean(true), Value::U128(1));
-        test!(DataType::UInt128, Literal::Boolean(false), Value::U128(0));
 
         test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
         test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
