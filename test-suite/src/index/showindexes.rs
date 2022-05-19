@@ -40,9 +40,11 @@ CREATE TABLE Test (
     );
 
     test!(
-        Ok(Payload::ShowIndexes(vec![("idx_id".to_string(), SchemaIndexOrd::Both),
-              ("idx_name".to_string(), SchemaIndexOrd::Both),
-              ("idx_id2".to_string(), SchemaIndexOrd::Both)])),
+        Ok(Payload::ShowIndexes(vec![
+            ("idx_id".to_string(), SchemaIndexOrd::Both),
+            ("idx_name".to_string(), SchemaIndexOrd::Both),
+            ("idx_id2".to_string(), SchemaIndexOrd::Both)
+        ])),
         "show indexes from Test"
     );
 

@@ -346,7 +346,15 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
                 Err(e) => return Err((storage, e)),
             };
 
-            Ok((storage, Payload::ShowIndexes(indexes.into_iter().map(|index| (index.name, index.order)).collect())))
+            Ok((
+                storage,
+                Payload::ShowIndexes(
+                    indexes
+                        .into_iter()
+                        .map(|index| (index.name, index.order))
+                        .collect(),
+                ),
+            ))
         }
         //- Metadata
         #[cfg(feature = "metadata")]
