@@ -19,8 +19,8 @@ impl Mul<i32> for Interval {
 
     fn mul(self, rhs: i32) -> Self {
         match self {
-            Interval::Month(v) => Interval::Month(((v as i32) * rhs) as i32),
-            Interval::Microsecond(v) => Interval::Microsecond((v * rhs as i64) as i64),
+            Interval::Month(v) => Interval::Month((v * rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(v * rhs as i64),
         }
     }
 }
@@ -105,6 +105,17 @@ impl Div<i8> for Interval {
         match self {
             Interval::Month(v) => Interval::Month(v / rhs as i32),
             Interval::Microsecond(v) => Interval::Microsecond(v / rhs as i64),
+        }
+    }
+}
+
+impl Div<i32> for Interval {
+    type Output = Self;
+
+    fn div(self, rhs: i32) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(((v as i64) / rhs) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond((v / rhs) as i64),
         }
     }
 }
