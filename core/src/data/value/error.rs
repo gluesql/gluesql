@@ -93,9 +93,6 @@ pub enum ValueError {
     #[error("literal cast failed from text to integer: {0}")]
     LiteralCastFromTextToIntegerFailed(String),
 
-    #[error("literal cast failed from text to unsigned integer: {0}")]
-    LiteralCastFromTextToUnsignedIntegerFailed(String),
-
     #[error("literal cast failed from text to float: {0}")]
     LiteralCastFromTextToFloatFailed(String),
 
@@ -161,9 +158,6 @@ pub enum ValueError {
 
     #[error("selector requires MAP or LIST types")]
     SelectorRequiresMapOrListTypes,
-
-    #[error("signed operation on unsigned type")]
-    SignOperationOnUnsignedType,
 
     #[error("overflow occurred: {lhs:?} {operator} {rhs:?}")]
     BinaryOperationOverflow {

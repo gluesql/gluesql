@@ -10,7 +10,6 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Int(Some(8)) => Ok(DataType::Int8),
         SqlDataType::Int(Some(128)) => Ok(DataType::Int128),
         SqlDataType::Int(_) => Ok(DataType::Int),
-        SqlDataType::UnsignedInt(Some(8)) => Ok(DataType::UInt8),
         SqlDataType::Float(_) => Ok(DataType::Float),
         SqlDataType::Text => Ok(DataType::Text),
         SqlDataType::Date => Ok(DataType::Date),
