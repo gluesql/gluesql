@@ -4,6 +4,7 @@ mod hello_world {
         prelude::{Glue, Payload, Value},
         sled_storage::SledStorage,
     };
+    use std::fs;
 
     pub fn run() {
         /*
@@ -12,7 +13,9 @@ mod hello_world {
         /*
             Open a Sled database, this will create one if one does not yet exist
         */
-        let storage = SledStorage::new("/tmp/gluesql/hello_world").expect("Something went wrong!");
+        let sled_dir = "/tmp/gluesql/hello_world";
+        fs::remove_dir_all(sled_dir).unwrap_or(());
+        let storage = SledStorage::new(sled_dir).expect("Something went wrong!");
         /*
             Wrap the Sled database with Glue
         */
@@ -42,7 +45,8 @@ mod hello_world {
         /*
             Query results are wrapped into a payload enum, on the basis of the query type
         */
-        let rows = match result {
+        assert_eq!(result.len(), 1);
+        let rows = match &result[0] {
             Payload::Select { labels: _, rows } => rows,
             _ => panic!("Unexpected result: {:?}", result),
         };

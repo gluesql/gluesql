@@ -13,7 +13,15 @@ impl<W: Write> Print<W> {
         Print { output }
     }
 
-    pub fn payload(&mut self, payload: Payload) -> Result<()> {
+    pub fn payloads(&mut self, payloads: Vec<Payload>) -> Result<()> {
+        let payload_iter = payloads.iter();
+        for p in payload_iter {
+            self.payload(p)?;
+        }
+        Ok(())
+    }
+
+    pub fn payload(&mut self, payload: &Payload) -> Result<()> {
         let mut affected = |n: usize, msg: &str| -> Result<()> {
             writeln!(
                 self.output,
@@ -25,9 +33,9 @@ impl<W: Write> Print<W> {
         };
 
         match payload {
-            Payload::Insert(n) => affected(n, "inserted")?,
-            Payload::Delete(n) => affected(n, "deleted")?,
-            Payload::Update(n) => affected(n, "updated")?,
+            Payload::Insert(n) => affected(*n, "inserted")?,
+            Payload::Delete(n) => affected(*n, "deleted")?,
+            Payload::Update(n) => affected(*n, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => {
                 writeln!(self.output, "v{}\n", v)?
             }
@@ -41,8 +49,8 @@ impl<W: Write> Print<W> {
             }
             Payload::ShowColumns(columns) => {
                 let mut table = get_table(vec!["Field", "Type"]);
-                for (field, fieldtype) in columns {
-                    table.add_row([field, fieldtype.to_string()]);
+                for (field, field_type) in columns {
+                    table.add_row([field, &field_type.to_string()]);
                 }
 
                 writeln!(self.output, "{}\n", table)?;
@@ -145,14 +153,14 @@ mod tests {
             };
         }
 
-        test!("0 row inserted", Payload::Insert(0));
-        test!("1 row inserted", Payload::Insert(1));
-        test!("7 rows inserted", Payload::Insert(7));
-        test!("300 rows deleted", Payload::Delete(300));
-        test!("123 rows updated", Payload::Update(123));
+        test!("0 row inserted", &Payload::Insert(0));
+        test!("1 row inserted", &Payload::Insert(1));
+        test!("7 rows inserted", &Payload::Insert(7));
+        test!("300 rows deleted", &Payload::Delete(300));
+        test!("123 rows updated", &Payload::Update(123));
         test!(
             "v11.6.1989",
-            Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned()))
+            &Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned()))
         );
         test!(
             "
@@ -160,7 +168,7 @@ mod tests {
 │ tables │
 ╞════════╡
 ╰────────╯",
-            Payload::ShowVariable(PayloadVariable::Tables(Vec::new()))
+            &Payload::ShowVariable(PayloadVariable::Tables(Vec::new()))
         );
         test!(
             "
@@ -173,7 +181,7 @@ mod tests {
 │ Reserve          │
 │ Splice           │
 ╰──────────────────╯",
-            Payload::ShowVariable(PayloadVariable::Tables(
+            &Payload::ShowVariable(PayloadVariable::Tables(
                 [
                     "Allocator",
                     "ExtendFromWithin",
@@ -197,7 +205,7 @@ mod tests {
 │ 505  │
 │ 1001 │
 ╰──────╯",
-            Payload::Select {
+            &Payload::Select {
                 labels: vec!["id".to_owned()],
                 rows: [101, 202, 301, 505, 1001]
                     .into_iter()
@@ -217,7 +225,7 @@ mod tests {
 │ 4    lim     TRUE  │
 │ 5    kim     TRUE  │
 ╰────────────────────╯",
-            Payload::Select {
+            &Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
                     .map(ToOwned::to_owned)
@@ -261,7 +269,7 @@ mod tests {
 │ name      Text    │
 │ isabear   Boolean │
 ╰───────────────────╯",
-            Payload::ShowColumns(vec![
+            &Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int),
                 ("name".to_string(), DataType::Text),
                 ("isabear".to_string(), DataType::Boolean),
@@ -284,7 +292,7 @@ mod tests {
 │ hash     Map       │
 │ mylist   List      │
 ╰────────────────────╯",
-            Payload::ShowColumns(vec![
+            &Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int8),
                 ("calc1".to_string(), DataType::Float),
                 ("cost".to_string(), DataType::Decimal),

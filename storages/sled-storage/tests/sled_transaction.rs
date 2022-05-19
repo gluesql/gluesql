@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         executor::FetchError,
         prelude::{Value::*, *},
-        result::Error,
+        result::{Result, Error},
         store::StoreMut,
         *,
     },
@@ -30,16 +30,26 @@ macro_rules! exec {
 
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
-        assert_eq!($glue.execute($sql), $result);
+        let res = $glue.execute($sql);
+        let expeced_result :Result<Payload> = $result;
+        if res.is_ok() {
+            assert_eq!(expeced_result.is_ok(), true);
+            let r = res.unwrap();
+            assert_eq!(r.len(), 1);
+            assert_eq!(r[0], expeced_result.unwrap());
+        } else {
+            assert_eq!(res.err(), expeced_result.err());
+        }
     };
 }
 
 macro_rules! test_idx {
     ($glue: ident $sql: literal, $idx: expr, $result: expr) => {
-        let statement = $glue.plan($sql).await.unwrap();
-
-        test_indexes(&statement, Some($idx));
-        assert_eq!($glue.execute_stmt(statement), $result);
+        let statements = $glue.plan($sql).await.unwrap();
+        assert_eq!(statements.len(), 1);
+        let first = &statements[0];
+        test_indexes(first, Some($idx));
+        assert_eq!($glue.execute_stmt(first), $result);
     };
 }
 
@@ -730,11 +740,11 @@ async fn sled_transaction_timeout_index() {
 fn sled_transaction_metadata() {
     macro_rules! test_tables {
         ($glue: ident $( $table_name: literal )*) => {
-            let expected = Ok(Payload::ShowVariable(PayloadVariable::Tables(
+            let expected = Payload::ShowVariable(PayloadVariable::Tables(
                 vec![$( $table_name.to_owned() ),*]
-            )));
+            ));
 
-            assert_eq!($glue.execute("SHOW TABLES"), expected);
+            assert_eq!($glue.execute("SHOW TABLES"), Ok(vec![expected]));
         };
     }
 
