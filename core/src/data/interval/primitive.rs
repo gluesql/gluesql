@@ -125,7 +125,7 @@ impl Div<i64> for Interval {
 
     fn div(self, rhs: i64) -> Self {
         match self {
-            Interval::Month(v) => Interval::Month(((v as i64/ rhs) as i32),
+            Interval::Month(v) => Interval::Month((v as i64 / rhs) as i32),
             Interval::Microsecond(v) => Interval::Microsecond((v / rhs) as i64),
         }
     }
@@ -163,6 +163,18 @@ impl Div<Interval> for i8 {
         }
     }
 }
+
+impl Div<Interval> for i32 {
+    type Output = Interval;
+
+    fn div(self, rhs: Interval) -> Interval {
+        match rhs {
+            Interval::Month(v) => Interval::Month(self / v as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(self as i64 / v),
+        }
+    }
+}
+
 
 impl Div<Interval> for i64 {
     type Output = Interval;
