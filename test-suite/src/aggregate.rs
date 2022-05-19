@@ -1,7 +1,10 @@
 use {
     crate::*,
     gluesql_core::{
-        data::KeyError, executor::AggregateError, prelude::Value::*, translate::TranslateError,
+        data::{KeyError, ValueError},
+        executor::AggregateError,
+        prelude::Value::*,
+        translate::TranslateError,
     },
     rust_decimal::Decimal,
 };
@@ -65,7 +68,6 @@ test_case!(aggregate, async move {
             "SELECT COUNT(a.age), COUNT(a.quantity) FROM Item a",
             select!("COUNT(a.age)" | "COUNT(a.quantity)"; I64 | I64; 3 5),
         ),
-
         (
             "SELECT AVG(id), AVG(quantity) FROM Item",
             select!(
@@ -74,35 +76,43 @@ test_case!(aggregate, async move {
                 3           9
             ),
         ),
-        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
-            "select sum(quantity + age) as mysum from Item where quantity is not NULL and age is not NULL",
+        (
+            // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(quantity + age) as mysum from Item where age is not NULL",
             select!("mysum"; I64; 117),
         ),
-        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
-            "select sum(quantity * 2) as mysum from Item where quantity is not NULL",
+        (
+            // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(quantity * 2) as mysum from Item",
             select!("mysum"; Decimal; Decimal::new(94, 0)),
         ),
-        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
-            "select sum(quantity / 2) as mysum from Item where quantity is not NULL",
+        (
+            // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(quantity / 2) as mysum from Item",
             select!("mysum"; Decimal; Decimal::new(2350, 2)),
         ),
-        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
-            "select sum(quantity - 2) as mysum from Item where quantity is not NULL",
+        (
+            // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(quantity - 2) as mysum from Item",
             select!("mysum"; Decimal; Decimal::new(37, 0)),
         ),
-        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
-            "select sum(quantity * age) as mysum from Item where quantity is not NULL and age is not NULL",
+        (
+            // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(quantity * age) as mysum from Item where age is not NULL",
             select!("mysum"; I64; 119),
         ),
-        (   // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
-            "select sum(age % 10) as mysum from Item where quantity is not NULL and age is not NULL",
+        (
+            // for now, we are not ignoring nulls, so we have to filter them out in the sql statement
+            "select sum(age % 10) as mysum from Item where age is not NULL",
             select!("mysum"; I64; 4),
         ),
-        (   //what is the behavior if a value is nuLL?  is the result null? or is the value treated as zero?  
+        (
+            //what is the behavior if a value is nuLL?  is the result null? or is the value treated as zero?
             "select sum(quantity + age) as mysum from Item",
             select_with_null!("mysum"; Null),
         ),
-        (   //what is the behavior if a value is nuLL?  is the result null? or is the value treated as zero?  
+        (
+            //what is the behavior if a value is nuLL?  is the result null? or is the value treated as zero?
             "select sum(quantity * age) as mysum from Item",
             select_with_null!("mysum"; Null),
         ),
@@ -129,6 +139,14 @@ test_case!(aggregate, async move {
         (
             TranslateError::QualifiedWildcardInCountNotSupported("Foo.*".to_owned()).into(),
             "SELECT COUNT(Foo.*) FROM Item;",
+        ),
+        (
+            ValueError::DivisorShouldNotBeZero.into(),
+            "select sum(quantity / 0) as mysum from Item;",
+        ),
+        (
+            ValueError::DivisorShouldNotBeZero.into(),
+            "select sum(age / quantity) as mysum from Item;",
         ),
         (
             TranslateError::WildcardFunctionArgNotAccepted.into(),
