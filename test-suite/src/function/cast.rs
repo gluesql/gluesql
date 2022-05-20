@@ -11,7 +11,6 @@ use {
 
 test_case!(cast_literal, async move {
     use chrono::{NaiveDate, NaiveTime};
-    use gluesql_core::ast::DataType;
 
     let test_cases = vec![
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
