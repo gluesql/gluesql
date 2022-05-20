@@ -2,7 +2,6 @@ use {
     super::{Value, ValueError},
     crate::result::Result,
     bigdecimal::BigDecimal,
-    bigdecimal::ToPrimitive,
     rust_decimal::Decimal,
 };
 
@@ -21,18 +20,17 @@ impl Value {
         value: &BigDecimal,
     ) -> Result<Value> {
         match (precision, scale) {
-           (None, None) => bigdecimal_literal_to_decimal_value(value),
+            (None, None) => bigdecimal_literal_to_decimal_value(value),
             (Some(p), s) => {
-                let s:u64=match s {
+                let s: u64 = match s {
                     Some(s) => *s,
                     None => 0,
                 };
                 let new_value = value.round(s as i64);
-                if new_value.digits() > *p
-               {
+                if new_value.digits() > *p {
                     return Err(ValueError::FailedToParseDecimal(value.to_string()).into());
-               }
-               bigdecimal_literal_to_decimal_value(&new_value.with_prec(*p))
+                }
+                bigdecimal_literal_to_decimal_value(&new_value.with_prec(*p))
             }
             (None, Some(_)) => Err(ValueError::NoPrecisionDecimalNotSupported.into()),
         }

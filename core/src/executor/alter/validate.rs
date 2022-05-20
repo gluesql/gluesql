@@ -29,25 +29,20 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
         .into());
     }
 
-    match data_type {
-        DataType::Decimal(p, s) => {
-            let s: u64 = (*s).unwrap_or(0);
-            
-            match *p {
-                Some(x) => match x <= s {
-                    true => {
-                        return Err(AlterError::UnsupportedDecimalScale(
-                            x.to_string(),
-                            s.to_string(),
-                        )
-                        .into())
-                    }
-                    false => (),
-                },
-                None => return Err(ValueError::NoPrecisionDecimalNotSupported.into()),
-            }
+    if let DataType::Decimal(p, s) = data_type {
+        let s: u64 = (*s).unwrap_or(0);
+
+        match *p {
+            Some(x) => match x <= s {
+                true => {
+                    return Err(
+                        AlterError::UnsupportedDecimalScale(x.to_string(), s.to_string()).into(),
+                    )
+                }
+                false => (),
+            },
+            None => return Err(ValueError::NoPrecisionDecimalNotSupported.into()),
         }
-        _ => (), //assume all other datatypes are okay?
     }
 
     let default = options
