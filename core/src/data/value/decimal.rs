@@ -29,7 +29,9 @@ impl Value {
                 bigdecimal_literal_to_decimal_value(&value.with_prec(*p).with_scale(0))
             }
             (Some(p), Some(s)) => {
+                println!("{:}, {:}, {:}", value, p, s);
                 if value.with_scale(0).to_u64().unwrap() > 10_u64.pow((*p - *s).try_into().unwrap())
+               // if value.with_scale(0).to_u64() > 10_u64.pow((*p - *s).try_into().unwrap())
                 {
                     return Err(ValueError::FailedToParseDecimal(value.to_string()).into());
                 }

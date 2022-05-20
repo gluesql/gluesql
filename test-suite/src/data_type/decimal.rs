@@ -9,8 +9,14 @@ test_case!(decimal, async move {
     let test_cases = vec![
         (
             "CREATE TABLE DECIMAL_ITEM (decimal_field DECIMAL)",
+            Err(ValueError::NoPrecisionDecimalNotSupported.into()),
+        ),
+
+        (
+            "CREATE TABLE DECIMAL_ITEM (decimal_field DECIMAL(4))",
             Ok(Payload::Create),  //should return NoPrecisionDecimalNotSupported error
         ),
+
         (
             r#"INSERT INTO DECIMAL_ITEM VALUES (1)"#,
             Ok(Payload::Insert(1)),
@@ -105,12 +111,13 @@ test_case!(decimal, async move {
         ),
         (
             "CREATE TABLE ILLEGAL_DECIMAL (d1 DECIMAL(1,4))",
-            Err(AlterError::UnsupportedDecimalScale("4".to_owned(), "1".to_owned()).into()),
+            Err(AlterError::UnsupportedDecimalScale("1".to_owned(), "4".to_owned()).into()),
         ),
         (
             "CREATE TABLE DECIMAL_PRECISION (d1 DECIMAL(5))",
             Ok(Payload::Create),
         ),
+
         (
             "INSERT INTO DECIMAL_PRECISION (d1) VALUES (12345)",
             Ok(Payload::Insert(1)),
