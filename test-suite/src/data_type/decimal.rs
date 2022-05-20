@@ -9,7 +9,7 @@ test_case!(decimal, async move {
     let test_cases = vec![
         (
             "CREATE TABLE DECIMAL_ITEM (decimal_field DECIMAL)",
-            Ok(Payload::Create),
+            Ok(Payload::Create),  //should return NoPrecisionDecimalNotSupported error
         ),
         (
             r#"INSERT INTO DECIMAL_ITEM VALUES (1)"#,
