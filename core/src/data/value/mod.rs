@@ -102,7 +102,6 @@ impl Value {
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::F64(_) => matches!(data_type, DataType::Float),
             Value::Decimal(_) => match data_type {
-                DataType::Decimal(None, None) => true,
                 DataType::Decimal(p, s) => p.unwrap() >= s.unwrap(),
                 _ => false,
             },

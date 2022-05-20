@@ -30,36 +30,24 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
     }
 
     match data_type {
-    //    DataType::Decimal(p, None) => return Err(AlterError::UnsupportedDecimalScale(
-    //        (*p).unwrap().to_string(),
-    //        "Null".to_owned(),
-    //    ).into()),
-    //    | DataType::Decimal(None, s) => return Err(AlterError::UnsupportedDecimalScale(
-    //        "Null".to_owned(),
-    //        (*s).unwrap().to_string(),
-    //    ).into()),
-     //   | DataType::Decimal(None, None) => return Err(AlterError::UnsupportedDecimalScale(
-     //       "Null".to_string(),
-     //       "Null".to_string(),
-     //   ).into()),
         DataType::Decimal(p, s) => {
-            let s:u64 =match *s {
-                None => 0,
-                Some(x) => x,
-            };
-
+            let s: u64 = (*s).unwrap_or(0);
+            
             match *p {
                 Some(x) => match x <= s {
-                    true=> return Err(AlterError::UnsupportedDecimalScale(
-                        x.to_string(),
-                        s.to_string()
-                    ).into()),
-                    _ => (),
-                },    
-                None => return Err(ValueError::NoPrecisionDecimalNotSupported.into()), 
+                    true => {
+                        return Err(AlterError::UnsupportedDecimalScale(
+                            x.to_string(),
+                            s.to_string(),
+                        )
+                        .into())
+                    }
+                    false => (),
+                },
+                None => return Err(ValueError::NoPrecisionDecimalNotSupported.into()),
             }
-        },
-        _ => (),   //assume all other datatypes are okay?
+        }
+        _ => (), //assume all other datatypes are okay?
     }
 
     let default = options

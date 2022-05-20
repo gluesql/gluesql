@@ -11,12 +11,10 @@ test_case!(decimal, async move {
             "CREATE TABLE DECIMAL_ITEM (decimal_field DECIMAL)",
             Err(ValueError::NoPrecisionDecimalNotSupported.into()),
         ),
-
         (
             "CREATE TABLE DECIMAL_ITEM (decimal_field DECIMAL(4))",
-            Ok(Payload::Create),  //should return NoPrecisionDecimalNotSupported error
+            Ok(Payload::Create),
         ),
-
         (
             r#"INSERT INTO DECIMAL_ITEM VALUES (1)"#,
             Ok(Payload::Insert(1)),
@@ -117,7 +115,6 @@ test_case!(decimal, async move {
             "CREATE TABLE DECIMAL_PRECISION (d1 DECIMAL(5))",
             Ok(Payload::Create),
         ),
-
         (
             "INSERT INTO DECIMAL_PRECISION (d1) VALUES (12345)",
             Ok(Payload::Insert(1)),
