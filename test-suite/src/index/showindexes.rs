@@ -1,12 +1,7 @@
 use crate::*;
 
 test_case!(showindexes, async move {
-    use gluesql_core::{
-        ast::{BinaryOperator, Expr},
-        data::{SchemaIndex, SchemaIndexOrd},
-        executor::ExecuteError,
-        prelude::Payload,
-    };
+    use gluesql_core::{data::SchemaIndexOrd, executor::ExecuteError, prelude::Payload};
 
     run!(
         r#"

@@ -7,8 +7,11 @@ use {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Display)]
 pub enum SchemaIndexOrd {
+    #[strum(to_string = "ASC")]
     Asc,
+    #[strum(to_string = "DESC")]
     Desc,
+    #[strum(to_string = "BOTH")]
     Both,
 }
 

@@ -49,8 +49,8 @@ impl<W: Write> Print<W> {
             }
             Payload::ShowIndexes(indexes) => {
                 let mut table = get_table(vec!["Index Name", "Order"]);
-                for index in indexes {
-                    table.add_row([index.0, index.1.to_string()]);
+                for (index_name, order) in indexes {
+                    table.add_row([index_name, order.to_string()]);
                 }
                 writeln!(self.output, "{}\n", table)?;
             }

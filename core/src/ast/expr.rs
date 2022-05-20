@@ -4,10 +4,9 @@ use {
         UnaryOperator,
     },
     serde::{Deserialize, Serialize},
-    strum_macros::Display,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Expr {
     Identifier(String),
     CompoundIdentifier(Vec<String>),

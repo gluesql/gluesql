@@ -147,8 +147,6 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_string()).into()),
             },
             (3, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
-                //   AST: [ShowVariable { variable: [Ident { value: "indexes", quote_style: None },
-                //     Ident { value: "from", quote_style: None }, Ident { value: "mytable", quote_style: None }] }]
                 "INDEXES" => match variable.get(2) {
                     Some(tablename) => {
                         Ok(Statement::ShowIndexes(ObjectName(Vec::from([tablename
