@@ -52,10 +52,10 @@ test_case!(int128, async move {
     );
 
     //todo: this test does not work..
-    //test!(
-    //    Ok(select!(field_one I128; 1; 3)),
-    //    "SELECT field_one FROM Item WHERE field_one > 0"
-    //);
+    test!(
+        Ok(select!(field_one I128; 1; 3)),
+        "SELECT field_one FROM Item WHERE field_one > 0"
+    );
     //test!(
     //    Ok(select!(field_one I128; 1; 3)),
     //    "SELECT field_one FROM Item WHERE field_one >= 0"
