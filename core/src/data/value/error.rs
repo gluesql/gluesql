@@ -79,9 +79,6 @@ pub enum ValueError {
         value: Value,
     },
 
-    #[error("conflict - unique constraint cannot be used for {0} type")]
-    ConflictDataTypeOnUniqueConstraint(String),
-
     // Cast errors from value to value
     #[error("impossible cast")]
     ImpossibleCast,
@@ -105,7 +102,7 @@ pub enum ValueError {
     #[error("literal cast failed to date: {0}")]
     LiteralCastToDateFailed(String),
 
-    #[error("literal cast from {1:#?} to ({0:#?} failed")]
+    #[error("literal cast from {1} to {0} failed")]
     LiteralCastToDataTypeFailed(DataType, String),
 
     #[error("literal cast failed to Int(8): {0}")]

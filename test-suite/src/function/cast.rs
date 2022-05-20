@@ -66,7 +66,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(255 AS INT(8)) AS cast FROM Item"#,
-            Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int8, "255".to_owned()).into()),
+            Err(ValueError::LiteralCastToInt8Failed("255".to_owned()).into()),
         ),
         (
             r#"SELECT CAST("1.1" AS FLOAT) AS cast FROM Item"#,

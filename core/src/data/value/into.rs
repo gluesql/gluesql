@@ -640,6 +640,12 @@ mod tests {
     }
 
     #[test]
+    fn try_into_u128() {
+        let uuid = 195965723427462096757863453463987888808;
+        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid))
+    }
+
+    #[test]
     fn try_into_f64() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
