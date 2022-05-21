@@ -15,7 +15,6 @@ pub fn evaluate_stateless<'a>(
     context: Option<(Columns, &'a Row)>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
@@ -42,7 +41,7 @@ pub fn evaluate_stateless<'a>(
         }
         Expr::Nested(expr) => evaluate_stateless(context, expr),
         Expr::BinaryOp { op, left, right } => {
-            let left = evaluate_stateless(context, left)?; 
+            let left = evaluate_stateless(context, left)?;
             let right = evaluate_stateless(context, right)?;
 
             expr::binary_op(op, left, right)
@@ -52,7 +51,7 @@ pub fn evaluate_stateless<'a>(
 
             expr::unary_op(op, v)
         }
-        Expr::Cast { expr, data_type } => evaluate_stateless(context, expr)?.cast(data_type), 
+        Expr::Cast { expr, data_type } => evaluate_stateless(context, expr)?.cast(data_type),
         Expr::InList {
             expr,
             list,
@@ -65,11 +64,10 @@ pub fn evaluate_stateless<'a>(
                 .filter_map(|expr| {
                     let target = &target;
 
-                    evaluate_stateless(context, expr)
-                        .map_or_else(
-                            |error| Some(Err(error)),
-                            |evaluated| (target == &evaluated).then(|| Ok(!negated)),
-                        )
+                    evaluate_stateless(context, expr).map_or_else(
+                        |error| Some(Err(error)),
+                        |evaluated| (target == &evaluated).then(|| Ok(!negated)),
+                    )
                 })
                 .take(1)
                 .collect::<Vec<_>>()
@@ -106,7 +104,6 @@ pub fn evaluate_stateless<'a>(
     }
 }
 
-
 fn evaluate_function<'a>(
     context: Option<(Columns, &'a Row)>,
     func: &'a Function,
@@ -114,7 +111,7 @@ fn evaluate_function<'a>(
     use function as f;
 
     let name = func.to_string();
- 
+
     match func {
         // --- text ---
         Function::Concat(exprs) => {
@@ -140,8 +137,7 @@ fn evaluate_function<'a>(
                 Some(v) => Some(evaluate_stateless(context, v)?),
                 None => None,
             };
-    
-            
+
             f::lpad_or_rpad(name, expr, size, fill)
         }
         Function::Trim {
@@ -154,8 +150,7 @@ fn evaluate_function<'a>(
                 Some(v) => Some(evaluate_stateless(context, v)?),
                 None => None,
             };
-    
-            
+
             f::trim(name, expr, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
@@ -164,8 +159,7 @@ fn evaluate_function<'a>(
                 Some(v) => Some(evaluate_stateless(context, v)?),
                 None => None,
             };
-    
-            
+
             f::ltrim(name, expr, chars)
         }
         Function::Rtrim { expr, chars } => {

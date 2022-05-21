@@ -47,7 +47,6 @@ pub async fn evaluate<'a, T>(
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
@@ -229,12 +228,8 @@ async fn evaluate_function<'a, T>(
                 .await?;
             f::concat(exprs)
         }
-        Function::Lower(expr) => {
-            f::lower(name, evalfn(expr, storage, context, aggregated).await?)
-        }
-        Function::Upper(expr) => {
-            f::upper(name, evalfn(expr, storage, context, aggregated).await?)
-        }
+        Function::Lower(expr) => f::lower(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Upper(expr) => f::upper(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
             let size = evalfn(size, storage, context, aggregated).await?;
@@ -315,12 +310,8 @@ async fn evaluate_function<'a, T>(
             f::power(name, expr, power)
         }
         Function::Ceil(expr) => f::ceil(name, evalfn(expr, storage, context, aggregated).await?),
-        Function::Round(expr) => {
-            f::round(name, evalfn(expr, storage, context, aggregated).await?)
-        }
-        Function::Floor(expr) => {
-            f::floor(name, evalfn(expr, storage, context, aggregated).await?)
-        }
+        Function::Round(expr) => f::round(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Floor(expr) => f::floor(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Radians(expr) => {
             f::radians(name, evalfn(expr, storage, context, aggregated).await?)
         }
@@ -337,9 +328,7 @@ async fn evaluate_function<'a, T>(
         }
         Function::Ln(expr) => f::ln(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Log2(expr) => f::log2(name, evalfn(expr, storage, context, aggregated).await?),
-        Function::Log10(expr) => {
-            f::log10(name, evalfn(expr, storage, context, aggregated).await?)
-        }
+        Function::Log10(expr) => f::log10(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Sin(expr) => f::sin(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Cos(expr) => f::cos(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Tan(expr) => f::tan(name, evalfn(expr, storage, context, aggregated).await?),
