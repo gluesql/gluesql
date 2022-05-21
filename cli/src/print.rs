@@ -103,7 +103,7 @@ fn get_table<T: Into<Row>>(header: T) -> Table {
 mod tests {
     use super::Print;
     use gluesql_core::data::SchemaIndexOrd;
-  
+
     #[test]
     fn print_help() {
         let mut print = Print::new(Vec::new());
@@ -275,7 +275,6 @@ mod tests {
                 ("date_ndx".to_string(), SchemaIndexOrd::Both),
             ],)
         );
-
 
         test!(
             "
