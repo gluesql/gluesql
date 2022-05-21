@@ -30,13 +30,13 @@ fn setup_a(glue: &mut Glue<IVec, SledStorage>) {
 	",
     )
     .unwrap();
-    let values = (0..10_000).into_iter().map(|pk| {
-        format!(
-            "({pk})",
-            pk = pk
-        )
-    }).collect::<Vec<String>>().join(",");
-	glue.execute(&format!("INSERT INTO A VALUES {values}", values=values)).unwrap();
+    let values = (0..10_000)
+        .into_iter()
+        .map(|pk| format!("({pk})", pk = pk))
+        .collect::<Vec<String>>()
+        .join(",");
+    glue.execute(&format!("INSERT INTO A VALUES {values}", values = values))
+        .unwrap();
 }
 
 fn setup_b(glue: &mut Glue<IVec, SledStorage>) {
@@ -56,15 +56,20 @@ fn setup_b(glue: &mut Glue<IVec, SledStorage>) {
 	",
     )
     .unwrap();
-    let values = (0..100_000).into_iter().map(|pk| {
-        format!(
-            "({pk}, {fk}, {val})",
-            pk = pk,
-            fk = fastrand::i64(0..10_000),
-            val = fastrand::f64()
-        )
-    }).collect::<Vec<String>>().join(",");
-	glue.execute(&format!("INSERT INTO B VALUES {values}", values=values)).unwrap();
+    let values = (0..100_000)
+        .into_iter()
+        .map(|pk| {
+            format!(
+                "({pk}, {fk}, {val})",
+                pk = pk,
+                fk = fastrand::i64(0..10_000),
+                val = fastrand::f64()
+            )
+        })
+        .collect::<Vec<String>>()
+        .join(",");
+    glue.execute(&format!("INSERT INTO B VALUES {values}", values = values))
+        .unwrap();
 }
 
 fn setup_c(glue: &mut Glue<IVec, SledStorage>) {
@@ -78,20 +83,25 @@ fn setup_c(glue: &mut Glue<IVec, SledStorage>) {
 	",
     )
     .unwrap();
-    let values = (0..100_000).into_iter().map(|pk| {
-        format!(
-            "({pk}, {fk}, {val})",
-            pk = pk,
-            fk = fastrand::i64(0..10_000),
-            val = fastrand::f64()
-        )
-    }).collect::<Vec<String>>().join(",");
-	glue.execute(&format!("INSERT INTO C VALUES {values}", values=values)).unwrap();
+    let values = (0..100_000)
+        .into_iter()
+        .map(|pk| {
+            format!(
+                "({pk}, {fk}, {val})",
+                pk = pk,
+                fk = fastrand::i64(0..10_000),
+                val = fastrand::f64()
+            )
+        })
+        .collect::<Vec<String>>()
+        .join(",");
+    glue.execute(&format!("INSERT INTO C VALUES {values}", values = values))
+        .unwrap();
 }
 
 fn setup() -> Glue<IVec, SledStorage> {
     let mut glue = setup_glue();
-   	println!("Glue made");
+    println!("Glue made");
     setup_a(&mut glue);
     println!("A made");
     setup_b(&mut glue);
