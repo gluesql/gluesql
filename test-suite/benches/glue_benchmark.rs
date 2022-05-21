@@ -10,7 +10,7 @@ fn setup_glue() -> Glue<IVec, SledStorage> {
         }
     }
 
-    let storage = SledStorage::new(&path).expect("Create Storage");
+    let storage = SledStorage::new(path).expect("Create Storage");
 
     Glue::new(storage)
 }
