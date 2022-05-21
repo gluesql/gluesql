@@ -25,7 +25,7 @@ use {
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
-pub async fn evalfn<'a , T>(
+pub async fn evalfn<'a, T>(
     expr: &'a Expr,
     storage: &'a dyn GStore<T>,
     context: Option<Rc<FilterContext<'a>>>,
@@ -35,8 +35,9 @@ pub async fn evalfn<'a , T>(
         storage,
         context.as_ref().map(Rc::clone),
         aggregated.as_ref().map(Rc::clone),
-        expr
-    ).await
+        expr,
+    )
+    .await
 }
 
 #[async_recursion(?Send)]
@@ -96,11 +97,11 @@ pub async fn evaluate<'a, T>(
         Expr::BinaryOp { op, left, right } => {
             let left = evalfn(left, storage, context.clone(), aggregated.clone()).await?;
             let right = evalfn(right, storage, context.clone(), aggregated.clone()).await?;
-            
+
             expr::binary_op(op, left, right)
         }
         Expr::UnaryOp { op, expr } => {
-            let v= evalfn(expr, storage, context, aggregated).await?; //{
+            let v = evalfn(expr, storage, context, aggregated).await?; //{
             expr::unary_op(op, v)
         }
         Expr::Aggregate(aggr) => match aggregated
@@ -115,8 +116,12 @@ pub async fn evaluate<'a, T>(
             let aggregated = aggregated.as_ref().map(Rc::clone);
             evaluate_function(storage, context, aggregated, func).await
         }
-        Expr::Cast { expr, data_type } => evalfn(expr, storage, context, aggregated).await?.cast(data_type),
-        Expr::Extract { field, expr } => evalfn(expr, storage, context, aggregated).await?.extract(field),
+        Expr::Cast { expr, data_type } => evalfn(expr, storage, context, aggregated)
+            .await?
+            .cast(data_type),
+        Expr::Extract { field, expr } => evalfn(expr, storage, context, aggregated)
+            .await?
+            .extract(field),
 
         Expr::InList {
             expr,
@@ -127,7 +132,7 @@ pub async fn evaluate<'a, T>(
             let target = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
 
             stream::iter(list)
-                .then(|x | evalfn(x, storage, context.clone(), aggregated.clone()))
+                .then(|x| evalfn(x, storage, context.clone(), aggregated.clone()))
                 .try_filter(|evaluated| ready(evaluated == &target))
                 .try_next()
                 .await
@@ -161,7 +166,7 @@ pub async fn evaluate<'a, T>(
             let target = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
             let low = evalfn(low, storage, context.clone(), aggregated.clone()).await?;
             let high = evalfn(high, storage, context.clone(), aggregated.clone()).await?;
-            
+
             expr::between(target, *negated, low, high)
         }
         Expr::Exists(query) => select(storage, query, context)
@@ -217,11 +222,18 @@ async fn evaluate_function<'a, T>(
     match func {
         // --- text ---
         Function::Concat(exprs) => {
-            let exprs = stream::iter(exprs).then(|x| evalfn(x, storage, context.clone(), aggregated.clone())).try_collect().await?;
+            let exprs = stream::iter(exprs)
+                .then(|x| evalfn(x, storage, context.clone(), aggregated.clone()))
+                .try_collect()
+                .await?;
             f::concat(exprs)
         }
-        Function::Lower(expr) => f::lower(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Upper(expr) => f::upper(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Lower(expr) => {
+            f::lower(name(), evalfn(expr, storage, context, aggregated).await?)
+        }
+        Function::Upper(expr) => {
+            f::upper(name(), evalfn(expr, storage, context, aggregated).await?)
+        }
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
             let size = evalfn(size, storage, context, aggregated).await?;
@@ -302,10 +314,18 @@ async fn evaluate_function<'a, T>(
             f::power(name(), expr, power)
         }
         Function::Ceil(expr) => f::ceil(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Round(expr) => f::round(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Floor(expr) => f::floor(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Radians(expr) => f::radians(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Degrees(expr) => f::degrees(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Round(expr) => {
+            f::round(name(), evalfn(expr, storage, context, aggregated).await?)
+        }
+        Function::Floor(expr) => {
+            f::floor(name(), evalfn(expr, storage, context, aggregated).await?)
+        }
+        Function::Radians(expr) => {
+            f::radians(name(), evalfn(expr, storage, context, aggregated).await?)
+        }
+        Function::Degrees(expr) => {
+            f::degrees(name(), evalfn(expr, storage, context, aggregated).await?)
+        }
         Function::Pi() => Ok(Value::F64(std::f64::consts::PI)),
         Function::Exp(expr) => f::exp(name(), evalfn(expr, storage, context, aggregated).await?),
         Function::Log { antilog, base } => {
@@ -316,7 +336,9 @@ async fn evaluate_function<'a, T>(
         }
         Function::Ln(expr) => f::ln(name(), evalfn(expr, storage, context, aggregated).await?),
         Function::Log2(expr) => f::log2(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Log10(expr) => f::log10(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Log10(expr) => {
+            f::log10(name(), evalfn(expr, storage, context, aggregated).await?)
+        }
         Function::Sin(expr) => f::sin(name(), evalfn(expr, storage, context, aggregated).await?),
         Function::Cos(expr) => f::cos(name(), evalfn(expr, storage, context, aggregated).await?),
         Function::Tan(expr) => f::tan(name(), evalfn(expr, storage, context, aggregated).await?),
