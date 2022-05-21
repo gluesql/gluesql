@@ -72,6 +72,7 @@ impl<T, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
             let payload = self.execute_stmt_async(statement).await?;
             payloads.push(payload);
         }
+
         Ok(payloads)
     }
 }
