@@ -1,8 +1,12 @@
 use {
     crate::*,
     gluesql_core::{
-        data::KeyError, executor::AggregateError, prelude::Value::*, translate::TranslateError,
+        data::{KeyError, ValueError},
+        executor::AggregateError,
+        prelude::Value::*,
+        translate::TranslateError,
     },
+    rust_decimal::Decimal,
 };
 
 test_case!(aggregate, async move {
@@ -61,12 +65,48 @@ test_case!(aggregate, async move {
             select!("COUNT(age)" | "COUNT(quantity)"; I64 | I64; 3 5),
         ),
         (
+            "SELECT COUNT(a.age), COUNT(a.quantity) FROM Item a",
+            select!("COUNT(a.age)" | "COUNT(a.quantity)"; I64 | I64; 3 5),
+        ),
+        (
             "SELECT AVG(id), AVG(quantity) FROM Item",
             select!(
                 "AVG(id)" | "AVG(quantity)"
                 I64       | I64;
                 3           9
             ),
+        ),
+        (
+            "select sum(quantity + age) as mysum from Item where age is not NULL",
+            select!("mysum"; I64; 117),
+        ),
+        (
+            "select sum(quantity * 2) as mysum from Item",
+            select!("mysum"; Decimal; Decimal::new(94, 0)),
+        ),
+        (
+            "select sum(quantity / 2) as mysum from Item",
+            select!("mysum"; Decimal; Decimal::new(2350, 2)),
+        ),
+        (
+            "select sum(quantity - 2) as mysum from Item",
+            select!("mysum"; Decimal; Decimal::new(37, 0)),
+        ),
+        (
+            "select sum(quantity * age) as mysum from Item where age is not NULL",
+            select!("mysum"; I64; 119),
+        ),
+        (
+            "select sum(age % 10) as mysum from Item where age is not NULL",
+            select!("mysum"; I64; 4),
+        ),
+        (
+            "select sum(quantity + age) as mysum from Item",
+            select_with_null!("mysum"; Null),
+        ),
+        (
+            "select sum(quantity * age) as mysum from Item",
+            select_with_null!("mysum"; Null),
         ),
     ];
 
@@ -76,12 +116,13 @@ test_case!(aggregate, async move {
 
     let error_cases = vec![
         (
-            AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
-            "SELECT SUM(id.name.ok) FROM Item;",
+            // for now, ISNULL is not implemented
+            TranslateError::UnsupportedFunction("ISNULL".to_string()).into(),
+            "select sum(isnull(quantity,0)) as mysum from Item",
         ),
         (
-            AggregateError::OnlyIdentifierAllowed.into(),
-            "SELECT SUM(1 + 2) FROM Item;",
+            AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
+            "SELECT SUM(id.name.ok) FROM Item;",
         ),
         (
             AggregateError::ValueNotFound("num".to_owned()).into(),
@@ -90,6 +131,14 @@ test_case!(aggregate, async move {
         (
             TranslateError::QualifiedWildcardInCountNotSupported("Foo.*".to_owned()).into(),
             "SELECT COUNT(Foo.*) FROM Item;",
+        ),
+        (
+            ValueError::DivisorShouldNotBeZero.into(),
+            "select sum(quantity / 0) as mysum from Item;",
+        ),
+        (
+            ValueError::DivisorShouldNotBeZero.into(),
+            "select sum(age / quantity) as mysum from Item;",
         ),
         (
             TranslateError::WildcardFunctionArgNotAccepted.into(),
