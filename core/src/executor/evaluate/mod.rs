@@ -47,6 +47,7 @@ pub async fn evaluate<'a, T>(
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
+    
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
@@ -217,7 +218,7 @@ async fn evaluate_function<'a, T>(
     func: &'a Function,
 ) -> Result<Evaluated<'a>> {
     use function as f;
-    let name = || func.to_string();
+    let name = func.to_string();
 
     match func {
         // --- text ---
@@ -229,16 +230,16 @@ async fn evaluate_function<'a, T>(
             f::concat(exprs)
         }
         Function::Lower(expr) => {
-            f::lower(name(), evalfn(expr, storage, context, aggregated).await?)
+            f::lower(name, evalfn(expr, storage, context, aggregated).await?)
         }
         Function::Upper(expr) => {
-            f::upper(name(), evalfn(expr, storage, context, aggregated).await?)
+            f::upper(name, evalfn(expr, storage, context, aggregated).await?)
         }
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
             let size = evalfn(size, storage, context, aggregated).await?;
 
-            f::left_or_right(name(), expr, size)
+            f::left_or_right(name, expr, size)
         }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
@@ -248,7 +249,7 @@ async fn evaluate_function<'a, T>(
                 None => None,
             };
 
-            f::lpad_or_rpad(name(), expr, size, fill)
+            f::lpad_or_rpad(name, expr, size, fill)
         }
         Function::Trim {
             expr,
@@ -261,7 +262,7 @@ async fn evaluate_function<'a, T>(
                 None => None,
             };
 
-            f::trim(name(), expr, filter_chars, trim_where_field)
+            f::trim(name, expr, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
@@ -270,7 +271,7 @@ async fn evaluate_function<'a, T>(
                 None => None,
             };
 
-            f::ltrim(name(), expr, chars)
+            f::ltrim(name, expr, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
@@ -279,18 +280,18 @@ async fn evaluate_function<'a, T>(
                 None => None,
             };
 
-            f::rtrim(name(), expr, chars)
+            f::rtrim(name, expr, chars)
         }
         Function::Reverse(expr) => {
             let expr = evalfn(expr, storage, context, aggregated).await?;
 
-            f::reverse(name(), expr)
+            f::reverse(name, expr)
         }
         Function::Repeat { expr, num } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
             let num = evalfn(num, storage, context, aggregated).await?;
 
-            f::repeat(name(), expr, num)
+            f::repeat(name, expr, num)
         }
         Function::Substr { expr, start, count } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
@@ -300,58 +301,58 @@ async fn evaluate_function<'a, T>(
                 None => None,
             };
 
-            f::substr(name(), expr, start, count)
+            f::substr(name, expr, start, count)
         }
 
         // --- float ---
-        Function::Abs(expr) => f::abs(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Sign(expr) => f::sign(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Sqrt(expr) => f::sqrt(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Abs(expr) => f::abs(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Sign(expr) => f::sign(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Sqrt(expr) => f::sqrt(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Power { expr, power } => {
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
             let power = evalfn(power, storage, context, aggregated).await?;
 
-            f::power(name(), expr, power)
+            f::power(name, expr, power)
         }
-        Function::Ceil(expr) => f::ceil(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Ceil(expr) => f::ceil(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Round(expr) => {
-            f::round(name(), evalfn(expr, storage, context, aggregated).await?)
+            f::round(name, evalfn(expr, storage, context, aggregated).await?)
         }
         Function::Floor(expr) => {
-            f::floor(name(), evalfn(expr, storage, context, aggregated).await?)
+            f::floor(name, evalfn(expr, storage, context, aggregated).await?)
         }
         Function::Radians(expr) => {
-            f::radians(name(), evalfn(expr, storage, context, aggregated).await?)
+            f::radians(name, evalfn(expr, storage, context, aggregated).await?)
         }
         Function::Degrees(expr) => {
-            f::degrees(name(), evalfn(expr, storage, context, aggregated).await?)
+            f::degrees(name, evalfn(expr, storage, context, aggregated).await?)
         }
         Function::Pi() => Ok(Value::F64(std::f64::consts::PI)),
-        Function::Exp(expr) => f::exp(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Exp(expr) => f::exp(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Log { antilog, base } => {
             let antilog = evalfn(antilog, storage, context.clone(), aggregated.clone()).await?;
             let base = evalfn(base, storage, context, aggregated).await?;
 
-            f::log(name(), antilog, base)
+            f::log(name, antilog, base)
         }
-        Function::Ln(expr) => f::ln(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Log2(expr) => f::log2(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Ln(expr) => f::ln(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Log2(expr) => f::log2(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Log10(expr) => {
-            f::log10(name(), evalfn(expr, storage, context, aggregated).await?)
+            f::log10(name, evalfn(expr, storage, context, aggregated).await?)
         }
-        Function::Sin(expr) => f::sin(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Cos(expr) => f::cos(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Tan(expr) => f::tan(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Asin(expr) => f::asin(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Acos(expr) => f::acos(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::Atan(expr) => f::atan(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Sin(expr) => f::sin(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Cos(expr) => f::cos(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Tan(expr) => f::tan(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Asin(expr) => f::asin(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Acos(expr) => f::acos(name, evalfn(expr, storage, context, aggregated).await?),
+        Function::Atan(expr) => f::atan(name, evalfn(expr, storage, context, aggregated).await?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {
             let dividend = evalfn(dividend, storage, context.clone(), aggregated.clone()).await?;
             let divisor = evalfn(divisor, storage, context.clone(), aggregated.clone()).await?;
 
-            f::div(name(), dividend, divisor)
+            f::div(name, dividend, divisor)
         }
         Function::Mod { dividend, divisor } => {
             let dividend = evalfn(dividend, storage, context.clone(), aggregated.clone()).await?;
@@ -363,13 +364,13 @@ async fn evaluate_function<'a, T>(
             let left = evalfn(left, storage, context.clone(), aggregated.clone()).await?;
             let right = evalfn(right, storage, context, aggregated).await?;
 
-            f::gcd(name(), left, right)
+            f::gcd(name, left, right)
         }
         Function::Lcm { left, right } => {
             let left = evalfn(left, storage, context.clone(), aggregated.clone()).await?;
             let right = evalfn(right, storage, context, aggregated).await?;
 
-            f::lcm(name(), left, right)
+            f::lcm(name, left, right)
         }
 
         // --- etc ---
@@ -377,7 +378,7 @@ async fn evaluate_function<'a, T>(
             let expr = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
             let selector = evalfn(selector, storage, context, aggregated).await?;
 
-            f::unwrap(name(), expr, selector)
+            f::unwrap(name, expr, selector)
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
         Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
