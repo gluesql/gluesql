@@ -342,9 +342,9 @@ async fn evaluate_function<'a, T>(
         Function::Sin(expr) => f::sin(name(), evalfn(expr, storage, context, aggregated).await?),
         Function::Cos(expr) => f::cos(name(), evalfn(expr, storage, context, aggregated).await?),
         Function::Tan(expr) => f::tan(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::ASin(expr) => f::asin(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::ACos(expr) => f::acos(name(), evalfn(expr, storage, context, aggregated).await?),
-        Function::ATan(expr) => f::atan(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Asin(expr) => f::asin(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Acos(expr) => f::acos(name(), evalfn(expr, storage, context, aggregated).await?),
+        Function::Atan(expr) => f::atan(name(), evalfn(expr, storage, context, aggregated).await?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {
