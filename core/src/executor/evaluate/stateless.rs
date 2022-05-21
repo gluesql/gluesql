@@ -15,7 +15,7 @@ pub fn evaluate_stateless<'a>(
     context: Option<(Columns, &'a Row)>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-   // let eval = |expr| evaluate_stateless(context, expr);
+    // let eval = |expr| evaluate_stateless(context, expr);
 
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
@@ -67,11 +67,11 @@ pub fn evaluate_stateless<'a>(
                     let target = &target;
 
                     evaluate_stateless(context, expr)
-                    //eval(expr)
-                    .map_or_else(
-                        |error| Some(Err(error)),
-                        |evaluated| (target == &evaluated).then(|| Ok(!negated)),
-                    )
+                        //eval(expr)
+                        .map_or_else(
+                            |error| Some(Err(error)),
+                            |evaluated| (target == &evaluated).then(|| Ok(!negated)),
+                        )
                 })
                 .take(1)
                 .collect::<Vec<_>>()
@@ -88,7 +88,7 @@ pub fn evaluate_stateless<'a>(
             high,
         } => {
             let target = evaluate_stateless(context, expr)?; //eval(expr)?;
-            let low = evaluate_stateless(context, low)?;  //eval(low)?;
+            let low = evaluate_stateless(context, low)?; //eval(low)?;
             let high = evaluate_stateless(context, high)?; //eval(high)?;
 
             expr::between(target, *negated, low, high)
@@ -126,7 +126,10 @@ fn evaluate_function<'a>(
     match func {
         // --- text ---
         Function::Concat(exprs) => {
-            let exprs = exprs.iter().map(|x| evaluate_stateless(context, x)).collect::<Result<_>>()?;
+            let exprs = exprs
+                .iter()
+                .map(|x| evaluate_stateless(context, x))
+                .collect::<Result<_>>()?;
 
             f::concat(exprs)
         }
