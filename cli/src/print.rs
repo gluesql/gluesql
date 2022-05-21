@@ -102,7 +102,8 @@ fn get_table<T: Into<Row>>(header: T) -> Table {
 #[cfg(test)]
 mod tests {
     use super::Print;
-
+    use gluesql_core::data::SchemaIndexOrd;
+  
     #[test]
     fn print_help() {
         let mut print = Print::new(Vec::new());
@@ -258,6 +259,23 @@ mod tests {
                 ],
             }
         );
+
+        test!(
+            "
+╭────────────────────╮
+│ Index Name   Order │
+╞════════════════════╡
+│ id_ndx       ASC   │
+│ name_ndx     DESC  │
+│ date_ndx     BOTH  │
+╰────────────────────╯",
+            Payload::ShowIndexes(vec![
+                ("id_ndx".to_string(), SchemaIndexOrd::Asc),
+                ("name_ndx".to_string(), SchemaIndexOrd::Desc),
+                ("date_ndx".to_string(), SchemaIndexOrd::Both),
+            ],)
+        );
+
 
         test!(
             "
