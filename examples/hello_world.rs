@@ -1,10 +1,12 @@
 #[cfg(feature = "sled-storage")]
 mod hello_world {
-    use gluesql::{
-        prelude::{Glue, Payload, Value},
-        sled_storage::SledStorage,
+    use {
+        gluesql::{
+            prelude::{Glue, Payload, Value},
+            sled_storage::SledStorage,
+        },
+        std::fs,
     };
-    use std::fs;
 
     pub fn run() {
         /*
