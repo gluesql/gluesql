@@ -24,6 +24,21 @@ use {
 
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
+//#[async_recursion(?Send)]
+pub async fn evalfn<'a , T>(
+    expr: &'a Expr,
+    storage: &'a dyn GStore<T>,
+    context: Option<Rc<FilterContext<'a>>>,
+    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
+) -> Result<Evaluated<'a>> {
+    evaluate(
+        storage,
+        context.as_ref().map(Rc::clone),
+        aggregated.as_ref().map(Rc::clone),
+        expr
+    ).await
+}
+
 #[async_recursion(?Send)]
 pub async fn evaluate<'a, T>(
     storage: &'a dyn GStore<T>,
@@ -52,7 +67,8 @@ pub async fn evaluate<'a, T>(
             }
             .map(Evaluated::from)
         }
-        Expr::Nested(expr) => eval(expr).await,
+        //Expr::Nested(expr) => eval(expr).await,
+        Expr::Nested(expr) => evalfn(expr, storage, context, aggregated).await,
         Expr::CompoundIdentifier(idents) => {
             if idents.len() != 2 {
                 return Err(EvaluateError::UnsupportedCompoundIdentifier(expr.clone()).into());
@@ -86,15 +102,21 @@ pub async fn evaluate<'a, T>(
                 .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))
         }
         Expr::BinaryOp { op, left, right } => {
-            let left = eval(left).await?;
-            let right = eval(right).await?;
-
+            //let left = eval(left).await?;
+            let left = evalfn(left, storage, context.clone(), aggregated.clone()).await?;
+            //let right = eval(right).await?;
+            let right = evalfn(right, storage, context.clone(), aggregated.clone()).await?;
+            
             expr::binary_op(op, left, right)
         }
         Expr::UnaryOp { op, expr } => {
-            let v = eval(expr).await?;
+            //let v = eval(expr).await?;
+            match evalfn(expr, storage, context, aggregated).await {
+                Ok(e) => expr::unary_op(op,e),
+                Err(x) => Err(x)
+            }
 
-            expr::unary_op(op, v)
+         //   expr::unary_op(op, v)
         }
         Expr::Aggregate(aggr) => match aggregated
             .as_ref()
@@ -109,15 +131,19 @@ pub async fn evaluate<'a, T>(
 
             evaluate_function(storage, context, aggregated, func).await
         }
-        Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
-        Expr::Extract { field, expr } => eval(expr).await?.extract(field),
+        //Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
+        Expr::Cast { expr, data_type } => evalfn(expr, storage, context, aggregated).await?.cast(data_type),
+        //Expr::Extract { field, expr } => eval(expr).await?.extract(field),
+        Expr::Extract { field, expr } => evalfn(expr, storage, context, aggregated).await?.extract(field),
+
         Expr::InList {
             expr,
             list,
             negated,
         } => {
             let negated = *negated;
-            let target = eval(expr).await?;
+            //let target = eval(expr).await?;
+            let target = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
 
             stream::iter(list)
                 .then(eval)
@@ -133,7 +159,8 @@ pub async fn evaluate<'a, T>(
             subquery,
             negated,
         } => {
-            let target = eval(expr).await?;
+            //let target = eval(expr).await?;
+            let target = evalfn(expr, storage, context.clone(), aggregated).await?;
 
             select(storage, subquery, context)
                 .await?
@@ -151,10 +178,13 @@ pub async fn evaluate<'a, T>(
             low,
             high,
         } => {
-            let target = eval(expr).await?;
-            let low = eval(low).await?;
-            let high = eval(high).await?;
-
+            //let target = eval(expr).await?;
+            let target = evalfn(expr, storage, context.clone(), aggregated.clone()).await?;
+            //let low = eval(low).await?;
+            let low = evalfn(low, storage, context.clone(), aggregated.clone()).await?;
+            //let high = eval(high).await?;
+            let high = evalfn(high, storage, context.clone(), aggregated.clone()).await?;
+            
             expr::between(target, *negated, low, high)
         }
         Expr::Exists(query) => select(storage, query, context)
@@ -165,13 +195,13 @@ pub async fn evaluate<'a, T>(
             .map(Value::Bool)
             .map(Evaluated::from),
         Expr::IsNull(expr) => {
-            let v = eval(expr).await?.is_null();
-
+            //let v = eval(expr).await?.is_null();
+            let v = evalfn(expr, storage, context, aggregated).await?.is_null();
             Ok(Evaluated::from(Value::Bool(v)))
         }
         Expr::IsNotNull(expr) => {
-            let v = eval(expr).await?.is_null();
-
+            //let v = eval(expr).await?.is_null();
+            let v = evalfn(expr, storage, context, aggregated).await?.is_null();
             Ok(Evaluated::from(Value::Bool(!v)))
         }
         Expr::Case {
@@ -180,20 +210,24 @@ pub async fn evaluate<'a, T>(
             else_result,
         } => {
             let operand = match operand {
-                Some(op) => eval(op).await?,
+                //Some(op) => eval(op).await?,
+                Some(op) => evalfn(op, storage, context.clone(), aggregated.clone()).await?,
                 None => Evaluated::from(Value::Bool(true)),
             };
 
             for (when, then) in when_then.iter() {
-                let when = eval(when).await?;
+                //let when = eval(when).await?;
+                let when = evalfn(when, storage, context.clone(), aggregated.clone()).await?;
 
                 if when.eq(&operand) {
-                    return eval(then).await;
+                    return evalfn(then, storage, context.clone(), aggregated.clone()).await;
+                    //return eval(then).await;
                 }
             }
 
             match else_result {
-                Some(er) => eval(er).await,
+                //Some(er) => eval(er).await,
+                Some(er) => evalfn(er, storage, context.clone(), aggregated.clone()).await,
                 None => Ok(Evaluated::from(Value::Null)),
             }
         }
