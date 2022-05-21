@@ -323,9 +323,9 @@ async fn evaluate_function<'a, T>(
         Function::Sin(expr) => f::sin(name(), eval(expr).await?),
         Function::Cos(expr) => f::cos(name(), eval(expr).await?),
         Function::Tan(expr) => f::tan(name(), eval(expr).await?),
-        Function::ASin(expr) => f::asin(name(), eval(expr).await?),
-        Function::ACos(expr) => f::acos(name(), eval(expr).await?),
-        Function::ATan(expr) => f::atan(name(), eval(expr).await?),
+        Function::Asin(expr) => f::asin(name(), eval(expr).await?),
+        Function::Acos(expr) => f::acos(name(), eval(expr).await?),
+        Function::Atan(expr) => f::atan(name(), eval(expr).await?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {
