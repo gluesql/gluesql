@@ -18,9 +18,9 @@ pub enum Function {
         expr: Expr,
         size: Expr,
     },
-    ASin(Expr),
-    ACos(Expr),
-    ATan(Expr),
+    Asin(Expr),
+    Acos(Expr),
+    Atan(Expr),
     Lpad {
         expr: Expr,
         size: Expr,

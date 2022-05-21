@@ -213,9 +213,9 @@ fn evaluate_function<'a>(
         Function::Sin(expr) => f::sin(name(), eval(expr)?),
         Function::Cos(expr) => f::cos(name(), eval(expr)?),
         Function::Tan(expr) => f::tan(name(), eval(expr)?),
-        Function::ASin(expr) => f::asin(name(), eval(expr)?),
-        Function::ACos(expr) => f::acos(name(), eval(expr)?),
-        Function::ATan(expr) => f::atan(name(), eval(expr)?),
+        Function::Asin(expr) => f::asin(name(), eval(expr)?),
+        Function::Acos(expr) => f::acos(name(), eval(expr)?),
+        Function::Atan(expr) => f::atan(name(), eval(expr)?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {
