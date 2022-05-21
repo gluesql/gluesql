@@ -170,11 +170,11 @@ fn bench(criterion: &mut Criterion) {
     let mut glue = setup();
 
     bench_seed(1234, &mut glue, criterion);
-    //bench_seed(5678, criterion);
+    //bench_seed(5678, &mut glue, criterion);
 }
 
-fn bench_seed(seed:u64, glue: &mut Glue<IVec, SledStorage>, criterion: &mut Criterion) {
-    fastrand::seed(seed);   //lets use the same random numbers so that we can compare results between runs.
+fn bench_seed(seed: u64, glue: &mut Glue<IVec, SledStorage>, criterion: &mut Criterion) {
+    fastrand::seed(seed); //lets use the same random numbers so that we can compare results between runs.
     let mut group = criterion.benchmark_group("filter");
     group.bench_function("a", |benchmarker| {
         benchmarker.iter(|| glue.execute(&filter("A")).unwrap());
