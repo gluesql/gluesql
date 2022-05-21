@@ -14,11 +14,7 @@ impl<W: Write> Print<W> {
     }
 
     pub fn payloads(&mut self, payloads: Vec<Payload>) -> Result<()> {
-        let payload_iter = payloads.iter();
-        for p in payload_iter {
-            self.payload(p)?;
-        }
-        Ok(())
+        payloads.iter().try_for_each(|p| self.payload(p))
     }
 
     pub fn payload(&mut self, payload: &Payload) -> Result<()> {

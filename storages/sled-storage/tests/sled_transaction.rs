@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         executor::FetchError,
         prelude::{Value::*, *},
-        result::{Error, Result},
+        result::Error,
         store::StoreMut,
         *,
     },
@@ -30,15 +30,8 @@ macro_rules! exec {
 
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
-        let res = $glue.execute($sql);
-        let expeced_result: Result<Payload> = $result;
-        if let Ok(r) = res {
-            assert_eq!(expeced_result.is_ok(), true);
-            assert_eq!(r.len(), 1);
-            assert_eq!(r[0], expeced_result.unwrap());
-        } else {
-            assert_eq!(res.err(), expeced_result.err());
-        }
+        let actual = $glue.execute($sql);
+        assert_eq!(actual, $result.map(|payload| vec![payload]));
     };
 }
 
