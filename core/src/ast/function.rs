@@ -38,6 +38,8 @@ pub enum Function {
     Ceil(Expr),
     #[strum(to_string = "CONCAT")]
     Concat(Vec<Expr>),
+    #[strum(to_string = "IFNULL")]
+    IfNull { expr: Expr, expr2: Expr },
     #[strum(to_string = "ROUND")]
     Round(Expr),
     #[strum(to_string = "FLOOR")]

@@ -205,6 +205,15 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Left { expr, size })))
         }
+        "IFNULL" => {
+            check_len(name, args.len(), 2)?;
+            let expr1 = translate_expr(args[0])?;
+            let expr2 = translate_expr(args[1])?;
+            Ok(Expr::Function(Box::new(Function::IfNull {
+                expr: expr1,
+                expr2,
+            })))
+        }
         "RIGHT" => {
             check_len(name, args.len(), 2)?;
 
