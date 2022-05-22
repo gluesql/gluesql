@@ -1,4 +1,3 @@
-use futures::TryStreamExt;
 use {
     crate::{
         ast::Statement,
@@ -9,8 +8,11 @@ use {
         store::{GStore, GStoreMut},
         translate::translate,
     },
-    futures::executor::block_on,
-    futures::stream::{self, StreamExt},
+    futures::{
+        executor::block_on,
+        stream::{self, StreamExt},
+        TryStreamExt,
+    },
     std::marker::PhantomData,
 };
 
