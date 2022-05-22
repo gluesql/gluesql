@@ -75,9 +75,10 @@ test_case!(aggregate, async move {
     }
 
     let error_cases = vec![
-        (   // once PR #561 is merged this should not produce an error anymore
+        (
+            // once PR #561 is merged this should not produce an error anymore
             AggregateError::OnlyIdentifierAllowed.into(),
-           "SELECT SUM(ifnull(age, 0)) from Item;",
+            "SELECT SUM(ifnull(age, 0)) from Item;",
         ),
         (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
