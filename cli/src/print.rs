@@ -13,7 +13,7 @@ impl<W: Write> Print<W> {
         Print { output }
     }
 
-    pub fn payloads(&mut self, payloads: Vec<Payload>) -> Result<()> {
+    pub fn payloads(&mut self, payloads: &[Payload]) -> Result<()> {
         payloads.iter().try_for_each(|p| self.payload(p))
     }
 

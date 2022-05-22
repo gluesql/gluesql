@@ -81,7 +81,7 @@ where
                     break;
                 }
                 Command::Execute(sql) => match self.glue.execute(sql.as_str()) {
-                    Ok(p) => self.print.payloads(p)?,
+                    Ok(payloads) => self.print.payloads(&payloads)?,
                     Err(e) => {
                         println!("[error] {}\n", e);
                     }
@@ -102,7 +102,7 @@ where
         File::open(filename)?.read_to_string(&mut sqls)?;
         for sql in sqls.split(';').filter(|sql| !sql.trim().is_empty()) {
             match self.glue.execute(sql) {
-                Ok(payloads) => self.print.payloads(payloads)?,
+                Ok(payloads) => self.print.payloads(&payloads)?,
                 Err(e) => {
                     println!("[error] {}\n", e);
                     break;
