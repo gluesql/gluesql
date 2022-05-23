@@ -31,3 +31,6 @@ metadata = ["gluesql-core/metadata"]
 [[bench]]
 name = "glue_benchmark"
 harness = false
+
+[profile.bench]
+debug = true

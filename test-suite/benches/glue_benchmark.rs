@@ -1,7 +1,7 @@
 use {criterion::*, gluesql::prelude::*, sled::IVec, std::time::Duration};
 
 fn setup_glue() -> Glue<IVec, SledStorage> {
-    let path = "data/sled_bench";
+    let path = "/tmp/data/sled_bench";
 
     match std::fs::remove_dir_all(&path) {
         Ok(()) => (),
