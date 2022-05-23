@@ -211,7 +211,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr2 = translate_expr(args[1])?;
             Ok(Expr::Function(Box::new(Function::IfNull {
                 expr: expr1,
-                expr2,
+                then: expr2,
             })))
         }
         "RIGHT" => {

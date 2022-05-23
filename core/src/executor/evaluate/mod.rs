@@ -223,7 +223,7 @@ async fn evaluate_function<'a, T>(
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat(exprs)
         }
-        Function::IfNull { expr, expr2 } => f::ifnull(eval(expr).await?, eval(expr2).await?),
+        Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {

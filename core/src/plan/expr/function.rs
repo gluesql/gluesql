@@ -96,7 +96,7 @@ impl Function {
                 start: expr2,
                 count: None,
             }
-            | Self::IfNull { expr, expr2 }
+            | Self::IfNull { expr, then: expr2 }
             | Self::Unwrap {
                 expr,
                 selector: expr2,

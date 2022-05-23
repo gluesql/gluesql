@@ -35,7 +35,7 @@ pub enum Function {
     Concat(Vec<Expr>),
     IfNull {
         expr: Expr,
-        expr2: Expr,
+        then: Expr,
     },
     Round(Expr),
     Floor(Expr),
