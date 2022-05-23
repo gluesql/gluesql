@@ -126,7 +126,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 return Err(TranslateError::TooManyParamsInDropIndex.into());
             }
 
-            let object_name: &Vec<SqlIdent> = &names[0].0;
+            let object_name = &names[0].0;
+            if object_name.len() != 2 {
+                return Err(TranslateError::InvalidParamsInDropIndex.into());
+            }
 
             let table_name = ObjectName(vec![object_name[0].value.to_owned()]);
             let name = ObjectName(vec![object_name[1].value.to_owned()]);
