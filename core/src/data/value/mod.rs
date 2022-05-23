@@ -40,6 +40,12 @@ pub enum Value {
     Null,
 }
 
+impl AsRef<Value> for Value {
+    fn as_ref(&self) -> &Value {
+        self
+    }
+}
+
 impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
@@ -284,7 +290,7 @@ impl Value {
     pub fn divide(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if self.is_zero() {
+        if other.is_zero() {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
