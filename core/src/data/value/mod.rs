@@ -40,12 +40,6 @@ pub enum Value {
     Null,
 }
 
-impl AsRef<Value> for Value {
-    fn as_ref(&self) -> &Value {
-        self
-    }
-}
-
 impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
@@ -649,7 +643,7 @@ mod tests {
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
-        assert_eq!(I8(0).divide(&I8(5), I8(0)));
+        test!(divide I8(0),     I8(5)   => I8(0));
         assert_eq!(I8(5).divide(&I8(0)), Err(ValueError::DivisorShouldNotBeZero.into()));
 
         test!(divide I8(6),    I8(2)    => I8(3));
