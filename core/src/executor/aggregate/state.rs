@@ -1,15 +1,13 @@
 use {
     super::error::AggregateError,
     crate::{
-        ast::{Aggregate, AstLiteral, BinaryOperator, CountArgExpr, Expr},
+        ast::{Aggregate, CountArgExpr, Expr},
         data::{Key, Value},
         executor::context::BlendContext,
         result::Result,
     },
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
-    rust_decimal::Decimal,
-    std::str::FromStr,
     std::{cmp::Ordering, rc::Rc},
     utils::{IndexMap, Vector},
 };
@@ -177,87 +175,39 @@ impl<'a> State<'a> {
             .collect::<Result<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>>()
     }
 
-    fn accumulate_get_value1(
-        &self,
-        context: &'a BlendContext<'_>,
-        expr: &Expr,
-    ) -> Result<&'a Value> {
-        match expr {
-            Expr::Identifier(ident) => match context.get_value(ident) {
-                Some(x) => Ok(x),
-                None => Err(AggregateError::ValueNotFound(ident.to_string()).into()),
-            },
+    pub fn accumulate(self, context: &BlendContext<'_>, aggr: &'a Aggregate) -> Result<Self> {
+        let get_value = |expr: &Expr| match expr {
+            Expr::Identifier(ident) => context
+                .get_value(ident)
+                .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
             Expr::CompoundIdentifier(idents) => {
                 if idents.len() != 2 {
-                    return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()).into());
+                    return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
                 }
 
                 let table_alias = &idents[0];
                 let column = &idents[1];
 
-                match context.get_alias_value(table_alias, column) {
-                    Some(x) => Ok(x),
-                    None => Err(AggregateError::ValueNotFound(column.to_string()).into()),
-                }
+                context
+                    .get_alias_value(table_alias, column)
+                    .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
             }
-            _ => Err(AggregateError::OnlyIdentifierAllowed.into()),
-        }
-    }
+            _ => Err(AggregateError::OnlyIdentifierAllowed),
+        };
 
-    fn accumulate_get_value(&self, context: &BlendContext<'_>, expr: &Expr) -> Result<Value> {
-        match expr {
-            Expr::Identifier(_ident) => match self.accumulate_get_value1(context, expr) {
-                Ok(x) => {
-                    let y: Value = x.to_owned();
-                    Ok(y)
-                }
-                Err(x) => Err(x),
-            },
-            Expr::CompoundIdentifier(_idents) => match self.accumulate_get_value1(context, expr) {
-                Ok(x) => {
-                    let y: Value = x.to_owned();
-                    Ok(y)
-                }
-                Err(x) => Err(x),
-            },
-            Expr::Literal(x) => match x {
-                AstLiteral::Number(x) => match Decimal::from_str(&x.to_string()) {
-                    Ok(x) => Ok(Value::Decimal(x)),
-                    _ => Err(AggregateError::UnsupportedAggregateLiteral.into()),
-                },
-                _ => Err(AggregateError::UnsupportedAggregateLiteral.into()),
-            },
-            Expr::BinaryOp { left, op, right } => {
-                let left_value: &Value = &self.accumulate_get_value(context, left)?;
-                let right_value: &Value = &self.accumulate_get_value(context, right)?;
-
-                match op {
-                    BinaryOperator::Plus => left_value.add(right_value),
-                    BinaryOperator::Minus => left_value.subtract(right_value),
-                    BinaryOperator::Multiply => left_value.multiply(right_value),
-                    BinaryOperator::Divide => left_value.divide(right_value),
-                    BinaryOperator::Modulo => left_value.modulo(right_value),
-                    _ => Err(AggregateError::UnsupportedAggregateFunction.into()),
-                }
-            }
-            _ => Err(AggregateError::UnsupportedAggregateFunction.into()),
-        }
-    }
-
-    pub fn accumulate(self, context: &BlendContext<'_>, aggr: &'a Aggregate) -> Result<Self> {
         let value = match aggr {
-            Aggregate::Count(CountArgExpr::Wildcard) => Value::Null,
+            Aggregate::Count(CountArgExpr::Wildcard) => &Value::Null,
             Aggregate::Count(CountArgExpr::Expr(expr))
             | Aggregate::Sum(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)
-            | Aggregate::Avg(expr) => self.accumulate_get_value(context, expr)?,
+            | Aggregate::Avg(expr) => get_value(expr)?,
         };
 
         let aggr_value = match self.get(aggr) {
             Some((index, _)) if self.index <= *index => None,
-            Some((_, aggr_value)) => aggr_value.accumulate(&value)?,
-            None => Some(AggrValue::new(aggr, &value)),
+            Some((_, aggr_value)) => aggr_value.accumulate(value)?,
+            None => Some(AggrValue::new(aggr, value)),
         };
 
         match aggr_value {
