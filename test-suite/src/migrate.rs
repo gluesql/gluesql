@@ -2,7 +2,7 @@ use crate::*;
 
 test_case!(migrate, async move {
     use gluesql_core::{
-        data::ValueError, executor::EvaluateError, prelude::Payload, prelude::Value::*,
+        data::ValueError, executor::EvaluateError, prelude::Value::*,
         translate::TranslateError,
     };
 
@@ -98,6 +98,6 @@ test_case!(migrate, async move {
     //this insert statement works in mysql (so should we support it to?)
     //assert_eq!(
     //    run!(r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#),
-    //    Payload::Insert(1)
+    //    Prelude::Payload::Insert(1)
     //);
 });

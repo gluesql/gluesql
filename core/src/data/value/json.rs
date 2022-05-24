@@ -123,7 +123,6 @@ mod tests {
             Value::I64(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
-
         assert_eq!(
             Value::F64(1.23).try_into(),
             Ok(JsonValue::Number(JsonNumber::from_f64(1.23).unwrap()))
