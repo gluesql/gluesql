@@ -49,8 +49,8 @@ impl<W: Write> Print<W> {
                 for (field, fieldtype) in columns {
                     match fieldtype {
                         DataType::Decimal(p, s) => table
-                            .add_row([field, format!("Decimal({:},{:})", p.unwrap(), s.unwrap())]),
-                        _ => table.add_row([field, fieldtype.to_string()]),
+                            .add_row([field, &format!("Decimal({:},{:})", p.unwrap(), s.unwrap())]),
+                        _ => table.add_row([field, &fieldtype.to_string()]),
                     };
                 }
 
