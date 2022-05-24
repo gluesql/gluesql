@@ -36,15 +36,6 @@ impl Value {
                     .copied()
                     .collect::<Vec<_>>()
             }
-            Value::I128(v) => {
-                let sign = if *v >= 0 { 1 } else { 0 };
-
-                [VALUE, sign]
-                    .iter()
-                    .chain(v.to_be_bytes().iter())
-                    .copied()
-                    .collect::<Vec<_>>()
-            }
             Value::F64(v) => [VALUE]
                 .iter()
                 .chain(v.to_be_bytes().iter())
@@ -176,21 +167,6 @@ mod tests {
         let n4 = I64(3).to_cmp_be_bytes().unwrap();
         let n5 = I64(20).to_cmp_be_bytes().unwrap();
         let n6 = I64(100).to_cmp_be_bytes().unwrap();
-
-        assert_eq!(cmp(&n1, &n2), Ordering::Less);
-        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
-        assert_eq!(cmp(&n1, &n6), Ordering::Less);
-        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
-        assert_eq!(cmp(&n4, &n5), Ordering::Less);
-        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
-        assert_eq!(cmp(&n4, &null), Ordering::Less);
-
-        let n1 = I128(-100).to_cmp_be_bytes().unwrap();
-        let n2 = I128(-10).to_cmp_be_bytes().unwrap();
-        let n3 = I128(0).to_cmp_be_bytes().unwrap();
-        let n4 = I128(3).to_cmp_be_bytes().unwrap();
-        let n5 = I128(20).to_cmp_be_bytes().unwrap();
-        let n6 = I128(100).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);

@@ -26,7 +26,6 @@ pub enum KeyError {
 pub enum Key {
     I8(i8),
     I64(i64),
-    I128(i128),
     Bool(bool),
     Str(String),
     Date(NaiveDate),
@@ -48,7 +47,6 @@ impl TryFrom<Value> for Key {
             Bool(v) => Ok(Key::Bool(v)),
             I8(v) => Ok(Key::I8(v)),
             I64(v) => Ok(Key::I64(v)),
-            I128(v) => Ok(Key::I128(v)),
             Str(v) => Ok(Key::Str(v)),
             Date(v) => Ok(Key::Date(v)),
             Timestamp(v) => Ok(Key::Timestamp(v)),

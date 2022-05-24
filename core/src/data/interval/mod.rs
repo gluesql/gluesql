@@ -287,7 +287,7 @@ impl Interval {
                 format!("{:?}", to),
             )
             .into()),
-            (_, _) => Err(IntervalError::UnsupportedExtractPart.into()),
+            (None, _) => Err(IntervalError::Unreachable.into()),
         }
     }
 }

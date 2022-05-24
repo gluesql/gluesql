@@ -19,7 +19,6 @@ impl From<&Value> for String {
             Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_string(),
             Value::I8(value) => value.to_string(),
             Value::I64(value) => value.to_string(),
-            Value::I128(value) => value.to_string(),
             Value::F64(value) => value.to_string(),
             Value::Date(value) => value.to_string(),
             Value::Timestamp(value) => value.to_string(),
@@ -55,11 +54,6 @@ impl TryInto<bool> for &Value {
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
             Value::I64(value) => match value {
-                1 => true,
-                0 => false,
-                _ => return Err(ValueError::ImpossibleCast.into()),
-            },
-            Value::I128(value) => match value {
                 1 => true,
                 0 => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
@@ -121,7 +115,6 @@ impl TryInto<i8> for &Value {
             }
             Value::I8(value) => *value,
             Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
-            Value::I128(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i8>()
@@ -161,7 +154,6 @@ impl TryInto<i64> for &Value {
             }
             Value::I8(value) => *value as i64,
             Value::I64(value) => *value,
-            Value::I128(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i64>()
@@ -201,7 +193,6 @@ impl TryInto<i128> for &Value {
             }
             Value::I8(value) => *value as i128,
             Value::I64(value) => *value as i128,
-            Value::I128(value) => *value,
             Value::F64(value) => value.to_i128().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i128>()
@@ -241,7 +232,6 @@ impl TryInto<f64> for &Value {
             }
             Value::I8(value) => *value as f64,
             Value::I64(value) => *value as f64,
-            Value::I128(value) => *value as f64,
             Value::F64(value) => *value,
             Value::Str(value) => value
                 .parse::<f64>()
@@ -292,7 +282,6 @@ impl TryInto<Decimal> for &Value {
             }
             Value::I8(value) => Decimal::from_i8(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I64(value) => Decimal::from_i64(*value).ok_or(ValueError::ImpossibleCast)?,
-            Value::I128(value) => Decimal::from_i128(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => Decimal::from_f64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => {
                 Decimal::from_str(value).map_err(|_| ValueError::ImpossibleCast)?
@@ -428,9 +417,7 @@ mod tests {
         test!(Value::I8(0), Ok(false));
         test!(Value::I64(1), Ok(true));
         test!(Value::I64(0), Ok(false));
-        test!(Value::I128(1), Ok(true));
-        test!(Value::I128(0), Ok(false));
-
+      
         test!(Value::F64(1.0), Ok(true));
         test!(Value::F64(0.0), Ok(false));
         test!(Value::Str("true".to_owned()), Ok(true));
@@ -474,7 +461,6 @@ mod tests {
         //impossible casts
         test!(Value::I8(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
-        test!(Value::I128(3), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -493,7 +479,6 @@ mod tests {
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
         test!(Value::I64(122), Ok(122));
-        test!(Value::I128(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
         test!(Value::F64(122.1), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
@@ -530,7 +515,6 @@ mod tests {
 
         //impossible casts...
         test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
-        test!(Value::I128(128), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -549,7 +533,6 @@ mod tests {
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
         test!(Value::I64(122), Ok(122));
-        test!(Value::I128(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));
@@ -602,7 +585,6 @@ mod tests {
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
         test!(Value::I64(122), Ok(122));
-        test!(Value::I128(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));
@@ -661,7 +643,6 @@ mod tests {
         test!(Value::Bool(false), Ok(0.0));
         test!(Value::I8(122), Ok(122.0));
         test!(Value::I64(122), Ok(122.0));
-        test!(Value::I128(122), Ok(122.0));
         test!(Value::I64(1234567890), Ok(1234567890.0));
         test!(Value::F64(1234567890.1), Ok(1234567890.1));
         test!(Value::Str("1234567890.1".to_owned()), Ok(1234567890.1));

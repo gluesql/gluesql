@@ -38,7 +38,6 @@ impl TryFrom<Value> for JsonValue {
             Value::Bool(v) => Ok(JsonValue::Bool(v)),
             Value::I8(v) => Ok(v.into()),
             Value::I64(v) => Ok(v.into()),
-            Value::I128(v) => Ok(v.to_string().into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
@@ -124,8 +123,6 @@ mod tests {
             Value::I64(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
-        // this doesn't work
-        // assert_eq!(Value::I128(i128::MAX).try_into(), Ok(JsonValue::Number(i128::MAX.into())));
 
         assert_eq!(
             Value::F64(1.23).try_into(),

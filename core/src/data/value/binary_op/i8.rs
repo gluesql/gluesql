@@ -15,7 +15,6 @@ impl PartialEq<Value> for i8 {
         match other {
             I8(other) => self == other,
             I64(other) => (*self as i64) == *other,
-            I128(other) => (*self as i128) == *other,
             F64(other) => &(*self as f64) == other,
             Decimal(other) => Decimal::from(*self) == *other,
             _ => false,
@@ -28,7 +27,6 @@ impl PartialOrd<Value> for i8 {
         match other {
             I8(other) => self.partial_cmp(other),
             I64(other) => (*self as i64).partial_cmp(other),
-            I128(other) => (*self as i128).partial_cmp(other),
             F64(other) => (*self as f64).partial_cmp(other),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
@@ -65,18 +63,6 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I64),
-            I128(rhs) => (lhs as i128)
-                .checked_add(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: I128(rhs),
-                        operator: NumericBinaryOperator::Add,
-                    }
-                    .into()
-                })
-                .map(I128),
-
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
@@ -115,18 +101,6 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I64),
-            I128(rhs) => (lhs as i128)
-                .checked_sub(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: I128(rhs),
-                        operator: NumericBinaryOperator::Subtract,
-                    }
-                    .into()
-                })
-                .map(I128),
-
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
 
@@ -166,17 +140,6 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I64),
-            I128(rhs) => (lhs as i128)
-                .checked_mul(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: I128(rhs),
-                        operator: NumericBinaryOperator::Multiply,
-                    }
-                    .into()
-                })
-                .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
@@ -216,17 +179,6 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I64),
-            I128(rhs) => (lhs as i128)
-                .checked_div(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: I128(rhs),
-                        operator: NumericBinaryOperator::Divide,
-                    }
-                    .into()
-                })
-                .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
 
@@ -266,18 +218,6 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I64),
-            I128(rhs) => (lhs as i128)
-                .checked_rem(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: I128(rhs),
-                        operator: NumericBinaryOperator::Modulo,
-                    }
-                    .into()
-                })
-                .map(I128),
-
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
             Decimal(rhs) => match Decimal::from(lhs).checked_rem(rhs) {
                 Some(x) => Ok(Decimal(x)),
@@ -314,9 +254,7 @@ mod tests {
         let type_min: i8 = i8::MIN;
         let type_maxi64: i64 = type_max.into();
         let type_mini64: i64 = type_min.into();
-        let type_maxi128: i128 = type_max.into();
-        let type_mini128: i128 = type_min.into();
-
+     
         assert_eq!(-1i8, I8(-1));
         assert_eq!(0i8, I8(0));
         assert_eq!(1i8, I8(1));
@@ -335,7 +273,6 @@ mod tests {
         );
 
         assert_eq!(type_max.try_add(&I64(1)), Ok(I64(type_maxi64 + 1)));
-        assert_eq!(type_max.try_add(&I128(1)), Ok(I128(type_maxi128 + 1)));
 
         assert_eq!(
             type_max.try_add(&I8(i8::MAX)),
@@ -357,16 +294,6 @@ mod tests {
             .into())
         );
 
-        assert_eq!(
-            type_max.try_add(&I128(i128::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(type_max),
-                rhs: I128(i128::MAX),
-                operator: (NumericBinaryOperator::Add)
-            }
-            .into())
-        );
-
         //try_subtract
         assert_eq!(
             type_min.try_subtract(&I8(1)),
@@ -380,7 +307,6 @@ mod tests {
 
         // these are fine since they are not i8 (ie, i32, i64, i128)
         assert_eq!(type_min.try_subtract(&I64(1)), Ok(I64(type_mini64 - 1)));
-        assert_eq!(type_min.try_subtract(&I128(1)), Ok(I128(type_mini128 - 1)));
 
         assert_eq!(
             type_min.try_subtract(&I8(i8::MAX)),
@@ -402,20 +328,9 @@ mod tests {
             .into())
         );
 
-        assert_eq!(
-            type_min.try_subtract(&I128(i128::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(type_min),
-                rhs: I128(i128::MAX),
-                operator: (NumericBinaryOperator::Subtract)
-            }
-            .into())
-        );
-
         //try multiply
         assert_eq!(type_max.try_multiply(&I8(1)), Ok(I8(type_max)));
         assert_eq!(type_max.try_multiply(&I64(1)), Ok(I64(type_maxi64)));
-        assert_eq!(type_max.try_multiply(&I128(1)), Ok(I128(type_maxi128)));
 
         assert_eq!(
             i8::MAX.try_multiply(&I8(2)),
@@ -437,16 +352,7 @@ mod tests {
             .into())
         );
 
-        assert_eq!(
-            2i8.try_multiply(&I128(i128::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(2),
-                rhs: I128(i128::MAX),
-                operator: (NumericBinaryOperator::Multiply)
-            }
-            .into())
-        );
-
+        
         //try_divide
         assert_eq!(
             type_max.try_divide(&I8(0)),
@@ -457,20 +363,12 @@ mod tests {
             }
             .into())
         );
+
         assert_eq!(
             type_max.try_divide(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I8(type_max),
                 rhs: I64(0),
-                operator: (NumericBinaryOperator::Divide)
-            }
-            .into())
-        );
-        assert_eq!(
-            type_max.try_divide(&I128(0)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(type_max),
-                rhs: I128(0),
                 operator: (NumericBinaryOperator::Divide)
             }
             .into())
@@ -495,15 +393,6 @@ mod tests {
             }
             .into())
         );
-        assert_eq!(
-            type_max.try_modulo(&I128(0)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(type_max),
-                rhs: I128(0),
-                operator: (NumericBinaryOperator::Modulo)
-            }
-            .into())
-        );
     }
 
     #[test]
@@ -512,7 +401,6 @@ mod tests {
 
         assert_eq!(base, I8(1));
         assert_eq!(base, I64(1));
-        assert_eq!(base, I128(1));
         assert_eq!(base, F64(1.0));
         assert_eq!(base, Decimal(Decimal::ONE));
 
@@ -525,17 +413,14 @@ mod tests {
 
         assert_eq!(base.partial_cmp(&I8(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&I64(0)), Some(Ordering::Greater));
-        assert_eq!(base.partial_cmp(&I128(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&F64(0.0)), Some(Ordering::Greater));
 
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
-        assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
 
         assert_eq!(base.partial_cmp(&I8(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&I64(2)), Some(Ordering::Less));
-        assert_eq!(base.partial_cmp(&I128(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&F64(2.0)), Some(Ordering::Less));
 
         assert_eq!(
@@ -552,7 +437,6 @@ mod tests {
 
         assert_eq!(base.try_add(&I8(1)), Ok(I8(2)));
         assert_eq!(base.try_add(&I64(1)), Ok(I64(2)));
-        assert_eq!(base.try_add(&I128(1)), Ok(I128(2)));
 
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
         assert_eq!(
@@ -577,7 +461,6 @@ mod tests {
 
         assert_eq!(base.try_subtract(&I8(1)), Ok(I8(0)));
         assert_eq!(base.try_subtract(&I64(1)), Ok(I64(0)));
-        assert_eq!(base.try_subtract(&I128(1)), Ok(I128(0)));
 
         assert!(
             matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
@@ -606,12 +489,10 @@ mod tests {
         // 3 * 2 = 6
         assert_eq!(base.try_multiply(&I8(2)), Ok(I8(6)));
         assert_eq!(base.try_multiply(&I64(2)), Ok(I64(6)));
-        assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
 
         assert_eq!(base.try_multiply(&I8(-1)), Ok(I8(-3)));
         assert_eq!(base.try_multiply(&I64(-1)), Ok(I64(-3)));
-        assert_eq!(base.try_multiply(&I128(-1)), Ok(I128(-3)));
-
+      
         assert!(
             matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 3.0).abs() < f64::EPSILON )
         );
@@ -640,12 +521,10 @@ mod tests {
         // 6/2 = 3
         assert_eq!(base.try_divide(&I8(2)), Ok(I8(3)));
         assert_eq!(base.try_divide(&I64(2)), Ok(I64(3)));
-        assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
 
         // 6/-6 = -1
         assert_eq!(base.try_divide(&I8(-6)), Ok(I8(-1)));
         assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
-        assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));
 
         assert!(
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 6.0).abs() < f64::EPSILON )
@@ -674,11 +553,9 @@ mod tests {
 
         assert_eq!(base.try_modulo(&I8(1)), Ok(I8(0)));
         assert_eq!(base.try_modulo(&I64(1)), Ok(I64(0)));
-        assert_eq!(base.try_modulo(&I128(1)), Ok(I128(0)));
 
         assert_eq!(base.try_modulo(&I8(2)), Ok(I8(1)));
         assert_eq!(base.try_modulo(&I64(2)), Ok(I64(1)));
-        assert_eq!(base.try_modulo(&I128(2)), Ok(I128(1)));
 
         assert!(matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x).abs() < f64::EPSILON ));
         assert_eq!(
