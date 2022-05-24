@@ -2,7 +2,7 @@ use crate::*;
 
 test_case!(migrate, async move {
     use gluesql_core::{
-        executor::EvaluateError, prelude::Payload, prelude::Value::*, translate::TranslateError,
+        data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError, prelude::Payload,
     };
 
     run!(
@@ -24,10 +24,10 @@ test_case!(migrate, async move {
     );
 
     let error_cases = vec![
-        //(  this works in mysql
-        //    ValueError::FailedToParseNumber.into(),
-        //    r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
-        //),
+        (
+            ValueError::FailedToParseNumber.into(),
+            r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
+        ),
         (
             EvaluateError::UnsupportedStatelessExpr(expr!("a.b")).into(),
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
