@@ -86,7 +86,6 @@ mod tests {
     fn convert(sql: &str) -> Result<Key> {
         let parsed = parse_expr(sql).expect(sql);
         let expr = translate_expr(&parsed).expect(sql);
-        println!("{:?}", expr);
 
         evaluate_stateless(None, &expr).expect(sql).try_into()
     }
