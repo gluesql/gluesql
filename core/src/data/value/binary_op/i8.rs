@@ -141,7 +141,17 @@ impl TryBinaryOperator for i8 {
                 })
                 .map(I64),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
-            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_mul(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -180,8 +190,17 @@ impl TryBinaryOperator for i8 {
                 })
                 .map(I64),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
-            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
-
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_div(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I8(lhs),
@@ -219,15 +238,17 @@ impl TryBinaryOperator for i8 {
                 })
                 .map(I64),
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
-            Decimal(rhs) => match Decimal::from(lhs).checked_rem(rhs) {
-                Some(x) => Ok(Decimal(x)),
-                None => Err(ValueError::BinaryOperationOverflow {
-                    lhs: I8(lhs),
-                    operator: NumericBinaryOperator::Modulo,
-                    rhs: Decimal(rhs),
-                }
-                .into()),
-            },
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_rem(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I8(lhs),
