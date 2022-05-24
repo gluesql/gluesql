@@ -1,7 +1,6 @@
 use {
     super::{Interval, StringExt},
     crate::{ast::DataType, ast::DateTimeField, result::Result},
-    bigdecimal::ToPrimitive,
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
@@ -371,7 +370,7 @@ impl Value {
             if a.is_negative() {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
-            (1..(a+1))
+            (1..(a + 1))
                 .into_iter()
                 .try_fold(1i64, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
