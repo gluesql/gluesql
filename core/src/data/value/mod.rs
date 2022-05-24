@@ -371,7 +371,7 @@ impl Value {
             if a.is_negative() {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
-            (1i64..(a.to_i64().unwrap() + 1i64))
+            (1..(a+1))
                 .into_iter()
                 .try_fold(1i64, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
@@ -558,10 +558,10 @@ mod tests {
         let decimal = |n: i32| Decimal(n.into());
 
         test!(add I8(1),    I8(2)    => I8(3));
-        test!(add I8(1),    I64(2)    => I64(3));
+        test!(add I8(1),    I64(2)   => I64(3));
 
         test!(add I64(1),    I8(2)    => I64(3));
-        test!(add I64(1),    I64(2)    => I64(3));
+        test!(add I64(1),    I64(2)   => I64(3));
 
         test!(add I8(1),    F64(2.0) => F64(3.0));
 
@@ -608,7 +608,7 @@ mod tests {
         test!(add mon!(1),    mon!(2)    => mon!(3));
 
         test!(subtract I8(3),    I8(2)    => I8(1));
-        test!(subtract I8(3),    I64(2)    => I64(1));
+        test!(subtract I8(3),    I64(2)   => I64(1));
 
         test!(subtract I64(3),    I8(2)    => I64(1));
         test!(subtract I64(3),    I64(2)    => I64(1));
