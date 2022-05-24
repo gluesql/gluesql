@@ -245,7 +245,7 @@ mod tests {
         let type_max: i64 = i64::MAX;
         let type_min: i64 = i64::MIN;
         let type_maxi64: i64 = type_max;
-       
+
         assert_eq!(-1i64, I64(-1));
         assert_eq!(0i64, I64(0));
         assert_eq!(1i64, I64(1));
@@ -316,7 +316,7 @@ mod tests {
             }
             .into())
         );
-       
+
         //try_divide
         assert_eq!(
             type_max.try_divide(&I8(0)),

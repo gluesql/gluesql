@@ -107,7 +107,7 @@ impl TryBinaryOperator for Decimal {
                 }
                 .into()),
             },
-            
+
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs - x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
@@ -152,7 +152,7 @@ impl TryBinaryOperator for Decimal {
                 }
                 .into()),
             },
-            
+
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs * x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
@@ -323,7 +323,7 @@ mod tests {
             }
             .into())
         );
-       
+
         assert_eq!(
             Decimal::MIN.try_subtract(&I8(1)),
             Err(ValueError::BinaryOperationOverflow {
@@ -343,7 +343,7 @@ mod tests {
             }
             .into())
         );
-       
+
         assert_eq!(
             Decimal::MIN.try_subtract(&Decimal(Decimal::ONE)),
             Err(ValueError::BinaryOperationOverflow {
@@ -372,7 +372,7 @@ mod tests {
             }
             .into())
         );
-        
+
         assert_eq!(
             Decimal::MAX.try_multiply(&Decimal(Decimal::TWO)),
             Err(ValueError::BinaryOperationOverflow {
@@ -404,7 +404,6 @@ mod tests {
             .into())
         );
 
-        
         assert_eq!(
             base.try_divide(&Decimal(Decimal::ZERO)),
             Err(ValueError::BinaryOperationOverflow {
@@ -436,7 +435,6 @@ mod tests {
             .into())
         );
 
-        
         assert_eq!(
             base.try_modulo(&Decimal(Decimal::ZERO)),
             Err(ValueError::BinaryOperationOverflow {

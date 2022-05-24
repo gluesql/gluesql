@@ -254,7 +254,7 @@ mod tests {
         let type_min: i8 = i8::MIN;
         let type_maxi64: i64 = type_max.into();
         let type_mini64: i64 = type_min.into();
-     
+
         assert_eq!(-1i8, I8(-1));
         assert_eq!(0i8, I8(0));
         assert_eq!(1i8, I8(1));
@@ -305,7 +305,7 @@ mod tests {
             .into())
         );
 
-        // these are fine since they are not i8 (ie, i32, i64, i128)
+        // these are fine since they are not i8 (ie, i64)
         assert_eq!(type_min.try_subtract(&I64(1)), Ok(I64(type_mini64 - 1)));
 
         assert_eq!(
@@ -352,7 +352,6 @@ mod tests {
             .into())
         );
 
-        
         //try_divide
         assert_eq!(
             type_max.try_divide(&I8(0)),
@@ -492,7 +491,7 @@ mod tests {
 
         assert_eq!(base.try_multiply(&I8(-1)), Ok(I8(-3)));
         assert_eq!(base.try_multiply(&I64(-1)), Ok(I64(-3)));
-      
+
         assert!(
             matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 3.0).abs() < f64::EPSILON )
         );

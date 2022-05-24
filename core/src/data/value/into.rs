@@ -417,7 +417,7 @@ mod tests {
         test!(Value::I8(0), Ok(false));
         test!(Value::I64(1), Ok(true));
         test!(Value::I64(0), Ok(false));
-      
+
         test!(Value::F64(1.0), Ok(true));
         test!(Value::F64(0.0), Ok(false));
         test!(Value::Str("true".to_owned()), Ok(true));
