@@ -6,10 +6,9 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, Interval, Literal},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
         result::{Error, Result},
     },
-    bigdecimal::ToPrimitive,
     chrono::NaiveDate,
     rust_decimal::Decimal,
     std::cmp::Ordering,
@@ -532,8 +531,7 @@ mod tests {
         test!(text!("hello"), Value::Str("hello".to_owned()));
         test!(&text!("hallo"), Value::Str("hallo".to_owned()));
         test!(num!("1234567890"), Value::I64(1234567890));
-        // todo:this is an error.. this should return a F64, not a I64.., right?
-        test!(num!("12345678.90"), Value::I64(12345678));
+        test!(num!("12345678.90"), Value::F64(12345678.90));
         test!(&Literal::Boolean(false), Value::Bool(false));
         test!(
             &Literal::Interval(I::Month(1)),
