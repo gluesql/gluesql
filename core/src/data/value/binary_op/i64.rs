@@ -227,7 +227,7 @@ impl TryBinaryOperator for i64 {
                     rhs: Decimal(rhs),
                 }
                 .into()),
-            }
+            },
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I64(lhs),

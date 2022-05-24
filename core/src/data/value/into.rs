@@ -116,7 +116,7 @@ impl TryInto<i8> for &Value {
             Value::I8(value) => *value,
             // this test fails  test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
             //Value::I64(value) => *value as i8,
-            // this test fails test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));   
+            // this test fails test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
             //Value::F64(value) => value.trunc() as i8,
             Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
@@ -216,17 +216,6 @@ impl TryInto<f64> for &Value {
     }
 }
 
-impl TryInto<u128> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<u128> {
-        match self {
-            Value::Uuid(value) => Ok(*value),
-            _ => Err(ValueError::ImpossibleCast.into()),
-        }
-    }
-}
-
 impl TryInto<f64> for Value {
     type Error = Error;
 
@@ -318,6 +307,17 @@ impl TryInto<Interval> for &Value {
     fn try_into(self) -> Result<Interval> {
         match self {
             Value::Str(value) => Interval::try_from(value.as_str()),
+            _ => Err(ValueError::ImpossibleCast.into()),
+        }
+    }
+}
+
+impl TryInto<u128> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<u128> {
+        match self {
+            Value::Uuid(value) => Ok(*value),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
@@ -538,12 +538,6 @@ mod tests {
     }
 
     #[test]
-    fn try_into_u128() {
-        let uuid = 195965723427462096757863453463987888808;
-        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid))
-    }
-
-    #[test]
     fn try_into_f64() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
@@ -661,5 +655,11 @@ mod tests {
             (&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())).try_into() as Result<I>,
             Ok(I::Month(274))
         )
+    }
+
+    #[test]
+    fn try_into_u128() {
+        let uuid = 195965723427462096757863453463987888808;
+        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid))
     }
 }
