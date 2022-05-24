@@ -17,7 +17,6 @@ impl PartialEq<Value> for i64 {
         match *other {
             I8(rhs) => lhs == rhs as i64,
             I64(rhs) => lhs == rhs,
-
             F64(rhs) => lhs as f64 == rhs,
             Decimal(rhs) => Decimal::from(lhs) == rhs,
             _ => false,
@@ -30,7 +29,6 @@ impl PartialOrd<Value> for i64 {
         match rhs {
             I8(rhs) => PartialOrd::partial_cmp(self, &(*rhs as i64)),
             I64(rhs) => PartialOrd::partial_cmp(self, rhs),
-
             F64(rhs) => PartialOrd::partial_cmp(&(*self as f64), rhs),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
@@ -155,6 +153,7 @@ impl TryBinaryOperator for i64 {
             .into()),
         }
     }
+
     fn try_divide(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
@@ -192,6 +191,7 @@ impl TryBinaryOperator for i64 {
             .into()),
         }
     }
+
     fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
@@ -407,7 +407,7 @@ mod tests {
     fn try_add() {
         let base = 1_i64;
 
-        assert_eq!(base.try_add(&I8(1)), Ok(I8(2)));
+        assert_eq!(base.try_add(&I8(1)), Ok(I64(2)));
         assert_eq!(base.try_add(&I64(1)), Ok(I64(2)));
 
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
@@ -431,7 +431,7 @@ mod tests {
     fn try_subtract() {
         let base = 1_i64;
 
-        assert_eq!(base.try_subtract(&I8(1)), Ok(I8(0)));
+        assert_eq!(base.try_subtract(&I8(1)), Ok(I64(0)));
         assert_eq!(base.try_subtract(&I64(1)), Ok(I64(0)));
 
         assert!(
@@ -491,11 +491,11 @@ mod tests {
         let base = 6_i64;
 
         // 6/2 = 3
-        assert_eq!(base.try_divide(&I8(2)), Ok(I8(3)));
+        assert_eq!(base.try_divide(&I8(2)), Ok(I64(3)));
         assert_eq!(base.try_divide(&I64(2)), Ok(I64(3)));
 
         // 6/-6 = -1
-        assert_eq!(base.try_divide(&I8(-6)), Ok(I8(-1)));
+        assert_eq!(base.try_divide(&I8(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
 
         assert!(
@@ -523,10 +523,10 @@ mod tests {
     fn try_modulo() {
         let base = 9_i64;
 
-        assert_eq!(base.try_modulo(&I8(1)), Ok(I8(0)));
+        assert_eq!(base.try_modulo(&I8(1)), Ok(I64(0)));
         assert_eq!(base.try_modulo(&I64(1)), Ok(I64(0)));
 
-        assert_eq!(base.try_modulo(&I8(2)), Ok(I8(1)));
+        assert_eq!(base.try_modulo(&I8(2)), Ok(I64(1)));
         assert_eq!(base.try_modulo(&I64(2)), Ok(I64(1)));
 
         assert!(matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x).abs() < f64::EPSILON ));
