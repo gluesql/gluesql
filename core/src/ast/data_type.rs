@@ -6,7 +6,6 @@ pub enum DataType {
     Boolean,
     Int8,
     Int,
-    Int128,
     Float,
     Text,
     Date,
