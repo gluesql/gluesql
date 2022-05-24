@@ -104,6 +104,17 @@ impl TryBinaryOperator for i8 {
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
 
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_sub(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I8(lhs),
