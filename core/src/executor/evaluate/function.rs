@@ -241,13 +241,23 @@ pub fn ifnull(expr1: Evaluated<'_>, then: Evaluated<'_>) -> Result<Value> {
     // that would be more efficient than evaluating it before hand..
     // what do you think?
 
+    Ok(match expr1.is_null() {
+        true => then.try_into()?,
+        false => expr1.try_into()?,
+    })
+
+    /*
     Ok(match expr1 {
         Evaluated::Value(v) => match v.is_null() {
             true => then.try_into()?,
             false => v.into_owned(),
         },
-        Evaluated::Literal(l) => l.try_into()?,
+        Evaluated::Literal(l) => match l {
+            Literal::Null => then.try_into()?,
+            _ => l.try_into_value()?,
+        },
     })
+    */
 }
 
 pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {

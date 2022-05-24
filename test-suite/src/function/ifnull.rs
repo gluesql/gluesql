@@ -22,48 +22,44 @@ test_case!(ifnull, async move {
             Payload::Insert(1),
         ),
         (
-            r#"SELECT ifnull(id, 1) as ID, ifnull(int8, 2) as int8, ifnull(dec, 3) 
-            FROM SingleItem where id is not null"#,
-            select!("ID" | "int8" | "ifnull(dec, 3)"; I64 | I8 | Decimal; 0 1 Decimal::from(2i8)),
+            r#"SELECT IFNULL(id, 1) AS myid, IFNULL(int8, 2) AS int8, IFNULL(dec, 3) 
+            FROM SingleItem WHERE id IS NOT NULL"#,
+            select!("myid" | "int8" | "IFNULL(dec, 3)"; I64 | I8 | Decimal; 0 1 Decimal::from(2i8)),
         ),
         (
-            // notice that this example returns I64 I64 I64, where the previous example returned I64 I8 Decimal.
-            // is this behavior desirable?  see https://dev.mysql.com/doc/refman/5.7/en/flow-control-functions.html#function_ifnull
-            r#"SELECT ifnull(id, 1) as ID, ifnull(int8, 2) as int8, ifnull(dec, 3) 
-            FROM SingleItem where id is null"#,
-            select!("ID" | "int8" | "ifnull(dec, 3)"; I64 | I64 | I64; 1  2 3),
+            r#"SELECT ifnull(id, 1) AS ID, IFNULL(int8, 2) AS INT8, IFNULL(dec, 3) 
+            FROM SingleItem WHERE id IS NULL"#,
+            select!("ID" | "INT8" | "IFNULL(dec, 3)"; I64 | I64 | I64; 1  2 3),
         ),
         (
-            r#"SELECT ifnull(dt, "2000-01-01") as mydate, ifnull(mystring, "blah") as name 
-            FROM SingleItem where id is not null"#,
+            r#"SELECT ifnull(dt, "2000-01-01") AS mydate, ifnull(mystring, "blah") AS name 
+            FROM SingleItem WHERE id IS NOT NULL"#,
             select!("mydate" | "name"; Date | Str; NaiveDate::from_ymd(2022,5,23) "this is a string".to_string()),
         ),
         (
-            // notice that the returned data types are STR, and STR (and not DATE, STR, like the previous example
-            // is this behavior desirable?  see https://dev.mysql.com/doc/refman/5.7/en/flow-control-functions.html#function_ifnull
-            r#"SELECT ifnull(dt, "2000-01-01") as mydate, ifnull(mystring, "blah") as name 
+            r#"SELECT IFNULL(dt, "2000-01-01") AS mydate, IFNULL(mystring, "blah") AS name 
             FROM SingleItem where id is null"#,
             select!("mydate" | "name"; Str | Str; "2000-01-01".to_string() "blah".to_string()),
         ),
         (
-            r#"SELECT ifnull(mybool, "YES") as mybool, ifnull(myfloat, "NO") as myfloat 
-            FROM SingleItem where id is not null"#,
+            r#"SELECT IFNULL(mybool, "YES") AS mybool, IFNULL(myfloat, "NO") AS myfloat 
+            FROM SingleItem WHERE id IS NOT NULL"#,
             select!("mybool" | "myfloat"; Bool | F64; true 3.15),
         ),
         (
-            r#"SELECT ifnull(mybool, "YES") as mybool, ifnull(myfloat, "NO") as myfloat 
-            FROM SingleItem where id is null"#,
+            r#"SELECT IFNULL(mybool, "YES") AS mybool, IFNULL(myfloat, "NO") AS myfloat 
+            FROM SingleItem WHERE id IS NULL"#,
             select!("mybool" | "myfloat"; Str | Str; "YES".to_string() "NO".to_string()),
         ),
         (
-            r#"SELECT ifnull(mytime, "YES") as mybool, ifnull(mytimestamp, "NO") as myfloat 
-            FROM SingleItem where id is not null"#,
+            r#"SELECT IFNULL(mytime, "YES") AS mybool, IFNULL(mytimestamp, "NO") AS myfloat 
+            FROM SingleItem WHERE id IS NOT NULL"#,
             select!("mybool" | "myfloat"; Time | Timestamp; 
                     NaiveTime::from_hms(1, 2, 3) NaiveDateTime::from_timestamp(0, 0)),
         ),
         (
-            r#"SELECT ifnull(mytime, "YES") as mybool, ifnull(mytimestamp, "NO") as myfloat 
-            FROM SingleItem where id is null"#,
+            r#"SELECT IFNULL(mytime, "YES") AS mybool, IFNULL(mytimestamp, "NO") AS myfloat 
+            FROM SingleItem WHERE id IS NULL"#,
             select!("mybool" | "myfloat"; Str | Str; "YES".to_string() "NO".to_string()),
         ),
     ];
