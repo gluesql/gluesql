@@ -179,44 +179,6 @@ impl TryInto<i64> for Value {
     }
 }
 
-impl TryInto<i128> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<i128> {
-        Ok(match self {
-            Value::Bool(value) => {
-                if *value {
-                    1
-                } else {
-                    0
-                }
-            }
-            Value::I8(value) => *value as i128,
-            Value::I64(value) => *value as i128,
-            Value::F64(value) => value.to_i128().ok_or(ValueError::ImpossibleCast)?,
-            Value::Str(value) => value
-                .parse::<i128>()
-                .map_err(|_| ValueError::ImpossibleCast)?,
-            Value::Decimal(value) => value.to_i128().ok_or(ValueError::ImpossibleCast)?,
-            Value::Date(_)
-            | Value::Timestamp(_)
-            | Value::Time(_)
-            | Value::Interval(_)
-            | Value::Uuid(_)
-            | Value::Map(_)
-            | Value::List(_)
-            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
-        })
-    }
-}
-
-impl TryInto<i128> for Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<i128> {
-        (&self).try_into()
-    }
-}
 
 impl TryInto<f64> for &Value {
     type Error = Error;
@@ -569,58 +531,7 @@ mod tests {
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
     }
 
-    #[test]
-    fn try_into_i128() {
-        macro_rules! test {
-            ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<i128>, $to)
-            };
-        }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
-        test!(Value::Bool(true), Ok(1));
-        test!(Value::Bool(false), Ok(0));
-        test!(Value::I8(122), Ok(122));
-        test!(Value::I64(122), Ok(122));
-        test!(Value::I64(1234567890), Ok(1234567890));
-        test!(Value::F64(1234567890.0), Ok(1234567890));
-        test!(Value::F64(1234567890.1), Ok(1234567890));
-        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
-        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
-        test!(
-            Value::Date(date(2021, 11, 20)),
-            Err(ValueError::ImpossibleCast.into())
-        );
-        test!(
-            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
-            Err(ValueError::ImpossibleCast.into())
-        );
-        test!(
-            Value::Time(time(10, 0, 0, 0)),
-            Err(ValueError::ImpossibleCast.into())
-        );
-        test!(
-            Value::Interval(I::Month(1)),
-            Err(ValueError::ImpossibleCast.into())
-        );
-        test!(
-            Value::Uuid(195965723427462096757863453463987888808),
-            Err(ValueError::ImpossibleCast.into())
-        );
-        test!(
-            Value::Map(HashMap::new()),
-            Err(ValueError::ImpossibleCast.into())
-        );
-        test!(
-            Value::List(Vec::new()),
-            Err(ValueError::ImpossibleCast.into())
-        );
-        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
-    }
-
+   
     #[test]
     fn try_into_u128() {
         let uuid = 195965723427462096757863453463987888808;
