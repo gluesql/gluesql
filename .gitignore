@@ -1,5 +1,5 @@
 # GlueSQL project files
-/data/doc-db/
+/data/
 /storages/**/data/
 /test-suite/data/
 /storages/**/tmp/

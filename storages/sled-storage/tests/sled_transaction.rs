@@ -30,16 +30,18 @@ macro_rules! exec {
 
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
-        assert_eq!($glue.execute($sql), $result);
+        let actual = $glue.execute($sql);
+        assert_eq!(actual, $result.map(|payload| vec![payload]));
     };
 }
 
 macro_rules! test_idx {
     ($glue: ident $sql: literal, $idx: expr, $result: expr) => {
-        let statement = $glue.plan($sql).await.unwrap();
-
-        test_indexes(&statement, Some($idx));
-        assert_eq!($glue.execute_stmt(statement), $result);
+        let statements = $glue.plan($sql).await.unwrap();
+        assert_eq!(statements.len(), 1);
+        let first = &statements[0];
+        test_indexes(first, Some($idx));
+        assert_eq!($glue.execute_stmt(first), $result);
     };
 }
 
@@ -730,11 +732,11 @@ async fn sled_transaction_timeout_index() {
 fn sled_transaction_metadata() {
     macro_rules! test_tables {
         ($glue: ident $( $table_name: literal )*) => {
-            let expected = Ok(Payload::ShowVariable(PayloadVariable::Tables(
+            let expected = Payload::ShowVariable(PayloadVariable::Tables(
                 vec![$( $table_name.to_owned() ),*]
-            )));
+            ));
 
-            assert_eq!($glue.execute("SHOW TABLES"), expected);
+            assert_eq!($glue.execute("SHOW TABLES"), Ok(vec![expected]));
         };
     }
 
