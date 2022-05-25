@@ -237,17 +237,10 @@ pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
 }
 
 pub fn ifnull(expr: Evaluated<'_>, then: Evaluated<'_>) -> Result<Value> {
-    Ok(match expr {
-        Evaluated::Value(v) => match v.is_null() {
-            true => then.try_into()?,
-            false => v.into_owned(),
-        },
-        Evaluated::Literal(l) => match l {
-            Literal::Null => then.try_into()?,
-            _ => l.try_into_value()?,
-        },
+    Ok(match expr.is_null() {
+        true => then.try_into()?,
+        false => expr.try_into()?,
     })
-    */
 }
 
 pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
