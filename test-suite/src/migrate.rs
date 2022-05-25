@@ -93,10 +93,4 @@ test_case!(migrate, async move {
     let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
     let expected = select!(id | num; I64 | I64; 2 9);
     assert_eq!(expected, found);
-
-    //this insert statement works in mysql (so should we support it to?)
-    //assert_eq!(
-    //    run!(r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#),
-    //    Prelude::Payload::Insert(1)
-    //);
 });

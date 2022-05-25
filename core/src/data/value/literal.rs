@@ -172,13 +172,6 @@ impl Value {
                 .ok_or_else(|| {
                     ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
                 }),
-            /*  (DataType::Int, Literal::Number(v)) => match v.to_i64() {
-                  Some(x) => Ok(Value::I64(x)),
-                  None => {
-                      Err(ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into())
-                  }
-              },
-            */
             (DataType::Int, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
