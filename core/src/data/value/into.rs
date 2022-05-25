@@ -114,10 +114,6 @@ impl TryInto<i8> for &Value {
                 }
             }
             Value::I8(value) => *value,
-            // this test fails  test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
-            //Value::I64(value) => *value as i8,
-            // this test fails test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
-            //Value::F64(value) => value.trunc() as i8,
             Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
