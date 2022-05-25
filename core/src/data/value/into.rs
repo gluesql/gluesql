@@ -152,7 +152,7 @@ impl TryInto<i64> for &Value {
                     0
                 }
             }
-            Value::I8(value) => *value as i64,
+            Value::I8(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::I64(value) => *value,
             Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
