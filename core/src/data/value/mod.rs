@@ -299,7 +299,7 @@ impl Value {
     pub fn divide(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if self.is_zero() {
+        if other.is_zero() {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
@@ -454,10 +454,10 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use {
-        super::ValueError,
         super::{Interval, Value::*},
         crate::data::value::uuid::parse_uuid,
         rust_decimal::Decimal,
+        crate::data::ValueError,
     };
 
     #[allow(clippy::eq_op)]
@@ -733,6 +733,12 @@ mod tests {
         test!(multiply mon!(3),  I8(2)   => mon!(6));
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
+
+        test!(divide I8(0),     I8(5)   => I8(0));
+        assert_eq!(
+            I8(5).divide(&I8(0)),
+            Err(ValueError::DivisorShouldNotBeZero.into())
+        );
 
         test!(divide I8(6),    I8(2)    => I8(3));
         test!(divide I8(6),    I64(2)   => I64(3));
