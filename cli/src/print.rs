@@ -54,7 +54,7 @@ impl<W: Write> Print<W> {
             Payload::ShowIndexes(indexes) => {
                 let mut table = get_table(vec!["Index Name", "Order"]);
                 for (index_name, order) in indexes {
-                    table.add_row([index_name, order.to_string()]);
+                    table.add_row([index_name, &order.to_string()]);
                 }
                 writeln!(self.output, "{}\n", table)?;
             }
@@ -273,7 +273,7 @@ mod tests {
 │ name_ndx     DESC  │
 │ date_ndx     BOTH  │
 ╰────────────────────╯",
-            Payload::ShowIndexes(vec![
+            &Payload::ShowIndexes(vec![
                 ("id_ndx".to_string(), SchemaIndexOrd::Asc),
                 ("name_ndx".to_string(), SchemaIndexOrd::Desc),
                 ("date_ndx".to_string(), SchemaIndexOrd::Both),
