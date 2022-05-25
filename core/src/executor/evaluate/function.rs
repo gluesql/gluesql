@@ -242,8 +242,12 @@ pub fn ifnull(expr: Evaluated<'_>, then: Evaluated<'_>) -> Result<Value> {
             true => then.try_into()?,
             false => v.into_owned(),
         },
-        Evaluated::Literal(l) => l.try_into()?,
+        Evaluated::Literal(l) => match l {
+            Literal::Null => then.try_into()?,
+            _ => l.try_into_value()?,
+        },
     })
+    */
 }
 
 pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
