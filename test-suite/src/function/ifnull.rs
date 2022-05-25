@@ -6,7 +6,7 @@ test_case!(ifnull, async move {
     use rust_decimal::Decimal;
     let test_cases = vec![
         (
-            r#"CREATE TABLE SingleItem (id integer null, int8 int(8) null, dec decimal null, 
+            r#"CREATE TABLE SingleItem (id integer null, int8 int(8) null, dec decimal(4,2) null, 
                                         dt date null, mystring Text null,
                                         mybool Boolean null, myfloat float null,
                                         mytime time null, mytimestamp timestamp null)"#,
