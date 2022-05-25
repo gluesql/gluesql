@@ -236,12 +236,8 @@ pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
     }
 }
 
-pub fn ifnull(expr1: Evaluated<'_>, then: Evaluated<'_>) -> Result<Value> {
-    // should we pass expr2 as an Expr enum and evaluate it if expr1 is null?
-    // that would be more efficient than evaluating it before hand..
-    // what do you think?
-
-    Ok(match expr1 {
+pub fn ifnull(expr: Evaluated<'_>, then: Evaluated<'_>) -> Result<Value> {
+    Ok(match expr {
         Evaluated::Value(v) => match v.is_null() {
             true => then.try_into()?,
             false => v.into_owned(),
