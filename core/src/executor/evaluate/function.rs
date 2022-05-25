@@ -236,6 +236,13 @@ pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
     }
 }
 
+pub fn ifnull(expr: Evaluated<'_>, then: Evaluated<'_>) -> Result<Value> {
+    Ok(match expr.is_null() {
+        true => then.try_into()?,
+        false => expr.try_into()?,
+    })
+}
+
 pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
     let x = eval_to_float!(name, n);
     if x == 0.0 {
