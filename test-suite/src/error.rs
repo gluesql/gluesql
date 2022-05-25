@@ -111,6 +111,14 @@ test_case!(error, async move {
             RowError::TooManyValues.into(),
             "INSERT INTO TableA VALUES (100), (100, 200);",
         ),
+        (
+            TranslateError::InvalidParamsInDropIndex.into(),
+            "DROP INDEX TableA",
+        ),
+        (
+            TranslateError::InvalidParamsInDropIndex.into(),
+            "DROP INDEX TableA.IndexB.IndexC",
+        ),
         #[cfg(feature = "alter-table")]
         (
             TranslateError::UnsupportedAlterTableOperation(
