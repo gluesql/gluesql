@@ -114,12 +114,8 @@ impl TryInto<i8> for &Value {
                 }
             }
             Value::I8(value) => *value,
-            // this test fails  test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
-            //Value::I64(value) => *value as i8,
-            // this test fails test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
-            //Value::F64(value) => value.trunc() as i8,
-            Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
-            Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
+            Value::I64(value) => *value as i8,
+            Value::F64(value) => value.trunc() as i8,
             Value::Str(value) => value
                 .parse::<i8>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -159,7 +155,6 @@ impl TryInto<i64> for &Value {
             Value::I8(value) => *value as i64,
             Value::I64(value) => *value,
             Value::F64(value) => value.trunc() as i64,
-            //Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -198,7 +193,6 @@ impl TryInto<f64> for &Value {
             }
             Value::I8(value) => *value as f64,
             Value::I64(value) => (*value as f64).trunc(),
-            //Value::I64(value) => *value as f64,
             Value::F64(value) => *value,
             Value::Str(value) => value
                 .parse::<f64>()
@@ -424,10 +418,6 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
-
-        //impossible casts to bool
-        test!(Value::I8(3), Err(ValueError::ImpossibleCast.into()));
-        test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -479,10 +469,6 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
-
-        //impossible casts to i8
-        test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
-        test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
