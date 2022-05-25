@@ -9,6 +9,7 @@ pub mod extract;
 pub mod floor;
 pub mod gcd_lcm;
 pub mod generate_uuid;
+pub mod ifnull;
 pub mod left_right;
 pub mod lpad_rpad;
 pub mod ltrim_rtrim;
