@@ -64,6 +64,7 @@ pub enum Payload {
 
     #[cfg(feature = "metadata")]
     ShowVariable(PayloadVariable),
+    #[cfg(feature = "index")]
     ShowIndexes(Vec<(String, SchemaIndexOrd)>),
 }
 

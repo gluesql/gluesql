@@ -99,6 +99,7 @@ pub enum Statement {
     /// SHOW VARIABLE
     #[cfg(feature = "metadata")]
     ShowVariable(Variable),
+    #[cfg(feature = "index")]
     ShowIndexes(ObjectName),
 }
 
