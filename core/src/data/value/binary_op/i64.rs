@@ -18,7 +18,6 @@ impl PartialEq<Value> for i64 {
             I8(rhs) => lhs == rhs as i64,
             I64(rhs) => lhs == rhs,
             I128(rhs) => lhs as i128 == rhs,
-
             F64(rhs) => lhs as f64 == rhs,
             Decimal(rhs) => Decimal::from(lhs) == rhs,
             _ => false,
@@ -32,7 +31,6 @@ impl PartialOrd<Value> for i64 {
             I8(rhs) => PartialOrd::partial_cmp(self, &(*rhs as i64)),
             I64(rhs) => PartialOrd::partial_cmp(self, rhs),
             I128(rhs) => PartialOrd::partial_cmp(&(*self as i128), rhs),
-
             F64(rhs) => PartialOrd::partial_cmp(&(*self as f64), rhs),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
