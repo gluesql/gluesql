@@ -186,7 +186,7 @@ mod tests {
 
         //TypeString
         assert_eq!(
-            r#"Int("1")"#,
+            r#"INT("1")"#,
             decode(&Expr::TypedString {
                 data_type: DataType::Int,
                 value: "1".to_string()
