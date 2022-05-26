@@ -72,13 +72,6 @@ pub enum ValueError {
     #[error("unreachable failure on parsing number")]
     UnreachableNumberParsing,
 
-    #[error("failure to convert {a:#?} to {b:#?} for value:{value:#?}")]
-    ConversionErrorFromDataTypeAToDataTypeB {
-        a: DataType,
-        b: DataType,
-        value: Value,
-    },
-
     // Cast errors from value to value
     #[error("impossible cast")]
     ImpossibleCast,

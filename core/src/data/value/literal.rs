@@ -6,10 +6,9 @@ use {
     },
     crate::{
         ast::DataType,
-        data::{value::uuid::parse_uuid, Interval, Literal},
+        data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
         result::{Error, Result},
     },
-    bigdecimal::ToPrimitive,
     chrono::NaiveDate,
     rust_decimal::Decimal,
     std::cmp::Ordering,

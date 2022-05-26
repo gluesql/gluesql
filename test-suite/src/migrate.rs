@@ -24,7 +24,7 @@ test_case!(migrate, async move {
     );
 
     let error_cases = vec![
-        (  
+        (
             ValueError::FailedToParseNumber.into(),
             r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
         ),

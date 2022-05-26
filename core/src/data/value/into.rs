@@ -120,9 +120,11 @@ impl TryInto<i8> for &Value {
                 }
             }
             Value::I8(value) => *value,
-            Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
+            //Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
-            Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
+            Value::I64(value) => *value as i8,
+            Value::F64(value) => value.trunc() as i8,
+            //Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i8>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -162,7 +164,8 @@ impl TryInto<i64> for &Value {
             Value::I8(value) => *value as i64,
             Value::I64(value) => *value,
             Value::I128(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
-            Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
+            Value::F64(value) => value.trunc() as i64,
+            //Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -240,7 +243,8 @@ impl TryInto<f64> for &Value {
                 }
             }
             Value::I8(value) => *value as f64,
-            Value::I64(value) => *value as f64,
+            //Value::I64(value) => *value as f64,
+            Value::I64(value) => (*value as f64).trunc(),
             Value::I128(value) => *value as f64,
             Value::F64(value) => *value,
             Value::Str(value) => value
@@ -256,17 +260,6 @@ impl TryInto<f64> for &Value {
             | Value::List(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
-    }
-}
-
-impl TryInto<u128> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<u128> {
-        match self {
-            Value::Uuid(value) => Ok(*value),
-            _ => Err(ValueError::ImpossibleCast.into()),
-        }
     }
 }
 
@@ -362,6 +355,17 @@ impl TryInto<Interval> for &Value {
     fn try_into(self) -> Result<Interval> {
         match self {
             Value::Str(value) => Interval::try_from(value.as_str()),
+            _ => Err(ValueError::ImpossibleCast.into()),
+        }
+    }
+}
+
+impl TryInto<u128> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<u128> {
+        match self {
+            Value::Uuid(value) => Ok(*value),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
@@ -640,12 +644,6 @@ mod tests {
     }
 
     #[test]
-    fn try_into_u128() {
-        let uuid = 195965723427462096757863453463987888808;
-        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid))
-    }
-
-    #[test]
     fn try_into_f64() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
@@ -764,5 +762,11 @@ mod tests {
             (&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())).try_into() as Result<I>,
             Ok(I::Month(274))
         )
+    }
+
+    #[test]
+    fn try_into_u128() {
+        let uuid = 195965723427462096757863453463987888808;
+        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid))
     }
 }

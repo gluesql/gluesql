@@ -407,7 +407,7 @@ mod tests {
             .into())
         );
 
-        // these are fine since they are not i8 (ie, i32, i64, i128)
+        // these dont overflow since they are not i8 (ie, i32, i64, i128)
         assert_eq!(type_min.try_subtract(&I64(1)), Ok(I64(type_mini64 - 1)));
         assert_eq!(type_min.try_subtract(&I128(1)), Ok(I128(type_mini128 - 1)));
 
