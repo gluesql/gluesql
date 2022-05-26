@@ -51,6 +51,13 @@ impl<W: Write> Print<W> {
 
                 writeln!(self.output, "{}\n", table)?;
             }
+            Payload::ShowIndexes(indexes) => {
+                let mut table = get_table(vec!["Index Name", "Order"]);
+                for (index_name, order) in indexes {
+                    table.add_row([index_name, &order.to_string()]);
+                }
+                writeln!(self.output, "{}\n", table)?;
+            }
             Payload::Select { labels, rows } => {
                 let mut table = get_table(labels);
                 for values in rows {
@@ -99,6 +106,7 @@ fn get_table<T: Into<Row>>(header: T) -> Table {
 #[cfg(test)]
 mod tests {
     use super::Print;
+    use gluesql_core::data::SchemaIndexOrd;
 
     #[test]
     fn print_help() {
@@ -254,6 +262,22 @@ mod tests {
                     ],
                 ],
             }
+        );
+
+        test!(
+            "
+╭────────────────────╮
+│ Index Name   Order │
+╞════════════════════╡
+│ id_ndx       ASC   │
+│ name_ndx     DESC  │
+│ date_ndx     BOTH  │
+╰────────────────────╯",
+            &Payload::ShowIndexes(vec![
+                ("id_ndx".to_string(), SchemaIndexOrd::Asc),
+                ("name_ndx".to_string(), SchemaIndexOrd::Desc),
+                ("date_ndx".to_string(), SchemaIndexOrd::Both),
+            ],)
         );
 
         test!(
