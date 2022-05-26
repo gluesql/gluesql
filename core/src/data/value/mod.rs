@@ -964,7 +964,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unary_minus() {
+    fn unary_minus() {
         assert_eq!(I8(1).unary_minus(), Ok(I8(-1)));
         assert_eq!(I64(1).unary_minus(), Ok(I64(-1)));
 
@@ -981,7 +981,7 @@ mod tests {
     }
 
     #[test]
-    fn test_factorial() {
+    fn factorial() {
         assert_eq!(I8(5).unary_factorial(), Ok(I64(120)));
         assert_eq!(I64(5).unary_factorial(), Ok(I64(120)));
     }
