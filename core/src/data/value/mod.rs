@@ -454,10 +454,10 @@ impl Value {
 #[cfg(test)]
 mod tests {
     use {
-        super::ValueError,
         super::{Interval, Value::*},
         crate::data::value::uuid::parse_uuid,
         rust_decimal::Decimal,
+        crate::data::ValueError,
     };
 
     #[allow(clippy::eq_op)]
