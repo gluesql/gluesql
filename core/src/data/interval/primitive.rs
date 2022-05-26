@@ -198,5 +198,17 @@ mod tests {
 
         assert_eq!(Month(8) / 4.0, Month(2));
         assert_eq!(8.0 / Month(4), Month(2));
+
+        assert_eq!(Microsecond(2) * 3_i8, Microsecond(6));
+        assert_eq!(2_i8 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(2) * 3_i64, Microsecond(6));
+        assert_eq!(2_i64 * Microsecond(3), Microsecond(6));
+
+        assert_eq!(Microsecond(6) / 3_i8, Microsecond(2));
+        assert_eq!(6_i8 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_i64, Microsecond(2));
+        assert_eq!(6_i64 / Microsecond(2), Microsecond(3));
     }
 }
