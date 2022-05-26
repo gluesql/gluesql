@@ -51,30 +51,31 @@ test_case!(int128, async move {
         "SELECT field_one, field_two FROM Item"
     );
 
-    //todo: this test does not work..
+    //todo: the following tests does not work..
     test!(
         Ok(select!(field_one I128; 1; 3)),
         "SELECT field_one FROM Item WHERE field_one > 0"
     );
-    //test!(
-    //    Ok(select!(field_one I128; 1; 3)),
-    //    "SELECT field_one FROM Item WHERE field_one >= 0"
-    //);
 
-    //test!(
-    //    Ok(select!(field_one I128; -2)),
-    //    "SELECT field_one FROM Item WHERE field_one = -2"
-    //);
+    test!(
+        Ok(select!(field_one I128; 1; 3)),
+        "SELECT field_one FROM Item WHERE field_one >= 0"
+    );
 
-    //test!(
-    //    Ok(select!(field_one I128; -2; -4)),
-    //    "SELECT field_one FROM Item WHERE field_one < 0"
-    //);
+    test!(
+        Ok(select!(field_one I128; -2)),
+        "SELECT field_one FROM Item WHERE field_one = -2"
+    );
 
-    //test!(
-    //    Ok(select!(field_one I128; -2; -4)),
-    //    "SELECT field_one FROM Item WHERE field_one <= 0"
-    //);
+    test!(
+        Ok(select!(field_one I128; -2; -4)),
+        "SELECT field_one FROM Item WHERE field_one < 0"
+    );
+
+    test!(
+        Ok(select!(field_one I128; -2; -4)),
+        "SELECT field_one FROM Item WHERE field_one <= 0"
+    );
 
     test!(
         Ok(select!(plus I128; 0; 0; 6; -8)),
