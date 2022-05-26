@@ -175,7 +175,7 @@ mod tests {
         //Cast
         //Expr::Cast { expr, data_type } => {
         assert_eq!(
-            "CAST(1.0 AS Int)",
+            "CAST(1.0 AS INT)",
             decode(&Expr::Cast {
                 expr: Box::new(Expr::Literal(AstLiteral::Number(
                     BigDecimal::from_str("1.0").unwrap()
