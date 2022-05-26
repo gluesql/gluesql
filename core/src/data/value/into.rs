@@ -436,6 +436,7 @@ mod tests {
         test!(Value::I8(122), Ok(122));
         test!(Value::I64(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
+        test!(Value::F64(122.1), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
         test!(Value::Decimal(Decimal::new(123, 0)), Ok(123));
         test!(
@@ -484,8 +485,10 @@ mod tests {
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.1), Ok(1234567890));
         test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
         test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
         test!(
@@ -534,6 +537,7 @@ mod tests {
         test!(Value::Bool(true), Ok(1.0));
         test!(Value::Bool(false), Ok(0.0));
         test!(Value::I8(122), Ok(122.0));
+        test!(Value::I64(122), Ok(122.0));
         test!(Value::I64(1234567890), Ok(1234567890.0));
         test!(Value::F64(1234567890.1), Ok(1234567890.1));
         test!(Value::Str("1234567890.1".to_owned()), Ok(1234567890.1));

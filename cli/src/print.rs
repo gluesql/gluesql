@@ -285,9 +285,9 @@ mod tests {
 ╭───────────────────╮
 │ Field     Type    │
 ╞═══════════════════╡
-│ id        Int     │
-│ name      Text    │
-│ isabear   Boolean │
+│ id        INT     │
+│ name      TEXT    │
+│ isabear   BOOLEAN │
 ╰───────────────────╯",
             &Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int),
@@ -301,16 +301,16 @@ mod tests {
 ╭────────────────────╮
 │ Field    Type      │
 ╞════════════════════╡
-│ id       Int8      │
-│ calc1    Float     │
-│ cost     Decimal   │
-│ DOB      Date      │
-│ clock    Time      │
-│ tstamp   Timestamp │
-│ ival     Interval  │
-│ uuid     Uuid      │
-│ hash     Map       │
-│ mylist   List      │
+│ id       INT8      │
+│ calc1    FLOAT     │
+│ cost     DECIMAL   │
+│ DOB      DATE      │
+│ clock    TIME      │
+│ tstamp   TIMESTAMP │
+│ ival     INTERVAL  │
+│ uuid     UUID      │
+│ hash     MAP       │
+│ mylist   LIST      │
 ╰────────────────────╯",
             &Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int8),
