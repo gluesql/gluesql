@@ -14,9 +14,4 @@ pub enum AggregateError {
     #[error("unreachable rc unwrap failure")]
     UnreachableRcUnwrapFailure,
 
-    #[error("unsupported aggregate function")]
-    UnsupportedAggregateFunction,
-
-    #[error("unsupported Aggregate literal")]
-    UnsupportedAggregateLiteral,
 }
