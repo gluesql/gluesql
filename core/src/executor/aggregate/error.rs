@@ -13,5 +13,4 @@ pub enum AggregateError {
 
     #[error("unreachable rc unwrap failure")]
     UnreachableRcUnwrapFailure,
-
 }
