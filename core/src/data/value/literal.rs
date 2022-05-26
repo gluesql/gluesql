@@ -587,6 +587,7 @@ mod tests {
         test!(DataType::Boolean, num!("0"), Value::Bool(false));
         test!(DataType::Boolean, num!("1"), Value::Bool(true));
         test!(DataType::Int, text!("1234567890"), Value::I64(1234567890));
+        test!(DataType::Int, num!("1234567890"), Value::I64(1234567890));
         test!(DataType::Int, Literal::Boolean(true), Value::I64(1));
         test!(DataType::Int, Literal::Boolean(false), Value::I64(0));
         test!(DataType::Int8, text!("127"), Value::I8(127));
