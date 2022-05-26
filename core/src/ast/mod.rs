@@ -100,6 +100,8 @@ pub enum Statement {
     /// SHOW VARIABLE
     #[cfg(feature = "metadata")]
     ShowVariable(Variable),
+    #[cfg(feature = "index")]
+    ShowIndexes(ObjectName),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
