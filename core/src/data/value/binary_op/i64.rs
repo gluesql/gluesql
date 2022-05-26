@@ -218,6 +218,7 @@ impl TryBinaryOperator for i64 {
             .into()),
         }
     }
+
     fn try_divide(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
@@ -276,6 +277,7 @@ impl TryBinaryOperator for i64 {
             .into()),
         }
     }
+
     fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
@@ -651,7 +653,7 @@ mod tests {
         assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
 
         // 6/-6 = -1
-        assert_eq!(base.try_divide(&I8(-6)), Ok(I8(-1)));
+        assert_eq!(base.try_divide(&I8(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));
 

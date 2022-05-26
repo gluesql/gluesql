@@ -586,13 +586,13 @@ mod tests {
         let date = NaiveDate::from_ymd;
         let decimal = |n: i32| Decimal(n.into());
 
-        test!(add I8(1),    I8(2)     => I8(3));
-        test!(add I8(1),    I64(2)    => I64(3));
-        test!(add I8(1),    I128(2)   => I128(3));
+        test!(add I8(1),    I8(2)    => I8(3));
+        test!(add I8(1),    I64(2)   => I64(3));
+        test!(add I8(1),    I128(2)  => I128(3));
 
-        test!(add I64(1),    I8(2)     => I64(3));
-        test!(add I64(1),    I64(2)    => I64(3));
-        test!(add I64(1),    I128(2)   => I128(3));
+        test!(add I64(1),    I8(2)      => I64(3));
+        test!(add I64(1),    I64(2)     => I64(3));
+        test!(add I64(1),    I128(2)    => I128(3));
 
         test!(add I128(1),    I8(2)    => I128(3));
         test!(add I128(1),    I64(2)   => I128(3));

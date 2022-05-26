@@ -191,7 +191,6 @@ impl Value {
             },
             (DataType::Int8, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
-
                 Ok(Value::I8(v))
             }
             (DataType::Int128, Literal::Text(v)) => v
