@@ -1,6 +1,6 @@
 use super::{Aggregate, AstLiteral, CountArgExpr, Expr};
 
-fn decode(expr: &Expr) -> String {
+pub fn decode(expr: &Expr) -> String {
     match expr {
         Expr::Identifier(s) => s.to_string(),
         Expr::BinaryOp { left, op, right } => {
