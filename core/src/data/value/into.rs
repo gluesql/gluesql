@@ -531,10 +531,6 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
-
-        //impossible casts...
-        test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
-        test!(Value::I128(128), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]

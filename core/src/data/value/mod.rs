@@ -586,17 +586,17 @@ mod tests {
         let date = NaiveDate::from_ymd;
         let decimal = |n: i32| Decimal(n.into());
 
-        test!(add I8(1),    I8(2)    => I8(3));
+        test!(add I8(1),    I8(2)     => I8(3));
         test!(add I8(1),    I64(2)    => I64(3));
         test!(add I8(1),    I128(2)   => I128(3));
 
-        test!(add I64(1),    I8(2)    => I64(3));
+        test!(add I64(1),    I8(2)     => I64(3));
         test!(add I64(1),    I64(2)    => I64(3));
         test!(add I64(1),    I128(2)   => I128(3));
 
         test!(add I128(1),    I8(2)    => I128(3));
-        test!(add I128(1),    I64(2)    => I128(3));
-        test!(add I128(1),    I128(2)   => I128(3));
+        test!(add I128(1),    I64(2)   => I128(3));
+        test!(add I128(1),    I128(2)  => I128(3));
 
         test!(add I8(1),    F64(2.0) => F64(3.0));
 
@@ -643,15 +643,15 @@ mod tests {
         test!(add mon!(1),    mon!(2)    => mon!(3));
 
         test!(subtract I8(3),    I8(2)    => I8(1));
-        test!(subtract I8(3),    I64(2)    => I64(1));
-        test!(subtract I8(3),    I128(2)   => I128(1));
+        test!(subtract I8(3),    I64(2)   => I64(1));
+        test!(subtract I8(3),    I128(2)  => I128(1));
 
         test!(subtract I64(3),    I8(2)    => I64(1));
-        test!(subtract I64(3),    I64(2)    => I64(1));
-        test!(subtract I64(3),    I128(2)   => I128(1));
+        test!(subtract I64(3),    I64(2)   => I64(1));
+        test!(subtract I64(3),    I128(2)  => I128(1));
 
-        test!(subtract I128(3),    I64(2)    => I64(1));
-        test!(subtract I128(3),    I128(2)   => I128(1));
+        test!(subtract I128(3),    I64(2)   => I64(1));
+        test!(subtract I128(3),    I128(2)  => I128(1));
 
         test!(subtract I8(3),    F64(2.0) => F64(1.0));
 
@@ -705,15 +705,15 @@ mod tests {
 
         test!(multiply I8(3),    I8(2)    => I8(6));
         test!(multiply I8(3),    I64(2)   => I64(6));
-        test!(multiply I8(3),    I128(2)    => I128(6));
+        test!(multiply I8(3),    I128(2)  => I128(6));
 
         test!(multiply I64(3),    I8(2)    => I64(6));
         test!(multiply I64(3),    I64(2)   => I64(6));
-        test!(multiply I64(3),    I128(2)    => I128(6));
+        test!(multiply I64(3),    I128(2)  => I128(6));
 
         test!(multiply I128(3),    I8(2)    => I128(6));
         test!(multiply I128(3),    I64(2)   => I128(6));
-        test!(multiply I128(3),    I128(2)    => I128(6));
+        test!(multiply I128(3),    I128(2)  => I128(6));
 
         test!(multiply I8(3),    F64(2.0) => F64(6.0));
 
@@ -730,7 +730,7 @@ mod tests {
         test!(multiply I8(3),    mon!(3)  => mon!(9));
         test!(multiply I64(3),   mon!(3)  => mon!(9));
         test!(multiply F64(3.0), mon!(3)  => mon!(9));
-        test!(multiply mon!(3),  I8(2)   => mon!(6));
+        test!(multiply mon!(3),  I8(2)    => mon!(6));
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
@@ -886,9 +886,9 @@ mod tests {
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
-        cast!(I8(1)                 => Int8          , I8(1));
+        cast!(I8(1)                 => Int8         , I8(1));
         cast!(I64(1)                => Int          , I64(1));
-        cast!(I128(1)                 => Int128          , I128(1));
+        cast!(I128(1)               => Int128       , I128(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
         cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
 
@@ -899,8 +899,8 @@ mod tests {
         cast!(I8(0)                     => Boolean, Bool(false));
         cast!(I64(1)                    => Boolean, Bool(true));
         cast!(I64(0)                    => Boolean, Bool(false));
-        cast!(I128(1)                    => Boolean, Bool(true));
-        cast!(I128(0)                    => Boolean, Bool(false));
+        cast!(I128(1)                   => Boolean, Bool(true));
+        cast!(I128(0)                   => Boolean, Bool(false));
         cast!(F64(1.0)                  => Boolean, Bool(true));
         cast!(F64(0.0)                  => Boolean, Bool(false));
         cast!(Null                      => Boolean, Null);
