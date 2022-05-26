@@ -41,7 +41,7 @@ pub enum ValueError {
     #[error("failed to parse Decimal: {0}")]
     FailedToParseDecimal(String),
 
-    #[error("decimal with no precision not supported")]
+    #[error("decimal with no precision is not supported")]
     NoPrecisionDecimalNotSupported,
 
     #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
