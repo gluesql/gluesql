@@ -20,14 +20,6 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
             (Value::I8(l), Literal::Number(r)) => r.to_i8().map(|r| *l == r).unwrap_or(false),
             (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
-            /*       (Value::I64(l), Literal::Number(r)) => match r.to_string().contains('.') {
-                        true => match l.to_f64() {
-                            Some(x) => r.to_f64().map(|r| x == r).unwrap_or(false),
-                            None => false,
-                        },
-                        false => r.to_i64().map(|r| *l == r).unwrap_or(false),
-                    },
-            */
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
@@ -93,18 +85,6 @@ impl TryFrom<&Literal<'_>> for Value {
                 .map(Value::I64)
                 .or_else(|| v.to_f64().map(Value::F64))
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            /*
-                Literal::Number(v) => match v.to_string().contains('.') {
-                    true => v
-                        .to_f64()
-                        .map(Value::F64)
-                        .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-                    false => v
-                        .to_i64()
-                        .map(Value::I64)
-                        .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-                },
-            */
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Interval(v) => Ok(Value::Interval(*v)),
@@ -192,13 +172,6 @@ impl Value {
                 .ok_or_else(|| {
                     ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
                 }),
-            /*  (DataType::Int, Literal::Number(v)) => match v.to_i64() {
-                  Some(x) => Ok(Value::I64(x)),
-                  None => {
-                      Err(ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into())
-                  }
-              },
-            */
             (DataType::Int, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 

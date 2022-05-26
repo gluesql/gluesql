@@ -76,6 +76,10 @@ test_case!(aggregate, async move {
 
     let error_cases = vec![
         (
+            AggregateError::OnlyIdentifierAllowed.into(),
+            "SELECT SUM(ifnull(age, 0)) from Item;",
+        ),
+        (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
         ),
