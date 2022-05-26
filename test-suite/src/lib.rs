@@ -170,6 +170,7 @@ macro_rules! generate_index_tests {
         glue!(index_value, index::value);
         glue!(index_order_by, index::order_by);
         glue!(index_order_by_multi, index::order_by_multi);
+        glue!(showindexes, index::showindexes);
     };
 }
 
