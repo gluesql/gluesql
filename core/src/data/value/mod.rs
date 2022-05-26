@@ -433,6 +433,7 @@ mod tests {
         super::{Interval, Value::*},
         crate::data::value::uuid::parse_uuid,
         crate::data::ValueError,
+        rust_decimal::Decimal,
     };
 
     #[allow(clippy::eq_op)]
@@ -474,6 +475,14 @@ mod tests {
         use chrono::{NaiveDate, NaiveTime};
         use std::cmp::Ordering;
 
+        assert_eq!(
+            Bool(true).partial_cmp(&Bool(false)),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(Bool(true).partial_cmp(&Bool(true)), Some(Ordering::Equal));
+        assert_eq!(Bool(false).partial_cmp(&Bool(false)), Some(Ordering::Equal));
+        assert_eq!(Bool(false).partial_cmp(&Bool(true)), Some(Ordering::Less));
+
         let date = Date(NaiveDate::from_ymd(2020, 5, 1));
         let timestamp = Timestamp(NaiveDate::from_ymd(2020, 3, 1).and_hms(0, 0, 0));
 
@@ -505,6 +514,29 @@ mod tests {
     }
 
     #[test]
+    fn cmp_ints() {
+        use std::cmp::Ordering;
+
+        assert_eq!(I8(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I8(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I8(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+
+        assert_eq!(I64(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I64(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I64(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+    }
+
+    #[test]
+    fn is_zero() {
+        for i in -1..2 {
+            assert_eq!(I8(i).is_zero(), i == 0);
+            assert_eq!(I64(i.into()).is_zero(), i == 0);
+            assert_eq!(F64(i.into()).is_zero(), i == 0);
+            assert_eq!(Decimal(i.into()).is_zero(), i == 0);
+        }
+    }
+
+    #[test]
     fn arithmetic() {
         use chrono::{NaiveDate, NaiveTime};
 
@@ -526,6 +558,10 @@ mod tests {
 
         test!(add I8(1),    I8(2)    => I8(3));
         test!(add I8(1),    I64(2)   => I64(3));
+
+        test!(add I64(1),    I8(2)    => I64(3));
+        test!(add I64(1),    I64(2)   => I64(3));
+
         test!(add I8(1),    F64(2.0) => F64(3.0));
 
         test!(add I64(1),   I64(2)   => I64(3));
@@ -572,6 +608,10 @@ mod tests {
 
         test!(subtract I8(3),    I8(2)    => I8(1));
         test!(subtract I8(3),    I64(2)   => I64(1));
+
+        test!(subtract I64(3),    I8(2)    => I64(1));
+        test!(subtract I64(3),    I64(2)    => I64(1));
+
         test!(subtract I8(3),    F64(2.0) => F64(1.0));
 
         test!(subtract I64(3),   I64(2)   => I64(1));
@@ -624,6 +664,10 @@ mod tests {
 
         test!(multiply I8(3),    I8(2)    => I8(6));
         test!(multiply I8(3),    I64(2)   => I64(6));
+
+        test!(multiply I64(3),    I8(2)    => I64(6));
+        test!(multiply I64(3),    I64(2)   => I64(6));
+
         test!(multiply I8(3),    F64(2.0) => F64(6.0));
 
         test!(multiply I64(3),   I64(2)   => I64(6));
@@ -650,7 +694,11 @@ mod tests {
         );
 
         test!(divide I8(6),    I8(2)    => I8(3));
-        test!(divide I8(6),    I8(2)    => I64(3));
+        test!(divide I8(6),    I64(2)   => I64(3));
+
+        test!(divide I64(6),    I8(2)    => I64(3));
+        test!(divide I64(6),    I64(2)   => I64(3));
+
         test!(divide I8(6),    F64(2.0) => F64(3.0));
 
         test!(divide I64(6),   I64(2)   => I64(3));
@@ -664,6 +712,12 @@ mod tests {
         test!(divide mon!(6),  I8(2)    => mon!(3));
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
+
+        test!(modulo I8(6),    I8(4)    => I8(2));
+        test!(modulo I8(6),    I64(4)   => I64(2));
+
+        test!(modulo I64(6),    I8(4)    => I64(2));
+        test!(modulo I64(6),    I64(4)   => I64(2));
 
         test!(modulo I64(6),   I64(2)   => I64(0));
         test!(modulo I64(6),   F64(2.0) => F64(0.0));
@@ -874,6 +928,12 @@ mod tests {
         assert!(I64(1).validate_type(&D::Text).is_err());
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
         assert!(F64(1.0).validate_type(&D::Int).is_err());
+        assert!(Decimal(rust_decimal::Decimal::ONE)
+            .validate_type(&D::Decimal)
+            .is_ok());
+        assert!(Decimal(rust_decimal::Decimal::ONE)
+            .validate_type(&D::Int)
+            .is_err());
         assert!(Str("a".to_owned()).validate_type(&D::Text).is_ok());
         assert!(Str("a".to_owned()).validate_type(&D::Int).is_err());
         assert!(date.validate_type(&D::Date).is_ok());
@@ -901,5 +961,28 @@ mod tests {
             }
             .into()),
         );
+    }
+
+    #[test]
+    fn unary_minus() {
+        assert_eq!(I8(1).unary_minus(), Ok(I8(-1)));
+        assert_eq!(I64(1).unary_minus(), Ok(I64(-1)));
+
+        assert_eq!(F64(1.0).unary_minus(), Ok(F64(-1.0)));
+        assert_eq!(
+            Decimal(Decimal::ONE).unary_minus(),
+            Ok(Decimal(-Decimal::ONE))
+        );
+
+        assert_eq!(
+            Str("abc".to_string()).unary_minus(),
+            Err(ValueError::UnaryMinusOnNonNumeric.into())
+        );
+    }
+
+    #[test]
+    fn factorial() {
+        assert_eq!(I8(5).unary_factorial(), Ok(I64(120)));
+        assert_eq!(I64(5).unary_factorial(), Ok(I64(120)));
     }
 }
