@@ -208,6 +208,10 @@ fn evaluate_function<'a>(
         Function::Floor(expr) => f::floor(name, evaluate_stateless(context, expr)?),
         Function::Radians(expr) => f::radians(name, evaluate_stateless(context, expr)?),
         Function::Degrees(expr) => f::degrees(name, evaluate_stateless(context, expr)?),
+        Function::IfNull { expr, then } => f::ifnull(
+            evaluate_stateless(context, expr)?,
+            evaluate_stateless(context, then)?,
+        ),
         Function::Pi() => Ok(Value::F64(std::f64::consts::PI)),
         Function::Exp(expr) => f::exp(name, evaluate_stateless(context, expr)?),
         Function::Log { antilog, base } => {

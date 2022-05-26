@@ -228,6 +228,10 @@ async fn evaluate_function<'a, T>(
                 .await?;
             f::concat(exprs)
         }
+        Function::IfNull { expr, then } => f::ifnull(
+            evalfn(expr, storage, context.clone(), aggregated.clone()).await?,
+            evalfn(then, storage, context, aggregated).await?,
+        ),
         Function::Lower(expr) => f::lower(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Upper(expr) => f::upper(name, evalfn(expr, storage, context, aggregated).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
