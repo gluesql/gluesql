@@ -63,10 +63,10 @@ pub fn decode(expr: &Expr) -> String {
         },
         Expr::UnaryOp { op, expr } => format!("{:}{:}", op, decode(&*expr)),
         Expr::Cast { expr, data_type } => {
-            format!("cast({:} as {:})", decode(&*expr), data_type)
+            format!("CAST({:} AS {:})", decode(&*expr), data_type)
         }
         Expr::Extract { field, expr } => {
-            format!("extract({:} from \"{:}\")", field, decode(&*expr))
+            format!("EXTRACT({:} FROM \"{:}\")", field, decode(&*expr))
         }
         Expr::Nested(expr) => format!("todo:Nested({:})", decode(&*expr)),
         Expr::Literal(s) => match s {
@@ -175,7 +175,7 @@ mod tests {
         //Cast
         //Expr::Cast { expr, data_type } => {
         assert_eq!(
-            "cast(1.0 as Int)",
+            "CAST(1.0 AS Int)",
             decode(&Expr::Cast {
                 expr: Box::new(Expr::Literal(AstLiteral::Number(
                     BigDecimal::from_str("1.0").unwrap()
@@ -195,7 +195,7 @@ mod tests {
 
         //extract
         assert_eq!(
-            r#"extract(MINUTE from "2022-05-05 01:02:03")"#,
+            r#"EXTRACT(MINUTE FROM "2022-05-05 01:02:03")"#,
             decode(&Expr::Extract {
                 field: DateTimeField::Minute,
                 expr: Box::new(Expr::Identifier("2022-05-05 01:02:03".to_string()))
