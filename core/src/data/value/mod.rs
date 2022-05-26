@@ -299,7 +299,7 @@ impl Value {
     pub fn divide(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if self.is_zero() {
+        if other.is_zero() {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
@@ -734,6 +734,12 @@ mod tests {
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
+        test!(divide I8(0),     I8(5)   => I8(0));
+        assert_eq!(
+            I8(5).divide(&I8(0)),
+            Err(ValueError::DivisorShouldNotBeZero.into())
+        );
+
         test!(divide I8(6),    I8(2)    => I8(3));
         test!(divide I8(6),    I64(2)   => I64(3));
         test!(divide I8(6),    I128(2)  => I128(3));
@@ -1032,10 +1038,9 @@ mod tests {
     }
 
     #[test]
-    fn test_unary_minus() {
+    fn unary_minus() {
         assert_eq!(I8(1).unary_minus(), Ok(I8(-1)));
         assert_eq!(I64(1).unary_minus(), Ok(I64(-1)));
-        assert_eq!(I128(1).unary_minus(), Ok(I128(-1)));
 
         assert_eq!(F64(1.0).unary_minus(), Ok(F64(-1.0)));
         assert_eq!(
@@ -1050,9 +1055,8 @@ mod tests {
     }
 
     #[test]
-    fn test_factorial() {
-        assert_eq!(I8(5).unary_factorial(), Ok(I128(120)));
-        assert_eq!(I64(5).unary_factorial(), Ok(I128(120)));
-        assert_eq!(I128(5).unary_factorial(), Ok(I128(120)));
+    fn factorial() {
+        assert_eq!(I8(5).unary_factorial(), Ok(I64(120)));
+        assert_eq!(I64(5).unary_factorial(), Ok(I64(120)));
     }
 }

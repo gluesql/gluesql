@@ -81,7 +81,17 @@ impl TryBinaryOperator for i64 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
-            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_add(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I64(lhs),
@@ -130,7 +140,17 @@ impl TryBinaryOperator for i64 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
-            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_sub(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I64(lhs),
@@ -179,7 +199,17 @@ impl TryBinaryOperator for i64 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
-            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_mul(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
@@ -228,7 +258,17 @@ impl TryBinaryOperator for i64 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
-            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_div(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I64(lhs),
@@ -276,7 +316,17 @@ impl TryBinaryOperator for i64 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
-            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) % rhs)),
+            Decimal(rhs) => Decimal::from(lhs)
+                .checked_rem(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I64(lhs),
+                        operator: NumericBinaryOperator::Modulo,
+                        rhs: Decimal(rhs),
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: I64(lhs),
@@ -414,6 +464,7 @@ mod tests {
             }
             .into())
         );
+
         assert_eq!(
             type_max.try_divide(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
@@ -423,6 +474,7 @@ mod tests {
             }
             .into())
         );
+
         assert_eq!(
             type_max.try_divide(&I128(0)),
             Err(ValueError::BinaryOperationOverflow {
@@ -442,6 +494,7 @@ mod tests {
             }
             .into())
         );
+
         assert_eq!(
             type_max.try_modulo(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
@@ -451,6 +504,7 @@ mod tests {
             }
             .into())
         );
+
         assert_eq!(
             type_max.try_modulo(&I128(0)),
             Err(ValueError::BinaryOperationOverflow {
