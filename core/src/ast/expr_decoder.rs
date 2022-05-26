@@ -195,7 +195,7 @@ mod tests {
 
         //extract
         assert_eq!(
-            r#"extract(Minute from "2022-05-05 01:02:03")"#,
+            r#"extract(MINUTE from "2022-05-05 01:02:03")"#,
             decode(&Expr::Extract {
                 field: DateTimeField::Minute,
                 expr: Box::new(Expr::Identifier("2022-05-05 01:02:03".to_string()))
