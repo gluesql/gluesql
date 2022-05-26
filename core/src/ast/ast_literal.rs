@@ -4,7 +4,7 @@ use {
     strum_macros::Display,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AstLiteral {
     Boolean(bool),
     Number(BigDecimal),
