@@ -713,6 +713,8 @@ mod tests {
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
+        test!(modulo I8(6),    I8(4)    => I8(2));
+        test!(modulo I8(6),    I64(4)   => I64(2));
         assert_eq!(
             I8(5).modulo(&I8(0)),
             Err(ValueError::DivisorShouldNotBeZero.into())
