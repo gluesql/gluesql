@@ -299,6 +299,11 @@ mod tests {
         let type_max: i128 = i128::MAX;
         let type_min: i128 = i128::MIN;
 
+        assert_eq!(I128(1), I8(1));
+        assert_eq!(I128(1), I64(1));
+        assert_eq!(I128(1), I128(1));
+        assert_eq!(I128(1), F64(1.0));
+       
         assert_eq!(-1i128, I128(-1));
         assert_eq!(0i128, I128(0));
         assert_eq!(1i128, I128(1));

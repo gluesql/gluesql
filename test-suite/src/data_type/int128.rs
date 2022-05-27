@@ -51,6 +51,10 @@ test_case!(int128, async move {
         "SELECT field_one, field_two FROM Item"
     );
 
+    test!(
+        Ok(select!(field_one I128; 1)),
+        "SELECT field_one FROM Item WHERE field_one = 1"
+    );
     //todo: the following tests does not work..
     test!(
         Ok(select!(field_one I128; 1; 3)),
