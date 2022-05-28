@@ -5,8 +5,8 @@ use {
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     rust_decimal::Decimal,
-    serde::Serialize,
-    std::fmt::Debug,
+    serde::{Deserialize, Serialize},
+    std::{cmp::Ordering, fmt::Debug},
     thiserror::Error as ThisError,
 };
 
@@ -22,7 +22,7 @@ pub enum KeyError {
     ListTypeKeyNotSupported,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
 pub enum Key {
     I8(i8),
     I64(i64),
@@ -36,6 +36,23 @@ pub enum Key {
     Uuid(u128),
     Decimal(Decimal),
     None,
+}
+
+impl PartialOrd for Key {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Key::I8(l), Key::I8(r)) => Some(l.cmp(r)),
+            (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
+            (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
+            (Key::Date(l), Key::Date(r)) => Some(l.cmp(r)),
+            (Key::Timestamp(l), Key::Timestamp(r)) => Some(l.cmp(r)),
+            (Key::Time(l), Key::Time(r)) => Some(l.cmp(r)),
+            (Key::Interval(l), Key::Interval(r)) => l.partial_cmp(r),
+            (Key::Uuid(l), Key::Uuid(r)) => Some(l.cmp(r)),
+            (Key::Decimal(l), Key::Decimal(r)) => Some(l.cmp(r)),
+            _ => None,
+        }
+    }
 }
 
 impl TryFrom<Value> for Key {

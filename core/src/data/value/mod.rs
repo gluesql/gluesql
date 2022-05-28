@@ -332,7 +332,7 @@ impl Value {
     pub fn modulo(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if self.is_zero() {
+        if other.is_zero() {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
@@ -773,6 +773,11 @@ mod tests {
         test!(modulo I8(6),    I8(4)    => I8(2));
         test!(modulo I8(6),    I64(4)   => I64(2));
         test!(modulo I8(6),    I128(4)  => I128(2));
+
+        assert_eq!(
+            I8(5).modulo(&I8(0)),
+            Err(ValueError::DivisorShouldNotBeZero.into())
+        );
 
         test!(modulo I64(6),    I8(4)    => I64(2));
         test!(modulo I64(6),    I64(4)   => I64(2));
