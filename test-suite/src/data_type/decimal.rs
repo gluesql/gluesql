@@ -148,4 +148,22 @@ test_case!(decimal, async move {
     for (sql, expected) in test_cases.into_iter() {
         test!(expected, sql);
     }
+
+    test!(
+        Ok(Payload::Create),
+        "CREATE TABLE DECIMAL_PRECISION_SCALE1 (d1 DECIMAL(5,2));"
+    );
+    test!(
+        Ok(Payload::Insert(1)),
+        "INSERT INTO DECIMAL_PRECISION_SCALE1 (d1) VALUES (123.456);"
+    );
+    test!(
+        Ok(Payload::Update(1)),
+        "UPDATE DECIMAL_PRECISION_SCALE1 SET d1=234.567 WHERE d1=123.46"
+    );
+
+    test!(
+        Ok(Payload::Update(1)),
+        "UPDATE DECIMAL_PRECISION_SCALE1 SET d1=235.567 WHERE d1 > 123.46"
+    );
 });

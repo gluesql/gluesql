@@ -11,6 +11,7 @@ use {
     },
     bigdecimal::BigDecimal,
     chrono::NaiveDate,
+    rust_decimal::Decimal,
     std::cmp::Ordering,
     std::str::FromStr,
 };
@@ -22,6 +23,10 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::I8(l), Literal::Number(r)) => r.to_i8().map(|r| *l == r).unwrap_or(false),
             (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
+            (Value::Decimal(l), Literal::Number(r)) => match Decimal::from_str(&r.to_string()) {
+                Ok(d) => d == *l,
+                _ => false,
+            },
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l == &r,
@@ -54,6 +59,10 @@ impl PartialOrd<Literal<'_>> for Value {
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
+            (Value::Decimal(l), Literal::Number(r)) => match Decimal::from_str(&r.to_string()) {
+                Ok(d) => l.partial_cmp(&d),
+                _ => None,
+            },
             (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l.partial_cmp(&r),
