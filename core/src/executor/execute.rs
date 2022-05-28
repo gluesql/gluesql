@@ -25,7 +25,7 @@ use super::alter::alter_table;
 #[cfg(feature = "index")]
 use {
     super::alter::{create_index, drop_index},
-    crate::data::SchemaIndexOrd,
+    crate::data::SchemaIndex,
 };
 
 #[cfg(feature = "metadata")]
@@ -57,9 +57,6 @@ pub enum Payload {
     CreateIndex,
     #[cfg(feature = "index")]
     DropIndex,
-    #[cfg(feature = "index")]
-    ShowIndexes(Vec<(String, SchemaIndexOrd)>),
-
     #[cfg(feature = "transaction")]
     StartTransaction,
     #[cfg(feature = "transaction")]
