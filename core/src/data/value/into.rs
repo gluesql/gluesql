@@ -473,7 +473,7 @@ mod tests {
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
 
-        //impossible casts to i8
+        // impossible casts to i8
         test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
     }
