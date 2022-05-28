@@ -126,7 +126,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 return Err(TranslateError::TooManyParamsInDropIndex.into());
             }
 
-            let object_name: &Vec<SqlIdent> = &names[0].0;
+            let object_name = &names[0].0;
+            if object_name.len() != 2 {
+                return Err(TranslateError::InvalidParamsInDropIndex.into());
+            }
 
             let table_name = ObjectName(vec![object_name[0].value.to_owned()]);
             let name = ObjectName(vec![object_name[1].value.to_owned()]);
@@ -145,6 +148,23 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 "TABLES" => Ok(Statement::ShowVariable(Variable::Tables)),
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_string()).into()),
+            },
+            (3, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
+                "INDEXES" => match variable.get(2) {
+                    Some(tablename) => {
+                        Ok(Statement::ShowIndexes(ObjectName(Vec::from([tablename
+                            .value
+                            .to_string()]))))
+                    }
+                    _ => Err(TranslateError::UnsupportedShowVariableStatement(
+                        sql_statement.to_string(),
+                    )
+                    .into()),
+                },
+                _ => Err(TranslateError::UnsupportedShowVariableStatement(
+                    sql_statement.to_string(),
+                )
+                .into()),
             },
             _ => Err(
                 TranslateError::UnsupportedShowVariableStatement(sql_statement.to_string()).into(),

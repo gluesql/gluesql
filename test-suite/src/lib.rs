@@ -80,6 +80,7 @@ macro_rules! generate_store_tests {
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
         glue!(function_concat, function::concat::concat);
+        glue!(function_ifnull, function::ifnull::ifnull);
         glue!(function_math_function_asin, function::math_function::asin);
         glue!(function_math_function_acos, function::math_function::acos);
         glue!(function_math_function_atan, function::math_function::atan);
@@ -169,6 +170,7 @@ macro_rules! generate_index_tests {
         glue!(index_value, index::value);
         glue!(index_order_by, index::order_by);
         glue!(index_order_by_multi, index::order_by_multi);
+        glue!(showindexes, index::showindexes);
     };
 }
 

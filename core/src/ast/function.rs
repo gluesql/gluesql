@@ -33,6 +33,10 @@ pub enum Function {
     },
     Ceil(Expr),
     Concat(Vec<Expr>),
+    IfNull {
+        expr: Expr,
+        then: Expr,
+    },
     Round(Expr),
     Floor(Expr),
     Trim {
