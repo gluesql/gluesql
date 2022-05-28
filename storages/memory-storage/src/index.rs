@@ -1,9 +1,9 @@
 use {
-    super::{Key, MemoryStorage},
+    super::MemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
         ast::{IndexOperator, OrderByExpr},
-        data::Value,
+        data::{Key, Value},
         result::{Error, MutResult, Result},
         store::{Index, IndexMut, RowIter},
     },

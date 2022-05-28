@@ -1,5 +1,6 @@
 use {
-    gluesql_memory_storage::{Key, MemoryStorage},
+    gluesql_core::prelude::Key,
+    gluesql_memory_storage::MemoryStorage,
     std::{cell::RefCell, rc::Rc},
     test_suite::*,
 };
