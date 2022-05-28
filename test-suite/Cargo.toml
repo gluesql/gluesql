@@ -29,7 +29,7 @@ transaction = ["gluesql-core/transaction"]
 metadata = ["gluesql-core/metadata"]
 
 [[bench]]
-name = "glue_benchmark"
+name = "glue_benchmark1"
 harness = false
 
 [profile.bench]
