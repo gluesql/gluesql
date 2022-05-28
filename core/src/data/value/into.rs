@@ -120,11 +120,9 @@ impl TryInto<i8> for &Value {
                 }
             }
             Value::I8(value) => *value,
-            //Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I64(value) => *value as i8,
             Value::F64(value) => value.trunc() as i8,
-            //Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i8>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -165,7 +163,6 @@ impl TryInto<i64> for &Value {
             Value::I64(value) => *value,
             Value::I128(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.trunc() as i64,
-            //Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -243,7 +240,6 @@ impl TryInto<f64> for &Value {
                 }
             }
             Value::I8(value) => *value as f64,
-            //Value::I64(value) => *value as f64,
             Value::I64(value) => (*value as f64).trunc(),
             Value::I128(value) => *value as f64,
             Value::F64(value) => *value,
