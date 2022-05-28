@@ -16,22 +16,21 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: rustup component add clippy rustfmt
-      - name: Clippy
-        run: cargo clippy --no-default-features -- -D warnings
-      - name: Clippy (alter-table)
-        run: cargo clippy --no-default-features --features alter-table -- -D warnings
-      - name: Clippy (index)
-        run: cargo clippy --no-default-features --features index -- -D warnings
-      - name: Clippy (alter-table & index)
-        run: cargo clippy --no-default-features --features "alter-table index" -- -D warnings
-      - name: Clippy (alter-table & transaction)
-        run: cargo clippy --no-default-features --features "alter-table transaction" -- -D warnings
-      - name: Clippy (index & transaction)
-        run: cargo clippy --no-default-features --features "index transaction" -- -D warnings
-      - name: Clippy (alter-table & index & transaction)
-        run: cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
-      - name: Clippy (all)
-        run: cargo clippy --all-features --all-targets -- -D warnings
+      - name: Clippy (root)
+        run: cargo clippy -- -D warnings
+      - name: Clippy (core)
+        run: |
+          cd core
+          cargo clippy --no-default-features -- -D warnings
+          cargo clippy --no-default-features --features alter-table -- -D warnings
+          cargo clippy --no-default-features --features index -- -D warnings
+          cargo clippy --no-default-features --features transaction -- -D warnings
+          cargo clippy --no-default-features --features "alter-table index" -- -D warnings
+          cargo clippy --no-default-features --features "alter-table transaction" -- -D warnings
+          cargo clippy --no-default-features --features "index transaction" -- -D warnings
+          cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
+          cargo clippy --all-features --all-targets -- -D warnings
+          cd ../
       - name: Rustfmt
         run: cargo fmt -- --check
       - name: Build
