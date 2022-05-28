@@ -8,7 +8,7 @@ use {
     },
     crate::{
         ast::{DataType, SetExpr, Statement, Values},
-        data::{get_name, Row, Schema, SchemaIndex, Value},
+        data::{get_name, Row, Schema, Value},
         executor::limit::Limit,
         result::MutResult,
         store::{GStore, GStoreMut},
@@ -23,7 +23,10 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use super::alter::{create_index, drop_index};
+use {
+    super::alter::{create_index, drop_index},
+    crate::data::SchemaIndexOrd,
+};
 
 #[cfg(feature = "metadata")]
 use crate::{ast::Variable, result::TrySelf};
@@ -54,6 +57,8 @@ pub enum Payload {
     CreateIndex,
     #[cfg(feature = "index")]
     DropIndex,
+    #[cfg(feature = "index")]
+    ShowIndexes(Vec<(String, SchemaIndexOrd)>),
 
     #[cfg(feature = "transaction")]
     StartTransaction,
@@ -64,6 +69,7 @@ pub enum Payload {
 
     #[cfg(feature = "metadata")]
     ShowVariable(PayloadVariable),
+
     #[cfg(feature = "index")]
     ShowIndexes(Vec<SchemaIndex>),
 }
@@ -330,6 +336,7 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
 
             Ok((storage, Payload::ShowColumns(output)))
         }
+        #[cfg(feature = "index")]
         Statement::ShowIndexes(table_name) => {
             let table_name = match get_name(table_name) {
                 Ok(table_name) => table_name,
