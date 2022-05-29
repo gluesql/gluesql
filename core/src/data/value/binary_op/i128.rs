@@ -16,7 +16,7 @@ impl PartialEq<Value> for i128 {
             I8(other) => self == &(*other as i128),
             I64(other) => self == &(*other as i128),
             I128(other) => self == other,
-            F64(other) => (*self as f64) == *other, // is this right?
+            F64(other) => ((*self as f64) - other).abs() < f64::EPSILON,
             Decimal(other) => Decimal::from(*self) == *other,
             _ => false,
         }
