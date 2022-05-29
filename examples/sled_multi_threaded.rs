@@ -22,27 +22,28 @@ mod sled_multi_threaded {
             SledStorage supports cloning, using this we can create copies of the storage for new threads;
               all we need to do is wrap it in glue again.
         */
-        let foo_storage = storage.clone();
-        let foo_thread = thread::spawn(move || {
-            let mut glue = Glue::new(foo_storage);
+        let insert_storage = storage.clone();
+        let insert_thread = thread::spawn(move || {
+            let mut glue = Glue::new(insert_storage);
             let query = "INSERT INTO greet (name) VALUES (\"Foo\")";
 
             glue.execute(query).unwrap();
         });
 
-        let world_storage = storage;
-        let world_thread = thread::spawn(move || {
-            let mut glue = Glue::new(world_storage);
-            let query = "INSERT INTO greet (name) VALUES (\"World\")";
+        let select_storage = storage;
+        let select_thread = thread::spawn(move || {
+            let mut glue = Glue::new(select_storage);
+            let query = "SELECT * FROM greet;";
 
-            glue.execute(query).unwrap();
+            let payloads = glue.execute(query).unwrap();
+            println!("{payloads:?}");
         });
 
-        world_thread
+        select_thread
             .join()
             .expect("Something went wrong in the world thread");
 
-        foo_thread
+        insert_thread
             .join()
             .expect("Something went wrong in the foo thread");
 
