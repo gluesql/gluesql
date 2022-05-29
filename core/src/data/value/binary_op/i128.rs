@@ -596,12 +596,11 @@ mod tests {
     fn try_divide() {
         let base = 6_i128;
 
-        // 6/2 = 3
         assert_eq!(base.try_divide(&I8(2)), Ok(I8(3)));
         assert_eq!(base.try_divide(&I64(2)), Ok(I64(3)));
         assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
 
-        // 6/-6 = -1
+
         assert_eq!(base.try_divide(&I8(-6)), Ok(I8(-1)));
         assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));
