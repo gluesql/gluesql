@@ -76,7 +76,6 @@ impl TryBinaryOperator for i128 {
                     .into()
                 })
                 .map(I128),
-
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
