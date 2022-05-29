@@ -563,7 +563,6 @@ mod tests {
     fn try_multiply() {
         let base = 3_i128;
 
-        // 3 * 2 = 6
         assert_eq!(base.try_multiply(&I8(2)), Ok(I8(6)));
         assert_eq!(base.try_multiply(&I64(2)), Ok(I64(6)));
         assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
