@@ -46,6 +46,7 @@ impl Value {
                 .chain(v.as_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
+            Value::Bytea(v) => v.to_vec(),
             Value::Date(date) => [VALUE]
                 .iter()
                 .chain(date.num_days_from_ce().to_be_bytes().iter())
@@ -190,6 +191,20 @@ mod tests {
         let n3 = Str("aaa".to_owned()).to_cmp_be_bytes().unwrap();
         let n4 = Str("aaz".to_owned()).to_cmp_be_bytes().unwrap();
         let n5 = Str("c".to_owned()).to_cmp_be_bytes().unwrap();
+
+        assert_eq!(cmp(&n2, &n2), Ordering::Equal);
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n1), Ordering::Greater);
+        assert_eq!(cmp(&n2, &n3), Ordering::Greater);
+        assert_eq!(cmp(&n3, &n4), Ordering::Less);
+        assert_eq!(cmp(&n5, &n4), Ordering::Greater);
+        assert_eq!(cmp(&n1, &null), Ordering::Less);
+
+        let n1 = Bytea(n1).to_cmp_be_bytes().unwrap();
+        let n2 = Bytea(n2).to_cmp_be_bytes().unwrap();
+        let n3 = Bytea(n3).to_cmp_be_bytes().unwrap();
+        let n4 = Bytea(n4).to_cmp_be_bytes().unwrap();
+        let n5 = Bytea(n5).to_cmp_be_bytes().unwrap();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
