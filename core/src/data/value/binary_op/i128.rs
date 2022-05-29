@@ -125,7 +125,7 @@ impl TryBinaryOperator for i128 {
                     .into()
                 })
                 .map(I128),
-            F64(rhs) => Ok(F64(lhs as f64 - rhs)), // should this be f128??
+            F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
 
             Null => Ok(Null),
@@ -406,7 +406,6 @@ mod tests {
             .into())
         );
 
-
         //try_divide
         assert_eq!(
             type_max.try_divide(&I8(0)),
@@ -607,10 +606,9 @@ mod tests {
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 6.0).abs() < f64::EPSILON )
         );
 
-        let _decimal_result = Decimal::from(base);
         assert_eq!(
             base.try_divide(&Decimal(Decimal::ONE)),
-            Ok(Decimal(_decimal_result))
+            Ok(Decimal(Decimal::from(base)))
         );
 
         assert_eq!(
