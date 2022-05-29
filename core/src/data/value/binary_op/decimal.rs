@@ -45,12 +45,42 @@ impl TryBinaryOperator for Decimal {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(Decimal(lhs + Decimal::from(rhs))),
-            I64(rhs) => Ok(Decimal(lhs + Decimal::from(rhs))),
+            I8(rhs) => lhs
+                .checked_add(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            I64(rhs) => lhs
+                .checked_add(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs + x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
-            Decimal(rhs) => Ok(Decimal(lhs + rhs)),
+            Decimal(rhs) => lhs
+                .checked_add(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: Decimal(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(lhs),
@@ -65,12 +95,42 @@ impl TryBinaryOperator for Decimal {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
-            I64(rhs) => Ok(Decimal(lhs - Decimal::from(rhs))),
+            I8(rhs) => lhs
+                .checked_sub(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            I64(rhs) => lhs
+                .checked_sub(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs - x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
-            Decimal(rhs) => Ok(Decimal(lhs - rhs)),
+            Decimal(rhs) => lhs
+                .checked_sub(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        operator: NumericBinaryOperator::Subtract,
+                        rhs: Decimal(rhs),
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(lhs),
@@ -85,12 +145,42 @@ impl TryBinaryOperator for Decimal {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(Decimal(lhs * Decimal::from(rhs))),
-            I64(rhs) => Ok(Decimal(lhs * Decimal::from(rhs))),
+            I8(rhs) => lhs
+                .checked_mul(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            I64(rhs) => lhs
+                .checked_mul(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs * x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
-            Decimal(rhs) => Ok(Decimal(lhs * rhs)),
+            Decimal(rhs) => lhs
+                .checked_mul(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        operator: NumericBinaryOperator::Multiply,
+                        rhs: Decimal(rhs),
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(lhs),
@@ -105,12 +195,42 @@ impl TryBinaryOperator for Decimal {
         let lhs = *self;
 
         match *rhs {
-            I8(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
-            I64(rhs) => Ok(Decimal(lhs / Decimal::from(rhs))),
+            I8(rhs) => lhs
+                .checked_div(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            I64(rhs) => lhs
+                .checked_div(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I64(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs / x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
-            Decimal(rhs) => Ok(Decimal(lhs / rhs)),
+            Decimal(rhs) => lhs
+                .checked_div(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        operator: NumericBinaryOperator::Divide,
+                        rhs: Decimal(rhs),
+                    }
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(lhs),
@@ -163,15 +283,15 @@ impl TryBinaryOperator for Decimal {
             },
             Decimal(rhs) => lhs
                 .checked_rem(rhs)
-                .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| {
-                    Err(ValueError::BinaryOperationOverflow {
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         operator: NumericBinaryOperator::Modulo,
                         rhs: Decimal(rhs),
                     }
-                    .into())
-                }),
+                    .into()
+                })
+                .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: Decimal(lhs),
@@ -191,6 +311,162 @@ mod tests {
         rust_decimal::prelude::Decimal,
         std::cmp::Ordering,
     };
+
+    #[test]
+    fn test_extremes() {
+        let base = Decimal::ONE;
+
+        assert_eq!(
+            Decimal::MAX.try_add(&Decimal(Decimal::ONE)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: Decimal(Decimal::ONE),
+                operator: NumericBinaryOperator::Add,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            Decimal::MAX.try_add(&I8(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: I8(1),
+                operator: NumericBinaryOperator::Add,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            Decimal::MAX.try_add(&I64(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: I64(1),
+                operator: NumericBinaryOperator::Add,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            Decimal::MIN.try_subtract(&I8(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MIN),
+                rhs: I8(1),
+                operator: NumericBinaryOperator::Subtract,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            Decimal::MIN.try_subtract(&I64(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MIN),
+                rhs: I64(1),
+                operator: NumericBinaryOperator::Subtract,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            Decimal::MIN.try_subtract(&Decimal(Decimal::ONE)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MIN),
+                rhs: Decimal(Decimal::ONE),
+                operator: NumericBinaryOperator::Subtract,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            Decimal::MAX.try_multiply(&I8(2)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: I8(2),
+                operator: NumericBinaryOperator::Multiply,
+            }
+            .into())
+        );
+        assert_eq!(
+            Decimal::MAX.try_multiply(&I64(2)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: I64(2),
+                operator: NumericBinaryOperator::Multiply,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            Decimal::MAX.try_multiply(&Decimal(Decimal::TWO)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: Decimal(Decimal::TWO),
+                operator: NumericBinaryOperator::Multiply,
+            }
+            .into())
+        );
+
+        // try divide overflow
+        assert_eq!(
+            base.try_divide(&I8(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I8(0),
+                operator: NumericBinaryOperator::Divide,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            base.try_divide(&I64(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I64(0),
+                operator: NumericBinaryOperator::Divide,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            base.try_divide(&Decimal(Decimal::ZERO)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: Decimal(Decimal::ZERO),
+                operator: NumericBinaryOperator::Divide,
+            }
+            .into())
+        );
+
+        // try modulo overflow
+        assert_eq!(
+            base.try_modulo(&I8(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I8(0),
+                operator: NumericBinaryOperator::Modulo,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            base.try_modulo(&I64(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I64(0),
+                operator: NumericBinaryOperator::Modulo,
+            }
+            .into())
+        );
+
+        assert_eq!(
+            base.try_modulo(&Decimal(Decimal::ZERO)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: Decimal(Decimal::ZERO),
+                operator: NumericBinaryOperator::Modulo,
+            }
+            .into())
+        );
+    }
 
     #[test]
     fn eq() {

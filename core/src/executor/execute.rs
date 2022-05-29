@@ -23,7 +23,10 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use super::alter::{create_index, drop_index};
+use {
+    super::alter::{create_index, drop_index},
+    crate::data::SchemaIndexOrd,
+};
 
 #[cfg(feature = "metadata")]
 use crate::{ast::Variable, result::TrySelf};
@@ -54,6 +57,8 @@ pub enum Payload {
     CreateIndex,
     #[cfg(feature = "index")]
     DropIndex,
+    #[cfg(feature = "index")]
+    ShowIndexes(Vec<(String, SchemaIndexOrd)>),
 
     #[cfg(feature = "transaction")]
     StartTransaction,
@@ -327,6 +332,34 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
                 .collect();
 
             Ok((storage, Payload::ShowColumns(output)))
+        }
+        #[cfg(feature = "index")]
+        Statement::ShowIndexes(table_name) => {
+            let table_name = match get_name(table_name) {
+                Ok(table_name) => table_name,
+                Err(e) => return Err((storage, e)),
+            };
+
+            let indexes = match storage.fetch_schema(table_name).await {
+                Ok(Some(Schema { indexes, .. })) => indexes,
+                Ok(None) => {
+                    return Err((
+                        storage,
+                        ExecuteError::TableNotFound(table_name.to_owned()).into(),
+                    ));
+                }
+                Err(e) => return Err((storage, e)),
+            };
+
+            Ok((
+                storage,
+                Payload::ShowIndexes(
+                    indexes
+                        .into_iter()
+                        .map(|index| (index.name, index.order))
+                        .collect(),
+                ),
+            ))
         }
         //- Metadata
         #[cfg(feature = "metadata")]
