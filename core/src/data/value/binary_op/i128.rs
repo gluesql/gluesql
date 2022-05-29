@@ -303,9 +303,9 @@ mod tests {
         assert_eq!(I128(1), I128(1));
         assert_eq!(I128(1), F64(1.0));
 
-        assert_eq!(-1i128, I128(-1));
-        assert_eq!(0i128, I128(0));
-        assert_eq!(1i128, I128(1));
+        assert_eq!(-1_i128, I128(-1));
+        assert_eq!(0_i128, I128(0));
+        assert_eq!(1_i128, I128(1));
         assert_eq!(type_min, I128(type_min));
         assert_eq!(type_max, I128(type_max));
 
