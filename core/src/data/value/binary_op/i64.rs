@@ -450,7 +450,6 @@ mod tests {
         );
         assert_eq!(type_max.try_multiply(&I128(2)), Ok(I128(2 * type_maxi128)));
 
-        //try_divide
         assert_eq!(
             type_max.try_divide(&I8(0)),
             Err(ValueError::BinaryOperationOverflow {

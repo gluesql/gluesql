@@ -125,7 +125,6 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I128),
-
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Decimal::from(lhs)
                 .checked_sub(rhs)
@@ -304,7 +303,6 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I128),
-
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
             Decimal(rhs) => Decimal::from(lhs)
                 .checked_rem(rhs)
