@@ -8,7 +8,7 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    rust_decimal::prelude::*,
+    rust_decimal::prelude::{Decimal, FromPrimitive, FromStr, ToPrimitive},
     uuid::Uuid,
 };
 
