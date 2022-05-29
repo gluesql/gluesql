@@ -39,3 +39,11 @@ jobs:
         run: cargo test --no-default-features --verbose
       - name: Run tests with all features
         run: cargo test --all-features --all-targets --verbose
+      - name: Run hello_world example code
+        run: cargo run --package gluesql --example hello_world
+      - name: Run api_usage example code
+        run: cargo run --package gluesql --example api_usage
+      - name: Run sled_multi_threaded example code
+        run: cargo run --package gluesql --example sled_multi_threaded
+      - name: Run using_config example code
+        run: cargo run --package gluesql --example using_config
