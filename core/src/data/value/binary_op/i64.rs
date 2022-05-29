@@ -18,7 +18,7 @@ impl PartialEq<Value> for i64 {
             I8(rhs) => lhs == rhs as i64,
             I64(rhs) => lhs == rhs,
             I128(rhs) => lhs as i128 == rhs,
-            F64(rhs) => lhs as f64 == rhs,
+            F64(rhs) => ((lhs as f64) - rhs).abs() < f64::EPSILON,
             Decimal(rhs) => Decimal::from(lhs) == rhs,
             _ => false,
         }
@@ -361,7 +361,6 @@ mod tests {
         assert_eq!(type_min, I64(type_min));
         assert_eq!(type_max, I64(type_max));
 
-        //try_add
         assert_eq!(
             type_max.try_add(&I8(1)),
             Err(ValueError::BinaryOperationOverflow {
@@ -394,7 +393,6 @@ mod tests {
             .into())
         );
 
-        //try_subtract
         assert_eq!(
             type_min.try_subtract(&I8(1)),
             Err(ValueError::BinaryOperationOverflow {
@@ -427,7 +425,6 @@ mod tests {
             .into())
         );
 
-        //try multiply
         assert_eq!(type_max.try_multiply(&I8(1)), Ok(I64(type_max)));
         assert_eq!(type_max.try_multiply(&I64(1)), Ok(I64(type_maxi64)));
         assert_eq!(type_max.try_multiply(&I128(1)), Ok(I128(type_maxi128)));
@@ -612,7 +609,6 @@ mod tests {
     fn try_multiply() {
         let base = 3_i64;
 
-        // 3 * 2 = 6
         assert_eq!(base.try_multiply(&I8(2)), Ok(I64(6)));
         assert_eq!(base.try_multiply(&I64(2)), Ok(I64(6)));
         assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
@@ -646,12 +642,10 @@ mod tests {
     fn try_divide() {
         let base = 6_i64;
 
-        // 6/2 = 3
         assert_eq!(base.try_divide(&I8(2)), Ok(I64(3)));
         assert_eq!(base.try_divide(&I64(2)), Ok(I64(3)));
         assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
 
-        // 6/-6 = -1
         assert_eq!(base.try_divide(&I8(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));

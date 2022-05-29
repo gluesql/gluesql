@@ -15,12 +15,11 @@ pub fn parse<Sql: AsRef<str>>(sql: Sql) -> Result<Vec<SqlStatement>> {
 }
 
 pub fn parse_query<Sql: AsRef<str>>(sql_expr: Sql) -> Result<SqlQuery> {
-    let dialect = GenericDialect {};
-    let tokens = Tokenizer::new(&dialect, sql_expr.as_ref())
+    let tokens = Tokenizer::new(&DIALECT, sql_expr.as_ref())
         .tokenize()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 
-    Parser::new(tokens, &dialect)
+    Parser::new(tokens, &DIALECT)
         .parse_query()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
