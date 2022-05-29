@@ -15,9 +15,9 @@ impl PartialEq<Value> for f64 {
         let lhs = *self;
 
         match *other {
-            I8(rhs) => lhs == rhs as f64,
-            I64(rhs) => lhs == rhs as f64,
-            F64(rhs) => lhs == rhs,
+            I8(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
+            I64(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
+            F64(rhs) => (lhs - rhs).abs() < f64::EPSILON,
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| rhs == x)
                 .unwrap_or(false),
