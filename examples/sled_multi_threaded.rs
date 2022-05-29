@@ -47,11 +47,12 @@ mod sled_multi_threaded {
             .expect("Something went wrong in the foo thread");
 
         let query = "SELECT name FROM greet";
-        let result = glue.execute(query).unwrap();
+        let payloads = glue.execute(query).unwrap();
+        assert_eq!(payloads.len(), 1);
 
-        let rows = match result {
-            Payload::Select { labels: _, rows } => rows,
-            _ => panic!("Unexpected result: {:?}", result),
+        let rows = match &payloads[0] {
+            Payload::Select { rows, .. } => rows,
+            _ => panic!("Unexpected result: {:?}", payloads),
         };
 
         let first_row = &rows[0];
@@ -61,7 +62,8 @@ mod sled_multi_threaded {
             value => panic!("Unexpected type: {:?}", value),
         };
 
-        println!("Hello {}!", to_greet); // Will typically output "Hello Foo!" but will sometimes output "Hello World!"; depends on which thread finished first.
+        // Will typically output "Hello Foo!" but will sometimes output "Hello World!"; depends on which thread finished first.
+        println!("Hello {}!", to_greet);
     }
 }
 
