@@ -1060,7 +1060,16 @@ mod tests {
 
     #[test]
     fn factorial() {
-        assert_eq!(I8(5).unary_factorial(), Ok(I64(120)));
-        assert_eq!(I64(5).unary_factorial(), Ok(I64(120)));
+        assert_eq!(I8(5).unary_factorial(), Ok(I128(120)));
+        assert_eq!(I64(5).unary_factorial(), Ok(I128(120)));
+        assert_eq!(I128(5).unary_factorial(), Ok(I128(120)));
+        assert_eq!(
+            F64(5.0).unary_factorial(),
+            Err(ValueError::FactorialOnNonInteger.into())
+        );
+        assert_eq!(
+            Str("5".to_string()).unary_factorial(),
+            Err(ValueError::FactorialOnNonNumeric.into())
+        );
     }
 }
