@@ -110,9 +110,13 @@ pub fn decode(expr: &Expr) -> String {
             format!("{:}(todo:args)", f)
         }
         // todo's...  these require enum query..
-        //Expr::InSubquery {expr, subquery, negated} => format!("InSubquery({:}, subquery:{:}, negated: {:})", decode(*expr),  *subquery, negated),
-        //Expr::Exists(q) => format!("Exists({:})", *query),
-        //Expr::Subquery(q) => format!("Subquery({:})", *query),
+        Expr::InSubquery {
+            expr: _,
+            subquery: _,
+            negated: _,
+        } => "InSubquery(..)".to_string(),
+        Expr::Exists(_q) => "Exists(..)".to_string(),
+        Expr::Subquery(_q) => "Subquery(..)".to_string(),
         _ => format!("Unimplemented Decode Expression: {:#?}", expr),
     }
 }
@@ -129,13 +133,11 @@ mod tests {
 
     #[test]
     fn basic_decoder() {
-        //Identifier
         assert_eq!(
             "id".to_string(),
             decode(&Expr::Identifier("id".to_string()))
         );
 
-        //BinaryOp
         assert_eq!(
             "id + num",
             decode(&Expr::BinaryOp {
@@ -145,7 +147,6 @@ mod tests {
             })
         );
 
-        //unaryop
         assert_eq!(
             "-id",
             decode(&Expr::UnaryOp {
@@ -154,7 +155,6 @@ mod tests {
             })
         );
 
-        //CompoundIdentifier
         assert_eq!(
             "id.name.first",
             decode(&Expr::CompoundIdentifier(vec![
@@ -164,16 +164,12 @@ mod tests {
             ]))
         );
 
-        //IsNUll
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
         assert_eq!("id IS NULL", decode(&Expr::IsNull(id_expr)));
 
-        //IsNotNull
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
         assert_eq!("id IS NOT NULL", decode(&Expr::IsNotNull(id_expr)));
 
-        //Cast
-        //Expr::Cast { expr, data_type } => {
         assert_eq!(
             "CAST(1.0 AS INT)",
             decode(&Expr::Cast {
@@ -184,7 +180,6 @@ mod tests {
             })
         );
 
-        //TypeString
         assert_eq!(
             r#"INT("1")"#,
             decode(&Expr::TypedString {
@@ -193,7 +188,6 @@ mod tests {
             })
         );
 
-        //extract
         assert_eq!(
             r#"EXTRACT(MINUTE FROM "2022-05-05 01:02:03")"#,
             decode(&Expr::Extract {
@@ -202,7 +196,6 @@ mod tests {
             })
         );
 
-        //between
         assert_eq!(
             "id BETWEEN low AND high",
             decode(&Expr::Between {
@@ -213,7 +206,6 @@ mod tests {
             })
         );
 
-        //not between
         assert_eq!(
             "id NOT BETWEEN low AND high",
             decode(&Expr::Between {
@@ -224,7 +216,6 @@ mod tests {
             })
         );
 
-        // in list
         assert_eq!(
             r#"id IN ("a","b","c")"#,
             decode(&Expr::InList {
@@ -238,7 +229,6 @@ mod tests {
             })
         );
 
-        //not in list
         assert_eq!(
             r#"id NOT IN ("a","b","c")"#,
             decode(&Expr::InList {
@@ -272,7 +262,7 @@ mod tests {
             })
         );
 
-        //todo..
+        // todo..
         assert_eq!(
             "SIGN(todo:args)",
             decode(&Expr::Function(Box::new(Function::Sign(Expr::Literal(
@@ -280,7 +270,7 @@ mod tests {
             )))))
         );
 
-        //aggregate  max
+        // aggregate max
         assert_eq!(
             "Max(id)",
             decode(&Expr::Aggregate(Box::new(Aggregate::Max(
