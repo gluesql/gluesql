@@ -117,7 +117,6 @@ pub fn decode(expr: &Expr) -> String {
         } => "InSubquery(..)".to_string(),
         Expr::Exists(_q) => "Exists(..)".to_string(),
         Expr::Subquery(_q) => "Subquery(..)".to_string(),
-        _ => format!("Unimplemented Decode Expression: {:#?}", expr),
     }
 }
 
