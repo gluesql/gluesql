@@ -10,8 +10,11 @@ test_case!(error, async move {
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
     run!("INSERT INTO TableA (id) VALUES (9);");
-    run!("CREATE TABLE TableZ (id INTEGER);");
-    run!("INSERT INTO TableZ (id) VALUES (9);");
+
+    run!("CREATE TABLE users (id INTEGER, name TEXT);");
+    run!(r#"INSERT INTO users (id, name) VALUES (1, "Harry");"#);
+    run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
+    run!(r#"INSERT INTO testers (id, nickname) VALUES (1, "Ron");"#);
 
     let test_cases = vec![
         (
@@ -123,7 +126,7 @@ test_case!(error, async move {
         ),
         (
             SelectError::ColumnReferenceAmbiguous("id".to_string()).into(),
-            "SELECT id FROM TableA JOIN TableZ ON TableA.id = TableZ.id",
+            "SELECT id FROM users JOIN testers ON users.id = testers.id",
         ),
         #[cfg(feature = "alter-table")]
         (
