@@ -8,6 +8,9 @@ pub enum SelectError {
     #[error("table alias for blend not found: {0}")]
     BlendTableAliasNotFound(String),
 
+    #[error("column reference {0} is ambiguous, please specify the table name")]
+    ColumnReferenceAmbiguous(String),
+
     #[error("unreachable!")]
     Unreachable,
 }
