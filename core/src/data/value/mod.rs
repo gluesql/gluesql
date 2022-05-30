@@ -1,7 +1,6 @@
 use {
     super::{Interval, StringExt},
     crate::{ast::DataType, ast::DateTimeField, result::Result},
-    bigdecimal::ToPrimitive,
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
@@ -389,20 +388,20 @@ impl Value {
     pub fn unary_factorial(&self) -> Result<Value> {
         use Value::*;
 
-        let factorial_function = |a: i64| -> Result<i128> {
+        let factorial_function = |a: i128| -> Result<i128> {
             if a.is_negative() {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
-            (1i128..(a.to_i128().unwrap() + 1i128))
+            (1_i128..(a + 1_i128))
                 .into_iter()
                 .try_fold(1i128, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
         };
 
         match self {
-            I8(a) => factorial_function(*a as i64).map(I128),
-            I64(a) => factorial_function(*a).map(I128),
-            I128(a) => factorial_function(*a as i64).map(I128),
+            I8(a) => factorial_function(*a as i128).map(I128),
+            I64(a) => factorial_function(*a as i128).map(I128),
+            I128(a) => factorial_function(*a as i128).map(I128),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
