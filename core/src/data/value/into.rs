@@ -114,8 +114,8 @@ impl TryInto<i8> for &Value {
                 }
             }
             Value::I8(value) => *value,
-            Value::I64(value) => *value as i8,
-            Value::F64(value) => value.trunc() as i8,
+            Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
+            Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i8>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -154,7 +154,7 @@ impl TryInto<i64> for &Value {
             }
             Value::I8(value) => *value as i64,
             Value::I64(value) => *value,
-            Value::F64(value) => value.trunc() as i64,
+            Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -192,7 +192,7 @@ impl TryInto<f64> for &Value {
                 }
             }
             Value::I8(value) => *value as f64,
-            Value::I64(value) => (*value as f64).trunc(),
+            Value::I64(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => *value,
             Value::Str(value) => value
                 .parse::<f64>()
@@ -417,6 +417,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        // impossible casts to bool
+        test!(Value::I8(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -436,7 +440,7 @@ mod tests {
         test!(Value::I8(122), Ok(122));
         test!(Value::I64(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
-        test!(Value::F64(122.1), Ok(122));
+        test!(Value::F64(122.9), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
         test!(Value::Decimal(Decimal::new(123, 0)), Ok(123));
         test!(
@@ -468,6 +472,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        // impossible casts to i8
+        test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -488,7 +496,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
-        test!(Value::F64(1234567890.1), Ok(1234567890));
+        test!(Value::F64(1234567890.9), Ok(1234567890));
         test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
         test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
         test!(
@@ -537,7 +545,6 @@ mod tests {
         test!(Value::Bool(true), Ok(1.0));
         test!(Value::Bool(false), Ok(0.0));
         test!(Value::I8(122), Ok(122.0));
-        test!(Value::I64(122), Ok(122.0));
         test!(Value::I64(1234567890), Ok(1234567890.0));
         test!(Value::F64(1234567890.1), Ok(1234567890.1));
         test!(Value::Str("1234567890.1".to_owned()), Ok(1234567890.1));
