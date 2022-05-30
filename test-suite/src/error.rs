@@ -3,13 +3,15 @@ use crate::*;
 test_case!(error, async move {
     use gluesql_core::{
         data::RowError,
-        executor::{EvaluateError, ExecuteError, FetchError},
+        executor::{EvaluateError, ExecuteError, FetchError, SelectError},
         translate::TranslateError,
     };
 
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
     run!("INSERT INTO TableA (id) VALUES (9);");
+    run!("CREATE TABLE TableZ (id INTEGER);");
+    run!("INSERT INTO TableZ (id) VALUES (9);");
 
     let test_cases = vec![
         (
@@ -118,6 +120,10 @@ test_case!(error, async move {
         (
             TranslateError::InvalidParamsInDropIndex.into(),
             "DROP INDEX TableA.IndexB.IndexC",
+        ),
+        (
+            SelectError::ColumnReferenceAmbiguous("id".to_string()).into(),
+            "SELECT id FROM TableA JOIN TableZ ON TableA.id = TableZ.id",
         ),
         #[cfg(feature = "alter-table")]
         (
