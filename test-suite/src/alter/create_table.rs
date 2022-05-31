@@ -57,8 +57,8 @@ test_case!(create_table, async move {
             Err(TranslateError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
         ),
         (
-            "CREATE TABLE Gluery (id BYTEA);",
-            Err(TranslateError::UnsupportedDataType("BYTEA".to_owned()).into()),
+            "CREATE TABLE Gluery (id BLOB);",
+            Err(TranslateError::UnsupportedDataType("BLOB".to_owned()).into()),
         ),
         (
             "CREATE TABLE Gluery (id INTEGER CHECK (true));",

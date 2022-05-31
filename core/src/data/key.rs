@@ -28,6 +28,7 @@ pub enum Key {
     I64(i64),
     Bool(bool),
     Str(String),
+    Bytea(Vec<u8>),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
@@ -43,6 +44,8 @@ impl PartialOrd for Key {
             (Key::I8(l), Key::I8(r)) => Some(l.cmp(r)),
             (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
+            (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
+            (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
             (Key::Date(l), Key::Date(r)) => Some(l.cmp(r)),
             (Key::Timestamp(l), Key::Timestamp(r)) => Some(l.cmp(r)),
             (Key::Time(l), Key::Time(r)) => Some(l.cmp(r)),
@@ -65,6 +68,7 @@ impl TryFrom<Value> for Key {
             I8(v) => Ok(Key::I8(v)),
             I64(v) => Ok(Key::I64(v)),
             Str(v) => Ok(Key::Str(v)),
+            Bytea(v) => Ok(Key::Bytea(v)),
             Date(v) => Ok(Key::Date(v)),
             Timestamp(v) => Ok(Key::Timestamp(v)),
             Time(v) => Ok(Key::Time(v)),
@@ -116,6 +120,10 @@ mod tests {
         assert_eq!(
             convert(r#""Hello World""#),
             Ok(Key::Str("Hello World".to_owned()))
+        );
+        assert_eq!(
+            convert("X'1234'"),
+            Ok(Key::Bytea(hex::decode("1234").unwrap())),
         );
         assert!(matches!(convert(r#"DATE "2022-03-03""#), Ok(Key::Date(_))));
         assert!(matches!(convert(r#"TIME "12:30:00""#), Ok(Key::Time(_))));
