@@ -60,7 +60,7 @@ pub enum TableFactor {
     },
     Derived {
         subquery: Query,
-        alias: Option<TableAlias>,
+        alias: TableAlias,
     },
 }
 

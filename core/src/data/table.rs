@@ -14,8 +14,6 @@ use {
 pub enum TableError {
     #[error("unreachable")]
     Unreachable,
-    #[error("Every derived table must have its own alias")]
-    NoAlias,
 }
 
 pub struct Table<'a> {

@@ -148,10 +148,7 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
                 .map(|TableAlias { name, .. }| name.clone())
                 .unwrap_or_else(|| name.clone())
         }
-        TableFactor::Derived { alias, .. } => alias
-            .as_ref()
-            .map(|TableAlias { name, .. }| name.clone())
-            .unwrap_or_else(|| "IVW$01".to_owned()), // RW
+        TableFactor::Derived { alias, .. } => alias.to_owned().name,
     };
 
     context

@@ -145,15 +145,20 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         }),
         SqlTableFactor::Derived {
             subquery, alias, ..
-        } => Ok(TableFactor::Derived {
-            subquery: translate_query(subquery).unwrap(),
-            alias: alias
-                .as_ref()
-                .map(|SqlTableAlias { name, columns }| TableAlias {
-                    name: name.value.to_owned(),
-                    columns: translate_idents(columns),
-                }),
-        }),
+        } => {
+            if let Some(alias) = alias {
+                Ok(TableFactor::Derived {
+                    subquery: translate_query(subquery).unwrap(),
+                    alias: TableAlias {
+                        name: alias.name.value.to_owned(),
+                        columns: translate_idents(&alias.columns),
+                    },
+                })
+            } else {
+                return Err(TranslateError::LackOfAlias.into());
+            }
+        }
+
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
     }
 }

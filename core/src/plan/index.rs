@@ -75,11 +75,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         TableFactor::Table { name, .. } => name.to_owned(),
         TableFactor::Derived { alias, .. } => {
             println!(":+:+:+:ErrNo: 3");
-            if let Some(alias) = alias {
-                ObjectName(vec![alias.to_owned().name])
-            } else {
-                return Err(Error::Table(TableError::NoAlias));
-            }
+            ObjectName(vec![alias.to_owned().name])
         }
     };
     let table_name = get_name(&table_name)?;

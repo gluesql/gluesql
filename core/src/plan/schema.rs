@@ -1,5 +1,3 @@
-use crate::{data::TableError, result::Error};
-
 use {
     super::expr::PlanExpr,
     crate::{

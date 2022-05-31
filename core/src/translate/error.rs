@@ -91,4 +91,7 @@ pub enum TranslateError {
 
     #[error("unsupported table factor: {0}")]
     UnsupportedTableFactor(String),
+
+    #[error("Every derived table must have its own alias")]
+    LackOfAlias,
 }
