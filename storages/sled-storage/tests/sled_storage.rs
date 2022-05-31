@@ -1,5 +1,4 @@
 use {
-    gluesql_core::prelude::Key,
     gluesql_sled_storage::SledStorage,
     std::{cell::RefCell, rc::Rc},
     test_suite::*,
@@ -9,7 +8,7 @@ struct SledTester {
     storage: Rc<RefCell<Option<SledStorage>>>,
 }
 
-impl Tester<Key, SledStorage> for SledTester {
+impl Tester<SledStorage> for SledTester {
     fn new(namespace: &str) -> Self {
         let path = format!("data/{}", namespace);
 

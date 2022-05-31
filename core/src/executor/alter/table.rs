@@ -10,13 +10,13 @@ use {
     futures::stream::{self, TryStreamExt},
 };
 
-pub async fn create_table<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn create_table<T: GStore + GStoreMut>(
+    storage: T,
     name: &ObjectName,
     column_defs: &[ColumnDef],
     if_not_exists: bool,
     source: &Option<Box<Query>>,
-) -> MutResult<U, ()> {
+) -> MutResult<T, ()> {
     let (storage, target_table_name) = get_name(name).try_self(storage)?;
     let schema = (|| async {
         let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
@@ -80,11 +80,11 @@ pub async fn create_table<T, U: GStore<T> + GStoreMut<T>>(
     }
 }
 
-pub async fn drop_table<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn drop_table<T: GStore + GStoreMut>(
+    storage: T,
     table_names: &[ObjectName],
     if_exists: bool,
-) -> MutResult<U, ()> {
+) -> MutResult<T, ()> {
     stream::iter(table_names.iter().map(Ok))
         .try_fold((storage, ()), |(storage, _), table_name| async move {
             let schema = (|| async {
