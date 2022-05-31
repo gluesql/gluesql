@@ -19,7 +19,7 @@ use {
     self::snapshot::Snapshot,
     error::{err_into, tx_err_into},
     gluesql_core::{
-        data::Schema,
+        data::{Key, Schema},
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
@@ -27,7 +27,7 @@ use {
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
-        Config, Db, IVec,
+        Config, Db,
     },
 };
 
@@ -153,5 +153,5 @@ fn fetch_schema(
     Ok((key, schema_snapshot))
 }
 
-impl GStore<IVec> for SledStorage {}
-impl GStoreMut<IVec> for SledStorage {}
+impl GStore<Key> for SledStorage {}
+impl GStoreMut<Key> for SledStorage {}

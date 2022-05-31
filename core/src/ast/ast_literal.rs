@@ -9,6 +9,7 @@ pub enum AstLiteral {
     Boolean(bool),
     Number(BigDecimal),
     QuotedString(String),
+    HexString(String),
     Interval {
         value: String,
         leading_field: Option<DateTimeField>,
