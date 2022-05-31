@@ -174,6 +174,7 @@ async fn scan_join<T>(storage: &dyn Store<T>, join: &Join) -> Result<Vec<Schema>
     Ok(schema_list)
 }
 
+#[async_recursion(?Send)]
 async fn scan_table_factor<T>(
     storage: &dyn Store<T>,
     table_factor: &TableFactor,
@@ -186,7 +187,7 @@ async fn scan_table_factor<T>(
 
             Ok(schema_list)
         }
-        TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+        TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
     }
 }
 

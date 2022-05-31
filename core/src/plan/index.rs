@@ -1,4 +1,6 @@
-use crate::{data::TableError, result::Error};
+use std::rc::Rc;
+
+use crate::{ast::ObjectName, data::TableError, result::Error};
 
 use {
     crate::{
@@ -73,7 +75,18 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
     let TableWithJoins { relation, .. } = &select.from;
     let table_name = match relation {
         TableFactor::Table { name, .. } => name,
-        TableFactor::Derived { .. } => return Err(Error::Table(TableError::Unreachable)),
+        TableFactor::Derived { alias, .. } => {
+            print!(":+:+:+:ErrNo: 3");
+            if let Some(alias) = alias {
+                let alias = &alias.name;
+                let alias = alias.to_owned();
+                let vec = vec![alias];
+                let object = Rc::clone(&object);
+                &object
+            } else {
+                return Err(Error::Table(TableError::Unreachable));
+            }
+        }
     };
     let table_name = get_name(table_name)?;
     let indexes = match schema_map.get(table_name) {
@@ -109,7 +122,10 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } => return Err(Error::Table(TableError::Unreachable)),
+                TableFactor::Derived { .. } => {
+                    print!(":+:+:+:ErrNo: 4");
+                    return Err(Error::Table(TableError::Unreachable));
+                }
             };
 
             let from = TableWithJoins {
@@ -192,7 +208,10 @@ fn plan_select(
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } => return Err(Error::Table(TableError::Unreachable)),
+                TableFactor::Derived { .. } => {
+                    print!(":+:+:+:ErrNo: 5");
+                    return Err(Error::Table(TableError::Unreachable));
+                }
             };
 
             let index = Some(IndexItem {

@@ -40,6 +40,7 @@ pub async fn create_table<T, U: GStore<T> + GStoreMut<T>>(
                     })?;
                     source_column_defs
                 } else {
+                    print!(":+:+:+:ErrNo: 2");
                     return Err(Error::Table(TableError::Unreachable));
                 }
             }
