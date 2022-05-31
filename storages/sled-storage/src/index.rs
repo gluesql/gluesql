@@ -7,7 +7,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::IndexOperator,
-        data::Row,
+        data::{Key, Row},
         prelude::Value,
         result::{Error, Result},
         store::{Index, IndexError, RowIter},
@@ -19,14 +19,14 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Index<IVec> for SledStorage {
+impl Index<Key> for SledStorage {
     async fn scan_indexed_data(
         &self,
         table_name: &str,
         index_name: &str,
         asc: Option<bool>,
         cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter<IVec>> {
+    ) -> Result<RowIter<Key>> {
         let data_keys = {
             #[derive(Iterator, DoubleEndedIterator)]
             enum DataIds<I1, I2, I3, I4> {
@@ -135,7 +135,7 @@ impl Index<IVec> for SledStorage {
                         .ok_or(IndexError::ConflictOnEmptyIndexValueScan)?;
                     let snapshot: Snapshot<Row> = bincode::deserialize(&value).map_err(err_into)?;
                     let row = snapshot.extract(txid, lock_txid);
-                    let item = row.map(|row| (IVec::from(key), row));
+                    let item = row.map(|row| (Key::Bytea(key), row));
 
                     Ok(item)
                 })

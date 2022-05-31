@@ -11,6 +11,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Int(_) => Ok(DataType::Int),
         SqlDataType::Float(_) => Ok(DataType::Float),
         SqlDataType::Text => Ok(DataType::Text),
+        SqlDataType::Bytea => Ok(DataType::Bytea),
         SqlDataType::Date => Ok(DataType::Date),
         SqlDataType::Timestamp => Ok(DataType::Timestamp),
         SqlDataType::Time => Ok(DataType::Time),

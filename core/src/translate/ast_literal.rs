@@ -13,9 +13,8 @@ pub fn translate_ast_literal(sql_value: &SqlValue) -> Result<AstLiteral> {
     Ok(match sql_value {
         SqlValue::Boolean(v) => AstLiteral::Boolean(*v),
         SqlValue::Number(v, _) => AstLiteral::Number(v.clone()),
-        SqlValue::SingleQuotedString(v) | SqlValue::HexStringLiteral(v) => {
-            AstLiteral::QuotedString(v.clone())
-        }
+        SqlValue::SingleQuotedString(v) => AstLiteral::QuotedString(v.clone()),
+        SqlValue::HexStringLiteral(v) => AstLiteral::HexString(v.clone()),
         SqlValue::Interval {
             value,
             leading_field,
