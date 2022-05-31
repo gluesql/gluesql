@@ -20,11 +20,11 @@ use {
     futures::stream::{self, TryStreamExt},
 };
 
-pub async fn alter_table<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn alter_table<T: GStore + GStoreMut>(
+    storage: T,
     name: &ObjectName,
     operation: &AlterTableOperation,
-) -> MutResult<U, ()> {
+) -> MutResult<T, ()> {
     let (storage, table_name) = get_name(name).try_self(storage)?;
 
     match operation {

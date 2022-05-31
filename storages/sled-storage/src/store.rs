@@ -9,7 +9,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Store<Key> for SledStorage {
+impl Store for SledStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let (txid, created_at, temp) = match self.state {
             State::Transaction {
@@ -37,7 +37,7 @@ impl Store<Key> for SledStorage {
         Ok(schema)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter<Key>> {
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..

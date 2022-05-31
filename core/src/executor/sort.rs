@@ -15,8 +15,8 @@ use {
     utils::Vector,
 };
 
-pub struct Sort<'a, T> {
-    storage: &'a dyn GStore<T>,
+pub struct Sort<'a> {
+    storage: &'a dyn GStore,
     context: Option<Rc<FilterContext<'a>>>,
     order_by: &'a [OrderByExpr],
 }
@@ -26,9 +26,9 @@ type Item<'a> = Result<(
     Rc<BlendContext<'a>>,
 )>;
 
-impl<'a, T> Sort<'a, T> {
+impl<'a> Sort<'a> {
     pub fn new(
-        storage: &'a dyn GStore<T>,
+        storage: &'a dyn GStore,
         context: Option<Rc<FilterContext<'a>>>,
         order_by: &'a [OrderByExpr],
     ) -> Self {
