@@ -79,10 +79,10 @@ pub enum PayloadVariable {
 }
 
 #[cfg(feature = "transaction")]
-pub async fn execute_atomic<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn execute_atomic<T: GStore + GStoreMut>(
+    storage: T,
     statement: &Statement,
-) -> MutResult<U, Payload> {
+) -> MutResult<T, Payload> {
     if matches!(
         statement,
         Statement::StartTransaction | Statement::Rollback | Statement::Commit
@@ -108,10 +108,10 @@ pub async fn execute_atomic<T, U: GStore<T> + GStoreMut<T>>(
     }
 }
 
-pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn execute<T: GStore + GStoreMut>(
+    storage: T,
     statement: &Statement,
-) -> MutResult<U, Payload> {
+) -> MutResult<T, Payload> {
     macro_rules! try_block {
         ($storage: expr, $block: block) => {{
             match (|| async { $block })().await {

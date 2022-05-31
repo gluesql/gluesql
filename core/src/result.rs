@@ -117,11 +117,11 @@ pub trait TrySelf<V>
 where
     Self: Sized,
 {
-    fn try_self<T, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V>;
+    fn try_self<T: GStore + GStoreMut>(self, storage: T) -> MutResult<T, V>;
 }
 
 impl<V> TrySelf<V> for Result<V> {
-    fn try_self<T, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V> {
+    fn try_self<T: GStore + GStoreMut>(self, storage: T) -> MutResult<T, V> {
         match self {
             Ok(v) => Ok((storage, v)),
             Err(e) => Err((storage, e)),

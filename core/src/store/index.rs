@@ -39,14 +39,14 @@ pub enum IndexError {
 }
 
 #[async_trait(?Send)]
-pub trait Index<T> {
+pub trait Index {
     async fn scan_indexed_data(
         &self,
         _table_name: &str,
         _index_name: &str,
         _asc: Option<bool>,
         _cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter<T>> {
+    ) -> Result<RowIter> {
         Err(Error::StorageMsg(
             "[Storage] Index::scan_indexed_data is not supported".to_owned(),
         ))

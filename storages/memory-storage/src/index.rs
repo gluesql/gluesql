@@ -3,21 +3,21 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::{IndexOperator, OrderByExpr},
-        data::{Key, Value},
+        data::Value,
         result::{Error, MutResult, Result},
         store::{Index, IndexMut, RowIter},
     },
 };
 
 #[async_trait(?Send)]
-impl Index<Key> for MemoryStorage {
+impl Index for MemoryStorage {
     async fn scan_indexed_data(
         &self,
         _table_name: &str,
         _index_name: &str,
         _asc: Option<bool>,
         _cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter<Key>> {
+    ) -> Result<RowIter> {
         Err(Error::StorageMsg(
             "[MemoryStorage] index is not supported".to_owned(),
         ))

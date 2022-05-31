@@ -19,14 +19,14 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Index<Key> for SledStorage {
+impl Index for SledStorage {
     async fn scan_indexed_data(
         &self,
         table_name: &str,
         index_name: &str,
         asc: Option<bool>,
         cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter<Key>> {
+    ) -> Result<RowIter> {
         let data_keys = {
             #[derive(Iterator, DoubleEndedIterator)]
             enum DataIds<I1, I2, I3, I4> {

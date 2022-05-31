@@ -22,8 +22,8 @@ use {
     utils::OrStream,
 };
 
-pub struct Join<'a, T> {
-    storage: &'a dyn GStore<T>,
+pub struct Join<'a> {
+    storage: &'a dyn GStore,
     join_clauses: &'a [AstJoin],
     join_columns: Vec<Rc<[String]>>,
     filter_context: Option<Rc<FilterContext<'a>>>,
@@ -33,9 +33,9 @@ type JoinItem<'a> = Rc<BlendContext<'a>>;
 type Joined<'a> =
     Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
 
-impl<'a, T> Join<'a, T> {
+impl<'a> Join<'a> {
     pub fn new(
-        storage: &'a dyn GStore<T>,
+        storage: &'a dyn GStore,
         join_clauses: &'a [AstJoin],
         join_columns: Vec<Rc<[String]>>,
         filter_context: Option<Rc<FilterContext<'a>>>,
@@ -78,8 +78,8 @@ impl<'a, T> Join<'a, T> {
     }
 }
 
-async fn join<'a, T>(
-    storage: &'a dyn GStore<T>,
+async fn join<'a>(
+    storage: &'a dyn GStore,
     filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
     columns: Rc<[String]>,
@@ -228,8 +228,8 @@ enum JoinExecutor<'a> {
 }
 
 impl<'a> JoinExecutor<'a> {
-    async fn new<T>(
-        storage: &'a dyn GStore<T>,
+    async fn new(
+        storage: &'a dyn GStore,
         table_name: &'a str,
         table_alias: &'a str,
         columns: Rc<[String]>,
@@ -294,8 +294,8 @@ impl<'a> JoinExecutor<'a> {
     }
 }
 
-async fn check_where_clause<'a, 'b, T>(
-    storage: &'a dyn GStore<T>,
+async fn check_where_clause<'a, 'b>(
+    storage: &'a dyn GStore,
     table_alias: &'a str,
     columns: Rc<[String]>,
     filter_context: Option<Rc<FilterContext<'a>>>,

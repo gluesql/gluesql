@@ -19,7 +19,7 @@ use {
     self::snapshot::Snapshot,
     error::{err_into, tx_err_into},
     gluesql_core::{
-        data::{Key, Schema},
+        data::Schema,
         result::{Error, Result},
         store::{GStore, GStoreMut},
     },
@@ -153,5 +153,5 @@ fn fetch_schema(
     Ok((key, schema_snapshot))
 }
 
-impl GStore<Key> for SledStorage {}
-impl GStoreMut<Key> for SledStorage {}
+impl GStore for SledStorage {}
+impl GStoreMut for SledStorage {}
