@@ -10,12 +10,12 @@ use {
     },
 };
 
-pub async fn create_index<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn create_index<T: GStore + GStoreMut>(
+    storage: T,
     table_name: &ObjectName,
     index_name: &ObjectName,
     column: &OrderByExpr,
-) -> MutResult<U, ()> {
+) -> MutResult<T, ()> {
     let names = (|| async {
         let table_name = get_name(table_name)?;
         let index_name = get_name(index_name)?;
@@ -69,11 +69,11 @@ fn validate_index_expr(columns: &[String], expr: &Expr) -> (bool, bool) {
     }
 }
 
-pub async fn drop_index<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn drop_index<T: GStore + GStoreMut>(
+    storage: T,
     table_name: &ObjectName,
     index_name: &ObjectName,
-) -> MutResult<U, ()> {
+) -> MutResult<T, ()> {
     let names = (|| {
         let table_name = get_name(table_name)?;
         let index_name = get_name(index_name)?;

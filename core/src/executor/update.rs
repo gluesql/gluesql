@@ -24,16 +24,16 @@ pub enum UpdateError {
     ConflictOnSchema,
 }
 
-pub struct Update<'a, T> {
-    storage: &'a dyn GStore<T>,
+pub struct Update<'a> {
+    storage: &'a dyn GStore,
     table_name: &'a str,
     fields: &'a [Assignment],
     column_defs: &'a [ColumnDef],
 }
 
-impl<'a, T> Update<'a, T> {
+impl<'a> Update<'a> {
     pub fn new(
-        storage: &'a dyn GStore<T>,
+        storage: &'a dyn GStore,
         table_name: &'a str,
         fields: &'a [Assignment],
         column_defs: &'a [ColumnDef],

@@ -18,7 +18,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl StoreMut<Key> for SledStorage {
+impl StoreMut for SledStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;

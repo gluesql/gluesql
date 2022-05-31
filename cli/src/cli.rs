@@ -12,21 +12,21 @@ use {
     },
 };
 
-pub struct Cli<T, U, W>
+pub struct Cli<T, W>
 where
-    U: GStore<T> + GStoreMut<T>,
+    T: GStore + GStoreMut,
     W: Write,
 {
-    glue: Glue<T, U>,
+    glue: Glue<T>,
     print: Print<W>,
 }
 
-impl<T, U, W> Cli<T, U, W>
+impl<T, W> Cli<T, W>
 where
-    U: GStore<T> + GStoreMut<T>,
+    T: GStore + GStoreMut,
     W: Write,
 {
-    pub fn new(storage: U, output: W) -> Self {
+    pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
         let print = Print::new(output);
 
