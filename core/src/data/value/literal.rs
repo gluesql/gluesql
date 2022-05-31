@@ -90,7 +90,6 @@ impl TryFrom<&Literal<'_>> for Value {
                 .map(Value::I64)
                 .or_else(|| v.to_f64().map(Value::F64))
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),
