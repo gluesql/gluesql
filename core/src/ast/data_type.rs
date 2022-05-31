@@ -9,6 +9,7 @@ pub enum DataType {
     Int,
     Float,
     Text,
+    Bytea,
     Date,
     Timestamp,
     Time,

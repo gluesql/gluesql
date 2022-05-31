@@ -10,7 +10,7 @@ use crate::store::Transaction;
 use crate::store::{Index, IndexMut};
 use {
     crate::{
-        data::{Row, Schema},
+        data::{Key, Row, Schema},
         executor::execute,
         parse_sql::parse,
         result::{Error, MutResult, Result},
@@ -45,11 +45,8 @@ pub struct MockStorage {
     schema_map: HashMap<String, Schema>,
 }
 
-#[derive(Debug)]
-pub struct Key;
-
 #[async_trait(?Send)]
-impl Store<Key> for MockStorage {
+impl Store for MockStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         if table_name == "__Err__" {
             return Err(Error::StorageMsg(
@@ -63,7 +60,7 @@ impl Store<Key> for MockStorage {
             .transpose()
     }
 
-    async fn scan_data(&self, _table_name: &str) -> Result<RowIter<Key>> {
+    async fn scan_data(&self, _table_name: &str) -> Result<RowIter> {
         Err(Error::StorageMsg(
             "[MockStorage] scan_data not supported".to_owned(),
         ))
@@ -71,7 +68,7 @@ impl Store<Key> for MockStorage {
 }
 
 #[async_trait(?Send)]
-impl StoreMut<Key> for MockStorage {
+impl StoreMut for MockStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let mut storage = self;
 
@@ -111,7 +108,7 @@ impl StoreMut<Key> for MockStorage {
 impl AlterTable for MockStorage {}
 
 #[cfg(feature = "index")]
-impl Index<Key> for MockStorage {}
+impl Index for MockStorage {}
 
 #[cfg(feature = "index")]
 impl IndexMut for MockStorage {}
@@ -122,8 +119,8 @@ impl Transaction for MockStorage {}
 #[cfg(feature = "metadata")]
 impl Metadata for MockStorage {}
 
-impl GStore<Key> for MockStorage {}
-impl GStoreMut<Key> for MockStorage {}
+impl GStore for MockStorage {}
+impl GStoreMut for MockStorage {}
 
 #[cfg(test)]
 mod tests {

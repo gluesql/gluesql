@@ -25,8 +25,8 @@ use {
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
-pub async fn evaluate<'a, T>(
-    storage: &'a dyn GStore<T>,
+pub async fn evaluate<'a>(
+    storage: &'a dyn GStore,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
@@ -200,8 +200,8 @@ pub async fn evaluate<'a, T>(
     }
 }
 
-async fn evaluate_function<'a, T>(
-    storage: &'a dyn GStore<T>,
+async fn evaluate_function<'a>(
+    storage: &'a dyn GStore,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     func: &'a Function,

@@ -27,7 +27,7 @@ use {
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
-        Config, Db, IVec,
+        Config, Db,
     },
 };
 
@@ -153,5 +153,5 @@ fn fetch_schema(
     Ok((key, schema_snapshot))
 }
 
-impl GStore<IVec> for SledStorage {}
-impl GStoreMut<IVec> for SledStorage {}
+impl GStore for SledStorage {}
+impl GStoreMut for SledStorage {}
