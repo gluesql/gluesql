@@ -41,6 +41,9 @@ pub enum ValueError {
     #[error("failed to parse Decimal: {0}")]
     FailedToParseDecimal(String),
 
+    #[error("failed to parse hex string: {0}")]
+    FailedToParseHexString(String),
+
     #[error("non-numeric values {lhs:?} {operator} {rhs:?}")]
     NonNumericMathOperation {
         lhs: Value,

@@ -25,8 +25,8 @@ test_case!(uuid, async move {
             .into()),
         ),
         (
-            r#"INSERT INTO UUID VALUES (X'123')"#,
-            Err(ValueError::FailedToParseUUID("123".to_string()).into()),
+            r#"INSERT INTO UUID VALUES (X'1234')"#,
+            Err(ValueError::FailedToParseUUID("1234".to_string()).into()),
         ),
         (
             r#"INSERT INTO UUID VALUES ('NOT_UUID')"#,

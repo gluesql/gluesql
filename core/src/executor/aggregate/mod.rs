@@ -20,8 +20,8 @@ use {
 
 pub use error::AggregateError;
 
-pub struct Aggregator<'a, T> {
-    storage: &'a dyn GStore<T>,
+pub struct Aggregator<'a> {
+    storage: &'a dyn GStore,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
@@ -31,9 +31,9 @@ pub struct Aggregator<'a, T> {
 type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
     + 'a;
 
-impl<'a, T> Aggregator<'a, T> {
+impl<'a> Aggregator<'a> {
     pub fn new(
-        storage: &'a dyn GStore<T>,
+        storage: &'a dyn GStore,
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
         having: Option<&'a Expr>,

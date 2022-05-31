@@ -44,6 +44,7 @@ impl TryFrom<Value> for JsonValue {
                 .map(JsonValue::Number)
                 .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
             Value::Str(v) => Ok(v.into()),
+            Value::Bytea(v) => Ok(hex::encode(v).into()),
             Value::Date(v) => Ok(v.to_string().into()),
             Value::Timestamp(v) => Ok(DateTime::<Utc>::from_utc(v, Utc).to_string().into()),
             Value::Time(v) => Ok(v.to_string().into()),
@@ -138,6 +139,10 @@ mod tests {
         assert_eq!(
             Value::Str("abc".to_owned()).try_into(),
             Ok(JsonValue::String("abc".to_owned()))
+        );
+        assert_eq!(
+            Value::Bytea(hex::decode("a1b2").unwrap()).try_into(),
+            Ok(JsonValue::String("a1b2".to_owned()))
         );
         assert_eq!(
             Value::Date(NaiveDate::from_ymd(2020, 1, 3)).try_into(),

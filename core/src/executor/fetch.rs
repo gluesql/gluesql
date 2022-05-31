@@ -2,7 +2,7 @@ use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
         ast::{ColumnDef, Expr},
-        data::Row,
+        data::{Key, Row},
         result::{Error, Result},
         store::GStore,
     },
@@ -18,7 +18,7 @@ pub enum FetchError {
     TableNotFound(String),
 }
 
-pub async fn fetch_columns<T>(storage: &dyn GStore<T>, table_name: &str) -> Result<Vec<String>> {
+pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec<String>> {
     Ok(storage
         .fetch_schema(table_name)
         .await?
@@ -29,12 +29,12 @@ pub async fn fetch_columns<T>(storage: &dyn GStore<T>, table_name: &str) -> Resu
         .collect::<Vec<String>>())
 }
 
-pub async fn fetch<'a, T>(
-    storage: &'a dyn GStore<T>,
+pub async fn fetch<'a>(
+    storage: &'a dyn GStore,
     table_name: &'a str,
     columns: Rc<[String]>,
     where_clause: Option<&'a Expr>,
-) -> Result<impl TryStream<Ok = (Rc<[String]>, T, Row), Error = Error> + 'a> {
+) -> Result<impl TryStream<Ok = (Rc<[String]>, Key, Row), Error = Error> + 'a> {
     let rows = storage
         .scan_data(table_name)
         .await
