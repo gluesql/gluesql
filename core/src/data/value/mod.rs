@@ -405,7 +405,7 @@ impl Value {
         match self {
             I8(a) => factorial_function(*a as i128).map(I128),
             I64(a) => factorial_function(*a as i128).map(I128),
-            I128(a) => factorial_function(*a as i128).map(I128),
+            I128(a) => factorial_function(*a).map(I128),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
