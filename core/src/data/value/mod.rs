@@ -1,5 +1,5 @@
 use {
-    super::{Interval, StringExt},
+    super::{Interval, Key, StringExt},
     crate::{ast::DataType, ast::DateTimeField, result::Result},
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
@@ -9,7 +9,6 @@ use {
     std::{cmp::Ordering, collections::HashMap, fmt::Debug},
 };
 
-mod big_endian;
 mod binary_op;
 mod date;
 mod error;
@@ -429,6 +428,11 @@ impl Value {
         };
 
         Ok(Value::I64(value))
+    }
+
+    /// Value to Big-Endian for comparison purpose
+    pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
+        self.try_into().map(|key: Key| key.to_cmp_be_bytes())
     }
 }
 
