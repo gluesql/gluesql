@@ -73,6 +73,7 @@ pub fn decode(expr: &Expr) -> String {
             AstLiteral::Boolean(b) => format!("{:}", b),
             AstLiteral::Number(d) => format!("{:}", d),
             AstLiteral::QuotedString(qs) => format!("\"{:}\"", qs),
+            AstLiteral::HexString(hs) => format!("\"{:}\"", hs),
             AstLiteral::Null => "Null".to_string(),
             AstLiteral::Interval { .. } => "Interval not implemented yet..".to_string(),
         },
