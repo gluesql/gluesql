@@ -35,7 +35,7 @@ test_case!(inline_view, async move {
             ),
         ),
         (
-            "SELECT * FROM (SELECT COUNT(*) cnt FROM Test)",
+            "SELECT * FROM (SELECT COUNT(*) AS cnt FROM Test) AS InlineView",
             select!(id;I64;2),
         ),
     ];

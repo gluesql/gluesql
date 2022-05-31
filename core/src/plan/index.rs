@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{ast::ObjectName, data::TableError, result::Error};
 
 use {
@@ -74,21 +72,17 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
 
     let TableWithJoins { relation, .. } = &select.from;
     let table_name = match relation {
-        TableFactor::Table { name, .. } => name,
+        TableFactor::Table { name, .. } => name.to_owned(),
         TableFactor::Derived { alias, .. } => {
-            print!(":+:+:+:ErrNo: 3");
+            println!(":+:+:+:ErrNo: 3");
             if let Some(alias) = alias {
-                let alias = &alias.name;
-                let alias = alias.to_owned();
-                let vec = vec![alias];
-                let object = Rc::clone(&object);
-                &object
+                ObjectName(vec![alias.to_owned().name])
             } else {
-                return Err(Error::Table(TableError::Unreachable));
+                return Err(Error::Table(TableError::NoAlias));
             }
         }
     };
-    let table_name = get_name(table_name)?;
+    let table_name = get_name(&table_name)?;
     let indexes = match schema_map.get(table_name) {
         Some(Schema { indexes, .. }) => Indexes(indexes.clone()),
         None => {
