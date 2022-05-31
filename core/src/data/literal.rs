@@ -1,6 +1,5 @@
 use {
-    super::StringExt,
-    super::Value,
+    super::{StringExt, Value},
     crate::{
         ast::{AstLiteral, DateTimeField},
         data::BigDecimalExt,
@@ -30,6 +29,9 @@ pub enum LiteralError {
     #[error("unreachable literal unary operation")]
     UnreachableUnaryOperation,
 
+    #[error("failed to decode hex string: {0}")]
+    FailedToDecodeHexString(String),
+
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(String, String),
 
@@ -42,6 +44,7 @@ pub enum Literal<'a> {
     Boolean(bool),
     Number(Cow<'a, BigDecimal>),
     Text(Cow<'a, String>),
+    Bytea(Vec<u8>),
     Interval(super::Interval),
     Null,
 }
@@ -54,6 +57,9 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
             AstLiteral::Boolean(v) => Boolean(*v),
             AstLiteral::Number(v) => Number(Cow::Borrowed(v)),
             AstLiteral::QuotedString(v) => Text(Cow::Borrowed(v)),
+            AstLiteral::HexString(v) => {
+                Bytea(hex::decode(v).map_err(|_| LiteralError::FailedToDecodeHexString(v.clone()))?)
+            }
             AstLiteral::Interval {
                 value,
                 leading_field,
@@ -77,6 +83,7 @@ impl PartialEq<Literal<'_>> for Literal<'_> {
             (Boolean(l), Boolean(r)) => l == r,
             (Number(l), Number(r)) => l == r,
             (Text(l), Text(r)) => l == r,
+            (Bytea(l), Bytea(r)) => l == r,
             (Interval(l), Interval(r)) => l == r,
             _ => false,
         }
@@ -89,6 +96,7 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
             (Boolean(l), Boolean(r)) => Some(l.cmp(r)),
             (Number(l), Number(r)) => Some(l.cmp(r)),
             (Text(l), Text(r)) => Some(l.cmp(r)),
+            (Bytea(l), Bytea(r)) => Some(l.cmp(r)),
             (Interval(l), Interval(r)) => l.partial_cmp(r),
             _ => None,
         }
@@ -124,7 +132,7 @@ impl<'a> Literal<'a> {
             Number(v) => Some(v.to_string()),
             Text(v) => Some(v.into_owned()),
             Interval(v) => Some(v.into()),
-            Null => None,
+            Bytea(_) | Null => None,
         };
 
         match (convert(self), convert(other)) {
@@ -261,12 +269,57 @@ impl<'a> Literal<'a> {
 
 #[cfg(test)]
 mod tests {
-
     use {
         super::Literal::*,
         bigdecimal::BigDecimal,
         std::{borrow::Cow, str::FromStr},
     };
+
+    #[test]
+    fn try_from_ast_literal() {
+        use {
+            super::{Literal, LiteralError},
+            crate::{
+                ast::{AstLiteral, DateTimeField},
+                data::Interval as I,
+                result::Result,
+            },
+        };
+
+        fn test(ast_literal: AstLiteral, literal: Result<Literal>) {
+            assert_eq!((&ast_literal).try_into(), literal);
+        }
+
+        test(AstLiteral::Boolean(true), Ok(Boolean(true)));
+        test(
+            AstLiteral::Number(BigDecimal::from(123)),
+            Ok(Number(Cow::Borrowed(&BigDecimal::from(123)))),
+        );
+        test(
+            AstLiteral::QuotedString("abc".to_owned()),
+            Ok(Text(Cow::Borrowed(&("abc".to_owned())))),
+        );
+        test(
+            AstLiteral::HexString("1A2B".to_owned()),
+            Ok(Bytea(hex::decode("1A2B").unwrap())),
+        );
+        test(
+            AstLiteral::HexString("!*@Q".to_owned()),
+            Err(LiteralError::FailedToDecodeHexString("!*@Q".to_owned()).into()),
+        );
+        test(
+            AstLiteral::Interval {
+                value: "1-2".to_owned(),
+                leading_field: Some(DateTimeField::Year),
+                last_field: Some(DateTimeField::Month),
+            },
+            Ok(Interval(I::Month(14))),
+        );
+        assert!(matches!(
+            Literal::try_from(&AstLiteral::Null).unwrap(),
+            Null
+        ));
+    }
 
     #[test]
     fn arithmetic() {
@@ -416,6 +469,12 @@ mod tests {
                 Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
+        macro_rules! bytea {
+            ($val: expr) => {
+                Bytea(hex::decode($val).unwrap())
+            };
+        }
+
         //Boolean
         assert_eq!(Boolean(true), Boolean(true));
         assert!(Boolean(true) != Boolean(false));
@@ -433,6 +492,11 @@ mod tests {
         assert!(text!("Foo") != text!("Bar"));
         assert!(text!("Foo") != itv!(12));
         assert!(text!("Foo") != Null);
+        //Bytea
+        assert_eq!(bytea!("12A456"), bytea!("12A456"));
+        assert_ne!(bytea!("1324"), bytea!("1352"));
+        assert_ne!(bytea!("1230"), num!("1230"));
+        assert_ne!(bytea!("12"), Null);
         //Interval
         assert_eq!(itv!(123), itv!(123));
         assert!(itv!(123) != itv!(1234));
@@ -457,6 +521,12 @@ mod tests {
                 Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
             };
         }
+        macro_rules! bytea {
+            ($val: expr) => {
+                Bytea(hex::decode($val).unwrap())
+            };
+        }
+
         //Boolean
         assert_eq!(
             Boolean(false).partial_cmp(&Boolean(true)),
@@ -499,6 +569,21 @@ mod tests {
         assert_eq!(text!("b").partial_cmp(&text!("a")), Some(Ordering::Greater));
         assert_eq!(text!("a").partial_cmp(&itv!(1)), None);
         assert_eq!(text!("a").partial_cmp(&Null), None);
+        //Bytea
+        assert_eq!(
+            bytea!("12").partial_cmp(&bytea!("20")),
+            Some(Ordering::Less)
+        );
+        assert_eq!(
+            bytea!("31").partial_cmp(&bytea!("31")),
+            Some(Ordering::Equal)
+        );
+        assert_eq!(
+            bytea!("9A").partial_cmp(&bytea!("2A")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(bytea!("1abc").partial_cmp(&itv!(1)), None);
+        assert_eq!(bytea!("345D").partial_cmp(&Null), None);
         //Interval
         assert_eq!(itv!(1).partial_cmp(&itv!(2)), Some(Ordering::Less));
         assert_eq!(itv!(1).partial_cmp(&itv!(1)), Some(Ordering::Equal));
