@@ -65,7 +65,7 @@ async fn queries() {
                 "type": "SHOW COLUMNS",
                 "columns": [{
                     "name": "id",
-                    "type": "Int"
+                    "type": "INT"
                 }]
             }]),
         ),
