@@ -200,7 +200,6 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
 
                                 async move {
                                     row.validate(&column_defs)?;
-
                                     Ok(row)
                                 }
                             })
@@ -303,9 +302,9 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
                     .map_ok(|Row(values)| values)
                     .try_collect::<Vec<_>>()
                     .await?;
-
                 Ok((labels, rows))
             });
+            println!("-------------row: {:?},{:?}", labels, rows);
 
             Ok((storage, Payload::Select { labels, rows }))
         }

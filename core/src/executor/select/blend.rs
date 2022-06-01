@@ -78,7 +78,7 @@ impl<'a, T> Blend<'a, T> {
             .try_collect::<Vec<Vec<_>>>()
             .await?
             .concat();
-
+        println!("values: {:?}", values);
         Ok(Row(values))
     }
 }

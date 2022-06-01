@@ -57,7 +57,7 @@ impl<'a, T> Aggregator<'a, T> {
                 aggregated: None,
                 next: blend_context,
             });
-
+            println!("herer");
             return Ok(Box::pin(rows));
         }
 
@@ -104,6 +104,7 @@ impl<'a, T> Aggregator<'a, T> {
             .export()?
             .into_iter()
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
+        println!("--- {:?}", rows);
         let rows = stream::iter(rows)
             .filter_map(move |(aggregated, next)| {
                 let filter_context = filter_context.as_ref().map(Rc::clone);
