@@ -15,18 +15,29 @@ use {
 test_case!(inline_view, async move {
     let test_cases = vec![
         (
-            "CREATE TABLE Test (
+            "CREATE TABLE InnerTable (
                 id INTEGER,
                 name TEXT 
             )",
             Payload::Create,
         ),
         (
-            "INSERT INTO Test VALUES (1, 'GLUE'), (2, 'SQL')",
+            "CREATE TABLE OuterTable (
+                id INTEGER,
+                name TEXT 
+            )",
+            Payload::Create,
+        ),
+        (
+            "INSERT INTO InnerTable VALUES (1, 'GLUE'), (2, 'SQL')",
             Payload::Insert(2),
         ),
         (
-            "SELECT * FROM Test",
+            "INSERT INTO OuterTable VALUES (1, 'WORKS!')",
+            Payload::Insert(1),
+        ),
+        (
+            "SELECT * FROM InnerTable",
             select!(
                     id  | name
                     I64 | Str;
@@ -35,9 +46,25 @@ test_case!(inline_view, async move {
             ),
         ),
         (
-            "SELECT * FROM (SELECT COUNT(*) AS cnt FROM Test) AS InlineView",
+            "SELECT * FROM (SELECT COUNT(*) AS cnt FROM InnerTable) AS InlineView",
             select!(cnt;I64;2),
         ),
+        ( // join
+            "SELECT * FROM OuterTable JOIN (SELECT id FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
+            select!(cnt;I64;2),
+        ),
+
+        // group by
+        
+        // limit
+
+        // sort
+
+        // (
+        //     // unsupported lateral
+        //     "SELECT * FROM OuterTable, (SELECT id FROM InnerTable WHERE InnerTable.id = OuterTable.id) AS InlineView",
+        //     select!(cnt;I64;2),
+        // ),
     ];
     for (sql, expected) in test_cases {
         test!(Ok(expected), sql);
