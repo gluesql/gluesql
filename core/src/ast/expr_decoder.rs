@@ -6,27 +6,14 @@ pub fn decode(expr: &Expr) -> String {
         Expr::BinaryOp { left, op, right } => {
             format!("{:} {:} {:}", decode(&*left), op, decode(&*right))
         }
-
-        Expr::CompoundIdentifier(s) => {
-            // is there a better way of doing this?  (ie adding '.' between each string?)
-            // tried fold and couldn't figure out how add . between each item
-            let mut str: String = "".to_string();
-            for _s in s {
-                if !str.is_empty() {
-                    str += "."
-                }
-                str += _s;
-            }
-            str
-        }
+        Expr::CompoundIdentifier(idents) => idents.join("."),
         Expr::IsNull(s) => format!("{:} IS NULL", decode(s)),
         Expr::IsNotNull(s) => format!("{:} IS NOT NULL", decode(s)),
         Expr::InList {
             expr,
             list,
             negated,
-        } => {
-            // is there a fold that will do this?
+        } => { 
             let mut s: String = "".to_string();
 
             for item in list {
