@@ -1,53 +1,72 @@
 use serde::{Deserialize, Serialize};
-use strum_macros::Display;
+use crate::ast::ToSql;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UnaryOperator {
-    #[strum(to_string = "+")]
     Plus,
-    #[strum(to_string = "-")]
     Minus,
-    #[strum(to_string = "~")]
     Not,
-    // #[strum(to_string="factorial")]
-    Factorial, // why is this here and not in the function enum?
+    Factorial,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+impl ToSql for UnaryOperator {
+    fn to_sql(&self) -> String {
+        match self {
+             UnaryOperator::Plus => "+".to_string(),
+             UnaryOperator::Minus => "-".to_string(),
+             UnaryOperator::Not => "<>".to_string(),
+             UnaryOperator::Factorial => "!".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BinaryOperator {
-    #[strum(to_string = "+")]
     Plus,
-    #[strum(to_string = "-")]
     Minus,
-    #[strum(to_string = "*")]
     Multiply,
-    #[strum(to_string = "/")]
     Divide,
-    #[strum(to_string = "%")]
     Modulo,
     StringConcat,
-    #[strum(to_string = ">")]
     Gt,
-    #[strum(to_string = "<")]
     Lt,
-    #[strum(to_string = ">=")]
     GtEq,
-    #[strum(to_string = "<=")]
     LtEq,
-    #[strum(to_string = "==")]
     Eq,
-    #[strum(to_string = "<>")]
     NotEq,
-    #[strum(to_string = "AND")]
     And,
-    #[strum(to_string = "OR")]
     Or,
-    #[strum(to_string = "XOR")]
     Xor,
     Like,
     ILike,
     NotLike,
     NotILike,
+}
+
+impl ToSql for BinaryOperator {
+    fn to_sql(&self) -> String {
+        match self {
+           BinaryOperator::Plus => "+".to_string(),
+           BinaryOperator::Minus => "-".to_string(),
+           BinaryOperator::Multiply => "*".to_string(),
+           BinaryOperator::Divide => "/".to_string(),
+           BinaryOperator::Modulo => "%".to_string(),
+           BinaryOperator::StringConcat => "+".to_string(),
+           BinaryOperator::Gt => ">".to_string(),
+           BinaryOperator::Lt => "<".to_string(),
+           BinaryOperator::GtEq => ">=".to_string(),
+           BinaryOperator::LtEq => "<=".to_string(),
+           BinaryOperator::Eq => "=".to_string(),
+           BinaryOperator::NotEq => "<>".to_string(),
+           BinaryOperator::And => "AND".to_string(),
+           BinaryOperator::Or => "OR".to_string(),
+           BinaryOperator::Xor => "XOR".to_string(),
+           BinaryOperator::Like => "LIKE".to_string(),
+           BinaryOperator::ILike => "ILIKE".to_string(),
+           BinaryOperator::NotLike => "NOTLIKE".to_string(),
+           BinaryOperator::NotILike => "NOTILIKE".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

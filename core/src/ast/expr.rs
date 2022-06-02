@@ -68,11 +68,11 @@ impl ToSql for Expr {
         match self {
             Expr::Identifier(s) => s.to_string(),
             Expr::BinaryOp { left, op, right } => {
-                format!("{:} {:} {:}", &*left.to_sql(), op, &*right.to_sql())
+                format!("{} {} {}", &*left.to_sql(), op.to_sql(), &*right.to_sql())
             }
             Expr::CompoundIdentifier(idents) => idents.join("."),
-            Expr::IsNull(s) => format!("{:} IS NULL", s.to_sql()),
-            Expr::IsNotNull(s) => format!("{:} IS NOT NULL", s.to_sql()),
+            Expr::IsNull(s) => format!("{} IS NULL", s.to_sql()),
+            Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql()),
             Expr::InList {
                 expr,
                 list,
@@ -88,8 +88,8 @@ impl ToSql for Expr {
                 }
 
                 match negated {
-                    true => format!("{:} NOT IN ({:})", expr.to_sql(), s),
-                    false => format!("{:} IN ({:})", expr.to_sql(), s),
+                    true => format!("{} NOT IN ({})", expr.to_sql(), s),
+                    false => format!("{} IN ({})", expr.to_sql(), s),
                 }
             }
             Expr::Between {
@@ -99,67 +99,67 @@ impl ToSql for Expr {
                 high,
             } => match negated {
                 true => format!(
-                    "{:} NOT BETWEEN {:} AND {:}",
+                    "{} NOT BETWEEN {} AND {}",
                     &*expr.to_sql(),
                     &*low.to_sql(),
                     &*high.to_sql()
                 ),
 
                 false => format!(
-                    "{:} BETWEEN {:} AND {:}",
+                    "{} BETWEEN {} AND {}",
                     &*expr.to_sql(),
                     &*low.to_sql(),
                     &*high.to_sql()
                 ),
             },
-            Expr::UnaryOp { op, expr } => format!("{:}{:}", op, &*expr.to_sql()),
+            Expr::UnaryOp { op, expr } => format!("{}{}", op.to_sql(), &*expr.to_sql()),
             Expr::Cast { expr, data_type } => {
-                format!("CAST({:} AS {:})", &*expr.to_sql(), data_type)
+                format!("CAST({} AS {})", &*expr.to_sql(), data_type)
             }
             Expr::Extract { field, expr } => {
-                format!("EXTRACT({:} FROM \"{:}\")", field, &*expr.to_sql())
+                format!("EXTRACT({} FROM \"{}\")", field, &*expr.to_sql())
             }
-            Expr::Nested(expr) => format!("todo:Nested({:})", &*expr.to_sql()),
+            Expr::Nested(expr) => format!("todo:Nested({})", &*expr.to_sql()),
             Expr::Literal(s) => match s {
-                AstLiteral::Boolean(b) => format!("{:}", b),
-                AstLiteral::Number(d) => format!("{:}", d),
-                AstLiteral::QuotedString(qs) => format!("\"{:}\"", qs),
-                AstLiteral::HexString(hs) => format!("\"{:}\"", hs),
+                AstLiteral::Boolean(b) => format!("{}", b),
+                AstLiteral::Number(d) => format!("{}", d),
+                AstLiteral::QuotedString(qs) => format!("\"{}\"", qs),
+                AstLiteral::HexString(hs) => format!("\"{}\"", hs),
                 AstLiteral::Null => "Null".to_string(),
                 AstLiteral::Interval { .. } => "Interval not implemented yet..".to_string(),
             },
-            Expr::TypedString { data_type, value } => format!("{:}(\"{:}\")", data_type, value),
+            Expr::TypedString { data_type, value } => format!("{}(\"{}\")", data_type, value),
             Expr::Case {
                 operand,
                 when_then,
                 else_result,
             } => {
                 let mut str = match operand {
-                    Some(s) => format!("CASE {:}", s.to_sql()),
+                    Some(s) => format!("CASE {}", s.to_sql()),
                     None => "CASE ".to_string(),
                 };
                 for (_when, _then) in when_then {
-                    str += format!("\nWHEN {:} THEN {:}", _when.to_sql(), _then.to_sql()).as_str();
+                    str += format!("\nWHEN {} THEN {}", _when.to_sql(), _then.to_sql()).as_str();
                 }
 
                 match else_result {
-                    Some(s) => str += format!("\nELSE {:}", s.to_sql()).as_str(),
+                    Some(s) => str += format!("\nELSE {}", s.to_sql()).as_str(),
                     None => str += "", // no operation?
                 };
                 str + "\nEND"
             }
             Expr::Aggregate(a) => match &**a {
                 Aggregate::Count(c) => match c {
-                    CountArgExpr::Expr(e) => format!("Count({:})", e.to_sql()),
+                    CountArgExpr::Expr(e) => format!("Count({})", e.to_sql()),
                     CountArgExpr::Wildcard => "Count(*)".to_string(),
                 },
-                Aggregate::Sum(e) => format!("Sum({:})", e.to_sql()),
-                Aggregate::Max(e) => format!("Max({:})", e.to_sql()),
-                Aggregate::Min(e) => format!("Min({:})", e.to_sql()),
-                Aggregate::Avg(e) => format!("Avg({:})", e.to_sql()),
+                Aggregate::Sum(e) => format!("Sum({})", e.to_sql()),
+                Aggregate::Max(e) => format!("Max({})", e.to_sql()),
+                Aggregate::Min(e) => format!("Min({})", e.to_sql()),
+                Aggregate::Avg(e) => format!("Avg({})", e.to_sql()),
             },
             Expr::Function(f) => {
-                format!("{:}(todo:args)", f)
+                format!("{}(todo:args)", f)
             }
             // todo's...  these require enum query..
             Expr::InSubquery {
