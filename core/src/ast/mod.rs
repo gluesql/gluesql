@@ -2,7 +2,6 @@ mod ast_literal;
 mod data_type;
 mod ddl;
 mod expr;
-pub mod expr_decoder;
 mod function;
 mod operator;
 mod query;
@@ -11,7 +10,6 @@ pub use ast_literal::{AstLiteral, DateTimeField, TrimWhereField};
 pub use data_type::DataType;
 pub use ddl::*;
 pub use expr::Expr;
-pub use expr_decoder::*;
 pub use function::{Aggregate, CountArgExpr, Function};
 pub use operator::*;
 pub use query::*;
@@ -21,9 +19,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ObjectName(pub Vec<String>);
 
-pub trait ToSql {              
+pub trait ToSql {
     fn to_sql(&self) -> String;
-}     
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {

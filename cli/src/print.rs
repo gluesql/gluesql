@@ -1,9 +1,9 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
-    gluesql_core::ast::expr_decoder::decode,
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
 };
+use gluesql_core::ast::ToSql;
 
 pub struct Print<W: Write> {
     pub output: W,
@@ -58,7 +58,7 @@ impl<W: Write> Print<W> {
                     table.add_row([
                         index.name.to_string(),
                         index.order.to_string(),
-                        decode(&index.expr),
+                        index.expr.to_sql(),
                     ]);
                 }
                 writeln!(self.output, "{}\n", table)?;
