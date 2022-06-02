@@ -1,9 +1,9 @@
+use gluesql_core::ast::ToSql;
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
 };
-use gluesql_core::ast::ToSql;
 
 pub struct Print<W: Write> {
     pub output: W,

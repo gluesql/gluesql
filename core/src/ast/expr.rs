@@ -1,11 +1,10 @@
 use {
     super::{
         Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Function,
-        Query, UnaryOperator, ToSql,
+        Query, ToSql, UnaryOperator,
     },
     serde::{Deserialize, Serialize},
 };
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Expr {
@@ -176,18 +175,15 @@ impl ToSql for Expr {
 #[cfg(test)]
 mod tests {
     use crate::ast::{
-        Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType,
-        DateTimeField, Expr, Function, UnaryOperator, ToSql,
+        Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Expr,
+        Function, ToSql, UnaryOperator,
     };
     use bigdecimal::BigDecimal;
     use std::str::FromStr;
 
     #[test]
     fn to_sql() {
-        assert_eq!(
-            "id",
-            &Expr::Identifier("id".to_string()).to_sql()
-        );
+        assert_eq!("id", &Expr::Identifier("id".to_string()).to_sql());
 
         assert_eq!(
             "id + num",
@@ -195,7 +191,8 @@ mod tests {
                 left: Box::new(Expr::Identifier("id".to_string())),
                 op: BinaryOperator::Plus,
                 right: Box::new(Expr::Identifier("num".to_string()))
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -203,7 +200,8 @@ mod tests {
             &Expr::UnaryOp {
                 op: UnaryOperator::Minus,
                 expr: Box::new(Expr::Identifier("id".to_string()))
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -212,7 +210,8 @@ mod tests {
                 "id".to_string(),
                 "name".to_string(),
                 "first".to_string()
-            ]).to_sql()
+            ])
+            .to_sql()
         );
 
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
@@ -228,7 +227,8 @@ mod tests {
                     BigDecimal::from_str("1.0").unwrap()
                 ))),
                 data_type: DataType::Int
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -236,7 +236,8 @@ mod tests {
             &Expr::TypedString {
                 data_type: DataType::Int,
                 value: "1".to_string()
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -244,7 +245,8 @@ mod tests {
             &Expr::Extract {
                 field: DateTimeField::Minute,
                 expr: Box::new(Expr::Identifier("2022-05-05 01:02:03".to_string()))
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -254,7 +256,8 @@ mod tests {
                 negated: false,
                 low: Box::new(Expr::Identifier("low".to_string())),
                 high: Box::new(Expr::Identifier("high".to_string()))
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -264,7 +267,8 @@ mod tests {
                 negated: true,
                 low: Box::new(Expr::Identifier("low".to_string())),
                 high: Box::new(Expr::Identifier("high".to_string()))
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -277,7 +281,8 @@ mod tests {
                     Expr::Literal(AstLiteral::QuotedString("c".to_string()))
                 ],
                 negated: false
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -290,7 +295,8 @@ mod tests {
                     Expr::Literal(AstLiteral::QuotedString("c".to_string()))
                 ],
                 negated: true
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         assert_eq!(
@@ -310,49 +316,48 @@ mod tests {
                 else_result: Some(Box::new(Expr::Literal(AstLiteral::QuotedString(
                     "c".to_string()
                 ))))
-            }.to_sql()
+            }
+            .to_sql()
         );
 
         // todo..
         assert_eq!(
             "SIGN(todo:args)",
-            &Expr::Function(Box::new(Function::Sign(Expr::Literal(
-                AstLiteral::Number(BigDecimal::from_str("1.0").unwrap())
-            )))).to_sql()
+            &Expr::Function(Box::new(Function::Sign(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_str("1.0").unwrap()
+            )))))
+            .to_sql()
         );
 
         assert_eq!(
             "Max(id)",
-            &Expr::Aggregate(Box::new(Aggregate::Max(
-                Expr::Identifier("id".to_string())
-            ))).to_sql()
+            &Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_string())))).to_sql()
         );
 
         assert_eq!(
             "Count(*)",
-            &Expr::Aggregate(Box::new(Aggregate::Count(
-                CountArgExpr::Wildcard
-            ))).to_sql()
+            &Expr::Aggregate(Box::new(Aggregate::Count(CountArgExpr::Wildcard))).to_sql()
         );
 
         assert_eq!(
             "Min(id)",
-            &Expr::Aggregate(Box::new(Aggregate::Min(
-                Expr::Identifier("id".to_string())
-            ))).to_sql()
+            &Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_string())))).to_sql()
         );
 
         assert_eq!(
             "Sum(price)",
-            &Expr::Aggregate(Box::new(Aggregate::Sum(
-                Expr::Identifier("price".to_string())
-            ))).to_sql()
+            &Expr::Aggregate(Box::new(Aggregate::Sum(Expr::Identifier(
+                "price".to_string()
+            ))))
+            .to_sql()
         );
 
         assert_eq!(
             "Avg(pay)",
-            &Expr::Aggregate(Box::new(Aggregate::Avg(
-                Expr::Identifier("pay".to_string())))).to_sql()
+            &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier(
+                "pay".to_string()
+            ))))
+            .to_sql()
         );
     }
 }
