@@ -1,8 +1,8 @@
 #![cfg(target_arch = "wasm32")]
 
 use {
-    gluesql_core::prelude::{Payload, PayloadVariable},
     gluesql_core::ast::ToSql,
+    gluesql_core::prelude::{Payload, PayloadVariable},
     serde_json::{json, Value as Json},
     wasm_bindgen::prelude::JsValue,
 };
