@@ -1,5 +1,7 @@
-use crate::ast::ToSql;
-use serde::{Deserialize, Serialize};
+use {
+    crate::ast::ToSql,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum UnaryOperator {
@@ -63,8 +65,8 @@ impl ToSql for BinaryOperator {
             BinaryOperator::Xor => "XOR".to_string(),
             BinaryOperator::Like => "LIKE".to_string(),
             BinaryOperator::ILike => "ILIKE".to_string(),
-            BinaryOperator::NotLike => "NOTLIKE".to_string(),
-            BinaryOperator::NotILike => "NOTILIKE".to_string(),
+            BinaryOperator::NotLike => "NOT LIKE".to_string(),
+            BinaryOperator::NotILike => "NOT ILIKE".to_string(),
         }
     }
 }

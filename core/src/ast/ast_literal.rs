@@ -1,3 +1,6 @@
+use crate::ast::ToSql;
+use crate::data::Interval;
+//use crate::data::Literal;
 use {
     bigdecimal::BigDecimal,
     serde::{Deserialize, Serialize},
@@ -16,6 +19,25 @@ pub enum AstLiteral {
         last_field: Option<DateTimeField>,
     },
     Null,
+}
+
+impl ToSql for AstLiteral {
+    fn to_sql(&self) -> String {
+        match self {
+            AstLiteral::Boolean(b) => b.to_string(),
+            AstLiteral::Number(n) => n.to_string(),
+            AstLiteral::QuotedString(qs) => format!("\"{}\"", qs),
+            AstLiteral::HexString(hs) => format!("\"{}\"", hs),
+            AstLiteral::Interval {
+                value,
+                leading_field,
+                last_field,
+            } => Interval::try_from_literal(value, leading_field.as_ref(), last_field.as_ref())
+                .unwrap()
+                .into(),
+            AstLiteral::Null => "Null".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]

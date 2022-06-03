@@ -1,6 +1,6 @@
-use gluesql_core::ast::ToSql;
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
+    gluesql_core::ast::ToSql,
     gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
 };

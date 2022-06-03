@@ -1,7 +1,7 @@
 use {
     super::{
-        Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Function,
-        Query, ToSql, UnaryOperator,
+        Aggregate, AstLiteral, BinaryOperator, DataType, DateTimeField, Function, Query, ToSql,
+        UnaryOperator,
     },
     serde::{Deserialize, Serialize},
 };
@@ -67,7 +67,7 @@ impl ToSql for Expr {
         match self {
             Expr::Identifier(s) => s.to_string(),
             Expr::BinaryOp { left, op, right } => {
-                format!("{} {} {}", &*left.to_sql(), op.to_sql(), &*right.to_sql())
+                format!("{} {} {}", left.to_sql(), op.to_sql(), right.to_sql())
             }
             Expr::CompoundIdentifier(idents) => idents.join("."),
             Expr::IsNull(s) => format!("{} IS NULL", s.to_sql()),
@@ -77,18 +77,16 @@ impl ToSql for Expr {
                 list,
                 negated,
             } => {
-                let mut s: String = "".to_string();
-
-                for item in list {
-                    if !s.is_empty() {
-                        s += ",";
-                    }
-                    s += &item.to_sql();
-                }
+                let expr = expr.to_sql();
+                let list = list
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
 
                 match negated {
-                    true => format!("{} NOT IN ({})", expr.to_sql(), s),
-                    false => format!("{} IN ({})", expr.to_sql(), s),
+                    true => format!("{expr} NOT IN ({list})"),
+                    false => format!("{expr} IN ({list})"),
                 }
             }
             Expr::Between {
@@ -96,21 +94,16 @@ impl ToSql for Expr {
                 negated,
                 low,
                 high,
-            } => match negated {
-                true => format!(
-                    "{} NOT BETWEEN {} AND {}",
-                    &*expr.to_sql(),
-                    &*low.to_sql(),
-                    &*high.to_sql()
-                ),
+            } => {
+                let expr = expr.to_sql();
+                let low = low.to_sql();
+                let high = high.to_sql();
 
-                false => format!(
-                    "{} BETWEEN {} AND {}",
-                    &*expr.to_sql(),
-                    &*low.to_sql(),
-                    &*high.to_sql()
-                ),
-            },
+                match negated {
+                    true => format!("{} NOT BETWEEN {} AND {}", expr, low, high),
+                    false => format!("{} BETWEEN {} AND {}", expr, low, high),
+                }
+            }
             Expr::UnaryOp { op, expr } => format!("{}{}", op.to_sql(), &*expr.to_sql()),
             Expr::Cast { expr, data_type } => {
                 format!("CAST({} AS {})", &*expr.to_sql(), data_type)
@@ -119,15 +112,8 @@ impl ToSql for Expr {
                 format!("EXTRACT({} FROM \"{}\")", field, &*expr.to_sql())
             }
             Expr::Nested(expr) => format!("todo:Nested({})", &*expr.to_sql()),
-            Expr::Literal(s) => match s {
-                AstLiteral::Boolean(b) => format!("{}", b),
-                AstLiteral::Number(d) => format!("{}", d),
-                AstLiteral::QuotedString(qs) => format!("\"{}\"", qs),
-                AstLiteral::HexString(hs) => format!("\"{}\"", hs),
-                AstLiteral::Null => "Null".to_string(),
-                AstLiteral::Interval { .. } => "Interval not implemented yet..".to_string(),
-            },
-            Expr::TypedString { data_type, value } => format!("{}(\"{}\")", data_type, value),
+            Expr::Literal(s) => s.to_sql(),
+            Expr::TypedString { data_type, value } => format!("{data_type}(\"{value}\")"),
             Expr::Case {
                 operand,
                 when_then,
@@ -147,16 +133,7 @@ impl ToSql for Expr {
                 };
                 str + "\nEND"
             }
-            Expr::Aggregate(a) => match &**a {
-                Aggregate::Count(c) => match c {
-                    CountArgExpr::Expr(e) => format!("Count({})", e.to_sql()),
-                    CountArgExpr::Wildcard => "Count(*)".to_string(),
-                },
-                Aggregate::Sum(e) => format!("Sum({})", e.to_sql()),
-                Aggregate::Max(e) => format!("Max({})", e.to_sql()),
-                Aggregate::Min(e) => format!("Min({})", e.to_sql()),
-                Aggregate::Avg(e) => format!("Avg({})", e.to_sql()),
-            },
+            Expr::Aggregate(a) => a.to_sql(),
             Expr::Function(f) => {
                 format!("{}(todo:args)", f)
             }
@@ -174,15 +151,21 @@ impl ToSql for Expr {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{
-        Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Expr,
-        Function, ToSql, UnaryOperator,
+    use {
+        crate::ast::{
+            Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Expr,
+            Function, ToSql, UnaryOperator,
+        },
+        bigdecimal::BigDecimal,
+        regex::Regex,
+        std::str::FromStr,
     };
-    use bigdecimal::BigDecimal;
-    use std::str::FromStr;
 
     #[test]
     fn to_sql() {
+        let re = Regex::new(r"\n\s+").unwrap();
+        let trim = |s: &str| re.replace_all(s.trim(), "\n").into_owned();
+
         assert_eq!("id", &Expr::Identifier("id".to_string()).to_sql());
 
         assert_eq!(
@@ -272,7 +255,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"id IN ("a","b","c")"#,
+            r#"id IN ("a", "b", "c")"#,
             &Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_string())),
                 list: vec![
@@ -286,7 +269,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"id NOT IN ("a","b","c")"#,
+            r#"id NOT IN ("a", "b", "c")"#,
             &Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_string())),
                 list: vec![
@@ -300,8 +283,16 @@ mod tests {
         );
 
         assert_eq!(
-            "CASE id\nWHEN 1 THEN \"a\"\nWHEN 2 THEN \"b\"\nELSE \"c\"\nEND",
-            &Expr::Case {
+            trim(
+                r#"                                                                           
+                CASE id
+                  WHEN 1 THEN "a"
+                  WHEN 2 THEN "b"
+                  ELSE "c"
+                END
+                "#
+            ),
+            Expr::Case {
                 operand: Some(Box::new(Expr::Identifier("id".to_string()))),
                 when_then: vec![
                     (

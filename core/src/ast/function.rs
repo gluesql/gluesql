@@ -1,5 +1,6 @@
 use {
     super::{ast_literal::TrimWhereField, Expr},
+    crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
@@ -115,8 +116,29 @@ pub enum Aggregate {
     Avg(Expr),
 }
 
+impl ToSql for Aggregate {
+    fn to_sql(&self) -> String {
+        match self {
+            Aggregate::Count(cae) => format!("Count({})", cae.to_sql()),
+            Aggregate::Sum(e) => format!("Sum({})", e.to_sql()),
+            Aggregate::Max(e) => format!("Max({})", e.to_sql()),
+            Aggregate::Min(e) => format!("Min({})", e.to_sql()),
+            Aggregate::Avg(e) => format!("Avg({})", e.to_sql()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CountArgExpr {
     Expr(Expr),
     Wildcard,
+}
+
+impl ToSql for CountArgExpr {
+    fn to_sql(&self) -> String {
+        match self {
+            CountArgExpr::Expr(e) => e.to_sql(),
+            CountArgExpr::Wildcard => "*".to_string(),
+        }
+    }
 }
