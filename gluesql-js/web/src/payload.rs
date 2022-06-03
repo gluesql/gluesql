@@ -2,6 +2,7 @@
 
 use {
     gluesql_core::prelude::{Payload, PayloadVariable},
+    gluesql_core::ast::ToSql,
     serde_json::{json, Value as Json},
     wasm_bindgen::prelude::JsValue,
 };
