@@ -60,10 +60,11 @@ fn convert_payload(payload: Payload) -> Json {
         Payload::ShowIndexes(indexes) => {
             let indexes = indexes
                 .into_iter()
-                .map(|(name, order)| {
+                .map(|(index)| {
                     json!({
-                        "name": name,
-                        "order": order.to_string(),
+                        "name": index.name,
+                        "order": index.order.to_string(),
+                        "description": index.expr.to_sql(),
                     })
                 })
                 .collect();
