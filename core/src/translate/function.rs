@@ -338,6 +338,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 divisor,
             })))
         }
+        "RAND" => {
+            check_len_range(name, args.len(), 0, 1)?;
+            let exprs = args
+                .into_iter()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::Rand(exprs))))
+        }
         "REVERSE" => translate_function_one_arg(Function::Reverse, args, name),
         "REPEAT" => {
             check_len(name, args.len(), 2)?;

@@ -1,6 +1,8 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
+    rand::rngs::StdRng,
+    rand::{Rng, SeedableRng},
     std::cmp::{max, min},
     uuid::Uuid,
 };
@@ -272,6 +274,24 @@ pub fn round(name: String, n: Evaluated<'_>) -> Result<Value> {
 
 pub fn floor(name: String, n: Evaluated<'_>) -> Result<Value> {
     Ok(Value::F64(eval_to_float!(name, n).floor()))
+}
+
+pub fn rand(n: Option<Evaluated<'_>>) -> Result<Value> {
+    let mut rng = StdRng::seed_from_u64(1_u64); // fix me!! this needs to be a global var.
+
+    match n {
+        Some(x) => match x.try_into()? {
+            Value::I8(v) => rng = StdRng::seed_from_u64(v as u64),
+            Value::I64(v) => rng = StdRng::seed_from_u64(v as u64),
+            _ => {}
+        },
+        None => {}
+    }
+    //    Value::I8(seed) => rng = StdRng::seed_from_u64(seed as u64),
+    //    Value::I64(seed) => rng = StdRng::seed_from_u64(seed as u64),
+    //    _ => {},
+    //}
+    Ok(Value::F64(rng.gen()))
 }
 
 pub fn radians(name: String, n: Evaluated<'_>) -> Result<Value> {

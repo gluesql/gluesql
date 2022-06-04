@@ -116,7 +116,7 @@ impl Function {
                 start: expr2,
                 count: Some(expr3),
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
-            Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
+            Self::Concat(exprs) | Self::Rand(exprs) => Exprs::VariableArgs(exprs.iter()),
         }
     }
 }
