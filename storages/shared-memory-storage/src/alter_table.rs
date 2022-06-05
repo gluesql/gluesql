@@ -14,9 +14,8 @@ use {
 #[async_trait(?Send)]
 impl AlterTable for SharedMemoryStorage {
     async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
-        let storage = self;
-        let items = Arc::clone(&storage.items);
-        let mut items = items.write().await;
+        let database = Arc::clone(&self.database);
+        let mut items = database.items.write().await;
 
         match items
             .remove(table_name)
@@ -26,9 +25,9 @@ impl AlterTable for SharedMemoryStorage {
                 item.schema.table_name = new_table_name.to_owned();
                 items.insert(new_table_name.to_owned(), item);
 
-                Ok((storage, ()))
+                Ok((self, ()))
             }
-            Err(err) => Err((storage, err.into())),
+            Err(err) => Err((self, err.into())),
         }
     }
 
@@ -67,8 +66,8 @@ async fn rename_column(
     old_column_name: &str,
     new_column_name: &str,
 ) -> Result<()> {
-    let items = Arc::clone(&storage.items);
-    let mut items = items.write().await;
+    let database = Arc::clone(&storage.database);
+    let mut items = database.items.write().await;
 
     let item = items
         .get_mut(table_name)
@@ -91,8 +90,8 @@ async fn add_column(
     table_name: &str,
     column_def: &ColumnDef,
 ) -> Result<()> {
-    let items = Arc::clone(&storage.items);
-    let mut items = items.write().await;
+    let database = Arc::clone(&storage.database);
+    let mut items = database.items.write().await;
 
     let item = items
         .get(table_name)
@@ -142,8 +141,8 @@ async fn drop_column(
     column_name: &str,
     if_exists: bool,
 ) -> Result<()> {
-    let items = Arc::clone(&storage.items);
-    let mut items = items.write().await;
+    let database = Arc::clone(&storage.database);
+    let mut items = database.items.write().await;
 
     let item = items
         .get_mut(table_name)

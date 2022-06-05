@@ -1,5 +1,5 @@
 use {
-    super::{Key, SharedMemoryStorage},
+    super::SharedMemoryStorage,
     async_trait::async_trait,
     gluesql_core::{
         ast::{IndexOperator, OrderByExpr},
@@ -10,14 +10,14 @@ use {
 };
 
 #[async_trait(?Send)]
-impl Index<Key> for SharedMemoryStorage {
+impl Index for SharedMemoryStorage {
     async fn scan_indexed_data(
         &self,
         _table_name: &str,
         _index_name: &str,
         _asc: Option<bool>,
         _cmp_value: Option<(&IndexOperator, Value)>,
-    ) -> Result<RowIter<Key>> {
+    ) -> Result<RowIter> {
         Err(Error::StorageMsg(
             "[Shared MemoryStorage] index is not supported".to_owned(),
         ))

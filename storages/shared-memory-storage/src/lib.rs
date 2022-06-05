@@ -6,15 +6,16 @@ mod transaction;
 use {
     async_trait::async_trait,
     gluesql_core::{
-        data::{Row, Schema},
+        data::{Key, Row, Schema},
         result::{MutResult, Result},
         store::{GStore, GStoreMut, RowIter, Store, StoreMut},
     },
+    indexmap::IndexMap,
     std::{
-        collections::{BTreeMap, HashMap},
+        collections::HashMap,
         iter::empty,
         sync::{
-            atomic::{AtomicU64, Ordering},
+            atomic::{AtomicI64, Ordering},
             Arc,
         },
     },
@@ -22,29 +23,31 @@ use {
 };
 
 #[derive(Debug)]
-pub struct Key {
-    pub table_name: String,
-    pub id: u64,
-}
-
-#[derive(Debug)]
 pub struct Item {
     pub schema: Schema,
-    pub rows: BTreeMap<u64, Row>,
+    pub rows: IndexMap<Key, Row>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SharedMemoryStorage {
+    pub database: Arc<MemoryStorage>,
 }
 
 #[derive(Debug)]
-pub struct SharedMemoryStorage {
-    pub id_counter: AtomicU64,
+pub struct MemoryStorage {
+    pub id_counter: AtomicI64,
     pub items: Arc<RwLock<HashMap<String, Item>>>,
 }
 
 impl SharedMemoryStorage {
     pub fn new() -> Self {
-        Self {
-            id_counter: AtomicU64::new(0),
+        let database = MemoryStorage {
+            id_counter: AtomicI64::new(0),
             items: Arc::new(RwLock::new(HashMap::new())),
-        }
+        };
+        let database = Arc::new(database);
+
+        Self { database }
     }
 }
 
@@ -55,10 +58,12 @@ impl Default for SharedMemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl Store<Key> for SharedMemoryStorage {
+impl Store for SharedMemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
-        let items = Arc::clone(&self.items);
-        let schema = items
+        let database = Arc::clone(&self.database);
+
+        let schema = database
+            .items
             .read()
             .await
             .get(table_name)
@@ -68,97 +73,81 @@ impl Store<Key> for SharedMemoryStorage {
         schema
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter<Key>> {
-        let items = Arc::clone(&self.items);
-        let items = items.read().await;
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+        let database = Arc::clone(&self.database);
+        let items = database.items.read().await;
 
-        let rows = match items.get(table_name) {
-            Some(item) => &item.rows,
-            None => return Ok(Box::new(empty())),
+        let rows: RowIter = match items.get(table_name) {
+            Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
+            None => Box::new(empty()),
         };
 
-        let rows = rows
-            .iter()
-            .map(|(id, row)| {
-                let key = Key {
-                    table_name: table_name.to_owned(),
-                    id: *id,
-                };
-
-                Ok((key, row.clone()))
-            })
-            .collect::<Vec<_>>()
-            .into_iter();
-
-        Ok(Box::new(rows))
+        Ok(rows)
     }
 }
 
 #[async_trait(?Send)]
-impl StoreMut<Key> for SharedMemoryStorage {
+impl StoreMut for SharedMemoryStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
-        let storage = self;
+        let database = Arc::clone(&self.database);
 
         let table_name = schema.table_name.clone();
         let item = Item {
             schema: schema.clone(),
-            rows: BTreeMap::new(),
+            rows: IndexMap::new(),
         };
 
-        storage.items.write().await.insert(table_name, item);
-        Ok((storage, ()))
+        database.items.write().await.insert(table_name, item);
+        Ok((self, ()))
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
-        let storage = self;
+        let database = Arc::clone(&self.database);
 
-        storage.items.write().await.remove(table_name);
-        Ok((storage, ()))
+        database.items.write().await.remove(table_name);
+        Ok((self, ()))
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
-        let storage = self;
+        let database = Arc::clone(&self.database);
 
-        if let Some(item) = storage.items.write().await.get_mut(table_name) {
+        if let Some(item) = database.items.write().await.get_mut(table_name) {
             for row in rows {
-                let id = storage.id_counter.fetch_add(1, Ordering::SeqCst);
-                item.rows.insert(id, row);
+                let id = database.id_counter.fetch_add(1, Ordering::SeqCst);
+
+                item.rows.insert(Key::I64(id), row);
             }
         }
 
-        Ok((storage, ()))
+        Ok((self, ()))
     }
 
     async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
-        let storage = self;
-        let items = Arc::clone(&storage.items);
-        let mut items = items.write().await;
+        let database = Arc::clone(&self.database);
+        let mut items = database.items.write().await;
 
         if let Some(item) = items.get_mut(table_name) {
             for (key, row) in rows {
-                let id = key.id;
-
-                item.rows.insert(id, row);
+                item.rows.insert(key, row);
             }
         }
 
-        Ok((storage, ()))
+        Ok((self, ()))
     }
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
-        let storage = self;
-        let items = Arc::clone(&storage.items);
-        let mut items = items.write().await;
+        let database = Arc::clone(&self.database);
+        let mut items = database.items.write().await;
 
         if let Some(item) = items.get_mut(table_name) {
             for key in keys {
-                item.rows.remove(&key.id);
+                item.rows.remove(&key);
             }
         }
 
-        Ok((storage, ()))
+        Ok((self, ()))
     }
 }
 
-impl GStore<Key> for SharedMemoryStorage {}
-impl GStoreMut<Key> for SharedMemoryStorage {}
+impl GStore for SharedMemoryStorage {}
+impl GStoreMut for SharedMemoryStorage {}
