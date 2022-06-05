@@ -12,6 +12,7 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
+memory-storage = { package = "gluesql_memory_storage", version = "0.11.0", path = "../memory-storage" }
 gluesql-core = { path = "../../core", version = "0.11.0", features = [
 	"alter-table",
 	"index",
@@ -21,7 +22,6 @@ gluesql-core = { path = "../../core", version = "0.11.0", features = [
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["sync"] }
-indexmap = { version = "1.8", features = ["serde"] }
 
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.11.0", features = [
