@@ -1,4 +1,5 @@
 mod bigdecimal_ext;
+mod custom_type;
 mod interval;
 mod key;
 mod literal;
@@ -11,6 +12,7 @@ pub mod value;
 
 pub use {
     bigdecimal_ext::BigDecimalExt,
+    custom_type::CustomType,
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
     literal::{Literal, LiteralError},

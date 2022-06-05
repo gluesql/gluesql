@@ -17,4 +17,5 @@ pub enum DataType {
     Map,
     List,
     Decimal,
+    CustomType,
 }

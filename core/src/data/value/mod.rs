@@ -1,5 +1,5 @@
 use {
-    super::{Interval, StringExt},
+    super::{CustomType, Interval, StringExt},
     crate::{ast::DataType, ast::DateTimeField, result::Result},
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
@@ -37,6 +37,7 @@ pub enum Value {
     Uuid(u128),
     Map(HashMap<String, Value>),
     List(Vec<Value>),
+    CustomType(Box<CustomType>),
     Null,
 }
 
@@ -110,6 +111,7 @@ impl Value {
             Value::Uuid(_) => matches!(data_type, DataType::Uuid),
             Value::Map(_) => matches!(data_type, DataType::Map),
             Value::List(_) => matches!(data_type, DataType::List),
+            Value::CustomType(_) => matches!(data_type, DataType::CustomType),
             Value::Null => true,
         };
 

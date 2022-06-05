@@ -29,6 +29,7 @@ impl From<&Value> for String {
             Value::List(_) => "[LIST]".to_owned(),
             Value::Decimal(value) => value.to_string(),
             Value::Null => String::from("NULL"),
+            Value::CustomType(_) => String::from("[CUSTOM_TYPE]"),
         }
     }
 }
@@ -88,7 +89,8 @@ impl TryInto<bool> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
-            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+            | Value::Null
+            | Value::CustomType(_) => return Err(ValueError::ImpossibleCast.into()),
         })
     }
 }
@@ -127,7 +129,8 @@ impl TryInto<i8> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
-            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+            | Value::Null
+            | Value::CustomType(_) => return Err(ValueError::ImpossibleCast.into()),
         })
     }
 }
@@ -166,7 +169,8 @@ impl TryInto<i64> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
-            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+            | Value::Null
+            | Value::CustomType(_) => return Err(ValueError::ImpossibleCast.into()),
         })
     }
 }
@@ -205,7 +209,8 @@ impl TryInto<f64> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
-            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+            | Value::Null
+            | Value::CustomType(_) => return Err(ValueError::ImpossibleCast.into()),
         })
     }
 }
@@ -244,7 +249,8 @@ impl TryInto<Decimal> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
-            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+            | Value::Null
+            | Value::CustomType(_) => return Err(ValueError::ImpossibleCast.into()),
         })
     }
 }
