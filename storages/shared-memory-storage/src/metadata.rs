@@ -9,11 +9,8 @@ use {
 impl Metadata for SharedMemoryStorage {
     async fn schema_names(&self) -> Result<Vec<String>> {
         let database = Arc::clone(&self.database);
-        let items = database.items.read().await;
+        let database = database.read().await;
 
-        let mut names: Vec<_> = items.keys().map(Clone::clone).collect();
-        names.sort();
-
-        Ok(names)
+        database.schema_names().await
     }
 }

@@ -10,27 +10,14 @@ use {
         result::{MutResult, Result},
         store::{GStore, GStoreMut, RowIter, Store, StoreMut},
     },
-    indexmap::IndexMap,
-    std::{
-        collections::HashMap,
-        iter::empty,
-        sync::{
-            atomic::{AtomicI64, Ordering},
-            Arc,
-        },
-    },
+    memory_storage::MemoryStorage,
+    std::sync::Arc,
     tokio::sync::RwLock,
 };
 
 #[derive(Debug)]
-pub struct Item {
-    pub schema: Schema,
-    pub rows: IndexMap<Key, Row>,
-}
-
-#[derive(Debug)]
 pub struct SharedMemoryStorage {
-    pub database: Arc<MemoryStorage>,
+    pub database: Arc<RwLock<MemoryStorage>>,
 }
 
 impl Clone for SharedMemoryStorage {
@@ -41,19 +28,10 @@ impl Clone for SharedMemoryStorage {
     }
 }
 
-#[derive(Debug)]
-pub struct MemoryStorage {
-    pub id_counter: AtomicI64,
-    pub items: Arc<RwLock<HashMap<String, Item>>>,
-}
-
 impl SharedMemoryStorage {
     pub fn new() -> Self {
-        let database = MemoryStorage {
-            id_counter: AtomicI64::new(0),
-            items: Arc::new(RwLock::new(HashMap::new())),
-        };
-        let database = Arc::new(database);
+        let database = MemoryStorage::default();
+        let database = Arc::new(RwLock::new(database));
 
         Self { database }
     }
@@ -65,32 +43,27 @@ impl Default for SharedMemoryStorage {
     }
 }
 
+impl From<MemoryStorage> for SharedMemoryStorage {
+    fn from(storage: MemoryStorage) -> Self {
+        let database = Arc::new(RwLock::new(storage));
+        Self { database }
+    }
+}
+
 #[async_trait(?Send)]
 impl Store for SharedMemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let database = Arc::clone(&self.database);
+        let database = database.read().await;
 
-        let schema = database
-            .items
-            .read()
-            .await
-            .get(table_name)
-            .map(|item| Ok(item.schema.clone()))
-            .transpose();
-
-        schema
+        database.fetch_schema(table_name).await
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let database = Arc::clone(&self.database);
-        let items = database.items.read().await;
+        let database = database.read().await;
 
-        let rows: RowIter = match items.get(table_name) {
-            Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
-            None => Box::new(empty()),
-        };
-
-        Ok(rows)
+        database.scan_data(table_name).await
     }
 }
 
@@ -98,60 +71,45 @@ impl Store for SharedMemoryStorage {
 impl StoreMut for SharedMemoryStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
+        let mut database = database.write().await;
 
-        let table_name = schema.table_name.clone();
-        let item = Item {
-            schema: schema.clone(),
-            rows: IndexMap::new(),
-        };
+        MemoryStorage::insert_schema(&mut database, schema);
 
-        database.items.write().await.insert(table_name, item);
         Ok((self, ()))
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
+        let mut database = database.write().await;
 
-        database.items.write().await.remove(table_name);
+        MemoryStorage::delete_schema(&mut database, table_name);
+
         Ok((self, ()))
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
+        let mut database = database.write().await;
 
-        if let Some(item) = database.items.write().await.get_mut(table_name) {
-            for row in rows {
-                let id = database.id_counter.fetch_add(1, Ordering::SeqCst);
-
-                item.rows.insert(Key::I64(id), row);
-            }
-        }
+        MemoryStorage::insert_data(&mut database, table_name, rows);
 
         Ok((self, ()))
     }
 
     async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
-        let mut items = database.items.write().await;
+        let mut database = database.write().await;
 
-        if let Some(item) = items.get_mut(table_name) {
-            for (key, row) in rows {
-                item.rows.insert(key, row);
-            }
-        }
+        MemoryStorage::update_data(&mut database, table_name, rows);
 
         Ok((self, ()))
     }
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
-        let mut items = database.items.write().await;
+        let mut database = database.write().await;
 
-        if let Some(item) = items.get_mut(table_name) {
-            for key in keys {
-                item.rows.remove(&key);
-            }
-        }
+        MemoryStorage::delete_data(&mut database, table_name, keys);
 
         Ok((self, ()))
     }
