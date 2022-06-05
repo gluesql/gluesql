@@ -11,6 +11,18 @@ use {
 };
 
 impl MemoryStorage {
+    pub fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+        let mut item = self
+            .items
+            .remove(table_name)
+            .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
+
+        item.schema.table_name = new_table_name.to_owned();
+        self.items.insert(new_table_name.to_owned(), item);
+
+        Ok(())
+    }
+
     fn rename_column_sync(
         &mut self,
         table_name: &str,
