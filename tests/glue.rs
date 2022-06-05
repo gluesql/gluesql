@@ -5,17 +5,17 @@ use gluesql_core::{
     store::{GStore, GStoreMut},
 };
 
-fn basic<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
     assert_eq!(
         glue.execute("DROP TABLE IF EXISTS api_test"),
-        Ok(Payload::DropTable)
+        Ok(vec![Payload::DropTable])
     );
 
     assert_eq!(
         glue.execute(
             "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
         ),
-        Ok(Payload::Create)
+        Ok(vec![Payload::Create])
     );
 
     assert_eq!(
@@ -27,12 +27,12 @@ fn basic<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
                     (1, 'test1', 'not null', TRUE),
                     (2, 'test2', NULL, FALSE)"
         ),
-        Ok(Payload::Insert(2))
+        Ok(vec![Payload::Insert(2)])
     );
 
     assert_eq!(
         glue.execute("SELECT id, name, is FROM api_test"),
-        Ok(Payload::Select {
+        Ok(vec![Payload::Select {
             labels: vec![String::from("id"), String::from("name"), String::from("is")],
             rows: vec![
                 vec![
@@ -46,14 +46,14 @@ fn basic<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
                     Value::Bool(false)
                 ]
             ]
-        })
+        }])
     );
 }
 
-async fn basic_async<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+async fn basic_async<T: GStore + GStoreMut>(mut glue: Glue<T>) {
     assert_eq!(
         glue.execute_async("DROP TABLE IF EXISTS api_test").await,
-        Ok(Payload::DropTable)
+        Ok(vec![Payload::DropTable])
     );
 
     assert_eq!(
@@ -61,7 +61,7 @@ async fn basic_async<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
             "CREATE TABLE api_test (id INTEGER, name TEXT, nullable TEXT NULL, is BOOLEAN)"
         )
         .await,
-        Ok(Payload::Create)
+        Ok(vec![Payload::Create])
     );
 }
 

@@ -46,9 +46,6 @@ pub enum EvaluateError {
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),
 
-    #[error("unreachable wildcard expression")]
-    UnreachableWildcardExpr,
-
     #[error("unreachable empty context")]
     UnreachableEmptyContext,
 
@@ -60,4 +57,7 @@ pub enum EvaluateError {
 
     #[error("negative substring length not allowed")]
     NegativeSubstrLenNotAllowed,
+
+    #[error("subquery returns more than one row")]
+    MoreThanOneRowReturned,
 }

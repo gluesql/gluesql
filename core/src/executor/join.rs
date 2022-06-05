@@ -1,17 +1,12 @@
 use crate::ast::TableFactor;
 
-use super::select::{select, select_with_labels};
-
-mod hash_key;
-
 use {
-    self::hash_key::HashKey,
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
             JoinOperator as AstJoinOperator,
         },
-        data::{Row, Table},
+        data::{Key, Row, Table},
         executor::{
             context::{BlendContext, FilterContext},
             evaluate::evaluate,
@@ -29,8 +24,8 @@ use {
     utils::OrStream,
 };
 
-pub struct Join<'a, T> {
-    storage: &'a dyn GStore<T>,
+pub struct Join<'a> {
+    storage: &'a dyn GStore,
     join_clauses: &'a [AstJoin],
     join_columns: Vec<Rc<[String]>>,
     filter_context: Option<Rc<FilterContext<'a>>>,
@@ -40,9 +35,9 @@ type JoinItem<'a> = Rc<BlendContext<'a>>;
 type Joined<'a> =
     Pin<Box<dyn TryStream<Ok = JoinItem<'a>, Error = Error, Item = Result<JoinItem<'a>>> + 'a>>;
 
-impl<'a, T> Join<'a, T> {
+impl<'a> Join<'a> {
     pub fn new(
-        storage: &'a dyn GStore<T>,
+        storage: &'a dyn GStore,
         join_clauses: &'a [AstJoin],
         join_columns: Vec<Rc<[String]>>,
         filter_context: Option<Rc<FilterContext<'a>>>,
@@ -85,8 +80,8 @@ impl<'a, T> Join<'a, T> {
     }
 }
 
-async fn join<'a, T>(
-    storage: &'a dyn GStore<T>,
+async fn join<'a>(
+    storage: &'a dyn GStore,
     filter_context: Option<Rc<FilterContext<'a>>>,
     ast_join: &'a AstJoin,
     columns: Rc<[String]>,
@@ -183,8 +178,8 @@ async fn join<'a, T>(
                         value_expr,
                     )
                     .await
-                    .map(Option::<HashKey>::try_from)??
-                    .and_then(|hash_key| rows_map.get(&hash_key));
+                    .map(Key::try_from)?
+                    .map(|hash_key| rows_map.get(&hash_key))?;
 
                     match rows {
                         None => Rows::Empty(empty()),
@@ -234,14 +229,14 @@ enum JoinOperator {
 enum JoinExecutor<'a> {
     NestedLoop,
     Hash {
-        rows_map: HashMap<HashKey, Vec<Row>>,
+        rows_map: HashMap<Key, Vec<Row>>,
         value_expr: &'a Expr,
     },
 }
 
 impl<'a> JoinExecutor<'a> {
-    async fn new<T>(
-        storage: &'a dyn GStore<T>,
+    async fn new(
+        storage: &'a dyn GStore,
         // table_name: &'a str,
         // table_alias: &'a str,
         relation: &TableFactor,
@@ -279,7 +274,7 @@ impl<'a> JoinExecutor<'a> {
                     filter_context,
                 ));
 
-                let hash_key: Option<HashKey> = evaluate(
+                let hash_key: Key = evaluate(
                     storage,
                     Some(&filter_context).map(Rc::clone),
                     None,
@@ -288,10 +283,9 @@ impl<'a> JoinExecutor<'a> {
                 .await?
                 .try_into()?;
 
-                let hash_key = match hash_key {
-                    Some(hash_key) => hash_key,
-                    None => return Ok(None),
-                };
+                if matches!(hash_key, Key::None) {
+                    return Ok(None);
+                }
 
                 match where_clause {
                     Some(expr) => check_expr(storage, Some(filter_context), None, expr)
@@ -313,8 +307,8 @@ impl<'a> JoinExecutor<'a> {
     }
 }
 
-async fn check_where_clause<'a, 'b, T>(
-    storage: &'a dyn GStore<T>,
+async fn check_where_clause<'a, 'b>(
+    storage: &'a dyn GStore,
     table_alias: &'a str,
     columns: Rc<[String]>,
     filter_context: Option<Rc<FilterContext<'a>>>,

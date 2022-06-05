@@ -25,8 +25,8 @@ use {
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
-pub async fn evaluate<'a, T>(
-    storage: &'a dyn GStore<T>,
+pub async fn evaluate<'a>(
+    storage: &'a dyn GStore,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
@@ -68,12 +68,23 @@ pub async fn evaluate<'a, T>(
             }
             .map(Evaluated::from)
         }
-        Expr::Subquery(query) => select(storage, query, context.as_ref().map(Rc::clone))
-            .await?
-            .map_ok(|row| row.take_first_value().map(Evaluated::from))
-            .next()
-            .await
-            .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))?,
+        Expr::Subquery(query) => {
+            let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
+                .await?
+                .map_ok(|row| row.take_first_value().map(Evaluated::from))
+                .take(2)
+                .try_collect::<Vec<_>>()
+                .await?;
+
+            if evaluations.len() > 1 {
+                return Err(EvaluateError::MoreThanOneRowReturned.into());
+            }
+
+            evaluations
+                .into_iter()
+                .next()
+                .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))
+        }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
             let right = eval(right).await?;
@@ -163,9 +174,6 @@ pub async fn evaluate<'a, T>(
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
-        Expr::Wildcard | Expr::QualifiedWildcard(_) => {
-            Err(EvaluateError::UnreachableWildcardExpr.into())
-        }
         Expr::Case {
             operand,
             when_then,
@@ -192,8 +200,8 @@ pub async fn evaluate<'a, T>(
     }
 }
 
-async fn evaluate_function<'a, T>(
-    storage: &'a dyn GStore<T>,
+async fn evaluate_function<'a>(
+    storage: &'a dyn GStore,
     context: Option<Rc<FilterContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     func: &'a Function,
@@ -211,6 +219,11 @@ async fn evaluate_function<'a, T>(
 
     match func {
         // --- text ---
+        Function::Concat(exprs) => {
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::concat(exprs)
+        }
+        Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
         Function::Lower(expr) => f::lower(name(), eval(expr).await?),
         Function::Upper(expr) => f::upper(name(), eval(expr).await?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
@@ -311,9 +324,9 @@ async fn evaluate_function<'a, T>(
         Function::Sin(expr) => f::sin(name(), eval(expr).await?),
         Function::Cos(expr) => f::cos(name(), eval(expr).await?),
         Function::Tan(expr) => f::tan(name(), eval(expr).await?),
-        Function::ASin(expr) => f::asin(name(), eval(expr).await?),
-        Function::ACos(expr) => f::acos(name(), eval(expr).await?),
-        Function::ATan(expr) => f::atan(name(), eval(expr).await?),
+        Function::Asin(expr) => f::asin(name(), eval(expr).await?),
+        Function::Acos(expr) => f::acos(name(), eval(expr).await?),
+        Function::Atan(expr) => f::atan(name(), eval(expr).await?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {

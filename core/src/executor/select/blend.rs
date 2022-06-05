@@ -15,15 +15,15 @@ use {
     std::rc::Rc,
 };
 
-pub struct Blend<'a, T> {
-    storage: &'a dyn GStore<T>,
+pub struct Blend<'a> {
+    storage: &'a dyn GStore,
     filter_context: Option<Rc<FilterContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
-impl<'a, T> Blend<'a, T> {
+impl<'a> Blend<'a> {
     pub fn new(
-        storage: &'a dyn GStore<T>,
+        storage: &'a dyn GStore,
         filter_context: Option<Rc<FilterContext<'a>>>,
         fields: &'a [SelectItem],
     ) -> Self {

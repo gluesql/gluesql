@@ -50,6 +50,16 @@ macro_rules! eval_to_float {
 
 // --- text ---
 
+pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Value> {
+    exprs
+        .into_iter()
+        .map(|expr| expr.try_into())
+        .filter(|value| !matches!(value, Ok(Value::Null)))
+        .try_fold(Value::Str("".to_owned()), |left, right| {
+            Ok(left.concat(&right?))
+        })
+}
+
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {
     Ok(Value::Str(eval_to_str!(name, expr).to_lowercase()))
 }
@@ -224,6 +234,13 @@ pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
         Value::Null => Ok(Value::Null),
         _ => Err(EvaluateError::FunctionRequiresFloatValue(name).into()),
     }
+}
+
+pub fn ifnull(expr: Evaluated<'_>, then: Evaluated<'_>) -> Result<Value> {
+    Ok(match expr.is_null() {
+        true => then.try_into()?,
+        false => expr.try_into()?,
+    })
 }
 
 pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {

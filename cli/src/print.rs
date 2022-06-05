@@ -13,7 +13,11 @@ impl<W: Write> Print<W> {
         Print { output }
     }
 
-    pub fn payload(&mut self, payload: Payload) -> Result<()> {
+    pub fn payloads(&mut self, payloads: &[Payload]) -> Result<()> {
+        payloads.iter().try_for_each(|p| self.payload(p))
+    }
+
+    pub fn payload(&mut self, payload: &Payload) -> Result<()> {
         let mut affected = |n: usize, msg: &str| -> Result<()> {
             writeln!(
                 self.output,
@@ -25,9 +29,9 @@ impl<W: Write> Print<W> {
         };
 
         match payload {
-            Payload::Insert(n) => affected(n, "inserted")?,
-            Payload::Delete(n) => affected(n, "deleted")?,
-            Payload::Update(n) => affected(n, "updated")?,
+            Payload::Insert(n) => affected(*n, "inserted")?,
+            Payload::Delete(n) => affected(*n, "deleted")?,
+            Payload::Update(n) => affected(*n, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => {
                 writeln!(self.output, "v{}\n", v)?
             }
@@ -39,10 +43,25 @@ impl<W: Write> Print<W> {
 
                 writeln!(self.output, "{}\n", table)?;
             }
+            Payload::ShowColumns(columns) => {
+                let mut table = get_table(vec!["Field", "Type"]);
+                for (field, field_type) in columns {
+                    table.add_row([field, &field_type.to_string()]);
+                }
+
+                writeln!(self.output, "{}\n", table)?;
+            }
+            Payload::ShowIndexes(indexes) => {
+                let mut table = get_table(vec!["Index Name", "Order"]);
+                for (index_name, order) in indexes {
+                    table.add_row([index_name, &order.to_string()]);
+                }
+                writeln!(self.output, "{}\n", table)?;
+            }
             Payload::Select { labels, rows } => {
                 let mut table = get_table(labels);
                 for values in rows {
-                    let values: Vec<String> = values.into_iter().map(Into::into).collect();
+                    let values: Vec<String> = values.iter().map(Into::into).collect();
 
                     table.add_row(values);
                 }
@@ -87,6 +106,7 @@ fn get_table<T: Into<Row>>(header: T) -> Table {
 #[cfg(test)]
 mod tests {
     use super::Print;
+    use gluesql_core::data::SchemaIndexOrd;
 
     #[test]
     fn print_help() {
@@ -116,6 +136,7 @@ mod tests {
 
     #[test]
     fn print_payload() {
+        use gluesql_core::ast::DataType;
         use gluesql_core::prelude::{Payload, PayloadVariable, Value};
 
         let mut print = Print::new(Vec::new());
@@ -136,14 +157,14 @@ mod tests {
             };
         }
 
-        test!("0 row inserted", Payload::Insert(0));
-        test!("1 row inserted", Payload::Insert(1));
-        test!("7 rows inserted", Payload::Insert(7));
-        test!("300 rows deleted", Payload::Delete(300));
-        test!("123 rows updated", Payload::Update(123));
+        test!("0 row inserted", &Payload::Insert(0));
+        test!("1 row inserted", &Payload::Insert(1));
+        test!("7 rows inserted", &Payload::Insert(7));
+        test!("300 rows deleted", &Payload::Delete(300));
+        test!("123 rows updated", &Payload::Update(123));
         test!(
             "v11.6.1989",
-            Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned()))
+            &Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned()))
         );
         test!(
             "
@@ -151,7 +172,7 @@ mod tests {
 │ tables │
 ╞════════╡
 ╰────────╯",
-            Payload::ShowVariable(PayloadVariable::Tables(Vec::new()))
+            &Payload::ShowVariable(PayloadVariable::Tables(Vec::new()))
         );
         test!(
             "
@@ -164,7 +185,7 @@ mod tests {
 │ Reserve          │
 │ Splice           │
 ╰──────────────────╯",
-            Payload::ShowVariable(PayloadVariable::Tables(
+            &Payload::ShowVariable(PayloadVariable::Tables(
                 [
                     "Allocator",
                     "ExtendFromWithin",
@@ -188,7 +209,7 @@ mod tests {
 │ 505  │
 │ 1001 │
 ╰──────╯",
-            Payload::Select {
+            &Payload::Select {
                 labels: vec!["id".to_owned()],
                 rows: [101, 202, 301, 505, 1001]
                     .into_iter()
@@ -208,7 +229,7 @@ mod tests {
 │ 4    lim     TRUE  │
 │ 5    kim     TRUE  │
 ╰────────────────────╯",
-            Payload::Select {
+            &Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
                     .map(ToOwned::to_owned)
@@ -241,6 +262,68 @@ mod tests {
                     ],
                 ],
             }
+        );
+
+        test!(
+            "
+╭────────────────────╮
+│ Index Name   Order │
+╞════════════════════╡
+│ id_ndx       ASC   │
+│ name_ndx     DESC  │
+│ date_ndx     BOTH  │
+╰────────────────────╯",
+            &Payload::ShowIndexes(vec![
+                ("id_ndx".to_string(), SchemaIndexOrd::Asc),
+                ("name_ndx".to_string(), SchemaIndexOrd::Desc),
+                ("date_ndx".to_string(), SchemaIndexOrd::Both),
+            ],)
+        );
+
+        test!(
+            "
+╭───────────────────╮
+│ Field     Type    │
+╞═══════════════════╡
+│ id        INT     │
+│ name      TEXT    │
+│ isabear   BOOLEAN │
+╰───────────────────╯",
+            &Payload::ShowColumns(vec![
+                ("id".to_string(), DataType::Int),
+                ("name".to_string(), DataType::Text),
+                ("isabear".to_string(), DataType::Boolean),
+            ],)
+        );
+
+        test!(
+            "
+╭────────────────────╮
+│ Field    Type      │
+╞════════════════════╡
+│ id       INT8      │
+│ calc1    FLOAT     │
+│ cost     DECIMAL   │
+│ DOB      DATE      │
+│ clock    TIME      │
+│ tstamp   TIMESTAMP │
+│ ival     INTERVAL  │
+│ uuid     UUID      │
+│ hash     MAP       │
+│ mylist   LIST      │
+╰────────────────────╯",
+            &Payload::ShowColumns(vec![
+                ("id".to_string(), DataType::Int8),
+                ("calc1".to_string(), DataType::Float),
+                ("cost".to_string(), DataType::Decimal),
+                ("DOB".to_string(), DataType::Date),
+                ("clock".to_string(), DataType::Time),
+                ("tstamp".to_string(), DataType::Timestamp),
+                ("ival".to_string(), DataType::Interval),
+                ("uuid".to_string(), DataType::Uuid),
+                ("hash".to_string(), DataType::Map),
+                ("mylist".to_string(), DataType::List),
+            ],)
         );
     }
 }

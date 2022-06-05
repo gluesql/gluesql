@@ -1,6 +1,8 @@
 use {
     crate::{
-        data::{IntervalError, LiteralError, RowError, StringExtError, TableError, ValueError},
+        data::{
+            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
+        },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
             UpdateError, ValidateError,
@@ -31,6 +33,8 @@ pub enum Error {
     #[error("parsing failed: {0}")]
     Parser(String),
 
+    //#[error("OverflowError: {0}")]
+    //OverflowError(String),
     #[error(transparent)]
     Translate(#[from] TranslateError),
 
@@ -62,6 +66,8 @@ pub enum Error {
     Table(#[from] TableError),
     #[error(transparent)]
     Validate(#[from] ValidateError),
+    #[error(transparent)]
+    Key(#[from] KeyError),
     #[error(transparent)]
     Value(#[from] ValueError),
     #[error(transparent)]
@@ -97,6 +103,7 @@ impl PartialEq for Error {
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,
             (Validate(e), Validate(e2)) => e == e2,
+            (Key(e), Key(e2)) => e == e2,
             (Value(e), Value(e2)) => e == e2,
             (Literal(e), Literal(e2)) => e == e2,
             (Interval(e), Interval(e2)) => e == e2,
@@ -110,11 +117,11 @@ pub trait TrySelf<V>
 where
     Self: Sized,
 {
-    fn try_self<T, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V>;
+    fn try_self<T: GStore + GStoreMut>(self, storage: T) -> MutResult<T, V>;
 }
 
 impl<V> TrySelf<V> for Result<V> {
-    fn try_self<T, U: GStore<T> + GStoreMut<T>>(self, storage: U) -> MutResult<U, V> {
+    fn try_self<T: GStore + GStoreMut>(self, storage: T) -> MutResult<T, V> {
         match self {
             Ok(v) => Ok((storage, v)),
             Err(e) => Err((storage, e)),

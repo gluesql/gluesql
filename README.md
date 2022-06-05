@@ -1,6 +1,7 @@
 # GlueSQL
 
 [![crates.io](https://img.shields.io/crates/v/gluesql.svg)](https://crates.io/crates/gluesql)
+[![npm](https://img.shields.io/npm/v/gluesql?color=red)](https://www.npmjs.com/package/gluesql)
 [![docs.rs](https://docs.rs/gluesql/badge.svg)](https://docs.rs/gluesql)
 [![LICENSE](https://img.shields.io/crates/l/gluesql.svg)](https://github.com/gluesql/gluesql/blob/main/LICENSE)
 ![Rust](https://github.com/gluesql/gluesql/workflows/Rust/badge.svg)
@@ -26,7 +27,7 @@ GlueSQL provides two reference storage options.
 * `Cargo.toml`
 ```toml
 [dependencies]
-gluesql = "0.10"
+gluesql = "0.11"
 ```
 
 * CLI application
@@ -65,7 +66,7 @@ fn main() {
 
 ```toml
 [dependencies.gluesql]
-version = "0.10"
+version = "0.11"
 default-features = false
 features = ["alter-table", "index", "transaction", "metadata"]
 ```
@@ -131,6 +132,13 @@ pub trait Metadata {
 }
 ```
 
+## GlueSQL.js
+
+GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedded database and entirely runs in the browser. GlueSQL.js supports in-memory storage backend, but it will soon to have localStorage, sessionStorage and indexedDB backend supports.
+
+#### More info
+* [GlueSQL for web browsers and Node.js](https://github.com/gluesql/gluesql/tree/main/gluesql-js)
+
 ## SQL Features
 
 GlueSQL currently supports a limited subset of queries. It's being actively developed.
@@ -151,30 +159,6 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 - Nested select, join, aggregations ...
 
 You can see tests for the currently supported queries in [test-suite/src/\*](https://github.com/gluesql/gluesql/tree/main/test-suite/src).
-
-## Use Cases
-
-### [GlueSQL-js](https://github.com/gluesql/gluesql-js)
-
-<https://github.com/gluesql/gluesql-js>
-Use SQL in web browsers!
-GlueSQL-js provides 3 storage options,
-
-- in-memory
-- localStorage
-- sessionStorage
-
-### [GlueSQL Sheets](https://sheets.gluesql.com)
-
-<https://sheets.gluesql.com>
-Turn **Google Sheets** into a SQL database!  
-It uses Google Sheets as a storage.  
-Data is stored and updated from Google Sheets.
-
-### Other expected use cases
-
-- Add SQL layer to NoSQL databases: Redis, CouchDB...
-- Build new SQL database management system
 
 ## Contribution
 

@@ -36,8 +36,8 @@ pub fn get_txdata_key(txid: u64) -> Vec<u8> {
         .collect::<Vec<_>>()
 }
 
-pub fn register(tree: &Db) -> Result<(u64, u128)> {
-    let txid = tree.generate_id().map_err(err_into)?;
+pub fn register(tree: &Db, id_offset: u64) -> Result<(u64, u128)> {
+    let txid = id_offset + tree.generate_id().map_err(err_into)?;
     let key = get_txdata_key(txid);
     let created_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)

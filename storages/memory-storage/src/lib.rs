@@ -6,37 +6,29 @@ mod transaction;
 use {
     async_trait::async_trait,
     gluesql_core::{
-        data::{Row, Schema},
+        data::{Key, Row, Schema},
         result::{MutResult, Result},
         store::{GStore, GStoreMut, RowIter, Store, StoreMut},
     },
+    indexmap::IndexMap,
     serde::{Deserialize, Serialize},
-    std::{
-        collections::{BTreeMap, HashMap},
-        iter::empty,
-    },
+    std::{collections::HashMap, iter::empty},
 };
-
-#[derive(Debug, Clone)]
-pub struct Key {
-    pub table_name: String,
-    pub id: u64,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub schema: Schema,
-    pub rows: BTreeMap<u64, Row>,
+    pub rows: IndexMap<Key, Row>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct MemoryStorage {
-    pub id_counter: u64,
+    pub id_counter: i64,
     pub items: HashMap<String, Item>,
 }
 
 #[async_trait(?Send)]
-impl Store<Key> for MemoryStorage {
+impl Store for MemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.items
             .get(table_name)
@@ -44,40 +36,25 @@ impl Store<Key> for MemoryStorage {
             .transpose()
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter<Key>> {
-        let rows = match self.items.get(table_name) {
-            Some(item) => &item.rows,
-            None => {
-                return Ok(Box::new(empty()));
-            }
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+        let rows: RowIter = match self.items.get(table_name) {
+            Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
+            None => Box::new(empty()),
         };
 
-        let rows = rows
-            .iter()
-            .map(|(id, row)| {
-                let key = Key {
-                    table_name: table_name.to_owned(),
-                    id: *id,
-                };
-
-                Ok((key, row.clone()))
-            })
-            .collect::<Vec<_>>()
-            .into_iter();
-
-        Ok(Box::new(rows))
+        Ok(rows)
     }
 }
 
 #[async_trait(?Send)]
-impl StoreMut<Key> for MemoryStorage {
+impl StoreMut for MemoryStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let mut storage = self;
 
         let table_name = schema.table_name.clone();
         let item = Item {
             schema: schema.clone(),
-            rows: BTreeMap::new(),
+            rows: IndexMap::new(),
         };
 
         storage.items.insert(table_name, item);
@@ -99,7 +76,7 @@ impl StoreMut<Key> for MemoryStorage {
             for row in rows {
                 id += 1;
 
-                item.rows.insert(id, row);
+                item.rows.insert(Key::I64(id), row);
             }
         }
 
@@ -112,9 +89,7 @@ impl StoreMut<Key> for MemoryStorage {
 
         if let Some(item) = storage.items.get_mut(table_name) {
             for (key, row) in rows {
-                let id = key.id;
-
-                item.rows.insert(id, row);
+                item.rows.insert(key, row);
             }
         }
 
@@ -126,7 +101,7 @@ impl StoreMut<Key> for MemoryStorage {
 
         if let Some(item) = storage.items.get_mut(table_name) {
             for key in keys {
-                item.rows.remove(&key.id);
+                item.rows.remove(&key);
             }
         }
 
@@ -134,5 +109,5 @@ impl StoreMut<Key> for MemoryStorage {
     }
 }
 
-impl GStore<Key> for MemoryStorage {}
-impl GStoreMut<Key> for MemoryStorage {}
+impl GStore for MemoryStorage {}
+impl GStoreMut for MemoryStorage {}

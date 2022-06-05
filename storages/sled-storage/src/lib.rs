@@ -27,7 +27,7 @@ use {
         transaction::{
             ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
         },
-        Config, Db, IVec,
+        Config, Db,
     },
 };
 
@@ -47,19 +47,24 @@ pub enum State {
 #[derive(Debug, Clone)]
 pub struct SledStorage {
     pub tree: Db,
+    pub id_offset: u64,
     pub state: State,
     /// transaction timeout in milliseconds
     pub tx_timeout: Option<u128>,
 }
 
+type ExportData<T> = (u64, Vec<(Vec<u8>, Vec<u8>, T)>);
+
 impl SledStorage {
     pub fn new(filename: &str) -> Result<Self> {
         let tree = sled::open(filename).map_err(err_into)?;
+        let id_offset = get_id_offset(&tree)?;
         let state = State::Idle;
         let tx_timeout = Some(DEFAULT_TX_TIMEOUT);
 
         Ok(Self {
             tree,
+            id_offset,
             state,
             tx_timeout,
         })
@@ -69,9 +74,34 @@ impl SledStorage {
         self.tx_timeout = tx_timeout;
     }
 
+    pub fn export(&self) -> Result<ExportData<impl Iterator<Item = Vec<Vec<u8>>>>> {
+        let id_offset = self.tree.generate_id().map_err(err_into)?;
+        let data = self.tree.export();
+
+        Ok((id_offset, data))
+    }
+
+    pub fn import(&mut self, export: ExportData<impl Iterator<Item = Vec<Vec<u8>>>>) -> Result<()> {
+        let (new_id_offset, data) = export;
+        let old_id_offset = get_id_offset(&self.tree)?;
+
+        self.tree.import(data);
+
+        if new_id_offset > old_id_offset {
+            self.tree
+                .insert("id_offset", &new_id_offset.to_be_bytes())
+                .map_err(err_into)?;
+
+            self.id_offset = new_id_offset;
+        }
+
+        Ok(())
+    }
+
     fn update_state(self, state: State) -> Self {
         Self {
             tree: self.tree,
+            id_offset: self.id_offset,
             state,
             tx_timeout: self.tx_timeout,
         }
@@ -83,15 +113,29 @@ impl TryFrom<Config> for SledStorage {
 
     fn try_from(config: Config) -> Result<Self> {
         let tree = config.open().map_err(err_into)?;
+        let id_offset = get_id_offset(&tree)?;
         let state = State::Idle;
         let tx_timeout = Some(DEFAULT_TX_TIMEOUT);
 
         Ok(Self {
             tree,
+            id_offset,
             state,
             tx_timeout,
         })
     }
+}
+
+fn get_id_offset(tree: &Db) -> Result<u64> {
+    tree.get("id_offset")
+        .map_err(err_into)?
+        .map(|id| {
+            id.as_ref()
+                .try_into()
+                .map_err(err_into)
+                .map(u64::from_be_bytes)
+        })
+        .unwrap_or(Ok(0))
 }
 
 fn fetch_schema(
@@ -109,5 +153,5 @@ fn fetch_schema(
     Ok((key, schema_snapshot))
 }
 
-impl GStore<IVec> for SledStorage {}
-impl GStoreMut<IVec> for SledStorage {}
+impl GStore for SledStorage {}
+impl GStoreMut for SledStorage {}

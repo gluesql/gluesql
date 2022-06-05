@@ -20,10 +20,20 @@ pub enum TranslateError {
     #[error("too many params in drop index")]
     TooManyParamsInDropIndex,
 
+    #[error("invalid params in drop index, expected: table_name.index_name")]
+    InvalidParamsInDropIndex,
+
     #[error("function args.length not matching: {name}, expected: {expected}, found: {found}")]
     FunctionArgsLengthNotMatching {
         name: String,
         expected: usize,
+        found: usize,
+    },
+
+    #[error("function {name} requires at least {expected_minimum} argument(s), found: {found}")]
+    FunctionArgsLengthNotMatchingMin {
+        name: String,
+        expected_minimum: usize,
         found: usize,
     },
 
@@ -37,6 +47,12 @@ pub enum TranslateError {
 
     #[error("named function arg is not supported")]
     NamedFunctionArgNotSupported,
+
+    #[error("wildcard function arg is not accepted")]
+    WildcardFunctionArgNotAccepted,
+
+    #[error("qualified wildcard is not supported - COUNT({0})")]
+    QualifiedWildcardInCountNotSupported(String),
 
     #[error("order by - NULLS (FIRST | LAST) is not supported")]
     OrderByNullsFirstOrLastNotSupported,
@@ -58,6 +74,9 @@ pub enum TranslateError {
 
     #[error("unsupported data type: {0}")]
     UnsupportedDataType(String),
+
+    #[error("unsupported datetime field: {0}")]
+    UnsupportedDateTimeField(String),
 
     #[error("unsupported ast literal: {0}")]
     UnsupportedAstLiteral(String),

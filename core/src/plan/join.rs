@@ -170,8 +170,6 @@ impl<'a> Planner<'a> {
     fn subquery_expr(&self, outer_context: Option<Rc<Context<'a>>>, expr: Expr) -> Expr {
         match expr {
             Expr::Identifier(_)
-            | Expr::Wildcard
-            | Expr::QualifiedWildcard(_)
             | Expr::CompoundIdentifier(_)
             | Expr::Literal(_)
             | Expr::TypedString { .. } => expr,

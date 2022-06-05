@@ -31,8 +31,8 @@ use {
 #[cfg(feature = "index")]
 use {super::evaluate::evaluate, crate::ast::IndexItem};
 
-async fn fetch_blended<'a, T>(
-    storage: &'a dyn GStore<T>,
+async fn fetch_blended<'a>(
+    storage: &'a dyn GStore,
     table: Table<'a>,
     columns: Rc<[String]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
@@ -149,8 +149,8 @@ fn get_labels<'a>(
 }
 
 #[async_recursion(?Send)]
-pub async fn select_with_labels<'a, T>(
-    storage: &'a dyn GStore<T>,
+pub async fn select_with_labels<'a>(
+    storage: &'a dyn GStore,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
@@ -349,8 +349,8 @@ pub async fn select_with_labels<'a, T>(
     }
 }
 
-pub async fn select<'a, T>(
-    storage: &'a dyn GStore<T>,
+pub async fn select<'a>(
+    storage: &'a dyn GStore,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {

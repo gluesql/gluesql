@@ -2,23 +2,21 @@ use {
     super::{err_into, lock, SledStorage, Snapshot, State},
     async_trait::async_trait,
     gluesql_core::{
-        data::{Row, Schema},
+        data::{Key, Row, Schema},
         result::{Error, Result},
         store::{RowIter, Store},
     },
-    sled::IVec,
 };
 
 #[async_trait(?Send)]
-impl Store<IVec> for SledStorage {
+impl Store for SledStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let (txid, created_at, temp) = match self.state {
             State::Transaction {
                 txid, created_at, ..
             } => (txid, created_at, false),
-            State::Idle => {
-                lock::register(&self.tree).map(|(txid, created_at)| (txid, created_at, true))?
-            }
+            State::Idle => lock::register(&self.tree, self.id_offset)
+                .map(|(txid, created_at)| (txid, created_at, true))?,
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
@@ -39,7 +37,7 @@ impl Store<IVec> for SledStorage {
         Ok(schema)
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter<IVec>> {
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -58,6 +56,7 @@ impl Store<IVec> for SledStorage {
             .scan_prefix(prefix.as_bytes())
             .map(move |item| {
                 let (key, value) = item.map_err(err_into)?;
+                let key = Key::Bytea(key.to_vec());
                 let snapshot: Snapshot<Row> = bincode::deserialize(&value).map_err(err_into)?;
                 let row = snapshot.extract(txid, lock_txid);
                 let item = row.map(|row| (key, row));

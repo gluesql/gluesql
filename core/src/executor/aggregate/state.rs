@@ -1,8 +1,8 @@
 use {
-    super::{error::AggregateError, hash::GroupKey},
+    super::error::AggregateError,
     crate::{
-        ast::{Aggregate, Expr},
-        data::Value,
+        ast::{Aggregate, CountArgExpr, Expr},
+        data::{Key, Value},
         executor::context::BlendContext,
         result::Result,
     },
@@ -11,7 +11,7 @@ use {
     std::{cmp::Ordering, rc::Rc},
     utils::{IndexMap, Vector},
 };
-type Group = Rc<Vec<GroupKey>>;
+type Group = Rc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
 type Context<'a> = Rc<BlendContext<'a>>;
 enum AggrValue {
@@ -27,8 +27,12 @@ impl<'a> AggrValue {
         let value = value.clone();
 
         match aggr {
-            Aggregate::Count(expr) => AggrValue::Count {
-                wildcard: matches!(expr, Expr::Wildcard),
+            Aggregate::Count(CountArgExpr::Wildcard) => AggrValue::Count {
+                wildcard: true,
+                count: 1,
+            },
+            Aggregate::Count(CountArgExpr::Expr(_)) => AggrValue::Count {
+                wildcard: false,
                 count: 1,
             },
             Aggregate::Sum(_) => AggrValue::Sum(value),
@@ -92,14 +96,14 @@ impl<'a> State<'a> {
     pub fn new() -> Self {
         State {
             index: 0,
-            group: Rc::new(vec![GroupKey::None]),
+            group: Rc::new(vec![Key::None]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
         }
     }
 
-    pub fn apply(self, index: usize, group: Vec<GroupKey>, context: Rc<BlendContext<'a>>) -> Self {
+    pub fn apply(self, index: usize, group: Vec<Key>, context: Rc<BlendContext<'a>>) -> Self {
         let group = Rc::new(group);
         let (groups, contexts) = if self.groups.contains(&group) {
             (self.groups, self.contexts)
@@ -192,8 +196,8 @@ impl<'a> State<'a> {
         };
 
         let value = match aggr {
-            Aggregate::Count(Expr::Wildcard) => &Value::Null,
-            Aggregate::Count(expr)
+            Aggregate::Count(CountArgExpr::Wildcard) => &Value::Null,
+            Aggregate::Count(CountArgExpr::Expr(expr))
             | Aggregate::Sum(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)

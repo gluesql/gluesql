@@ -1,4 +1,9 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{
+        data::KeyError, executor::AggregateError, prelude::Value::*, translate::TranslateError,
+    },
+};
 
 test_case!(aggregate, async move {
     run!(
@@ -69,8 +74,11 @@ test_case!(aggregate, async move {
         test!(Ok(expected), sql);
     }
 
-    use gluesql_core::executor::AggregateError;
     let error_cases = vec![
+        (
+            AggregateError::OnlyIdentifierAllowed.into(),
+            "SELECT SUM(ifnull(age, 0)) from Item;",
+        ),
         (
             AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
@@ -82,6 +90,14 @@ test_case!(aggregate, async move {
         (
             AggregateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",
+        ),
+        (
+            TranslateError::QualifiedWildcardInCountNotSupported("Foo.*".to_owned()).into(),
+            "SELECT COUNT(Foo.*) FROM Item;",
+        ),
+        (
+            TranslateError::WildcardFunctionArgNotAccepted.into(),
+            "SELECT SUM(*) FROM Item;",
         ),
     ];
 
@@ -167,13 +183,8 @@ test_case!(group_by, async move {
         test!(Ok(expected), sql);
     }
 
-    use gluesql_core::data::ValueError;
-    let error_cases = vec![(
-        ValueError::GroupByNotSupported("FLOAT".to_owned()).into(),
-        "SELECT * FROM Item GROUP BY ratio;",
-    )];
-
-    for (error, sql) in error_cases {
-        test!(Err(error), sql);
-    }
+    test!(
+        Err(KeyError::FloatTypeKeyNotSupported.into()),
+        "SELECT * FROM Item GROUP BY ratio;"
+    );
 });

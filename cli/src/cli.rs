@@ -12,21 +12,21 @@ use {
     },
 };
 
-pub struct Cli<T, U, W>
+pub struct Cli<T, W>
 where
-    U: GStore<T> + GStoreMut<T>,
+    T: GStore + GStoreMut,
     W: Write,
 {
-    glue: Glue<T, U>,
+    glue: Glue<T>,
     print: Print<W>,
 }
 
-impl<T, U, W> Cli<T, U, W>
+impl<T, W> Cli<T, W>
 where
-    U: GStore<T> + GStoreMut<T>,
+    T: GStore + GStoreMut,
     W: Write,
 {
-    pub fn new(storage: U, output: W) -> Self {
+    pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
         let print = Print::new(output);
 
@@ -81,7 +81,7 @@ where
                     break;
                 }
                 Command::Execute(sql) => match self.glue.execute(sql.as_str()) {
-                    Ok(payload) => self.print.payload(payload)?,
+                    Ok(payloads) => self.print.payloads(&payloads)?,
                     Err(e) => {
                         println!("[error] {}\n", e);
                     }
@@ -102,7 +102,7 @@ where
         File::open(filename)?.read_to_string(&mut sqls)?;
         for sql in sqls.split(';').filter(|sql| !sql.trim().is_empty()) {
             match self.glue.execute(sql) {
-                Ok(payload) => self.print.payload(payload)?,
+                Ok(payloads) => self.print.payloads(&payloads)?,
                 Err(e) => {
                     println!("[error] {}\n", e);
                     break;

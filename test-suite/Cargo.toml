@@ -1,6 +1,6 @@
 [package]
 name = "gluesql-test-suite"
-version = "0.10.2"
+version = "0.11.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
@@ -9,11 +9,13 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-gluesql-core = { path = "../core", version = "0.10.2" }
+gluesql-core = { path = "../core", version = "0.11.0" }
 async-trait = "0.1"
 bigdecimal = "0.3"
 uuid = "0.8"
 chrono = "0.4"
+rust_decimal = "1"
+hex = "0.4"
 
 [features]
 alter-table = ["gluesql-core/alter-table"]

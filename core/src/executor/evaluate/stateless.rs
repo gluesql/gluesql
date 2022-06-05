@@ -101,9 +101,6 @@ pub fn evaluate_stateless<'a>(
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
-        Expr::Wildcard | Expr::QualifiedWildcard(_) => {
-            Err(EvaluateError::UnreachableWildcardExpr.into())
-        }
         Expr::Function(func) => evaluate_function(context, func),
         _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),
     }
@@ -126,6 +123,11 @@ fn evaluate_function<'a>(
 
     match func {
         // --- text ---
+        Function::Concat(exprs) => {
+            let exprs = exprs.iter().map(eval).collect::<Result<_>>()?;
+
+            f::concat(exprs)
+        }
         Function::Lower(expr) => f::lower(name(), eval(expr)?),
         Function::Upper(expr) => f::upper(name(), eval(expr)?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
@@ -191,6 +193,7 @@ fn evaluate_function<'a>(
             f::power(name(), expr, power)
         }
         Function::Abs(expr) => f::abs(name(), eval(expr)?),
+        Function::IfNull { expr, then } => f::ifnull(eval(expr)?, eval(then)?),
         Function::Sign(expr) => f::sign(name(), eval(expr)?),
         Function::Ceil(expr) => f::ceil(name(), eval(expr)?),
         Function::Round(expr) => f::round(name(), eval(expr)?),
@@ -211,9 +214,9 @@ fn evaluate_function<'a>(
         Function::Sin(expr) => f::sin(name(), eval(expr)?),
         Function::Cos(expr) => f::cos(name(), eval(expr)?),
         Function::Tan(expr) => f::tan(name(), eval(expr)?),
-        Function::ASin(expr) => f::asin(name(), eval(expr)?),
-        Function::ACos(expr) => f::acos(name(), eval(expr)?),
-        Function::ATan(expr) => f::atan(name(), eval(expr)?),
+        Function::Asin(expr) => f::asin(name(), eval(expr)?),
+        Function::Acos(expr) => f::acos(name(), eval(expr)?),
+        Function::Atan(expr) => f::atan(name(), eval(expr)?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {

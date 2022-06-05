@@ -8,47 +8,47 @@ use {
         store::{GStore, GStoreMut},
         translate::translate,
     },
-    futures::executor::block_on,
-    std::marker::PhantomData,
+    futures::{
+        executor::block_on,
+        stream::{self, StreamExt},
+        TryStreamExt,
+    },
 };
 
-pub struct Glue<T, U: GStore<T> + GStoreMut<T>> {
-    _marker: PhantomData<T>,
-    pub storage: Option<U>,
+pub struct Glue<T: GStore + GStoreMut> {
+    pub storage: Option<T>,
 }
 
-impl<T, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
-    pub fn new(storage: U) -> Self {
-        let storage = Some(storage);
-
+impl<T: GStore + GStoreMut> Glue<T> {
+    pub fn new(storage: T) -> Self {
         Self {
-            _marker: PhantomData,
-            storage,
+            storage: Some(storage),
         }
     }
 
-    pub async fn plan<Sql: AsRef<str>>(&self, sql: Sql) -> Result<Statement> {
+    pub async fn plan<Sql: AsRef<str>>(&self, sql: Sql) -> Result<Vec<Statement>> {
         let parsed = parse(sql)?;
-        let statement = translate(&parsed[0])?;
         let storage = self.storage.as_ref().unwrap();
-
-        plan(storage, statement).await
+        stream::iter(parsed)
+            .map(|p| translate(&p))
+            .then(|statement| async move { plan(storage, statement?).await })
+            .try_collect()
+            .await
     }
 
-    pub fn execute_stmt(&mut self, statement: Statement) -> Result<Payload> {
+    pub fn execute_stmt(&mut self, statement: &Statement) -> Result<Payload> {
         block_on(self.execute_stmt_async(statement))
     }
 
-    pub fn execute<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Payload> {
-        let statement = block_on(self.plan(sql))?;
-
-        self.execute_stmt(statement)
+    pub fn execute<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Payload>> {
+        let statements = block_on(self.plan(sql))?;
+        statements.iter().map(|s| self.execute_stmt(s)).collect()
     }
 
-    pub async fn execute_stmt_async(&mut self, statement: Statement) -> Result<Payload> {
+    pub async fn execute_stmt_async(&mut self, statement: &Statement) -> Result<Payload> {
         let storage = self.storage.take().unwrap();
 
-        match execute(storage, &statement).await {
+        match execute(storage, statement).await {
             Ok((storage, payload)) => {
                 self.storage = Some(storage);
 
@@ -62,9 +62,14 @@ impl<T, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
         }
     }
 
-    pub async fn execute_async<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Payload> {
-        let statement = self.plan(sql).await?;
+    pub async fn execute_async<Sql: AsRef<str>>(&mut self, sql: Sql) -> Result<Vec<Payload>> {
+        let statements = self.plan(sql).await?;
+        let mut payloads = Vec::<Payload>::new();
+        for statement in statements.iter() {
+            let payload = self.execute_stmt_async(statement).await?;
+            payloads.push(payload);
+        }
 
-        self.execute_stmt_async(statement).await
+        Ok(payloads)
     }
 }

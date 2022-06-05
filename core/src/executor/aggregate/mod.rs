@@ -1,5 +1,4 @@
 mod error;
-mod hash;
 mod state;
 
 use {
@@ -11,6 +10,7 @@ use {
     },
     crate::{
         ast::{Expr, SelectItem},
+        data::Key,
         result::{Error, Result},
         store::GStore,
     },
@@ -18,10 +18,10 @@ use {
     std::{pin::Pin, rc::Rc},
 };
 
-pub use {error::AggregateError, hash::GroupKey};
+pub use error::AggregateError;
 
-pub struct Aggregator<'a, T> {
-    storage: &'a dyn GStore<T>,
+pub struct Aggregator<'a> {
+    storage: &'a dyn GStore,
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
@@ -31,9 +31,9 @@ pub struct Aggregator<'a, T> {
 type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
     + 'a;
 
-impl<'a, T> Aggregator<'a, T> {
+impl<'a> Aggregator<'a> {
     pub fn new(
-        storage: &'a dyn GStore<T>,
+        storage: &'a dyn GStore,
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
         having: Option<&'a Expr>,
@@ -80,8 +80,8 @@ impl<'a, T> Aggregator<'a, T> {
                     .await?;
                 let group = evaluated
                     .iter()
-                    .map(GroupKey::try_from)
-                    .collect::<Result<Vec<GroupKey>>>()?;
+                    .map(Key::try_from)
+                    .collect::<Result<Vec<Key>>>()?;
 
                 let state = state.apply(index, group, Rc::clone(&blend_context));
                 let state = self

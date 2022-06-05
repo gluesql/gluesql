@@ -1,5 +1,5 @@
 use {
-    super::{Interval, StringExt},
+    super::{Interval, Key, StringExt},
     crate::{ast::DataType, ast::DateTimeField, result::Result},
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
@@ -9,18 +9,16 @@ use {
     std::{cmp::Ordering, collections::HashMap, fmt::Debug},
 };
 
-mod big_endian;
 mod binary_op;
 mod date;
 mod error;
-mod group_key;
 mod into;
 mod json;
 mod literal;
 mod selector;
-mod unique_key;
 mod uuid;
 
+pub use error::NumericBinaryOperator;
 pub use error::ValueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,6 +29,7 @@ pub enum Value {
     F64(f64),
     Decimal(Decimal),
     Str(String),
+    Bytea(Vec<u8>),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
@@ -50,6 +49,7 @@ impl PartialEq<Value> for Value {
             (Value::Decimal(l), Value::Decimal(r)) => l == r,
             (Value::Bool(l), Value::Bool(r)) => l == r,
             (Value::Str(l), Value::Str(r)) => l == r,
+            (Value::Bytea(l), Value::Bytea(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
             (Value::Timestamp(l), Value::Date(r)) => l == &r.and_hms(0, 0, 0),
@@ -73,6 +73,7 @@ impl PartialOrd<Value> for Value {
             (Value::Decimal(l), Value::Decimal(r)) => Some(l.cmp(r)),
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
+            (Value::Bytea(l), Value::Bytea(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),
             (Value::Timestamp(l), Value::Date(r)) => Some(l.cmp(&r.and_hms(0, 0, 0))),
@@ -91,6 +92,7 @@ impl Value {
             Value::I8(v) => *v == 0,
             Value::I64(v) => *v == 0,
             Value::F64(v) => *v == 0.0,
+            Value::Decimal(v) => *v == Decimal::ZERO,
             _ => false,
         }
     }
@@ -103,6 +105,7 @@ impl Value {
             Value::Decimal(_) => matches!(data_type, DataType::Decimal),
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
             Value::Str(_) => matches!(data_type, DataType::Text),
+            Value::Bytea(_) => matches!(data_type, DataType::Bytea),
             Value::Date(_) => matches!(data_type, DataType::Date),
             Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
             Value::Time(_) => matches!(data_type, DataType::Time),
@@ -140,6 +143,7 @@ impl Value {
             | (DataType::Decimal, Value::Decimal(_))
             | (DataType::Boolean, Value::Bool(_))
             | (DataType::Text, Value::Str(_))
+            | (DataType::Bytea, Value::Bytea(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
@@ -151,6 +155,7 @@ impl Value {
             (DataType::Int8, value) => value.try_into().map(Value::I8),
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Float, value) => value.try_into().map(Value::F64),
+            (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Time, value) => value.try_into().map(Value::Time),
@@ -176,7 +181,7 @@ impl Value {
             (I8(a), b) => a.try_add(b),
             (I64(a), b) => a.try_add(b),
             (F64(a), b) => a.try_add(b),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a + b)),
+            (Decimal(a), b) => a.try_add(b),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
             (Date(a), Interval(b)) => b.add_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.add_timestamp(a).map(Timestamp),
@@ -189,13 +194,17 @@ impl Value {
             | (Null, Date(_))
             | (Null, Timestamp(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::AddOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Add,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -207,7 +216,7 @@ impl Value {
             (I8(a), _) => a.try_subtract(other),
             (I64(a), _) => a.try_subtract(other),
             (F64(a), _) => a.try_subtract(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a - b)),
+            (Decimal(a), _) => a.try_subtract(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
             (Date(a), Interval(b)) => b.subtract_from_date(a).map(Timestamp),
             (Timestamp(a), Interval(b)) => b.subtract_from_timestamp(a).map(Timestamp),
@@ -235,13 +244,17 @@ impl Value {
             | (Null, Timestamp(_))
             | (Null, Time(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Date(_), Null)
             | (Timestamp(_), Null)
             | (Time(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::SubtractOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Subtract,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -252,7 +265,7 @@ impl Value {
             (I8(a), _) => a.try_multiply(other),
             (I64(a), _) => a.try_multiply(other),
             (F64(a), _) => a.try_multiply(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a * b)),
+            (Decimal(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
@@ -261,17 +274,21 @@ impl Value {
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Interval(_))
-            | (Decimal(_), Null)
             | (Interval(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::MultiplyOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Multiply,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
     pub fn divide(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if self.is_zero() {
+        if other.is_zero() {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
@@ -279,7 +296,7 @@ impl Value {
             (I8(a), _) => a.try_divide(other),
             (I64(a), _) => a.try_divide(other),
             (F64(a), _) => a.try_divide(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a / b)),
+            (Decimal(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
@@ -288,16 +305,20 @@ impl Value {
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Interval(_), Null)
-            | (Decimal(_), Null)
             | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::DivideOnNonNumeric(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Divide,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
     pub fn modulo(&self, other: &Value) -> Result<Value> {
         use Value::*;
 
-        if self.is_zero() {
+        if other.is_zero() {
             return Err(ValueError::DivisorShouldNotBeZero.into());
         }
 
@@ -305,14 +326,16 @@ impl Value {
             (I8(a), _) => a.try_modulo(other),
             (I64(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
-            (Decimal(a), Decimal(b)) => Ok(Decimal(a % b)),
-            (Null, I8(_))
-            | (Null, I64(_))
-            | (Null, F64(_))
-            | (Null, Decimal(_))
-            | (Decimal(_), Null)
-            | (Null, Null) => Ok(Null),
-            _ => Err(ValueError::ModuloOnNonNumeric(self.clone(), other.clone()).into()),
+            (Decimal(a), _) => a.try_modulo(other),
+            (Null, I8(_)) | (Null, I64(_)) | (Null, F64(_)) | (Null, Decimal(_)) | (Null, Null) => {
+                Ok(Null)
+            }
+            _ => Err(ValueError::NonNumericMathOperation {
+                lhs: self.clone(),
+                operator: NumericBinaryOperator::Modulo,
+                rhs: other.clone(),
+            }
+            .into()),
         }
     }
 
@@ -406,6 +429,11 @@ impl Value {
 
         Ok(Value::I64(value))
     }
+
+    /// Value to Big-Endian for comparison purpose
+    pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
+        self.try_into().map(|key: Key| key.to_cmp_be_bytes())
+    }
 }
 
 #[cfg(test)]
@@ -413,6 +441,8 @@ mod tests {
     use {
         super::{Interval, Value::*},
         crate::data::value::uuid::parse_uuid,
+        crate::data::ValueError,
+        rust_decimal::Decimal,
     };
 
     #[allow(clippy::eq_op)]
@@ -421,6 +451,7 @@ mod tests {
         use super::Interval;
         use chrono::{NaiveDateTime, NaiveTime};
         let decimal = |n: i32| Decimal(n.into());
+        let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
 
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
@@ -430,6 +461,7 @@ mod tests {
         assert_eq!(F64(1.0), I64(1));
         assert_eq!(F64(6.11), F64(6.11));
         assert_eq!(Str("Glue".to_owned()), Str("Glue".to_owned()));
+        assert_eq!(bytea("1004"), bytea("1004"));
         assert_eq!(Interval::Month(1), Interval::Month(1));
         assert_eq!(
             Time(NaiveTime::from_hms(12, 30, 11)),
@@ -453,6 +485,14 @@ mod tests {
     fn cmp() {
         use chrono::{NaiveDate, NaiveTime};
         use std::cmp::Ordering;
+
+        assert_eq!(
+            Bool(true).partial_cmp(&Bool(false)),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(Bool(true).partial_cmp(&Bool(true)), Some(Ordering::Equal));
+        assert_eq!(Bool(false).partial_cmp(&Bool(false)), Some(Ordering::Equal));
+        assert_eq!(Bool(false).partial_cmp(&Bool(true)), Some(Ordering::Less));
 
         let date = Date(NaiveDate::from_ymd(2020, 5, 1));
         let timestamp = Timestamp(NaiveDate::from_ymd(2020, 3, 1).and_hms(0, 0, 0));
@@ -482,6 +522,37 @@ mod tests {
             Decimal(one).partial_cmp(&Decimal(two)),
             Some(Ordering::Less)
         );
+
+        let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
+        assert_eq!(bytea("12").partial_cmp(&bytea("20")), Some(Ordering::Less));
+        assert_eq!(
+            bytea("9123").partial_cmp(&bytea("9122")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(bytea("10").partial_cmp(&bytea("10")), Some(Ordering::Equal));
+    }
+
+    #[test]
+    fn cmp_ints() {
+        use std::cmp::Ordering;
+
+        assert_eq!(I8(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I8(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I8(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+
+        assert_eq!(I64(0).partial_cmp(&I8(-1)), Some(Ordering::Greater));
+        assert_eq!(I64(0).partial_cmp(&I8(0)), Some(Ordering::Equal));
+        assert_eq!(I64(0).partial_cmp(&I8(1)), Some(Ordering::Less));
+    }
+
+    #[test]
+    fn is_zero() {
+        for i in -1..2 {
+            assert_eq!(I8(i).is_zero(), i == 0);
+            assert_eq!(I64(i.into()).is_zero(), i == 0);
+            assert_eq!(F64(i.into()).is_zero(), i == 0);
+            assert_eq!(Decimal(i.into()).is_zero(), i == 0);
+        }
     }
 
     #[test]
@@ -506,6 +577,10 @@ mod tests {
 
         test!(add I8(1),    I8(2)    => I8(3));
         test!(add I8(1),    I64(2)   => I64(3));
+
+        test!(add I64(1),    I8(2)    => I64(3));
+        test!(add I64(1),    I64(2)   => I64(3));
+
         test!(add I8(1),    F64(2.0) => F64(3.0));
 
         test!(add I64(1),   I64(2)   => I64(3));
@@ -552,6 +627,10 @@ mod tests {
 
         test!(subtract I8(3),    I8(2)    => I8(1));
         test!(subtract I8(3),    I64(2)   => I64(1));
+
+        test!(subtract I64(3),    I8(2)    => I64(1));
+        test!(subtract I64(3),    I64(2)    => I64(1));
+
         test!(subtract I8(3),    F64(2.0) => F64(1.0));
 
         test!(subtract I64(3),   I64(2)   => I64(1));
@@ -604,6 +683,10 @@ mod tests {
 
         test!(multiply I8(3),    I8(2)    => I8(6));
         test!(multiply I8(3),    I64(2)   => I64(6));
+
+        test!(multiply I64(3),    I8(2)    => I64(6));
+        test!(multiply I64(3),    I64(2)   => I64(6));
+
         test!(multiply I8(3),    F64(2.0) => F64(6.0));
 
         test!(multiply I64(3),   I64(2)   => I64(6));
@@ -623,8 +706,18 @@ mod tests {
         test!(multiply mon!(3),  I64(2)   => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
+        test!(divide I8(0),     I8(5)   => I8(0));
+        assert_eq!(
+            I8(5).divide(&I8(0)),
+            Err(ValueError::DivisorShouldNotBeZero.into())
+        );
+
         test!(divide I8(6),    I8(2)    => I8(3));
-        test!(divide I8(6),    I8(2)    => I64(3));
+        test!(divide I8(6),    I64(2)   => I64(3));
+
+        test!(divide I64(6),    I8(2)    => I64(3));
+        test!(divide I64(6),    I64(2)   => I64(3));
+
         test!(divide I8(6),    F64(2.0) => F64(3.0));
 
         test!(divide I64(6),   I64(2)   => I64(3));
@@ -638,6 +731,16 @@ mod tests {
         test!(divide mon!(6),  I8(2)    => mon!(3));
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
+
+        test!(modulo I8(6),    I8(4)    => I8(2));
+        test!(modulo I8(6),    I64(4)   => I64(2));
+        assert_eq!(
+            I8(5).modulo(&I8(0)),
+            Err(ValueError::DivisorShouldNotBeZero.into())
+        );
+
+        test!(modulo I64(6),    I8(4)    => I64(2));
+        test!(modulo I64(6),    I64(4)   => I64(2));
 
         test!(modulo I64(6),   I64(2)   => I64(0));
         test!(modulo I64(6),   F64(2.0) => F64(0.0));
@@ -740,10 +843,13 @@ mod tests {
             };
         }
 
+        let bytea = Value::Bytea(hex::decode("0abc").unwrap());
+
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
-        cast!(I8(1)                 => Int8          , I8(1));
+        cast!(bytea                 => Bytea        , bytea);
+        cast!(I8(1)                 => Int8         , I8(1));
         cast!(I64(1)                => Int          , I64(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
         cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
@@ -839,6 +945,7 @@ mod tests {
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let bytea = Bytea(hex::decode("9001").unwrap());
 
         assert!(Bool(true).validate_type(&D::Boolean).is_ok());
         assert!(Bool(true).validate_type(&D::Int).is_err());
@@ -848,8 +955,16 @@ mod tests {
         assert!(I64(1).validate_type(&D::Text).is_err());
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
         assert!(F64(1.0).validate_type(&D::Int).is_err());
+        assert!(Decimal(rust_decimal::Decimal::ONE)
+            .validate_type(&D::Decimal)
+            .is_ok());
+        assert!(Decimal(rust_decimal::Decimal::ONE)
+            .validate_type(&D::Int)
+            .is_err());
         assert!(Str("a".to_owned()).validate_type(&D::Text).is_ok());
         assert!(Str("a".to_owned()).validate_type(&D::Int).is_err());
+        assert!(bytea.validate_type(&D::Bytea).is_ok());
+        assert!(bytea.validate_type(&D::Uuid).is_err());
         assert!(date.validate_type(&D::Date).is_ok());
         assert!(date.validate_type(&D::Text).is_err());
         assert!(timestamp.validate_type(&D::Timestamp).is_ok());
@@ -875,5 +990,28 @@ mod tests {
             }
             .into()),
         );
+    }
+
+    #[test]
+    fn unary_minus() {
+        assert_eq!(I8(1).unary_minus(), Ok(I8(-1)));
+        assert_eq!(I64(1).unary_minus(), Ok(I64(-1)));
+
+        assert_eq!(F64(1.0).unary_minus(), Ok(F64(-1.0)));
+        assert_eq!(
+            Decimal(Decimal::ONE).unary_minus(),
+            Ok(Decimal(-Decimal::ONE))
+        );
+
+        assert_eq!(
+            Str("abc".to_string()).unary_minus(),
+            Err(ValueError::UnaryMinusOnNonNumeric.into())
+        );
+    }
+
+    #[test]
+    fn factorial() {
+        assert_eq!(I8(5).unary_factorial(), Ok(I64(120)));
+        assert_eq!(I64(5).unary_factorial(), Ok(I64(120)));
     }
 }

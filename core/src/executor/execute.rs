@@ -7,7 +7,7 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{SetExpr, Statement, Values},
+        ast::{DataType, SetExpr, Statement, Values},
         data::{get_name, Row, Schema, Value},
         executor::limit::Limit,
         result::MutResult,
@@ -23,7 +23,10 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use super::alter::{create_index, drop_index};
+use {
+    super::alter::{create_index, drop_index},
+    crate::data::SchemaIndexOrd,
+};
 
 #[cfg(feature = "metadata")]
 use crate::{ast::Variable, result::TrySelf};
@@ -36,6 +39,7 @@ pub enum ExecuteError {
 
 #[derive(Serialize, Debug, PartialEq)]
 pub enum Payload {
+    ShowColumns(Vec<(String, DataType)>),
     Create,
     Insert(usize),
     Select {
@@ -53,6 +57,8 @@ pub enum Payload {
     CreateIndex,
     #[cfg(feature = "index")]
     DropIndex,
+    #[cfg(feature = "index")]
+    ShowIndexes(Vec<(String, SchemaIndexOrd)>),
 
     #[cfg(feature = "transaction")]
     StartTransaction,
@@ -73,10 +79,10 @@ pub enum PayloadVariable {
 }
 
 #[cfg(feature = "transaction")]
-pub async fn execute_atomic<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn execute_atomic<T: GStore + GStoreMut>(
+    storage: T,
     statement: &Statement,
-) -> MutResult<U, Payload> {
+) -> MutResult<T, Payload> {
     if matches!(
         statement,
         Statement::StartTransaction | Statement::Rollback | Statement::Commit
@@ -102,10 +108,10 @@ pub async fn execute_atomic<T, U: GStore<T> + GStoreMut<T>>(
     }
 }
 
-pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
-    storage: U,
+pub async fn execute<T: GStore + GStoreMut>(
+    storage: T,
     statement: &Statement,
-) -> MutResult<U, Payload> {
+) -> MutResult<T, Payload> {
     macro_rules! try_block {
         ($storage: expr, $block: block) => {{
             match (|| async { $block })().await {
@@ -308,7 +314,52 @@ pub async fn execute<T, U: GStore<T> + GStoreMut<T>>(
 
             Ok((storage, Payload::Select { labels, rows }))
         }
+        Statement::ShowColumns { table_name } => {
+            let keys = try_block!(storage, {
+                let table_name = get_name(table_name)?;
+                let Schema { column_defs, .. } = storage
+                    .fetch_schema(table_name)
+                    .await?
+                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
 
+                Ok(column_defs)
+            });
+
+            let output: Vec<(String, DataType)> = keys
+                .into_iter()
+                .map(|key| (key.name, key.data_type))
+                .collect();
+
+            Ok((storage, Payload::ShowColumns(output)))
+        }
+        #[cfg(feature = "index")]
+        Statement::ShowIndexes(table_name) => {
+            let table_name = match get_name(table_name) {
+                Ok(table_name) => table_name,
+                Err(e) => return Err((storage, e)),
+            };
+
+            let indexes = match storage.fetch_schema(table_name).await {
+                Ok(Some(Schema { indexes, .. })) => indexes,
+                Ok(None) => {
+                    return Err((
+                        storage,
+                        ExecuteError::TableNotFound(table_name.to_owned()).into(),
+                    ));
+                }
+                Err(e) => return Err((storage, e)),
+            };
+
+            Ok((
+                storage,
+                Payload::ShowIndexes(
+                    indexes
+                        .into_iter()
+                        .map(|index| (index.name, index.order))
+                        .collect(),
+                ),
+            ))
+        }
         //- Metadata
         #[cfg(feature = "metadata")]
         Statement::ShowVariable(variable) => match variable {

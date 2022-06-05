@@ -17,8 +17,8 @@ use {
     std::collections::HashMap,
 };
 
-pub async fn fetch_schema_map<T>(
-    storage: &dyn Store<T>,
+pub async fn fetch_schema_map(
+    storage: &dyn Store,
     statement: &Statement,
 ) -> Result<HashMap<String, Schema>> {
     match statement {
@@ -64,7 +64,7 @@ pub async fn fetch_schema_map<T>(
     }
 }
 
-async fn scan_query<T>(storage: &dyn Store<T>, query: &Query) -> Result<Vec<Schema>> {
+async fn scan_query(storage: &dyn Store, query: &Query) -> Result<Vec<Schema>> {
     let Query {
         body,
         limit,
@@ -92,7 +92,7 @@ async fn scan_query<T>(storage: &dyn Store<T>, query: &Query) -> Result<Vec<Sche
     Ok(schema_list)
 }
 
-async fn scan_select<T>(storage: &dyn Store<T>, select: &Select) -> Result<Vec<Schema>> {
+async fn scan_select(storage: &dyn Store, select: &Select) -> Result<Vec<Schema>> {
     let Select {
         projection,
         from,
@@ -133,8 +133,8 @@ async fn scan_select<T>(storage: &dyn Store<T>, select: &Select) -> Result<Vec<S
         .collect())
 }
 
-async fn scan_table_with_joins<T>(
-    storage: &dyn Store<T>,
+async fn scan_table_with_joins(
+    storage: &dyn Store,
     table_with_joins: &TableWithJoins,
 ) -> Result<Vec<Schema>> {
     let TableWithJoins { relation, joins } = table_with_joins;
@@ -150,7 +150,7 @@ async fn scan_table_with_joins<T>(
         .collect())
 }
 
-async fn scan_join<T>(storage: &dyn Store<T>, join: &Join) -> Result<Vec<Schema>> {
+async fn scan_join(storage: &dyn Store, join: &Join) -> Result<Vec<Schema>> {
     let Join {
         relation,
         join_operator,
@@ -173,10 +173,7 @@ async fn scan_join<T>(storage: &dyn Store<T>, join: &Join) -> Result<Vec<Schema>
 }
 
 #[async_recursion(?Send)]
-async fn scan_table_factor<T>(
-    storage: &dyn Store<T>,
-    table_factor: &TableFactor,
-) -> Result<Vec<Schema>> {
+async fn scan_table_factor(storage: &dyn Store, table_factor: &TableFactor) -> Result<Vec<Schema>> {
     match table_factor {
         TableFactor::Table { name, .. } => {
             let table_name = get_name(name)?;
@@ -190,7 +187,7 @@ async fn scan_table_factor<T>(
 }
 
 #[async_recursion(?Send)]
-async fn scan_expr<T>(storage: &dyn Store<T>, expr: &Expr) -> Result<Vec<Schema>> {
+async fn scan_expr(storage: &dyn Store, expr: &Expr) -> Result<Vec<Schema>> {
     let schema_list = match expr.into() {
         PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier(_) => Vec::new(),
         PlanExpr::Expr(expr) => scan_expr(storage, expr).await?,

@@ -18,7 +18,8 @@ pub mod prelude {
     pub use crate::executor::PayloadVariable;
 
     pub use crate::{
-        data::value::Value,
+        ast::DataType,
+        data::{Key, Value},
         executor::{execute, Payload},
         glue::Glue,
         parse_sql::parse,

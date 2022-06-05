@@ -6,11 +6,12 @@ use {
 impl Function {
     pub fn as_exprs(&self) -> impl ExactSizeIterator<Item = &Expr> {
         #[derive(iter_enum::Iterator, iter_enum::ExactSizeIterator)]
-        enum Exprs<I0, I1, I2, I3> {
+        enum Exprs<I0, I1, I2, I3, I4> {
             Empty(I0),
             Single(I1),
             Double(I2),
-            Tripple(I3),
+            Triple(I3),
+            VariableArgs(I4),
         }
 
         match self {
@@ -20,9 +21,9 @@ impl Function {
             | Self::Sin(expr)
             | Self::Cos(expr)
             | Self::Tan(expr)
-            | Self::ASin(expr)
-            | Self::ACos(expr)
-            | Self::ATan(expr)
+            | Self::Asin(expr)
+            | Self::Acos(expr)
+            | Self::Atan(expr)
             | Self::Radians(expr)
             | Self::Degrees(expr)
             | Self::Ceil(expr)
@@ -95,6 +96,7 @@ impl Function {
                 start: expr2,
                 count: None,
             }
+            | Self::IfNull { expr, then: expr2 }
             | Self::Unwrap {
                 expr,
                 selector: expr2,
@@ -113,7 +115,8 @@ impl Function {
                 expr,
                 start: expr2,
                 count: Some(expr3),
-            } => Exprs::Tripple([expr, expr2, expr3].into_iter()),
+            } => Exprs::Triple([expr, expr2, expr3].into_iter()),
+            Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
         }
     }
 }
@@ -208,7 +211,7 @@ mod tests {
         test("REPEAT(column, 2)", &["column", "2"]);
         test(r#"UNWRAP(field, "foo.1")"#, &["field", r#""foo.1""#]);
 
-        // Tripple
+        // Triple
         test(
             r#"LPAD(name, 20, '>")++++<')"#,
             &["name", "20", r#"'>")++++<'"#],
@@ -220,6 +223,18 @@ mod tests {
         test(
             r#"SUBSTR('   >++++("<   ', 3, 11)"#,
             &[r#"'   >++++("<   '"#, "3", "11"],
+        );
+
+        //VariableArgs
+        test(r#"CONCAT("abc")"#, &[r#""abc""#]);
+
+        test(r#"CONCAT("abc", "123")"#, &[r#""abc""#, r#""123""#]);
+
+        test(r#"CONCAT("a", "b", "c")"#, &[r#""a""#, r#""b""#, r#""c""#]);
+
+        test(
+            r#"CONCAT("gluesql", " ", "is", " ", "cool")"#,
+            &[r#""gluesql""#, r#"" ""#, r#""is""#, r#"" ""#, r#""cool""#],
         );
     }
 }

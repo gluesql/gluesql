@@ -9,8 +9,6 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Expr {
     Identifier(String),
-    Wildcard,
-    QualifiedWildcard(Vec<String>),
     CompoundIdentifier(Vec<String>),
     IsNull(Box<Expr>),
     IsNotNull(Box<Expr>),

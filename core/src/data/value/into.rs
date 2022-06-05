@@ -8,7 +8,7 @@ use {
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
-    rust_decimal::prelude::*,
+    rust_decimal::prelude::{Decimal, FromPrimitive, FromStr, ToPrimitive},
     uuid::Uuid,
 };
 
@@ -16,6 +16,7 @@ impl From<&Value> for String {
     fn from(v: &Value) -> Self {
         match v {
             Value::Str(value) => value.to_string(),
+            Value::Bytea(value) => hex::encode(value),
             Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_string(),
             Value::I8(value) => value.to_string(),
             Value::I64(value) => value.to_string(),
@@ -88,6 +89,7 @@ impl TryInto<bool> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
+            | Value::Bytea(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -114,8 +116,8 @@ impl TryInto<i8> for &Value {
                 }
             }
             Value::I8(value) => *value,
-            Value::I64(value) => *value as i8,
-            Value::F64(value) => value.trunc() as i8,
+            Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
+            Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i8>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -127,6 +129,7 @@ impl TryInto<i8> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
+            | Value::Bytea(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -154,7 +157,7 @@ impl TryInto<i64> for &Value {
             }
             Value::I8(value) => *value as i64,
             Value::I64(value) => *value,
-            Value::F64(value) => value.trunc() as i64,
+            Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i64>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
@@ -166,6 +169,7 @@ impl TryInto<i64> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
+            | Value::Bytea(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -192,7 +196,7 @@ impl TryInto<f64> for &Value {
                 }
             }
             Value::I8(value) => *value as f64,
-            Value::I64(value) => (*value as f64).trunc(),
+            Value::I64(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => *value,
             Value::Str(value) => value
                 .parse::<f64>()
@@ -205,6 +209,7 @@ impl TryInto<f64> for &Value {
             | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
+            | Value::Bytea(_)
             | Value::Null => return Err(ValueError::ImpossibleCast.into()),
         })
     }
@@ -214,6 +219,46 @@ impl TryInto<f64> for Value {
     type Error = Error;
 
     fn try_into(self) -> Result<f64> {
+        (&self).try_into()
+    }
+}
+
+impl TryInto<Decimal> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Decimal> {
+        Ok(match self {
+            Value::Bool(value) => {
+                if *value {
+                    Decimal::ONE
+                } else {
+                    Decimal::ZERO
+                }
+            }
+            Value::I8(value) => Decimal::from_i8(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::I64(value) => Decimal::from_i64(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::F64(value) => Decimal::from_f64(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::Str(value) => {
+                Decimal::from_str(value).map_err(|_| ValueError::ImpossibleCast)?
+            }
+            Value::Decimal(value) => *value,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Bytea(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
+impl TryInto<Decimal> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Decimal> {
         (&self).try_into()
     }
 }
@@ -301,6 +346,7 @@ mod tests {
         let time = chrono::NaiveTime::from_hms_milli;
         let date = chrono::NaiveDate::from_ymd;
         test!(Value::Str("text".to_owned()), "text");
+        test!(Value::Bytea(hex::decode("1234").unwrap()), "1234");
         test!(Value::Bool(true), "TRUE");
         test!(Value::I8(122), "122");
         test!(Value::I64(1234567890), "1234567890");
@@ -378,6 +424,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        // impossible casts to bool
+        test!(Value::I8(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -397,6 +447,7 @@ mod tests {
         test!(Value::I8(122), Ok(122));
         test!(Value::I64(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
+        test!(Value::F64(122.9), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
         test!(Value::Decimal(Decimal::new(123, 0)), Ok(123));
         test!(
@@ -428,6 +479,10 @@ mod tests {
             Err(ValueError::ImpossibleCast.into())
         );
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+
+        // impossible casts to i8
+        test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
@@ -445,8 +500,10 @@ mod tests {
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.9), Ok(1234567890));
         test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
         test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
         test!(

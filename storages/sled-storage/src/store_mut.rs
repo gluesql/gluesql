@@ -9,7 +9,7 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{
-        data::{Row, Schema},
+        data::{Key, Row, Schema},
         result::MutResult,
         result::Result,
         store::{IndexError, StoreMut},
@@ -18,7 +18,7 @@ use {
 };
 
 #[async_trait(?Send)]
-impl StoreMut<IVec> for SledStorage {
+impl StoreMut for SledStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -144,6 +144,7 @@ impl StoreMut<IVec> for SledStorage {
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+        let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -159,7 +160,7 @@ impl StoreMut<IVec> for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             for row in tx_rows.iter() {
-                let id = tree.generate_id()?;
+                let id = id_offset + tree.generate_id()?;
                 let id = id.to_be_bytes();
                 let prefix = format!("data/{}/", table_name);
 
@@ -194,7 +195,7 @@ impl StoreMut<IVec> for SledStorage {
             .await
     }
 
-    async fn update_data(self, table_name: &str, rows: Vec<(IVec, Row)>) -> MutResult<Self, ()> {
+    async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -210,8 +211,9 @@ impl StoreMut<IVec> for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             for (key, new_row) in tx_rows.iter() {
+                let key = IVec::from(key.to_cmp_be_bytes());
                 let snapshot = tree
-                    .get(key)?
+                    .get(&key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
                     .map_err(ConflictableTransactionError::Abort)?;
                 let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
@@ -229,12 +231,12 @@ impl StoreMut<IVec> for SledStorage {
                 bincode::serialize(&snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)
-                    .map(|snapshot| tree.insert(key, snapshot))??;
+                    .map(|snapshot| tree.insert(&key, snapshot))??;
 
-                index_sync.update(key, &old_row, new_row)?;
+                index_sync.update(&key, &old_row, new_row)?;
 
                 if !autocommit {
-                    let temp_key = key::temp_data(txid, key);
+                    let temp_key = key::temp_data(txid, &key);
 
                     tree.insert(temp_key, key)?;
                 }
@@ -247,7 +249,7 @@ impl StoreMut<IVec> for SledStorage {
             .await
     }
 
-    async fn delete_data(self, table_name: &str, keys: Vec<IVec>) -> MutResult<Self, ()> {
+    async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_keys = &keys;
@@ -263,8 +265,9 @@ impl StoreMut<IVec> for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             for key in tx_keys.iter() {
+                let key = IVec::from(key.to_cmp_be_bytes());
                 let snapshot = tree
-                    .get(key)?
+                    .get(&key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
                     .map_err(ConflictableTransactionError::Abort)?;
                 let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
@@ -282,12 +285,12 @@ impl StoreMut<IVec> for SledStorage {
                 bincode::serialize(&snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)
-                    .map(|snapshot| tree.insert(key, snapshot))??;
+                    .map(|snapshot| tree.insert(&key, snapshot))??;
 
-                index_sync.delete(key, &row)?;
+                index_sync.delete(&key, &row)?;
 
                 if !autocommit {
-                    let temp_key = key::temp_data(txid, key);
+                    let temp_key = key::temp_data(txid, &key);
 
                     tree.insert(temp_key, key)?;
                 }

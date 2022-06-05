@@ -1,13 +1,11 @@
 use {
     crate::{
         ast::{ColumnDef, ColumnOption},
-        data::{Interval, Row, Value},
+        data::{Key, Row, Value},
         result::Result,
         store::Store,
     },
-    chrono::{NaiveDate, NaiveDateTime, NaiveTime},
     im_rc::HashSet,
-    rust_decimal::Decimal,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -28,25 +26,11 @@ pub enum ColumnValidation {
     SpecifiedColumns(Rc<[ColumnDef]>, Vec<String>),
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum UniqueKey {
-    Bool(bool),
-    I8(i8),
-    I64(i64),
-    Str(String),
-    Date(NaiveDate),
-    Timestamp(NaiveDateTime),
-    Time(NaiveTime),
-    Interval(Interval),
-    Uuid(u128),
-    Decimal(Decimal),
-}
-
 #[derive(Debug)]
 struct UniqueConstraint {
     column_index: usize,
     column_name: String,
-    keys: HashSet<UniqueKey>,
+    keys: HashSet<Key>,
 }
 
 impl UniqueConstraint {
@@ -59,12 +43,11 @@ impl UniqueConstraint {
     }
 
     fn add(self, value: &Value) -> Result<Self> {
-        let new_key = match self.check(value)? {
-            Some(new_key) => new_key,
-            None => {
-                return Ok(self);
-            }
-        };
+        let new_key = self.check(value)?;
+
+        if matches!(new_key, Key::None) {
+            return Ok(self);
+        }
 
         let keys = self.keys.update(new_key);
 
@@ -75,22 +58,23 @@ impl UniqueConstraint {
         })
     }
 
-    fn check(&self, value: &Value) -> Result<Option<UniqueKey>> {
-        match value.try_into()? {
-            Some(new_key) if self.keys.contains(&new_key) => {
-                Err(ValidateError::DuplicateEntryOnUniqueField(
-                    value.clone(),
-                    self.column_name.to_owned(),
-                )
-                .into())
-            }
-            new_key => Ok(new_key),
+    fn check(&self, value: &Value) -> Result<Key> {
+        let key = Key::try_from(value)?;
+
+        if !self.keys.contains(&key) {
+            Ok(key)
+        } else {
+            Err(ValidateError::DuplicateEntryOnUniqueField(
+                value.clone(),
+                self.column_name.to_owned(),
+            )
+            .into())
         }
     }
 }
 
-pub async fn validate_unique<T>(
-    storage: &impl Store<T>,
+pub async fn validate_unique(
+    storage: &impl Store,
     table_name: &str,
     column_validation: ColumnValidation,
     row_iter: impl Iterator<Item = &Row> + Clone,

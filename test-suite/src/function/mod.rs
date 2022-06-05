@@ -1,6 +1,7 @@
 pub mod abs;
 pub mod cast;
 pub mod ceil;
+pub mod concat;
 pub mod degrees;
 pub mod div_mod;
 pub mod exp_log;
@@ -8,6 +9,7 @@ pub mod extract;
 pub mod floor;
 pub mod gcd_lcm;
 pub mod generate_uuid;
+pub mod ifnull;
 pub mod left_right;
 pub mod lpad_rpad;
 pub mod ltrim_rtrim;
