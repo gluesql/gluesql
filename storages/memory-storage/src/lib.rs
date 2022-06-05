@@ -28,7 +28,7 @@ pub struct MemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl Store<Key> for MemoryStorage {
+impl Store for MemoryStorage {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.items
             .get(table_name)
@@ -36,8 +36,8 @@ impl Store<Key> for MemoryStorage {
             .transpose()
     }
 
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter<Key>> {
-        let rows: RowIter<_> = match self.items.get(table_name) {
+    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+        let rows: RowIter = match self.items.get(table_name) {
             Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
             None => Box::new(empty()),
         };
@@ -47,7 +47,7 @@ impl Store<Key> for MemoryStorage {
 }
 
 #[async_trait(?Send)]
-impl StoreMut<Key> for MemoryStorage {
+impl StoreMut for MemoryStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
         let mut storage = self;
 
@@ -109,5 +109,5 @@ impl StoreMut<Key> for MemoryStorage {
     }
 }
 
-impl GStore<Key> for MemoryStorage {}
-impl GStoreMut<Key> for MemoryStorage {}
+impl GStore for MemoryStorage {}
+impl GStoreMut for MemoryStorage {}

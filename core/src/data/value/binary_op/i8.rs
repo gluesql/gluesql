@@ -15,7 +15,7 @@ impl PartialEq<Value> for i8 {
         match other {
             I8(other) => self == other,
             I64(other) => (*self as i64) == *other,
-            F64(other) => &(*self as f64) == other,
+            F64(other) => ((*self as f64) - other).abs() < f64::EPSILON,
             Decimal(other) => Decimal::from(*self) == *other,
             _ => false,
         }

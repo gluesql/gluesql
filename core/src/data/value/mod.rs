@@ -1,5 +1,5 @@
 use {
-    super::{Interval, StringExt},
+    super::{Interval, Key, StringExt},
     crate::{ast::DataType, ast::DateTimeField, result::Result},
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
@@ -9,7 +9,6 @@ use {
     std::{cmp::Ordering, collections::HashMap, fmt::Debug},
 };
 
-mod big_endian;
 mod binary_op;
 mod date;
 mod error;
@@ -30,6 +29,7 @@ pub enum Value {
     F64(f64),
     Decimal(Decimal),
     Str(String),
+    Bytea(Vec<u8>),
     Date(NaiveDate),
     Timestamp(NaiveDateTime),
     Time(NaiveTime),
@@ -49,6 +49,7 @@ impl PartialEq<Value> for Value {
             (Value::Decimal(l), Value::Decimal(r)) => l == r,
             (Value::Bool(l), Value::Bool(r)) => l == r,
             (Value::Str(l), Value::Str(r)) => l == r,
+            (Value::Bytea(l), Value::Bytea(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
             (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
             (Value::Timestamp(l), Value::Date(r)) => l == &r.and_hms(0, 0, 0),
@@ -72,6 +73,7 @@ impl PartialOrd<Value> for Value {
             (Value::Decimal(l), Value::Decimal(r)) => Some(l.cmp(r)),
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
+            (Value::Bytea(l), Value::Bytea(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),
             (Value::Timestamp(l), Value::Date(r)) => Some(l.cmp(&r.and_hms(0, 0, 0))),
@@ -103,6 +105,7 @@ impl Value {
             Value::Decimal(_) => matches!(data_type, DataType::Decimal),
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
             Value::Str(_) => matches!(data_type, DataType::Text),
+            Value::Bytea(_) => matches!(data_type, DataType::Bytea),
             Value::Date(_) => matches!(data_type, DataType::Date),
             Value::Timestamp(_) => matches!(data_type, DataType::Timestamp),
             Value::Time(_) => matches!(data_type, DataType::Time),
@@ -140,6 +143,7 @@ impl Value {
             | (DataType::Decimal, Value::Decimal(_))
             | (DataType::Boolean, Value::Bool(_))
             | (DataType::Text, Value::Str(_))
+            | (DataType::Bytea, Value::Bytea(_))
             | (DataType::Date, Value::Date(_))
             | (DataType::Timestamp, Value::Timestamp(_))
             | (DataType::Time, Value::Time(_))
@@ -425,6 +429,11 @@ impl Value {
 
         Ok(Value::I64(value))
     }
+
+    /// Value to Big-Endian for comparison purpose
+    pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
+        self.try_into().map(|key: Key| key.to_cmp_be_bytes())
+    }
 }
 
 #[cfg(test)]
@@ -442,6 +451,7 @@ mod tests {
         use super::Interval;
         use chrono::{NaiveDateTime, NaiveTime};
         let decimal = |n: i32| Decimal(n.into());
+        let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
 
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
@@ -451,6 +461,7 @@ mod tests {
         assert_eq!(F64(1.0), I64(1));
         assert_eq!(F64(6.11), F64(6.11));
         assert_eq!(Str("Glue".to_owned()), Str("Glue".to_owned()));
+        assert_eq!(bytea("1004"), bytea("1004"));
         assert_eq!(Interval::Month(1), Interval::Month(1));
         assert_eq!(
             Time(NaiveTime::from_hms(12, 30, 11)),
@@ -511,6 +522,14 @@ mod tests {
             Decimal(one).partial_cmp(&Decimal(two)),
             Some(Ordering::Less)
         );
+
+        let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
+        assert_eq!(bytea("12").partial_cmp(&bytea("20")), Some(Ordering::Less));
+        assert_eq!(
+            bytea("9123").partial_cmp(&bytea("9122")),
+            Some(Ordering::Greater)
+        );
+        assert_eq!(bytea("10").partial_cmp(&bytea("10")), Some(Ordering::Equal));
     }
 
     #[test]
@@ -824,10 +843,13 @@ mod tests {
             };
         }
 
+        let bytea = Value::Bytea(hex::decode("0abc").unwrap());
+
         // Same as
         cast!(Bool(true)            => Boolean      , Bool(true));
         cast!(Str("a".to_owned())   => Text         , Str("a".to_owned()));
-        cast!(I8(1)                 => Int8          , I8(1));
+        cast!(bytea                 => Bytea        , bytea);
+        cast!(I8(1)                 => Int8         , I8(1));
         cast!(I64(1)                => Int          , I64(1));
         cast!(F64(1.0)              => Float        , F64(1.0));
         cast!(Value::Uuid(123)      => Uuid         , Value::Uuid(123));
@@ -923,6 +945,7 @@ mod tests {
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
         let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let bytea = Bytea(hex::decode("9001").unwrap());
 
         assert!(Bool(true).validate_type(&D::Boolean).is_ok());
         assert!(Bool(true).validate_type(&D::Int).is_err());
@@ -940,6 +963,8 @@ mod tests {
             .is_err());
         assert!(Str("a".to_owned()).validate_type(&D::Text).is_ok());
         assert!(Str("a".to_owned()).validate_type(&D::Int).is_err());
+        assert!(bytea.validate_type(&D::Bytea).is_ok());
+        assert!(bytea.validate_type(&D::Uuid).is_err());
         assert!(date.validate_type(&D::Date).is_ok());
         assert!(date.validate_type(&D::Text).is_err());
         assert!(timestamp.validate_type(&D::Timestamp).is_ok());

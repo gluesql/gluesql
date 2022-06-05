@@ -28,6 +28,7 @@ sqlparser = { version = "0.17", features = ["serde", "bigdecimal"] }
 thiserror = "1.0"
 strum_macros = "0.24"
 bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
+hex = "0.4"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.uuid]
 version = "0.8.2"

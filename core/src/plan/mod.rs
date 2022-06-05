@@ -16,7 +16,7 @@ use self::validate::validate;
 
 pub use {error::*, index::plan as plan_index, join::plan as plan_join, schema::fetch_schema_map};
 
-pub async fn plan<T>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
+pub async fn plan(storage: &dyn Store, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
 
     let statement = validate(&schema_map, statement)?;

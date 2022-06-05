@@ -116,6 +116,7 @@ macro_rules! generate_store_tests {
         glue!(interval, data_type::interval::interval);
         glue!(list, data_type::list::list);
         glue!(map, data_type::map::map);
+        glue!(bytea, data_type::bytea::bytea);
         glue!(synthesize, synthesize::synthesize);
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);

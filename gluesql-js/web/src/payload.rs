@@ -57,6 +57,22 @@ fn convert_payload(payload: Payload) -> Json {
                 "columns": Json::Array(columns),
             })
         }
+        Payload::ShowIndexes(indexes) => {
+            let indexes = indexes
+                .into_iter()
+                .map(|(name, order)| {
+                    json!({
+                        "name": name,
+                        "order": order.to_string(),
+                    })
+                })
+                .collect();
+
+            json!({
+                "type": "SHOW INDEXES",
+                "indexes": Json::Array(indexes),
+            })
+        }
         Payload::Insert(num) => json!({
             "type": "INSERT",
             "affected": num

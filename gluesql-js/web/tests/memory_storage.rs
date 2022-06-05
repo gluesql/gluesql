@@ -1,7 +1,7 @@
 #![cfg(target_arch = "wasm32")]
 
 use {
-    memory_storage::{Key, MemoryStorage},
+    memory_storage::MemoryStorage,
     std::{cell::RefCell, rc::Rc},
     test_suite::*,
     wasm_bindgen_test::*,
@@ -13,7 +13,7 @@ struct MemoryTester {
     storage: Rc<RefCell<Option<MemoryStorage>>>,
 }
 
-impl Tester<Key, MemoryStorage> for MemoryTester {
+impl Tester<MemoryStorage> for MemoryTester {
     fn new(_: &str) -> Self {
         let storage = Some(MemoryStorage::default());
         let storage = Rc::new(RefCell::new(storage));

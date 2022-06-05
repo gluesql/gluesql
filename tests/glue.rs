@@ -5,7 +5,7 @@ use gluesql_core::{
     store::{GStore, GStoreMut},
 };
 
-fn basic<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
     assert_eq!(
         glue.execute("DROP TABLE IF EXISTS api_test"),
         Ok(vec![Payload::DropTable])
@@ -50,7 +50,7 @@ fn basic<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
     );
 }
 
-async fn basic_async<T, U: GStore<T> + GStoreMut<T>>(mut glue: Glue<T, U>) {
+async fn basic_async<T: GStore + GStoreMut>(mut glue: Glue<T>) {
     assert_eq!(
         glue.execute_async("DROP TABLE IF EXISTS api_test").await,
         Ok(vec![Payload::DropTable])

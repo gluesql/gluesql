@@ -14,7 +14,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - uses: jetli/wasm-pack-action@v0.3.0
       - run: rustup component add clippy rustfmt
       - name: Clippy (root)
         run: cargo clippy -- -D warnings
@@ -22,6 +26,7 @@ jobs:
         run: |
           cd core
           cargo clippy --no-default-features -- -D warnings
+          cargo clippy --no-default-features --features metadata -- -D warnings
           cargo clippy --no-default-features --features alter-table -- -D warnings
           cargo clippy --no-default-features --features index -- -D warnings
           cargo clippy --no-default-features --features transaction -- -D warnings
@@ -35,7 +40,19 @@ jobs:
         run: cargo fmt -- --check
       - name: Build
         run: cargo build --all-features --verbose
+      - name: Build (gluesql-js)
+        run: |
+          cd gluesql-js/web
+          yarn install
+          yarn build
+          cd ../../
       - name: Run tests
-        run: cargo test --no-default-features --verbose
-      - name: Run tests with all features
-        run: cargo test --all-features --all-targets --verbose
+        run: |
+          cargo test --no-default-features --verbose
+          cargo test --all-features --all-targets --verbose
+      - name: Run examples
+        run: |
+          cargo run --package gluesql --example hello_world
+          cargo run --package gluesql --example api_usage
+          cargo run --package gluesql --example sled_multi_threaded
+          cargo run --package gluesql --example using_config

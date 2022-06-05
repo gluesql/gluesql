@@ -13,21 +13,16 @@ use {
         stream::{self, StreamExt},
         TryStreamExt,
     },
-    std::marker::PhantomData,
 };
 
-pub struct Glue<T, U: GStore<T> + GStoreMut<T>> {
-    _marker: PhantomData<T>,
-    pub storage: Option<U>,
+pub struct Glue<T: GStore + GStoreMut> {
+    pub storage: Option<T>,
 }
 
-impl<T, U: GStore<T> + GStoreMut<T>> Glue<T, U> {
-    pub fn new(storage: U) -> Self {
-        let storage = Some(storage);
-
+impl<T: GStore + GStoreMut> Glue<T> {
+    pub fn new(storage: T) -> Self {
         Self {
-            _marker: PhantomData,
-            storage,
+            storage: Some(storage),
         }
     }
 
