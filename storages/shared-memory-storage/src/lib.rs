@@ -15,17 +15,9 @@ use {
     tokio::sync::RwLock,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SharedMemoryStorage {
     pub database: Arc<RwLock<MemoryStorage>>,
-}
-
-impl Clone for SharedMemoryStorage {
-    fn clone(&self) -> Self {
-        Self {
-            database: Arc::clone(&self.database),
-        }
-    }
 }
 
 impl SharedMemoryStorage {
