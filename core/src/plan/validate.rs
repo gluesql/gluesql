@@ -1,14 +1,15 @@
 use {
+    super::PlanError,
     crate::{
         ast::{Expr, SelectItem, SetExpr, Statement},
         data::Schema,
-        executor::SelectError,
         result::Result,
     },
     itertools::Itertools,
     std::collections::HashMap,
 };
 
+/// Validate user select column should not be ambiguous
 pub fn validate(schema_map: &HashMap<String, Schema>, statement: Statement) -> Result<Statement> {
     if let Statement::Query(query) = &statement {
         if let SetExpr::Select(select) = &query.body {
@@ -30,10 +31,9 @@ pub fn validate(schema_map: &HashMap<String, Schema>, statement: Statement) -> R
                                 .collect_vec();
 
                             if tables_with_given_col.len() > 1 {
-                                return Err(SelectError::ColumnReferenceAmbiguous(
-                                    ident.to_string(),
-                                )
-                                .into());
+                                return Err(
+                                    PlanError::ColumnReferenceAmbiguous(ident.to_string()).into()
+                                );
                             }
                         }
 

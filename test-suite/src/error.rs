@@ -3,7 +3,8 @@ use crate::*;
 test_case!(error, async move {
     use gluesql_core::{
         data::RowError,
-        executor::{EvaluateError, ExecuteError, FetchError, SelectError},
+        executor::{EvaluateError, ExecuteError, FetchError},
+        plan::PlanError,
         translate::TranslateError,
     };
 
@@ -11,6 +12,7 @@ test_case!(error, async move {
     run!("INSERT INTO TableA (id) VALUES (1);");
     run!("INSERT INTO TableA (id) VALUES (9);");
 
+    // To test `PlanError` while using `JOIN`
     run!("CREATE TABLE users (id INTEGER, name TEXT);");
     run!(r#"INSERT INTO users (id, name) VALUES (1, "Harry");"#);
     run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
@@ -124,10 +126,6 @@ test_case!(error, async move {
             TranslateError::InvalidParamsInDropIndex.into(),
             "DROP INDEX TableA.IndexB.IndexC",
         ),
-        (
-            SelectError::ColumnReferenceAmbiguous("id".to_string()).into(),
-            "SELECT id FROM users JOIN testers ON users.id = testers.id",
-        ),
         #[cfg(feature = "alter-table")]
         (
             TranslateError::UnsupportedAlterTableOperation(
@@ -135,6 +133,10 @@ test_case!(error, async move {
             )
             .into(),
             r#"ALTER TABLE Foo ADD CONSTRAINT "hey" PRIMARY KEY (asdf);"#,
+        ),
+        (
+            PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
+            "SELECT id FROM users JOIN testers ON users.id = testers.id;",
         ),
     ];
 

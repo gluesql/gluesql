@@ -7,6 +7,7 @@ use {
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
             UpdateError, ValidateError,
         },
+        plan::PlanError,
         store::{GStore, GStoreMut},
         translate::TranslateError,
     },
@@ -76,6 +77,8 @@ pub enum Error {
     Interval(#[from] IntervalError),
     #[error(transparent)]
     StringExt(#[from] StringExtError),
+    #[error(transparent)]
+    Plan(#[from] PlanError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -108,6 +111,7 @@ impl PartialEq for Error {
             (Literal(e), Literal(e2)) => e == e2,
             (Interval(e), Interval(e2)) => e == e2,
             (StringExt(e), StringExt(e2)) => e == e2,
+            (Plan(e), Plan(e2)) => e == e2,
             _ => false,
         }
     }

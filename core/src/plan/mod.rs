@@ -1,4 +1,5 @@
 mod context;
+mod error;
 mod evaluable;
 mod expr;
 mod index;
@@ -13,7 +14,7 @@ use crate::{ast::Statement, result::Result, store::Store};
 
 use self::validate::validate;
 
-pub use {index::plan as plan_index, join::plan as plan_join, schema::fetch_schema_map};
+pub use {error::*, index::plan as plan_index, join::plan as plan_join, schema::fetch_schema_map};
 
 pub async fn plan<T>(storage: &dyn Store<T>, statement: Statement) -> Result<Statement> {
     let schema_map = fetch_schema_map(storage, &statement).await?;
