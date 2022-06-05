@@ -5,7 +5,6 @@ use {
         data::Schema,
         result::Result,
     },
-    itertools::Itertools,
     std::collections::HashMap,
 };
 
@@ -23,14 +22,12 @@ pub fn validate(schema_map: &HashMap<String, Schema>, statement: Statement) -> R
                             ..
                         } = select_item
                         {
-                            let tables_with_given_col = schema_map
-                                .iter()
-                                .filter_map(|(_, schema)| {
+                            let tables_with_given_col =
+                                schema_map.iter().filter_map(|(_, schema)| {
                                     schema.column_defs.iter().find(|col| &col.name == ident)
-                                })
-                                .collect_vec();
+                                });
 
-                            if tables_with_given_col.len() > 1 {
+                            if tables_with_given_col.count() > 1 {
                                 return Err(
                                     PlanError::ColumnReferenceAmbiguous(ident.to_string()).into()
                                 );
