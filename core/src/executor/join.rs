@@ -1,5 +1,7 @@
 use crate::ast::TableFactor;
 
+use super::select::select;
+
 use {
     crate::{
         ast::{
@@ -253,52 +255,72 @@ impl<'a> JoinExecutor<'a> {
             } => (key_expr, value_expr, where_clause),
         };
 
-        let rows_map = match relation {
-            TableFactor::Table { .. } => storage
-                .scan_data(relation.get_name()?)
-                .await
-                .map(stream::iter)?,
-            TableFactor::Derived { subquery, alias } => panic!(), // {
-                                                                  //     select(storage, subquery, filter_context).await?
-                                                                  // }
+        #[derive(futures_enum::Stream)]
+        enum Rows<I1, I2> {
+            Derived(I1),
+            Table(I2),
         }
-        .try_filter_map(|(_, row)| {
-            let columns = Rc::clone(&columns);
-            let filter_context = filter_context.as_ref().map(Rc::clone);
 
-            async move {
-                let filter_context = Rc::new(FilterContext::new(
-                    relation.get_alias()?,
-                    columns,
-                    Some(&row),
-                    filter_context,
-                ));
+        // let blabla: Box<dyn TryStream<Ok = Row, Error = Error>> = match relation {
+        let blabla = match relation {
+            TableFactor::Derived { subquery, alias } => {
+                let filter_context = filter_context.as_ref().map(Rc::clone);
 
-                let hash_key: Key = evaluate(
-                    storage,
-                    Some(&filter_context).map(Rc::clone),
-                    None,
-                    key_expr,
-                )
-                .await?
-                .try_into()?;
-
-                if matches!(hash_key, Key::None) {
-                    return Ok(None);
-                }
-
-                match where_clause {
-                    Some(expr) => check_expr(storage, Some(filter_context), None, expr)
-                        .await
-                        .map(|pass| pass.then(|| (hash_key, row))),
-                    None => Ok(Some((hash_key, row))),
-                }
+                Rows::Derived(select(storage, subquery, filter_context).await?)
+                // Box::new(select(storage, subquery, filter_context).await?)
             }
-        })
-        .try_collect::<Vec<_>>()
-        .await?
-        .into_iter()
-        .into_group_map();
+            TableFactor::Table { .. } => {
+                let rows = storage
+                    .scan_data(relation.get_name()?)
+                    .await?
+                    .map(|item| item.map(|(_, row)| row));
+
+                // Box::new(stream::iter(rows))
+                Rows::Table(stream::iter(rows))
+                /*
+                .map_ok(|(key, row)| row)
+                .map(stream::iter) // .map(|r| r.unwrap().1),
+                */
+            }
+        };
+        let rows_map = blabla
+            .try_filter_map(|row| {
+                let columns = Rc::clone(&columns);
+                let filter_context = filter_context.as_ref().map(Rc::clone);
+
+                async move {
+                    let filter_context = Rc::new(FilterContext::new(
+                        relation.get_alias()?,
+                        columns,
+                        Some(&row),
+                        filter_context,
+                    ));
+
+                    let hash_key: Key = evaluate(
+                        storage,
+                        Some(&filter_context).map(Rc::clone),
+                        None,
+                        key_expr,
+                    )
+                    .await?
+                    .try_into()?;
+
+                    if matches!(hash_key, Key::None) {
+                        return Ok(None);
+                    }
+
+                    match where_clause {
+                        Some(expr) => check_expr(storage, Some(filter_context), None, expr)
+                            .await
+                            .map(|pass| pass.then(|| (hash_key, row))),
+                        None => Ok(Some((hash_key, row))),
+                    }
+                }
+            })
+            .try_collect::<Vec<_>>()
+            .await?
+            .into_iter()
+            .into_group_map();
 
         Ok(Self::Hash {
             rows_map,
