@@ -34,10 +34,10 @@ enum AggrValue {
 }
 
 impl<'a> AggrValue {
-    fn new(aggr: &Aggregate, value: &Value) -> Self {
+    fn new(aggr: &Aggregate, value: &Value) -> Result<Self> {
         let value = value.clone();
 
-        match aggr {
+        Ok(match aggr {
             Aggregate::Count(CountArgExpr::Wildcard) => AggrValue::Count {
                 wildcard: true,
                 count: 1,
@@ -54,11 +54,11 @@ impl<'a> AggrValue {
                 count: 1,
             },
             Aggregate::Variance(_) => AggrValue::Variance {
-                sum_square: value.multiply(&value).unwrap(),
+                sum_square: value.multiply(&value)?,
                 sum: value,
                 count: 1,
             },
-        }
+        })
     }
 
     fn accumulate(&self, new_value: &Value) -> Result<Option<Self>> {
@@ -75,7 +75,7 @@ impl<'a> AggrValue {
                     Ok(None)
                 }
             }
-            Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value).unwrap()))),
+            Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value)?))),
             Self::Min(value) => match &value.partial_cmp(new_value) {
                 Some(Ordering::Greater) => Ok(Some(Self::Min(new_value.clone()))),
                 _ => Ok(None),
@@ -93,7 +93,7 @@ impl<'a> AggrValue {
                 sum,
                 count,
             } => Ok(Some(Self::Variance {
-                sum_square: sum_square.add(&new_value.multiply(new_value).unwrap())?,
+                sum_square: sum_square.add(&new_value.multiply(new_value)?)?,
                 sum: sum.add(new_value)?,
                 count: count + 1,
             })),
@@ -243,7 +243,7 @@ impl<'a> State<'a> {
         let aggr_value = match self.get(aggr) {
             Some((index, _)) if self.index <= *index => None,
             Some((_, aggr_value)) => aggr_value.accumulate(value)?,
-            None => Some(AggrValue::new(aggr, value)),
+            None => Some(AggrValue::new(aggr, value)?),
         };
 
         match aggr_value {
