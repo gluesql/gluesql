@@ -12,7 +12,7 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-gluesql-core = { path = "../../core", version = "0.10.2", features = [
+gluesql-core = { path = "../../core", version = "0.11.0", features = [
 	"alter-table",
 	"index",
 	"transaction",
@@ -23,7 +23,7 @@ serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["sync"] }
 
 [dev-dependencies]
-test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.10.2", features = [
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.11.0", features = [
 	"alter-table",
 	"index",
 	"transaction",
