@@ -28,9 +28,17 @@ pub struct Item {
     pub rows: IndexMap<Key, Row>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct SharedMemoryStorage {
     pub database: Arc<MemoryStorage>,
+}
+
+impl Clone for SharedMemoryStorage {
+    fn clone(&self) -> Self {
+        Self {
+            database: Arc::clone(&self.database),
+        }
+    }
 }
 
 #[derive(Debug)]
