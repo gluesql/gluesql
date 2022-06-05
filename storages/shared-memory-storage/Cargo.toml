@@ -1,6 +1,6 @@
 [package]
 name = "gluesql-shared-memory-storage"
-version = "0.10.2"
+version = "0.11.0"
 edition = "2021"
 authors = [
 	"Jiseok CHOI <jiseok.dev@gmail.com>",
