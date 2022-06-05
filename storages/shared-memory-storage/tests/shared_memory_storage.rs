@@ -1,5 +1,5 @@
 use {
-    gluesql_shared_memory_storage::{Key, SharedMemoryStorage},
+    gluesql_shared_memory_storage::SharedMemoryStorage,
     std::{cell::RefCell, rc::Rc},
     test_suite::*,
 };
@@ -8,7 +8,7 @@ struct SharedMemoryTester {
     storage: Rc<RefCell<Option<SharedMemoryStorage>>>,
 }
 
-impl Tester<Key, SharedMemoryStorage> for SharedMemoryTester {
+impl Tester<SharedMemoryStorage> for SharedMemoryTester {
     fn new(_: &str) -> Self {
         let storage = Some(SharedMemoryStorage::new());
         let storage = Rc::new(RefCell::new(storage));
@@ -90,4 +90,44 @@ fn shared_memory_storage_transaction() {
     test!(glue "BEGIN", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
     test!(glue "COMMIT", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
     test!(glue "ROLLBACK", Err(Error::StorageMsg("[Shared MemoryStorage] transaction is not supported".to_owned())));
+}
+
+#[tokio::test]
+async fn shared_memory_storage_thread() {
+    use gluesql_core::prelude::{Glue, Payload};
+
+    let storage = SharedMemoryStorage::new();
+
+    let mut glue = Glue::new(storage.clone());
+    exec!(glue "CREATE TABLE Thread (id INTEGER);");
+
+    let thread_1 = tokio::spawn({
+        // Arc::clone
+        let storage = storage.clone();
+        async {
+            let mut glue = Glue::new(storage);
+            exec!(glue "INSERT INTO Thread VALUES(1)");
+        }
+    });
+
+    let thread_2 = tokio::spawn({
+        // Arc::clone
+        let storage = storage.clone();
+        async {
+            let mut glue = Glue::new(storage);
+            exec!(glue "INSERT INTO Thread VALUES(2)");
+        }
+    });
+
+    let _ = tokio::join!(thread_1, thread_2);
+
+    let payloads = glue.execute("SELECT * FROM Thread").unwrap();
+    assert_eq!(payloads.len(), 1);
+
+    let payload = &payloads[0];
+    let rows = match &payload {
+        Payload::Select { rows, .. } => rows.iter().flatten().collect::<Vec<_>>(),
+        _ => unreachable!(),
+    };
+    assert_eq!(rows.len(), 2);
 }
