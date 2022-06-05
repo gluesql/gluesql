@@ -1,3 +1,7 @@
+use crate::ast::TableFactor;
+
+use super::select::{select, select_with_labels};
+
 mod hash_key;
 
 use {
@@ -93,13 +97,18 @@ async fn join<'a, T>(
         join_operator,
         join_executor,
     } = ast_join;
-    let table = Table::new(relation)?;
-    let table_name = table.get_name();
-    let table_alias = table.get_alias();
+
+    let table_name = relation.get_name()?;
+    let table_alias = relation.get_alias()?;
+    // let table = Table::new(relation)?;
+    // let table_name = table.get_name();
+    // let table_alias = table.get_alias();
+
     let join_executor = JoinExecutor::new(
         storage,
-        table_name,
-        table_alias,
+        // table_name,
+        // table_alias,
+        relation,
         Rc::clone(&columns),
         filter_context.as_ref().map(Rc::clone),
         join_executor,
@@ -122,7 +131,7 @@ async fn join<'a, T>(
         let filter_context = filter_context.as_ref().map(Rc::clone);
         let columns = Rc::clone(&columns);
         let init_context = Rc::new(BlendContext::new(
-            table.get_alias(),
+            table_alias,
             Rc::clone(&columns),
             None,
             Some(Rc::clone(&blend_context)),
@@ -233,8 +242,9 @@ enum JoinExecutor<'a> {
 impl<'a> JoinExecutor<'a> {
     async fn new<T>(
         storage: &'a dyn GStore<T>,
-        table_name: &'a str,
-        table_alias: &'a str,
+        // table_name: &'a str,
+        // table_alias: &'a str,
+        relation: &TableFactor,
         columns: Rc<[String]>,
         filter_context: Option<Rc<FilterContext<'a>>>,
         ast_join_executor: &'a AstJoinExecutor,
@@ -248,48 +258,53 @@ impl<'a> JoinExecutor<'a> {
             } => (key_expr, value_expr, where_clause),
         };
 
-        let rows_map = storage
-            .scan_data(table_name)
-            .await
-            .map(stream::iter)?
-            .try_filter_map(|(_, row)| {
-                let columns = Rc::clone(&columns);
-                let filter_context = filter_context.as_ref().map(Rc::clone);
+        let rows_map = match relation {
+            TableFactor::Table { .. } => storage
+                .scan_data(relation.get_name()?)
+                .await
+                .map(stream::iter)?,
+            TableFactor::Derived { subquery, alias } => panic!(), // {
+                                                                  //     select(storage, subquery, filter_context).await?
+                                                                  // }
+        }
+        .try_filter_map(|(_, row)| {
+            let columns = Rc::clone(&columns);
+            let filter_context = filter_context.as_ref().map(Rc::clone);
 
-                async move {
-                    let filter_context = Rc::new(FilterContext::new(
-                        table_alias,
-                        columns,
-                        Some(&row),
-                        filter_context,
-                    ));
+            async move {
+                let filter_context = Rc::new(FilterContext::new(
+                    relation.get_alias()?,
+                    columns,
+                    Some(&row),
+                    filter_context,
+                ));
 
-                    let hash_key: Option<HashKey> = evaluate(
-                        storage,
-                        Some(&filter_context).map(Rc::clone),
-                        None,
-                        key_expr,
-                    )
-                    .await?
-                    .try_into()?;
+                let hash_key: Option<HashKey> = evaluate(
+                    storage,
+                    Some(&filter_context).map(Rc::clone),
+                    None,
+                    key_expr,
+                )
+                .await?
+                .try_into()?;
 
-                    let hash_key = match hash_key {
-                        Some(hash_key) => hash_key,
-                        None => return Ok(None),
-                    };
+                let hash_key = match hash_key {
+                    Some(hash_key) => hash_key,
+                    None => return Ok(None),
+                };
 
-                    match where_clause {
-                        Some(expr) => check_expr(storage, Some(filter_context), None, expr)
-                            .await
-                            .map(|pass| pass.then(|| (hash_key, row))),
-                        None => Ok(Some((hash_key, row))),
-                    }
+                match where_clause {
+                    Some(expr) => check_expr(storage, Some(filter_context), None, expr)
+                        .await
+                        .map(|pass| pass.then(|| (hash_key, row))),
+                    None => Ok(Some((hash_key, row))),
                 }
-            })
-            .try_collect::<Vec<_>>()
-            .await?
-            .into_iter()
-            .into_group_map();
+            }
+        })
+        .try_collect::<Vec<_>>()
+        .await?
+        .into_iter()
+        .into_group_map();
 
         Ok(Self::Hash {
             rows_map,
