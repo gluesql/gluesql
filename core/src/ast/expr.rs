@@ -138,9 +138,7 @@ impl ToSql for Expr {
                 [operand, when_then, else_result, "END".to_owned()].join("\n")
             }
             Expr::Aggregate(a) => a.to_sql(),
-            Expr::Function(f) => {
-                format!("{}(todo:args)", f)
-            }
+            Expr::Function(func) => format!("{func}(..)"),
             Expr::InSubquery { expr, negated, .. } => {
                 match negated {
                     true => format!("{} NOT IN (..query..)", expr.to_sql()),
@@ -317,7 +315,7 @@ mod tests {
 
         // todo..
         assert_eq!(
-            "SIGN(todo:args)",
+            "SIGN(..)",
             &Expr::Function(Box::new(Function::Sign(Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_str("1.0").unwrap()
             )))))
