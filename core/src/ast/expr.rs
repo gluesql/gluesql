@@ -114,7 +114,7 @@ impl ToSql for Expr {
             Expr::Extract { field, expr } => {
                 format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
             }
-            Expr::Nested(expr) => format!("todo:Nested({})", expr.to_sql()),
+            Expr::Nested(expr) => format!("({})", expr.to_sql()),
             Expr::Literal(s) => s.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type}(\"{value}\")"),
             Expr::Case {
@@ -300,6 +300,11 @@ mod tests {
                 expr: Box::new(Expr::Identifier("2022-05-05 01:02:03".to_string()))
             }
             .to_sql()
+        );
+
+        assert_eq!(
+            "(id)",
+            Expr::Nested(Box::new(Expr::Identifier("id".to_owned()))).to_sql(),
         );
 
         assert_eq!(
