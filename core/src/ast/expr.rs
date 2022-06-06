@@ -122,31 +122,29 @@ impl ToSql for Expr {
                 let operand = match operand {
                     Some(operand) => format!("CASE {}", operand.to_sql()),
                     None => "CASE".to_owned(),
-                };  
-                    
+                };
+
                 let when_then = when_then
                     .iter()
                     .map(|(when, then)| format!("WHEN {} THEN {}", when.to_sql(), then.to_sql()))
                     .collect::<Vec<_>>()
                     .join("\n");
-                
+
                 let else_result = match else_result {
                     Some(else_result) => format!("ELSE {}", else_result.to_sql()),
                     None => String::new(),
-                };  
-                
+                };
+
                 [operand, when_then, else_result, "END".to_owned()].join("\n")
             }
             Expr::Aggregate(a) => a.to_sql(),
             Expr::Function(func) => format!("{func}(..)"),
-            Expr::InSubquery { expr, negated, .. } => {
-                match negated {
-                    true => format!("{} NOT IN (..query..)", expr.to_sql()),
-                    false => format!("{} IN (..query..)", expr.to_sql()),
-                }   
-            }   
+            Expr::InSubquery { expr, negated, .. } => match negated {
+                true => format!("{} NOT IN (..query..)", expr.to_sql()),
+                false => format!("{} IN (..query..)", expr.to_sql()),
+            },
             Expr::Exists(_) => "EXISTS(..query..)".to_string(),
-            Expr::Subquery(_) => "(..query..)".to_string(),       
+            Expr::Subquery(_) => "(..query..)".to_string(),
         }
     }
 }
