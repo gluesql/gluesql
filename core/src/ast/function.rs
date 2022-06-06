@@ -114,6 +114,7 @@ pub enum Aggregate {
     Max(Expr),
     Min(Expr),
     Avg(Expr),
+    Variance(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

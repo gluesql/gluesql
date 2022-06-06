@@ -9,6 +9,7 @@ impl Aggregate {
             | Aggregate::Max(expr)
             | Aggregate::Min(expr)
             | Aggregate::Avg(expr) => Some(expr),
+            Aggregate::Variance(expr) => Some(expr),
         }
     }
 }
@@ -52,6 +53,10 @@ mod tests {
         assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("AVG(id)");
+        let expected = Expr::Identifier("id".to_owned());
+        assert_eq!(actual.as_expr(), Some(&expected));
+
+        let actual = parse("VARIANCE(id)");
         let expected = Expr::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
     }
