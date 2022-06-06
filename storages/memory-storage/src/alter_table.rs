@@ -11,7 +11,19 @@ use {
 };
 
 impl MemoryStorage {
-    fn rename_column_sync(
+    pub fn rename_schema(&mut self, table_name: &str, new_table_name: &str) -> Result<()> {
+        let mut item = self
+            .items
+            .remove(table_name)
+            .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
+
+        item.schema.table_name = new_table_name.to_owned();
+        self.items.insert(new_table_name.to_owned(), item);
+
+        Ok(())
+    }
+
+    pub fn rename_column(
         &mut self,
         table_name: &str,
         old_column_name: &str,
@@ -34,7 +46,7 @@ impl MemoryStorage {
         Ok(())
     }
 
-    fn add_column_sync(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
+    pub fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let item = self
             .items
             .get(table_name)
@@ -79,7 +91,7 @@ impl MemoryStorage {
         Ok(())
     }
 
-    fn drop_column_sync(
+    pub fn drop_column(
         &mut self,
         table_name: &str,
         column_name: &str,
@@ -121,19 +133,7 @@ impl AlterTable for MemoryStorage {
     async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        match storage
-            .items
-            .remove(table_name)
-            .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))
-        {
-            Ok(mut item) => {
-                item.schema.table_name = new_table_name.to_owned();
-                storage.items.insert(new_table_name.to_owned(), item);
-
-                Ok((storage, ()))
-            }
-            Err(err) => Err((storage, err.into())),
-        }
+        MemoryStorage::rename_schema(&mut storage, table_name, new_table_name).try_self(storage)
     }
 
     async fn rename_column(
@@ -144,17 +144,14 @@ impl AlterTable for MemoryStorage {
     ) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        storage
-            .rename_column_sync(table_name, old_column_name, new_column_name)
+        MemoryStorage::rename_column(&mut storage, table_name, old_column_name, new_column_name)
             .try_self(storage)
     }
 
     async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        storage
-            .add_column_sync(table_name, column_def)
-            .try_self(storage)
+        MemoryStorage::add_column(&mut storage, table_name, column_def).try_self(storage)
     }
 
     async fn drop_column(
@@ -165,8 +162,7 @@ impl AlterTable for MemoryStorage {
     ) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        storage
-            .drop_column_sync(table_name, column_name, if_exists)
+        MemoryStorage::drop_column(&mut storage, table_name, column_name, if_exists)
             .try_self(storage)
     }
 }

@@ -57,6 +57,10 @@ test_case!(aggregate, async move {
             select_with_null!("AVG(age)"; Null),
         ),
         (
+            "SELECT VARIANCE(age) FROM Item",
+            select_with_null!("VARIANCE(age)"; Null),
+        ),
+        (
             "SELECT COUNT(age), COUNT(quantity) FROM Item",
             select!("COUNT(age)" | "COUNT(quantity)"; I64 | I64; 3 5),
         ),
@@ -64,8 +68,16 @@ test_case!(aggregate, async move {
             "SELECT AVG(id), AVG(quantity) FROM Item",
             select!(
                 "AVG(id)" | "AVG(quantity)"
-                I64       | I64;
-                3           9
+                F64       | F64;
+                3.0         9.4
+            ),
+        ),
+        (
+            "SELECT VARIANCE(id), VARIANCE(quantity) FROM Item",
+            select!(
+                "VARIANCE(id)" | "VARIANCE(quantity)"
+                F64            | F64;
+                2.0              74.64
             ),
         ),
     ];
