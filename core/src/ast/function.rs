@@ -119,11 +119,11 @@ pub enum Aggregate {
 impl ToSql for Aggregate {
     fn to_sql(&self) -> String {
         match self {
-            Aggregate::Count(cae) => format!("Count({})", cae.to_sql()),
-            Aggregate::Sum(e) => format!("Sum({})", e.to_sql()),
-            Aggregate::Max(e) => format!("Max({})", e.to_sql()),
-            Aggregate::Min(e) => format!("Min({})", e.to_sql()),
-            Aggregate::Avg(e) => format!("Avg({})", e.to_sql()),
+            Aggregate::Count(cae) => format!("COUNT({})", cae.to_sql()),
+            Aggregate::Sum(e) => format!("SUM({})", e.to_sql()),
+            Aggregate::Max(e) => format!("MAX({})", e.to_sql()),
+            Aggregate::Min(e) => format!("MIN({})", e.to_sql()),
+            Aggregate::Avg(e) => format!("AVG({})", e.to_sql()),
         }
     }
 }

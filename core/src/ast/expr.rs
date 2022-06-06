@@ -104,7 +104,10 @@ impl ToSql for Expr {
                     false => format!("{expr} BETWEEN {low} AND {high}"),
                 }
             }
-            Expr::UnaryOp { op, expr } => format!("{}{}", op.to_sql(), expr.to_sql()),
+            Expr::UnaryOp { op, expr } => match op {
+                UnaryOperator::Factorial => format!("{}{}", expr.to_sql(), op.to_sql()),
+                _ => format!("{}{}", op.to_sql(), expr.to_sql()),
+            },
             Expr::Cast { expr, data_type } => {
                 format!("CAST({} AS {data_type})", expr.to_sql())
             }
@@ -166,11 +169,11 @@ mod tests {
         let re = Regex::new(r"\n\s+").unwrap();
         let trim = |s: &str| re.replace_all(s.trim(), "\n").into_owned();
 
-        assert_eq!("id", &Expr::Identifier("id".to_string()).to_sql());
+        assert_eq!("id", Expr::Identifier("id".to_string()).to_sql());
 
         assert_eq!(
             "id + num",
-            &Expr::BinaryOp {
+            Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("id".to_string())),
                 op: BinaryOperator::Plus,
                 right: Box::new(Expr::Identifier("num".to_string()))
@@ -179,17 +182,84 @@ mod tests {
         );
 
         assert_eq!(
-            "-id",
-            &Expr::UnaryOp {
-                op: UnaryOperator::Minus,
-                expr: Box::new(Expr::Identifier("id".to_string()))
+            "id - num",
+            Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("id".to_string())),
+                op: BinaryOperator::Minus,
+                right: Box::new(Expr::Identifier("num".to_string()))
             }
             .to_sql()
         );
 
         assert_eq!(
+            "id * num",
+            Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("id".to_string())),
+                op: BinaryOperator::Multiply,
+                right: Box::new(Expr::Identifier("num".to_string()))
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "id / num",
+            Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("id".to_string())),
+                op: BinaryOperator::Divide,
+                right: Box::new(Expr::Identifier("num".to_string()))
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "id % num",
+            &Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("id".to_string())),
+                op: BinaryOperator::Modulo,
+                right: Box::new(Expr::Identifier("num".to_string()))
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "+id",
+            Expr::UnaryOp {
+                op: UnaryOperator::Plus,
+                expr: Box::new(Expr::Identifier("id".to_owned())),
+            }
+            .to_sql(),
+        );
+
+        assert_eq!(
+            "-id",
+            Expr::UnaryOp {
+                op: UnaryOperator::Minus,
+                expr: Box::new(Expr::Identifier("id".to_owned())),
+            }
+            .to_sql(),
+        );
+
+        assert_eq!(
+            "NOT id",
+            Expr::UnaryOp {
+                op: UnaryOperator::Not,
+                expr: Box::new(Expr::Identifier("id".to_owned())),
+            }
+            .to_sql(),
+        );
+
+        assert_eq!(
+            "id!",
+            Expr::UnaryOp {
+                op: UnaryOperator::Factorial,
+                expr: Box::new(Expr::Identifier("id".to_owned())),
+            }
+            .to_sql(),
+        );
+
+        assert_eq!(
             "id.name.first",
-            &Expr::CompoundIdentifier(vec![
+            Expr::CompoundIdentifier(vec![
                 "id".to_string(),
                 "name".to_string(),
                 "first".to_string()
@@ -198,14 +268,14 @@ mod tests {
         );
 
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
-        assert_eq!("id IS NULL", &Expr::IsNull(id_expr).to_sql());
+        assert_eq!("id IS NULL", Expr::IsNull(id_expr).to_sql());
 
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
-        assert_eq!("id IS NOT NULL", &Expr::IsNotNull(id_expr).to_sql());
+        assert_eq!("id IS NOT NULL", Expr::IsNotNull(id_expr).to_sql());
 
         assert_eq!(
             "CAST(1.0 AS INT)",
-            &Expr::Cast {
+            Expr::Cast {
                 expr: Box::new(Expr::Literal(AstLiteral::Number(
                     BigDecimal::from_str("1.0").unwrap()
                 ))),
@@ -216,7 +286,7 @@ mod tests {
 
         assert_eq!(
             r#"INT("1")"#,
-            &Expr::TypedString {
+            Expr::TypedString {
                 data_type: DataType::Int,
                 value: "1".to_string()
             }
@@ -225,7 +295,7 @@ mod tests {
 
         assert_eq!(
             r#"EXTRACT(MINUTE FROM "2022-05-05 01:02:03")"#,
-            &Expr::Extract {
+            Expr::Extract {
                 field: DateTimeField::Minute,
                 expr: Box::new(Expr::Identifier("2022-05-05 01:02:03".to_string()))
             }
@@ -234,7 +304,7 @@ mod tests {
 
         assert_eq!(
             "id BETWEEN low AND high",
-            &Expr::Between {
+            Expr::Between {
                 expr: Box::new(Expr::Identifier("id".to_string())),
                 negated: false,
                 low: Box::new(Expr::Identifier("low".to_string())),
@@ -245,7 +315,7 @@ mod tests {
 
         assert_eq!(
             "id NOT BETWEEN low AND high",
-            &Expr::Between {
+            Expr::Between {
                 expr: Box::new(Expr::Identifier("id".to_string())),
                 negated: true,
                 low: Box::new(Expr::Identifier("low".to_string())),
@@ -256,7 +326,7 @@ mod tests {
 
         assert_eq!(
             r#"id IN ("a", "b", "c")"#,
-            &Expr::InList {
+            Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_string())),
                 list: vec![
                     Expr::Literal(AstLiteral::QuotedString("a".to_string())),
@@ -270,7 +340,7 @@ mod tests {
 
         assert_eq!(
             r#"id NOT IN ("a", "b", "c")"#,
-            &Expr::InList {
+            Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_string())),
                 list: vec![
                     Expr::Literal(AstLiteral::QuotedString("a".to_string())),
@@ -311,7 +381,6 @@ mod tests {
             .to_sql()
         );
 
-        // todo..
         assert_eq!(
             "SIGN(..)",
             &Expr::Function(Box::new(Function::Sign(Expr::Literal(AstLiteral::Number(
@@ -321,22 +390,22 @@ mod tests {
         );
 
         assert_eq!(
-            "Max(id)",
-            &Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_string())))).to_sql()
+            "MAX(id)",
+            Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_string())))).to_sql()
         );
 
         assert_eq!(
-            "Count(*)",
-            &Expr::Aggregate(Box::new(Aggregate::Count(CountArgExpr::Wildcard))).to_sql()
+            "COUNT(*)",
+            Expr::Aggregate(Box::new(Aggregate::Count(CountArgExpr::Wildcard))).to_sql()
         );
 
         assert_eq!(
-            "Min(id)",
-            &Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_string())))).to_sql()
+            "MIN(id)",
+            Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_string())))).to_sql()
         );
 
         assert_eq!(
-            "Sum(price)",
+            "SUM(price)",
             &Expr::Aggregate(Box::new(Aggregate::Sum(Expr::Identifier(
                 "price".to_string()
             ))))
@@ -344,7 +413,7 @@ mod tests {
         );
 
         assert_eq!(
-            "Avg(pay)",
+            "AVG(pay)",
             &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier(
                 "pay".to_string()
             ))))
