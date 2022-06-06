@@ -1,5 +1,5 @@
 use {
-    crate::{ast::ToSql,},
+    crate::ast::ToSql,
     bigdecimal::BigDecimal,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
