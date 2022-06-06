@@ -287,10 +287,6 @@ pub fn rand(n: Option<Evaluated<'_>>) -> Result<Value> {
         },
         None => {}
     }
-    //    Value::I8(seed) => rng = StdRng::seed_from_u64(seed as u64),
-    //    Value::I64(seed) => rng = StdRng::seed_from_u64(seed as u64),
-    //    _ => {},
-    //}
     Ok(Value::F64(rng.gen()))
 }
 
