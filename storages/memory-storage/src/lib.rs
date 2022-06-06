@@ -46,52 +46,78 @@ impl Store for MemoryStorage {
     }
 }
 
-#[async_trait(?Send)]
-impl StoreMut for MemoryStorage {
-    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
-        let mut storage = self;
-
+impl MemoryStorage {
+    pub fn insert_schema(&mut self, schema: &Schema) {
         let table_name = schema.table_name.clone();
         let item = Item {
             schema: schema.clone(),
             rows: IndexMap::new(),
         };
 
-        storage.items.insert(table_name, item);
+        self.items.insert(table_name, item);
+    }
+
+    pub fn delete_schema(&mut self, table_name: &str) {
+        self.items.remove(table_name);
+    }
+
+    pub fn insert_data(&mut self, table_name: &str, rows: Vec<Row>) {
+        if let Some(item) = self.items.get_mut(table_name) {
+            for row in rows {
+                self.id_counter += 1;
+
+                item.rows.insert(Key::I64(self.id_counter), row);
+            }
+        }
+    }
+
+    pub fn update_data(&mut self, table_name: &str, rows: Vec<(Key, Row)>) {
+        if let Some(item) = self.items.get_mut(table_name) {
+            for (key, row) in rows {
+                item.rows.insert(key, row);
+            }
+        }
+    }
+
+    pub fn delete_data(&mut self, table_name: &str, keys: Vec<Key>) {
+        if let Some(item) = self.items.get_mut(table_name) {
+            for key in keys {
+                item.rows.remove(&key);
+            }
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl StoreMut for MemoryStorage {
+    async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
+        let mut storage = self;
+
+        MemoryStorage::insert_schema(&mut storage, schema);
+
         Ok((storage, ()))
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        storage.items.remove(table_name);
+        MemoryStorage::delete_schema(&mut storage, table_name);
+
         Ok((storage, ()))
     }
 
     async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
         let mut storage = self;
-        let mut id = storage.id_counter;
 
-        if let Some(item) = storage.items.get_mut(table_name) {
-            for row in rows {
-                id += 1;
+        MemoryStorage::insert_data(&mut storage, table_name, rows);
 
-                item.rows.insert(Key::I64(id), row);
-            }
-        }
-
-        storage.id_counter = id;
         Ok((storage, ()))
     }
 
     async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        if let Some(item) = storage.items.get_mut(table_name) {
-            for (key, row) in rows {
-                item.rows.insert(key, row);
-            }
-        }
+        MemoryStorage::update_data(&mut storage, table_name, rows);
 
         Ok((storage, ()))
     }
@@ -99,11 +125,7 @@ impl StoreMut for MemoryStorage {
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        if let Some(item) = storage.items.get_mut(table_name) {
-            for key in keys {
-                item.rows.remove(&key);
-            }
-        }
+        MemoryStorage::delete_data(&mut storage, table_name, keys);
 
         Ok((storage, ()))
     }

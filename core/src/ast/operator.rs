@@ -16,7 +16,7 @@ impl ToSql for UnaryOperator {
         match self {
             UnaryOperator::Plus => "+".to_string(),
             UnaryOperator::Minus => "-".to_string(),
-            UnaryOperator::Not => "<>".to_string(),
+            UnaryOperator::Not => "NOT ".to_string(),
             UnaryOperator::Factorial => "!".to_string(),
         }
     }
