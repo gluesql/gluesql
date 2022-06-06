@@ -187,6 +187,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "MIN" => translate_aggrecate_one_arg(Aggregate::Min, args, name),
         "MAX" => translate_aggrecate_one_arg(Aggregate::Max, args, name),
         "AVG" => translate_aggrecate_one_arg(Aggregate::Avg, args, name),
+        "VARIANCE" => translate_aggrecate_one_arg(Aggregate::Variance, args, name),
         "CONCAT" => {
             check_len_min(name, args.len(), 1)?;
             let exprs = args
