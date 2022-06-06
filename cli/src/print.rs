@@ -1,7 +1,9 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
-    gluesql_core::ast::ToSql,
-    gluesql_core::prelude::{Payload, PayloadVariable},
+    gluesql_core::{
+        ast::ToSql,
+        prelude::{Payload, PayloadVariable},
+    },
     std::io::{Result, Write},
 };
 
@@ -141,8 +143,10 @@ mod tests {
 
     #[test]
     fn print_payload() {
-        use gluesql_core::ast::{BinaryOperator, DataType, Expr};
-        use gluesql_core::prelude::{Payload, PayloadVariable, Value};
+        use gluesql_core::{
+            ast::{BinaryOperator, DataType, Expr},
+            prelude::{Payload, PayloadVariable, Value},
+        };
 
         let mut print = Print::new(Vec::new());
 

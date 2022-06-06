@@ -100,18 +100,18 @@ impl ToSql for Expr {
                 let high = high.to_sql();
 
                 match negated {
-                    true => format!("{} NOT BETWEEN {} AND {}", expr, low, high),
-                    false => format!("{} BETWEEN {} AND {}", expr, low, high),
+                    true => format!("{expr} NOT BETWEEN {low} AND {high}"),
+                    false => format!("{expr} BETWEEN {low} AND {high}"),
                 }
             }
-            Expr::UnaryOp { op, expr } => format!("{}{}", op.to_sql(), &*expr.to_sql()),
+            Expr::UnaryOp { op, expr } => format!("{}{}", op.to_sql(), expr.to_sql()),
             Expr::Cast { expr, data_type } => {
-                format!("CAST({} AS {})", &*expr.to_sql(), data_type)
+                format!("CAST({} AS {data_type})", expr.to_sql())
             }
             Expr::Extract { field, expr } => {
-                format!("EXTRACT({} FROM \"{}\")", field, &*expr.to_sql())
+                format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
             }
-            Expr::Nested(expr) => format!("todo:Nested({})", &*expr.to_sql()),
+            Expr::Nested(expr) => format!("todo:Nested({})", expr.to_sql()),
             Expr::Literal(s) => s.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type}(\"{value}\")"),
             Expr::Case {
@@ -119,32 +119,36 @@ impl ToSql for Expr {
                 when_then,
                 else_result,
             } => {
-                let mut str = match operand {
-                    Some(s) => format!("CASE {}", s.to_sql()),
-                    None => "CASE ".to_string(),
-                };
-                for (_when, _then) in when_then {
-                    str += format!("\nWHEN {} THEN {}", _when.to_sql(), _then.to_sql()).as_str();
-                }
-
-                match else_result {
-                    Some(s) => str += format!("\nELSE {}", s.to_sql()).as_str(),
-                    None => str += "", // no operation?
-                };
-                str + "\nEND"
+                let operand = match operand {
+                    Some(operand) => format!("CASE {}", operand.to_sql()),
+                    None => "CASE".to_owned(),
+                };  
+                    
+                let when_then = when_then
+                    .iter()
+                    .map(|(when, then)| format!("WHEN {} THEN {}", when.to_sql(), then.to_sql()))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                
+                let else_result = match else_result {
+                    Some(else_result) => format!("ELSE {}", else_result.to_sql()),
+                    None => String::new(),
+                };  
+                
+                [operand, when_then, else_result, "END".to_owned()].join("\n")
             }
             Expr::Aggregate(a) => a.to_sql(),
             Expr::Function(f) => {
                 format!("{}(todo:args)", f)
             }
-            // todo's...  these require enum query..
-            Expr::InSubquery {
-                expr: _,
-                subquery: _,
-                negated: _,
-            } => "InSubquery(..)".to_string(),
-            Expr::Exists(_q) => "Exists(..)".to_string(),
-            Expr::Subquery(_q) => "Subquery(..)".to_string(),
+            Expr::InSubquery { expr, negated, .. } => {
+                match negated {
+                    true => format!("{} NOT IN (..query..)", expr.to_sql()),
+                    false => format!("{} IN (..query..)", expr.to_sql()),
+                }   
+            }   
+            Expr::Exists(_) => "EXISTS(..query..)".to_string(),
+            Expr::Subquery(_) => "(..query..)".to_string(),       
         }
     }
 }

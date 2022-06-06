@@ -1,7 +1,5 @@
-use crate::ast::ToSql;
-use crate::data::Interval;
-//use crate::data::Literal;
 use {
+    crate::{ast::ToSql, data::Interval},
     bigdecimal::BigDecimal,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
