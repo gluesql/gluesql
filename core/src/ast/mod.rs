@@ -19,6 +19,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ObjectName(pub Vec<String>);
 
+pub trait ToSql {
+    fn to_sql(&self) -> String;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
     ShowColumns {
