@@ -419,5 +419,12 @@ mod tests {
             ))))
             .to_sql()
         );
+        assert_eq!(
+            "VARIANCE(pay)",
+            &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
+                "pay".to_string()
+            ))))
+            .to_sql()
+        );
     }
 }

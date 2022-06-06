@@ -125,6 +125,7 @@ impl ToSql for Aggregate {
             Aggregate::Max(e) => format!("MAX({})", e.to_sql()),
             Aggregate::Min(e) => format!("MIN({})", e.to_sql()),
             Aggregate::Avg(e) => format!("AVG({})", e.to_sql()),
+            Aggregate::Variance(e) => format!("VARIANCE({})", e.to_sql()),
         }
     }
 }
