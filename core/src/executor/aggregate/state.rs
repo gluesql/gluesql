@@ -15,18 +15,29 @@ type Group = Rc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
 type Context<'a> = Rc<BlendContext<'a>>;
 enum AggrValue {
-    Count { wildcard: bool, count: i64 },
+    Count {
+        wildcard: bool,
+        count: i64,
+    },
     Sum(Value),
     Min(Value),
     Max(Value),
-    Avg { sum: Value, count: i64 },
+    Avg {
+        sum: Value,
+        count: i64,
+    },
+    Variance {
+        sum_square: Value,
+        sum: Value,
+        count: i64,
+    },
 }
 
 impl<'a> AggrValue {
-    fn new(aggr: &Aggregate, value: &Value) -> Self {
+    fn new(aggr: &Aggregate, value: &Value) -> Result<Self> {
         let value = value.clone();
 
-        match aggr {
+        Ok(match aggr {
             Aggregate::Count(CountArgExpr::Wildcard) => AggrValue::Count {
                 wildcard: true,
                 count: 1,
@@ -42,7 +53,12 @@ impl<'a> AggrValue {
                 sum: value,
                 count: 1,
             },
-        }
+            Aggregate::Variance(_) => AggrValue::Variance {
+                sum_square: value.multiply(&value)?,
+                sum: value,
+                count: 1,
+            },
+        })
     }
 
     fn accumulate(&self, new_value: &Value) -> Result<Option<Self>> {
@@ -59,7 +75,7 @@ impl<'a> AggrValue {
                     Ok(None)
                 }
             }
-            Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value).unwrap()))),
+            Self::Sum(value) => Ok(Some(Self::Sum(value.add(new_value)?))),
             Self::Min(value) => match &value.partial_cmp(new_value) {
                 Some(Ordering::Greater) => Ok(Some(Self::Min(new_value.clone()))),
                 _ => Ok(None),
@@ -72,6 +88,15 @@ impl<'a> AggrValue {
                 sum: sum.add(new_value)?,
                 count: count + 1,
             })),
+            Self::Variance {
+                sum_square,
+                sum,
+                count,
+            } => Ok(Some(Self::Variance {
+                sum_square: sum_square.add(&new_value.multiply(new_value)?)?,
+                sum: sum.add(new_value)?,
+                count: count + 1,
+            })),
         }
     }
 
@@ -79,7 +104,18 @@ impl<'a> AggrValue {
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
             Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
-            Self::Avg { sum, count } => sum.divide(&Value::I64(count)),
+            Self::Avg { sum, count } => sum.divide(&Value::F64(count as f64)),
+            Self::Variance {
+                sum_square,
+                sum,
+                count,
+            } => {
+                let sum_expr1 = sum_square.multiply(&Value::I64(count))?;
+                let sum_expr2 = sum.multiply(&sum)?;
+                let expr_sub = sum_expr1.subtract(&sum_expr2)?;
+                let cnt_square = Value::F64(count as f64).multiply(&Value::F64(count as f64))?;
+                expr_sub.divide(&cnt_square)
+            }
         }
     }
 }
@@ -194,7 +230,6 @@ impl<'a> State<'a> {
             }
             _ => Err(AggregateError::OnlyIdentifierAllowed),
         };
-
         let value = match aggr {
             Aggregate::Count(CountArgExpr::Wildcard) => &Value::Null,
             Aggregate::Count(CountArgExpr::Expr(expr))
@@ -202,12 +237,13 @@ impl<'a> State<'a> {
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)
             | Aggregate::Avg(expr) => get_value(expr)?,
+            Aggregate::Variance(expr) => get_value(expr)?,
         };
 
         let aggr_value = match self.get(aggr) {
             Some((index, _)) if self.index <= *index => None,
             Some((_, aggr_value)) => aggr_value.accumulate(value)?,
-            None => Some(AggrValue::new(aggr, value)),
+            None => Some(AggrValue::new(aggr, value)?),
         };
 
         match aggr_value {
