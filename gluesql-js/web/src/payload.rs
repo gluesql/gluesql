@@ -1,7 +1,6 @@
 #![cfg(target_arch = "wasm32")]
 
 use {
-    gluesql_core::ast::ToSql,
     gluesql_core::prelude::{Payload, PayloadVariable},
     serde_json::{json, Value as Json},
     wasm_bindgen::prelude::JsValue,
@@ -61,11 +60,10 @@ fn convert_payload(payload: Payload) -> Json {
         Payload::ShowIndexes(indexes) => {
             let indexes = indexes
                 .into_iter()
-                .map(|(index)| {
+                .map(|(name, order)| {
                     json!({
-                        "name": index.name,
-                        "order": index.order.to_string(),
-                        "description": index.expr.to_sql(),
+                        "name": name,
+                        "order": order.to_string(),
                     })
                 })
                 .collect();

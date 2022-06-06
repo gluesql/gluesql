@@ -1,9 +1,6 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
-    gluesql_core::{
-        ast::ToSql,
-        prelude::{Payload, PayloadVariable},
-    },
+    gluesql_core::prelude::{Payload, PayloadVariable},
     std::io::{Result, Write},
 };
 
@@ -55,13 +52,9 @@ impl<W: Write> Print<W> {
                 writeln!(self.output, "{}\n", table)?;
             }
             Payload::ShowIndexes(indexes) => {
-                let mut table = get_table(vec!["Index Name", "Order", "Description"]);
-                for index in indexes {
-                    table.add_row([
-                        index.name.to_string(),
-                        index.order.to_string(),
-                        index.expr.to_sql(),
-                    ]);
+                let mut table = get_table(vec!["Index Name", "Order"]);
+                for (index_name, order) in indexes {
+                    table.add_row([index_name, &order.to_string()]);
                 }
                 writeln!(self.output, "{}\n", table)?;
             }
@@ -113,7 +106,7 @@ fn get_table<T: Into<Row>>(header: T) -> Table {
 #[cfg(test)]
 mod tests {
     use super::Print;
-    use gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd};
+    use gluesql_core::data::SchemaIndexOrd;
 
     #[test]
     fn print_help() {
@@ -143,10 +136,8 @@ mod tests {
 
     #[test]
     fn print_payload() {
-        use gluesql_core::{
-            ast::{BinaryOperator, DataType, Expr},
-            prelude::{Payload, PayloadVariable, Value},
-        };
+        use gluesql_core::ast::DataType;
+        use gluesql_core::prelude::{Payload, PayloadVariable, Value};
 
         let mut print = Print::new(Vec::new());
 
@@ -275,33 +266,17 @@ mod tests {
 
         test!(
             "
-╭────────────────────────────────────╮
-│ Index Name   Order   Description   │
-╞════════════════════════════════════╡
-│ id_ndx       ASC     id            │
-│ name_ndx     DESC    name          │
-│ expr_ndx     BOTH    expr1 - expr2 │
-╰────────────────────────────────────╯",
+╭────────────────────╮
+│ Index Name   Order │
+╞════════════════════╡
+│ id_ndx       ASC   │
+│ name_ndx     DESC  │
+│ date_ndx     BOTH  │
+╰────────────────────╯",
             &Payload::ShowIndexes(vec![
-                SchemaIndex {
-                    name: "id_ndx".to_string(),
-                    order: SchemaIndexOrd::Asc,
-                    expr: Expr::Identifier("id".to_string())
-                },
-                SchemaIndex {
-                    name: "name_ndx".to_string(),
-                    order: SchemaIndexOrd::Desc,
-                    expr: Expr::Identifier("name".to_string())
-                },
-                SchemaIndex {
-                    name: "expr_ndx".to_string(),
-                    order: SchemaIndexOrd::Both,
-                    expr: Expr::BinaryOp {
-                        left: Box::new(Expr::Identifier("expr1".to_string())),
-                        op: BinaryOperator::Minus,
-                        right: Box::new(Expr::Identifier("expr2".to_string()))
-                    }
-                }
+                ("id_ndx".to_string(), SchemaIndexOrd::Asc),
+                ("name_ndx".to_string(), SchemaIndexOrd::Desc),
+                ("date_ndx".to_string(), SchemaIndexOrd::Both),
             ],)
         );
 
