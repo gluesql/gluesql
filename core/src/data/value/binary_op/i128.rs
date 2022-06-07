@@ -295,9 +295,6 @@ mod tests {
 
     #[test]
     fn test_extremes() {
-        let type_max: i128 = i128::MAX;
-        let type_min: i128 = i128::MIN;
-
         assert_eq!(I128(1), I8(1));
         assert_eq!(I128(1), I64(1));
         assert_eq!(I128(1), I128(1));
@@ -306,14 +303,14 @@ mod tests {
         assert_eq!(-1_i128, I128(-1));
         assert_eq!(0_i128, I128(0));
         assert_eq!(1_i128, I128(1));
-        assert_eq!(type_min, I128(type_min));
-        assert_eq!(type_max, I128(type_max));
+        assert_eq!(i128::MIN, I128(i128::MIN));
+        assert_eq!(i128::MAX, I128(i128::MAX));
 
         //try_add
         assert_eq!(
-            type_max.try_add(&I8(1)),
+            i128::MAX.try_add(&I8(1)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I8(1),
                 operator: (NumericBinaryOperator::Add)
             }
@@ -321,9 +318,9 @@ mod tests {
         );
 
         assert_eq!(
-            type_max.try_add(&I64(1)),
+            i128::MAX.try_add(&I64(1)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I64(1),
                 operator: (NumericBinaryOperator::Add)
             }
@@ -331,9 +328,9 @@ mod tests {
         );
 
         assert_eq!(
-            type_max.try_add(&I128(1)),
+            i128::MAX.try_add(&I128(1)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I128(1),
                 operator: (NumericBinaryOperator::Add)
             }
@@ -342,9 +339,9 @@ mod tests {
 
         //try_subtract
         assert_eq!(
-            type_min.try_subtract(&I8(1)),
+            i128::MIN.try_subtract(&I8(1)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_min),
+                lhs: I128(i128::MIN),
                 rhs: I8(1),
                 operator: (NumericBinaryOperator::Subtract)
             }
@@ -352,9 +349,9 @@ mod tests {
         );
 
         assert_eq!(
-            type_min.try_subtract(&I64(1)),
+            i128::MIN.try_subtract(&I64(1)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_min),
+                lhs: I128(i128::MIN),
                 rhs: I64(1),
                 operator: (NumericBinaryOperator::Subtract)
             }
@@ -362,9 +359,9 @@ mod tests {
         );
 
         assert_eq!(
-            type_min.try_subtract(&I128(1)),
+            i128::MIN.try_subtract(&I128(1)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_min),
+                lhs: I128(i128::MIN),
                 rhs: I128(1),
                 operator: (NumericBinaryOperator::Subtract)
             }
@@ -372,14 +369,14 @@ mod tests {
         );
 
         //try multiply
-        assert_eq!(type_max.try_multiply(&I8(1)), Ok(I128(type_max)));
-        assert_eq!(type_max.try_multiply(&I64(1)), Ok(I128(type_max)));
-        assert_eq!(type_max.try_multiply(&I128(1)), Ok(I128(type_max)));
+        assert_eq!(i128::MAX.try_multiply(&I8(1)), Ok(I128(i128::MAX)));
+        assert_eq!(i128::MAX.try_multiply(&I64(1)), Ok(I128(i128::MAX)));
+        assert_eq!(i128::MAX.try_multiply(&I128(1)), Ok(I128(i128::MAX)));
 
         assert_eq!(
-            type_max.try_multiply(&I8(2)),
+            i128::MAX.try_multiply(&I8(2)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I8(2),
                 operator: (NumericBinaryOperator::Multiply)
             }
@@ -387,9 +384,9 @@ mod tests {
         );
 
         assert_eq!(
-            type_max.try_multiply(&I64(2)),
+            i128::MAX.try_multiply(&I64(2)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I64(2),
                 operator: (NumericBinaryOperator::Multiply)
             }
@@ -397,9 +394,9 @@ mod tests {
         );
 
         assert_eq!(
-            type_max.try_multiply(&I128(2)),
+            i128::MAX.try_multiply(&I128(2)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I128(2),
                 operator: (NumericBinaryOperator::Multiply)
             }
@@ -408,27 +405,27 @@ mod tests {
 
         //try_divide
         assert_eq!(
-            type_max.try_divide(&I8(0)),
+            i128::MAX.try_divide(&I8(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I8(0),
                 operator: (NumericBinaryOperator::Divide)
             }
             .into())
         );
         assert_eq!(
-            type_max.try_divide(&I64(0)),
+            i128::MAX.try_divide(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I64(0),
                 operator: (NumericBinaryOperator::Divide)
             }
             .into())
         );
         assert_eq!(
-            type_max.try_divide(&I128(0)),
+            i128::MAX.try_divide(&I128(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I128(0),
                 operator: (NumericBinaryOperator::Divide)
             }
@@ -436,27 +433,27 @@ mod tests {
         );
 
         assert_eq!(
-            type_max.try_modulo(&I8(0)),
+            i128::MAX.try_modulo(&I8(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I8(0),
                 operator: (NumericBinaryOperator::Modulo)
             }
             .into())
         );
         assert_eq!(
-            type_max.try_modulo(&I64(0)),
+            i128::MAX.try_modulo(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I64(0),
                 operator: (NumericBinaryOperator::Modulo)
             }
             .into())
         );
         assert_eq!(
-            type_max.try_modulo(&I128(0)),
+            i128::MAX.try_modulo(&I128(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I128(type_max),
+                lhs: I128(i128::MAX),
                 rhs: I128(0),
                 operator: (NumericBinaryOperator::Modulo)
             }
