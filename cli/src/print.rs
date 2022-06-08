@@ -1,7 +1,7 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
     gluesql_core::{
-        ast::{ToSql, DataType},
+        ast::{DataType, ToSql},
         prelude::{Payload, PayloadVariable},
     },
     std::io::{Result, Write},
