@@ -1,11 +1,7 @@
 use crate::*;
 
 test_case!(rand, async move {
-    use gluesql_core::{
-    //    executor::EvaluateError,
-        prelude::{Payload, Value::*},
-     //   translate::TranslateError,
-    };
+    use gluesql_core::prelude::{Payload, Value::*};
 
     let test_cases = vec![
         ("CREATE TABLE mytable (id int)", Ok(Payload::Create)),
