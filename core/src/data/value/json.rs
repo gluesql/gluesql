@@ -134,7 +134,7 @@ mod tests {
 
         // fix me!
         //assert_eq!(Value::I128(i128::MAX).try_into(), Ok(JsonValue::String(i128::MAX.to_string())));
-        
+
         assert_eq!(
             Value::F64(1.23).try_into(),
             Ok(JsonValue::Number(JsonNumber::from_f64(1.23).unwrap()))
