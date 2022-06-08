@@ -133,7 +133,10 @@ mod tests {
         );
 
         // fix me!
-        //assert_eq!(Value::I128(i128::MAX).try_into(), Ok(JsonValue::String(i128::MAX.to_string())));
+        // assert_eq!(Value::I128(i128::MAX).try_into(), Ok(JsonValue::String(i128::MAX.to_string())));
+        // this produces the following:
+        // left: `Ok(Number(1.7014118346046923e38))`,
+        // right: `Ok(String("170141183460469231731687303715884105727"))`', core\src\data\value\json.rs:136:9
 
         assert_eq!(
             Value::F64(1.23).try_into(),

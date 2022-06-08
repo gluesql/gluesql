@@ -26,7 +26,6 @@ test_case!(int128, async move {
     );
 
     // cast i128::MIN-1
-    let s = format!("select cast({:} as INT(128)) from Item", min_str);
     test!(
         Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_string()).into()),
         &format!("select cast({:} as INT(128)) from Item", min_str)
