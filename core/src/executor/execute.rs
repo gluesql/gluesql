@@ -25,7 +25,7 @@ use super::alter::alter_table;
 #[cfg(feature = "index")]
 use {
     super::alter::{create_index, drop_index},
-    crate::data::SchemaIndexOrd,
+    crate::data::SchemaIndex,
 };
 
 #[cfg(feature = "metadata")]
@@ -57,9 +57,6 @@ pub enum Payload {
     CreateIndex,
     #[cfg(feature = "index")]
     DropIndex,
-    #[cfg(feature = "index")]
-    ShowIndexes(Vec<(String, SchemaIndexOrd)>),
-
     #[cfg(feature = "transaction")]
     StartTransaction,
     #[cfg(feature = "transaction")]
@@ -69,6 +66,9 @@ pub enum Payload {
 
     #[cfg(feature = "metadata")]
     ShowVariable(PayloadVariable),
+
+    #[cfg(feature = "index")]
+    ShowIndexes(Vec<SchemaIndex>),
 }
 
 #[cfg(feature = "metadata")]
@@ -351,15 +351,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                 Err(e) => return Err((storage, e)),
             };
 
-            Ok((
-                storage,
-                Payload::ShowIndexes(
-                    indexes
-                        .into_iter()
-                        .map(|index| (index.name, index.order))
-                        .collect(),
-                ),
-            ))
+            Ok((storage, Payload::ShowIndexes(indexes)))
         }
         //- Metadata
         #[cfg(feature = "metadata")]

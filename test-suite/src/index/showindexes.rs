@@ -1,7 +1,12 @@
 use crate::*;
 
 test_case!(showindexes, async move {
-    use gluesql_core::{data::SchemaIndexOrd, executor::ExecuteError, prelude::Payload};
+    use gluesql_core::{
+        ast::{BinaryOperator, Expr},
+        data::{SchemaIndex, SchemaIndexOrd},
+        executor::ExecuteError,
+        prelude::Payload,
+    };
 
     run!(
         r#"
@@ -36,9 +41,25 @@ CREATE TABLE Test (
 
     test!(
         Ok(Payload::ShowIndexes(vec![
-            ("idx_id".to_string(), SchemaIndexOrd::Both),
-            ("idx_name".to_string(), SchemaIndexOrd::Both),
-            ("idx_id2".to_string(), SchemaIndexOrd::Both)
+            SchemaIndex {
+                name: "idx_id".to_string(),
+                order: SchemaIndexOrd::Both,
+                expr: Expr::Identifier("id".to_string())
+            },
+            SchemaIndex {
+                name: "idx_name".to_string(),
+                order: SchemaIndexOrd::Both,
+                expr: Expr::Identifier("name".to_string())
+            },
+            SchemaIndex {
+                name: "idx_id2".to_string(),
+                order: SchemaIndexOrd::Both,
+                expr: Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("id".to_string())),
+                    op: BinaryOperator::Plus,
+                    right: Box::new(Expr::Identifier("num".to_string()))
+                }
+            }
         ])),
         "show indexes from Test"
     );
