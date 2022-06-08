@@ -26,6 +26,14 @@ test_case!(rand, async move {
                 0.17325464426155657
             )),
         ),
+        (
+            "SELECT RAND(789) as r FROM mytable",
+            Ok(select!(
+                r
+                F64;
+                0.9635218234007941
+            )),
+        ),
     ];
 
     for (sql, expected) in test_cases {
