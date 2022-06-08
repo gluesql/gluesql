@@ -55,7 +55,7 @@ test_case!(int128, async move {
         Ok(select!(field_one I128; 1)),
         "SELECT field_one FROM Item WHERE field_one = 1"
     );
-    
+
     test!(
         Ok(select!(field_one I128; 1; 3)),
         "SELECT field_one FROM Item WHERE field_one > 0"
