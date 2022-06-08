@@ -320,6 +320,21 @@ mod tests {
         assert_eq!(cmp(&n6, &n4), Ordering::Greater);
         assert_eq!(cmp(&n4, &null), Ordering::Less);
 
+        let n1 = I128(-123).to_cmp_be_bytes();
+        let n2 = I128(-11).to_cmp_be_bytes();
+        let n3 = I128(0).to_cmp_be_bytes();
+        let n4 = I128(3).to_cmp_be_bytes();
+        let n5 = I128(20).to_cmp_be_bytes();
+        let n6 = I128(100).to_cmp_be_bytes();
+
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n6), Ordering::Less);
+        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
+        assert_eq!(cmp(&n4, &n5), Ordering::Less);
+        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
+        assert_eq!(cmp(&n4, &null), Ordering::Less);
+
         let n1 = Str("a".to_owned()).to_cmp_be_bytes();
         let n2 = Str("ab".to_owned()).to_cmp_be_bytes();
         let n3 = Str("aaa".to_owned()).to_cmp_be_bytes();

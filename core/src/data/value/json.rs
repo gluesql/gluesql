@@ -127,6 +127,11 @@ mod tests {
             Value::I64(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
+        assert_eq!(
+            Value::I128(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+        
         // this doesn't work
         // assert_eq!(Value::I128(i128::MAX).try_into(), Ok(JsonValue::Number(i128::MAX.into())));
 
@@ -194,6 +199,10 @@ mod tests {
     fn json_to_value() {
         assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
         assert_eq!(JsonValue::Bool(false).try_into(), Ok(Value::Bool(false)));
+        assert_eq!(
+            JsonValue::Number(54321.into()).try_into(),
+            Ok(Value::I128(54321))
+        );
         assert_eq!(
             JsonValue::Number(54321.into()).try_into(),
             Ok(Value::I64(54321))

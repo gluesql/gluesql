@@ -401,6 +401,7 @@ mod tests {
         test!(Value::Bool(true), "TRUE");
         test!(Value::I8(122), "122");
         test!(Value::I64(1234567890), "1234567890");
+        test!(Value::I128(1234567890), "1234567890");
         test!(Value::F64(1234567890.0987), "1234567890.0987");
         test!(Value::Date(date(2021, 11, 20)), "2021-11-20");
         test!(
@@ -538,6 +539,7 @@ mod tests {
 
         // impossible casts to i8
         test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I128(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
     }
 
