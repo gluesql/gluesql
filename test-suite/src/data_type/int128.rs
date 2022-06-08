@@ -31,7 +31,7 @@ test_case!(int128, async move {
         &s
     );
 
-    //cast i128::MIN-1
+    // cast i128::MIN-1
     let s = format!("select cast({:} as INT(128)) from Item", min_str);
     test!(
         Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_string()).into()),
@@ -55,7 +55,7 @@ test_case!(int128, async move {
         Ok(select!(field_one I128; 1)),
         "SELECT field_one FROM Item WHERE field_one = 1"
     );
-    //todo: the following tests does not work..
+    
     test!(
         Ok(select!(field_one I128; 1; 3)),
         "SELECT field_one FROM Item WHERE field_one > 0"
