@@ -121,7 +121,7 @@ impl TryBinaryOperator for i128 {
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
                         lhs: I128(lhs),
-                        rhs: I8(rhs),
+                        rhs: I32(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
                     .into()

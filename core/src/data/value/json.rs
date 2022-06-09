@@ -37,6 +37,7 @@ impl TryFrom<Value> for JsonValue {
         match value {
             Value::Bool(v) => Ok(JsonValue::Bool(v)),
             Value::I8(v) => Ok(v.into()),
+            Value::I32(v) => Ok(v.into()),
             Value::I64(v) => Ok(v.into()),
             Value::I128(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
@@ -124,6 +125,10 @@ mod tests {
         assert_eq!(Value::Bool(true).try_into(), Ok(JsonValue::Bool(true)));
         assert_eq!(Value::I8(16).try_into(), Ok(JsonValue::Number(16.into())));
         assert_eq!(
+            Value::I32(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+        assert_eq!(
             Value::I64(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
@@ -204,11 +209,15 @@ mod tests {
         assert_eq!(JsonValue::Bool(false).try_into(), Ok(Value::Bool(false)));
         assert_eq!(
             JsonValue::Number(54321.into()).try_into(),
-            Ok(Value::I128(54321))
+            Ok(Value::I32(54321))
         );
         assert_eq!(
             JsonValue::Number(54321.into()).try_into(),
             Ok(Value::I64(54321))
+        );
+        assert_eq!(
+            JsonValue::Number(54321.into()).try_into(),
+            Ok(Value::I128(54321))
         );
         assert_eq!(
             JsonValue::Number(JsonNumber::from_f64(3.21).unwrap()).try_into(),

@@ -157,6 +157,48 @@ impl TryInto<i8> for Value {
     }
 }
 
+impl TryInto<i32> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<i32> {
+        Ok(match self {
+            Value::Bool(value) => {
+                if *value {
+                    1
+                } else {
+                    0
+                }
+            }
+            Value::I8(value) => *value as i32,
+            Value::I32(value) => *value,
+            Value::I64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
+            Value::I128(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
+            Value::F64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
+            Value::Str(value) => value
+                .parse::<i32>()
+                .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Bytea(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
+impl TryInto<i32> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<i32> {
+        (&self).try_into()
+    }
+}
+
 impl TryInto<i64> for &Value {
     type Error = Error;
 
