@@ -1,3 +1,7 @@
+use itertools::Itertools;
+
+use crate::{ast::TableFactor, executor::select::select};
+
 use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
@@ -59,4 +63,34 @@ pub async fn fetch<'a>(
         });
 
     Ok(rows)
+}
+
+pub async fn fetch_relation<'a>(
+    storage: &'a dyn GStore,
+    table_factor: &'a TableFactor,
+    filter_context: &Option<Rc<FilterContext<'a>>>,
+) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
+    #[derive(futures_enum::Stream)]
+    enum Rows<I1, I2> {
+        Derived(I1),
+        Table(I2),
+    }
+
+    match table_factor {
+        TableFactor::Derived { subquery, .. } => {
+            let filter_context = filter_context.as_ref().map(Rc::clone);
+            let rows = select(storage, subquery, filter_context).await?;
+
+            Ok(Rows::Derived(rows))
+        }
+        TableFactor::Table { name, .. } => {
+            let rows = storage
+                .scan_data(crate::data::get_name(name)?)
+                .await?
+                .map_ok(|(_, row)| row);
+            let rows = stream::iter(rows);
+
+            Ok(Rows::Table(rows))
+        }
+    }
 }

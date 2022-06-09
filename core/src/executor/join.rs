@@ -1,14 +1,14 @@
 use crate::ast::TableFactor;
 
-use super::select::select;
-
+use super::fetch::fetch_relation;
+use itertools::Itertools;
 use {
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
             JoinOperator as AstJoinOperator,
         },
-        data::{Key, Row, Table},
+        data::{Key, Row},
         executor::{
             context::{BlendContext, FilterContext},
             evaluate::evaluate,
@@ -21,7 +21,6 @@ use {
         future,
         stream::{self, empty, once, Stream, StreamExt, TryStream, TryStreamExt},
     },
-    itertools::Itertools,
     std::{borrow::Cow, collections::HashMap, pin::Pin, rc::Rc},
     utils::OrStream,
 };
@@ -255,35 +254,8 @@ impl<'a> JoinExecutor<'a> {
             } => (key_expr, value_expr, where_clause),
         };
 
-        #[derive(futures_enum::Stream)]
-        enum Rows<I1, I2> {
-            Derived(I1),
-            Table(I2),
-        }
-
-        // let blabla: Box<dyn TryStream<Ok = Row, Error = Error>> = match relation {
-        let blabla = match relation {
-            TableFactor::Derived { subquery, alias } => {
-                let filter_context = filter_context.as_ref().map(Rc::clone);
-
-                Rows::Derived(select(storage, subquery, filter_context).await?)
-                // Box::new(select(storage, subquery, filter_context).await?)
-            }
-            TableFactor::Table { .. } => {
-                let rows = storage
-                    .scan_data(relation.get_name()?)
-                    .await?
-                    .map(|item| item.map(|(_, row)| row));
-
-                // Box::new(stream::iter(rows))
-                Rows::Table(stream::iter(rows))
-                /*
-                .map_ok(|(key, row)| row)
-                .map(stream::iter) // .map(|r| r.unwrap().1),
-                */
-            }
-        };
-        let rows_map = blabla
+        let rows_map = fetch_relation(storage, relation, &filter_context).await?;
+        let rows_map = rows_map
             .try_filter_map(|row| {
                 let columns = Rc::clone(&columns);
                 let filter_context = filter_context.as_ref().map(Rc::clone);

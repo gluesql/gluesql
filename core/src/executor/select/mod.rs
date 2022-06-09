@@ -154,7 +154,10 @@ pub async fn select_with_labels<'a>(
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
-) -> Result<(Vec<String>, impl TryStream<Ok = Row, Error = Error> + 'a)> {
+) -> Result<(
+    Vec<String>,
+    impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
+)> {
     let Select {
         from: table_with_joins,
         selection: where_clause,
@@ -353,7 +356,7 @@ pub async fn select<'a>(
     storage: &'a dyn GStore,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
-) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {
+) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
     select_with_labels(storage, query, filter_context, false)
         .await
         .map(|(_, rows)| rows)
