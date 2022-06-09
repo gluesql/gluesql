@@ -176,23 +176,50 @@ pub async fn select_with_labels<'a>(
     match relation {
         TableFactor::Table { .. } => {
             let table = Table::new(relation)?;
-            println!(":+:+:22{:?}", table.get_name());
 
             let columns = fetch_columns(storage, table.get_name()).await?;
             let join_columns = stream::iter(joins.iter())
                 .map(Ok::<_, Error>)
-                .and_then(|join| {
-                    let table = Table::new(&join.relation);
+                .and_then(|join| match &join.relation {
+                    TableFactor::Table { .. } => todo!(),
+                    // {
+                    //     let table = Table::new(&join.relation);
+                    //     async move {
+                    //         let table = table?;
+                    //         let table_alias = table.get_alias();
+                    //         let table_name = table.get_name();
 
-                    async move {
-                        let table = table?;
-                        let table_alias = table.get_alias();
-                        let table_name = table.get_name();
+                    //         let columns = fetch_columns(storage, table_name).await?;
 
-                        let columns = fetch_columns(storage, table_name).await?;
-
-                        Ok((table_alias, columns))
+                    //         Ok((table_alias, columns))
+                    //     }
+                    // }
+                    TableFactor::Derived {
+                        subquery:
+                            Query {
+                                body: SetExpr::Select(statement),
+                                ..
+                            },
+                        alias,
+                    } => {
+                        let Select {
+                            from: TableWithJoins { relation, .. },
+                            ..
+                        } = statement.as_ref();
+                        let Select { projection, .. } = statement.as_ref();
+                        let columns = projection.into_iter().map(|v| match v {
+                            SelectItem::Expr { expr, label } => todo!(),
+                            SelectItem::QualifiedWildcard(_) => todo!(),
+                            SelectItem::Wildcard => todo!(),
+                        });
+                        async move {
+                            let table_name = relation.get_name()?;
+                            let table_alias = relation.get_alias()?;
+                            let columns = fetch_columns(storage, table_name).await?;
+                            Ok((table_alias, columns))
+                        }
                     }
+                    _ => todo!(),
                 })
                 .try_collect::<Vec<_>>()
                 .await?;
@@ -265,39 +292,12 @@ pub async fn select_with_labels<'a>(
             Ok((labels, rows))
         }
         TableFactor::Derived { subquery, alias } => {
-            println!(":+:+:{:?}", alias);
+            // println!(":+:+:{:?}", alias);
             let (labels, inline_view) = select_with_labels(storage, subquery, None, true).await?;
             let inline_view = inline_view.try_collect::<Vec<_>>().await?;
-            // let join_columns = stream::iter(joins.iter())
-            //     .map(Ok::<_, Error>)
-            //     .and_then(|join| {
-            //         let table = Table::new(&join.relation);
-
-            //         async move {
-            //             let table = table?;
-            //             let table_alias = table.get_alias();
-            //             let table_name = table.get_name();
-
-            //             let columns = fetch_columns(storage, table_name).await?;
-
-            //             Ok((table_alias, columns))
-            //         }
-            //     })
-            //     .try_collect::<Vec<_>>()
-            //     .await?;
-            // let join_columns = join_columns
-            //     .into_iter()
-            //     .map(|(_, columns)| columns)
-            //     .map(Rc::from)
-            //     .collect::<Vec<_>>();
-            // let labels = if with_labels {
-            //     get_labels(projection, &alias.to_owned().name, &columns, &join_columns)?
-            // } else {
-            //     vec![]
-            // };
-            println!(":+:+:{:?}", inline_view);
+            // println!(":+:+:{:?}", inline_view);
             let columns = Rc::from(labels.to_owned());
-            println!(":+:+:{:?}", columns);
+            // println!(":+:+:{:?}", columns);
             // let columns = Rc::clone(columns);
             let rows = inline_view.into_iter().map(move |row| {
                 let columns = Rc::clone(&columns);
@@ -309,8 +309,8 @@ pub async fn select_with_labels<'a>(
                 )))
             });
             let rows = stream::iter(rows);
-            println!(":+:+:{:?}", rows);
-            println!(":+:+:{:?}", filter_context);
+            // println!(":+:+:{:?}", rows);
+            // println!(":+:+:{:?}", filter_context);
 
             let aggregate = Aggregator::new(
                 storage,
@@ -330,9 +330,6 @@ pub async fn select_with_labels<'a>(
 
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let rows = aggregate.apply(rows).await?;
-
-            // let temp = rows.try_collect::<Vec<_>>().await?;
-            // println!(":+:+:{:?}", temp);
 
             let rows = sort
                 .apply(rows)

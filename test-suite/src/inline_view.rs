@@ -51,8 +51,12 @@ test_case!(inline_view, async move {
             select!(cnt;I64;3),
         ),
         ( // join
-            "SELECT * FROM OuterTable JOIN (SELECT id FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
-            select!(cnt;I64;3),
+            "SELECT * FROM OuterTable JOIN (SELECT name FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
+            select!(
+                id  | id  | name
+                I64 | I64 | Str;
+                1     1     "GLUE".to_owned()
+            ),
         ),
 
         // group by
