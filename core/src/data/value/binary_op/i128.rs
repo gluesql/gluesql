@@ -505,8 +505,8 @@ mod tests {
     fn try_add() {
         let base = 1_i128;
 
-        assert_eq!(base.try_add(&I8(1)), Ok(I8(2)));
-        assert_eq!(base.try_add(&I64(1)), Ok(I64(2)));
+        assert_eq!(base.try_add(&I8(1)), Ok(I128(2)));
+        assert_eq!(base.try_add(&I64(1)), Ok(I128(2)));
         assert_eq!(base.try_add(&I128(1)), Ok(I128(2)));
 
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
@@ -530,8 +530,8 @@ mod tests {
     fn try_subtract() {
         let base = 1_i128;
 
-        assert_eq!(base.try_subtract(&I8(1)), Ok(I8(0)));
-        assert_eq!(base.try_subtract(&I64(1)), Ok(I64(0)));
+        assert_eq!(base.try_subtract(&I8(1)), Ok(I128(0)));
+        assert_eq!(base.try_subtract(&I64(1)), Ok(I128(0)));
         assert_eq!(base.try_subtract(&I128(1)), Ok(I128(0)));
 
         assert!(
@@ -558,12 +558,12 @@ mod tests {
     fn try_multiply() {
         let base = 3_i128;
 
-        assert_eq!(base.try_multiply(&I8(2)), Ok(I8(6)));
-        assert_eq!(base.try_multiply(&I64(2)), Ok(I64(6)));
+        assert_eq!(base.try_multiply(&I8(2)), Ok(I128(6)));
+        assert_eq!(base.try_multiply(&I64(2)), Ok(I128(6)));
         assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
 
-        assert_eq!(base.try_multiply(&I8(-1)), Ok(I8(-3)));
-        assert_eq!(base.try_multiply(&I64(-1)), Ok(I64(-3)));
+        assert_eq!(base.try_multiply(&I8(-1)), Ok(I128(-3)));
+        assert_eq!(base.try_multiply(&I64(-1)), Ok(I128(-3)));
         assert_eq!(base.try_multiply(&I128(-1)), Ok(I128(-3)));
 
         assert!(
@@ -591,12 +591,12 @@ mod tests {
     fn try_divide() {
         let base = 6_i128;
 
-        assert_eq!(base.try_divide(&I8(2)), Ok(I8(3)));
-        assert_eq!(base.try_divide(&I64(2)), Ok(I64(3)));
+        assert_eq!(base.try_divide(&I8(2)), Ok(I128(3)));
+        assert_eq!(base.try_divide(&I64(2)), Ok(I128(3)));
         assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
 
-        assert_eq!(base.try_divide(&I8(-6)), Ok(I8(-1)));
-        assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
+        assert_eq!(base.try_divide(&I8(-6)), Ok(I128(-1)));
+        assert_eq!(base.try_divide(&I64(-6)), Ok(I128(-1)));
         assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));
 
         assert!(
@@ -623,12 +623,12 @@ mod tests {
     fn try_modulo() {
         let base = 9_i128;
 
-        assert_eq!(base.try_modulo(&I8(1)), Ok(I8(0)));
-        assert_eq!(base.try_modulo(&I64(1)), Ok(I64(0)));
+        assert_eq!(base.try_modulo(&I8(1)), Ok(I128(0)));
+        assert_eq!(base.try_modulo(&I64(1)), Ok(I128(0)));
         assert_eq!(base.try_modulo(&I128(1)), Ok(I128(0)));
 
-        assert_eq!(base.try_modulo(&I8(2)), Ok(I8(1)));
-        assert_eq!(base.try_modulo(&I64(2)), Ok(I64(1)));
+        assert_eq!(base.try_modulo(&I8(2)), Ok(I128(1)));
+        assert_eq!(base.try_modulo(&I64(2)), Ok(I128(1)));
         assert_eq!(base.try_modulo(&I128(2)), Ok(I128(1)));
 
         assert!(matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x).abs() < f64::EPSILON ));
