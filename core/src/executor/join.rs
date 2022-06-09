@@ -1,12 +1,9 @@
-use crate::ast::TableFactor;
-
-use super::fetch::fetch_relation;
-use itertools::Itertools;
 use {
+    super::fetch::fetch_relation,
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
-            JoinOperator as AstJoinOperator,
+            JoinOperator as AstJoinOperator, TableFactor,
         },
         data::{Key, Row},
         executor::{
@@ -21,6 +18,7 @@ use {
         future,
         stream::{self, empty, once, Stream, StreamExt, TryStream, TryStreamExt},
     },
+    itertools::Itertools,
     std::{borrow::Cow, collections::HashMap, pin::Pin, rc::Rc},
     utils::OrStream,
 };
@@ -96,14 +94,9 @@ async fn join<'a>(
 
     let table_name = relation.get_name()?;
     let table_alias = relation.get_alias()?;
-    // let table = Table::new(relation)?;
-    // let table_name = table.get_name();
-    // let table_alias = table.get_alias();
 
     let join_executor = JoinExecutor::new(
         storage,
-        // table_name,
-        // table_alias,
         relation,
         Rc::clone(&columns),
         filter_context.as_ref().map(Rc::clone),
@@ -238,8 +231,6 @@ enum JoinExecutor<'a> {
 impl<'a> JoinExecutor<'a> {
     async fn new(
         storage: &'a dyn GStore,
-        // table_name: &'a str,
-        // table_alias: &'a str,
         relation: &TableFactor,
         columns: Rc<[String]>,
         filter_context: Option<Rc<FilterContext<'a>>>,
