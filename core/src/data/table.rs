@@ -1,7 +1,3 @@
-use core::panic;
-
-use crate::result::Error;
-
 use {
     crate::{
         ast::{IndexItem, ObjectName, TableAlias, TableFactor},
@@ -34,19 +30,19 @@ impl<'a> Table<'a> {
 
                 Ok(Self { name, alias, index })
             }
-            TableFactor::Derived { alias, .. } => todo!("do after mergeing"), // ObjectName(vec![alias.to_owned().name]),
-                                                                              // TableFactor::Derived { subquery, alias } => {
-                                                                              //     let alias = alias.as_ref().map(|TableAlias { name, .. }| name);
-                                                                              //     select(subquery, None, false)
-                                                                              //     select(storage, subquery, context)
+            TableFactor::Derived { .. } => todo!("do after mergeing"), // ObjectName(vec![alias.to_owned().name]),
+                                                                       // TableFactor::Derived { subquery, alias } => {
+                                                                       //     let alias = alias.as_ref().map(|TableAlias { name, .. }| name);
+                                                                       //     select(subquery, None, false)
+                                                                       //     select(storage, subquery, context)
 
-                                                                              //     let name = alias.unwrap();
-                                                                              //     Ok(Self {
-                                                                              //         name,
-                                                                              //         alias,
-                                                                              //         index: None,
-                                                                              //     })
-                                                                              // }
+                                                                       //     let name = alias.unwrap();
+                                                                       //     Ok(Self {
+                                                                       //         name,
+                                                                       //         alias,
+                                                                       //         index: None,
+                                                                       //     })
+                                                                       // }
         }
     }
 

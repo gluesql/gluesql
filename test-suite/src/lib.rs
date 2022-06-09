@@ -68,6 +68,7 @@ macro_rules! generate_store_tests {
         glue!(limit, limit::limit);
         glue!(error, error::error);
         glue!(filter, filter::filter);
+        glue!(inline_view, inline_view::inline_view);
         glue!(unary_operator, unary_operator::unary_operator);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
