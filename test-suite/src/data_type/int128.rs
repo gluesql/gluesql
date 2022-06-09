@@ -17,18 +17,21 @@ test_case!(int128, async move {
     let max_str = "170141183460469231731687303715884105728";
     let min_str = "-170141183460469231731687303715884105729";
 
-    test!(Err(ValueError::FailedToParseNumber.into()), &format!("INSERT INTO Item VALUES ({:}, {:})", max_str, max_str));
+    test!(
+        Err(ValueError::FailedToParseNumber.into()),
+        &format!("INSERT INTO Item VALUES ({}, {})", max_str, max_str)
+    );
 
     // cast i128::MAX+1
     test!(
         Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, max_str.to_string()).into()),
-        &format!("select cast({:} as INT(128)) from Item", max_str)
+        &format!("select cast({} as INT(128)) from Item", max_str)
     );
 
     // cast i128::MIN-1
     test!(
         Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_string()).into()),
-        &format!("select cast({:} as INT(128)) from Item", min_str)
+        &format!("select cast({} as INT(128)) from Item", min_str)
     );
 
     // lets try some valid SQL
