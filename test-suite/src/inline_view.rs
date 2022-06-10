@@ -68,45 +68,45 @@ test_case!(inline_view, async move {
         ),
 
         // group by
-       (
-           "SELECT * FROM (
-               SELECT name, count(*) as cnt
-               FROM InnerTable
-               GROUP BY name
-            ) AS InlineView",
-            select!(
-                name             | cnt 
-                Str              | I64;
-                "GLUE".to_owned()  1;
-                "SQL".to_owned()   2
-            ),
-       ),
+    //    (
+    //        "SELECT * FROM (
+    //            SELECT name, count(*) as cnt
+    //            FROM InnerTable
+    //            GROUP BY name
+    //         ) AS InlineView",
+    //         select!(
+    //             name             | cnt 
+    //             Str              | I64;
+    //             "GLUE".to_owned()  1;
+    //             "SQL".to_owned()   2
+    //         ),
+    //    ),
         // limit
-        (
-            "SELECT * FROM (
-                SELECT *
-                FROM InnerTable
-                LIMIT 1
-             ) AS InlineView",
-             select!(
-                 id  | name 
-                 I64 | Str;
-                 1    "SQL".to_owned()
-             ),
-        ),
+        // (
+        //     "SELECT * FROM (
+        //         SELECT *
+        //         FROM InnerTable
+        //         LIMIT 1
+        //      ) AS InlineView",
+        //      select!(
+        //          id  | name 
+        //          I64 | Str;
+        //          1    "SQL".to_owned()
+        //      ),
+        // ),
         // offset
-        (
-            "SELECT * FROM (
-                SELECT *
-                FROM InnerTable
-                OFFSET 1
-             ) AS InlineView",
-             select!(
-                 id  | name 
-                 I64 | Str;
-                 2    "GLUE".to_owned()
-             ),
-        ),
+        // (
+        //     "SELECT * FROM (
+        //         SELECT *
+        //         FROM InnerTable
+        //         OFFSET 1
+        //      ) AS InlineView",
+        //      select!(
+        //          id  | name 
+        //          I64 | Str;
+        //          2    "GLUE".to_owned()
+        //      ),
+        // ),
         // sort
 
         // (

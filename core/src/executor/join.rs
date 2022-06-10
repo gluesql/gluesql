@@ -157,15 +157,19 @@ async fn join<'a>(
                 Hash(I2),
                 Empty(I3),
             }
-            println!("table_name: {:?}", table_name);
             let rows = match join_executor.as_ref() {
                 JoinExecutor::NestedLoop => {
                     // todo: should match table and derived
-                    let rows = storage
-                        .scan_data(table_name)
-                        .await
-                        .map(stream::iter)?
-                        .and_then(|(_, row)| future::ok(Cow::Owned(row)))
+                    println!("relation : {:?}", relation);
+                    let rows = fetch_relation(storage, relation, &filter_context).await?;
+                    let rows = 
+                    // storage
+                        // .scan_data(table_name)
+                        // .await
+                        // rows.map(stream::iter)
+                        // rows.map_ok(|row| future::ok(Cow::Owned(row)))
+                        rows.and_then(|row| future::ok(Cow::Owned(row)))
+                        // .and_then(|(_, row)| future::ok(Cow::Owned(row)))
                         .try_filter_map(move |row| {
                             check_where_clause(
                                 storage,
