@@ -69,6 +69,7 @@ async fn fetch_blended<'a>(
             None => storage.scan_data(table_name).await.map(Rows::FullScan)?,
         }
     };
+
     #[cfg(not(feature = "index"))]
     let rows = storage.scan_data(table_name).await?;
 
@@ -79,7 +80,6 @@ async fn fetch_blended<'a>(
 
         Ok(BlendContext::new(table.get_alias(), columns, row, None))
     });
-
     Ok(stream::iter(rows))
 }
 
@@ -206,24 +206,29 @@ pub async fn select_with_labels<'a>(
                             from: TableWithJoins { relation, .. },
                             ..
                         } = statement.as_ref();
+
                         let Select { projection, .. } = statement.as_ref();
-                        let columns = projection.into_iter().map(|v| match v {
-                            SelectItem::Expr { expr, label } => todo!(),
-                            SelectItem::QualifiedWildcard(_) => todo!(),
-                            SelectItem::Wildcard => todo!(),
-                        });
                         async move {
                             let table_name = relation.get_name()?;
                             let table_alias = relation.get_alias()?;
-                            let columns = fetch_columns(storage, table_name).await?;
-                            Ok((table_alias, columns))
+                            let columns = projection
+                                .into_iter()
+                                .map(|v| match v {
+                                    SelectItem::Expr { label, .. } => label.to_owned(),
+                                    SelectItem::QualifiedWildcard(object_name) => todo!(),
+                                    // {
+                                    //     fetch_columns(storage, object_name).await?
+                                    // }
+                                    SelectItem::Wildcard => todo!(), // fetch_columns(storage, table_name).await?,
+                                })
+                                .collect::<Vec<_>>();
+                            Ok((table_name, columns))
                         }
                     }
                     _ => todo!(),
                 })
                 .try_collect::<Vec<_>>()
                 .await?;
-
             let labels = if with_labels {
                 get_labels(projection, table.get_alias(), &columns, &join_columns)?
             } else {
@@ -236,7 +241,6 @@ pub async fn select_with_labels<'a>(
                 .map(|(_, columns)| columns)
                 .map(Rc::from)
                 .collect::<Vec<_>>();
-
             let join = Join::new(
                 storage,
                 joins,
@@ -266,6 +270,7 @@ pub async fn select_with_labels<'a>(
             let sort = Sort::new(storage, filter_context, order_by);
 
             let rows = fetch_blended(storage, table, columns).await?;
+
             let rows = join.apply(rows).await?;
             let rows = rows.try_filter_map(move |blend_context| {
                 let filter = Rc::clone(&filter);
@@ -292,13 +297,9 @@ pub async fn select_with_labels<'a>(
             Ok((labels, rows))
         }
         TableFactor::Derived { subquery, alias } => {
-            // println!(":+:+:{:?}", alias);
             let (labels, inline_view) = select_with_labels(storage, subquery, None, true).await?;
             let inline_view = inline_view.try_collect::<Vec<_>>().await?;
-            // println!(":+:+:{:?}", inline_view);
             let columns = Rc::from(labels.to_owned());
-            // println!(":+:+:{:?}", columns);
-            // let columns = Rc::clone(columns);
             let rows = inline_view.into_iter().map(move |row| {
                 let columns = Rc::clone(&columns);
                 Ok(Rc::from(BlendContext::new(
@@ -309,8 +310,6 @@ pub async fn select_with_labels<'a>(
                 )))
             });
             let rows = stream::iter(rows);
-            // println!(":+:+:{:?}", rows);
-            // println!(":+:+:{:?}", filter_context);
 
             let aggregate = Aggregator::new(
                 storage,

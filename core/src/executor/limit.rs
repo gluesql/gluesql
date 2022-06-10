@@ -33,15 +33,11 @@ impl Limit {
         &self,
         rows: impl Stream<Item = Result<Row>> + 'a,
     ) -> Pin<Box<dyn Stream<Item = Result<Row>> + 'a>> {
-        println!("limit: {:?}, {:?}", self.offset, self.limit);
         match (self.offset, self.limit) {
             (Some(offset), Some(limit)) => Box::pin(rows.skip(offset).take(limit)),
             (Some(offset), None) => Box::pin(rows.skip(offset)),
             (None, Some(limit)) => Box::pin(rows.take(limit)),
-            (None, None) => {
-                println!("limit none");
-                Box::pin(rows)
-            }
+            (None, None) => Box::pin(rows),
         }
     }
 }

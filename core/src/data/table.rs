@@ -33,7 +33,6 @@ impl<'a> Table<'a> {
                 Ok(Self { name, alias, index })
             }
             TableFactor::Derived { .. } => {
-                println!(":+:+:44{:?}", table_factor);
                 return Err(Error::Table(TableError::Unreachable));
             } // todo!("do after mergeing"), // ObjectName(vec![alias.to_owned().name]),
               // TableFactor::Derived { subquery, alias } => {

@@ -310,8 +310,6 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .await?;
                 Ok((labels, rows))
             });
-            println!("-------------row: {:?},{:?}", labels, rows);
-
             Ok((storage, Payload::Select { labels, rows }))
         }
         Statement::ShowColumns { table_name } => {
