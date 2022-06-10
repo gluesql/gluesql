@@ -10,7 +10,10 @@
 
 use {
     crate::*,
-    gluesql_core::prelude::{Payload, Value::*},
+    gluesql_core::{
+        prelude::{Payload, Value::*},
+        translate::TranslateError,
+    },
 };
 test_case!(inline_view, async move {
     let test_cases = vec![
@@ -66,9 +69,7 @@ test_case!(inline_view, async move {
                 1     "WORKS!".to_owned()   1     "GLUE".to_owned()
             ),
         ),
-
-
-        ( // join - Wildcard 
+        ( // join - Wildcard
             "SELECT * FROM OuterTable JOIN (SELECT * FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
             select!(
                 id  | name                | id  | name
@@ -76,8 +77,7 @@ test_case!(inline_view, async move {
                 1     "WORKS!".to_owned()   1     "GLUE".to_owned()
             ),
         ),
-        
-        ( // join - QualifiedWildcard 
+        ( // join - QualifiedWildcard
             "SELECT * FROM OuterTable JOIN (SELECT InnerTable.* FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
             select!(
                 id  | name                | id  | name
@@ -85,52 +85,60 @@ test_case!(inline_view, async move {
                 1     "WORKS!".to_owned()   1     "GLUE".to_owned()
             ),
         ),
-        // group by
-    //    (
-    //        "SELECT * FROM (
-    //            SELECT name, count(*) as cnt
-    //            FROM InnerTable
-    //            GROUP BY name
-    //         ) AS InlineView",
-    //         select!(
-    //             name             | cnt 
-    //             Str              | I64;
-    //             "GLUE".to_owned()  1;
-    //             "SQL".to_owned()   2
-    //         ),
-    //    ),
-        // limit
-        // (
-        //     "SELECT * FROM (
-        //         SELECT *
-        //         FROM InnerTable
-        //         LIMIT 1
-        //      ) AS InlineView",
-        //      select!(
-        //          id  | name 
-        //          I64 | Str;
-        //          1    "SQL".to_owned()
-        //      ),
-        // ),
-        // offset
-        // (
-        //     "SELECT * FROM (
-        //         SELECT *
-        //         FROM InnerTable
-        //         OFFSET 1
-        //      ) AS InlineView",
-        //      select!(
-        //          id  | name 
-        //          I64 | Str;
-        //          2    "GLUE".to_owned()
-        //      ),
-        // ),
-        // sort
-
-        // (
-        //     // unsupported lateral
+        (// group by
+            "SELECT * FROM (
+                SELECT name, count(*) as cnt
+                FROM InnerTable
+                GROUP BY name
+             ) AS InlineView",
+             select!(
+                 name             | cnt
+                 Str              | I64;
+                 "GLUE".to_owned()  1;
+                 "SQL".to_owned()   2
+             ),
+        ),
+        (// limit
+            "SELECT * FROM (
+                SELECT *
+                FROM InnerTable
+                LIMIT 1
+             ) AS InlineView",
+             select!(
+                 id  | name
+                 I64 | Str;
+                 1    "GLUE".to_owned()
+             ),
+        ),
+        (// offset
+            "SELECT * FROM (
+                SELECT *
+                FROM InnerTable
+                OFFSET 2
+             ) AS InlineView",
+             select!(
+                 id  | name
+                 I64 | Str;
+                 3    "SQL".to_owned()
+             ),
+        ),
+        (// order by: can return error by different plan in the future
+            "SELECT * FROM (
+                SELECT *
+                FROM InnerTable
+                ORDER BY id desc
+             ) AS InlineView",
+             select!(
+                 id  | name
+                 I64 | Str;
+                 3    "SQL".to_owned();
+                 2    "SQL".to_owned();
+                 1    "GLUE".to_owned()
+             ),
+        ),
+        // (// unsupported implicit join
         //     "SELECT * FROM OuterTable, (SELECT id FROM InnerTable WHERE InnerTable.id = OuterTable.id) AS InlineView",
-        //     select!(cnt;I64;2),
+        //     TranslateError::TooManyTables.into(),
         // ),
     ];
     for (sql, expected) in test_cases {
