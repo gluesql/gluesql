@@ -232,6 +232,21 @@ test_case!(inline_view, async move {
                 ) AS InlineView",
             Err(TranslateError::TooManyTables.into()),
         ),
+        // (
+        //     // inline view subquery + join with inline view
+        //     "SELECT *
+        //     FROM (
+        //         SELECT *
+        //         FROM OuterTable
+        //     ) AS InlineView
+        //     Join InnerTable ON InlineView.id = InnerTable.id",
+        //     Ok(select!(
+        //         id  | name                | id  | name
+        //         I64 | Str                 | I64 | Str;
+        //         1     "WORKS!".to_owned()   1     "GLUE".to_owned();
+        //         2     "EXTRA".to_owned()    2     "SQL".to_owned()
+        //     )),
+        // ),
     ];
     for (sql, expected) in test_cases {
         test!(expected, sql);

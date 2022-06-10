@@ -258,7 +258,37 @@ pub async fn select_with_labels<'a>(
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let sort = Sort::new(storage, filter_context, order_by);
 
-            let rows = fetch_blended(storage, table, columns).await?;
+            // let rows = fetch_blended(storage, table, columns).await?;
+            #[derive(futures_enum::Stream)]
+            enum Rows<I1, I2> {
+                Derived(I1),
+                Table(I2),
+            }
+            let rows = match relation {
+                TableFactor::Table { .. } => {
+                    // todo!();
+                    Rows::Table(fetch_blended(storage, table, columns).await?)
+                }
+                TableFactor::Derived { subquery, alias } => {
+                    // todo!();
+                    let (labels, inline_view) =
+                        select_with_labels(storage, subquery, None, true).await?;
+                    let inline_view = inline_view.try_collect::<Vec<_>>().await?;
+                    let labels = Rc::from(labels.to_owned());
+                    let rows = inline_view.into_iter().map(move |row| {
+                        let labels = Rc::clone(&labels);
+                        Ok(BlendContext::new(&alias.name, labels, Some(row), None))
+                    });
+                    Rows::Derived(stream::iter(rows))
+
+                    // expected type `impl Stream<Item = std::result::Result<BlendContext<'_>, result::Error>>`
+                    // found struct `futures::stream::Iter<std::iter::Map<std::vec::IntoIter<row::Row>,
+                    // expected opaque type, found struct `futures::stream::Iter`
+
+                    //    expected enum `std::result::Result<BlendContext<'_>, result::Error>`
+                    //    found enum `std::result::Result<Rc<BlendContext<'_>>, _>`
+                }
+            };
 
             let rows = join.apply(rows).await?;
             let rows = rows.try_filter_map(move |blend_context| {
@@ -312,9 +342,9 @@ pub async fn select_with_labels<'a>(
                 filter_context.as_ref().map(Rc::clone),
                 projection,
             ));
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let sort = Sort::new(storage, filter_context, order_by);
 
-            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let rows = aggregate.apply(rows).await?;
 
             let rows = sort
