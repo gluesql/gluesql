@@ -76,6 +76,15 @@ test_case!(inline_view, async move {
                 1     "WORKS!".to_owned()   1     "GLUE".to_owned()
             ),
         ),
+        
+        ( // join - QualifiedWildcard 
+            "SELECT * FROM OuterTable JOIN (SELECT InnerTable.* FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
+            select!(
+                id  | name                | id  | name
+                I64 | Str                 | I64 | Str;
+                1     "WORKS!".to_owned()   1     "GLUE".to_owned()
+            ),
+        ),
         // group by
     //    (
     //        "SELECT * FROM (
