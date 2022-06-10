@@ -155,7 +155,7 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                     },
                 })
             } else {
-                return Err(TranslateError::LackOfAlias.into());
+                Err(TranslateError::LackOfAlias.into())
             }
         }
 

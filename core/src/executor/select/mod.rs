@@ -125,7 +125,7 @@ fn get_labels<'a>(
                 Labeled::Wildcard(labels)
             }
             SelectItem::QualifiedWildcard(target) => {
-                let target_table_alias = try_into!(get_name(&target));
+                let target_table_alias = try_into!(get_name(target));
 
                 if table_alias == target_table_alias {
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));

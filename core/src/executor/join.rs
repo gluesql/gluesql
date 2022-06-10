@@ -53,7 +53,7 @@ impl<'a> Join<'a> {
         self,
         rows: impl Stream<Item = Result<BlendContext<'a>>> + 'a,
     ) -> Result<Joined<'a>> {
-        let init_rows: Joined = Box::pin(rows.map(|row| return row.map(Rc::new)));
+        let init_rows: Joined = Box::pin(rows.map(|row| row.map(Rc::new)));
         let joins = self
             .join_clauses
             .iter()

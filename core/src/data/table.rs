@@ -32,9 +32,7 @@ impl<'a> Table<'a> {
 
                 Ok(Self { name, alias, index })
             }
-            TableFactor::Derived { .. } => {
-                return Err(Error::Table(TableError::Unreachable));
-            }
+            TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
         }
     }
 
