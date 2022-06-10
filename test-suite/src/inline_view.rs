@@ -53,14 +53,6 @@ test_case!(inline_view, async move {
             "SELECT * FROM (SELECT COUNT(*) AS cnt FROM InnerTable) AS InlineView",
             select!(cnt;I64;3),
         ),
-        // ( // join
-        //     "SELECT * FROM OuterTable JOIN InnerTable AS InlineView ON OuterTable.id = InlineView.id",
-        //     select!(
-        //         id  | name                | id  | name
-        //         I64 | Str                 | I64 | Str;
-        //         1     "WORKS!".to_owned()   1     "GLUE".to_owned()
-        //     ),
-        // ),
         ( // join - Expr
             "SELECT * FROM OuterTable JOIN (SELECT id, name FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
             select!(

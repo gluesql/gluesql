@@ -180,58 +180,42 @@ pub async fn select_with_labels<'a>(
             let columns = fetch_columns(storage, table.get_name()).await?;
             let join_columns = stream::iter(joins.iter())
                 .map(Ok::<_, Error>)
-                .and_then(|join| match &join.relation {
-                    TableFactor::Table { .. } => todo!(),
-                    // {
-                    //     let table = Table::new(&join.relation);
-                    //     async move {
-                    //         let table = table?;
-                    //         let table_alias = table.get_alias();
-                    //         let table_name = table.get_name();
+                .and_then(|join| async move {
+                    match &join.relation {
+                        TableFactor::Table { .. } => {
+                            let table = Table::new(&join.relation);
+                            let table = table?;
+                            let table_alias = table.get_alias();
+                            let table_name = table.get_name();
 
-                    //         let columns = fetch_columns(storage, table_name).await?;
+                            let columns = fetch_columns(storage, table_name).await?;
 
-                    //         Ok((table_alias, columns))
-                    //     }
-                    // }
-                    TableFactor::Derived {
-                        subquery:
-                            Query {
-                                body: SetExpr::Select(statement),
+                            Ok((table_alias, columns))
+                        }
+                        TableFactor::Derived {
+                            subquery:
+                                Query {
+                                    body: SetExpr::Select(statement),
+                                    ..
+                                },
+                            alias,
+                        } => {
+                            let Select {
+                                from: TableWithJoins { relation, .. },
                                 ..
-                            },
-                        alias,
-                    } => {
-                        let Select {
-                            from: TableWithJoins { relation, .. },
-                            ..
-                        } = statement.as_ref();
+                            } = statement.as_ref();
 
-                        let Select { projection, .. } = statement.as_ref();
-                        async move {
+                            let Select { projection, .. } = statement.as_ref();
                             let table_name = relation.get_name()?;
                             let table_alias = relation.get_alias()?;
                             let columns = fetch_columns(storage, table_name).await?;
                             let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
                             let columns =
                                 get_labels(projection, table_name, &columns, join_columns)?;
-                            // let columns = projection
-                            //     .into_iter()
-                            //     .map(|v| match v {
-                            //         SelectItem::Expr { label, .. } => label.to_owned(),
-                            //         SelectItem::QualifiedWildcard(object_name) => todo!(),
-                            //         // {
-                            //         //     fetch_columns(storage, object_name).await?
-                            //         // }
-                            //         SelectItem::Wildcard => {
-                            //             async move { fetch_columns(storage, table_name).await? }
-                            //         }
-                            //     })
-                            //     .collect::<Vec<_>>();
                             Ok((table_name, columns))
                         }
+                        _ => todo!(),
                     }
-                    _ => todo!(),
                 })
                 .try_collect::<Vec<_>>()
                 .await?;
