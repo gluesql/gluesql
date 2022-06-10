@@ -211,17 +211,23 @@ pub async fn select_with_labels<'a>(
                         async move {
                             let table_name = relation.get_name()?;
                             let table_alias = relation.get_alias()?;
-                            let columns = projection
-                                .into_iter()
-                                .map(|v| match v {
-                                    SelectItem::Expr { label, .. } => label.to_owned(),
-                                    SelectItem::QualifiedWildcard(object_name) => todo!(),
-                                    // {
-                                    //     fetch_columns(storage, object_name).await?
-                                    // }
-                                    SelectItem::Wildcard => todo!(), // fetch_columns(storage, table_name).await?,
-                                })
-                                .collect::<Vec<_>>();
+                            let columns = fetch_columns(storage, table_name).await?;
+                            let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
+                            let columns =
+                                get_labels(projection, table_name, &columns, join_columns)?;
+                            // let columns = projection
+                            //     .into_iter()
+                            //     .map(|v| match v {
+                            //         SelectItem::Expr { label, .. } => label.to_owned(),
+                            //         SelectItem::QualifiedWildcard(object_name) => todo!(),
+                            //         // {
+                            //         //     fetch_columns(storage, object_name).await?
+                            //         // }
+                            //         SelectItem::Wildcard => {
+                            //             async move { fetch_columns(storage, table_name).await? }
+                            //         }
+                            //     })
+                            //     .collect::<Vec<_>>();
                             Ok((table_name, columns))
                         }
                     }

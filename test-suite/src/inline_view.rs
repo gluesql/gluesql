@@ -58,7 +58,7 @@ test_case!(inline_view, async move {
         //         1     "WORKS!".to_owned()   1     "GLUE".to_owned()
         //     ),
         // ),
-        ( // join
+        ( // join - Expr
             "SELECT * FROM OuterTable JOIN (SELECT id, name FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
             select!(
                 id  | name                | id  | name
@@ -67,6 +67,15 @@ test_case!(inline_view, async move {
             ),
         ),
 
+
+        ( // join - Wildcard 
+            "SELECT * FROM OuterTable JOIN (SELECT * FROM InnerTable) AS InlineView ON OuterTable.id = InlineView.id",
+            select!(
+                id  | name                | id  | name
+                I64 | Str                 | I64 | Str;
+                1     "WORKS!".to_owned()   1     "GLUE".to_owned()
+            ),
+        ),
         // group by
     //    (
     //        "SELECT * FROM (
