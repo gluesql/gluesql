@@ -34,19 +34,7 @@ impl<'a> Table<'a> {
             }
             TableFactor::Derived { .. } => {
                 return Err(Error::Table(TableError::Unreachable));
-            } // todo!("do after mergeing"), // ObjectName(vec![alias.to_owned().name]),
-              // TableFactor::Derived { subquery, alias } => {
-              //     let alias = alias.as_ref().map(|TableAlias { name, .. }| name);
-              //     select(subquery, None, false)
-              //     select(storage, subquery, context)
-
-              //     let name = alias.unwrap();
-              //     Ok(Self {
-              //         name,
-              //         alias,
-              //         index: None,
-              //     })
-              // }
+            }
         }
     }
 
@@ -68,8 +56,5 @@ impl<'a> Table<'a> {
 
 pub fn get_name(table_name: &ObjectName) -> Result<&String> {
     let ObjectName(idents) = table_name;
-    idents.last().ok_or_else(|| {
-        print!(":+:+:+:ErrNo: 1");
-        TableError::Unreachable.into()
-    })
+    idents.last().ok_or_else(|| TableError::Unreachable.into())
 }

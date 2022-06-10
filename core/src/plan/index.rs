@@ -113,7 +113,6 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
                 TableFactor::Derived { .. } => {
-                    print!(":+:+:+:ErrNo: 4");
                     return Err(Error::Table(TableError::Unreachable));
                 }
             };
@@ -199,7 +198,6 @@ fn plan_select(
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
                 TableFactor::Derived { .. } => {
-                    print!(":+:+:+:ErrNo: 5");
                     return Err(Error::Table(TableError::Unreachable));
                 }
             };

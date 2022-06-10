@@ -54,30 +54,10 @@ impl<'a> Join<'a> {
         rows: impl Stream<Item = Result<BlendContext<'a>>> + 'a,
     ) -> Result<Joined<'a>> {
         let init_rows: Joined = Box::pin(rows.map(|row| return row.map(Rc::new)));
-        // row: Ok(BlendContext { table_alias: "OuterTable", columns: ["id", "name"], row: Some(Row([I64(1), Str("WORKS!")])), next: None })
         let joins = self
             .join_clauses
             .iter()
             .zip(self.join_columns.iter().map(Rc::clone));
-        // join_clauses: [
-        //         Join {
-        //             relation: Derived {
-        //                 subquery: Query {
-        //                     body: Select(Select {
-        //                         projection: [Expr { expr: Identifier("id"), label: "id" }, Expr { expr: Identifier("name"), label: "name" }],
-        //                         from: TableWithJoins { relation: Table { name: ObjectName(["InnerTable"]), alias: None, index: None }, joins: [] },
-        //                         selection: None, group_by: [], having: None, order_by: []
-        //                     }),
-        //                     limit: None, offset: None },
-        //                 alias: TableAlias { name: "InlineView", columns: []
-        //                 }
-        //             },
-        //             join_operator: Inner(On(BinaryOp { left: CompoundIdentifier(["OuterTable", "id"]),
-        //             op: Eq,
-        //             right: CompoundIdentifier(["InlineView", "id"]) })),
-        //             join_executor: NestedLoop
-        //         }
-        //     ]
         stream::iter(joins)
             .map(Ok)
             .try_fold(init_rows, |rows, (join_clause, join_columns)| {
@@ -111,7 +91,6 @@ async fn join<'a>(
         join_executor,
     } = ast_join;
 
-    let table_name = relation.get_name()?;
     let table_alias = relation.get_alias()?;
     let join_executor = JoinExecutor::new(
         storage,
@@ -159,17 +138,9 @@ async fn join<'a>(
             }
             let rows = match join_executor.as_ref() {
                 JoinExecutor::NestedLoop => {
-                    // todo: should match table and derived
-                    println!("relation : {:?}", relation);
                     let rows = fetch_relation(storage, relation, &filter_context).await?;
-                    let rows = 
-                    // storage
-                        // .scan_data(table_name)
-                        // .await
-                        // rows.map(stream::iter)
-                        // rows.map_ok(|row| future::ok(Cow::Owned(row)))
-                        rows.and_then(|row| future::ok(Cow::Owned(row)))
-                        // .and_then(|(_, row)| future::ok(Cow::Owned(row)))
+                    let rows = rows
+                        .and_then(|row| future::ok(Cow::Owned(row)))
                         .try_filter_map(move |row| {
                             check_where_clause(
                                 storage,
@@ -184,7 +155,7 @@ async fn join<'a>(
                     Rows::NestedLoop(rows)
                 }
                 JoinExecutor::Hash {
-                    rows_map, // by fetch_relation
+                    rows_map,
                     value_expr,
                 } => {
                     let rows = evaluate(
@@ -306,8 +277,6 @@ impl<'a> JoinExecutor<'a> {
             .await?
             .into_iter()
             .into_group_map();
-        println!("%%%&&&");
-        println!("rows_map: {:?}", rows_map);
         Ok(Self::Hash {
             rows_map,
             value_expr,

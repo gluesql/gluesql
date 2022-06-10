@@ -10,10 +10,7 @@
 
 use {
     crate::*,
-    gluesql_core::{
-        prelude::{Payload, Value::*},
-        translate::TranslateError,
-    },
+    gluesql_core::prelude::{Payload, Value::*},
 };
 test_case!(inline_view, async move {
     let test_cases = vec![

@@ -198,7 +198,7 @@ pub async fn select_with_labels<'a>(
                                     body: SetExpr::Select(statement),
                                     ..
                                 },
-                            alias,
+                            alias: _,
                         } => {
                             let Select {
                                 from: TableWithJoins { relation, .. },
@@ -207,7 +207,6 @@ pub async fn select_with_labels<'a>(
 
                             let Select { projection, .. } = statement.as_ref();
                             let table_name = relation.get_name()?;
-                            let table_alias = relation.get_alias()?;
                             let columns = fetch_columns(storage, table_name).await?;
                             let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
                             let columns =
@@ -313,8 +312,6 @@ pub async fn select_with_labels<'a>(
                 filter_context.as_ref().map(Rc::clone),
                 projection,
             ));
-            println!(":+:+:{:?}", projection);
-
             let sort = Sort::new(storage, filter_context, order_by);
 
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
@@ -325,12 +322,9 @@ pub async fn select_with_labels<'a>(
                 .await?
                 .and_then(move |(aggregated, context)| {
                     let blend = Rc::clone(&blend);
-
-                    println!("::::{:?}", context);
                     async move { blend.apply(aggregated, context).await }
                 });
 
-            println!("::::before applying limit");
             let rows = limit.apply(rows);
 
             Ok((labels, rows))
