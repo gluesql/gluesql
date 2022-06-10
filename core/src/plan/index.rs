@@ -73,10 +73,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
     let TableWithJoins { relation, .. } = &select.from;
     let table_name = match relation {
         TableFactor::Table { name, .. } => name.to_owned(),
-        TableFactor::Derived { alias, .. } => {
-            println!(":+:+:+:ErrNo: 3");
-            ObjectName(vec![alias.to_owned().name])
-        }
+        TableFactor::Derived { alias, .. } => ObjectName(vec![alias.to_owned().name]),
     };
     let table_name = get_name(&table_name)?;
     let indexes = match schema_map.get(table_name) {
