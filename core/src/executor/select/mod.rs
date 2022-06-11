@@ -225,11 +225,11 @@ pub async fn select_with_labels<'a>(
                     } = statement.as_ref();
 
                     let Select { projection, .. } = statement.as_ref();
-                    let derived_name = relation.get_name()?;
-                    let columns = fetch_columns(storage, derived_name).await?;
+                    let inner_table_name = relation.get_name()?;
+                    let columns = fetch_columns(storage, inner_table_name).await?;
                     let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
-                    let columns = get_labels(projection, derived_name, &columns, join_columns)?;
-                    Ok((derived_name, columns))
+                    let columns = get_labels(projection, inner_table_name, &columns, join_columns)?;
+                    Ok((inner_table_name, columns))
                 }
                 _ => Err(Error::Table(TableError::Unreachable)),
             }
