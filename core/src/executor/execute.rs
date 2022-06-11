@@ -281,6 +281,7 @@ pub async fn execute<T: GStore + GStoreMut>(
         } => {
             let (table_name, keys) = try_block!(storage, {
                 let table_name = get_name(table_name)?;
+                println!("NE1");
                 let columns = Rc::from(fetch_columns(&storage, table_name).await?);
 
                 let keys = fetch(&storage, table_name, columns, selection.as_ref())

@@ -177,6 +177,7 @@ pub async fn select_with_labels<'a>(
     let (rows, columns) = match relation {
         TableFactor::Table { .. } => {
             let table = Table::new(relation)?;
+            println!("NE3");
             let columns = fetch_columns(storage, table.get_name()).await?;
             let columns = Rc::from(columns);
             (
@@ -207,9 +208,9 @@ pub async fn select_with_labels<'a>(
         .and_then(|join| async move {
             match &join.relation {
                 TableFactor::Table { .. } => {
-                    let table_alias = relation.get_alias()?;
-                    let table_name = relation.get_name()?;
-
+                    let table_alias = join.relation.get_alias()?;
+                    let table_name = join.relation.get_name()?;
+                    println!("NE4");
                     let columns = fetch_columns(storage, table_name).await?;
 
                     Ok((table_alias, columns))
@@ -229,6 +230,7 @@ pub async fn select_with_labels<'a>(
 
                     let Select { projection, .. } = statement.as_ref();
                     let derived_name = relation.get_name()?;
+                    println!("NE5");
                     let columns = fetch_columns(storage, derived_name).await?;
                     let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
                     let columns = get_labels(projection, derived_name, &columns, join_columns)?;
