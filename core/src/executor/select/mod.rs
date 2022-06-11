@@ -1,10 +1,7 @@
 mod blend;
 mod error;
 
-use async_recursion::async_recursion;
 pub use error::SelectError;
-
-use crate::ast::TableFactor;
 
 use {
     self::blend::Blend,
@@ -18,11 +15,12 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins},
+        ast::{Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins},
         data::{get_name, Row, Table, TableError},
         result::{Error, Result},
         store::GStore,
     },
+    async_recursion::async_recursion,
     futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
     std::{iter::once, rc::Rc},

@@ -1,10 +1,8 @@
-use crate::data::TableError;
-
 use {
     super::{validate, AlterError},
     crate::{
         ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
-        data::{get_name, Schema},
+        data::{get_name, Schema, TableError},
         executor::select::select,
         result::{Error, MutResult, TrySelf},
         store::{GStore, GStoreMut},

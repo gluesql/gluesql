@@ -1,13 +1,11 @@
-use crate::{data::TableError, result::Error};
-
 use {
     crate::{
         ast::{
             AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
             SetExpr, Statement, TableFactor, TableWithJoins,
         },
-        data::{Schema, SchemaIndex, SchemaIndexOrd},
-        result::Result,
+        data::{Schema, SchemaIndex, SchemaIndexOrd, TableError},
+        result::{Error, Result},
     },
     std::collections::HashMap,
     utils::Vector,

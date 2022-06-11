@@ -1,8 +1,7 @@
-use gluesql_core::executor::EvaluateError;
-
 use {
     crate::*,
     gluesql_core::{
+        executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
     },

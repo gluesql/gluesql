@@ -1,16 +1,14 @@
-use itertools::Itertools;
-
-use crate::{ast::TableFactor, executor::select::select};
-
 use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
-        ast::{ColumnDef, Expr},
+        ast::{ColumnDef, Expr, TableFactor},
         data::{Key, Row},
+        executor::select::select,
         result::{Error, Result},
         store::GStore,
     },
     futures::stream::{self, TryStream, TryStreamExt},
+    itertools::Itertools,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,

@@ -1,8 +1,7 @@
-use crate::result::Error;
-
 use {
     crate::{
         ast::{IndexItem, ObjectName, TableAlias, TableFactor},
+        result::Error,
         result::Result,
     },
     serde::Serialize,

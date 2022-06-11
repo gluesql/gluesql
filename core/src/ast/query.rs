@@ -1,7 +1,6 @@
-use crate::{data::Table, result::Result};
-
 use {
     super::{Expr, IndexOperator, ObjectName},
+    crate::{data::Table, result::Result},
     serde::{Deserialize, Serialize},
 };
 
