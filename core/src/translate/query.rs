@@ -148,7 +148,7 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         } => {
             if let Some(alias) = alias {
                 Ok(TableFactor::Derived {
-                    subquery: translate_query(subquery).unwrap(),
+                    subquery: translate_query(subquery)?,
                     alias: TableAlias {
                         name: alias.name.value.to_owned(),
                         columns: translate_idents(&alias.columns),
