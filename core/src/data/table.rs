@@ -53,8 +53,5 @@ impl<'a> Table<'a> {
 
 pub fn get_name(table_name: &ObjectName) -> Result<&String> {
     let ObjectName(idents) = table_name;
-    // println!("table_name: {:?}", table_name);
-    // println!("idents: {:?}", idents);
-    // println!("last: {:?}", idents.last());
     idents.last().ok_or_else(|| TableError::Unreachable.into())
 }
