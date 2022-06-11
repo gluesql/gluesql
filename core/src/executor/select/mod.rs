@@ -19,7 +19,7 @@ use {
     },
     crate::{
         ast::{Query, Select, SelectItem, SetExpr, TableWithJoins},
-        data::{get_name, Row, Table},
+        data::{get_name, Row, Table, TableError},
         result::{Error, Result},
         store::GStore,
     },
@@ -173,7 +173,6 @@ pub async fn select_with_labels<'a>(
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
-    // let table = Table::new(relation)?;
     let (rows, columns) = match relation {
         TableFactor::Table { .. } => {
             let table = Table::new(relation)?;
@@ -202,7 +201,6 @@ pub async fn select_with_labels<'a>(
         }
     };
 
-    // let columns = fetch_columns(storage, relation.get_name()?).await?;
     let join_columns = stream::iter(joins.iter())
         .map(Ok::<_, Error>)
         .and_then(|join| async move {
@@ -210,7 +208,6 @@ pub async fn select_with_labels<'a>(
                 TableFactor::Table { .. } => {
                     let table_alias = join.relation.get_alias()?;
                     let table_name = join.relation.get_name()?;
-                    println!("NE4");
                     let columns = fetch_columns(storage, table_name).await?;
 
                     Ok((table_alias, columns))
@@ -230,13 +227,12 @@ pub async fn select_with_labels<'a>(
 
                     let Select { projection, .. } = statement.as_ref();
                     let derived_name = relation.get_name()?;
-                    println!("NE5");
                     let columns = fetch_columns(storage, derived_name).await?;
                     let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
                     let columns = get_labels(projection, derived_name, &columns, join_columns)?;
                     Ok((derived_name, columns))
                 }
-                _ => todo!(),
+                _ => Err(Error::Table(TableError::Unreachable)),
             }
         })
         .try_collect::<Vec<_>>()
@@ -247,7 +243,6 @@ pub async fn select_with_labels<'a>(
         vec![]
     };
 
-    // let columns = Rc::from(columns);
     let join_columns = join_columns
         .into_iter()
         .map(|(_, columns)| columns)
@@ -281,7 +276,6 @@ pub async fn select_with_labels<'a>(
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
     let sort = Sort::new(storage, filter_context, order_by);
 
-    // let rows = fetch_blended(storage, table, columns).await?;
     let rows = join.apply(rows).await?;
     let rows = rows.try_filter_map(move |blend_context| {
         let filter = Rc::clone(&filter);
