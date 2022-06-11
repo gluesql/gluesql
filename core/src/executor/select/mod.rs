@@ -11,7 +11,7 @@ use {
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::fetch_columns,
+        fetch::{fetch_columns, Rows},
         filter::Filter,
         join::Join,
         limit::Limit,
@@ -173,16 +173,40 @@ pub async fn select_with_labels<'a>(
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
-    let table = Table::new(relation)?;
+    // let table = Table::new(relation)?;
+    let (rows, columns) = match relation {
+        TableFactor::Table { .. } => {
+            let table = Table::new(relation)?;
+            let columns = fetch_columns(storage, table.get_name()).await?;
+            let columns = Rc::from(columns);
+            (
+                Rows::Table(fetch_blended(storage, table, Rc::clone(&columns)).await?),
+                columns,
+            )
+        }
+        TableFactor::Derived { subquery, alias } => {
+            let (labels, inline_view) = select_with_labels(storage, subquery, None, true).await?;
+            let inline_view = inline_view.try_collect::<Vec<_>>().await?;
+            let labels_rc = Rc::from(labels.to_owned());
+            let labels = Rc::clone(&labels_rc);
+            let rows = inline_view.into_iter().map(move |row| {
+                Ok(BlendContext::new(
+                    &alias.name,
+                    Rc::clone(&labels_rc),
+                    Some(row),
+                    None,
+                ))
+            });
+            (Rows::Derived(stream::iter(rows)), Rc::clone(&labels))
+        }
+    };
 
-    let columns = fetch_columns(storage, relation.get_name()?).await?;
+    // let columns = fetch_columns(storage, relation.get_name()?).await?;
     let join_columns = stream::iter(joins.iter())
         .map(Ok::<_, Error>)
         .and_then(|join| async move {
             match &join.relation {
                 TableFactor::Table { .. } => {
-                    // let table = Table::new(&join.relation);
-                    // let table = table?;
                     let table_alias = relation.get_alias()?;
                     let table_name = relation.get_name()?;
 
@@ -216,12 +240,12 @@ pub async fn select_with_labels<'a>(
         .try_collect::<Vec<_>>()
         .await?;
     let labels = if with_labels {
-        get_labels(projection, table.get_alias(), &columns, &join_columns)?
+        get_labels(projection, relation.get_alias()?, &columns, &join_columns)?
     } else {
         vec![]
     };
 
-    let columns = Rc::from(columns);
+    // let columns = Rc::from(columns);
     let join_columns = join_columns
         .into_iter()
         .map(|(_, columns)| columns)
@@ -256,36 +280,6 @@ pub async fn select_with_labels<'a>(
     let sort = Sort::new(storage, filter_context, order_by);
 
     // let rows = fetch_blended(storage, table, columns).await?;
-    #[derive(futures_enum::Stream)]
-    enum Rows<I1, I2> {
-        Derived(I1),
-        Table(I2),
-    }
-    let rows = match relation {
-        TableFactor::Table { .. } => {
-            // todo!();
-            Rows::Table(fetch_blended(storage, table, columns).await?)
-        }
-        TableFactor::Derived { subquery, alias } => {
-            // todo!();
-            let (labels, inline_view) = select_with_labels(storage, subquery, None, true).await?;
-            let inline_view = inline_view.try_collect::<Vec<_>>().await?;
-            let labels = Rc::from(labels.to_owned());
-            let rows = inline_view.into_iter().map(move |row| {
-                let labels = Rc::clone(&labels);
-                Ok(BlendContext::new(&alias.name, labels, Some(row), None))
-            });
-            Rows::Derived(stream::iter(rows))
-
-            // expected type `impl Stream<Item = std::result::Result<BlendContext<'_>, result::Error>>`
-            // found struct `futures::stream::Iter<std::iter::Map<std::vec::IntoIter<row::Row>,
-            // expected opaque type, found struct `futures::stream::Iter`
-
-            //    expected enum `std::result::Result<BlendContext<'_>, result::Error>`
-            //    found enum `std::result::Result<Rc<BlendContext<'_>>, _>`
-        }
-    };
-
     let rows = join.apply(rows).await?;
     let rows = rows.try_filter_map(move |blend_context| {
         let filter = Rc::clone(&filter);

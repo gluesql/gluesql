@@ -65,17 +65,16 @@ pub async fn fetch<'a>(
     Ok(rows)
 }
 
+#[derive(futures_enum::Stream)]
+pub enum Rows<I1, I2> {
+    Derived(I1),
+    Table(I2),
+}
 pub async fn fetch_relation<'a>(
     storage: &'a dyn GStore,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<FilterContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
-    #[derive(futures_enum::Stream)]
-    enum Rows<I1, I2> {
-        Derived(I1),
-        Table(I2),
-    }
-
     match table_factor {
         TableFactor::Derived { subquery, .. } => {
             let filter_context = filter_context.as_ref().map(Rc::clone);
