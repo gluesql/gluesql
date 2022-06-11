@@ -1,4 +1,4 @@
-use crate::{ast::ObjectName, data::TableError, result::Error};
+use crate::{data::TableError, result::Error};
 
 use {
     crate::{
@@ -6,7 +6,7 @@ use {
             AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
             SetExpr, Statement, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema, SchemaIndex, SchemaIndexOrd},
+        data::{Schema, SchemaIndex, SchemaIndexOrd},
         result::Result,
     },
     std::collections::HashMap,
