@@ -176,7 +176,6 @@ pub async fn select_with_labels<'a>(
     let (rows, columns) = match relation {
         TableFactor::Table { .. } => {
             let table = Table::new(relation)?;
-            println!("NE3");
             let columns = fetch_columns(storage, table.get_name()).await?;
             let columns = Rc::from(columns);
             (

@@ -23,7 +23,6 @@ pub enum FetchError {
 }
 
 pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec<String>> {
-    println!("NE2");
     Ok(storage
         .fetch_schema(table_name)
         .await?
