@@ -37,12 +37,12 @@ test_case!(int128, async move {
     // lets try some valid SQL
     test!(
         Ok(select!(
-            field_one        | field_two
-            I128               |    I128;
-            1                   parse_i128("-1");
-            parse_i128("-2")        2;
-            3                      3;
-            parse_i128("-4")      parse_i128("-4")
+            field_one          | field_two
+            I128               |  I128;
+            1                    parse_i128("-1");
+            parse_i128("-2")     2;
+            3                    3;
+            parse_i128("-4")     parse_i128("-4")
         )),
         "SELECT field_one, field_two FROM Item"
     );
