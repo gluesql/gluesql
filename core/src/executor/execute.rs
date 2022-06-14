@@ -14,7 +14,7 @@ use {
         store::{GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
-    serde::Serialize,
+    serde::{Deserialize, Serialize},
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
@@ -37,7 +37,7 @@ pub enum ExecuteError {
     TableNotFound(String),
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum Payload {
     ShowColumns(Vec<(String, DataType)>),
     Create,
@@ -72,7 +72,7 @@ pub enum Payload {
 }
 
 #[cfg(feature = "metadata")]
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum PayloadVariable {
     Tables(Vec<String>),
     Version(String),
