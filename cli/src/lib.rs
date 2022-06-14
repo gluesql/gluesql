@@ -16,11 +16,11 @@ use {
 #[clap(name = "gluesql", about, version)]
 struct Args {
     /// sled-storage path to load
-    #[clap(short, long, parse(from_os_str))]
+    #[clap(short, long, value_parser)]
     path: Option<PathBuf>,
 
     /// SQL file to execute
-    #[clap(short, long, parse(from_os_str))]
+    #[clap(short, long, value_parser)]
     execute: Option<PathBuf>,
 }
 
