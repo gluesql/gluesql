@@ -374,8 +374,14 @@ mod tests {
             .into())
         );
 
-        assert_eq!(i32::MAX.try_add(&I64(1)), Ok(I64((i32::MAX as i64)+1_i64)));
-        assert_eq!(i32::MAX.try_add(&I128(1)), Ok(I128((i32::MAX as i128)+1_i128)));
+        assert_eq!(
+            i32::MAX.try_add(&I64(1)),
+            Ok(I64((i32::MAX as i64) + 1_i64))
+        );
+        assert_eq!(
+            i32::MAX.try_add(&I128(1)),
+            Ok(I128((i32::MAX as i128) + 1_i128))
+        );
 
         //try_subtract
         assert_eq!(
@@ -389,7 +395,10 @@ mod tests {
         );
 
         assert_eq!(i32::MIN.try_subtract(&I64(1)), Ok(I64(i32::MIN as i64 - 1)));
-        assert_eq!(i32::MIN.try_subtract(&I128(1)), Ok(I128(i32::MIN as i128 - 1)));
+        assert_eq!(
+            i32::MIN.try_subtract(&I128(1)),
+            Ok(I128(i32::MIN as i128 - 1))
+        );
 
         //try multiply
         assert_eq!(i32::MAX.try_multiply(&I8(1)), Ok(I32(i32::MAX)));
@@ -406,9 +415,11 @@ mod tests {
             .into())
         );
 
-        assert_eq!(i32::MAX.try_multiply(&I64(2)), Ok(I64(i32::MAX as i64*2)));
-        assert_eq!(i32::MAX.try_multiply(&I128(2)), Ok(I128(i32::MAX as i128*2)));
-        
+        assert_eq!(i32::MAX.try_multiply(&I64(2)), Ok(I64(i32::MAX as i64 * 2)));
+        assert_eq!(
+            i32::MAX.try_multiply(&I128(2)),
+            Ok(I128(i32::MAX as i128 * 2))
+        );
 
         //try_divide
         assert_eq!(

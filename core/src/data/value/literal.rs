@@ -130,10 +130,6 @@ impl Value {
                 .to_i128()
                 .map(Value::I128)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
-            (DataType::Int128, Literal::Number(v)) => v
-                .to_i128()
-                .map(Value::I128)
-                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)
@@ -227,23 +223,6 @@ impl Value {
                 let v = if *v { 1 } else { 0 };
 
                 Ok(Value::I64(v))
-            }
-            (DataType::Int128, Literal::Text(v)) => v
-                .parse::<i128>()
-                .map(Value::I128)
-                .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int128, Literal::Number(v)) => match v.to_i128() {
-                Some(x) => Ok(Value::I128(x)),
-                None => Err(ValueError::LiteralCastToDataTypeFailed(
-                    DataType::Int128,
-                    v.to_string(),
-                )
-                .into()),
-            },
-            (DataType::Int128, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
-
-                Ok(Value::I128(v))
             }
             (DataType::Int128, Literal::Text(v)) => v
                 .parse::<i128>()
@@ -480,11 +459,8 @@ mod tests {
         test!(DataType::Boolean, Literal::Boolean(true), Value::Bool(true));
         test!(DataType::Int, num!("123456789"), Value::I64(123456789));
         test!(DataType::Int8, num!("64"), Value::I8(64));
-<<<<<<< HEAD
         test!(DataType::Int32, num!("64"), Value::I32(64));
         test!(DataType::Int, num!("64"), Value::I64(64));
-=======
->>>>>>> f86009aab9d86279880bd073cbca9898ea20c88e
         test!(DataType::Int128, num!("64"), Value::I128(64));
 
         test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
@@ -674,7 +650,6 @@ mod tests {
         test!(DataType::Int8, num!("125"), Value::I8(125));
         test!(DataType::Int8, Literal::Boolean(true), Value::I8(1));
         test!(DataType::Int8, Literal::Boolean(false), Value::I8(0));
-<<<<<<< HEAD
         test!(DataType::Int32, text!("127"), Value::I32(127));
         test!(DataType::Int32, num!("125"), Value::I32(125));
         test!(DataType::Int32, Literal::Boolean(true), Value::I32(1));
@@ -683,8 +658,6 @@ mod tests {
         test!(DataType::Int, num!("1234567890"), Value::I64(1234567890));
         test!(DataType::Int, Literal::Boolean(true), Value::I64(1));
         test!(DataType::Int, Literal::Boolean(false), Value::I64(0));
-=======
->>>>>>> f86009aab9d86279880bd073cbca9898ea20c88e
         test!(DataType::Int128, text!("127"), Value::I128(127));
         test!(DataType::Int128, num!("125"), Value::I128(125));
         test!(DataType::Int128, Literal::Boolean(true), Value::I128(1));
