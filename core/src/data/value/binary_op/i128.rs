@@ -476,7 +476,6 @@ mod tests {
             }
             .into())
         );
-
         assert_eq!(
             i128::MAX.try_multiply(&I128(2)),
             Err(ValueError::BinaryOperationOverflow {

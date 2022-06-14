@@ -570,6 +570,16 @@ mod tests {
         );
 
         assert_eq!(
+            i64::MAX.try_divide(&I128(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I64(i64::MAX),
+                rhs: I128(0),
+                operator: (NumericBinaryOperator::Divide)
+            }
+            .into())
+        );
+
+        assert_eq!(
             i64::MAX.try_modulo(&I8(0)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I64(i64::MAX),
@@ -592,6 +602,16 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I64(i64::MAX),
                 rhs: I64(0),
+                operator: (NumericBinaryOperator::Modulo)
+            }
+            .into())
+        );
+
+        assert_eq!(
+            i64::MAX.try_modulo(&I128(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I64(i64::MAX),
+                rhs: I128(0),
                 operator: (NumericBinaryOperator::Modulo)
             }
             .into())
