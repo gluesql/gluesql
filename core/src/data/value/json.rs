@@ -38,6 +38,9 @@ impl TryFrom<Value> for JsonValue {
             Value::Bool(v) => Ok(JsonValue::Bool(v)),
             Value::I8(v) => Ok(v.into()),
             Value::I64(v) => Ok(v.into()),
+            Value::I128(v) => JsonNumber::from_str(&v.to_string())
+                .map(JsonValue::Number)
+                .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
@@ -125,6 +128,13 @@ mod tests {
             Ok(JsonValue::Number(100.into()))
         );
         assert_eq!(
+            Value::I128(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+
+        assert!(JsonValue::try_from(Value::I128(i128::MAX)).is_ok());
+
+        assert_eq!(
             Value::F64(1.23).try_into(),
             Ok(JsonValue::Number(JsonNumber::from_f64(1.23).unwrap()))
         );
@@ -188,6 +198,10 @@ mod tests {
     fn json_to_value() {
         assert!(Value::try_from(JsonValue::Null).unwrap().is_null());
         assert_eq!(JsonValue::Bool(false).try_into(), Ok(Value::Bool(false)));
+        assert_eq!(
+            JsonValue::Number(54321.into()).try_into(),
+            Ok(Value::I128(54321))
+        );
         assert_eq!(
             JsonValue::Number(54321.into()).try_into(),
             Ok(Value::I64(54321))
