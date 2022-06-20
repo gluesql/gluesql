@@ -75,7 +75,7 @@ impl SledStorage {
     }
 
     pub fn export(&self) -> Result<ExportData<impl Iterator<Item = Vec<Vec<u8>>>>> {
-        let id_offset = self.tree.generate_id().map_err(err_into)?;
+        let id_offset = self.id_offset + self.tree.generate_id().map_err(err_into)?;
         let data = self.tree.export();
 
         Ok((id_offset, data))
