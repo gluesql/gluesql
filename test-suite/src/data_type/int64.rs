@@ -14,10 +14,6 @@ test_case!(int64, async move {
 
     let parse_i64 = |text: &str| -> i64 { text.parse().unwrap() };
 
-    //let max: i128 = i64::MAX as i128 + 1_i128;
-    //let min: i128 = i64::MIN as i128 - 1_i128;
-
-    //this should fail..
     test!(
         Err(ValueError::FailedToParseNumber.into()),
         &format!(
