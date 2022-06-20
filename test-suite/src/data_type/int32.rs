@@ -16,15 +16,10 @@ test_case!(int32, async move {
 
     let max: i64 = i32::MAX as i64 + 1_i64;
     let min: i64 = i32::MIN as i64 - 1_i64;
-    
 
     test!(
         Err(ValueError::FailedToParseNumber.into()),
-        &format!(
-            "INSERT INTO Item VALUES ({:?}, {:?})",
-            max,
-            min
-        )
+        &format!("INSERT INTO Item VALUES ({:?}, {:?})", max, min)
     );
 
     // cast i32::MAX+1

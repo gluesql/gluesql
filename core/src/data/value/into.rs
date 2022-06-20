@@ -170,7 +170,7 @@ impl TryInto<i32> for &Value {
                 }
             }
             Value::I8(value) => *value as i32,
-            Value::I32(value) => *value, 
+            Value::I32(value) => *value,
             Value::I64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
