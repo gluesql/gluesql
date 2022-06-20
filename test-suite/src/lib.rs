@@ -111,6 +111,7 @@ macro_rules! generate_store_tests {
         glue!(showcolumns, showcolumns::showcolumns);
         glue!(int8, data_type::int8::int8);
         glue!(int32, data_type::int32::int32);
+        glue!(int64, data_type::int64::int64);
         glue!(int128, data_type::int128::int128);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);
