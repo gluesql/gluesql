@@ -89,7 +89,7 @@ pub enum Function {
         expr: Expr,
         chars: Option<Expr>,
     },
-    Rand(Vec<Expr>),
+    Rand(Option<Expr>),
     Reverse(Expr),
     Repeat {
         expr: Expr,

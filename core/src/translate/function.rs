@@ -341,11 +341,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }
         "RAND" => {
             check_len_range(name, args.len(), 0, 1)?;
-            let exprs = args
-                .into_iter()
-                .map(translate_expr)
-                .collect::<Result<Vec<_>>>()?;
-            Ok(Expr::Function(Box::new(Function::Rand(exprs))))
+            let expr = match args.len() {
+                1 => Some(translate_expr(args[0])?),
+                0 => None,
+            };
+            Ok(Expr::Function(Box::new(Function::Rand(expr))))
         }
         "REVERSE" => translate_function_one_arg(Function::Reverse, args, name),
         "REPEAT" => {

@@ -4,15 +4,10 @@ test_case!(rand, async move {
     use gluesql_core::prelude::{Payload, Value::*};
 
     let test_cases = vec![
-        ("CREATE TABLE mytable (id int)", Ok(Payload::Create)),
-        (r#"INSERT INTO mytable VALUES (1)"#, Ok(Payload::Insert(1))),
+        ("CREATE TABLE mytable (random float)", Ok(Payload::Create)),
         (
             "SELECT RAND() as r FROM mytable",
-            Ok(select!(
-                r
-                F64;
-                0.9742447372584028
-            )),
+            Ok(Payload::Insert(1)),
         ),
         (
             "SELECT RAND(123) as r FROM mytable",

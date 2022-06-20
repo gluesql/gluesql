@@ -1,8 +1,10 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
-    rand::rngs::StdRng,
-    rand::{Rng, SeedableRng},
+    rand::{
+        rngs::StdRng,
+        Rng, SeedableRng,
+    },
     std::cmp::{max, min},
     uuid::Uuid,
 };
@@ -276,18 +278,21 @@ pub fn floor(name: String, n: Evaluated<'_>) -> Result<Value> {
     Ok(Value::F64(eval_to_float!(name, n).floor()))
 }
 
-pub fn rand(n: Option<Evaluated<'_>>) -> Result<Value> {
-    let mut rng = StdRng::seed_from_u64(1_u64); // fix me!! this needs to be a global var.
-
-    match n {
-        Some(x) => match x.try_into()? {
-            Value::I8(v) => rng = StdRng::seed_from_u64(v as u64),
-            Value::I64(v) => rng = StdRng::seed_from_u64(v as u64),
-            _ => {}
-        },
-        None => {}
-    }
-    Ok(Value::F64(rng.gen()))
+pub fn rand(seed: Option<Evaluated<'_>>) -> Result<Value> {
+    let v = match seed {
+        Some(seed) => seed.try_into()?,
+        None => {
+            return Ok(Value::F64(rand::random()));
+        }
+    };  
+        
+    let v = match v {
+        Value::I8(v) => StdRng::seed_from_u64(v as u64).gen(),
+        Value::I64(v) => StdRng::seed_from_u64(v as u64).gen(),
+        _ => rand::random(), // may be we need to return error?
+    };  
+    
+    Ok(Value::F64(v))
 }
 
 pub fn radians(name: String, n: Evaluated<'_>) -> Result<Value> {
