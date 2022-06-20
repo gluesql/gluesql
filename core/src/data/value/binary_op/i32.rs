@@ -10,11 +10,11 @@ use {
     Value::*,
 };
 
-impl PartialEq<Value> for i8 {
+impl PartialEq<Value> for i32 {
     fn eq(&self, other: &Value) -> bool {
         match other {
-            I8(other) => self == other,
-            I32(other) => (*self as i32) == *other,
+            I8(other) => self == &(*other as i32),
+            I32(other) => self == other,
             I64(other) => (*self as i64) == *other,
             I128(other) => (*self as i128) == *other,
             F64(other) => ((*self as f64) - other).abs() < f64::EPSILON,
@@ -24,21 +24,21 @@ impl PartialEq<Value> for i8 {
     }
 }
 
-impl PartialOrd<Value> for i8 {
+impl PartialOrd<Value> for i32 {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match other {
-            I8(other) => self.partial_cmp(other),
-            I32(other) => (*self as i32).partial_cmp(other),
-            I64(other) => (*self as i64).partial_cmp(other),
-            I128(other) => (*self as i128).partial_cmp(other),
-            F64(other) => (*self as f64).partial_cmp(other),
+            I8(other) => PartialOrd::partial_cmp(self, &(*other as i32)),
+            I32(other) => PartialOrd::partial_cmp(self, other),
+            I64(other) => PartialOrd::partial_cmp(&(*self as i64), other),
+            I128(other) => PartialOrd::partial_cmp(&(*self as i128), other),
+            F64(other) => PartialOrd::partial_cmp(&(*self as f64), other),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
         }
     }
 }
 
-impl TryBinaryOperator for i8 {
+impl TryBinaryOperator for i32 {
     type Rhs = Value;
 
     fn try_add(&self, rhs: &Self::Rhs) -> Result<Value> {
@@ -46,21 +46,21 @@ impl TryBinaryOperator for i8 {
 
         match *rhs {
             I8(rhs) => lhs
-                .checked_add(rhs)
+                .checked_add(rhs as i32)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
                     .into()
                 })
-                .map(I8),
-            I32(rhs) => (lhs as i32)
+                .map(I32),
+            I32(rhs) => lhs
                 .checked_add(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -71,7 +71,7 @@ impl TryBinaryOperator for i8 {
                 .checked_add(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -82,7 +82,7 @@ impl TryBinaryOperator for i8 {
                 .checked_add(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -93,7 +93,7 @@ impl TryBinaryOperator for i8 {
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I8(lhs),
+                lhs: I32(lhs),
                 operator: NumericBinaryOperator::Add,
                 rhs: rhs.clone(),
             }
@@ -106,21 +106,21 @@ impl TryBinaryOperator for i8 {
 
         match *rhs {
             I8(rhs) => lhs
-                .checked_sub(rhs)
+                .checked_sub(rhs as i32)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
                     .into()
                 })
-                .map(I8),
-            I32(rhs) => (lhs as i32)
+                .map(I32),
+            I32(rhs) => lhs
                 .checked_sub(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -131,7 +131,7 @@ impl TryBinaryOperator for i8 {
                 .checked_sub(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -142,7 +142,7 @@ impl TryBinaryOperator for i8 {
                 .checked_sub(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -150,47 +150,36 @@ impl TryBinaryOperator for i8 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
-            Decimal(rhs) => Decimal::from(lhs)
-                .checked_sub(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: Decimal(rhs),
-                        operator: NumericBinaryOperator::Subtract,
-                    }
-                    .into()
-                })
-                .map(Decimal),
+            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
+
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I8(lhs),
+                lhs: I32(lhs),
                 operator: NumericBinaryOperator::Subtract,
                 rhs: rhs.clone(),
             }
             .into()),
         }
     }
-
     fn try_multiply(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
-
         match *rhs {
             I8(rhs) => lhs
-                .checked_mul(rhs)
+                .checked_mul(rhs as i32)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
                     .into()
                 })
-                .map(I8),
-            I32(rhs) => (lhs as i32)
+                .map(I32),
+            I32(rhs) => lhs
                 .checked_mul(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -201,7 +190,7 @@ impl TryBinaryOperator for i8 {
                 .checked_mul(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -212,7 +201,7 @@ impl TryBinaryOperator for i8 {
                 .checked_mul(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -220,21 +209,11 @@ impl TryBinaryOperator for i8 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
-            Decimal(rhs) => Decimal::from(lhs)
-                .checked_mul(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: Decimal(rhs),
-                        operator: NumericBinaryOperator::Multiply,
-                    }
-                    .into()
-                })
-                .map(Decimal),
+            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I8(lhs),
+                lhs: I32(lhs),
                 operator: NumericBinaryOperator::Multiply,
                 rhs: rhs.clone(),
             }
@@ -247,21 +226,21 @@ impl TryBinaryOperator for i8 {
 
         match *rhs {
             I8(rhs) => lhs
-                .checked_div(rhs)
+                .checked_div(rhs as i32)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
                     .into()
                 })
-                .map(I8),
-            I32(rhs) => (lhs as i32)
+                .map(I32),
+            I32(rhs) => lhs
                 .checked_div(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -272,7 +251,7 @@ impl TryBinaryOperator for i8 {
                 .checked_div(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -283,7 +262,7 @@ impl TryBinaryOperator for i8 {
                 .checked_div(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -291,47 +270,36 @@ impl TryBinaryOperator for i8 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
-            Decimal(rhs) => Decimal::from(lhs)
-                .checked_div(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: Decimal(rhs),
-                        operator: NumericBinaryOperator::Divide,
-                    }
-                    .into()
-                })
-                .map(Decimal),
+            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I8(lhs),
+                lhs: I32(lhs),
                 operator: NumericBinaryOperator::Divide,
                 rhs: rhs.clone(),
             }
             .into()),
         }
     }
-
     fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value> {
         let lhs = *self;
 
         match *rhs {
             I8(rhs) => lhs
-                .checked_rem(rhs)
+                .checked_rem(rhs as i32)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I8(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
                     .into()
                 })
-                .map(I8),
-            I32(rhs) => (lhs as i32)
+                .map(I32),
+            I32(rhs) => lhs
                 .checked_rem(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I32(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -342,7 +310,7 @@ impl TryBinaryOperator for i8 {
                 .checked_rem(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -353,7 +321,7 @@ impl TryBinaryOperator for i8 {
                 .checked_rem(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
+                        lhs: I32(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -361,20 +329,10 @@ impl TryBinaryOperator for i8 {
                 })
                 .map(I128),
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
-            Decimal(rhs) => Decimal::from(lhs)
-                .checked_rem(rhs)
-                .ok_or_else(|| {
-                    ValueError::BinaryOperationOverflow {
-                        lhs: I8(lhs),
-                        rhs: Decimal(rhs),
-                        operator: NumericBinaryOperator::Modulo,
-                    }
-                    .into()
-                })
-                .map(Decimal),
+            Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) % rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I8(lhs),
+                lhs: I32(lhs),
                 operator: NumericBinaryOperator::Modulo,
                 rhs: rhs.clone(),
             }
@@ -394,216 +352,98 @@ mod tests {
 
     #[test]
     fn test_extremes() {
-        assert_eq!(-1i8, I8(-1));
-        assert_eq!(0i8, I8(0));
-        assert_eq!(1i8, I8(1));
-        assert_eq!(i8::MAX, I8(i8::MAX));
-        assert_eq!(i8::MIN, I8(i8::MIN));
+        assert_eq!(I32(1), I8(1));
+        assert_eq!(I32(1), I64(1));
+        assert_eq!(I32(1), I128(1));
+        assert_eq!(I32(1), F64(1.0));
 
+        assert_eq!(-1_i32, I32(-1));
+        assert_eq!(0_i32, I32(0));
+        assert_eq!(1_i32, I32(1));
+        assert_eq!(i32::MIN, I32(i32::MIN));
+        assert_eq!(i32::MAX, I32(i32::MAX));
+
+        //try_add
         assert_eq!(
-            i8::MAX.try_add(&I8(1)),
+            i32::MAX.try_add(&I8(1)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
+                lhs: I32(i32::MAX),
                 rhs: I8(1),
                 operator: (NumericBinaryOperator::Add)
             }
             .into())
         );
 
-        assert_eq!(i8::MAX.try_add(&I32(1)), Ok(I32(i8::MAX as i32 + 1)));
-        assert_eq!(i8::MAX.try_add(&I64(1)), Ok(I64(i8::MAX as i64 + 1)));
-        assert_eq!(i8::MAX.try_add(&I128(1)), Ok(I128(i8::MAX as i128 + 1)));
-
         assert_eq!(
-            i8::MAX.try_add(&I8(i8::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
-                rhs: I8(i8::MAX),
-                operator: (NumericBinaryOperator::Add)
-            }
-            .into())
+            i32::MAX.try_add(&I64(1)),
+            Ok(I64((i32::MAX as i64) + 1_i64))
+        );
+        assert_eq!(
+            i32::MAX.try_add(&I128(1)),
+            Ok(I128((i32::MAX as i128) + 1_i128))
         );
 
+        //try_subtract
         assert_eq!(
-            i8::MAX.try_add(&I32(i32::MAX)),
+            i32::MIN.try_subtract(&I8(1)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
-                rhs: I32(i32::MAX),
-                operator: (NumericBinaryOperator::Add)
-            }
-            .into())
-        );
-
-        assert_eq!(
-            i8::MAX.try_add(&I64(i64::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
-                rhs: I64(i64::MAX),
-                operator: (NumericBinaryOperator::Add)
-            }
-            .into())
-        );
-
-        assert_eq!(
-            i8::MAX.try_add(&I128(i128::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
-                rhs: I128(i128::MAX),
-                operator: (NumericBinaryOperator::Add)
-            }
-            .into())
-        );
-
-        assert_eq!(
-            i8::MIN.try_subtract(&I8(1)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MIN),
+                lhs: I32(i32::MIN),
                 rhs: I8(1),
                 operator: (NumericBinaryOperator::Subtract)
             }
             .into())
         );
 
-        // these dont overflow since they are not i8 (ie, i32, i64, i128)
-        assert_eq!(i8::MIN.try_subtract(&I32(1)), Ok(I32(i8::MIN as i32 - 1)));
-        assert_eq!(i8::MIN.try_subtract(&I64(1)), Ok(I64(i8::MIN as i64 - 1)));
+        assert_eq!(i32::MIN.try_subtract(&I64(1)), Ok(I64(i32::MIN as i64 - 1)));
         assert_eq!(
-            i8::MIN.try_subtract(&I128(1)),
-            Ok(I128(i8::MIN as i128 - 1))
+            i32::MIN.try_subtract(&I128(1)),
+            Ok(I128(i32::MIN as i128 - 1))
         );
 
-        assert_eq!(
-            i8::MIN.try_subtract(&I8(i8::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MIN),
-                rhs: I8(i8::MAX),
-                operator: (NumericBinaryOperator::Subtract)
-            }
-            .into())
-        );
-        assert_eq!(
-            i8::MIN.try_subtract(&I32(i32::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MIN),
-                rhs: I32(i32::MAX),
-                operator: (NumericBinaryOperator::Subtract)
-            }
-            .into())
-        );
-        assert_eq!(
-            i8::MIN.try_subtract(&I64(i64::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MIN),
-                rhs: I64(i64::MAX),
-                operator: (NumericBinaryOperator::Subtract)
-            }
-            .into())
-        );
-        assert_eq!(
-            i8::MIN.try_subtract(&I128(i128::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MIN),
-                rhs: I128(i128::MAX),
-                operator: (NumericBinaryOperator::Subtract)
-            }
-            .into())
-        );
-
-        assert_eq!(i8::MAX.try_multiply(&I8(1)), Ok(I8(i8::MAX)));
-        assert_eq!(i8::MAX.try_multiply(&I32(1)), Ok(I32(i8::MAX as i32)));
-        assert_eq!(
-            i8::MIN.try_subtract(&I128(i128::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MIN),
-                rhs: I128(i128::MAX),
-                operator: (NumericBinaryOperator::Subtract)
-            }
-            .into())
-        );
-
-        assert_eq!(i8::MAX.try_multiply(&I8(1)), Ok(I8(i8::MAX)));
-        assert_eq!(i8::MAX.try_multiply(&I64(1)), Ok(I64(i8::MAX as i64)));
-        assert_eq!(i8::MAX.try_multiply(&I128(1)), Ok(I128(i8::MAX as i128)));
+        //try multiply
+        assert_eq!(i32::MAX.try_multiply(&I8(1)), Ok(I32(i32::MAX)));
+        assert_eq!(i32::MAX.try_multiply(&I64(1)), Ok(I64(i32::MAX as i64)));
+        assert_eq!(i32::MAX.try_multiply(&I128(1)), Ok(I128(i32::MAX as i128)));
 
         assert_eq!(
-            i8::MAX.try_multiply(&I8(2)),
+            i32::MAX.try_multiply(&I8(2)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
+                lhs: I32(i32::MAX),
                 rhs: I8(2),
                 operator: (NumericBinaryOperator::Multiply)
             }
             .into())
         );
-        assert_eq!(
-            2i8.try_multiply(&I32(i32::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(2),
-                rhs: I32(i32::MAX),
-                operator: (NumericBinaryOperator::Multiply)
-            }
-            .into())
-        );
-        assert_eq!(
-            2i8.try_multiply(&I64(i64::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(2),
-                rhs: I64(i64::MAX),
-                operator: (NumericBinaryOperator::Multiply)
-            }
-            .into())
-        );
-        assert_eq!(
-            2i8.try_multiply(&I128(i128::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(2),
-                rhs: I128(i128::MAX),
-                operator: (NumericBinaryOperator::Multiply)
-            }
-            .into())
-        );
 
+        assert_eq!(i32::MAX.try_multiply(&I64(2)), Ok(I64(i32::MAX as i64 * 2)));
         assert_eq!(
-            2i8.try_multiply(&I128(i128::MAX)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(2),
-                rhs: I128(i128::MAX),
-                operator: (NumericBinaryOperator::Multiply)
-            }
-            .into())
+            i32::MAX.try_multiply(&I128(2)),
+            Ok(I128(i32::MAX as i128 * 2))
         );
 
         //try_divide
         assert_eq!(
-            i8::MAX.try_divide(&I8(0)),
+            i32::MAX.try_divide(&I8(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
+                lhs: I32(i32::MAX),
                 rhs: I8(0),
                 operator: (NumericBinaryOperator::Divide)
             }
             .into())
         );
         assert_eq!(
-            i8::MAX.try_divide(&I32(0)),
+            i32::MAX.try_divide(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
-                rhs: I32(0),
-                operator: (NumericBinaryOperator::Divide)
-            }
-            .into())
-        );
-        assert_eq!(
-            i8::MAX.try_divide(&I64(0)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
+                lhs: I32(i32::MAX),
                 rhs: I64(0),
                 operator: (NumericBinaryOperator::Divide)
             }
             .into())
         );
         assert_eq!(
-            i8::MAX.try_divide(&I128(0)),
+            i32::MAX.try_divide(&I128(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
+                lhs: I32(i32::MAX),
                 rhs: I128(0),
                 operator: (NumericBinaryOperator::Divide)
             }
@@ -611,36 +451,27 @@ mod tests {
         );
 
         assert_eq!(
-            i8::MAX.try_modulo(&I8(0)),
+            i32::MAX.try_modulo(&I8(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
+                lhs: I32(i32::MAX),
                 rhs: I8(0),
                 operator: (NumericBinaryOperator::Modulo)
             }
             .into())
         );
         assert_eq!(
-            i8::MAX.try_modulo(&I32(0)),
+            i32::MAX.try_modulo(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
-                rhs: I32(0),
-                operator: (NumericBinaryOperator::Modulo)
-            }
-            .into())
-        );
-        assert_eq!(
-            i8::MAX.try_modulo(&I64(0)),
-            Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
+                lhs: I32(i32::MAX),
                 rhs: I64(0),
                 operator: (NumericBinaryOperator::Modulo)
             }
             .into())
         );
         assert_eq!(
-            i8::MAX.try_modulo(&I128(0)),
+            i32::MAX.try_modulo(&I128(0)),
             Err(ValueError::BinaryOperationOverflow {
-                lhs: I8(i8::MAX),
+                lhs: I32(i32::MAX),
                 rhs: I128(0),
                 operator: (NumericBinaryOperator::Modulo)
             }
@@ -650,7 +481,7 @@ mod tests {
 
     #[test]
     fn eq() {
-        let base = 1_i8;
+        let base = 1_i32;
 
         assert_eq!(base, I8(1));
         assert_eq!(base, I32(1));
@@ -664,7 +495,7 @@ mod tests {
 
     #[test]
     fn partial_cmp() {
-        let base = 1_i8;
+        let base = 1_i32;
 
         assert_eq!(base.partial_cmp(&I8(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&I32(0)), Some(Ordering::Greater));
@@ -694,9 +525,9 @@ mod tests {
 
     #[test]
     fn try_add() {
-        let base = 1_i8;
+        let base = 1_i32;
 
-        assert_eq!(base.try_add(&I8(1)), Ok(I8(2)));
+        assert_eq!(base.try_add(&I8(1)), Ok(I32(2)));
         assert_eq!(base.try_add(&I32(1)), Ok(I32(2)));
         assert_eq!(base.try_add(&I64(1)), Ok(I64(2)));
         assert_eq!(base.try_add(&I128(1)), Ok(I128(2)));
@@ -710,7 +541,7 @@ mod tests {
         assert_eq!(
             base.try_add(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
-                lhs: I8(base),
+                lhs: I32(base),
                 operator: NumericBinaryOperator::Add,
                 rhs: Bool(true)
             }
@@ -720,9 +551,9 @@ mod tests {
 
     #[test]
     fn try_subtract() {
-        let base = 1_i8;
+        let base = 1_i32;
 
-        assert_eq!(base.try_subtract(&I8(1)), Ok(I8(0)));
+        assert_eq!(base.try_subtract(&I8(1)), Ok(I32(0)));
         assert_eq!(base.try_subtract(&I32(1)), Ok(I32(0)));
         assert_eq!(base.try_subtract(&I64(1)), Ok(I64(0)));
         assert_eq!(base.try_subtract(&I128(1)), Ok(I128(0)));
@@ -739,7 +570,7 @@ mod tests {
         assert_eq!(
             base.try_subtract(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
-                lhs: I8(base),
+                lhs: I32(base),
                 operator: NumericBinaryOperator::Subtract,
                 rhs: Bool(true)
             }
@@ -749,15 +580,14 @@ mod tests {
 
     #[test]
     fn try_multiply() {
-        let base = 3_i8;
+        let base = 3_i32;
 
-        // 3 * 2 = 6
-        assert_eq!(base.try_multiply(&I8(2)), Ok(I8(6)));
+        assert_eq!(base.try_multiply(&I8(2)), Ok(I32(6)));
         assert_eq!(base.try_multiply(&I32(2)), Ok(I32(6)));
         assert_eq!(base.try_multiply(&I64(2)), Ok(I64(6)));
         assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
 
-        assert_eq!(base.try_multiply(&I8(-1)), Ok(I8(-3)));
+        assert_eq!(base.try_multiply(&I8(-1)), Ok(I32(-3)));
         assert_eq!(base.try_multiply(&I32(-1)), Ok(I32(-3)));
         assert_eq!(base.try_multiply(&I64(-1)), Ok(I64(-3)));
         assert_eq!(base.try_multiply(&I128(-1)), Ok(I128(-3)));
@@ -766,7 +596,7 @@ mod tests {
             matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 3.0).abs() < f64::EPSILON )
         );
 
-        let _result: Decimal = Decimal::from(3);
+        let _result: Decimal = Decimal::from(3_i64);
         assert_eq!(
             base.try_multiply(&Decimal(Decimal::ONE)),
             Ok(Decimal(_result))
@@ -775,7 +605,7 @@ mod tests {
         assert_eq!(
             base.try_multiply(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
-                lhs: I8(base),
+                lhs: I32(base),
                 operator: NumericBinaryOperator::Multiply,
                 rhs: Bool(true)
             }
@@ -785,14 +615,14 @@ mod tests {
 
     #[test]
     fn try_divide() {
-        let base = 6_i8;
+        let base = 6_i32;
 
-        assert_eq!(base.try_divide(&I8(2)), Ok(I8(3)));
+        assert_eq!(base.try_divide(&I8(2)), Ok(I32(3)));
         assert_eq!(base.try_divide(&I32(2)), Ok(I32(3)));
         assert_eq!(base.try_divide(&I64(2)), Ok(I64(3)));
         assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
 
-        assert_eq!(base.try_divide(&I8(-6)), Ok(I8(-1)));
+        assert_eq!(base.try_divide(&I8(-6)), Ok(I32(-1)));
         assert_eq!(base.try_divide(&I32(-6)), Ok(I32(-1)));
         assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));
@@ -801,16 +631,15 @@ mod tests {
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 6.0).abs() < f64::EPSILON )
         );
 
-        let _decimal_result = Decimal::from(base);
         assert_eq!(
             base.try_divide(&Decimal(Decimal::ONE)),
-            Ok(Decimal(_decimal_result))
+            Ok(Decimal(Decimal::from(base)))
         );
 
         assert_eq!(
             base.try_divide(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
-                lhs: I8(base),
+                lhs: I32(base),
                 operator: NumericBinaryOperator::Divide,
                 rhs: Bool(true)
             }
@@ -820,14 +649,14 @@ mod tests {
 
     #[test]
     fn try_modulo() {
-        let base = 9_i8;
+        let base = 9_i32;
 
-        assert_eq!(base.try_modulo(&I8(1)), Ok(I8(0)));
+        assert_eq!(base.try_modulo(&I8(1)), Ok(I32(0)));
         assert_eq!(base.try_modulo(&I32(1)), Ok(I32(0)));
         assert_eq!(base.try_modulo(&I64(1)), Ok(I64(0)));
         assert_eq!(base.try_modulo(&I128(1)), Ok(I128(0)));
 
-        assert_eq!(base.try_modulo(&I8(2)), Ok(I8(1)));
+        assert_eq!(base.try_modulo(&I8(2)), Ok(I32(1)));
         assert_eq!(base.try_modulo(&I32(2)), Ok(I32(1)));
         assert_eq!(base.try_modulo(&I64(2)), Ok(I64(1)));
         assert_eq!(base.try_modulo(&I128(2)), Ok(I128(1)));
@@ -841,7 +670,7 @@ mod tests {
         assert_eq!(
             base.try_modulo(&Bool(true)),
             Err(ValueError::NonNumericMathOperation {
-                lhs: I8(base),
+                lhs: I32(base),
                 operator: NumericBinaryOperator::Modulo,
                 rhs: Bool(true)
             }
