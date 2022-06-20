@@ -19,6 +19,7 @@ impl PartialEq<Literal<'_>> for Value {
         match (self, other) {
             (Value::Bool(l), Literal::Boolean(r)) => l == r,
             (Value::I8(l), Literal::Number(r)) => r.to_i8().map(|r| *l == r).unwrap_or(false),
+            (Value::I32(l), Literal::Number(r)) => r.to_i32().map(|r| *l == r).unwrap_or(false),
             (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
             (Value::I128(l), Literal::Number(r)) => r.to_i128().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
@@ -48,6 +49,9 @@ impl PartialOrd<Literal<'_>> for Value {
         match (self, other) {
             (Value::I8(l), Literal::Number(r)) => {
                 r.to_i8().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::I32(l), Literal::Number(r)) => {
+                r.to_i32().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
             (Value::I64(l), Literal::Number(r)) => {
                 r.to_i64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
