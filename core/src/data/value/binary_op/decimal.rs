@@ -14,6 +14,7 @@ impl PartialEq<Value> for Decimal {
     fn eq(&self, other: &Value) -> bool {
         match other {
             I8(other) => *self == Decimal::from(*other),
+            I32(other) => *self == Decimal::from(*other),
             I64(other) => *self == Decimal::from(*other),
             I128(other) => *self == Decimal::from(*other),
             F64(other) => Decimal::from_f64_retain(*other)
@@ -29,6 +30,7 @@ impl PartialOrd<Value> for Decimal {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match *other {
             I8(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
+            I32(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             I64(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             I128(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             F64(rhs) => Decimal::from_f64_retain(rhs)
@@ -53,6 +55,17 @@ impl TryBinaryOperator for Decimal {
                     ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            I32(rhs) => lhs
+                .checked_add(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I32(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
                     .into()
@@ -119,6 +132,17 @@ impl TryBinaryOperator for Decimal {
                     .into()
                 })
                 .map(Decimal),
+            I32(rhs) => lhs
+                .checked_sub(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I32(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             I64(rhs) => lhs
                 .checked_sub(Decimal::from(rhs))
                 .ok_or_else(|| {
@@ -175,6 +199,17 @@ impl TryBinaryOperator for Decimal {
                     ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         rhs: I8(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            I32(rhs) => lhs
+                .checked_mul(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I32(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
                     .into()
@@ -241,6 +276,17 @@ impl TryBinaryOperator for Decimal {
                     .into()
                 })
                 .map(Decimal),
+            I32(rhs) => lhs
+                .checked_div(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: I32(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             I64(rhs) => lhs
                 .checked_div(Decimal::from(rhs))
                 .ok_or_else(|| {
@@ -299,6 +345,17 @@ impl TryBinaryOperator for Decimal {
                         lhs: Decimal(lhs),
                         operator: NumericBinaryOperator::Modulo,
                         rhs: I8(rhs),
+                    }
+                    .into())
+                }),
+            I32(rhs) => lhs
+                .checked_rem(Decimal::from(rhs))
+                .map(|x| Ok(Decimal(x)))
+                .unwrap_or_else(|| {
+                    Err(ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        operator: NumericBinaryOperator::Modulo,
+                        rhs: I32(rhs),
                     }
                     .into())
                 }),
@@ -392,7 +449,15 @@ mod tests {
             }
             .into())
         );
-
+        assert_eq!(
+            Decimal::MAX.try_add(&I32(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: I32(1),
+                operator: NumericBinaryOperator::Add,
+            }
+            .into())
+        );
         assert_eq!(
             Decimal::MAX.try_add(&I64(1)),
             Err(ValueError::BinaryOperationOverflow {
@@ -421,7 +486,15 @@ mod tests {
             }
             .into())
         );
-
+        assert_eq!(
+            Decimal::MIN.try_subtract(&I32(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MIN),
+                rhs: I32(1),
+                operator: NumericBinaryOperator::Subtract,
+            }
+            .into())
+        );
         assert_eq!(
             Decimal::MIN.try_subtract(&I64(1)),
             Err(ValueError::BinaryOperationOverflow {
@@ -456,6 +529,15 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(Decimal::MAX),
                 rhs: I8(2),
+                operator: NumericBinaryOperator::Multiply,
+            }
+            .into())
+        );
+        assert_eq!(
+            Decimal::MAX.try_multiply(&I32(2)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: I32(2),
                 operator: NumericBinaryOperator::Multiply,
             }
             .into())
@@ -499,7 +581,15 @@ mod tests {
             }
             .into())
         );
-
+        assert_eq!(
+            base.try_divide(&I32(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I32(0),
+                operator: NumericBinaryOperator::Divide,
+            }
+            .into())
+        );
         assert_eq!(
             base.try_divide(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
@@ -540,7 +630,15 @@ mod tests {
             }
             .into())
         );
-
+        assert_eq!(
+            base.try_modulo(&I32(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(base),
+                rhs: I32(0),
+                operator: NumericBinaryOperator::Modulo,
+            }
+            .into())
+        );
         assert_eq!(
             base.try_modulo(&I64(0)),
             Err(ValueError::BinaryOperationOverflow {
@@ -577,6 +675,7 @@ mod tests {
         let base = Decimal::ONE;
 
         assert_eq!(base, I8(1));
+        assert_eq!(base, I32(1));
         assert_eq!(base, I64(1));
         assert_eq!(base, I128(1));
         assert_eq!(base, F64(1.0));
@@ -590,6 +689,7 @@ mod tests {
         let base = Decimal::ONE;
 
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
@@ -606,6 +706,7 @@ mod tests {
         let base = Decimal::ONE;
 
         assert_eq!(base.try_add(&I8(1)), Ok(Decimal(Decimal::TWO)));
+        assert_eq!(base.try_add(&I32(1)), Ok(Decimal(Decimal::TWO)));
         assert_eq!(base.try_add(&I64(1)), Ok(Decimal(Decimal::TWO)));
         assert_eq!(base.try_add(&I128(1)), Ok(Decimal(Decimal::TWO)));
         assert_eq!(base.try_add(&F64(1.0)), Ok(Decimal(Decimal::TWO)));
@@ -630,6 +731,7 @@ mod tests {
         let base = Decimal::ONE;
 
         assert_eq!(base.try_subtract(&I8(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_subtract(&I32(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_subtract(&I64(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_subtract(&I128(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_subtract(&F64(1.0)), Ok(Decimal(Decimal::ZERO)));
@@ -654,6 +756,7 @@ mod tests {
         let base = Decimal::ONE;
 
         assert_eq!(base.try_multiply(&I8(1)), Ok(Decimal(Decimal::ONE)));
+        assert_eq!(base.try_multiply(&I32(1)), Ok(Decimal(Decimal::ONE)));
         assert_eq!(base.try_multiply(&I64(1)), Ok(Decimal(Decimal::ONE)));
         assert_eq!(base.try_multiply(&I128(1)), Ok(Decimal(Decimal::ONE)));
         assert_eq!(base.try_multiply(&F64(1.0)), Ok(Decimal(Decimal::ONE)));
@@ -678,6 +781,7 @@ mod tests {
         let base = Decimal::ONE;
 
         assert_eq!(base.try_divide(&I8(1)), Ok(Decimal(Decimal::ONE)));
+        assert_eq!(base.try_divide(&I32(1)), Ok(Decimal(Decimal::ONE)));
         assert_eq!(base.try_divide(&I64(1)), Ok(Decimal(Decimal::ONE)));
         assert_eq!(base.try_divide(&I128(1)), Ok(Decimal(Decimal::ONE)));
         assert_eq!(base.try_divide(&F64(1.0)), Ok(Decimal(Decimal::ONE)));
@@ -702,6 +806,7 @@ mod tests {
         let base = Decimal::ONE;
 
         assert_eq!(base.try_modulo(&I8(1)), Ok(Decimal(Decimal::ZERO)));
+        assert_eq!(base.try_modulo(&I32(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_modulo(&I64(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_modulo(&I128(1)), Ok(Decimal(Decimal::ZERO)));
         assert_eq!(base.try_modulo(&F64(1.0)), Ok(Decimal(Decimal::ZERO)));

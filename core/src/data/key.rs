@@ -25,6 +25,7 @@ pub enum KeyError {
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
 pub enum Key {
     I8(i8),
+    I32(i32),
     I64(i64),
     I128(i128),
     Bool(bool),
@@ -43,6 +44,7 @@ impl PartialOrd for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             (Key::I8(l), Key::I8(r)) => Some(l.cmp(r)),
+            (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
             (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
             (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
@@ -67,6 +69,7 @@ impl TryFrom<Value> for Key {
         match value {
             Bool(v) => Ok(Key::Bool(v)),
             I8(v) => Ok(Key::I8(v)),
+            I32(v) => Ok(Key::I32(v)),
             I64(v) => Ok(Key::I64(v)),
             I128(v) => Ok(Key::I128(v)),
             Str(v) => Ok(Key::Str(v)),
@@ -108,6 +111,15 @@ impl Key {
                 }
             }
             Key::I8(v) => {
+                let sign = if *v >= 0 { 1 } else { 0 };
+
+                [VALUE, sign]
+                    .iter()
+                    .chain(v.to_be_bytes().iter())
+                    .copied()
+                    .collect::<Vec<_>>()
+            }
+            Key::I32(v) => {
                 let sign = if *v >= 0 { 1 } else { 0 };
 
                 [VALUE, sign]
@@ -220,6 +232,7 @@ mod tests {
         // Some
         assert_eq!(convert("True"), Ok(Key::Bool(true)));
         assert_eq!(convert("CAST(11 AS INT(8))"), Ok(Key::I8(11)));
+        assert_eq!(convert("CAST(11 AS INT(32))"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
         assert_eq!(
             convert(r#""Hello World""#),
@@ -296,6 +309,21 @@ mod tests {
         let n4 = I8(3).to_cmp_be_bytes();
         let n5 = I8(20).to_cmp_be_bytes();
         let n6 = I8(100).to_cmp_be_bytes();
+
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n6), Ordering::Less);
+        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
+        assert_eq!(cmp(&n4, &n5), Ordering::Less);
+        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
+        assert_eq!(cmp(&n4, &null), Ordering::Less);
+
+        let n1 = I32(-100).to_cmp_be_bytes();
+        let n2 = I32(-10).to_cmp_be_bytes();
+        let n3 = I32(0).to_cmp_be_bytes();
+        let n4 = I32(3).to_cmp_be_bytes();
+        let n5 = I32(20).to_cmp_be_bytes();
+        let n6 = I32(100).to_cmp_be_bytes();
 
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);
