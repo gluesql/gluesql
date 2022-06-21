@@ -202,12 +202,14 @@ impl Value {
                 .parse::<i32>()
                 .map(Value::I32)
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int32, Literal::Number(v)) => v
-                .to_f64()
-                .map(|v| Value::I32(v.trunc() as i32))
-                .ok_or_else(|| {
-                    ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
-                }),
+            (DataType::Int32, Literal::Number(v)) => match v.to_i32() {
+                Some(x) => Ok(Value::I32(x)),
+                None => Err(ValueError::LiteralCastToDataTypeFailed(
+                    DataType::Int32,
+                    v.to_string(),
+                )
+                .into()),
+            },
             (DataType::Int32, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
@@ -217,12 +219,12 @@ impl Value {
                 .parse::<i64>()
                 .map(Value::I64)
                 .map_err(|_| ValueError::LiteralCastFromTextToIntegerFailed(v.to_string()).into()),
-            (DataType::Int, Literal::Number(v)) => v
-                .to_f64()
-                .map(|v| Value::I64(v.trunc() as i64))
-                .ok_or_else(|| {
-                    ValueError::UnreachableLiteralCastFromNumberToInteger(v.to_string()).into()
-                }),
+            (DataType::Int, Literal::Number(v)) => match v.to_i64() {
+                Some(x) => Ok(Value::I64(x)),
+                None => Err(
+                    ValueError::LiteralCastToDataTypeFailed(DataType::Int, v.to_string()).into(),
+                ),
+            },
             (DataType::Int, Literal::Boolean(v)) => {
                 let v = if *v { 1 } else { 0 };
 
