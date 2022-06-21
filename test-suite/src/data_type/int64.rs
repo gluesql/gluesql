@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{data::ValueError, prelude::DataType, prelude::Payload, prelude::Value::*},
+    gluesql_core::{
+        data::ValueError,
+        prelude::{DataType, Payload, Value::*},
+    },
 };
 
 test_case!(int64, async move {
@@ -24,7 +27,6 @@ test_case!(int64, async move {
     );
 
     // cast i64::MAX+1
-    // this should fail too
     test!(
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int,
@@ -35,7 +37,6 @@ test_case!(int64, async move {
     );
 
     // cast i64::MIN-1
-    // this should fail as well.
     test!(
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int,

@@ -4,7 +4,10 @@ use {
         data::Interval as I,
         data::ValueError,
         executor::Payload,
-        prelude::Value::{self, *},
+        prelude::{
+            DataType,
+            Value::{self, *},
+        },
     },
     rust_decimal::Decimal,
 };
@@ -52,11 +55,10 @@ test_case!(cast_literal, async move {
             Err(ValueError::LiteralCastFromTextToIntegerFailed("foo".to_owned()).into()),
         ),
 
-        //this now fails..
-        //(
-        //    r#"SELECT CAST(1.1 AS INTEGER) AS cast FROM Item"#,
-        //    Ok(select!(cast I64; 1)),
-        //),
+        (
+            r#"SELECT CAST(1.1 AS INTEGER) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_string()).into()),
+        ),
         (
             r#"SELECT CAST(TRUE AS INTEGER) AS cast FROM Item"#,
             Ok(select!(cast I64; 1)),

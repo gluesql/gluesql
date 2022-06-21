@@ -17,14 +17,12 @@ test_case!(int32, async move {
     test!(
         Err(ValueError::FailedToParseNumber.into()),
         &format!(
-            "INSERT INTO Item VALUES ({:?}, {:?})",
+            "INSERT INTO Item VALUES ({}, {})",
             i32::MAX as i64 + 1_i64,
             i64 = i32::MIN as i64 - 1_i64
         )
     );
 
-    // cast i32::MAX+1
-    // this should produce an error! will create a different PR / issue for fixing this.
     test!(
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int32,
@@ -37,8 +35,6 @@ test_case!(int32, async move {
         )
     );
 
-    // cast i32::MIN-1
-    // this also should produce an error, will create a PR for it as well.
     test!(
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int32,
