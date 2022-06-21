@@ -1,6 +1,5 @@
 use {
     super::{Expr, IndexOperator, ObjectName},
-    // crate::{data::Table, result::Result},
     serde::{Deserialize, Serialize},
 };
 
@@ -64,20 +63,6 @@ pub enum TableFactor {
         alias: TableAlias,
     },
 }
-// impl TableFactor {
-//     pub(crate) fn get_name(&self) -> Result<&String> {
-//         match self {
-//             Self::Table { .. } => Ok(Table::new(self)?.get_name()),
-//             Self::Derived { alias, .. } => Ok(&alias.name),
-//         }
-//     }
-//     pub(crate) fn get_alias(&self) -> Result<&String> {
-//         match self {
-//             Self::Table { .. } => Ok(Table::new(self)?.get_alias()),
-//             Self::Derived { alias, .. } => Ok(&alias.name),
-//         }
-//     }
-// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TableAlias {
