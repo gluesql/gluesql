@@ -3,6 +3,8 @@ mod error;
 
 pub use error::SelectError;
 
+use crate::data::Relation;
+
 use {
     self::blend::Blend,
     super::{
@@ -16,7 +18,7 @@ use {
     },
     crate::{
         ast::{Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins},
-        data::{get_name, Row, Table, TableError},
+        data::{get_name, Row, TableError},
         result::{Error, Result},
         store::GStore,
     },
@@ -31,10 +33,10 @@ use {super::evaluate::evaluate, crate::ast::IndexItem};
 
 async fn fetch_blended<'a>(
     storage: &'a dyn GStore,
-    table: Table<'a>,
+    relation: Relation<'a>,
     columns: Rc<[String]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
-    let table_name = table.get_name();
+    let table_name = relation.get_name();
 
     #[cfg(feature = "index")]
     let rows = {
@@ -44,7 +46,7 @@ async fn fetch_blended<'a>(
             Indexed(I2),
         }
 
-        match table.get_index() {
+        match relation.get_index() {
             Some(IndexItem {
                 name: index_name,
                 asc,
@@ -76,7 +78,7 @@ async fn fetch_blended<'a>(
         let row = Some(row);
         let columns = Rc::clone(&columns);
 
-        Ok(BlendContext::new(table.get_alias(), columns, row, None))
+        Ok(BlendContext::new(relation.get_alias(), columns, row, None))
     });
     Ok(stream::iter(rows))
 }
@@ -173,7 +175,7 @@ pub async fn select_with_labels<'a>(
     let TableWithJoins { relation, joins } = &table_with_joins;
     let (rows, columns) = match relation {
         TableFactor::Table { .. } => {
-            let table = Table::new(relation)?;
+            let table = Relation::new(relation)?;
             let columns = fetch_columns(storage, table.get_name()).await?;
             let columns = Rc::from(columns);
             (
@@ -203,8 +205,9 @@ pub async fn select_with_labels<'a>(
         .and_then(|join| async move {
             match &join.relation {
                 TableFactor::Table { .. } => {
-                    let table_alias = join.relation.get_alias()?;
-                    let table_name = join.relation.get_name()?;
+                    let relation = Relation::new(&join.relation)?;
+                    let table_alias = relation.get_alias();
+                    let table_name = relation.get_name();
                     let columns = fetch_columns(storage, table_name).await?;
 
                     Ok((table_alias, columns))
@@ -221,9 +224,9 @@ pub async fn select_with_labels<'a>(
                         from: TableWithJoins { relation, .. },
                         ..
                     } = statement.as_ref();
-
+                    let relation = Relation::new(relation)?;
                     let Select { projection, .. } = statement.as_ref();
-                    let inner_table_name = relation.get_name()?;
+                    let inner_table_name = relation.get_name();
                     let columns = fetch_columns(storage, inner_table_name).await?;
                     let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
                     let columns = get_labels(projection, inner_table_name, &columns, join_columns)?;
@@ -234,8 +237,9 @@ pub async fn select_with_labels<'a>(
         })
         .try_collect::<Vec<_>>()
         .await?;
+    let relation = Relation::new(relation)?;
     let labels = if with_labels {
-        get_labels(projection, relation.get_alias()?, &columns, &join_columns)?
+        get_labels(projection, relation.get_alias(), &columns, &join_columns)?
     } else {
         vec![]
     };
