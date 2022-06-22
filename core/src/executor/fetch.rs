@@ -120,7 +120,6 @@ pub async fn fetch_join_columns<'a>(
                         from: TableWithJoins { relation, .. },
                         ..
                     } = statement.as_ref();
-                    // JOIN ( SELECT InnerTable.*, 1 FROM InnerTable )
                     let Select { projection, .. } = statement.as_ref();
                     let inner_table_name = Relation::new(relation)?.get_name();
                     let columns = fetch_columns(storage, inner_table_name).await?;
