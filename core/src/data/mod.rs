@@ -5,7 +5,6 @@ mod literal;
 mod relation;
 mod row;
 mod string_ext;
-// mod table;
 
 pub mod schema;
 pub mod value;
