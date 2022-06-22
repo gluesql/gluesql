@@ -1,9 +1,16 @@
+use crate::{
+    ast::{Join, Query},
+    result::Error,
+    store::GStore,
+};
+
 use {
     crate::{
-        ast::{IndexItem, ObjectName, SelectItem, TableAlias, TableFactor},
+        ast::{IndexItem, ObjectName, Select, SelectItem, SetExpr, TableAlias, TableFactor},
         executor::get_labels,
         result::Result,
     },
+    futures::stream,
     serde::Serialize,
     thiserror::Error,
 };
@@ -71,28 +78,28 @@ impl<'a> Relation<'a> {
         self.index
     }
 
-    pub fn get_labels<'b>(
-        &self,
-        projection: &[SelectItem],
-        // table_alias: &str,
-        // table_factor: &'a TableFactor,
-        columns: &'b [String],
-        join_columns: Option<&'b [(&String, Vec<String>)]>,
-    ) -> Result<Vec<String>> {
-        // #[derive(Iterator)]
-        // enum Labeled<I1, I2, I3, I4> {
-        //     Err(I1),
-        //     Wildcard(I2),
-        //     QualifiedWildcard(I3),
-        //     Once(I4),
-        // }
+    // pub fn get_labels<'b>(
+    //     &self,
+    //     projection: &[SelectItem],
+    //     // table_alias: &str,
+    //     // table_factor: &'a TableFactor,
+    //     columns: &'b [String],
+    //     join_columns: Option<&'b [(&String, Vec<String>)]>,
+    // ) -> Result<Vec<String>> {
+    //     // #[derive(Iterator)]
+    //     // enum Labeled<I1, I2, I3, I4> {
+    //     //     Err(I1),
+    //     //     Wildcard(I2),
+    //     //     QualifiedWildcard(I3),
+    //     //     Once(I4),
+    //     // }
 
-        // let err = |e| Labeled::Err(once(Err(e)));
-        match self.relation_type {
-            RelationType::Table => get_labels(projection, self.get_alias(), &columns, join_columns),
-            RelationType::Derived => get_labels(projection, self.get_alias(), &columns, None),
-        }
-    }
+    //     // let err = |e| Labeled::Err(once(Err(e)));
+    //     match self.relation_type {
+    //         RelationType::Table => get_labels(projection, self.get_alias(), &columns, join_columns),
+    //         RelationType::Derived => get_labels(projection, self.get_alias(), &columns, None),
+    //     }
+    // }
 }
 
 pub fn get_name(table_name: &ObjectName) -> Result<&String> {

@@ -5,6 +5,8 @@ pub use error::SelectError;
 
 use crate::data::Relation;
 
+use super::fetch::fetch_join_columns;
+
 use {
     self::blend::Blend,
     super::{
@@ -212,43 +214,43 @@ pub async fn select_with_labels<'a>(
         }
     };
 
-    let join_columns = stream::iter(joins.iter())
-        .map(Ok::<_, Error>)
-        .and_then(|join| async move {
-            match &join.relation {
-                TableFactor::Table { .. } => {
-                    let relation = Relation::new(&join.relation)?;
-                    let table_alias = relation.get_alias();
-                    let table_name = relation.get_name();
-                    let columns = fetch_columns(storage, table_name).await?;
+    let join_columns = fetch_join_columns(joins, storage).await?;
+    // let join_columns = stream::iter(joins.iter())
+    //     .map(Ok::<_, Error>)
+    //     .and_then(|join| async move {
+    //         match &join.relation {
+    //             TableFactor::Table { .. } => {
+    //                 let relation = Relation::new(&join.relation)?;
+    //                 let table_alias = relation.get_alias();
+    //                 let table_name = relation.get_name();
+    //                 let columns = fetch_columns(storage, table_name).await?;
 
-                    Ok((table_alias, columns))
-                }
-                TableFactor::Derived {
-                    subquery:
-                        Query {
-                            body: SetExpr::Select(statement),
-                            ..
-                        },
-                    alias: _,
-                } => {
-                    let Select {
-                        from: TableWithJoins { relation, .. },
-                        ..
-                    } = statement.as_ref();
-                    let relation = Relation::new(relation)?;
-                    let Select { projection, .. } = statement.as_ref();
-                    let inner_table_name = relation.get_name();
-                    let columns = fetch_columns(storage, inner_table_name).await?;
-                    // let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
-                    let columns = relation.get_labels(projection, &columns, None)?;
-                    Ok((inner_table_name, columns))
-                }
-                _ => Err(Error::Table(TableError::Unreachable)),
-            }
-        })
-        .try_collect::<Vec<_>>()
-        .await?;
+    //                 Ok((table_alias, columns))
+    //             }
+    //             TableFactor::Derived {
+    //                 subquery:
+    //                     Query {
+    //                         body: SetExpr::Select(statement),
+    //                         ..
+    //                     },
+    //                 alias: _,
+    //             } => {
+    //                 let Select {
+    //                     from: TableWithJoins { relation, .. },
+    //                     ..
+    //                 } = statement.as_ref();
+    //                 let relation = Relation::new(relation)?;
+    //                 let Select { projection, .. } = statement.as_ref();
+    //                 let inner_table_name = relation.get_name();
+    //                 let columns = fetch_columns(storage, inner_table_name).await?;
+    //                 let columns = relation.get_labels(projection, &columns, None)?;
+    //                 Ok((inner_table_name, columns))
+    //             }
+    //             _ => Err(Error::Table(TableError::Unreachable)),
+    //         }
+    //     })
+    //     .try_collect::<Vec<_>>()
+    //     .await?;
     let relation = Relation::new(relation)?;
     let labels = if with_labels {
         get_labels(

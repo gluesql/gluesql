@@ -1,8 +1,14 @@
+use futures::StreamExt;
+
+use crate::ast::{Select, TableWithJoins};
+
+use super::get_labels;
+
 use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
-        ast::{ColumnDef, Expr, TableFactor},
-        data::{Key, Row},
+        ast::{ColumnDef, Expr, Join, Query, SetExpr, TableFactor},
+        data::{Key, Relation, Row, TableError},
         executor::select::select,
         result::{Error, Result},
         store::GStore,
@@ -90,4 +96,46 @@ pub async fn fetch_relation<'a>(
             Ok(Rows::Table(rows))
         }
     }
+}
+
+pub async fn fetch_join_columns<'a>(
+    joins: &'a Vec<Join>,
+    storage: &dyn GStore,
+) -> Result<Vec<(&'a String, Vec<String>)>> {
+    stream::iter(joins.iter())
+        .map(Ok::<_, Error>)
+        .and_then(|join| async move {
+            match &join.relation {
+                TableFactor::Table { .. } => {
+                    let relation = Relation::new(&join.relation)?;
+                    let table_alias = relation.get_alias();
+                    let table_name = relation.get_name();
+                    let columns = fetch_columns(storage, table_name).await?;
+
+                    Ok((table_alias, columns))
+                }
+                TableFactor::Derived {
+                    subquery:
+                        Query {
+                            body: SetExpr::Select(statement),
+                            ..
+                        },
+                    alias: _,
+                } => {
+                    let Select {
+                        from: TableWithJoins { relation, .. },
+                        ..
+                    } = statement.as_ref();
+                    let relation = Relation::new(relation)?;
+                    let Select { projection, .. } = statement.as_ref();
+                    let inner_table_name = relation.get_name();
+                    let columns = fetch_columns(storage, inner_table_name).await?;
+                    let columns = get_labels(projection, inner_table_name, &columns, None)?;
+                    Ok((inner_table_name, columns))
+                }
+                _ => Err(Error::Table(TableError::Unreachable)),
+            }
+        })
+        .try_collect::<Vec<_>>()
+        .await
 }
