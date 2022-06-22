@@ -83,11 +83,11 @@ async fn fetch_blended<'a>(
     Ok(stream::iter(rows))
 }
 
-fn get_labels<'a>(
+pub fn get_labels<'a>(
     projection: &[SelectItem],
     table_alias: &str,
     columns: &'a [String],
-    join_columns: &'a [(&String, Vec<String>)],
+    join_columns: Option<&'a [(&String, Vec<String>)]>,
 ) -> Result<Vec<String>> {
     #[derive(Iterator)]
     enum Labeled<I1, I2, I3, I4> {
@@ -117,30 +117,37 @@ fn get_labels<'a>(
         .flat_map(|item| match item {
             SelectItem::Wildcard => {
                 let labels = to_labels(columns);
-                let join_labels = join_columns
-                    .iter()
-                    .flat_map(|(_, columns)| to_labels(columns));
-                let labels = labels.chain(join_labels).map(Ok);
-
-                Labeled::Wildcard(labels)
+                if let Some(join_columns) = join_columns {
+                    let join_labels = join_columns
+                        .iter()
+                        .flat_map(|(_, columns)| to_labels(columns));
+                    let labels = labels.chain(join_labels);
+                    return Labeled::Wildcard(labels).map(Ok);
+                };
+                Labeled::Wildcard(labels.map(Ok))
             }
             SelectItem::QualifiedWildcard(target) => {
                 let target_table_alias = try_into!(get_name(target));
 
+                // select A.*, B.* from A JOIN (select 1, * from B) Inline on A.id = Inline.id
                 if table_alias == target_table_alias {
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));
                 }
 
-                let columns = join_columns
-                    .iter()
-                    .find(|(table_alias, _)| table_alias == &target_table_alias)
-                    .map(|(_, columns)| columns)
-                    .ok_or_else(|| {
-                        SelectError::TableAliasNotFound(target_table_alias.to_string()).into()
-                    });
-                let columns = try_into!(columns);
-                let labels = to_labels(columns).map(Ok);
-
+                if let Some(join_columns) = join_columns {
+                    let columns = join_columns
+                        .iter()
+                        .find(|(table_alias, _)| table_alias == &target_table_alias)
+                        .map(|(_, columns)| columns)
+                        .ok_or_else(|| {
+                            SelectError::TableAliasNotFound(target_table_alias.to_string()).into()
+                        });
+                    let columns = try_into!(columns);
+                    let labels = to_labels(columns);
+                    // let labels = labels.chain(labels);
+                    return Labeled::QualifiedWildcard(labels.map(Ok));
+                }
+                let labels = to_labels(&[]).map(Ok);
                 Labeled::QualifiedWildcard(labels)
             }
             SelectItem::Expr { label, .. } => Labeled::Once(once(Ok(label.to_owned()))),
@@ -228,8 +235,8 @@ pub async fn select_with_labels<'a>(
                     let Select { projection, .. } = statement.as_ref();
                     let inner_table_name = relation.get_name();
                     let columns = fetch_columns(storage, inner_table_name).await?;
-                    let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
-                    let columns = get_labels(projection, inner_table_name, &columns, join_columns)?;
+                    // let join_columns = &[(&"null".to_string(), vec![])]; // todo: join_columns should be Option?
+                    let columns = relation.get_labels(projection, &columns, None)?;
                     Ok((inner_table_name, columns))
                 }
                 _ => Err(Error::Table(TableError::Unreachable)),
@@ -239,7 +246,12 @@ pub async fn select_with_labels<'a>(
         .await?;
     let relation = Relation::new(relation)?;
     let labels = if with_labels {
-        get_labels(projection, relation.get_alias(), &columns, &join_columns)?
+        get_labels(
+            projection,
+            relation.get_alias(),
+            &columns,
+            Some(&join_columns),
+        )?
     } else {
         vec![]
     };
