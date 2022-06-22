@@ -144,6 +144,7 @@ pub fn get_labels<'a>(
                         .find(|(table_alias, _)| table_alias == &target_table_alias)
                         .map(|(_, columns)| columns)
                         .ok_or_else(|| {
+                            println!(":+:+:+:1");
                             SelectError::TableAliasNotFound(target_table_alias.to_string()).into()
                         });
                     let columns = try_into!(columns);

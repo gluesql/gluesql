@@ -135,8 +135,8 @@ test_case!(inline_view, async move {
             )),
         ),
         (
-            // join - QualifiedWildcard
-            "SELECT *
+            // join - QualifiedWildcard at inner projection
+            "SELECT * 
             FROM OuterTable JOIN (
                 SELECT InnerTable.* FROM InnerTable
             ) AS InlineView ON OuterTable.id = InlineView.id",
@@ -145,6 +145,19 @@ test_case!(inline_view, async move {
                 I64 | Str                 | I64 | Str;
                 1     "WORKS!".to_owned()   1     "GLUE".to_owned();
                 2     "EXTRA".to_owned()    2     "SQL".to_owned()
+            )),
+        ),
+        (
+            // join - QualifiedWildcard at outer projection
+            "SELECT InlineView.*
+            FROM OuterTable JOIN (
+                SELECT InnerTable.*, 'once' AS literal FROM InnerTable
+            ) AS InlineView ON OuterTable.id = InlineView.id",
+            Ok(select!(
+                id  | name               | literal
+                I64 | Str                | Str;
+                1     "GLUE".to_owned()    "once".to_owned();
+                2     "SQL".to_owned()     "once".to_owned()
             )),
         ),
         (

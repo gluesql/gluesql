@@ -114,18 +114,18 @@ pub async fn fetch_join_columns<'a>(
                             body: SetExpr::Select(statement),
                             ..
                         },
-                    alias: _,
+                    alias,
                 } => {
                     let Select {
                         from: TableWithJoins { relation, .. },
                         ..
                     } = statement.as_ref();
-                    let relation = Relation::new(relation)?;
+                    // JOIN ( SELECT InnerTable.*, 1 FROM InnerTable )
                     let Select { projection, .. } = statement.as_ref();
-                    let inner_table_name = relation.get_name();
+                    let inner_table_name = Relation::new(relation)?.get_name();
                     let columns = fetch_columns(storage, inner_table_name).await?;
                     let columns = get_labels(projection, inner_table_name, &columns, None)?;
-                    Ok((inner_table_name, columns))
+                    Ok((&alias.name, columns))
                 }
                 _ => Err(Error::Table(TableError::Unreachable)),
             }
