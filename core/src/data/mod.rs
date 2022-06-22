@@ -19,6 +19,5 @@ pub use {
     row::{Row, RowError},
     schema::{Schema, SchemaIndex, SchemaIndexOrd},
     string_ext::{StringExt, StringExtError},
-    // table::{get_name, Table, TableError},
     value::{NumericBinaryOperator, Value, ValueError},
 };

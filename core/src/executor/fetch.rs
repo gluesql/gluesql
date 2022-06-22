@@ -1,19 +1,13 @@
-use futures::StreamExt;
-
-use crate::ast::{Select, TableWithJoins};
-
-use super::get_labels;
-
 use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
-        ast::{ColumnDef, Expr, Join, Query, SetExpr, TableFactor},
+        ast::{ColumnDef, Expr, Join, Query, Select, SetExpr, TableFactor, TableWithJoins},
         data::{Key, Relation, Row, TableError},
-        executor::select::select,
+        executor::select::{get_labels, select},
         result::{Error, Result},
         store::GStore,
     },
-    futures::stream::{self, TryStream, TryStreamExt},
+    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     itertools::Itertools,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
