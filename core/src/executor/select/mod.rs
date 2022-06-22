@@ -90,11 +90,17 @@ pub fn get_labels<'a>(
     join_columns: Option<&'a [(&String, Vec<String>)]>,
 ) -> Result<Vec<String>> {
     #[derive(Iterator)]
-    enum Labeled<I1, I2, I3, I4> {
+    enum Labeled<I1, I2, I3, I4, I5> {
         Err(I1),
-        Wildcard(I2),
-        QualifiedWildcard(I3),
-        Once(I4),
+        Wildcard(Wildcard<I2, I3>),
+        QualifiedWildcard(I4),
+        Once(I5),
+    }
+
+    #[derive(Iterator)]
+    enum Wildcard<I2, I3> {
+        WithJoin(I2),
+        WithoutJoin(I3),
     }
 
     let err = |e| Labeled::Err(once(Err(e)));
@@ -121,15 +127,15 @@ pub fn get_labels<'a>(
                     let join_labels = join_columns
                         .iter()
                         .flat_map(|(_, columns)| to_labels(columns));
-                    let labels = labels.chain(join_labels);
-                    return Labeled::Wildcard(labels).map(Ok);
+                    let labels = labels.chain(join_labels).map(Ok);
+                    return Labeled::Wildcard(Wildcard::WithJoin(labels));
                 };
-                Labeled::Wildcard(labels.map(Ok))
+                let labels = labels.map(Ok);
+                Labeled::Wildcard(Wildcard::WithoutJoin(labels))
             }
             SelectItem::QualifiedWildcard(target) => {
                 let target_table_alias = try_into!(get_name(target));
 
-                // select A.*, B.* from A JOIN (select 1, * from B) Inline on A.id = Inline.id
                 if table_alias == target_table_alias {
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));
                 }
@@ -144,7 +150,6 @@ pub fn get_labels<'a>(
                         });
                     let columns = try_into!(columns);
                     let labels = to_labels(columns);
-                    // let labels = labels.chain(labels);
                     return Labeled::QualifiedWildcard(labels.map(Ok));
                 }
                 let labels = to_labels(&[]).map(Ok);
