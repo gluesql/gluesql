@@ -6,7 +6,7 @@ test_case!(abs, async move {
     };
     let test_cases = vec![
         (
-            "CREATE TABLE SingleItem (id integer, int8 int(8), dec decimal)",
+            "CREATE TABLE SingleItem (id integer, int8 int(8), dec decimal(4,1))",
             Ok(Payload::Create),
         ),
         (

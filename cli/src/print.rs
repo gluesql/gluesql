@@ -1,7 +1,7 @@
 use {
     comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
     gluesql_core::{
-        ast::ToSql,
+        ast::{DataType, ToSql},
         prelude::{Payload, PayloadVariable},
     },
     std::io::{Result, Write},
@@ -48,8 +48,12 @@ impl<W: Write> Print<W> {
             }
             Payload::ShowColumns(columns) => {
                 let mut table = get_table(vec!["Field", "Type"]);
-                for (field, field_type) in columns {
-                    table.add_row([field, &field_type.to_string()]);
+                for (field, fieldtype) in columns {
+                    match fieldtype {
+                        DataType::Decimal(p, s) => table
+                            .add_row([field, &format!("Decimal({:},{:})", p.unwrap(), s.unwrap())]),
+                        _ => table.add_row([field, &fieldtype.to_string()]),
+                    };
                 }
 
                 writeln!(self.output, "{}\n", table)?;
@@ -323,24 +327,24 @@ mod tests {
 
         test!(
             "
-╭────────────────────╮
-│ Field    Type      │
-╞════════════════════╡
-│ id       INT8      │
-│ calc1    FLOAT     │
-│ cost     DECIMAL   │
-│ DOB      DATE      │
-│ clock    TIME      │
-│ tstamp   TIMESTAMP │
-│ ival     INTERVAL  │
-│ uuid     UUID      │
-│ hash     MAP       │
-│ mylist   LIST      │
-╰────────────────────╯",
+╭───────────────────────╮
+│ Field    Type         │
+╞═══════════════════════╡
+│ id       INT8         │
+│ calc1    FLOAT        │
+│ cost     Decimal(5,2) │
+│ DOB      DATE         │
+│ clock    TIME         │
+│ tstamp   TIMESTAMP    │
+│ ival     INTERVAL     │
+│ uuid     UUID         │
+│ hash     MAP          │
+│ mylist   LIST         │
+╰───────────────────────╯",
             &Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int8),
                 ("calc1".to_string(), DataType::Float),
-                ("cost".to_string(), DataType::Decimal),
+                ("cost".to_string(), DataType::Decimal(Some(5), Some(2))),
                 ("DOB".to_string(), DataType::Date),
                 ("clock".to_string(), DataType::Time),
                 ("tstamp".to_string(), DataType::Timestamp),

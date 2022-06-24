@@ -2,6 +2,7 @@ use {
     super::AlterError,
     crate::{
         ast::{ColumnDef, ColumnOption, ColumnOptionDef, DataType},
+        data::value::ValueError,
         executor::evaluate_stateless,
         result::Result,
     },
@@ -26,6 +27,22 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
             data_type.clone(),
         )
         .into());
+    }
+
+    if let DataType::Decimal(p, s) = data_type {
+        let s: u64 = (*s).unwrap_or(0);
+
+        match *p {
+            Some(x) => match x <= s {
+                true => {
+                    return Err(
+                        AlterError::UnsupportedDecimalScale(x.to_string(), s.to_string()).into(),
+                    )
+                }
+                false => (),
+            },
+            None => return Err(ValueError::NoPrecisionDecimalNotSupported.into()),
+        }
     }
 
     let default = options

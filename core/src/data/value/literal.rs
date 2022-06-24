@@ -9,9 +9,11 @@ use {
         data::{value::uuid::parse_uuid, BigDecimalExt, Interval, Literal},
         result::{Error, Result},
     },
+    bigdecimal::BigDecimal,
     chrono::NaiveDate,
     rust_decimal::Decimal,
     std::cmp::Ordering,
+    std::str::FromStr,
 };
 
 impl PartialEq<Literal<'_>> for Value {
@@ -23,6 +25,10 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
             (Value::I128(l), Literal::Number(r)) => r.to_i128().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
+            (Value::Decimal(l), Literal::Number(r)) => match Decimal::from_str(&r.to_string()) {
+                Ok(d) => d == *l,
+                _ => false,
+            },
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Bytea(l), Literal::Bytea(r)) => l == r,
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
@@ -62,6 +68,10 @@ impl PartialOrd<Literal<'_>> for Value {
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
+            (Value::Decimal(l), Literal::Number(r)) => match Decimal::from_str(&r.to_string()) {
+                Ok(d) => l.partial_cmp(&d),
+                _ => None,
+            },
             (Value::Str(l), Literal::Text(r)) => Some(l.cmp(r.as_ref())),
             (Value::Date(l), Literal::Text(r)) => match r.parse::<NaiveDate>() {
                 Ok(r) => l.partial_cmp(&r),
@@ -158,11 +168,7 @@ impl Value {
             (DataType::Uuid, Literal::Bytea(v)) => parse_uuid(&hex::encode(v)).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
             (DataType::List, Literal::Text(v)) => Value::parse_json_list(v),
-            (DataType::Decimal, Literal::Number(v)) => v
-                .to_string()
-                .parse::<Decimal>()
-                .map(Value::Decimal)
-                .map_err(|_| ValueError::FailedToParseDecimal(v.to_string()).into()),
+            (DataType::Decimal(p, s), Literal::Number(v)) => Value::parse_decimal(p, s, v),
             (_, Literal::Null) => Ok(Value::Null),
             _ => Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: data_type.clone(),
@@ -259,21 +265,15 @@ impl Value {
 
                 Ok(Value::F64(v))
             }
-            (DataType::Decimal, Literal::Text(v)) => v
-                .parse::<Decimal>()
-                .map(Value::Decimal)
-                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
-            (DataType::Decimal, Literal::Number(v)) => v
-                .to_string()
-                .parse::<Decimal>()
-                .map(Value::Decimal)
-                .map_err(|_| ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
-            (DataType::Decimal, Literal::Boolean(v)) => {
-                let v = if *v { Decimal::ONE } else { Decimal::ZERO };
-
-                Ok(Value::Decimal(v))
-            }
-
+            (DataType::Decimal(p, s), Literal::Text(v)) => match BigDecimal::from_str(v) {
+                Ok(v) => Value::parse_decimal(p, s, &v),
+                _ => Err(ValueError::LiteralCastFromTextToDecimalFailed(v.to_string()).into()),
+            },
+            (DataType::Decimal(p, s), Literal::Number(v)) => Value::parse_decimal(p, s, v),
+            (DataType::Decimal(p, s), Literal::Boolean(v)) => match v {
+                true => Value::parse_decimal(p, s, &BigDecimal::from(1)),
+                false => Value::parse_decimal(p, s, &BigDecimal::from(0)),
+            },
             (DataType::Text, Literal::Number(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Text(v)) => Ok(Value::Str(v.to_string())),
             (DataType::Text, Literal::Boolean(v)) => {
@@ -291,7 +291,7 @@ impl Value {
             | (DataType::Int, Literal::Null)
             | (DataType::Int128, Literal::Null)
             | (DataType::Float, Literal::Null)
-            | (DataType::Decimal, Literal::Null)
+            | (DataType::Decimal(_, _), Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
             (DataType::Date, Literal::Text(v)) => parse_date(v)
                 .map(Value::Date)
@@ -556,7 +556,7 @@ mod tests {
             )
         );
         test!(
-            DataType::Decimal,
+            DataType::Decimal(Some(3), Some(0)),
             num!("200"),
             Value::Decimal(Decimal::new(200, 0))
         );

@@ -19,5 +19,5 @@ pub enum DataType {
     Uuid,
     Map,
     List,
-    Decimal,
+    Decimal(Option<u64>, Option<u64>),
 }

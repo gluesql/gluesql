@@ -19,7 +19,7 @@ test_case!(cast_literal, async move {
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
         (
-            "CREATE TABLE test (mytext Text, myint8 Int(8), myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
+            "CREATE TABLE test (mytext Text, myint8 Int(8), myint Int, myfloat Float, mydec Decimal(8), mybool Boolean, mydate Date)",
             Ok(Payload::Create),
         ),
         (

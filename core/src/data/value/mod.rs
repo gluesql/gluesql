@@ -11,6 +11,7 @@ use {
 
 mod binary_op;
 mod date;
+mod decimal;
 mod error;
 mod into;
 mod json;
@@ -112,7 +113,10 @@ impl Value {
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::I128(_) => matches!(data_type, DataType::Int128),
             Value::F64(_) => matches!(data_type, DataType::Float),
-            Value::Decimal(_) => matches!(data_type, DataType::Decimal),
+            Value::Decimal(_) => match data_type {
+                DataType::Decimal(p, s) => p.unwrap() >= s.unwrap(),
+                _ => false,
+            },
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
             Value::Str(_) => matches!(data_type, DataType::Text),
             Value::Bytea(_) => matches!(data_type, DataType::Bytea),
@@ -152,7 +156,7 @@ impl Value {
             | (DataType::Int, Value::I64(_))
             | (DataType::Int128, Value::I128(_))
             | (DataType::Float, Value::F64(_))
-            | (DataType::Decimal, Value::Decimal(_))
+            | (DataType::Decimal(_, _), Value::Decimal(_))
             | (DataType::Boolean, Value::Bool(_))
             | (DataType::Text, Value::Str(_))
             | (DataType::Bytea, Value::Bytea(_))
@@ -169,7 +173,7 @@ impl Value {
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Int128, value) => value.try_into().map(Value::I128),
             (DataType::Float, value) => value.try_into().map(Value::F64),
-            (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
+            (DataType::Decimal(_, _), value) => value.try_into().map(Value::Decimal),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
             (DataType::Date, value) => value.try_into().map(Value::Date),
             (DataType::Time, value) => value.try_into().map(Value::Time),
@@ -1161,7 +1165,7 @@ mod tests {
         assert!(F64(1.0).validate_type(&D::Float).is_ok());
         assert!(F64(1.0).validate_type(&D::Int).is_err());
         assert!(Decimal(rust_decimal::Decimal::ONE)
-            .validate_type(&D::Decimal)
+            .validate_type(&D::Decimal(Some(2), Some(0)))
             .is_ok());
         assert!(Decimal(rust_decimal::Decimal::ONE)
             .validate_type(&D::Int)
