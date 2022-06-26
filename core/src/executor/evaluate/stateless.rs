@@ -15,8 +15,6 @@ pub fn evaluate_stateless<'a>(
     context: Option<(Columns, &'a Row)>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
-    let eval = |expr| evaluate_stateless(context, expr);
-
     match expr {
         Expr::Literal(ast_literal) => expr::literal(ast_literal),
         Expr::TypedString { data_type, value } => {
@@ -41,32 +39,32 @@ pub fn evaluate_stateless<'a>(
             }
             .map(Evaluated::from)
         }
-        Expr::Nested(expr) => eval(expr),
+        Expr::Nested(expr) => evaluate_stateless(context, expr),
         Expr::BinaryOp { op, left, right } => {
-            let left = eval(left)?;
-            let right = eval(right)?;
+            let left = evaluate_stateless(context, left)?;
+            let right = evaluate_stateless(context, right)?;
 
             expr::binary_op(op, left, right)
         }
         Expr::UnaryOp { op, expr } => {
-            let v = eval(expr)?;
+            let v = evaluate_stateless(context, expr)?;
 
             expr::unary_op(op, v)
         }
-        Expr::Cast { expr, data_type } => eval(expr)?.cast(data_type),
+        Expr::Cast { expr, data_type } => evaluate_stateless(context, expr)?.cast(data_type),
         Expr::InList {
             expr,
             list,
             negated,
         } => {
             let negated = *negated;
-            let target = eval(expr)?;
+            let target = evaluate_stateless(context, expr)?;
 
             list.iter()
                 .filter_map(|expr| {
                     let target = &target;
 
-                    eval(expr).map_or_else(
+                    evaluate_stateless(context, expr).map_or_else(
                         |error| Some(Err(error)),
                         |evaluated| (target == &evaluated).then(|| Ok(!negated)),
                     )
@@ -85,19 +83,19 @@ pub fn evaluate_stateless<'a>(
             low,
             high,
         } => {
-            let target = eval(expr)?;
-            let low = eval(low)?;
-            let high = eval(high)?;
+            let target = evaluate_stateless(context, expr)?;
+            let low = evaluate_stateless(context, low)?;
+            let high = evaluate_stateless(context, high)?;
 
             expr::between(target, *negated, low, high)
         }
         Expr::IsNull(expr) => {
-            let v = eval(expr)?.is_null();
+            let v = evaluate_stateless(context, expr)?.is_null();
 
             Ok(Evaluated::from(Value::Bool(v)))
         }
         Expr::IsNotNull(expr) => {
-            let v = eval(expr)?.is_null();
+            let v = evaluate_stateless(context, expr)?.is_null();
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
@@ -112,144 +110,158 @@ fn evaluate_function<'a>(
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
-    let name = || func.to_string();
-    let eval = |expr| evaluate_stateless(context, expr);
-    let eval_opt = |expr| -> Result<Option<_>> {
-        match expr {
-            Some(v) => Ok(Some(eval(v)?)),
-            None => Ok(None),
-        }
-    };
+    let name = func.to_string();
 
     match func {
         // --- text ---
         Function::Concat(exprs) => {
-            let exprs = exprs.iter().map(eval).collect::<Result<_>>()?;
+            let exprs = exprs
+                .iter()
+                .map(|x| evaluate_stateless(context, x))
+                .collect::<Result<_>>()?;
 
             f::concat(exprs)
         }
-        Function::Lower(expr) => f::lower(name(), eval(expr)?),
-        Function::Upper(expr) => f::upper(name(), eval(expr)?),
+        Function::Lower(expr) => f::lower(name, evaluate_stateless(context, expr)?),
+        Function::Upper(expr) => f::upper(name, evaluate_stateless(context, expr)?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
-            let expr = eval(expr)?;
-            let size = eval(size)?;
+            let expr = evaluate_stateless(context, expr)?;
+            let size = evaluate_stateless(context, size)?;
 
-            f::left_or_right(name(), expr, size)
+            f::left_or_right(name, expr, size)
         }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
-            let expr = eval(expr)?;
-            let size = eval(size)?;
-            let fill = eval_opt(fill.as_ref())?;
+            let expr = evaluate_stateless(context, expr)?;
+            let size = evaluate_stateless(context, size)?;
+            let fill = match fill.as_ref() {
+                Some(v) => Some(evaluate_stateless(context, v)?),
+                None => None,
+            };
 
-            f::lpad_or_rpad(name(), expr, size, fill)
+            f::lpad_or_rpad(name, expr, size, fill)
         }
         Function::Trim {
             expr,
             filter_chars,
             trim_where_field,
         } => {
-            let expr = eval(expr)?;
-            let filter_chars = eval_opt(filter_chars.as_ref())?;
+            let expr = evaluate_stateless(context, expr)?;
+            let filter_chars = match filter_chars.as_ref() {
+                Some(v) => Some(evaluate_stateless(context, v)?),
+                None => None,
+            };
 
-            f::trim(name(), expr, filter_chars, trim_where_field)
+            f::trim(name, expr, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
-            let expr = eval(expr)?;
-            let chars = eval_opt(chars.as_ref())?;
+            let expr = evaluate_stateless(context, expr)?;
+            let chars = match chars.as_ref() {
+                Some(v) => Some(evaluate_stateless(context, v)?),
+                None => None,
+            };
 
-            f::ltrim(name(), expr, chars)
+            f::ltrim(name, expr, chars)
         }
         Function::Rtrim { expr, chars } => {
-            let expr = eval(expr)?;
-            let chars = eval_opt(chars.as_ref())?;
+            let expr = evaluate_stateless(context, expr)?;
+            let chars = match chars.as_ref() {
+                Some(v) => Some(evaluate_stateless(context, v)?),
+                None => None,
+            };
 
-            f::rtrim(name(), expr, chars)
+            f::rtrim(name, expr, chars)
         }
         Function::Reverse(expr) => {
-            let expr = eval(expr)?;
+            let expr = evaluate_stateless(context, expr)?;
 
-            f::reverse(name(), expr)
+            f::reverse(name, expr)
         }
         Function::Repeat { expr, num } => {
-            let expr = eval(expr)?;
-            let num = eval(num)?;
+            let expr = evaluate_stateless(context, expr)?;
+            let num = evaluate_stateless(context, num)?;
 
-            f::repeat(name(), expr, num)
+            f::repeat(name, expr, num)
         }
         Function::Substr { expr, start, count } => {
-            let expr = eval(expr)?;
-            let start = eval(start)?;
-            let count = eval_opt(count.as_ref())?;
+            let expr = evaluate_stateless(context, expr)?;
+            let start = evaluate_stateless(context, start)?;
+            let count = match count.as_ref() {
+                Some(v) => Some(evaluate_stateless(context, v)?),
+                None => None,
+            };
 
-            f::substr(name(), expr, start, count)
+            f::substr(name, expr, start, count)
         }
 
         // --- float ---
-        Function::Sqrt(expr) => f::sqrt(name(), eval(expr)?),
+        Function::Sqrt(expr) => f::sqrt(name, evaluate_stateless(context, expr)?),
         Function::Power { expr, power } => {
-            let expr = eval(expr)?;
-            let power = eval(power)?;
+            let expr = evaluate_stateless(context, expr)?;
+            let power = evaluate_stateless(context, power)?;
 
-            f::power(name(), expr, power)
+            f::power(name, expr, power)
         }
-        Function::Abs(expr) => f::abs(name(), eval(expr)?),
-        Function::IfNull { expr, then } => f::ifnull(eval(expr)?, eval(then)?),
-        Function::Sign(expr) => f::sign(name(), eval(expr)?),
-        Function::Ceil(expr) => f::ceil(name(), eval(expr)?),
-        Function::Round(expr) => f::round(name(), eval(expr)?),
-        Function::Floor(expr) => f::floor(name(), eval(expr)?),
-        Function::Radians(expr) => f::radians(name(), eval(expr)?),
-        Function::Degrees(expr) => f::degrees(name(), eval(expr)?),
+        Function::Abs(expr) => f::abs(name, evaluate_stateless(context, expr)?),
+        Function::Sign(expr) => f::sign(name, evaluate_stateless(context, expr)?),
+        Function::Ceil(expr) => f::ceil(name, evaluate_stateless(context, expr)?),
+        Function::Round(expr) => f::round(name, evaluate_stateless(context, expr)?),
+        Function::Floor(expr) => f::floor(name, evaluate_stateless(context, expr)?),
+        Function::Radians(expr) => f::radians(name, evaluate_stateless(context, expr)?),
+        Function::Degrees(expr) => f::degrees(name, evaluate_stateless(context, expr)?),
+        Function::IfNull { expr, then } => f::ifnull(
+            evaluate_stateless(context, expr)?,
+            evaluate_stateless(context, then)?,
+        ),
         Function::Pi() => Ok(Value::F64(std::f64::consts::PI)),
-        Function::Exp(expr) => f::exp(name(), eval(expr)?),
+        Function::Exp(expr) => f::exp(name, evaluate_stateless(context, expr)?),
         Function::Log { antilog, base } => {
-            let antilog = eval(antilog)?;
-            let base = eval(base)?;
+            let antilog = evaluate_stateless(context, antilog)?;
+            let base = evaluate_stateless(context, base)?;
 
-            f::log(name(), antilog, base)
+            f::log(name, antilog, base)
         }
-        Function::Ln(expr) => f::ln(name(), eval(expr)?),
-        Function::Log2(expr) => f::log2(name(), eval(expr)?),
-        Function::Log10(expr) => f::log10(name(), eval(expr)?),
-        Function::Sin(expr) => f::sin(name(), eval(expr)?),
-        Function::Cos(expr) => f::cos(name(), eval(expr)?),
-        Function::Tan(expr) => f::tan(name(), eval(expr)?),
-        Function::Asin(expr) => f::asin(name(), eval(expr)?),
-        Function::Acos(expr) => f::acos(name(), eval(expr)?),
-        Function::Atan(expr) => f::atan(name(), eval(expr)?),
+        Function::Ln(expr) => f::ln(name, evaluate_stateless(context, expr)?),
+        Function::Log2(expr) => f::log2(name, evaluate_stateless(context, expr)?),
+        Function::Log10(expr) => f::log10(name, evaluate_stateless(context, expr)?),
+        Function::Sin(expr) => f::sin(name, evaluate_stateless(context, expr)?),
+        Function::Cos(expr) => f::cos(name, evaluate_stateless(context, expr)?),
+        Function::Tan(expr) => f::tan(name, evaluate_stateless(context, expr)?),
+        Function::Asin(expr) => f::asin(name, evaluate_stateless(context, expr)?),
+        Function::Acos(expr) => f::acos(name, evaluate_stateless(context, expr)?),
+        Function::Atan(expr) => f::atan(name, evaluate_stateless(context, expr)?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {
-            let dividend = eval(dividend)?;
-            let divisor = eval(divisor)?;
+            let dividend = evaluate_stateless(context, dividend)?;
+            let divisor = evaluate_stateless(context, divisor)?;
 
-            f::div(name(), dividend, divisor)
+            f::div(name, dividend, divisor)
         }
         Function::Mod { dividend, divisor } => {
-            let dividend = eval(dividend)?;
-            let divisor = eval(divisor)?;
+            let dividend = evaluate_stateless(context, dividend)?;
+            let divisor = evaluate_stateless(context, divisor)?;
 
             return dividend.modulo(&divisor);
         }
         Function::Gcd { left, right } => {
-            let left = eval(left)?;
-            let right = eval(right)?;
+            let left = evaluate_stateless(context, left)?;
+            let right = evaluate_stateless(context, right)?;
 
-            f::gcd(name(), left, right)
+            f::gcd(name, left, right)
         }
         Function::Lcm { left, right } => {
-            let left = eval(left)?;
-            let right = eval(right)?;
+            let left = evaluate_stateless(context, left)?;
+            let right = evaluate_stateless(context, right)?;
 
-            f::lcm(name(), left, right)
+            f::lcm(name, left, right)
         }
 
         // --- etc ---
         Function::Unwrap { expr, selector } => {
-            let expr = eval(expr)?;
-            let selector = eval(selector)?;
+            let expr = evaluate_stateless(context, expr)?;
+            let selector = evaluate_stateless(context, selector)?;
 
-            f::unwrap(name(), expr, selector)
+            f::unwrap(name, expr, selector)
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
         Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
