@@ -2,8 +2,8 @@ use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
         ast::{
-            ColumnDef, Expr, IndexItem, Join, ObjectName, Query, Select, SetExpr, TableAlias,
-            TableFactor, TableWithJoins,
+            ColumnDef, Expr, Join, ObjectName, Query, Select, SetExpr, TableAlias, TableFactor,
+            TableWithJoins,
         },
         data::{Key, Row},
         executor::select::{get_labels, select},
@@ -169,6 +169,9 @@ pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
     }
 }
 
+#[cfg(feature = "index")]
+use crate::ast::IndexItem;
+#[cfg(feature = "index")]
 pub fn get_index(table_factor: &TableFactor) -> Option<&IndexItem> {
     match table_factor {
         TableFactor::Table { index, .. } => index.as_ref(),

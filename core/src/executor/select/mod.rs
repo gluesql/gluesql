@@ -27,7 +27,10 @@ use {
 };
 
 #[cfg(feature = "index")]
-use {super::evaluate::evaluate, crate::ast::IndexItem};
+use {
+    super::evaluate::evaluate,
+    crate::{ast::IndexItem, executor::fetch::get_index},
+};
 
 async fn fetch_blended<'a>(
     storage: &'a dyn GStore,
@@ -37,7 +40,6 @@ async fn fetch_blended<'a>(
     let table_name = get_name(relation)?;
 
     #[cfg(feature = "index")]
-    use crate::executor::fetch::get_index;
     let rows = {
         #[derive(Iterator)]
         enum Rows<I1, I2> {
