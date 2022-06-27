@@ -1,11 +1,9 @@
 use {
     crate::{
-        data::{
-            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
-        },
+        data::{IntervalError, KeyError, LiteralError, RowError, StringExtError, ValueError},
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
-            UpdateError, ValidateError,
+            TableError, UpdateError, ValidateError,
         },
         store::{GStore, GStoreMut},
         translate::TranslateError,

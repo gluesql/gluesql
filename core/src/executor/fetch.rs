@@ -1,8 +1,11 @@
 use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
-        ast::{ColumnDef, Expr, Join, Query, Select, SetExpr, TableFactor, TableWithJoins},
-        data::{Key, Relation, Row, TableError},
+        ast::{
+            ColumnDef, Expr, IndexItem, Join, ObjectName, Query, Select, SetExpr, TableAlias,
+            TableFactor, TableWithJoins,
+        },
+        data::{Key, Row},
         executor::select::{get_labels, select},
         result::{Error, Result},
         store::GStore,
@@ -18,6 +21,12 @@ use {
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+}
+
+#[derive(ThisError, Serialize, Debug, PartialEq)]
+pub enum TableError {
+    #[error("unreachable")]
+    Unreachable,
 }
 
 pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec<String>> {
@@ -82,7 +91,7 @@ pub async fn fetch_relation<'a>(
         }
         TableFactor::Table { name, .. } => {
             let rows = storage
-                .scan_data(crate::data::get_name(name)?)
+                .scan_data(fetch_name(name)?)
                 .await?
                 .map_ok(|(_, row)| row);
             let rows = stream::iter(rows);
@@ -101,9 +110,8 @@ pub async fn fetch_join_columns<'a>(
         .and_then(|join| async move {
             match &join.relation {
                 TableFactor::Table { .. } => {
-                    let relation = Relation::new(&join.relation)?;
-                    let table_alias = relation.get_alias();
-                    let table_name = relation.get_name();
+                    let table_alias = get_alias(&join.relation)?;
+                    let table_name = get_name(&join.relation)?;
                     let columns = fetch_columns(storage, table_name).await?;
 
                     Ok((table_alias, columns))
@@ -121,7 +129,7 @@ pub async fn fetch_join_columns<'a>(
                         ..
                     } = statement.as_ref();
                     let Select { projection, .. } = statement.as_ref();
-                    let inner_table_name = Relation::new(relation)?.get_name();
+                    let inner_table_name = get_name(relation)?;
                     let columns = fetch_columns(storage, inner_table_name).await?;
                     let columns = get_labels(projection, inner_table_name, &columns, None)?;
                     Ok((&alias.name, columns))
@@ -131,4 +139,39 @@ pub async fn fetch_join_columns<'a>(
         })
         .try_collect::<Vec<_>>()
         .await
+}
+
+pub fn fetch_name(table_name: &ObjectName) -> Result<&String> {
+    let ObjectName(idents) = table_name;
+    idents.last().ok_or_else(|| TableError::Unreachable.into())
+}
+
+pub fn get_name(table_factor: &TableFactor) -> Result<&String> {
+    match table_factor {
+        TableFactor::Table { name, .. } => fetch_name(name),
+        TableFactor::Derived { alias, .. } => Ok(&alias.name),
+    }
+}
+
+pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
+    match table_factor {
+        TableFactor::Table {
+            name, alias: None, ..
+        } => fetch_name(name),
+        TableFactor::Table {
+            alias: Some(TableAlias { name, .. }),
+            ..
+        }
+        | TableFactor::Derived {
+            alias: TableAlias { name, .. },
+            ..
+        } => Ok(name),
+    }
+}
+
+pub fn get_index(table_factor: &TableFactor) -> Option<&IndexItem> {
+    match table_factor {
+        TableFactor::Table { index, .. } => index.as_ref(),
+        TableFactor::Derived { .. } => None,
+    }
 }

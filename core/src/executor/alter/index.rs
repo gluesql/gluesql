@@ -4,7 +4,8 @@ use {
     super::AlterError,
     crate::{
         ast::{ColumnDef, Expr, ObjectName, OrderByExpr},
-        data::{get_name, Schema},
+        data::Schema,
+        executor::fetch_name,
         result::MutResult,
         store::{GStore, GStoreMut},
     },
@@ -17,8 +18,8 @@ pub async fn create_index<T: GStore + GStoreMut>(
     column: &OrderByExpr,
 ) -> MutResult<T, ()> {
     let names = (|| async {
-        let table_name = get_name(table_name)?;
-        let index_name = get_name(index_name)?;
+        let table_name = fetch_name(table_name)?;
+        let index_name = fetch_name(index_name)?;
         let expr = &column.expr;
         let Schema { column_defs, .. } = storage
             .fetch_schema(table_name)
@@ -75,8 +76,8 @@ pub async fn drop_index<T: GStore + GStoreMut>(
     index_name: &ObjectName,
 ) -> MutResult<T, ()> {
     let names = (|| {
-        let table_name = get_name(table_name)?;
-        let index_name = get_name(index_name)?;
+        let table_name = fetch_name(table_name)?;
+        let index_name = fetch_name(index_name)?;
 
         Ok((table_name, index_name))
     })();

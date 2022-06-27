@@ -1,7 +1,5 @@
-use crate::data::Relation;
-
 use {
-    super::fetch::fetch_relation,
+    super::fetch::{fetch_relation, get_alias},
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
@@ -93,7 +91,7 @@ async fn join<'a>(
         join_executor,
     } = ast_join;
 
-    let table_alias = Relation::new(relation)?.get_alias();
+    let table_alias = get_alias(relation)?;
     let join_executor = JoinExecutor::new(
         storage,
         relation,
@@ -248,7 +246,7 @@ impl<'a> JoinExecutor<'a> {
 
                 async move {
                     let filter_context = Rc::new(FilterContext::new(
-                        Relation::new(relation)?.get_alias(),
+                        get_alias(relation)?,
                         columns,
                         Some(&row),
                         filter_context,

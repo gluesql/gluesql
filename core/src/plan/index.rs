@@ -1,12 +1,11 @@
-use crate::data::Relation;
-
 use {
     crate::{
         ast::{
             AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
             SetExpr, Statement, TableFactor, TableWithJoins,
         },
-        data::{Schema, SchemaIndex, SchemaIndexOrd, TableError},
+        data::{Schema, SchemaIndex, SchemaIndexOrd},
+        executor::{get_name, TableError},
         result::{Error, Result},
     },
     std::collections::HashMap,
@@ -71,8 +70,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
     };
 
     let TableWithJoins { relation, .. } = &select.from;
-    let relation = Relation::new(relation)?;
-    let table_name = relation.get_name();
+    let table_name = get_name(relation)?;
     let indexes = match schema_map.get(table_name) {
         Some(Schema { indexes, .. }) => Indexes(indexes.clone()),
         None => {

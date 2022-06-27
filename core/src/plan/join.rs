@@ -5,7 +5,8 @@ use {
             BinaryOperator, ColumnDef, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator,
             Query, Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema},
+        data::Schema,
+        executor::fetch_name,
     },
     std::{collections::HashMap, rc::Rc},
     utils::Vector,
@@ -469,7 +470,7 @@ impl<'a> Planner<'a> {
     ) -> Option<Rc<Context<'a>>> {
         let (name, alias) = match table_factor {
             TableFactor::Table { name, alias, .. } => {
-                let name = match get_name(name) {
+                let name = match fetch_name(name) {
                     Ok(name) => name.clone(),
                     Err(_) => return next,
                 };

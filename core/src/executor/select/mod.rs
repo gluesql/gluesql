@@ -8,7 +8,9 @@ use {
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::{fetch_columns, fetch_join_columns, Rows},
+        fetch::{
+            fetch_columns, fetch_join_columns, fetch_name, get_alias, get_index, get_name, Rows,
+        },
         filter::Filter,
         join::Join,
         limit::Limit,
@@ -16,7 +18,7 @@ use {
     },
     crate::{
         ast::{Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins},
-        data::{get_name, Relation, Row},
+        data::Row,
         result::{Error, Result},
         store::GStore,
     },
@@ -31,10 +33,10 @@ use {super::evaluate::evaluate, crate::ast::IndexItem};
 
 async fn fetch_blended<'a>(
     storage: &'a dyn GStore,
-    relation: Relation<'a>,
+    relation: &'a TableFactor,
     columns: Rc<[String]>,
 ) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
-    let table_name = relation.get_name();
+    let table_name = get_name(relation)?;
 
     #[cfg(feature = "index")]
     let rows = {
@@ -44,7 +46,7 @@ async fn fetch_blended<'a>(
             Indexed(I2),
         }
 
-        match relation.get_index() {
+        match get_index(relation) {
             Some(IndexItem {
                 name: index_name,
                 asc,
@@ -76,7 +78,7 @@ async fn fetch_blended<'a>(
         let row = Some(row);
         let columns = Rc::clone(&columns);
 
-        Ok(BlendContext::new(relation.get_alias(), columns, row, None))
+        Ok(BlendContext::new(get_alias(relation)?, columns, row, None))
     });
     Ok(stream::iter(rows))
 }
@@ -132,7 +134,7 @@ pub fn get_labels<'a>(
                 Labeled::Wildcard(Wildcard::WithoutJoin(labels))
             }
             SelectItem::QualifiedWildcard(target) => {
-                let target_table_alias = try_into!(get_name(target));
+                let target_table_alias = try_into!(fetch_name(target));
 
                 if table_alias == target_table_alias {
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));
@@ -185,11 +187,10 @@ pub async fn select_with_labels<'a>(
     let TableWithJoins { relation, joins } = &table_with_joins;
     let (rows, columns) = match relation {
         TableFactor::Table { .. } => {
-            let table = Relation::new(relation)?;
-            let columns = fetch_columns(storage, table.get_name()).await?;
+            let columns = fetch_columns(storage, get_name(relation)?).await?;
             let columns = Rc::from(columns);
             (
-                Rows::Table(fetch_blended(storage, table, Rc::clone(&columns)).await?),
+                Rows::Table(fetch_blended(storage, relation, Rc::clone(&columns)).await?),
                 columns,
             )
         }
@@ -212,11 +213,10 @@ pub async fn select_with_labels<'a>(
 
     let join_columns = fetch_join_columns(joins, storage).await?;
 
-    let relation = Relation::new(relation)?;
     let labels = if with_labels {
         get_labels(
             projection,
-            relation.get_alias(),
+            get_alias(relation)?,
             &columns,
             Some(&join_columns),
         )?

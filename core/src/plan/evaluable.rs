@@ -5,7 +5,7 @@ use {
             Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
             TableAlias, TableFactor, TableWithJoins, Values,
         },
-        data::get_name,
+        executor::fetch_name,
     },
     std::{convert::identity, rc::Rc},
 };
@@ -138,7 +138,7 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
 fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFactor) -> bool {
     let alias = match table_factor {
         TableFactor::Table { name, alias, .. } => {
-            let name = match get_name(name) {
+            let name = match fetch_name(name) {
                 Ok(name) => name,
                 Err(_) => return false,
             };

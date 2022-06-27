@@ -5,7 +5,8 @@ use {
             Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
             Statement, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema},
+        data::Schema,
+        executor::fetch_name,
         result::Result,
         store::Store,
     },
@@ -31,7 +32,7 @@ pub async fn fetch_schema_map(
         Statement::Insert {
             table_name, source, ..
         } => {
-            let table_name = get_name(table_name)?;
+            let table_name = fetch_name(table_name)?;
             let table_schema = storage
                 .fetch_schema(table_name)
                 .await?
@@ -50,7 +51,7 @@ pub async fn fetch_schema_map(
             stream::iter(names)
                 .map(Ok)
                 .try_filter_map(|table_name| async move {
-                    let table_name = get_name(table_name)?;
+                    let table_name = fetch_name(table_name)?;
 
                     Ok(storage
                         .fetch_schema(table_name)
@@ -176,7 +177,7 @@ async fn scan_join(storage: &dyn Store, join: &Join) -> Result<Vec<Schema>> {
 async fn scan_table_factor(storage: &dyn Store, table_factor: &TableFactor) -> Result<Vec<Schema>> {
     match table_factor {
         TableFactor::Table { name, .. } => {
-            let table_name = get_name(name)?;
+            let table_name = fetch_name(name)?;
             let schema = storage.fetch_schema(table_name).await?;
             let schema_list = schema.map(|schema| vec![schema]).unwrap_or_else(Vec::new);
 
