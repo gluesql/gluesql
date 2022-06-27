@@ -165,11 +165,7 @@ fn evaluate_function<'a>(
             f::rtrim(name(), expr, chars)
         }
         Function::Rand(expr) => {
-            let expr = match expr {
-                Some(e) => Some(eval(e)?),
-                _ => None,
-            };
-            f::rand(expr)
+            f::rand(expr.as_ref().map(|expr| eval(expr)).transpose()?)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr)?;
