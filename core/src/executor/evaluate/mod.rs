@@ -274,10 +274,9 @@ async fn evaluate_function<'a>(
             f::rtrim(name(), expr, chars)
         }
         Function::Rand(expr) => {
-            
             let expr = match expr {
-                Some(e) => Some(eval(e).await?),
-                _ => None,
+                 Some(e) => Some(eval(e).await?),
+                 _ => None,
             };
             f::rand(expr)
         }

@@ -5,10 +5,7 @@ test_case!(rand, async move {
 
     let test_cases = vec![
         ("CREATE TABLE mytable (random float)", Ok(Payload::Create)),
-        (
-            "SELECT RAND() as r FROM mytable",
-            Ok(Payload::Insert(1)),
-        ),
+        ("SELECT RAND() as r FROM mytable", Ok(Payload::Insert(1))),
         (
             "SELECT RAND(123) as r FROM mytable",
             Ok(select!(

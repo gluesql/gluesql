@@ -341,10 +341,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         }
         "RAND" => {
             check_len_range(name, args.len(), 0, 1)?;
-            let expr = match args.len() {
-                1 => Some(translate_expr(args[0])?),
-                0 => None,
-            };
+            let expr = args.get(0).map(|expr| translate_expr(expr)).transpose()?;
+
             Ok(Expr::Function(Box::new(Function::Rand(expr))))
         }
         "REVERSE" => translate_function_one_arg(Function::Reverse, args, name),

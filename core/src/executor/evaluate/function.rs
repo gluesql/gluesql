@@ -1,10 +1,7 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
-    rand::{
-        rngs::StdRng,
-        Rng, SeedableRng,
-    },
+    rand::{rngs::StdRng, Rng, SeedableRng},
     std::cmp::{max, min},
     uuid::Uuid,
 };
@@ -284,14 +281,14 @@ pub fn rand(seed: Option<Evaluated<'_>>) -> Result<Value> {
         None => {
             return Ok(Value::F64(rand::random()));
         }
-    };  
-        
+    };
+
     let v = match v {
         Value::I8(v) => StdRng::seed_from_u64(v as u64).gen(),
         Value::I64(v) => StdRng::seed_from_u64(v as u64).gen(),
         _ => rand::random(), // may be we need to return error?
-    };  
-    
+    };
+
     Ok(Value::F64(v))
 }
 

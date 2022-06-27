@@ -164,9 +164,7 @@ fn evaluate_function<'a>(
 
             f::rtrim(name(), expr, chars)
         }
-        Function::Rand(expr) => {
-            f::rand(expr.as_ref().map(|expr| eval(expr)).transpose()?)
-        }
+        Function::Rand(expr) => f::rand(expr.as_ref().map(|expr| eval(expr)).transpose()?),
         Function::Reverse(expr) => {
             let expr = eval(expr)?;
 
