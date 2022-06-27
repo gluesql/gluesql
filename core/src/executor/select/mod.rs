@@ -8,9 +8,7 @@ use {
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::{
-            fetch_columns, fetch_join_columns, fetch_name, get_alias, get_index, get_name, Rows,
-        },
+        fetch::{fetch_columns, fetch_join_columns, fetch_name, get_alias, get_name, Rows},
         filter::Filter,
         join::Join,
         limit::Limit,
@@ -39,6 +37,7 @@ async fn fetch_blended<'a>(
     let table_name = get_name(relation)?;
 
     #[cfg(feature = "index")]
+    use crate::executor::fetch::get_index;
     let rows = {
         #[derive(Iterator)]
         enum Rows<I1, I2> {
