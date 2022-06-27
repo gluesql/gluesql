@@ -125,7 +125,6 @@ fn evaluate_function<'a>(
         // --- text ---
         Function::Concat(exprs) => {
             let exprs = exprs.iter().map(eval).collect::<Result<_>>()?;
-
             f::concat(exprs)
         }
         Function::Lower(expr) => f::lower(name(), eval(expr)?),
@@ -165,6 +164,7 @@ fn evaluate_function<'a>(
 
             f::rtrim(name(), expr, chars)
         }
+        Function::Rand(expr) => f::rand(expr.as_ref().map(|expr| eval(expr)).transpose()?),
         Function::Reverse(expr) => {
             let expr = eval(expr)?;
 

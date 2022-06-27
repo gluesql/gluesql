@@ -36,6 +36,7 @@ impl Function {
             | Self::Sqrt(expr)
             | Self::Abs(expr)
             | Self::Sign(expr)
+            | Self::Rand(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {

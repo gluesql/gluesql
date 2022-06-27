@@ -124,6 +124,7 @@ macro_rules! generate_store_tests {
         glue!(validate_unique, validate::unique::unique);
         glue!(validate_types, validate::types::types);
         glue!(function_extract, function::extract::extract);
+        glue!(function_rand, function::rand::rand);
         glue!(function_radians, function::radians::radians);
         glue!(function_degrees, function::degrees::degrees);
         glue!(function_pi, function::pi::pi);

@@ -17,6 +17,7 @@ pub mod math_function;
 pub mod now;
 pub mod pi;
 pub mod radians;
+pub mod rand;
 pub mod repeat;
 pub mod reverse;
 pub mod round;
