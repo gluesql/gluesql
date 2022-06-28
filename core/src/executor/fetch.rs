@@ -40,6 +40,38 @@ pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec
         .collect::<Vec<String>>())
 }
 
+pub async fn fetch_relation_columns(
+    storage: &dyn GStore,
+    table_factor: &TableFactor,
+) -> Result<Vec<String>> {
+    match table_factor {
+        TableFactor::Table { name, .. } => {
+            let table_name = fetch_name(name)?;
+
+            fetch_columns(storage, table_name).await
+        }
+        TableFactor::Derived {
+            subquery:
+                Query {
+                    body: SetExpr::Select(statement),
+                    ..
+                },
+            alias: _,
+        } => {
+            let Select {
+                from: TableWithJoins { relation, .. },
+                projection,
+                ..
+            } = statement.as_ref();
+            let inner_table_name = get_name(relation)?;
+            let columns = fetch_columns(storage, inner_table_name).await?;
+            let columns = get_labels(projection, inner_table_name, &columns, None)?;
+            Ok(columns)
+        }
+        &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+    }
+}
+
 pub async fn fetch<'a>(
     storage: &'a dyn GStore,
     table_name: &'a str,
@@ -108,34 +140,39 @@ pub async fn fetch_join_columns<'a>(
     stream::iter(joins.iter())
         .map(Ok::<_, Error>)
         .and_then(|join| async move {
-            match &join.relation {
-                TableFactor::Table { .. } => {
-                    let table_alias = get_alias(&join.relation)?;
-                    let table_name = get_name(&join.relation)?;
-                    let columns = fetch_columns(storage, table_name).await?;
+            let relation = &join.relation;
+            let alias = get_alias(relation)?;
+            let columns = fetch_relation_columns(storage, relation).await?;
+            Ok((alias, columns))
 
-                    Ok((table_alias, columns))
-                }
-                TableFactor::Derived {
-                    subquery:
-                        Query {
-                            body: SetExpr::Select(statement),
-                            ..
-                        },
-                    alias,
-                } => {
-                    let Select {
-                        from: TableWithJoins { relation, .. },
-                        ..
-                    } = statement.as_ref();
-                    let Select { projection, .. } = statement.as_ref();
-                    let inner_table_name = get_name(relation)?;
-                    let columns = fetch_columns(storage, inner_table_name).await?;
-                    let columns = get_labels(projection, inner_table_name, &columns, None)?;
-                    Ok((&alias.name, columns))
-                }
-                _ => Err(Error::Table(TableError::Unreachable)),
-            }
+            // match &join.relation {
+            //     TableFactor::Table { .. } => {
+            //         let table_alias = get_alias(&join.relation)?;
+            //         let table_name = get_name(&join.relation)?;
+            //         let columns = fetch_columns(storage, table_name).await?;
+
+            //         Ok((table_alias, columns))
+            //     }
+            //     TableFactor::Derived {
+            //         subquery:
+            //             Query {
+            //                 body: SetExpr::Select(statement),
+            //                 ..
+            //             },
+            //         alias,
+            //     } => {
+            //         let Select {
+            //             from: TableWithJoins { relation, .. },
+            //             ..
+            //         } = statement.as_ref();
+            //         let Select { projection, .. } = statement.as_ref();
+            //         let inner_table_name = get_name(relation)?;
+            //         let columns = fetch_columns(storage, inner_table_name).await?;
+            //         let columns = get_labels(projection, inner_table_name, &columns, None)?;
+            //         Ok((&alias.name, columns))
+            //     }
+            //     _ => Err(Error::Table(TableError::Unreachable)),
+            // }
         })
         .try_collect::<Vec<_>>()
         .await
