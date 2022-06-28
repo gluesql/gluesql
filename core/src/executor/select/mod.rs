@@ -191,45 +191,45 @@ pub async fn select_with_labels<'a>(
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
-    // let columns = fetch_relation_columns(storage, relation).await?;
-    // let columns = Rc::from(columns);
-    // let rows = {
-    //     let columns = Rc::clone(&columns);
-    //     fetch_relation_rows(storage, relation, &None)
-    //         .await?
-    //         .map(move |row| {
-    //             let row = Some(row?);
-    //             let columns = Rc::clone(&columns);
-    //             let alias = get_alias(relation)?;
-    //             Ok(BlendContext::new(alias, columns, row, None))
-    //         })
-    // };
-
-    let (rows, columns) = match relation {
-        TableFactor::Table { .. } => {
-            let columns = fetch_columns(storage, get_name(relation)?).await?;
-            let columns = Rc::from(columns);
-            (
-                Rows::Table(fetch_blended(storage, relation, Rc::clone(&columns)).await?),
-                columns,
-            )
-        }
-        TableFactor::Derived { subquery, alias } => {
-            let (labels, inline_view) = select_with_labels(storage, subquery, None, true).await?;
-            let inline_view = inline_view.try_collect::<Vec<_>>().await?;
-            let labels_rc = Rc::from(labels.to_owned());
-            let labels = Rc::clone(&labels_rc);
-            let rows = inline_view.into_iter().map(move |row| {
-                Ok(BlendContext::new(
-                    &alias.name,
-                    Rc::clone(&labels_rc),
-                    Some(row),
-                    None,
-                ))
-            });
-            (Rows::Derived(stream::iter(rows)), Rc::clone(&labels))
-        }
+    let columns = fetch_relation_columns(storage, relation).await?;
+    let columns = Rc::from(columns);
+    let rows = {
+        let columns = Rc::clone(&columns);
+        fetch_relation_rows(storage, relation, &None)
+            .await?
+            .map(move |row| {
+                let row = Some(row?);
+                let columns = Rc::clone(&columns);
+                let alias = get_alias(relation)?;
+                Ok(BlendContext::new(alias, columns, row, None))
+            })
     };
+
+    // let (rows, columns) = match relation {
+    //     TableFactor::Table { .. } => {
+    //         let columns = fetch_columns(storage, get_name(relation)?).await?;
+    //         let columns = Rc::from(columns);
+    //         (
+    //             Rows::Table(fetch_blended(storage, relation, Rc::clone(&columns)).await?),
+    //             columns,
+    //         )
+    //     }
+    //     TableFactor::Derived { subquery, alias } => {
+    //         let (labels, inline_view) = select_with_labels(storage, subquery, None, true).await?;
+    //         let inline_view = inline_view.try_collect::<Vec<_>>().await?;
+    //         let labels_rc = Rc::from(labels.to_owned());
+    //         let labels = Rc::clone(&labels_rc);
+    //         let rows = inline_view.into_iter().map(move |row| {
+    //             Ok(BlendContext::new(
+    //                 &alias.name,
+    //                 Rc::clone(&labels_rc),
+    //                 Some(row),
+    //                 None,
+    //             ))
+    //         });
+    //         (Rows::Derived(stream::iter(rows)), Rc::clone(&labels))
+    //     }
+    // };
 
     let join_columns = fetch_join_columns(joins, storage).await?;
 
