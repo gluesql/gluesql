@@ -3,12 +3,17 @@ mod error;
 
 pub use error::SelectError;
 
+use super::fetch::fetch_relation_columns;
+
 use {
     self::blend::Blend,
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::{fetch_columns, fetch_join_columns, fetch_name, get_alias, get_name, Rows},
+        fetch::{
+            fetch_columns, fetch_join_columns, fetch_name, fetch_relation_rows, get_alias,
+            get_name, Rows,
+        },
         filter::Filter,
         join::Join,
         limit::Limit,
@@ -21,7 +26,7 @@ use {
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{self, Stream, TryStream, TryStreamExt},
+    futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
     std::{iter::once, rc::Rc},
 };
@@ -186,6 +191,20 @@ pub async fn select_with_labels<'a>(
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
+    // let columns = fetch_relation_columns(storage, relation).await?;
+    // let columns = Rc::from(columns);
+    // let rows = {
+    //     let columns = Rc::clone(&columns);
+    //     fetch_relation_rows(storage, relation, &None)
+    //         .await?
+    //         .map(move |row| {
+    //             let row = Some(row?);
+    //             let columns = Rc::clone(&columns);
+    //             let alias = get_alias(relation)?;
+    //             Ok(BlendContext::new(alias, columns, row, None))
+    //         })
+    // };
+
     let (rows, columns) = match relation {
         TableFactor::Table { .. } => {
             let columns = fetch_columns(storage, get_name(relation)?).await?;

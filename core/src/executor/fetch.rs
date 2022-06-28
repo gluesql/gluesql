@@ -64,6 +64,7 @@ pub async fn fetch_relation_columns(
                 ..
             } = statement.as_ref();
             let inner_table_name = get_name(relation)?;
+            println!("{:?}", inner_table_name);
             let columns = fetch_columns(storage, inner_table_name).await?;
             let columns = get_labels(projection, inner_table_name, &columns, None)?;
             Ok(columns)
