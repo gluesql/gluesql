@@ -1,5 +1,5 @@
 use {
-    super::fetch::{fetch_relation, get_alias},
+    super::fetch::{fetch_relation_rows, get_alias},
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
@@ -138,7 +138,7 @@ async fn join<'a>(
             }
             let rows = match join_executor.as_ref() {
                 JoinExecutor::NestedLoop => {
-                    let rows = fetch_relation(storage, relation, &filter_context).await?;
+                    let rows = fetch_relation_rows(storage, relation, &filter_context).await?;
                     let rows = rows
                         .and_then(|row| future::ok(Cow::Owned(row)))
                         .try_filter_map(move |row| {
@@ -238,7 +238,7 @@ impl<'a> JoinExecutor<'a> {
             } => (key_expr, value_expr, where_clause),
         };
 
-        let rows_map = fetch_relation(storage, relation, &filter_context).await?;
+        let rows_map = fetch_relation_rows(storage, relation, &filter_context).await?;
         let rows_map = rows_map
             .try_filter_map(|row| {
                 let columns = Rc::clone(&columns);

@@ -109,7 +109,7 @@ pub enum Rows<I1, I2> {
     Derived(I1),
     Table(I2),
 }
-pub async fn fetch_relation<'a>(
+pub async fn fetch_relation_rows<'a>(
     storage: &'a dyn GStore,
     table_factor: &'a TableFactor,
     filter_context: &Option<Rc<FilterContext<'a>>>,
