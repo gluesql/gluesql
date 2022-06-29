@@ -33,58 +33,6 @@ pub enum TableError {
     Unreachable,
 }
 
-pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec<String>> {
-    Ok(storage
-        .fetch_schema(table_name)
-        .await?
-        .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
-        .column_defs
-        .into_iter()
-        .map(|ColumnDef { name, .. }| name)
-        .collect::<Vec<String>>())
-}
-
-#[async_recursion(?Send)]
-pub async fn fetch_relation_columns(
-    storage: &dyn GStore,
-    table_factor: &TableFactor,
-) -> Result<Vec<String>> {
-    match table_factor {
-        TableFactor::Table { name, .. } => {
-            let table_name = fetch_name(name)?;
-
-            fetch_columns(storage, table_name).await
-        }
-        TableFactor::Derived {
-            subquery:
-                Query {
-                    body: SetExpr::Select(statement),
-                    ..
-                },
-            alias: _,
-        } => {
-            let Select {
-                from: TableWithJoins {
-                    relation, joins, ..
-                },
-                projection,
-                ..
-            } = statement.as_ref();
-
-            let columns = fetch_relation_columns(storage, relation).await?;
-            let join_columns = fetch_join_columns(joins, storage).await?;
-            let labels = get_labels(
-                projection,
-                get_alias(relation)?,
-                &columns,
-                Some(&join_columns),
-            )?;
-            Ok(labels)
-        }
-        &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
-    }
-}
-
 pub async fn fetch<'a>(
     storage: &'a dyn GStore,
     table_name: &'a str,
@@ -180,6 +128,58 @@ pub async fn fetch_relation_rows<'a>(
     }
 }
 
+pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec<String>> {
+    Ok(storage
+        .fetch_schema(table_name)
+        .await?
+        .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
+        .column_defs
+        .into_iter()
+        .map(|ColumnDef { name, .. }| name)
+        .collect::<Vec<String>>())
+}
+
+#[async_recursion(?Send)]
+pub async fn fetch_relation_columns(
+    storage: &dyn GStore,
+    table_factor: &TableFactor,
+) -> Result<Vec<String>> {
+    match table_factor {
+        TableFactor::Table { name, .. } => {
+            let table_name = fetch_name(name)?;
+
+            fetch_columns(storage, table_name).await
+        }
+        TableFactor::Derived {
+            subquery:
+                Query {
+                    body: SetExpr::Select(statement),
+                    ..
+                },
+            alias: _,
+        } => {
+            let Select {
+                from: TableWithJoins {
+                    relation, joins, ..
+                },
+                projection,
+                ..
+            } = statement.as_ref();
+
+            let columns = fetch_relation_columns(storage, relation).await?;
+            let join_columns = fetch_join_columns(joins, storage).await?;
+            let labels = get_labels(
+                projection,
+                get_alias(relation)?,
+                &columns,
+                Some(&join_columns),
+            )?;
+
+            Ok(labels)
+        }
+        &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+    }
+}
 pub async fn fetch_join_columns<'a>(
     joins: &'a [Join],
     storage: &dyn GStore,
