@@ -18,6 +18,9 @@ use {
     thiserror::Error as ThisError,
 };
 
+#[cfg(feature = "index")]
+use {super::evaluate::evaluate, iter_enum::Iterator};
+
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum FetchError {
     #[error("table not found: {0}")]
@@ -67,11 +70,6 @@ pub async fn fetch_relation_columns(
                 projection,
                 ..
             } = statement.as_ref();
-
-            // let inner_table_name = get_name(relation)?;
-            // let columns = fetch_columns(storage, inner_table_name).await?;
-            // let columns = get_labels(projection, inner_table_name, &columns, None)?;
-            // Ok(columns)
 
             let columns = fetch_relation_columns(storage, relation).await?;
             let join_columns = fetch_join_columns(joins, storage).await?;
@@ -124,6 +122,7 @@ pub enum Rows<I1, I2> {
     Derived(I1),
     Table(I2),
 }
+
 pub async fn fetch_relation_rows<'a>(
     storage: &'a dyn GStore,
     table_factor: &'a TableFactor,
@@ -137,10 +136,43 @@ pub async fn fetch_relation_rows<'a>(
             Ok(Rows::Derived(rows))
         }
         TableFactor::Table { name, .. } => {
-            let rows = storage
-                .scan_data(fetch_name(name)?)
-                .await?
-                .map_ok(|(_, row)| row);
+            let table_name = fetch_name(name)?;
+            #[cfg(feature = "index")]
+            let rows = {
+                #[derive(Iterator)]
+                enum Rows<I1, I2> {
+                    FullScan(I1),
+                    Indexed(I2),
+                }
+
+                match get_index(table_factor) {
+                    Some(IndexItem {
+                        name: index_name,
+                        asc,
+                        cmp_expr,
+                    }) => {
+                        let cmp_value = match cmp_expr {
+                            Some((op, expr)) => {
+                                let evaluated = evaluate(storage, None, None, expr).await?;
+
+                                Some((op, evaluated.try_into()?))
+                            }
+                            None => None,
+                        };
+
+                        storage
+                            .scan_indexed_data(table_name, index_name, *asc, cmp_value)
+                            .await
+                            .map(Rows::Indexed)?
+                    }
+                    None => storage.scan_data(table_name).await.map(Rows::FullScan)?,
+                }
+            };
+
+            #[cfg(not(feature = "index"))]
+            let rows = storage.scan_data(table_name).await?;
+
+            let rows = rows.map_ok(|(_, row)| row);
             let rows = stream::iter(rows);
 
             Ok(Rows::Table(rows))

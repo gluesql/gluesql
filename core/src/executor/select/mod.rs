@@ -10,84 +10,23 @@ use {
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::{
-            fetch_columns, fetch_join_columns, fetch_name, fetch_relation_rows, get_alias,
-            get_name, Rows,
-        },
+        fetch::{fetch_join_columns, fetch_name, fetch_relation_rows, get_alias},
         filter::Filter,
         join::Join,
         limit::Limit,
         sort::Sort,
     },
     crate::{
-        ast::{Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins},
+        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins},
         data::Row,
         result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
+    futures::stream::{StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
     std::{iter::once, rc::Rc},
 };
-
-#[cfg(feature = "index")]
-use {
-    super::evaluate::evaluate,
-    crate::{ast::IndexItem, executor::fetch::get_index},
-};
-
-async fn fetch_blended<'a>(
-    storage: &'a dyn GStore,
-    relation: &'a TableFactor,
-    columns: Rc<[String]>,
-) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
-    let table_name = get_name(relation)?;
-
-    #[cfg(feature = "index")]
-    let rows = {
-        #[derive(Iterator)]
-        enum Rows<I1, I2> {
-            FullScan(I1),
-            Indexed(I2),
-        }
-
-        match get_index(relation) {
-            Some(IndexItem {
-                name: index_name,
-                asc,
-                cmp_expr,
-            }) => {
-                let cmp_value = match cmp_expr {
-                    Some((op, expr)) => {
-                        let evaluated = evaluate(storage, None, None, expr).await?;
-
-                        Some((op, evaluated.try_into()?))
-                    }
-                    None => None,
-                };
-
-                storage
-                    .scan_indexed_data(table_name, index_name, *asc, cmp_value)
-                    .await
-                    .map(Rows::Indexed)?
-            }
-            None => storage.scan_data(table_name).await.map(Rows::FullScan)?,
-        }
-    };
-
-    #[cfg(not(feature = "index"))]
-    let rows = storage.scan_data(table_name).await?;
-
-    let rows = rows.map(move |data| {
-        let (_, row) = data?;
-        let row = Some(row);
-        let columns = Rc::clone(&columns);
-
-        Ok(BlendContext::new(get_alias(relation)?, columns, row, None))
-    });
-    Ok(stream::iter(rows))
-}
 
 pub fn get_labels<'a>(
     projection: &[SelectItem],
@@ -205,34 +144,7 @@ pub async fn select_with_labels<'a>(
             })
     };
 
-    // let (rows, columns) = match relation {
-    //     TableFactor::Table { .. } => {
-    //         let columns = fetch_columns(storage, get_name(relation)?).await?;
-    //         let columns = Rc::from(columns);
-    //         (
-    //             Rows::Table(fetch_blended(storage, relation, Rc::clone(&columns)).await?),
-    //             columns,
-    //         )
-    //     }
-    //     TableFactor::Derived { subquery, alias } => {
-    //         let (labels, inline_view) = select_with_labels(storage, subquery, None, true).await?;
-    //         let inline_view = inline_view.try_collect::<Vec<_>>().await?;
-    //         let labels_rc = Rc::from(labels.to_owned());
-    //         let labels = Rc::clone(&labels_rc);
-    //         let rows = inline_view.into_iter().map(move |row| {
-    //             Ok(BlendContext::new(
-    //                 &alias.name,
-    //                 Rc::clone(&labels_rc),
-    //                 Some(row),
-    //                 None,
-    //             ))
-    //         });
-    //         (Rows::Derived(stream::iter(rows)), Rc::clone(&labels))
-    //     }
-    // };
-
     let join_columns = fetch_join_columns(joins, storage).await?;
-
     let labels = if with_labels {
         get_labels(
             projection,
