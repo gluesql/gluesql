@@ -191,35 +191,6 @@ pub async fn fetch_join_columns<'a>(
             let alias = get_alias(relation)?;
             let columns = fetch_relation_columns(storage, relation).await?;
             Ok((alias, columns))
-
-            // match &join.relation {
-            //     TableFactor::Table { .. } => {
-            //         let table_alias = get_alias(&join.relation)?;
-            //         let table_name = get_name(&join.relation)?;
-            //         let columns = fetch_columns(storage, table_name).await?;
-
-            //         Ok((table_alias, columns))
-            //     }
-            //     TableFactor::Derived {
-            //         subquery:
-            //             Query {
-            //                 body: SetExpr::Select(statement),
-            //                 ..
-            //             },
-            //         alias,
-            //     } => {
-            //         let Select {
-            //             from: TableWithJoins { relation, .. },
-            //             ..
-            //         } = statement.as_ref();
-            //         let Select { projection, .. } = statement.as_ref();
-            //         let inner_table_name = get_name(relation)?;
-            //         let columns = fetch_columns(storage, inner_table_name).await?;
-            //         let columns = get_labels(projection, inner_table_name, &columns, None)?;
-            //         Ok((&alias.name, columns))
-            //     }
-            //     _ => Err(Error::Table(TableError::Unreachable)),
-            // }
         })
         .try_collect::<Vec<_>>()
         .await
