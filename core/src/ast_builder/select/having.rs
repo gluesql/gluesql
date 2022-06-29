@@ -34,14 +34,14 @@ impl From<GroupByNode> for PrevNode {
 #[derive(Clone)]
 pub struct HavingNode {
     prev_node: PrevNode,
-    having: ExprNode,
+    expr: ExprNode,
 }
 
 impl HavingNode {
-    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, having: T) -> Self {
+    pub fn having<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
-            having: having.into(),
+            expr: expr.into(),
         }
     }
 
@@ -55,7 +55,7 @@ impl HavingNode {
 
     pub fn build_select(self) -> Result<Select> {
         let mut select = self.prev_node.build_select()?;
-        select.having = Some(self.having.try_into()?);
+        select.having = Some(self.expr.try_into()?);
 
         Ok(select)
     }

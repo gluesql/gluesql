@@ -26,19 +26,19 @@ impl From<SelectNode> for PrevNode {
 #[derive(Clone)]
 pub struct GroupByNode {
     prev_node: PrevNode,
-    group_by: ExprList,
+    expr_list: ExprList,
 }
 
 impl GroupByNode {
-    pub fn new<N: Into<PrevNode>, T: Into<ExprList>>(prev_node: N, group_by: T) -> Self {
+    pub fn group_by<N: Into<PrevNode>, T: Into<ExprList>>(prev_node: N, expr_list: T) -> Self {
         Self {
             prev_node: prev_node.into(),
-            group_by: group_by.into(),
+            expr_list: expr_list.into(),
         }
     }
 
     pub fn having<T: Into<ExprNode>>(self, expr: T) -> HavingNode {
-        HavingNode::new(self, expr)
+        HavingNode::having(self, expr)
     }
 
     pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
@@ -51,7 +51,7 @@ impl GroupByNode {
 
     pub fn build_select(self) -> Result<Select> {
         let mut select = self.prev_node.build_select()?;
-        select.group_by = self.group_by.try_into()?;
+        select.group_by = self.expr_list.try_into()?;
 
         Ok(select)
     }

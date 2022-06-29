@@ -49,8 +49,8 @@ impl SelectNode {
         self
     }
 
-    pub fn group_by<T: Into<ExprList>>(self, exprs: T) -> GroupByNode {
-        GroupByNode::new(self, exprs)
+    pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
+        GroupByNode::group_by(self, expr_list)
     }
 
     pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
