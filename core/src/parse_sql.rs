@@ -34,6 +34,16 @@ pub fn parse_expr<Sql: AsRef<str>>(sql_expr: Sql) -> Result<SqlExpr> {
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
 
+pub fn parse_comma_separated_exprs<Sql: AsRef<str>>(sql_exprs: Sql) -> Result<Vec<SqlExpr>> {
+    let tokens = Tokenizer::new(&DIALECT, sql_exprs.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_comma_separated(Parser::parse_expr)
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
 pub fn parse_interval<Sql: AsRef<str>>(sql_interval: Sql) -> Result<SqlExpr> {
     let tokens = Tokenizer::new(&DIALECT, sql_interval.as_ref())
         .tokenize()
