@@ -40,3 +40,9 @@ impl From<i64> for ExprNode {
         ExprNode::Expr(Expr::Literal(AstLiteral::Number(BigDecimal::from(n))))
     }
 }
+
+impl From<Expr> for ExprNode {
+    fn from(expr: Expr) -> Self {
+        ExprNode::Expr(expr)
+    }
+}

@@ -81,7 +81,10 @@ impl Prebuild for SelectNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{select::test, Builder};
+    use crate::{
+        ast::{BinaryOperator, Expr},
+        ast_builder::{select::test, Builder},
+    };
 
     #[test]
     fn select() {
@@ -91,6 +94,17 @@ mod tests {
 
         let actual = Builder::table("Bar").select().filter("id IS NULL").build();
         let expected = "SELECT * FROM Bar WHERE id IS NULL";
+        test(actual, expected);
+
+        let actual = Builder::table("Foo")
+            .select()
+            .filter(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("col1".to_owned())),
+                op: BinaryOperator::Gt,
+                right: Box::new(Expr::Identifier("col2".to_owned())),
+            })
+            .build();
+        let expected = "SELECT * FROM Foo WHERE col1 > col2";
         test(actual, expected);
     }
 }
