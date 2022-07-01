@@ -39,6 +39,15 @@ impl TableNode {
     }
 }
 
+#[cfg(test)]
+fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
+    use crate::{parse_sql::parse, translate::translate};
+
+    let parsed = &parse(expected).unwrap()[0];
+    let expected = translate(parsed);
+    assert_eq!(actual, expected);
+}
+
 /*
 
 let builder=  Builder:;new();

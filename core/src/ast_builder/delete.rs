@@ -40,27 +40,28 @@ impl DeleteNode {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::Statement, ast_builder::Builder, parse_sql::parse, result::Result,
-        translate::translate,
+        ast::Expr,
+        ast_builder::{test, Builder},
     };
-
-    fn stmt(sql: &str) -> Result<Statement> {
-        let parsed = &parse(sql).unwrap()[0];
-
-        translate(parsed)
-    }
 
     #[test]
     fn delete() {
         let actual = Builder::table("Foo").delete().build();
-        let expected = stmt("DELETE FROM Foo");
-        assert_eq!(actual, expected);
+        let expected = "DELETE FROM Foo";
+        test(actual, expected);
 
         let actual = Builder::table("Bar")
             .delete()
             .filter("id < (1 + 3 + rate)")
             .build();
-        let expected = stmt("DELETE FROM Bar WHERE id < (1 + 3 + rate)");
-        assert_eq!(actual, expected);
+        let expected = "DELETE FROM Bar WHERE id < (1 + 3 + rate)";
+        test(actual, expected);
+
+        let actual = Builder::table("Person")
+            .delete()
+            .filter(Expr::IsNull(Box::new(Expr::Identifier("name".to_owned()))))
+            .build();
+        let expected = "DELETE FROM Person WHERE name IS NULL";
+        test(actual, expected);
     }
 }

@@ -60,12 +60,3 @@ fn build_stmt(select_data: NodeData) -> Statement {
 
     Statement::Query(Box::new(query))
 }
-
-#[cfg(test)]
-fn test(actual: Result<Statement>, expected: &str) {
-    use crate::{parse_sql::parse, translate::translate};
-
-    let parsed = &parse(expected).unwrap()[0];
-    let expected = translate(parsed);
-    assert_eq!(actual, expected);
-}

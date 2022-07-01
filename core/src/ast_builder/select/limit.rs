@@ -85,7 +85,7 @@ impl Prebuild for LimitNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{select::test, Builder};
+    use crate::ast_builder::{test, Builder};
 
     #[test]
     fn limit() {

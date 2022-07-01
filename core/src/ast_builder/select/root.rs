@@ -83,7 +83,7 @@ impl Prebuild for SelectNode {
 mod tests {
     use crate::{
         ast::{BinaryOperator, Expr},
-        ast_builder::{select::test, Builder},
+        ast_builder::{test, Builder},
     };
 
     #[test]
