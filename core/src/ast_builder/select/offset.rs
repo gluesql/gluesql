@@ -1,7 +1,10 @@
-use crate::{
-    ast::{Query, Statement},
-    ast_builder::{ExprNode, GroupByNode, HavingNode, OffsetLimitNode, SelectNode},
-    result::Result,
+use {
+    super::{build_stmt, NodeData, Prebuild},
+    crate::{
+        ast::Statement,
+        ast_builder::{ExprNode, GroupByNode, HavingNode, OffsetLimitNode, SelectNode},
+        result::Result,
+    },
 };
 
 #[derive(Clone)]
@@ -11,12 +14,12 @@ pub enum PrevNode {
     Having(HavingNode),
 }
 
-impl PrevNode {
-    fn build_query(self) -> Result<Query> {
+impl Prebuild for PrevNode {
+    fn prebuild(self) -> Result<NodeData> {
         match self {
-            Self::Select(node) => node.build_query(),
-            Self::GroupBy(node) => node.build_query(),
-            Self::Having(node) => node.build_query(),
+            Self::Select(node) => node.prebuild(),
+            Self::GroupBy(node) => node.prebuild(),
+            Self::Having(node) => node.prebuild(),
         }
     }
 }
@@ -57,17 +60,19 @@ impl OffsetNode {
         OffsetLimitNode::limit(self, expr)
     }
 
-    pub fn build_query(self) -> Result<Query> {
-        let mut query = self.prev_node.build_query()?;
-        query.offset = Some(self.expr.try_into()?);
-
-        Ok(query)
-    }
-
     pub fn build(self) -> Result<Statement> {
-        let query = self.build_query()?;
+        let select_data = self.prebuild()?;
 
-        Ok(Statement::Query(Box::new(query)))
+        Ok(build_stmt(select_data))
+    }
+}
+
+impl Prebuild for OffsetNode {
+    fn prebuild(self) -> Result<NodeData> {
+        let mut select_data = self.prev_node.prebuild()?;
+        select_data.offset = Some(self.expr.try_into()?);
+
+        Ok(select_data)
     }
 }
 

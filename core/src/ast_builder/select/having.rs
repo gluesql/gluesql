@@ -1,7 +1,10 @@
-use crate::{
-    ast::{Query, Select, SetExpr, Statement},
-    ast_builder::{ExprNode, GroupByNode, LimitNode, OffsetNode, SelectNode},
-    result::Result,
+use {
+    super::{build_stmt, NodeData, Prebuild},
+    crate::{
+        ast::Statement,
+        ast_builder::{ExprNode, GroupByNode, LimitNode, OffsetNode, SelectNode},
+        result::Result,
+    },
 };
 
 #[derive(Clone)]
@@ -10,11 +13,11 @@ pub enum PrevNode {
     GroupBy(GroupByNode),
 }
 
-impl PrevNode {
-    fn build_select(self) -> Result<Select> {
+impl Prebuild for PrevNode {
+    fn prebuild(self) -> Result<NodeData> {
         match self {
-            Self::Select(node) => node.build_select(),
-            Self::GroupBy(node) => node.build_select(),
+            Self::Select(node) => node.prebuild(),
+            Self::GroupBy(node) => node.prebuild(),
         }
     }
 }
@@ -53,28 +56,19 @@ impl HavingNode {
         LimitNode::limit(self, expr)
     }
 
-    pub fn build_select(self) -> Result<Select> {
-        let mut select = self.prev_node.build_select()?;
-        select.having = Some(self.expr.try_into()?);
-
-        Ok(select)
-    }
-
-    pub fn build_query(self) -> Result<Query> {
-        let select = self.build_select()?;
-        let query = Query {
-            body: SetExpr::Select(Box::new(select)),
-            offset: None,
-            limit: None,
-        };
-
-        Ok(query)
-    }
-
     pub fn build(self) -> Result<Statement> {
-        let query = self.build_query()?;
+        let select_data = self.prebuild()?;
 
-        Ok(Statement::Query(Box::new(query)))
+        Ok(build_stmt(select_data))
+    }
+}
+
+impl Prebuild for HavingNode {
+    fn prebuild(self) -> Result<NodeData> {
+        let mut select_data = self.prev_node.prebuild()?;
+        select_data.having = Some(self.expr.try_into()?);
+
+        Ok(select_data)
     }
 }
 
