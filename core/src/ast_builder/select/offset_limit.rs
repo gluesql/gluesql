@@ -2,7 +2,7 @@ use {
     super::{build_stmt, NodeData, Prebuild},
     crate::{
         ast::Statement,
-        ast_builder::{ExprNode, OffsetNode},
+        ast_builder::{ExprNode, OffsetNode, ProjectNode, SelectItemList},
         result::Result,
     },
 };
@@ -38,6 +38,10 @@ impl OffsetLimitNode {
             prev_node: prev_node.into(),
             expr: expr.into(),
         }
+    }
+
+    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+        ProjectNode::new(self, select_items)
     }
 
     pub fn build(self) -> Result<Statement> {

@@ -2,6 +2,7 @@ mod delete;
 mod expr;
 mod expr_list;
 mod select;
+mod select_item_list;
 
 pub use {
     delete::DeleteNode,
@@ -9,8 +10,9 @@ pub use {
     expr_list::ExprList,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
-        SelectNode,
+        ProjectNode, SelectNode,
     },
+    select_item_list::SelectItemList,
 };
 
 pub struct Builder;

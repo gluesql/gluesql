@@ -4,11 +4,12 @@ mod limit;
 mod limit_offset;
 mod offset;
 mod offset_limit;
+mod project;
 mod root;
 
 pub use {
     group_by::GroupByNode, having::HavingNode, limit::LimitNode, limit_offset::LimitOffsetNode,
-    offset::OffsetNode, offset_limit::OffsetLimitNode, root::SelectNode,
+    offset::OffsetNode, offset_limit::OffsetLimitNode, project::ProjectNode, root::SelectNode,
 };
 
 use crate::{

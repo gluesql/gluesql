@@ -2,7 +2,7 @@ use {
     super::{build_stmt, NodeData, Prebuild},
     crate::{
         ast::Statement,
-        ast_builder::{ExprNode, GroupByNode, LimitNode, OffsetNode},
+        ast_builder::{ExprNode, GroupByNode, LimitNode, OffsetNode, ProjectNode, SelectItemList},
         result::Result,
     },
 };
@@ -46,6 +46,10 @@ impl HavingNode {
 
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
         LimitNode::limit(self, expr)
+    }
+
+    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+        ProjectNode::new(self, select_items)
     }
 
     pub fn build(self) -> Result<Statement> {

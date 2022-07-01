@@ -1,7 +1,10 @@
 use {
     crate::result::{Error, Result},
     sqlparser::{
-        ast::{Expr as SqlExpr, Query as SqlQuery, Statement as SqlStatement},
+        ast::{
+            Expr as SqlExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
+            Statement as SqlStatement,
+        },
         dialect::GenericDialect,
         parser::Parser,
         tokenizer::Tokenizer,
@@ -41,6 +44,16 @@ pub fn parse_comma_separated_exprs<Sql: AsRef<str>>(sql_exprs: Sql) -> Result<Ve
 
     Parser::new(tokens, &DIALECT)
         .parse_comma_separated(Parser::parse_expr)
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_select_items<Sql: AsRef<str>>(sql_select_items: Sql) -> Result<Vec<SqlSelectItem>> {
+    let tokens = Tokenizer::new(&DIALECT, sql_select_items.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_comma_separated(Parser::parse_select_item)
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
 

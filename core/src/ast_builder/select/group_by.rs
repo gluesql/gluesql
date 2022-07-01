@@ -2,7 +2,10 @@ use {
     super::{build_stmt, NodeData, Prebuild},
     crate::{
         ast::Statement,
-        ast_builder::{ExprList, ExprNode, HavingNode, LimitNode, OffsetNode, SelectNode},
+        ast_builder::{
+            ExprList, ExprNode, HavingNode, LimitNode, OffsetNode, ProjectNode, SelectItemList,
+            SelectNode,
+        },
         result::Result,
     },
 };
@@ -52,6 +55,10 @@ impl GroupByNode {
         LimitNode::limit(self, expr)
     }
 
+    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+        ProjectNode::new(self, select_items)
+    }
+
     pub fn build(self) -> Result<Statement> {
         let select_data = self.prebuild()?;
 
@@ -73,7 +80,7 @@ mod tests {
     use crate::ast_builder::{select::test, Builder};
 
     #[test]
-    fn select() {
+    fn group_by() {
         let actual = Builder::table("Bar")
             .select()
             .filter("id IS NULL")
