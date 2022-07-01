@@ -36,7 +36,7 @@ pub struct GroupByNode {
 }
 
 impl GroupByNode {
-    pub fn group_by<N: Into<PrevNode>, T: Into<ExprList>>(prev_node: N, expr_list: T) -> Self {
+    pub fn new<N: Into<PrevNode>, T: Into<ExprList>>(prev_node: N, expr_list: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr_list: expr_list.into(),
@@ -44,15 +44,15 @@ impl GroupByNode {
     }
 
     pub fn having<T: Into<ExprNode>>(self, expr: T) -> HavingNode {
-        HavingNode::having(self, expr)
+        HavingNode::new(self, expr)
     }
 
     pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
-        OffsetNode::offset(self, expr)
+        OffsetNode::new(self, expr)
     }
 
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
-        LimitNode::limit(self, expr)
+        LimitNode::new(self, expr)
     }
 
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {

@@ -52,7 +52,7 @@ pub struct OffsetNode {
 }
 
 impl OffsetNode {
-    pub fn offset<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
+    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
@@ -60,7 +60,7 @@ impl OffsetNode {
     }
 
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> OffsetLimitNode {
-        OffsetLimitNode::limit(self, expr)
+        OffsetLimitNode::new(self, expr)
     }
 
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {

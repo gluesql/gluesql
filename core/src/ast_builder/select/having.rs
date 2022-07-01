@@ -33,7 +33,7 @@ pub struct HavingNode {
 }
 
 impl HavingNode {
-    pub fn having<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
+    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
@@ -41,11 +41,11 @@ impl HavingNode {
     }
 
     pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
-        OffsetNode::offset(self, expr)
+        OffsetNode::new(self, expr)
     }
 
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
-        LimitNode::limit(self, expr)
+        LimitNode::new(self, expr)
     }
 
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {

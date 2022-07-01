@@ -30,15 +30,15 @@ impl SelectNode {
     }
 
     pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
-        GroupByNode::group_by(self, expr_list)
+        GroupByNode::new(self, expr_list)
     }
 
     pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
-        OffsetNode::offset(self, expr)
+        OffsetNode::new(self, expr)
     }
 
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
-        LimitNode::limit(self, expr)
+        LimitNode::new(self, expr)
     }
 
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
