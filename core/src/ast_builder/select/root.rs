@@ -10,7 +10,6 @@ use {
 #[derive(Clone)]
 pub struct SelectNode {
     table_name: String,
-    columns: Vec<String>,
     filter_expr: Option<ExprNode>,
 }
 
@@ -18,15 +17,8 @@ impl SelectNode {
     pub fn new(table_name: String) -> Self {
         Self {
             table_name,
-            columns: vec![],
             filter_expr: None,
         }
-    }
-
-    pub fn col(mut self, column: &str) -> Self {
-        self.columns.push(column.to_owned());
-
-        self
     }
 
     pub fn filter<T: Into<ExprNode>>(mut self, expr: T) -> Self {
@@ -83,41 +75,16 @@ impl Prebuild for SelectNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::Statement, ast_builder::Builder, parse_sql::parse, result::Result,
-        translate::translate,
-    };
-
-    fn stmt(sql: &str) -> Result<Statement> {
-        let parsed = &parse(sql).unwrap()[0];
-
-        translate(parsed)
-    }
+    use crate::ast_builder::{select::test, Builder};
 
     #[test]
     fn select() {
         let actual = Builder::table("App").select().build();
-        let expected = stmt("SELECT * FROM App");
-        assert_eq!(actual, expected);
+        let expected = "SELECT * FROM App";
+        test(actual, expected);
 
         let actual = Builder::table("Bar").select().filter("id IS NULL").build();
-        let expected = stmt("SELECT * FROM Bar WHERE id IS NULL");
-        assert_eq!(actual, expected);
-
-        let actual = Builder::table("Foo")
-            .select()
-            .filter("id > name")
-            .offset(3)
-            .limit(100)
-            .build();
-        let expected = stmt(
-            "
-            SELECT * FROM Foo
-            WHERE id > name
-            OFFSET 3
-            LIMIT 100
-        ",
-        );
-        assert_eq!(actual, expected);
+        let expected = "SELECT * FROM Bar WHERE id IS NULL";
+        test(actual, expected);
     }
 }

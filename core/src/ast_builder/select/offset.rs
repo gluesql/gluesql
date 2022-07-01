@@ -78,35 +78,42 @@ impl Prebuild for OffsetNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::Statement, ast_builder::Builder, parse_sql::parse, result::Result,
-        translate::translate,
-    };
-
-    fn stmt(sql: &str) -> Result<Statement> {
-        let parsed = &parse(sql).unwrap()[0];
-
-        translate(parsed)
-    }
+    use crate::ast_builder::{select::test, Builder};
 
     #[test]
     fn offset() {
-        let actual = Builder::table("Bar")
+        let actual = Builder::table("Hello").select().offset(10).build();
+        let expected = "SELECT * FROM Hello OFFSET 10";
+        test(actual, expected);
+
+        let actual = Builder::table("World")
             .select()
-            .filter("id IS NULL")
-            .group_by("id, (a + name)")
-            .limit(100)
+            .filter("id > 2")
+            .offset(100)
+            .build();
+        let expected = "SELECT * FROM World WHERE id > 2 OFFSET 100";
+        test(actual, expected);
+
+        let actual = Builder::table("Foo")
+            .select()
+            .group_by("name")
             .offset(5)
             .build();
-        let expected = stmt(
-            "
+        let expected = "SELECT * FROM Foo GROUP BY name OFFSET 5";
+        test(actual, expected);
+
+        let actual = Builder::table("Bar")
+            .select()
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .offset(3)
+            .build();
+        let expected = "
             SELECT * FROM Bar
-            WHERE id IS NULL
-            GROUP BY id, (a + name)
-            LIMIT 100
-            OFFSET 5
-        ",
-        );
-        assert_eq!(actual, expected);
+            GROUP BY city
+            HAVING COUNT(name) < 100
+            OFFSET 3;
+        ";
+        test(actual, expected);
     }
 }

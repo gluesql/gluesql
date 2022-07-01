@@ -70,31 +70,20 @@ impl Prebuild for GroupByNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::Statement, ast_builder::Builder, parse_sql::parse, result::Result,
-        translate::translate,
-    };
-
-    fn stmt(sql: &str) -> Result<Statement> {
-        let parsed = &parse(sql).unwrap()[0];
-
-        translate(parsed)
-    }
+    use crate::ast_builder::{select::test, Builder};
 
     #[test]
-    fn group_by() {
+    fn select() {
         let actual = Builder::table("Bar")
             .select()
             .filter("id IS NULL")
             .group_by("id, (a + name)")
             .build();
-        let expected = stmt(
-            "
+        let expected = "
             SELECT * FROM Bar
             WHERE id IS NULL
             GROUP BY id, (a + name)
-        ",
-        );
-        assert_eq!(actual, expected);
+        ";
+        test(actual, expected);
     }
 }

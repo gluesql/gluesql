@@ -2,29 +2,21 @@ use {
     super::{build_stmt, NodeData, Prebuild},
     crate::{
         ast::Statement,
-        ast_builder::{ExprNode, GroupByNode, LimitNode, OffsetNode, SelectNode},
+        ast_builder::{ExprNode, GroupByNode, LimitNode, OffsetNode},
         result::Result,
     },
 };
 
 #[derive(Clone)]
 pub enum PrevNode {
-    Select(SelectNode),
     GroupBy(GroupByNode),
 }
 
 impl Prebuild for PrevNode {
     fn prebuild(self) -> Result<NodeData> {
         match self {
-            Self::Select(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
         }
-    }
-}
-
-impl From<SelectNode> for PrevNode {
-    fn from(node: SelectNode) -> Self {
-        PrevNode::Select(node)
     }
 }
 
@@ -74,16 +66,7 @@ impl Prebuild for HavingNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::Statement, ast_builder::Builder, parse_sql::parse, result::Result,
-        translate::translate,
-    };
-
-    fn stmt(sql: &str) -> Result<Statement> {
-        let parsed = &parse(sql).unwrap()[0];
-
-        translate(parsed)
-    }
+    use crate::ast_builder::{select::test, Builder};
 
     #[test]
     fn having() {
@@ -93,14 +76,12 @@ mod tests {
             .group_by("id, (a + name)")
             .having("COUNT(id) > 10")
             .build();
-        let expected = stmt(
-            "
+        let expected = "
             SELECT * FROM Bar
             WHERE id IS NULL
             GROUP BY id, (a + name)
             HAVING COUNT(id) > 10
-        ",
-        );
-        assert_eq!(actual, expected);
+        ";
+        test(actual, expected);
     }
 }

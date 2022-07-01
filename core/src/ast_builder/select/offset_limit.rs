@@ -2,45 +2,21 @@ use {
     super::{build_stmt, NodeData, Prebuild},
     crate::{
         ast::Statement,
-        ast_builder::{ExprNode, GroupByNode, HavingNode, OffsetNode, SelectNode},
+        ast_builder::{ExprNode, OffsetNode},
         result::Result,
     },
 };
 
 #[derive(Clone)]
 pub enum PrevNode {
-    Select(SelectNode),
-    GroupBy(GroupByNode),
-    Having(HavingNode),
     Offset(OffsetNode),
 }
 
 impl Prebuild for PrevNode {
     fn prebuild(self) -> Result<NodeData> {
         match self {
-            Self::Select(node) => node.prebuild(),
-            Self::GroupBy(node) => node.prebuild(),
-            Self::Having(node) => node.prebuild(),
             Self::Offset(node) => node.prebuild(),
         }
-    }
-}
-
-impl From<SelectNode> for PrevNode {
-    fn from(node: SelectNode) -> Self {
-        PrevNode::Select(node)
-    }
-}
-
-impl From<GroupByNode> for PrevNode {
-    fn from(node: GroupByNode) -> Self {
-        PrevNode::GroupBy(node)
-    }
-}
-
-impl From<HavingNode> for PrevNode {
-    fn from(node: HavingNode) -> Self {
-        PrevNode::Having(node)
     }
 }
 
@@ -77,5 +53,29 @@ impl Prebuild for OffsetLimitNode {
         select_data.limit = Some(self.expr.try_into()?);
 
         Ok(select_data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast_builder::{select::test, Builder};
+
+    #[test]
+    fn offset_limit() {
+        let actual = Builder::table("Bar")
+            .select()
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .offset(1)
+            .limit(3)
+            .build();
+        let expected = "
+            SELECT * FROM Bar
+            GROUP BY city
+            HAVING COUNT(name) < 100
+            OFFSET 1
+            LIMIT 3;
+        ";
+        test(actual, expected);
     }
 }

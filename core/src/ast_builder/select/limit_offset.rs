@@ -2,45 +2,21 @@ use {
     super::{build_stmt, NodeData, Prebuild},
     crate::{
         ast::Statement,
-        ast_builder::{ExprNode, GroupByNode, HavingNode, LimitNode, SelectNode},
+        ast_builder::{ExprNode, LimitNode},
         result::Result,
     },
 };
 
 #[derive(Clone)]
 pub enum PrevNode {
-    Select(SelectNode),
-    GroupBy(GroupByNode),
-    Having(HavingNode),
     Limit(LimitNode),
 }
 
 impl Prebuild for PrevNode {
     fn prebuild(self) -> Result<NodeData> {
         match self {
-            Self::Select(node) => node.prebuild(),
-            Self::GroupBy(node) => node.prebuild(),
-            Self::Having(node) => node.prebuild(),
             Self::Limit(node) => node.prebuild(),
         }
-    }
-}
-
-impl From<SelectNode> for PrevNode {
-    fn from(node: SelectNode) -> Self {
-        PrevNode::Select(node)
-    }
-}
-
-impl From<GroupByNode> for PrevNode {
-    fn from(node: GroupByNode) -> Self {
-        PrevNode::GroupBy(node)
-    }
-}
-
-impl From<HavingNode> for PrevNode {
-    fn from(node: HavingNode) -> Self {
-        PrevNode::Having(node)
     }
 }
 
@@ -77,5 +53,22 @@ impl Prebuild for LimitOffsetNode {
         select_data.offset = Some(self.expr.try_into()?);
 
         Ok(select_data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast_builder::{select::test, Builder};
+
+    #[test]
+    fn limit_offset() {
+        let actual = Builder::table("World")
+            .select()
+            .filter("id > 2")
+            .limit(100)
+            .offset(3)
+            .build();
+        let expected = "SELECT * FROM World WHERE id > 2 OFFSET 3 LIMIT 100";
+        test(actual, expected);
     }
 }

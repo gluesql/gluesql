@@ -78,35 +78,42 @@ impl Prebuild for LimitNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::Statement, ast_builder::Builder, parse_sql::parse, result::Result,
-        translate::translate,
-    };
-
-    fn stmt(sql: &str) -> Result<Statement> {
-        let parsed = &parse(sql).unwrap()[0];
-
-        translate(parsed)
-    }
+    use crate::ast_builder::{select::test, Builder};
 
     #[test]
-    fn offset() {
+    fn limit() {
+        let actual = Builder::table("Hello").select().limit(10).build();
+        let expected = "SELECT * FROM Hello LIMIT 10";
+        test(actual, expected);
+
+        let actual = Builder::table("World")
+            .select()
+            .filter("id > 2")
+            .limit(100)
+            .build();
+        let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
+        test(actual, expected);
+
+        let actual = Builder::table("Foo")
+            .select()
+            .group_by("name")
+            .limit(5)
+            .build();
+        let expected = "SELECT * FROM Foo GROUP BY name LIMIT 5";
+        test(actual, expected);
+
         let actual = Builder::table("Bar")
             .select()
-            .filter("id IS NULL")
-            .group_by("id, (a + name)")
-            .limit(100)
-            .offset(5)
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .limit(3)
             .build();
-        let expected = stmt(
-            "
+        let expected = "
             SELECT * FROM Bar
-            WHERE id IS NULL
-            GROUP BY id, (a + name)
-            LIMIT 100
-            OFFSET 5
-        ",
-        );
-        assert_eq!(actual, expected);
+            GROUP BY city
+            HAVING COUNT(name) < 100
+            LIMIT 3;
+        ";
+        test(actual, expected);
     }
 }
