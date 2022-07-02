@@ -1,14 +1,11 @@
-mod aggregate;
 mod binary_op;
-mod function;
 mod is_null;
 mod nested;
 
-pub use {
-    aggregate::{max, sum, AggregateNode},
-    function::{abs, FunctionNode},
-    nested::nested,
-};
+pub mod aggregate;
+pub mod function;
+
+pub use nested::nested;
 
 use {
     crate::{
@@ -17,7 +14,9 @@ use {
         result::{Error, Result},
         translate::translate_expr,
     },
+    aggregate::AggregateNode,
     bigdecimal::BigDecimal,
+    function::FunctionNode,
 };
 
 #[derive(Clone)]

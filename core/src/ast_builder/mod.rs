@@ -6,7 +6,11 @@ mod select_item_list;
 
 pub use {
     delete::DeleteNode,
-    expr::{abs, col, max, nested, num, sum, text, ExprNode, FunctionNode},
+    expr::{
+        aggregate::{max, sum, AggregateNode},
+        function::{abs, FunctionNode},
+    },
+    expr::{col, nested, num, text, ExprNode},
     expr_list::ExprList,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
