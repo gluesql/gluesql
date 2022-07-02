@@ -83,6 +83,10 @@ impl From<Expr> for ExprNode {
     }
 }
 
+pub fn expr(value: &str) -> ExprNode {
+    ExprNode::from(value)
+}
+
 pub fn col(value: &str) -> ExprNode {
     let idents = value.split('.').collect::<Vec<_>>();
 

@@ -10,7 +10,7 @@ pub use {
         aggregate::{max, sum, AggregateNode},
         function::{abs, FunctionNode},
     },
-    expr::{col, nested, num, text, ExprNode},
+    expr::{col, expr, nested, num, text, ExprNode},
     expr_list::ExprList,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,

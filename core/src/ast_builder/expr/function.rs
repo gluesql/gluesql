@@ -37,16 +37,16 @@ pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{abs, col, test_expr};
+    use crate::ast_builder::{abs, col, expr, test_expr};
 
     #[test]
     fn function() {
         // ABS
-        let actual = col("num").abs();
+        let actual = abs(col("num"));
         let expected = "ABS(num)";
         test_expr(actual, expected);
 
-        let actual = abs("base - 10");
+        let actual = expr("base - 10").abs();
         let expected = "ABS(base - 10)";
         test_expr(actual, expected);
     }
