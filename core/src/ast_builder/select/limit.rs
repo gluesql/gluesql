@@ -85,7 +85,7 @@ impl Prebuild for LimitNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{test, Builder};
+    use crate::ast_builder::{col, test, Builder};
 
     #[test]
     fn limit() {
@@ -95,7 +95,7 @@ mod tests {
 
         let actual = Builder::table("World")
             .select()
-            .filter("id > 2")
+            .filter(col("id").gt(2))
             .limit(100)
             .build();
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";

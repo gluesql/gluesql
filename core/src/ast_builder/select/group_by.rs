@@ -77,13 +77,13 @@ impl Prebuild for GroupByNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{test, Builder};
+    use crate::ast_builder::{col, test, Builder};
 
     #[test]
     fn group_by() {
         let actual = Builder::table("Bar")
             .select()
-            .filter("id IS NULL")
+            .filter(col("id").is_null())
             .group_by("id, (a + name)")
             .build();
         let expected = "

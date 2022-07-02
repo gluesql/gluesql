@@ -41,7 +41,7 @@ impl DeleteNode {
 mod tests {
     use crate::{
         ast::Expr,
-        ast_builder::{test, Builder},
+        ast_builder::{col, test, Builder},
     };
 
     #[test]
@@ -60,6 +60,13 @@ mod tests {
         let actual = Builder::table("Person")
             .delete()
             .filter(Expr::IsNull(Box::new(Expr::Identifier("name".to_owned()))))
+            .build();
+        let expected = "DELETE FROM Person WHERE name IS NULL";
+        test(actual, expected);
+
+        let actual = Builder::table("Person")
+            .delete()
+            .filter(col("name").is_null())
             .build();
         let expected = "DELETE FROM Person WHERE name IS NULL";
         test(actual, expected);
