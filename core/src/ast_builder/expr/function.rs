@@ -25,29 +25,29 @@ impl TryFrom<FunctionNode> for Expr {
     }
 }
 
+impl ExprNode {
+    pub fn abs(self) -> ExprNode {
+        abs(self)
+    }
+}
+
 pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Abs(expr.into())))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{abs, col, num, test_expr};
+    use crate::ast_builder::{abs, col, test_expr};
 
     #[test]
     fn function() {
         // ABS
-        let actual = abs(col("num"));
+        let actual = col("num").abs();
         let expected = "ABS(num)";
-        test_expr(actual, expected);
-
-        let actual = abs(num(10).add(col("base")));
-        let expected = "ABS(10 + base)";
         test_expr(actual, expected);
 
         let actual = abs("base - 10");
         let expected = "ABS(base - 10)";
         test_expr(actual, expected);
-
-        // TODO: It is sufficient to add a single unit test for each function.
     }
 }
