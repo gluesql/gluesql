@@ -41,30 +41,27 @@ impl DeleteNode {
 mod tests {
     use crate::{
         ast::Expr,
-        ast_builder::{col, test, Builder},
+        ast_builder::{col, table, test},
     };
 
     #[test]
     fn delete() {
-        let actual = Builder::table("Foo").delete().build();
+        let actual = table("Foo").delete().build();
         let expected = "DELETE FROM Foo";
         test(actual, expected);
 
-        let actual = Builder::table("Bar")
-            .delete()
-            .filter("id < (1 + 3 + rate)")
-            .build();
+        let actual = table("Bar").delete().filter("id < (1 + 3 + rate)").build();
         let expected = "DELETE FROM Bar WHERE id < (1 + 3 + rate)";
         test(actual, expected);
 
-        let actual = Builder::table("Person")
+        let actual = table("Person")
             .delete()
             .filter(Expr::IsNull(Box::new(Expr::Identifier("name".to_owned()))))
             .build();
         let expected = "DELETE FROM Person WHERE name IS NULL";
         test(actual, expected);
 
-        let actual = Builder::table("Person")
+        let actual = table("Person")
             .delete()
             .filter(col("name").is_null())
             .build();

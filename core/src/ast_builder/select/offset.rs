@@ -85,31 +85,23 @@ impl Prebuild for OffsetNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{test, Builder};
+    use crate::ast_builder::{table, test};
 
     #[test]
     fn offset() {
-        let actual = Builder::table("Hello").select().offset(10).build();
+        let actual = table("Hello").select().offset(10).build();
         let expected = "SELECT * FROM Hello OFFSET 10";
         test(actual, expected);
 
-        let actual = Builder::table("World")
-            .select()
-            .filter("id > 2")
-            .offset(100)
-            .build();
+        let actual = table("World").select().filter("id > 2").offset(100).build();
         let expected = "SELECT * FROM World WHERE id > 2 OFFSET 100";
         test(actual, expected);
 
-        let actual = Builder::table("Foo")
-            .select()
-            .group_by("name")
-            .offset(5)
-            .build();
+        let actual = table("Foo").select().group_by("name").offset(5).build();
         let expected = "SELECT * FROM Foo GROUP BY name OFFSET 5";
         test(actual, expected);
 
-        let actual = Builder::table("Bar")
+        let actual = table("Bar")
             .select()
             .group_by("city")
             .having("COUNT(name) < 100")

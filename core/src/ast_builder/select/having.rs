@@ -70,11 +70,11 @@ impl Prebuild for HavingNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{test, Builder};
+    use crate::ast_builder::{table, test};
 
     #[test]
     fn having() {
-        let actual = Builder::table("Bar")
+        let actual = table("Bar")
             .select()
             .filter("id IS NULL")
             .group_by("id, (a + name)")

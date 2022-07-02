@@ -62,11 +62,11 @@ impl Prebuild for OffsetLimitNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{test, Builder};
+    use crate::ast_builder::{table, test};
 
     #[test]
     fn offset_limit() {
-        let actual = Builder::table("Bar")
+        let actual = table("Bar")
             .select()
             .group_by("city")
             .having("COUNT(name) < 100")

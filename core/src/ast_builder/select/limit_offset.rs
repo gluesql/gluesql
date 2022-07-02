@@ -62,11 +62,11 @@ impl Prebuild for LimitOffsetNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{test, Builder};
+    use crate::ast_builder::{table, test};
 
     #[test]
     fn limit_offset() {
-        let actual = Builder::table("World")
+        let actual = table("World")
             .select()
             .filter("id > 2")
             .limit(100)

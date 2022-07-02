@@ -15,14 +15,10 @@ pub use {
     select_item_list::SelectItemList,
 };
 
-pub struct Builder;
+pub fn table(table_name: &str) -> TableNode {
+    let table_name = table_name.to_owned();
 
-impl Builder {
-    pub fn table(table_name: &str) -> TableNode {
-        let table_name = table_name.to_owned();
-
-        TableNode { table_name }
-    }
+    TableNode { table_name }
 }
 
 pub struct TableNode {

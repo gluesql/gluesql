@@ -122,22 +122,19 @@ impl Prebuild for ProjectNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{test, Builder};
+    use crate::ast_builder::{table, test};
 
     #[test]
     fn project() {
-        let actual = Builder::table("Good").select().project("id").build();
+        let actual = table("Good").select().project("id").build();
         let expected = "SELECT id FROM Good";
         test(actual, expected);
 
-        let actual = Builder::table("Group")
-            .select()
-            .project("*, Group.*, name")
-            .build();
+        let actual = table("Group").select().project("*, Group.*, name").build();
         let expected = "SELECT *, Group.*, name FROM Group";
         test(actual, expected);
 
-        let actual = Builder::table("Foo")
+        let actual = table("Foo")
             .select()
             .project("col1, col2")
             .project("col3")
@@ -152,7 +149,7 @@ mod tests {
         ";
         test(actual, expected);
 
-        let actual = Builder::table("Aliased")
+        let actual = table("Aliased")
             .select()
             .project("1 + 1 as col1, col2")
             .build();
@@ -163,12 +160,12 @@ mod tests {
     #[test]
     fn prev_nodes() {
         // Select
-        let actual = Builder::table("Foo").select().project("*").build();
+        let actual = table("Foo").select().project("*").build();
         let expected = "SELECT * FROM Foo";
         test(actual, expected);
 
         // GroupBy
-        let actual = Builder::table("Bar")
+        let actual = table("Bar")
             .select()
             .group_by("city")
             .project("city, COUNT(name) as num")
@@ -182,7 +179,7 @@ mod tests {
         test(actual, expected);
 
         // Having
-        let actual = Builder::table("Cat")
+        let actual = table("Cat")
             .select()
             .filter(r#"type = "cute""#)
             .group_by("age")
@@ -200,16 +197,12 @@ mod tests {
         test(actual, expected);
 
         // Limit
-        let actual = Builder::table("Item")
-            .select()
-            .limit(10)
-            .project("*")
-            .build();
+        let actual = table("Item").select().limit(10).project("*").build();
         let expected = "SELECT * FROM Item LIMIT 10";
         test(actual, expected);
 
         // LimitOffset
-        let actual = Builder::table("Operator")
+        let actual = table("Operator")
             .select()
             .limit(100)
             .offset(50)
@@ -219,16 +212,12 @@ mod tests {
         test(actual, expected);
 
         // Offset
-        let actual = Builder::table("Item")
-            .select()
-            .offset(10)
-            .project("*")
-            .build();
+        let actual = table("Item").select().offset(10).project("*").build();
         let expected = "SELECT * FROM Item OFFSET 10";
         test(actual, expected);
 
         // OffsetLimit
-        let actual = Builder::table("Operator")
+        let actual = table("Operator")
             .select()
             .offset(3)
             .limit(10)

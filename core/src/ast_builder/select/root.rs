@@ -83,20 +83,20 @@ impl Prebuild for SelectNode {
 mod tests {
     use crate::{
         ast::{BinaryOperator, Expr},
-        ast_builder::{test, Builder},
+        ast_builder::{table, test},
     };
 
     #[test]
     fn select() {
-        let actual = Builder::table("App").select().build();
+        let actual = table("App").select().build();
         let expected = "SELECT * FROM App";
         test(actual, expected);
 
-        let actual = Builder::table("Bar").select().filter("id IS NULL").build();
+        let actual = table("Bar").select().filter("id IS NULL").build();
         let expected = "SELECT * FROM Bar WHERE id IS NULL";
         test(actual, expected);
 
-        let actual = Builder::table("Foo")
+        let actual = table("Foo")
             .select()
             .filter(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("col1".to_owned())),

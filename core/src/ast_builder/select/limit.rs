@@ -85,15 +85,15 @@ impl Prebuild for LimitNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, test, Builder};
+    use crate::ast_builder::{col, table, test};
 
     #[test]
     fn limit() {
-        let actual = Builder::table("Hello").select().limit(10).build();
+        let actual = table("Hello").select().limit(10).build();
         let expected = "SELECT * FROM Hello LIMIT 10";
         test(actual, expected);
 
-        let actual = Builder::table("World")
+        let actual = table("World")
             .select()
             .filter(col("id").gt(2))
             .limit(100)
@@ -101,15 +101,11 @@ mod tests {
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
         test(actual, expected);
 
-        let actual = Builder::table("Foo")
-            .select()
-            .group_by("name")
-            .limit(5)
-            .build();
+        let actual = table("Foo").select().group_by("name").limit(5).build();
         let expected = "SELECT * FROM Foo GROUP BY name LIMIT 5";
         test(actual, expected);
 
-        let actual = Builder::table("Bar")
+        let actual = table("Bar")
             .select()
             .group_by("city")
             .having("COUNT(name) < 100")
