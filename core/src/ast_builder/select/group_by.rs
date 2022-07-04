@@ -92,5 +92,27 @@ mod tests {
             GROUP BY id, (a + name)
         ";
         test(actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .filter("name IS NOT NULL")
+            .group_by(vec![col("id"), col("a").add(col("name"))])
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            WHERE name IS NOT NULL
+            GROUP BY id, a + name
+        ";
+        test(actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .group_by(vec!["id", "a + name"])
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            GROUP BY id, a + name
+        ";
+        test(actual, expected);
     }
 }
