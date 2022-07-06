@@ -3,40 +3,33 @@ mod expr;
 mod expr_list;
 mod select;
 mod select_item_list;
+mod table;
 
 pub use {
     delete::DeleteNode,
-    expr::{
-        aggregate::{max, sum, AggregateNode},
-        function::{abs, FunctionNode},
-    },
-    expr::{col, expr, nested, num, text, ExprNode},
     expr_list::ExprList,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
         ProjectNode, SelectNode,
     },
     select_item_list::SelectItemList,
+    table::TableNode,
 };
 
+/// Available expression builder functions
+pub use expr::{col, expr, nested, num, text, ExprNode};
+
+/// Available aggregate or normal SQL functions
+pub use expr::{
+    aggregate::{max, sum, AggregateNode},
+    function::{abs, FunctionNode},
+};
+
+/// Entry point function to build statement
 pub fn table(table_name: &str) -> TableNode {
     let table_name = table_name.to_owned();
 
     TableNode { table_name }
-}
-
-pub struct TableNode {
-    table_name: String,
-}
-
-impl TableNode {
-    pub fn select(self) -> SelectNode {
-        SelectNode::new(self.table_name)
-    }
-
-    pub fn delete(self) -> DeleteNode {
-        DeleteNode::new(self.table_name)
-    }
 }
 
 #[cfg(test)]
