@@ -1,5 +1,5 @@
 use {
-    super::{build_stmt, NodeData, Prebuild},
+    super::{NodeData, Prebuild},
     crate::{
         ast::Statement,
         ast_builder::{
@@ -60,9 +60,7 @@ impl GroupByNode {
     }
 
     pub fn build(self) -> Result<Statement> {
-        let select_data = self.prebuild()?;
-
-        Ok(build_stmt(select_data))
+        self.prebuild().map(NodeData::build_stmt)
     }
 }
 
