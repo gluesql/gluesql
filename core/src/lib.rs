@@ -5,6 +5,7 @@ pub use sqlparser;
 mod glue;
 
 pub mod ast;
+pub mod ast_builder;
 pub mod data;
 pub mod executor;
 pub mod parse_sql;

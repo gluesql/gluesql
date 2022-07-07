@@ -93,7 +93,7 @@ fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<
     })
 }
 
-fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectItem> {
+pub fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectItem> {
     match sql_select_item {
         SqlSelectItem::UnnamedExpr(expr) => {
             let label = match expr {

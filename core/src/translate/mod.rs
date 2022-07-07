@@ -10,7 +10,7 @@ mod query;
 pub use self::{
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
-    query::translate_query,
+    query::{translate_query, translate_select_item},
 };
 
 #[cfg(feature = "alter-table")]
