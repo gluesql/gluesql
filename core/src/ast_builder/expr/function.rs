@@ -22,13 +22,13 @@ impl TryFrom<FunctionNode> for Expr {
                 .map(Function::Abs)
                 .map(Box::new)
                 .map(Expr::Function),
-            FunctionNode::IfNull(expr_node, then_node) => expr_node
-                .try_into()
-                .and_then(|expr| then_node
+            FunctionNode::IfNull(expr_node, then_node) => expr_node.try_into().and_then(|expr| {
+                then_node
                     .try_into()
                     .map(|then| Function::IfNull { expr, then })
                     .map(Box::new)
-                    .map(Expr::Function))
+                    .map(Expr::Function)
+            }),
         }
     }
 }
