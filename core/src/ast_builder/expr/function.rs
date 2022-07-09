@@ -53,8 +53,7 @@ mod tests {
     use crate::ast_builder::{abs, col, expr, floor, test_expr};
 
     #[test]
-    fn function() {
-        // ABS
+    fn function_abs() {
         let actual = abs(col("num"));
         let expected = "ABS(num)";
         test_expr(actual, expected);
@@ -62,8 +61,10 @@ mod tests {
         let actual = expr("base - 10").abs();
         let expected = "ABS(base - 10)";
         test_expr(actual, expected);
+    }
 
-        // FLOOR
+    #[test]
+    fn function_floor() {
         let actual = floor(col("num"));
         let expected = "FLOOR(num)";
         test_expr(actual, expected);
