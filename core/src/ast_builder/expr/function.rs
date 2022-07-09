@@ -22,7 +22,7 @@ impl TryFrom<FunctionNode> for Expr {
                 .map(Function::Abs)
                 .map(Box::new)
                 .map(Expr::Function),
-            FunctionNode::Upper(expr_node)=>expr_node
+            FunctionNode::Upper(expr_node) => expr_node
                 .try_into()
                 .map(Function::Upper)
                 .map(Box::new)
@@ -49,10 +49,9 @@ pub fn upper<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Upper(expr.into())))
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{abs, col, expr, upper,test_expr,text};
+    use crate::ast_builder::{abs, col, expr, test_expr, text, upper};
 
     #[test]
     fn function() {
