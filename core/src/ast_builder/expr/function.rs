@@ -22,14 +22,13 @@ impl TryFrom<FunctionNode> for Expr {
                 .map(Function::Abs)
                 .map(Box::new)
                 .map(Expr::Function),
-            FunctionNode::IfNull(if_node, default_node) => if_node
+            FunctionNode::IfNull(expr_node, then_node) => expr_node
                 .try_into()
-                .and_then(|expr| {
-                    default_node.try_into()
-                        .map(|then| Function::IfNull { expr, then })
-                        .map(Box::new)
-                        .map(Expr::Function)
-                })
+                .and_then(|expr| then_node
+                    .try_into()
+                    .map(|then| Function::IfNull { expr, then })
+                    .map(Box::new)
+                    .map(Expr::Function))
         }
     }
 }
@@ -38,8 +37,8 @@ impl ExprNode {
     pub fn abs(self) -> ExprNode {
         abs(self)
     }
-    pub fn ifnull(self, alternative: ExprNode) -> ExprNode {
-        ifnull(self, alternative)
+    pub fn ifnull(self, another: ExprNode) -> ExprNode {
+        ifnull(self, another)
     }
 }
 
@@ -47,11 +46,8 @@ pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Abs(expr.into())))
 }
 
-pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(if_node: T, default_node: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::IfNull(
-        if_node.into(),
-        default_node.into(),
-    )))
+pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, then: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::IfNull(expr.into(), then.into())))
 }
 
 #[cfg(test)]
