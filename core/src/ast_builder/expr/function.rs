@@ -9,6 +9,7 @@ use {
 #[derive(Clone)]
 pub enum FunctionNode {
     Abs(ExprNode),
+    IfNull(ExprNode, ExprNode),
     Floor(ExprNode),
     Asin(ExprNode),
     Acos(ExprNode),
@@ -29,6 +30,13 @@ impl TryFrom<FunctionNode> for Expr {
                 .map(Function::Abs)
                 .map(Box::new)
                 .map(Expr::Function),
+            FunctionNode::IfNull(expr_node, then_node) => expr_node.try_into().and_then(|expr| {
+                then_node
+                    .try_into()
+                    .map(|then| Function::IfNull { expr, then })
+                    .map(Box::new)
+                    .map(Expr::Function)
+            }),
             FunctionNode::Floor(expr_node) => expr_node
                 .try_into()
                 .map(Function::Floor)
@@ -73,6 +81,9 @@ impl ExprNode {
     pub fn abs(self) -> ExprNode {
         abs(self)
     }
+    pub fn ifnull(self, another: ExprNode) -> ExprNode {
+        ifnull(self, another)
+    }
     pub fn floor(self) -> ExprNode {
         floor(self)
     }
@@ -98,6 +109,9 @@ impl ExprNode {
 
 pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Abs(expr.into())))
+}
+pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, then: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::IfNull(expr.into(), then.into())))
 }
 pub fn floor<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Floor(expr.into())))
@@ -127,7 +141,7 @@ pub fn pi() -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, col, cos, expr, floor, pi, sin, tan, test_expr,
+        abs, acos, asin, atan, col, cos, expr, floor, ifnull, pi, sin, tan, test_expr,
     };
 
     #[test]
@@ -138,6 +152,17 @@ mod tests {
 
         let actual = expr("base - 10").abs();
         let expected = "ABS(base - 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_ifnull() {
+        let actual = ifnull(text("HELLO"), text("WORLD"));
+        let expected = "IFNULL('HELLO', 'WORLD')";
+        test_expr(actual, expected);
+
+        let actual = col("updated_at").ifnull(col("created_at"));
+        let expected = "IFNULL(updated_at, created_at)";
         test_expr(actual, expected);
     }
 

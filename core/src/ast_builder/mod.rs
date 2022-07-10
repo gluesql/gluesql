@@ -22,7 +22,7 @@ pub use expr::{col, expr, nested, num, text, ExprNode};
 /// Available aggregate or normal SQL functions
 pub use expr::{
     aggregate::{max, sum, AggregateNode},
-    function::{abs, acos, asin, atan, cos, floor, pi, sin, tan, FunctionNode},
+    function::{abs, acos, asin, atan, cos, floor, ifnull, pi, sin, tan, FunctionNode},
 };
 
 /// Entry point function to build statement
