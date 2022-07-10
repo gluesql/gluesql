@@ -68,7 +68,7 @@ mod tests {
     use crate::ast_builder::{abs, col, expr, floor, test_expr, text};
 
     #[test]
-    fn function_abs() {
+    fn abs_test() {
         let actual = abs(col("num"));
         let expected = "ABS(num)";
         test_expr(actual, expected);
@@ -79,7 +79,7 @@ mod tests {
     }
 
     #[test]
-    fn function_ifnull() {
+    fn ifnull_test() {
         let actual = col("updated_at").ifnull(col("created_at"));
         let expected = "IFNULL(updated_at, created_at)";
         test_expr(actual, expected);
@@ -90,7 +90,7 @@ mod tests {
     }
 
     #[test]
-    fn function_floor() {
+    fn floor_test() {
         let actual = floor(col("num"));
         let expected = "FLOOR(num)";
         test_expr(actual, expected);
