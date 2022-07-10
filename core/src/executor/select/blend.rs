@@ -6,7 +6,7 @@ use {
         executor::{
             context::{BlendContext, FilterContext},
             evaluate::evaluate,
-            fetch_name,
+            get_name,
         },
         result::{Error, Result},
         store::GStore,
@@ -57,7 +57,7 @@ impl<'a> Blend<'a> {
                     match item {
                         SelectItem::Wildcard => Ok(context.get_all_values()),
                         SelectItem::QualifiedWildcard(alias) => {
-                            let table_alias = fetch_name(alias)?;
+                            let table_alias = get_name(alias)?;
 
                             match context.get_alias_values(table_alias) {
                                 Some(values) => Ok(values),

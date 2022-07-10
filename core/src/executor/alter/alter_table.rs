@@ -4,7 +4,7 @@ use {
     super::validate,
     crate::{
         ast::{AlterTableOperation, ObjectName},
-        executor::fetch_name,
+        executor::get_name,
         result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
@@ -25,13 +25,13 @@ pub async fn alter_table<T: GStore + GStoreMut>(
     name: &ObjectName,
     operation: &AlterTableOperation,
 ) -> MutResult<T, ()> {
-    let (storage, table_name) = fetch_name(name).try_self(storage)?;
+    let (storage, table_name) = get_name(name).try_self(storage)?;
 
     match operation {
         AlterTableOperation::RenameTable {
             table_name: new_table_name,
         } => {
-            let (storage, new_table_name) = fetch_name(new_table_name).try_self(storage)?;
+            let (storage, new_table_name) = get_name(new_table_name).try_self(storage)?;
 
             storage.rename_schema(table_name, new_table_name).await
         }

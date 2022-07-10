@@ -10,7 +10,7 @@ use {
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::{fetch_join_columns, fetch_name, fetch_relation_rows, get_alias},
+        fetch::{fetch_join_columns, fetch_relation_rows, get_alias, get_name},
         filter::Filter,
         join::Join,
         limit::Limit,
@@ -79,7 +79,7 @@ pub fn get_labels<'a>(
                 Labeled::Wildcard(Wildcard::WithoutJoin(labels))
             }
             SelectItem::QualifiedWildcard(target) => {
-                let target_table_alias = try_into!(fetch_name(target));
+                let target_table_alias = try_into!(get_name(target));
 
                 if table_alias == target_table_alias {
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));

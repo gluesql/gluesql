@@ -6,7 +6,7 @@ use {
             Query, Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
         data::Schema,
-        executor::fetch_name,
+        executor::get_name,
     },
     std::{collections::HashMap, rc::Rc},
     utils::Vector,
@@ -470,7 +470,7 @@ impl<'a> Planner<'a> {
     ) -> Option<Rc<Context<'a>>> {
         let (name, alias) = match table_factor {
             TableFactor::Table { name, alias, .. } => {
-                let name = match fetch_name(name) {
+                let name = match get_name(name) {
                     Ok(name) => name.clone(),
                     Err(_) => return next,
                 };

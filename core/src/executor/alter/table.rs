@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
         data::Schema,
-        executor::{fetch_name, select::select, TableError},
+        executor::{get_name, select::select, TableError},
         result::{Error, MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
@@ -17,7 +17,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
     if_not_exists: bool,
     source: &Option<Box<Query>>,
 ) -> MutResult<T, ()> {
-    let (storage, target_table_name) = fetch_name(name).try_self(storage)?;
+    let (storage, target_table_name) = get_name(name).try_self(storage)?;
     let schema = (|| async {
         let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
             Some(Query {
@@ -28,7 +28,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     name: source_name, ..
                 } = &select_query.from.relation
                 {
-                    let table_name = fetch_name(source_name)?;
+                    let table_name = get_name(source_name)?;
                     let schema = storage.fetch_schema(table_name).await?;
                     let Schema {
                         column_defs: source_column_defs,
@@ -92,7 +92,7 @@ pub async fn drop_table<T: GStore + GStoreMut>(
     stream::iter(table_names.iter().map(Ok))
         .try_fold((storage, ()), |(storage, _), table_name| async move {
             let schema = (|| async {
-                let table_name = fetch_name(table_name)?;
+                let table_name = get_name(table_name)?;
                 let schema = storage.fetch_schema(table_name).await?;
 
                 if !if_exists {

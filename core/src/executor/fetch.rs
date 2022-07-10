@@ -84,7 +84,7 @@ pub async fn fetch_relation_rows<'a>(
             Ok(Rows::Derived(rows))
         }
         TableFactor::Table { name, .. } => {
-            let table_name = fetch_name(name)?;
+            let table_name = get_name(name)?;
             #[cfg(feature = "index")]
             let rows = {
                 #[derive(Iterator)]
@@ -146,7 +146,7 @@ pub async fn fetch_relation_columns(
 ) -> Result<Vec<String>> {
     match table_factor {
         TableFactor::Table { name, .. } => {
-            let table_name = fetch_name(name)?;
+            let table_name = get_name(name)?;
 
             fetch_columns(storage, table_name).await
         }
@@ -196,7 +196,7 @@ pub async fn fetch_join_columns<'a>(
         .await
 }
 
-pub fn fetch_name(table_name: &ObjectName) -> Result<&String> {
+pub fn get_name(table_name: &ObjectName) -> Result<&String> {
     let ObjectName(idents) = table_name;
     idents.last().ok_or_else(|| TableError::Unreachable.into())
 }
@@ -205,7 +205,7 @@ pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
     match table_factor {
         TableFactor::Table {
             name, alias: None, ..
-        } => fetch_name(name),
+        } => get_name(name),
         TableFactor::Table {
             alias: Some(TableAlias { name, .. }),
             ..
