@@ -25,6 +25,7 @@ pub use error::ValueError;
 pub enum Value {
     Bool(bool),
     I8(i8),
+    I16(i16),
     I32(i32),
     I64(i64),
     I128(i128),
@@ -46,6 +47,7 @@ impl PartialEq<Value> for Value {
     fn eq(&self, other: &Value) -> bool {
         match (self, other) {
             (Value::I8(l), _) => l == other,
+            (Value::I16(l), _) => l == other,
             (Value::I32(l), _) => l == other,
             (Value::I64(l), _) => l == other,
             (Value::I128(l), _) => l == other,
@@ -72,6 +74,7 @@ impl PartialOrd<Value> for Value {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match (self, other) {
             (Value::I8(l), _) => l.partial_cmp(other),
+            (Value::I16(l), _) => l.partial_cmp(other),
             (Value::I32(l), _) => l.partial_cmp(other),
             (Value::I64(l), _) => l.partial_cmp(other),
             (Value::I128(l), _) => l.partial_cmp(other),
@@ -108,6 +111,7 @@ impl Value {
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
         let valid = match self {
             Value::I8(_) => matches!(data_type, DataType::Int8),
+            Value::I16(_) => matches!(data_type, DataType::Int16),
             Value::I32(_) => matches!(data_type, DataType::Int32),
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::I128(_) => matches!(data_type, DataType::Int128),
@@ -148,6 +152,7 @@ impl Value {
     pub fn cast(&self, data_type: &DataType) -> Result<Self> {
         match (data_type, self) {
             (DataType::Int8, Value::I8(_))
+            | (DataType::Int16, Value::I16(_))
             | (DataType::Int32, Value::I32(_))
             | (DataType::Int, Value::I64(_))
             | (DataType::Int128, Value::I128(_))
@@ -165,6 +170,7 @@ impl Value {
 
             (DataType::Boolean, value) => value.try_into().map(Value::Bool),
             (DataType::Int8, value) => value.try_into().map(Value::I8),
+            (DataType::Int16, value) => value.try_into().map(Value::I16),
             (DataType::Int32, value) => value.try_into().map(Value::I32),
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Int128, value) => value.try_into().map(Value::I128),
@@ -204,6 +210,7 @@ impl Value {
             (Time(a), Interval(b)) => b.add_time(a).map(Time),
             (Interval(a), Interval(b)) => a.add(b).map(Interval),
             (Null, I8(_))
+            | (Null, I16(_))
             | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
@@ -232,6 +239,7 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_subtract(other),
+            (I16(a), _) => a.try_subtract(other),
             (I32(a), _) => a.try_subtract(other),
             (I64(a), _) => a.try_subtract(other),
             (I128(a), _) => a.try_subtract(other),
@@ -257,6 +265,7 @@ impl Value {
             (Time(a), Interval(b)) => b.subtract_from_time(a).map(Time),
             (Interval(a), Interval(b)) => a.subtract(b).map(Interval),
             (Null, I8(_))
+            | (Null, I16(_))
             | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
@@ -285,19 +294,22 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_multiply(other),
+            (I16(a), _) => a.try_multiply(other),
             (I32(a), _) => a.try_multiply(other),
             (I64(a), _) => a.try_multiply(other),
             (I128(a), _) => a.try_multiply(other),
             (F64(a), _) => a.try_multiply(other),
             (Decimal(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
+            (Interval(a), I16(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I32(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a * *b)),
             (Interval(a), I128(b)) => Ok(Interval(*a * *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a * *b)),
             (Null, I8(_))
-            | (Null, I64(_))
+            | (Null, I16(_))
             | (Null, I32(_))
+            | (Null, I64(_))
             | (Null, I128(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
@@ -322,17 +334,20 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_divide(other),
+            (I16(a), _) => a.try_divide(other),
             (I32(a), _) => a.try_divide(other),
             (I64(a), _) => a.try_divide(other),
             (I128(a), _) => a.try_divide(other),
             (F64(a), _) => a.try_divide(other),
             (Decimal(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
+            (Interval(a), I16(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I32(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I128(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
             (Null, I8(_))
+            | (Null, I16(_))
             | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
@@ -358,12 +373,14 @@ impl Value {
 
         match (self, other) {
             (I8(a), _) => a.try_modulo(other),
+            (I16(a), _) => a.try_modulo(other),
             (I32(a), _) => a.try_modulo(other),
             (I64(a), _) => a.try_modulo(other),
             (I128(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), _) => a.try_modulo(other),
             (Null, I8(_))
+            | (Null, I16(_))
             | (Null, I32(_))
             | (Null, I64(_))
             | (Null, I128(_))
@@ -387,7 +404,7 @@ impl Value {
         use Value::*;
 
         match self {
-            I8(_) | I32(_) | I64(_) | I128(_) | F64(_) | Interval(_) | Decimal(_) => {
+            I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | F64(_) | Interval(_) | Decimal(_) => {
                 Ok(self.clone())
             }
             Null => Ok(Null),
@@ -400,6 +417,7 @@ impl Value {
 
         match self {
             I8(a) => Ok(I8(-a)),
+            I16(a) => Ok(I16(-a)),
             I32(a) => Ok(I32(-a)),
             I64(a) => Ok(I64(-a)),
             I128(a) => Ok(I128(-a)),
@@ -426,6 +444,7 @@ impl Value {
 
         match self {
             I8(a) => factorial_function(*a as i128).map(I128),
+            I16(a) => factorial_function(*a as i128).map(I128),
             I32(a) => factorial_function(*a as i128).map(I128),
             I64(a) => factorial_function(*a as i128).map(I128),
             I128(a) => factorial_function(*a).map(I128),
@@ -502,6 +521,7 @@ mod tests {
         assert_ne!(Null, Null);
         assert_eq!(Bool(true), Bool(true));
         assert_eq!(I8(1), I8(1));
+        assert_eq!(I16(1), I16(1));
         assert_eq!(I32(1), I32(1));
         assert_eq!(I64(1), I64(1));
         assert_eq!(I128(1), I128(1));

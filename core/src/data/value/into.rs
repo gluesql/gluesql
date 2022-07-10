@@ -19,6 +19,7 @@ impl From<&Value> for String {
             Value::Bytea(value) => hex::encode(value),
             Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_string(),
             Value::I8(value) => value.to_string(),
+            Value::I16(value) => value.to_string(),
             Value::I32(value) => value.to_string(),
             Value::I64(value) => value.to_string(),
             Value::I128(value) => value.to_string(),
@@ -52,6 +53,11 @@ impl TryInto<bool> for &Value {
         Ok(match self {
             Value::Bool(value) => *value,
             Value::I8(value) => match value {
+                1 => true,
+                0 => false,
+                _ => return Err(ValueError::ImpossibleCast.into()),
+            },
+            Value::I16(value) => match value {
                 1 => true,
                 0 => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
@@ -128,6 +134,7 @@ impl TryInto<i8> for &Value {
                 }
             }
             Value::I8(value) => *value,
+            Value::I16(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
@@ -157,6 +164,49 @@ impl TryInto<i8> for Value {
     }
 }
 
+impl TryInto<i16> for Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<i16> {
+        (&self).try_into()
+    }
+}
+
+impl TryInto<i16> for &Value {
+    type Error = Error;
+
+    fn try_into(self) -> Result<i16> {
+        Ok(match self {
+            Value::Bool(value) => {
+                if *value {
+                    1
+                } else {
+                    0
+                }
+            }
+            Value::I8(value) => *value as i16,
+            Value::I16(value) => *value,
+            Value::I32(value) => *value as i16,
+            Value::I64(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I128(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
+            Value::F64(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
+            Value::Str(value) => value
+                .parse::<i16>()
+                .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Bytea(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
 impl TryInto<i32> for &Value {
     type Error = Error;
 
@@ -170,6 +220,7 @@ impl TryInto<i32> for &Value {
                 }
             }
             Value::I8(value) => *value as i32,
+            Value::I16(value) => *value as i32,
             Value::I32(value) => *value,
             Value::I64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
@@ -212,6 +263,7 @@ impl TryInto<i64> for &Value {
                 }
             }
             Value::I8(value) => *value as i64,
+            Value::I16(value) => *value as i64,
             Value::I32(value) => *value as i64,
             Value::I64(value) => *value,
             Value::I128(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
@@ -254,6 +306,7 @@ impl TryInto<i128> for &Value {
                 }
             }
             Value::I8(value) => *value as i128,
+            Value::I16(value) => *value as i128,
             Value::I32(value) => *value as i128,
             Value::I64(value) => *value as i128,
             Value::I128(value) => *value,
@@ -296,6 +349,7 @@ impl TryInto<f64> for &Value {
                 }
             }
             Value::I8(value) => *value as f64,
+            Value::I16(value) => *value as f64,
             Value::I32(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::I64(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => *value as f64,
@@ -338,6 +392,7 @@ impl TryInto<Decimal> for &Value {
                 }
             }
             Value::I8(value) => Decimal::from_i8(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::I16(value) => Decimal::from_i16(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I32(value) => Decimal::from_i32(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I64(value) => Decimal::from_i64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => Decimal::from_i128(*value).ok_or(ValueError::ImpossibleCast)?,
@@ -453,6 +508,7 @@ mod tests {
         test!(Value::Bytea(hex::decode("1234").unwrap()), "1234");
         test!(Value::Bool(true), "TRUE");
         test!(Value::I8(122), "122");
+        test!(Value::I16(122), "122");
         test!(Value::I32(122), "122");
         test!(Value::I64(1234567890), "1234567890");
         test!(Value::I128(1234567890), "1234567890");
@@ -489,6 +545,8 @@ mod tests {
         test!(Value::Bool(true), Ok(true));
         test!(Value::I8(1), Ok(true));
         test!(Value::I8(0), Ok(false));
+        test!(Value::I16(1), Ok(true));
+        test!(Value::I16(0), Ok(false));
         test!(Value::I32(1), Ok(true));
         test!(Value::I32(0), Ok(false));
         test!(Value::I64(1), Ok(true));
@@ -538,6 +596,7 @@ mod tests {
 
         // impossible casts
         test!(Value::I8(3), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::I16(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I32(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I64(3), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(3), Err(ValueError::ImpossibleCast.into()));
@@ -558,6 +617,7 @@ mod tests {
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
+        test!(Value::I16(122), Ok(122));
         test!(Value::I32(122), Ok(122));
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
@@ -596,6 +656,7 @@ mod tests {
         test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
 
         // impossible casts to i8
+        test!(Value::I16(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I32(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(128), Err(ValueError::ImpossibleCast.into()));
@@ -617,6 +678,7 @@ mod tests {
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
+        test!(Value::I16(122), Ok(122));
         test!(Value::I32(122), Ok(122));
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
@@ -671,6 +733,7 @@ mod tests {
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
+        test!(Value::I16(122), Ok(122));
         test!(Value::I32(122), Ok(122));
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
@@ -725,6 +788,7 @@ mod tests {
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
+        test!(Value::I16(122), Ok(122));
         test!(Value::I32(122), Ok(122));
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
@@ -779,6 +843,7 @@ mod tests {
         test!(Value::Bool(true), Ok(1.0));
         test!(Value::Bool(false), Ok(0.0));
         test!(Value::I8(122), Ok(122.0));
+        test!(Value::I16(122), Ok(122.0));
         test!(Value::I32(122), Ok(122.0));
         test!(Value::I64(122), Ok(122.0));
         test!(Value::I128(122), Ok(122.0));

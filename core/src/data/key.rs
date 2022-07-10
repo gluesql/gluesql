@@ -25,6 +25,7 @@ pub enum KeyError {
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Serialize, Deserialize)]
 pub enum Key {
     I8(i8),
+    I16(i16),
     I32(i32),
     I64(i64),
     I128(i128),
@@ -44,6 +45,7 @@ impl PartialOrd for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             (Key::I8(l), Key::I8(r)) => Some(l.cmp(r)),
+            (Key::I16(l), Key::I16(r)) => Some(l.cmp(r)),
             (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
             (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
@@ -69,6 +71,7 @@ impl TryFrom<Value> for Key {
         match value {
             Bool(v) => Ok(Key::Bool(v)),
             I8(v) => Ok(Key::I8(v)),
+            I16(v) => Ok(Key::I16(v)),
             I32(v) => Ok(Key::I32(v)),
             I64(v) => Ok(Key::I64(v)),
             I128(v) => Ok(Key::I128(v)),
@@ -111,6 +114,15 @@ impl Key {
                 }
             }
             Key::I8(v) => {
+                let sign = if *v >= 0 { 1 } else { 0 };
+
+                [VALUE, sign]
+                    .iter()
+                    .chain(v.to_be_bytes().iter())
+                    .copied()
+                    .collect::<Vec<_>>()
+            }
+            Key::I16(v) => {
                 let sign = if *v >= 0 { 1 } else { 0 };
 
                 [VALUE, sign]
@@ -232,6 +244,7 @@ mod tests {
         // Some
         assert_eq!(convert("True"), Ok(Key::Bool(true)));
         assert_eq!(convert("CAST(11 AS INT(8))"), Ok(Key::I8(11)));
+        assert_eq!(convert("CAST(11 AS INT(16))"), Ok(Key::I16(11)));
         assert_eq!(convert("CAST(11 AS INT(32))"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
         assert_eq!(
