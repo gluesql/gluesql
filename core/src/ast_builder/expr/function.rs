@@ -97,7 +97,7 @@ pub fn right<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{abs, col, expr, floor, ifnull, left, right, test_expr, num, text};
+    use crate::ast_builder::{abs, col, expr, floor, ifnull, left, num, right, test_expr, text};
 
     #[test]
     fn function_abs() {
