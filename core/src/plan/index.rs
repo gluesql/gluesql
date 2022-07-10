@@ -4,8 +4,8 @@ use {
             AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
             SetExpr, Statement, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema, SchemaIndex, SchemaIndexOrd},
-        result::Result,
+        data::{get_name, Schema, SchemaIndex, SchemaIndexOrd, TableError},
+        result::{Error, Result},
     },
     std::collections::HashMap,
     utils::Vector,
@@ -70,9 +70,16 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
 
     let TableWithJoins { relation, .. } = &select.from;
     let table_name = match relation {
-        TableFactor::Table { name, .. } => name,
+        TableFactor::Table { name, .. } => get_name(name)?,
+        TableFactor::Derived { .. } => {
+            return Ok(Query {
+                body: SetExpr::Select(select),
+                limit,
+                offset,
+            });
+        }
     };
-    let table_name = get_name(table_name)?;
+
     let indexes = match schema_map.get(table_name) {
         Some(Schema { indexes, .. }) => Indexes(indexes.clone()),
         None => {
@@ -106,6 +113,9 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
+                TableFactor::Derived { .. } => {
+                    return Err(Error::Table(TableError::Unreachable));
+                }
             };
 
             let from = TableWithJoins {
@@ -188,6 +198,9 @@ fn plan_select(
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
+                TableFactor::Derived { .. } => {
+                    return Err(Error::Table(TableError::Unreachable));
+                }
             };
 
             let index = Some(IndexItem {

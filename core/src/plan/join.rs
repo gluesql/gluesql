@@ -477,6 +477,7 @@ impl<'a> Planner<'a> {
 
                 (name, alias)
             }
+            TableFactor::Derived { .. } => return next,
         };
         let column_defs = match self.schema_map.get(&name) {
             Some(Schema { column_defs, .. }) => column_defs,

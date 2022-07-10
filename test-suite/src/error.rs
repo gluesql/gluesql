@@ -68,13 +68,6 @@ test_case!(error, async move {
         ),
         (TranslateError::LackOfTable.into(), "SELECT 1;"),
         (
-            TranslateError::UnsupportedQueryTableFactor(
-                "(SELECT * FROM TableB) AS TableC".to_owned(),
-            )
-            .into(),
-            "SELECT * FROM TableA JOIN (SELECT * FROM TableB) as TableC ON 1 = 1",
-        ),
-        (
             TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into(),
             "SELECT * FROM TableA JOIN TableA USING (id);",
         ),

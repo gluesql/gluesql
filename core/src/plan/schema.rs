@@ -172,15 +172,18 @@ async fn scan_join(storage: &dyn Store, join: &Join) -> Result<Vec<Schema>> {
     Ok(schema_list)
 }
 
+#[async_recursion(?Send)]
 async fn scan_table_factor(storage: &dyn Store, table_factor: &TableFactor) -> Result<Vec<Schema>> {
-    let table_name = match table_factor {
-        TableFactor::Table { name, .. } => name,
-    };
-    let table_name = get_name(table_name)?;
-    let schema = storage.fetch_schema(table_name).await?;
-    let schema_list = schema.map(|schema| vec![schema]).unwrap_or_else(Vec::new);
+    match table_factor {
+        TableFactor::Table { name, .. } => {
+            let table_name = get_name(name)?;
+            let schema = storage.fetch_schema(table_name).await?;
+            let schema_list = schema.map(|schema| vec![schema]).unwrap_or_else(Vec::new);
 
-    Ok(schema_list)
+            Ok(schema_list)
+        }
+        TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
+    }
 }
 
 #[async_recursion(?Send)]
