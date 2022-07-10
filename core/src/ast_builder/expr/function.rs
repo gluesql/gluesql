@@ -78,6 +78,7 @@ mod tests {
         test_expr(actual, expected);
     }
 
+    #[test]
     fn function_floor() {
         let actual = floor(col("num"));
         let expected = "FLOOR(num)";
@@ -88,6 +89,7 @@ mod tests {
         test_expr(actual, expected);
     }
 
+    #[test]
     fn function_ifnull() {
         let actual = col("updated_at").ifnull(col("created_at"));
         let expected = "IFNULL(updated_at, created_at)";
@@ -95,5 +97,6 @@ mod tests {
 
         let actual = text("HELLO").ifnull(text("WORLD"));
         let expected = "IFNULL('HELLO', 'WORLD')";
+        test_expr(actual, expected);
     }
 }
