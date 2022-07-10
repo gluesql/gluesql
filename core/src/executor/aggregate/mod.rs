@@ -15,7 +15,7 @@ use {
         store::GStore,
     },
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
-    std::{pin::Pin, rc::Rc},
+    std::{convert::identity, pin::Pin, rc::Rc},
 };
 
 pub use error::AggregateError;
@@ -52,7 +52,7 @@ impl<'a> Aggregator<'a> {
         &self,
         rows: impl TryStream<Ok = Rc<BlendContext<'a>>, Error = Error> + 'a,
     ) -> Result<Pin<Box<Applied<'a>>>> {
-        if !self.check_aggregate()? {
+        if !self.check_aggregate() {
             let rows = rows.map_ok(|blend_context| AggregateContext {
                 aggregated: None,
                 next: blend_context,
@@ -142,19 +142,18 @@ impl<'a> Aggregator<'a> {
         Ok(Box::pin(rows))
     }
 
-    fn check_aggregate(&self) -> Result<bool> {
+    fn check_aggregate(&self) -> bool {
         if !self.group_by.is_empty() {
-            return Ok(true);
+            return true;
         }
 
         self.fields
             .iter()
             .map(|field| match field {
                 SelectItem::Expr { expr, .. } => check(expr),
-                _ => Ok(false),
+                _ => false,
             })
-            .collect::<Result<Vec<bool>>>()
-            .map(|checked| checked.into_iter().any(|c| c))
+            .any(identity)
     }
 }
 
@@ -181,17 +180,15 @@ fn aggregate<'a>(
     }
 }
 
-fn check(expr: &Expr) -> Result<bool> {
-    let checked = match expr {
+fn check(expr: &Expr) -> bool {
+    match expr {
         Expr::Between {
             expr, low, high, ..
-        } => check(expr)? || check(low)? || check(high)?,
-        Expr::BinaryOp { left, right, .. } => check(left)? || check(right)?,
-        Expr::UnaryOp { expr, .. } => check(expr)?,
-        Expr::Nested(expr) => check(expr)?,
+        } => check(expr) || check(low) || check(high),
+        Expr::BinaryOp { left, right, .. } => check(left) || check(right),
+        Expr::UnaryOp { expr, .. } => check(expr),
+        Expr::Nested(expr) => check(expr),
         Expr::Aggregate(_) => true,
         _ => false,
-    };
-
-    Ok(checked)
+    }
 }
