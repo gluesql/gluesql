@@ -65,7 +65,7 @@ pub fn floor<T: Into<ExprNode>>(expr: T) -> ExprNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{abs, col, expr, floor, test_expr, text};
+    use crate::ast_builder::{abs, col, expr, floor, ifnull, test_expr, text};
 
     #[test]
     fn function_abs() {
@@ -80,12 +80,12 @@ mod tests {
 
     #[test]
     fn function_ifnull() {
-        let actual = col("updated_at").ifnull(col("created_at"));
-        let expected = "IFNULL(updated_at, created_at)";
+        let actual = ifnull(text("HELLO"), text("WORLD"));
+        let expected = "IFNULL('HELLO', 'WORLD')";
         test_expr(actual, expected);
 
-        let actual = text("HELLO").ifnull(text("WORLD"));
-        let expected = "IFNULL('HELLO', 'WORLD')";
+        let actual = col("updated_at").ifnull(col("created_at"));
+        let expected = "IFNULL(updated_at, created_at)";
         test_expr(actual, expected);
     }
 
