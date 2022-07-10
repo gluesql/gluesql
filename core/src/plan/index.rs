@@ -5,7 +5,7 @@ use {
             SetExpr, Statement, TableFactor, TableWithJoins,
         },
         data::{Schema, SchemaIndex, SchemaIndexOrd},
-        executor::{get_name, TableError},
+        executor::{fetch_name, TableError},
         result::{Error, Result},
     },
     std::collections::HashMap,
@@ -70,7 +70,17 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
     };
 
     let TableWithJoins { relation, .. } = &select.from;
-    let table_name = get_name(relation)?;
+    let table_name = match relation {
+        TableFactor::Table { name, .. } => fetch_name(name)?,
+        TableFactor::Derived { .. } => {
+            return Ok(Query {
+                body: SetExpr::Select(select),
+                limit,
+                offset,
+            });
+        }
+    };
+
     let indexes = match schema_map.get(table_name) {
         Some(Schema { indexes, .. }) => Indexes(indexes.clone()),
         None => {

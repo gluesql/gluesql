@@ -201,13 +201,6 @@ pub fn fetch_name(table_name: &ObjectName) -> Result<&String> {
     idents.last().ok_or_else(|| TableError::Unreachable.into())
 }
 
-pub fn get_name(table_factor: &TableFactor) -> Result<&String> {
-    match table_factor {
-        TableFactor::Table { name, .. } => fetch_name(name),
-        TableFactor::Derived { alias, .. } => Ok(&alias.name),
-    }
-}
-
 pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
     match table_factor {
         TableFactor::Table {
