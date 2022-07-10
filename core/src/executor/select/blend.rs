@@ -2,11 +2,10 @@ use {
     super::SelectError,
     crate::{
         ast::{Aggregate, SelectItem},
-        data::{Row, Value},
+        data::{get_name, Row, Value},
         executor::{
             context::{BlendContext, FilterContext},
             evaluate::evaluate,
-            get_name,
         },
         result::{Error, Result},
         store::GStore,

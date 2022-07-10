@@ -5,7 +5,7 @@ use {
             Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
             TableAlias, TableFactor, TableWithJoins, Values,
         },
-        executor::get_name,
+        data::get_name,
     },
     std::{convert::identity, rc::Rc},
 };

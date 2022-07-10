@@ -4,8 +4,7 @@ use {
     super::AlterError,
     crate::{
         ast::{ColumnDef, Expr, ObjectName, OrderByExpr},
-        data::Schema,
-        executor::get_name,
+        data::{get_name, Schema},
         result::MutResult,
         store::{GStore, GStoreMut},
     },

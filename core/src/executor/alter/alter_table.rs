@@ -4,7 +4,7 @@ use {
     super::validate,
     crate::{
         ast::{AlterTableOperation, ObjectName},
-        executor::get_name,
+        data::get_name,
         result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },

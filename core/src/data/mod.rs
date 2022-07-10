@@ -4,6 +4,7 @@ mod key;
 mod literal;
 mod row;
 mod string_ext;
+mod table;
 
 pub mod schema;
 pub mod value;
@@ -16,5 +17,9 @@ pub use {
     row::{Row, RowError},
     schema::{Schema, SchemaIndex, SchemaIndexOrd},
     string_ext::{StringExt, StringExtError},
+    table::{get_alias, get_name, TableError},
     value::{NumericBinaryOperator, Value, ValueError},
 };
+
+#[cfg(feature = "index")]
+pub use table::get_index;

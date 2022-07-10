@@ -28,7 +28,7 @@ use {
     crate::data::SchemaIndexOrd,
 };
 
-use crate::executor::fetch::get_name;
+use crate::data::get_name;
 #[cfg(feature = "metadata")]
 use crate::{ast::Variable, result::TrySelf};
 

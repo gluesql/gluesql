@@ -1,11 +1,8 @@
 use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
-        ast::{
-            ColumnDef, Expr, Join, ObjectName, Query, Select, SetExpr, TableAlias, TableFactor,
-            TableWithJoins,
-        },
-        data::{Key, Row},
+        ast::{ColumnDef, Expr, Join, Query, Select, SetExpr, TableFactor, TableWithJoins},
+        data::{get_alias, get_name, Key, Row, TableError},
         executor::select::{get_labels, select},
         result::{Error, Result},
         store::GStore,
@@ -19,18 +16,16 @@ use {
 };
 
 #[cfg(feature = "index")]
-use {super::evaluate::evaluate, iter_enum::Iterator};
+use {
+    super::evaluate::evaluate,
+    crate::{ast::IndexItem, data::get_index},
+    iter_enum::Iterator,
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
-}
-
-#[derive(ThisError, Serialize, Debug, PartialEq)]
-pub enum TableError {
-    #[error("unreachable")]
-    Unreachable,
 }
 
 pub async fn fetch<'a>(
@@ -194,35 +189,4 @@ pub async fn fetch_join_columns<'a>(
         })
         .try_collect::<Vec<_>>()
         .await
-}
-
-pub fn get_name(table_name: &ObjectName) -> Result<&String> {
-    let ObjectName(idents) = table_name;
-    idents.last().ok_or_else(|| TableError::Unreachable.into())
-}
-
-pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
-    match table_factor {
-        TableFactor::Table {
-            name, alias: None, ..
-        } => get_name(name),
-        TableFactor::Table {
-            alias: Some(TableAlias { name, .. }),
-            ..
-        }
-        | TableFactor::Derived {
-            alias: TableAlias { name, .. },
-            ..
-        } => Ok(name),
-    }
-}
-
-#[cfg(feature = "index")]
-use crate::ast::IndexItem;
-#[cfg(feature = "index")]
-pub fn get_index(table_factor: &TableFactor) -> Option<&IndexItem> {
-    match table_factor {
-        TableFactor::Table { index, .. } => index.as_ref(),
-        TableFactor::Derived { .. } => None,
-    }
 }

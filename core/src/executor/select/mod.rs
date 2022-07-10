@@ -10,7 +10,7 @@ use {
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::{fetch_join_columns, fetch_relation_rows, get_alias, get_name},
+        fetch::{fetch_join_columns, fetch_relation_rows},
         filter::Filter,
         join::Join,
         limit::Limit,
@@ -18,7 +18,7 @@ use {
     },
     crate::{
         ast::{Query, Select, SelectItem, SetExpr, TableWithJoins},
-        data::Row,
+        data::{get_alias, get_name, Row},
         result::{Error, Result},
         store::GStore,
     },

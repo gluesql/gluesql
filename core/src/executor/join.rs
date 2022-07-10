@@ -1,11 +1,11 @@
 use {
-    super::fetch::{fetch_relation_rows, get_alias},
+    super::fetch::fetch_relation_rows,
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
             JoinOperator as AstJoinOperator, TableFactor,
         },
-        data::{Key, Row},
+        data::{get_alias, Key, Row},
         executor::{
             context::{BlendContext, FilterContext},
             evaluate::evaluate,
