@@ -59,10 +59,10 @@ test_case!(int16, async move {
         "SELECT field_one FROM Item WHERE field_one <= 0"
     );
 
-    // test!(
-    //     Ok(select!(plus I16; 0; 0; 6; -8)),
-    //     "SELECT field_one + field_two AS plus FROM Item;"
-    // );
+    test!(
+        Ok(select!(plus I16; 0; 0; 6; -8)),
+        "SELECT field_one + field_two AS plus FROM Item;"
+    );
 
     test!(
         Ok(select!(sub I16; 2; -4; 0; 0)),

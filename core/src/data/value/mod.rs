@@ -199,6 +199,7 @@ impl Value {
 
         match (self, other) {
             (I8(a), b) => a.try_add(b),
+            (I16(a), b) => a.try_add(b),
             (I32(a), b) => a.try_add(b),
             (I64(a), b) => a.try_add(b),
             (I128(a), b) => a.try_add(b),
