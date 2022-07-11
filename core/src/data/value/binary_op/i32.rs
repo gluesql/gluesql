@@ -652,6 +652,7 @@ mod tests {
         assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
 
         assert_eq!(base.try_multiply(&I8(-1)), Ok(I32(-3)));
+        assert_eq!(base.try_multiply(&I16(-1)), Ok(I32(-3)));
         assert_eq!(base.try_multiply(&I32(-1)), Ok(I32(-3)));
         assert_eq!(base.try_multiply(&I64(-1)), Ok(I64(-3)));
         assert_eq!(base.try_multiply(&I128(-1)), Ok(I128(-3)));
@@ -688,6 +689,7 @@ mod tests {
         assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
 
         assert_eq!(base.try_divide(&I8(-6)), Ok(I32(-1)));
+        assert_eq!(base.try_divide(&I16(-6)), Ok(I32(-1)));
         assert_eq!(base.try_divide(&I32(-6)), Ok(I32(-1)));
         assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));
@@ -723,6 +725,7 @@ mod tests {
         assert_eq!(base.try_modulo(&I128(1)), Ok(I128(0)));
 
         assert_eq!(base.try_modulo(&I8(2)), Ok(I32(1)));
+        assert_eq!(base.try_modulo(&I16(2)), Ok(I32(1)));
         assert_eq!(base.try_modulo(&I32(2)), Ok(I32(1)));
         assert_eq!(base.try_modulo(&I64(2)), Ok(I64(1)));
         assert_eq!(base.try_modulo(&I128(2)), Ok(I128(1)));
