@@ -664,6 +664,61 @@ mod tests {
     }
 
     #[test]
+    fn try_into_i16() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<i16>, $to)
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I16(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::F64(122.0), Ok(122));
+        test!(Value::F64(122.1), Ok(122));
+        test!(Value::Str("122".to_owned()), Ok(122));
+        test!(Value::Decimal(Decimal::new(122, 0)), Ok(122));
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
     fn try_into_i32() {
         macro_rules! test {
             ($from: expr, $to: expr) => {

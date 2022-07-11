@@ -126,6 +126,10 @@ mod tests {
         assert_eq!(Value::Bool(true).try_into(), Ok(JsonValue::Bool(true)));
         assert_eq!(Value::I8(16).try_into(), Ok(JsonValue::Number(16.into())));
         assert_eq!(
+            Value::I16(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+        assert_eq!(
             Value::I32(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
