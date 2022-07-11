@@ -125,6 +125,7 @@ pub async fn select_with_labels<'a>(
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         _ => {
+            // todo
             return Err(SelectError::Unreachable.into());
         }
     };

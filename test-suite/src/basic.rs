@@ -63,6 +63,15 @@ CREATE TABLE TestA (
             Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),
             "SELECT id, num FROM Test",
         ),
+        (
+            Ok(select!(
+                column1 | column2;
+                I64     | Str;
+                1         "a".to_owned();
+                2         "b".to_owned()
+            )),
+            "VALUES (1, 'a'), (2, 'b')",
+        ),
     ];
 
     for (expected, sql) in test_cases {
