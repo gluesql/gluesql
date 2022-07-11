@@ -1,27 +1,26 @@
 use csv::StringRecord;
-use gluesql_core::result::{Error, Result};
-use std::collections::HashMap;
-
-pub struct Item {}
-
-pub struct Row {
-    pub items: HashMap<String, Item>,
-}
+use gluesql_core::{
+    data::Schema,
+    result::{Error, Result},
+};
 
 /// A type that contains data info of imported CSV file.
-pub struct CsvStorage {
-    pub records: Vec<StringRecord>,
-}
+pub struct CsvStorage(Schema);
 
 impl CsvStorage {
-    pub fn read_file(filename: &str) -> Result<Self> {
-        match csv::Reader::from_path(filename) {
+    /// Constructs new `CsvStorage` instance from given CSV file
+    pub fn read_file(csv_path: &str) -> Result<Self> {
+        match csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_path(csv_path)
+        {
             Err(_) => Err(Error::StorageMsg(
                 "Cannot read CSV file from given path".into(),
             )),
             Ok(mut rdr) => {
                 let records: Result<Vec<_>> = rdr.records().map(check_record).collect();
-                Ok(CsvStorage { records: records? })
+                let schema = check_schema(&records?);
+                Ok(CsvStorage(schema?))
             }
         }
     }
@@ -35,5 +34,26 @@ pub fn check_record(
             "Cannot read CSV file from given path".into(),
         )),
         Ok(record) => Ok(record),
+    }
+}
+
+pub fn check_schema(records: &[StringRecord]) -> Result<Schema> {
+    // 1. Check if CSV file has column header
+    match records.get(0) {
+        None => Err(Error::StorageMsg(
+            "Cannot read column headers from given CSV file".into(),
+        )),
+        Some(_header) => {
+            // 2. Check if the header is valid
+            // TODO: Fill the code
+            let table_name = "table_name".to_string();
+            let column_defs = vec![];
+            let indexes = vec![];
+            Ok(Schema {
+                table_name,
+                column_defs,
+                indexes,
+            })
+        }
     }
 }
