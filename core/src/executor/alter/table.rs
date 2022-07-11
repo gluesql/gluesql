@@ -2,7 +2,7 @@ use {
     super::{validate, AlterError},
     crate::{
         ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
-        data::{get_name, Schema},
+        data::{get_name, Schema, TableError},
         executor::select::select,
         result::{Error, MutResult, TrySelf},
         store::{GStore, GStoreMut},
@@ -24,18 +24,22 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 body: SetExpr::Select(select_query),
                 ..
             }) => {
-                let TableFactor::Table {
+                if let TableFactor::Table {
                     name: source_name, ..
-                } = &select_query.from.relation;
-                let table_name = get_name(source_name)?;
-                let schema = storage.fetch_schema(table_name).await?;
-                let Schema {
-                    column_defs: source_column_defs,
-                    ..
-                } = schema.ok_or_else(|| -> Error {
-                    AlterError::CtasSourceTableNotFound(table_name.to_owned()).into()
-                })?;
-                source_column_defs
+                } = &select_query.from.relation
+                {
+                    let table_name = get_name(source_name)?;
+                    let schema = storage.fetch_schema(table_name).await?;
+                    let Schema {
+                        column_defs: source_column_defs,
+                        ..
+                    } = schema.ok_or_else(|| -> Error {
+                        AlterError::CtasSourceTableNotFound(table_name.to_owned()).into()
+                    })?;
+                    source_column_defs
+                } else {
+                    return Err(Error::Table(TableError::Unreachable));
+                }
             }
             _ => column_defs.to_vec(),
         };

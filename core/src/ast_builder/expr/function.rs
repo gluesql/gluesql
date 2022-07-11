@@ -18,6 +18,8 @@ pub enum FunctionNode {
     Cos(ExprNode),
     Tan(ExprNode),
     Pi,
+    Left(ExprNode, ExprNode),
+    Right(ExprNode, ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Expr {
@@ -73,6 +75,20 @@ impl TryFrom<FunctionNode> for Expr {
                 .map(Box::new)
                 .map(Expr::Function),
             FunctionNode::Pi => Ok(Expr::Function(Box::new(Function::Pi()))),
+            FunctionNode::Left(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
+                size_node
+                    .try_into()
+                    .map(|size| Function::Left { expr, size })
+                    .map(Box::new)
+                    .map(Expr::Function)
+            }),
+            FunctionNode::Right(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
+                size_node
+                    .try_into()
+                    .map(|size| Function::Right { expr, size })
+                    .map(Box::new)
+                    .map(Expr::Function)
+            }),
         }
     }
 }
@@ -104,6 +120,12 @@ impl ExprNode {
     }
     pub fn tan(self) -> ExprNode {
         tan(self)
+    }
+    pub fn left(self, size: Self) -> Self {
+        left(self, size)
+    }
+    pub fn right(self, size: Self) -> Self {
+        right(self, size)
     }
 }
 
@@ -138,10 +160,19 @@ pub fn pi() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Pi))
 }
 
+pub fn left<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Left(expr.into(), size.into())))
+}
+
+pub fn right<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Right(expr.into(), size.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, col, cos, expr, floor, ifnull, pi, sin, tan, test_expr,
+        abs, acos, asin, atan, col, cos, expr, floor, ifnull, left, num, pi, right, sin, tan,
+        test_expr, text,
     };
 
     #[test]
@@ -236,6 +267,28 @@ mod tests {
         // pi
         let actual = pi();
         let expected = "PI()";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_left() {
+        let actual = left(text("GlueSQL"), num(2));
+        let expected = "LEFT('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = expr("GlueSQL").left(num(2));
+        let expected = "LEFT(GlueSQL, 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_right() {
+        let actual = right(text("GlueSQL"), num(2));
+        let expected = "RIGHT('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = expr("GlueSQL").right(num(2));
+        let expected = "RIGHT(GlueSQL, 2)";
         test_expr(actual, expected);
     }
 }

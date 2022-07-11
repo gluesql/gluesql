@@ -1,51 +1,121 @@
-mod delete;
+mod ast_literal;
+mod data_type;
+mod ddl;
 mod expr;
-mod expr_list;
-mod select;
-mod select_item_list;
-mod table;
+mod function;
+mod operator;
+mod query;
 
-pub use {
-    delete::DeleteNode,
-    expr_list::ExprList,
-    select::{
-        GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
-        ProjectNode, SelectNode,
+pub use ast_literal::{AstLiteral, DateTimeField, TrimWhereField};
+pub use data_type::DataType;
+pub use ddl::*;
+pub use expr::Expr;
+pub use function::{Aggregate, CountArgExpr, Function};
+pub use operator::*;
+pub use query::*;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ObjectName(pub Vec<String>);
+
+pub trait ToSql {
+    fn to_sql(&self) -> String;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Statement {
+    ShowColumns {
+        table_name: ObjectName,
     },
-    select_item_list::SelectItemList,
-    table::TableNode,
-};
-
-/// Available expression builder functions
-pub use expr::{col, expr, nested, num, text, ExprNode};
-
-/// Available aggregate or normal SQL functions
-pub use expr::{
-    aggregate::{max, sum, AggregateNode},
-    function::{abs, acos, asin, atan, cos, floor, ifnull, pi, sin, tan, FunctionNode},
-};
-
-/// Entry point function to build statement
-pub fn table(table_name: &str) -> TableNode {
-    let table_name = table_name.to_owned();
-
-    TableNode { table_name }
+    /// SELECT
+    Query(Box<Query>),
+    /// INSERT
+    Insert {
+        /// TABLE
+        table_name: ObjectName,
+        /// COLUMNS
+        columns: Vec<String>,
+        /// A SQL query that specifies what to insert
+        source: Box<Query>,
+    },
+    /// UPDATE
+    Update {
+        /// TABLE
+        table_name: ObjectName,
+        /// Column assignments
+        assignments: Vec<Assignment>,
+        /// WHERE
+        selection: Option<Expr>,
+    },
+    /// DELETE
+    Delete {
+        /// FROM
+        table_name: ObjectName,
+        /// WHERE
+        selection: Option<Expr>,
+    },
+    /// CREATE TABLE
+    CreateTable {
+        if_not_exists: bool,
+        /// Table name
+        name: ObjectName,
+        /// Optional schema
+        columns: Vec<ColumnDef>,
+        source: Option<Box<Query>>,
+    },
+    /// ALTER TABLE
+    #[cfg(feature = "alter-table")]
+    AlterTable {
+        /// Table name
+        name: ObjectName,
+        operation: AlterTableOperation,
+    },
+    /// DROP TABLE
+    DropTable {
+        /// An optional `IF EXISTS` clause. (Non-standard.)
+        if_exists: bool,
+        /// One or more objects to drop. (ANSI SQL requires exactly one.)
+        names: Vec<ObjectName>,
+    },
+    /// CREATE INDEX
+    #[cfg(feature = "index")]
+    CreateIndex {
+        name: ObjectName,
+        table_name: ObjectName,
+        column: OrderByExpr,
+    },
+    /// DROP INDEX
+    #[cfg(feature = "index")]
+    DropIndex {
+        name: ObjectName,
+        table_name: ObjectName,
+    },
+    /// START TRANSACTION, BEGIN
+    #[cfg(feature = "transaction")]
+    StartTransaction,
+    /// COMMIT
+    #[cfg(feature = "transaction")]
+    Commit,
+    /// ROLLBACK
+    #[cfg(feature = "transaction")]
+    Rollback,
+    /// SHOW VARIABLE
+    #[cfg(feature = "metadata")]
+    ShowVariable(Variable),
+    #[cfg(feature = "index")]
+    ShowIndexes(ObjectName),
 }
 
-#[cfg(test)]
-fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
-    use crate::{parse_sql::parse, translate::translate};
-
-    let parsed = &parse(expected).unwrap()[0];
-    let expected = translate(parsed);
-    assert_eq!(actual, expected);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Assignment {
+    pub id: String,
+    pub value: Expr,
 }
 
-#[cfg(test)]
-fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
-    use crate::{parse_sql::parse_expr, translate::translate_expr};
-
-    let parsed = &parse_expr(expected).unwrap();
-    let expected = translate_expr(parsed);
-    assert_eq!(actual.try_into(), expected);
+#[cfg(feature = "metadata")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Variable {
+    Tables,
+    Version,
 }

@@ -3,12 +3,14 @@ mod error;
 
 pub use error::SelectError;
 
+use super::fetch::fetch_relation_columns;
+
 use {
     self::blend::Blend,
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::fetch_columns,
+        fetch::{fetch_join_columns, fetch_relation_rows},
         filter::Filter,
         join::Join,
         limit::Limit,
@@ -16,82 +18,34 @@ use {
     },
     crate::{
         ast::{Query, Select, SelectItem, SetExpr, TableWithJoins},
-        data::{get_name, Row, Table},
+        data::{get_alias, get_name, Row},
         result::{Error, Result},
         store::GStore,
     },
-    futures::stream::{self, Stream, StreamExt, TryStream, TryStreamExt},
+    async_recursion::async_recursion,
+    futures::stream::{StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
     std::{iter::once, rc::Rc},
 };
 
-#[cfg(feature = "index")]
-use {super::evaluate::evaluate, crate::ast::IndexItem};
-
-async fn fetch_blended<'a>(
-    storage: &'a dyn GStore,
-    table: Table<'a>,
-    columns: Rc<[String]>,
-) -> Result<impl Stream<Item = Result<BlendContext<'a>>> + 'a> {
-    let table_name = table.get_name();
-
-    #[cfg(feature = "index")]
-    let rows = {
-        #[derive(Iterator)]
-        enum Rows<I1, I2> {
-            FullScan(I1),
-            Indexed(I2),
-        }
-
-        match table.get_index() {
-            Some(IndexItem {
-                name: index_name,
-                asc,
-                cmp_expr,
-            }) => {
-                let cmp_value = match cmp_expr {
-                    Some((op, expr)) => {
-                        let evaluated = evaluate(storage, None, None, expr).await?;
-
-                        Some((op, evaluated.try_into()?))
-                    }
-                    None => None,
-                };
-
-                storage
-                    .scan_indexed_data(table_name, index_name, *asc, cmp_value)
-                    .await
-                    .map(Rows::Indexed)?
-            }
-            None => storage.scan_data(table_name).await.map(Rows::FullScan)?,
-        }
-    };
-    #[cfg(not(feature = "index"))]
-    let rows = storage.scan_data(table_name).await?;
-
-    let rows = rows.map(move |data| {
-        let (_, row) = data?;
-        let row = Some(row);
-        let columns = Rc::clone(&columns);
-
-        Ok(BlendContext::new(table.get_alias(), columns, row, None))
-    });
-
-    Ok(stream::iter(rows))
-}
-
-fn get_labels<'a>(
+pub fn get_labels<'a>(
     projection: &[SelectItem],
     table_alias: &str,
     columns: &'a [String],
-    join_columns: &'a [(&String, Vec<String>)],
+    join_columns: Option<&'a [(&String, Vec<String>)]>,
 ) -> Result<Vec<String>> {
     #[derive(Iterator)]
-    enum Labeled<I1, I2, I3, I4> {
+    enum Labeled<I1, I2, I3, I4, I5> {
         Err(I1),
-        Wildcard(I2),
-        QualifiedWildcard(I3),
-        Once(I4),
+        Wildcard(Wildcard<I2, I3>),
+        QualifiedWildcard(I4),
+        Once(I5),
+    }
+
+    #[derive(Iterator)]
+    enum Wildcard<I2, I3> {
+        WithJoin(I2),
+        WithoutJoin(I3),
     }
 
     let err = |e| Labeled::Err(once(Err(e)));
@@ -114,12 +68,15 @@ fn get_labels<'a>(
         .flat_map(|item| match item {
             SelectItem::Wildcard => {
                 let labels = to_labels(columns);
-                let join_labels = join_columns
-                    .iter()
-                    .flat_map(|(_, columns)| to_labels(columns));
-                let labels = labels.chain(join_labels).map(Ok);
-
-                Labeled::Wildcard(labels)
+                if let Some(join_columns) = join_columns {
+                    let join_labels = join_columns
+                        .iter()
+                        .flat_map(|(_, columns)| to_labels(columns));
+                    let labels = labels.chain(join_labels).map(Ok);
+                    return Labeled::Wildcard(Wildcard::WithJoin(labels));
+                };
+                let labels = labels.map(Ok);
+                Labeled::Wildcard(Wildcard::WithoutJoin(labels))
             }
             SelectItem::QualifiedWildcard(target) => {
                 let target_table_alias = try_into!(get_name(target));
@@ -128,16 +85,19 @@ fn get_labels<'a>(
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));
                 }
 
-                let columns = join_columns
-                    .iter()
-                    .find(|(table_alias, _)| table_alias == &target_table_alias)
-                    .map(|(_, columns)| columns)
-                    .ok_or_else(|| {
-                        SelectError::TableAliasNotFound(target_table_alias.to_string()).into()
-                    });
-                let columns = try_into!(columns);
-                let labels = to_labels(columns).map(Ok);
-
+                if let Some(join_columns) = join_columns {
+                    let columns = join_columns
+                        .iter()
+                        .find(|(table_alias, _)| table_alias == &target_table_alias)
+                        .map(|(_, columns)| columns)
+                        .ok_or_else(|| {
+                            SelectError::TableAliasNotFound(target_table_alias.to_string()).into()
+                        });
+                    let columns = try_into!(columns);
+                    let labels = to_labels(columns);
+                    return Labeled::QualifiedWildcard(labels.map(Ok));
+                }
+                let labels = to_labels(&[]).map(Ok);
                 Labeled::QualifiedWildcard(labels)
             }
             SelectItem::Expr { label, .. } => Labeled::Once(once(Ok(label.to_owned()))),
@@ -145,12 +105,16 @@ fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
+#[async_recursion(?Send)]
 pub async fn select_with_labels<'a>(
     storage: &'a dyn GStore,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
     with_labels: bool,
-) -> Result<(Vec<String>, impl TryStream<Ok = Row, Error = Error> + 'a)> {
+) -> Result<(
+    Vec<String>,
+    impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
+)> {
     let Select {
         from: table_with_joins,
         selection: where_clause,
@@ -166,40 +130,37 @@ pub async fn select_with_labels<'a>(
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
-    let table = Table::new(relation)?;
+    let columns = fetch_relation_columns(storage, relation).await?;
+    let columns = Rc::from(columns);
+    let rows = {
+        let columns = Rc::clone(&columns);
+        fetch_relation_rows(storage, relation, &None)
+            .await?
+            .map(move |row| {
+                let row = Some(row?);
+                let columns = Rc::clone(&columns);
+                let alias = get_alias(relation)?;
+                Ok(BlendContext::new(alias, columns, row, None))
+            })
+    };
 
-    let columns = fetch_columns(storage, table.get_name()).await?;
-    let join_columns = stream::iter(joins.iter())
-        .map(Ok::<_, Error>)
-        .and_then(|join| {
-            let table = Table::new(&join.relation);
-
-            async move {
-                let table = table?;
-                let table_alias = table.get_alias();
-                let table_name = table.get_name();
-
-                let columns = fetch_columns(storage, table_name).await?;
-
-                Ok((table_alias, columns))
-            }
-        })
-        .try_collect::<Vec<_>>()
-        .await?;
-
+    let join_columns = fetch_join_columns(joins, storage).await?;
     let labels = if with_labels {
-        get_labels(projection, table.get_alias(), &columns, &join_columns)?
+        get_labels(
+            projection,
+            get_alias(relation)?,
+            &columns,
+            Some(&join_columns),
+        )?
     } else {
         vec![]
     };
 
-    let columns = Rc::from(columns);
     let join_columns = join_columns
         .into_iter()
         .map(|(_, columns)| columns)
         .map(Rc::from)
         .collect::<Vec<_>>();
-
     let join = Join::new(
         storage,
         joins,
@@ -228,7 +189,6 @@ pub async fn select_with_labels<'a>(
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
     let sort = Sort::new(storage, filter_context, order_by);
 
-    let rows = fetch_blended(storage, table, columns).await?;
     let rows = join.apply(rows).await?;
     let rows = rows.try_filter_map(move |blend_context| {
         let filter = Rc::clone(&filter);
@@ -259,7 +219,7 @@ pub async fn select<'a>(
     storage: &'a dyn GStore,
     query: &'a Query,
     filter_context: Option<Rc<FilterContext<'a>>>,
-) -> Result<impl TryStream<Ok = Row, Error = Error> + 'a> {
+) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
     select_with_labels(storage, query, filter_context, false)
         .await
         .map(|(_, rows)| rows)

@@ -40,11 +40,6 @@ test_case!(migrate, async move {
             TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into(),
             "SELECT * FROM Test NATURAL JOIN Test",
         ),
-        (
-            TranslateError::UnsupportedQueryTableFactor("(SELECT * FROM Test) AS A".to_owned())
-                .into(),
-            "SELECT * FROM (SELECT * FROM Test) as A;",
-        ),
     ];
 
     for (error, sql) in error_cases {

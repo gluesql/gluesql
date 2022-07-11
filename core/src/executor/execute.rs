@@ -8,7 +8,7 @@ use {
     },
     crate::{
         ast::{DataType, SetExpr, Statement, Values},
-        data::{get_name, Row, Schema, Value},
+        data::{Row, Schema, Value},
         executor::limit::Limit,
         result::MutResult,
         store::{GStore, GStoreMut},
@@ -28,6 +28,7 @@ use {
     crate::data::SchemaIndex,
 };
 
+use crate::data::get_name;
 #[cfg(feature = "metadata")]
 use crate::{ast::Variable, result::TrySelf};
 
@@ -206,7 +207,6 @@ pub async fn execute<T: GStore + GStoreMut>(
 
                                 async move {
                                     row.validate(&column_defs)?;
-
                                     Ok(row)
                                 }
                             })
@@ -309,10 +309,8 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .map_ok(|Row(values)| values)
                     .try_collect::<Vec<_>>()
                     .await?;
-
                 Ok((labels, rows))
             });
-
             Ok((storage, Payload::Select { labels, rows }))
         }
         Statement::ShowColumns { table_name } => {
