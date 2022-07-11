@@ -48,6 +48,7 @@ default = [
 	"memory-storage",
 	"shared-memory-storage",
 	"sled-storage",
+	"csv-storage",
 ]
 
 # Storage Maker
