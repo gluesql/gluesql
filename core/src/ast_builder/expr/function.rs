@@ -13,6 +13,7 @@ pub enum FunctionNode {
     Floor(ExprNode),
     Left(ExprNode, ExprNode),
     Right(ExprNode, ExprNode),
+    Upper(ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Expr {
@@ -51,6 +52,11 @@ impl TryFrom<FunctionNode> for Expr {
                     .map(Box::new)
                     .map(Expr::Function)
             }),
+            FunctionNode::Upper(expr_node)=>expr_node
+                .try_into()
+                .map(Function::Upper)
+                .map(Box::new)
+                .map(Expr::Function),
         }
     }
 }
@@ -65,13 +71,14 @@ impl ExprNode {
     pub fn floor(self) -> ExprNode {
         floor(self)
     }
-
     pub fn left(self, size: Self) -> Self {
         left(self, size)
     }
-
     pub fn right(self, size: Self) -> Self {
         right(self, size)
+    }
+    pub fn upper(self) -> ExprNode {
+        upper(self)
     }
 }
 
@@ -94,11 +101,13 @@ pub fn left<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode 
 pub fn right<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Right(expr.into(), size.into())))
 }
+pub fn upper<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Upper(expr.into())))
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{abs, col, expr, floor, ifnull, left, num, right, test_expr, text};
-
+    use crate::ast_builder::{abs, col, expr, floor, ifnull, left, num, right, test_expr, text,upper};
     #[test]
     fn function_abs() {
         let actual = abs(col("num"));
@@ -151,6 +160,17 @@ mod tests {
 
         let actual = expr("GlueSQL").right(num(2));
         let expected = "RIGHT(GlueSQL, 2)";
+        test_expr(actual, expected);
+    }
+    #[test]
+    fn function_upper() {
+        // Upper
+        let actual = upper(text("ABC"));
+        let expected = "UPPER('ABC')";
+        test_expr(actual, expected);
+
+        let actual = expr("HoHo").upper();
+        let expected = "UPPER(HoHo)";
         test_expr(actual, expected);
     }
 }
