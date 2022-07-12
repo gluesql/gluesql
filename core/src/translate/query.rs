@@ -143,6 +143,22 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                 }),
             index: None, // query execution plan
         }),
+        SqlTableFactor::Derived {
+            subquery, alias, ..
+        } => {
+            if let Some(alias) = alias {
+                Ok(TableFactor::Derived {
+                    subquery: translate_query(subquery)?,
+                    alias: TableAlias {
+                        name: alias.name.value.to_owned(),
+                        columns: translate_idents(&alias.columns),
+                    },
+                })
+            } else {
+                Err(TranslateError::LackOfAlias.into())
+            }
+        }
+
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
     }
 }

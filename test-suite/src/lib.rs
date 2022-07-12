@@ -11,6 +11,7 @@ pub mod error;
 pub mod filter;
 pub mod function;
 pub mod index;
+pub mod inline_view;
 pub mod join;
 pub mod limit;
 pub mod metadata;
@@ -67,6 +68,7 @@ macro_rules! generate_store_tests {
         glue!(limit, limit::limit);
         glue!(error, error::error);
         glue!(filter, filter::filter);
+        glue!(inline_view, inline_view::inline_view);
         glue!(unary_operator, unary_operator::unary_operator);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
@@ -110,6 +112,7 @@ macro_rules! generate_store_tests {
         glue!(sql_types, data_type::sql_types::sql_types);
         glue!(showcolumns, showcolumns::showcolumns);
         glue!(int8, data_type::int8::int8);
+        glue!(int16, data_type::int16::int16);
         glue!(int32, data_type::int32::int32);
         glue!(int64, data_type::int64::int64);
         glue!(int128, data_type::int128::int128);

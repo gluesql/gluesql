@@ -2,6 +2,7 @@ use bigdecimal::BigDecimal;
 
 pub trait BigDecimalExt {
     fn to_i8(&self) -> Option<i8>;
+    fn to_i16(&self) -> Option<i16>;
     fn to_i32(&self) -> Option<i32>;
     fn to_i64(&self) -> Option<i64>;
     fn to_i128(&self) -> Option<i128>;
@@ -12,6 +13,10 @@ impl BigDecimalExt for BigDecimal {
     fn to_i8(&self) -> Option<i8> {
         self.is_integer()
             .then(|| bigdecimal::ToPrimitive::to_i8(self))?
+    }
+    fn to_i16(&self) -> Option<i16> {
+        self.is_integer()
+            .then(|| bigdecimal::ToPrimitive::to_i16(self))?
     }
     fn to_i32(&self) -> Option<i32> {
         self.is_integer()

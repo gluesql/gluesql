@@ -1,10 +1,11 @@
 use {
+    super::fetch::fetch_relation_rows,
     crate::{
         ast::{
             Expr, Join as AstJoin, JoinConstraint, JoinExecutor as AstJoinExecutor,
-            JoinOperator as AstJoinOperator,
+            JoinOperator as AstJoinOperator, TableFactor,
         },
-        data::{Key, Row, Table},
+        data::{get_alias, Key, Row},
         executor::{
             context::{BlendContext, FilterContext},
             evaluate::evaluate,
@@ -57,7 +58,6 @@ impl<'a> Join<'a> {
             .join_clauses
             .iter()
             .zip(self.join_columns.iter().map(Rc::clone));
-
         stream::iter(joins)
             .map(Ok)
             .try_fold(init_rows, |rows, (join_clause, join_columns)| {
@@ -90,13 +90,11 @@ async fn join<'a>(
         join_operator,
         join_executor,
     } = ast_join;
-    let table = Table::new(relation)?;
-    let table_name = table.get_name();
-    let table_alias = table.get_alias();
+
+    let table_alias = get_alias(relation)?;
     let join_executor = JoinExecutor::new(
         storage,
-        table_name,
-        table_alias,
+        relation,
         Rc::clone(&columns),
         filter_context.as_ref().map(Rc::clone),
         join_executor,
@@ -119,7 +117,7 @@ async fn join<'a>(
         let filter_context = filter_context.as_ref().map(Rc::clone);
         let columns = Rc::clone(&columns);
         let init_context = Rc::new(BlendContext::new(
-            table.get_alias(),
+            table_alias,
             Rc::clone(&columns),
             None,
             Some(Rc::clone(&blend_context)),
@@ -138,14 +136,11 @@ async fn join<'a>(
                 Hash(I2),
                 Empty(I3),
             }
-
             let rows = match join_executor.as_ref() {
                 JoinExecutor::NestedLoop => {
-                    let rows = storage
-                        .scan_data(table_name)
-                        .await
-                        .map(stream::iter)?
-                        .and_then(|(_, row)| future::ok(Cow::Owned(row)))
+                    let rows = fetch_relation_rows(storage, relation, &filter_context).await?;
+                    let rows = rows
+                        .and_then(|row| future::ok(Cow::Owned(row)))
                         .try_filter_map(move |row| {
                             check_where_clause(
                                 storage,
@@ -157,7 +152,6 @@ async fn join<'a>(
                                 row,
                             )
                         });
-
                     Rows::NestedLoop(rows)
                 }
                 JoinExecutor::Hash {
@@ -230,8 +224,7 @@ enum JoinExecutor<'a> {
 impl<'a> JoinExecutor<'a> {
     async fn new(
         storage: &'a dyn GStore,
-        table_name: &'a str,
-        table_alias: &'a str,
+        relation: &TableFactor,
         columns: Rc<[String]>,
         filter_context: Option<Rc<FilterContext<'a>>>,
         ast_join_executor: &'a AstJoinExecutor,
@@ -245,17 +238,15 @@ impl<'a> JoinExecutor<'a> {
             } => (key_expr, value_expr, where_clause),
         };
 
-        let rows_map = storage
-            .scan_data(table_name)
-            .await
-            .map(stream::iter)?
-            .try_filter_map(|(_, row)| {
+        let rows_map = fetch_relation_rows(storage, relation, &filter_context).await?;
+        let rows_map = rows_map
+            .try_filter_map(|row| {
                 let columns = Rc::clone(&columns);
                 let filter_context = filter_context.as_ref().map(Rc::clone);
 
                 async move {
                     let filter_context = Rc::new(FilterContext::new(
-                        table_alias,
+                        get_alias(relation)?,
                         columns,
                         Some(&row),
                         filter_context,
@@ -286,7 +277,6 @@ impl<'a> JoinExecutor<'a> {
             .await?
             .into_iter()
             .into_group_map();
-
         Ok(Self::Hash {
             rows_map,
             value_expr,

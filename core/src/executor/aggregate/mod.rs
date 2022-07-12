@@ -57,7 +57,6 @@ impl<'a> Aggregator<'a> {
                 aggregated: None,
                 next: blend_context,
             });
-
             return Ok(Box::pin(rows));
         }
 
