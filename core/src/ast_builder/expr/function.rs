@@ -177,7 +177,7 @@ mod tests {
         test_expr(actual, expected);
 
         let actual = expr("GlueSQL").reverse();
-        let expected = "REVERSE(GlueSQL')";
+        let expected = "REVERSE(GlueSQL)";
         test_expr(actual, expected);
     }
 }
