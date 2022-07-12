@@ -127,7 +127,6 @@ mod tests {
 
     #[test]
     fn function_upper() {
-        // Upper
         let actual = upper(text("ABC"));
         let expected = "UPPER('ABC')";
         test_expr(actual, expected);
