@@ -2,6 +2,9 @@ mod blend;
 mod error;
 
 pub use error::SelectError;
+use futures::stream;
+
+use crate::prelude::Value;
 
 use super::fetch::fetch_relation_columns;
 
@@ -10,6 +13,7 @@ use {
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
+        evaluate_stateless,
         fetch::{fetch_join_columns, fetch_relation_rows},
         filter::Filter,
         join::Join,
@@ -17,7 +21,7 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins},
+        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
         data::{get_alias, get_name, Row},
         result::{Error, Result},
         store::GStore,
@@ -124,10 +128,38 @@ pub async fn select_with_labels<'a>(
         order_by,
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
-        _ => {
-            // todo
-            return Err(SelectError::Unreachable.into());
-        }
+        SetExpr::Values(Values(values_list)) => {
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+            let labels = values_list
+                .iter()
+                .enumerate()
+                .map(|(i, _)| format!("column{}", i + 1))
+                .collect::<Vec<_>>();
+            let rows = values_list
+                .iter()
+                .map(|values| {
+                    let values = values
+                        .iter()
+                        .map(|value| {
+                            let value: Value =
+                                evaluate_stateless(None, value).unwrap().try_into().unwrap();
+                            value
+                        })
+                        .collect::<Vec<_>>();
+                    Ok(Row(values))
+                })
+                .collect::<Vec<_>>();
+            // let rows = values_list
+            //     .iter()
+            //     .map(|values| Row::new(&column_defs, columns.as_slice(), values));
+            let rows = stream::iter(rows);
+            let rows = limit.apply(rows);
+            // let labels = vec!["column1".to_string(), "column2".to_string()];
+            return Ok((labels, rows));
+            // return rows.try_collect::<Vec<_>>().await;
+        } // _ => {
+          //     return Err(SelectError::Unreachable.into());
+          // }
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
