@@ -136,6 +136,7 @@ mod tests {
         let expected = "UPPER(HoHo)";
         test_expr(actual, expected);
     }
+    #[test]
     fn function_ifnull() {
         let actual = ifnull(text("HELLO"), text("WORLD"));
         let expected = "IFNULL('HELLO', 'WORLD')";
