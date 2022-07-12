@@ -1,0 +1,21 @@
+[package]
+name = "glueseql_indexeddb_storage"
+version = "0.11.0"
+edition = "2021"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
+
+[dependencies]
+gluesql-core = { path = "../../core", version = "0.11.0" }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+indexmap = { version = "1.8", features = ["serde"] }
+rexie = "0.4"
+
+[dev-dependencies]
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.11.0" }
+tokio = { version = "1", features = ["rt", "macros"] }
+futures = "0.3"

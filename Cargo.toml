@@ -31,6 +31,7 @@ test-suite = { package = "gluesql-test-suite", path = "./test-suite", version = 
 memory-storage = { package = "gluesql_memory_storage", path = "./storages/memory-storage", version = "0.11.0", optional = true }
 shared-memory-storage = { package = "gluesql-shared-memory-storage", path = "./storages/shared-memory-storage", version = "0.11.0", optional = true }
 sled-storage = { package = "gluesql_sled_storage", path = "./storages/sled-storage", version = "0.11.0", optional = true }
+indexeddb-storage = { package = "glueseql_indexeddb_storage", path = "./storages/indexeddb-storage", version = "0.11.0", optional = true }
 
 [dev-dependencies]
 futures = "0.3"
