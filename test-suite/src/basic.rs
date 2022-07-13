@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::prelude::Value};
+use {
+    crate::*,
+    gluesql_core::{data::RowError, prelude::Value},
+};
 
 test_case!(basic, async move {
     run!(
@@ -71,6 +74,17 @@ CREATE TABLE TestA (
                 2         "b".to_owned()
             )),
             "VALUES (1, 'a'), (2, 'b')",
+        ),
+        (
+            Err(RowError::NumberOfValuesDifferent),
+            "VALUES (1, 'a'), (2)",
+        ),
+        (
+            Err(RowError::ValuesTypeDifferent(
+                "Text".into(),
+                "Integer".into(),
+            )),
+            "VALUES (1, 'a'), (2, 3)",
         ),
     ];
 
