@@ -9,6 +9,7 @@ use {
 #[derive(Clone)]
 pub enum FunctionNode {
     Abs(ExprNode),
+    Upper(ExprNode),
     IfNull(ExprNode, ExprNode),
     Floor(ExprNode),
     Left(ExprNode, ExprNode),
@@ -24,6 +25,11 @@ impl TryFrom<FunctionNode> for Expr {
             FunctionNode::Abs(expr_node) => expr_node
                 .try_into()
                 .map(Function::Abs)
+                .map(Box::new)
+                .map(Expr::Function),
+            FunctionNode::Upper(expr_node) => expr_node
+                .try_into()
+                .map(Function::Upper)
                 .map(Box::new)
                 .map(Expr::Function),
             FunctionNode::IfNull(expr_node, then_node) => expr_node.try_into().and_then(|expr| {
@@ -65,6 +71,10 @@ impl ExprNode {
     pub fn abs(self) -> ExprNode {
         abs(self)
     }
+
+    pub fn upper(self) -> ExprNode {
+        upper(self)
+    }
     pub fn ifnull(self, another: ExprNode) -> ExprNode {
         ifnull(self, another)
     }
@@ -89,6 +99,9 @@ pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Abs(expr.into())))
 }
 
+pub fn upper<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Upper(expr.into())))
+}
 pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, then: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::IfNull(expr.into(), then.into())))
 }
@@ -112,7 +125,7 @@ pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, col, expr, floor, ifnull, left, num, reverse, right, test_expr, text,
+        abs, col, expr, floor, ifnull, left, num, right, test_expr, text, upper, reverse,
     };
 
     #[test]
@@ -126,6 +139,16 @@ mod tests {
         test_expr(actual, expected);
     }
 
+    #[test]
+    fn function_upper() {
+        let actual = upper(text("ABC"));
+        let expected = "UPPER('ABC')";
+        test_expr(actual, expected);
+
+        let actual = expr("HoHo").upper();
+        let expected = "UPPER(HoHo)";
+        test_expr(actual, expected);
+    }
     #[test]
     fn function_ifnull() {
         let actual = ifnull(text("HELLO"), text("WORLD"));

@@ -14,6 +14,7 @@ impl PartialEq<Value> for i8 {
     fn eq(&self, other: &Value) -> bool {
         match other {
             I8(other) => self == other,
+            I16(other) => (*self as i16) == *other,
             I32(other) => (*self as i32) == *other,
             I64(other) => (*self as i64) == *other,
             I128(other) => (*self as i128) == *other,
@@ -28,6 +29,7 @@ impl PartialOrd<Value> for i8 {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match other {
             I8(other) => self.partial_cmp(other),
+            I16(other) => (*self as i16).partial_cmp(other),
             I32(other) => (*self as i32).partial_cmp(other),
             I64(other) => (*self as i64).partial_cmp(other),
             I128(other) => (*self as i128).partial_cmp(other),
@@ -56,6 +58,17 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I16(rhs) => (lhs as i16)
+                .checked_add(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: I16(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(I16),
             I32(rhs) => (lhs as i32)
                 .checked_add(rhs)
                 .ok_or_else(|| {
@@ -116,6 +129,17 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I16(rhs) => (lhs as i16)
+                .checked_sub(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: I16(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I16),
             I32(rhs) => (lhs as i32)
                 .checked_sub(rhs)
                 .ok_or_else(|| {
@@ -186,6 +210,17 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I16(rhs) => (lhs as i16)
+                .checked_mul(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: I16(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I16),
             I32(rhs) => (lhs as i32)
                 .checked_mul(rhs)
                 .ok_or_else(|| {
@@ -257,6 +292,17 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I16(rhs) => (lhs as i16)
+                .checked_div(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: I16(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I16),
             I32(rhs) => (lhs as i32)
                 .checked_div(rhs)
                 .ok_or_else(|| {
@@ -327,6 +373,17 @@ impl TryBinaryOperator for i8 {
                     .into()
                 })
                 .map(I8),
+            I16(rhs) => (lhs as i16)
+                .checked_rem(rhs)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I8(lhs),
+                        rhs: I16(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I16),
             I32(rhs) => (lhs as i32)
                 .checked_rem(rhs)
                 .ok_or_else(|| {
@@ -653,6 +710,7 @@ mod tests {
         let base = 1_i8;
 
         assert_eq!(base, I8(1));
+        assert_eq!(base, I16(1));
         assert_eq!(base, I32(1));
         assert_eq!(base, I64(1));
         assert_eq!(base, I128(1));
@@ -667,18 +725,21 @@ mod tests {
         let base = 1_i8;
 
         assert_eq!(base.partial_cmp(&I8(0)), Some(Ordering::Greater));
+        assert_eq!(base.partial_cmp(&I16(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&I32(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&I64(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&I128(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&F64(0.0)), Some(Ordering::Greater));
 
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&I16(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
 
         assert_eq!(base.partial_cmp(&I8(2)), Some(Ordering::Less));
+        assert_eq!(base.partial_cmp(&I16(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&I32(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&I64(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&I128(2)), Some(Ordering::Less));
@@ -697,6 +758,7 @@ mod tests {
         let base = 1_i8;
 
         assert_eq!(base.try_add(&I8(1)), Ok(I8(2)));
+        assert_eq!(base.try_add(&I16(1)), Ok(I16(2)));
         assert_eq!(base.try_add(&I32(1)), Ok(I32(2)));
         assert_eq!(base.try_add(&I64(1)), Ok(I64(2)));
         assert_eq!(base.try_add(&I128(1)), Ok(I128(2)));
@@ -723,6 +785,7 @@ mod tests {
         let base = 1_i8;
 
         assert_eq!(base.try_subtract(&I8(1)), Ok(I8(0)));
+        assert_eq!(base.try_subtract(&I16(1)), Ok(I16(0)));
         assert_eq!(base.try_subtract(&I32(1)), Ok(I32(0)));
         assert_eq!(base.try_subtract(&I64(1)), Ok(I64(0)));
         assert_eq!(base.try_subtract(&I128(1)), Ok(I128(0)));
@@ -753,11 +816,13 @@ mod tests {
 
         // 3 * 2 = 6
         assert_eq!(base.try_multiply(&I8(2)), Ok(I8(6)));
+        assert_eq!(base.try_multiply(&I16(2)), Ok(I16(6)));
         assert_eq!(base.try_multiply(&I32(2)), Ok(I32(6)));
         assert_eq!(base.try_multiply(&I64(2)), Ok(I64(6)));
         assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
 
         assert_eq!(base.try_multiply(&I8(-1)), Ok(I8(-3)));
+        assert_eq!(base.try_multiply(&I16(-1)), Ok(I16(-3)));
         assert_eq!(base.try_multiply(&I32(-1)), Ok(I32(-3)));
         assert_eq!(base.try_multiply(&I64(-1)), Ok(I64(-3)));
         assert_eq!(base.try_multiply(&I128(-1)), Ok(I128(-3)));
@@ -788,11 +853,13 @@ mod tests {
         let base = 6_i8;
 
         assert_eq!(base.try_divide(&I8(2)), Ok(I8(3)));
+        assert_eq!(base.try_divide(&I16(2)), Ok(I16(3)));
         assert_eq!(base.try_divide(&I32(2)), Ok(I32(3)));
         assert_eq!(base.try_divide(&I64(2)), Ok(I64(3)));
         assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
 
         assert_eq!(base.try_divide(&I8(-6)), Ok(I8(-1)));
+        assert_eq!(base.try_divide(&I16(-6)), Ok(I16(-1)));
         assert_eq!(base.try_divide(&I32(-6)), Ok(I32(-1)));
         assert_eq!(base.try_divide(&I64(-6)), Ok(I64(-1)));
         assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));
@@ -823,11 +890,13 @@ mod tests {
         let base = 9_i8;
 
         assert_eq!(base.try_modulo(&I8(1)), Ok(I8(0)));
+        assert_eq!(base.try_modulo(&I16(1)), Ok(I16(0)));
         assert_eq!(base.try_modulo(&I32(1)), Ok(I32(0)));
         assert_eq!(base.try_modulo(&I64(1)), Ok(I64(0)));
         assert_eq!(base.try_modulo(&I128(1)), Ok(I128(0)));
 
         assert_eq!(base.try_modulo(&I8(2)), Ok(I8(1)));
+        assert_eq!(base.try_modulo(&I16(2)), Ok(I16(1)));
         assert_eq!(base.try_modulo(&I32(2)), Ok(I32(1)));
         assert_eq!(base.try_modulo(&I64(2)), Ok(I64(1)));
         assert_eq!(base.try_modulo(&I128(2)), Ok(I128(1)));
