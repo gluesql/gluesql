@@ -9,6 +9,8 @@ pub struct CsvStorage(Schema);
 
 impl CsvStorage {
     /// Constructs new `CsvStorage` instance from given CSV file
+    /// It will create one-table-database since single CSV file only stands
+    /// for a single table.
     pub fn read_file(csv_path: &str) -> Result<Self> {
         match csv::ReaderBuilder::new()
             .has_headers(false)
@@ -23,6 +25,13 @@ impl CsvStorage {
                 Ok(CsvStorage(schema?))
             }
         }
+    }
+
+    /// Constructs new `CsvStorage` instance from given directory.
+    /// It will create multi-table-database if there's more than one 
+    /// interpretable CSV files.
+    pub fn read_dir(dir_path: &str) -> Result<Self> {
+        unimplemented!()
     }
 }
 
