@@ -14,6 +14,17 @@ impl Mul<i8> for Interval {
     }
 }
 
+impl Mul<i16> for Interval {
+    type Output = Self;
+
+    fn mul(self, rhs: i16) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(v * rhs as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(v * rhs as i64),
+        }
+    }
+}
+
 impl Mul<i32> for Interval {
     type Output = Self;
 
@@ -66,6 +77,14 @@ impl Mul<Interval> for i8 {
     }
 }
 
+impl Mul<Interval> for i16 {
+    type Output = Interval;
+
+    fn mul(self, rhs: Interval) -> Interval {
+        rhs * self
+    }
+}
+
 impl Mul<Interval> for i32 {
     type Output = Interval;
 
@@ -102,6 +121,17 @@ impl Div<i8> for Interval {
     type Output = Self;
 
     fn div(self, rhs: i8) -> Self {
+        match self {
+            Interval::Month(v) => Interval::Month(v / rhs as i32),
+            Interval::Microsecond(v) => Interval::Microsecond(v / rhs as i64),
+        }
+    }
+}
+
+impl Div<i16> for Interval {
+    type Output = Self;
+
+    fn div(self, rhs: i16) -> Self {
         match self {
             Interval::Month(v) => Interval::Month(v / rhs as i32),
             Interval::Microsecond(v) => Interval::Microsecond(v / rhs as i64),
@@ -154,6 +184,17 @@ impl Div<f64> for Interval {
 }
 
 impl Div<Interval> for i8 {
+    type Output = Interval;
+
+    fn div(self, rhs: Interval) -> Interval {
+        match rhs {
+            Interval::Month(v) => Interval::Month(self as i32 / v),
+            Interval::Microsecond(v) => Interval::Microsecond(self as i64 / v),
+        }
+    }
+}
+
+impl Div<Interval> for i16 {
     type Output = Interval;
 
     fn div(self, rhs: Interval) -> Interval {
@@ -219,6 +260,9 @@ mod tests {
         assert_eq!(Month(2) * 3_i8, Month(6));
         assert_eq!(2_i8 * Month(3), Month(6));
 
+        assert_eq!(Month(2) * 3_i16, Month(6));
+        assert_eq!(2_i16 * Month(3), Month(6));
+
         assert_eq!(Month(2) * 3_i32, Month(6));
         assert_eq!(2_i32 * Month(3), Month(6));
 
@@ -233,6 +277,9 @@ mod tests {
 
         assert_eq!(Month(6) / 3_i8, Month(2));
         assert_eq!(6_i8 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_i16, Month(2));
+        assert_eq!(6_i16 / Month(2), Month(3));
 
         assert_eq!(Month(6) / 3_i32, Month(2));
         assert_eq!(6_i32 / Month(2), Month(3));
@@ -249,6 +296,9 @@ mod tests {
         assert_eq!(Microsecond(2) * 3_i8, Microsecond(6));
         assert_eq!(2_i8 * Microsecond(3), Microsecond(6));
 
+        assert_eq!(Microsecond(2) * 3_i16, Microsecond(6));
+        assert_eq!(2_i16 * Microsecond(3), Microsecond(6));
+
         assert_eq!(Microsecond(2) * 3_i32, Microsecond(6));
         assert_eq!(2_i32 * Microsecond(3), Microsecond(6));
 
@@ -260,6 +310,9 @@ mod tests {
 
         assert_eq!(Microsecond(6) / 3_i8, Microsecond(2));
         assert_eq!(6_i8 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_i16, Microsecond(2));
+        assert_eq!(6_i16 / Microsecond(2), Microsecond(3));
 
         assert_eq!(Microsecond(6) / 3_i32, Microsecond(2));
         assert_eq!(6_i32 / Microsecond(2), Microsecond(3));

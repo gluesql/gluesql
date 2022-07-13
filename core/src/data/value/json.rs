@@ -37,6 +37,7 @@ impl TryFrom<Value> for JsonValue {
         match value {
             Value::Bool(v) => Ok(JsonValue::Bool(v)),
             Value::I8(v) => Ok(v.into()),
+            Value::I16(v) => Ok(v.into()),
             Value::I32(v) => Ok(v.into()),
             Value::I64(v) => Ok(v.into()),
             Value::I128(v) => JsonNumber::from_str(&v.to_string())
@@ -124,6 +125,10 @@ mod tests {
     fn value_to_json() {
         assert_eq!(Value::Bool(true).try_into(), Ok(JsonValue::Bool(true)));
         assert_eq!(Value::I8(16).try_into(), Ok(JsonValue::Number(16.into())));
+        assert_eq!(
+            Value::I16(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
         assert_eq!(
             Value::I32(100).try_into(),
             Ok(JsonValue::Number(100.into()))
