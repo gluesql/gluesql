@@ -76,14 +76,11 @@ CREATE TABLE TestA (
             "VALUES (1, 'a'), (2, 'b')",
         ),
         (
-            Err(RowError::NumberOfValuesDifferent),
+            Err(RowError::NumberOfValuesDifferent.into()),
             "VALUES (1, 'a'), (2)",
         ),
         (
-            Err(RowError::ValuesTypeDifferent(
-                "Text".into(),
-                "Integer".into(),
-            )),
+            Err(RowError::ValuesTypeDifferent("Text".into(), "Integer".into()).into()),
             "VALUES (1, 'a'), (2, 3)",
         ),
     ];
