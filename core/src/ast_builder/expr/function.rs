@@ -11,6 +11,7 @@ pub enum FunctionNode {
     Abs(ExprNode),
     Upper(ExprNode),
     IfNull(ExprNode, ExprNode),
+    Ceil(ExprNode),
     Floor(ExprNode),
     Asin(ExprNode),
     Acos(ExprNode),
@@ -45,6 +46,11 @@ impl TryFrom<FunctionNode> for Expr {
                     .map(Box::new)
                     .map(Expr::Function)
             }),
+            FunctionNode::Ceil(expr_node) => expr_node
+                .try_into()
+                .map(Function::Ceil)
+                .map(Box::new)
+                .map(Expr::Function),
             FunctionNode::Floor(expr_node) => expr_node
                 .try_into()
                 .map(Function::Floor)
@@ -103,12 +109,14 @@ impl ExprNode {
     pub fn abs(self) -> ExprNode {
         abs(self)
     }
-
     pub fn upper(self) -> ExprNode {
         upper(self)
     }
     pub fn ifnull(self, another: ExprNode) -> ExprNode {
         ifnull(self, another)
+    }
+    pub fn ceil(self) -> ExprNode {
+        ceil(self)
     }
     pub fn floor(self) -> ExprNode {
         floor(self)
@@ -148,6 +156,9 @@ pub fn upper<T: Into<ExprNode>>(expr: T) -> ExprNode {
 pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, then: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::IfNull(expr.into(), then.into())))
 }
+pub fn ceil<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Ceil(expr.into())))
+}
 pub fn floor<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Floor(expr.into())))
 }
@@ -183,7 +194,7 @@ pub fn right<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, col, cos, expr, floor, ifnull, left, num, pi, right, sin, tan,
+        abs, acos, asin, atan, col, cos, expr, ceil, floor, ifnull, left, num, pi, right, sin, tan,
         test_expr, text, upper,
     };
 
@@ -216,6 +227,17 @@ mod tests {
 
         let actual = col("updated_at").ifnull(col("created_at"));
         let expected = "IFNULL(updated_at, created_at)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_ceil() {
+        let actual = ceil(col("num"));
+        let expected = "CEIL(num)";
+        test_expr(actual, expected);
+
+        let actual = expr("base - 10").ceil();
+        let expected = "CEIL(base - 10)";
         test_expr(actual, expected);
     }
 
