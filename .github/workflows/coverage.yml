@@ -29,8 +29,7 @@ jobs:
       - run: export RUSTFLAGS="-Cinstrument-coverage"
       - name: Build
         run: cargo build --all-features --verbose
-      - run: export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
-      - run: cargo test
+      - run: LLVM_PROFILE_FILE="gluesql-%p-%m.profraw" cargo test --verbose
       - run: grcov . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing -o ./target/debug/coverage/
       - run: grcov . --binary-path ./target/debug/ -t coveralls -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
       - name: Coveralls
