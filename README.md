@@ -144,7 +144,7 @@ GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedd
 GlueSQL currently supports a limited subset of queries. It's being actively developed.
 
 #### Data Types
-- **Numeric** `INT(8)`, `INTEGER`, `FLOAT`, `DECIMAL`
+- **Numeric** `INT(8)`, `INT(16)`, `INT(32)`, `INT(64)`, `INT(128)`, `INTEGER`, `FLOAT`, `DECIMAL`
 - **Date** `DATE`, `TIMESTAMP`, `TIME` `INTERVAL`
 - `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`
 
