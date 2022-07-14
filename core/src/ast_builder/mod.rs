@@ -21,7 +21,7 @@ pub use expr::{col, expr, nested, num, text, ExprNode};
 
 /// Available aggregate or normal SQL functions
 pub use expr::{
-    aggregate::{max, sum, AggregateNode},
+    aggregate::{avg, max, min, sum, variance, AggregateNode},
     function::{
         abs, acos, asin, atan, cos, floor, ifnull, left, pi, reverse, right, sin, tan, upper,
         FunctionNode,
