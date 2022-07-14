@@ -2,7 +2,7 @@ use {
     csv::StringRecord,
     gluesql_core::{
         data::Schema,
-        result::{Error, Result},
+        result::{Error::StorageMsg, Result},
     },
     std::{
         fs::{self, DirEntry, ReadDir},
@@ -46,7 +46,7 @@ impl CsvStorage {
 pub fn read_dir(dir_path: impl AsRef<Path>) -> Result<ReadDir> {
     match fs::read_dir(dir_path) {
         Ok(read_dir) => Ok(read_dir),
-        Err(_) => Err(Error::StorageMsg("Cannot read dir from given path".into())),
+        Err(_) => Err(StorageMsg("Cannot read dir from given path".into())),
     }
 }
 
@@ -55,9 +55,7 @@ pub fn fetch_schema_from_path(csv_path: impl AsRef<Path>) -> Result<Schema> {
         .has_headers(false)
         .from_path(csv_path)
     {
-        Err(_) => Err(Error::StorageMsg(
-            "Cannot read CSV file from given path".into(),
-        )),
+        Err(_) => Err(StorageMsg("Cannot read CSV file from given path".into())),
         Ok(mut rdr) => {
             let records: Result<Vec<_>> = rdr.records().map(check_record).collect();
             check_schema(&records?)
@@ -71,7 +69,7 @@ pub fn fetch_schema_from_entry(entry: io::Result<DirEntry>) -> Result<Schema> {
             let csv_path = dir_entry.path();
             fetch_schema_from_path(csv_path)
         }
-        Err(_) => Err(Error::StorageMsg("Cannot read entry from given dir".into())),
+        Err(_) => Err(StorageMsg("Cannot read entry from given dir".into())),
     }
 }
 
@@ -79,9 +77,7 @@ pub fn check_record(
     record_result: std::result::Result<StringRecord, csv::Error>,
 ) -> Result<StringRecord> {
     match record_result {
-        Err(_) => Err(Error::StorageMsg(
-            "Cannot read CSV file from given path".into(),
-        )),
+        Err(_) => Err(StorageMsg("Cannot read CSV file from given path".into())),
         Ok(record) => Ok(record),
     }
 }
@@ -89,7 +85,7 @@ pub fn check_record(
 pub fn check_schema(records: &[StringRecord]) -> Result<Schema> {
     // 1. Check if CSV file has column header
     match records.get(0) {
-        None => Err(Error::StorageMsg(
+        None => Err(StorageMsg(
             "Cannot read column headers from given CSV file".into(),
         )),
         Some(_header) => {
