@@ -1,0 +1,38 @@
+name: Coverage - grcov
+
+on:
+  push:
+    branches:
+      - "main"
+      - "**"
+  pull_request:
+    branches:
+      - "main"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Rust
+        uses: hecrj/setup-rust-action@v1
+      - name: Install grcov
+        uses: actions-rs/install@v0.1
+        with:
+          crate: grcov
+          version: latest
+          use-tool-cache: true
+      - name: Setup & Run grcov
+        run: |
+          rustup component add llvm-tools-preview
+          export RUSTFLAGS="-Cinstrument-coverage"
+          cargo build --verbose
+          export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
+          cargo test
+          grcov . --binary-path ./target/debug/ -t coveralls -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
