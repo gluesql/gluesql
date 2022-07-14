@@ -31,7 +31,7 @@ jobs:
           export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
           cargo test
           grcov . --binary-path ./target/debug/ -t coveralls -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
-			- name: Coveralls
-				uses: coverallsapp/github-action@master
-				with:
-					github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
