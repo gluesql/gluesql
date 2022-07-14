@@ -15,8 +15,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Rust
-        uses: hecrj/setup-rust-action@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - name: Build
         run: cargo build --all-features --verbose
       - run: rustup component add llvm-tools-preview
