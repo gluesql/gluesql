@@ -1,4 +1,4 @@
-name: Coverage
+name: Coverage - grcov
 
 on:
   push:
