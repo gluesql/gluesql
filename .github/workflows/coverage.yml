@@ -19,8 +19,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - name: Build
-        run: cargo build --all-features --verbose
       - run: rustup component add llvm-tools-preview
       - name: Install grcov
         uses: actions-rs/install@v0.1
@@ -29,6 +27,8 @@ jobs:
           version: latest
           use-tool-cache: true
       - run: export RUSTFLAGS="-Cinstrument-coverage"
+      - name: Build
+        run: cargo build --all-features --verbose
       - run: export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
       - run: cargo test
       - run: grcov . --binary-path ./target/debug/ -t coveralls -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
