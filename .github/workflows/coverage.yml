@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Setup Rust
         uses: hecrj/setup-rust-action@v1
+      - name: Build
+        run: cargo build --all-features --verbose
       - run: rustup component add llvm-tools-preview
       - name: Install grcov
         uses: actions-rs/install@v0.1
@@ -24,8 +26,6 @@ jobs:
           crate: grcov
           version: latest
           use-tool-cache: true
-      - name: Build
-        run: cargo build --all-features --verbose
       - run: export RUSTFLAGS="-Cinstrument-coverage"
       - run: export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
       - run: cargo test
