@@ -25,12 +25,11 @@ jobs:
           version: latest
           use-tool-cache: true
       - name: Setup & Run grcov
-        run: |
-          export RUSTFLAGS="-Cinstrument-coverage"
-          cargo build --verbose
-          export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
-          cargo test
-          grcov . --binary-path ./target/debug/ -t coveralls -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
+        run: export RUSTFLAGS="-Cinstrument-coverage"
+      - run: cargo build --verbose
+      - run: export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
+      - run: cargo test
+      - run: grcov . --binary-path ./target/debug/ -t coveralls -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
