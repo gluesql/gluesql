@@ -3,7 +3,7 @@ name: Coverage
 on:
   push:
     branches:
-			- "main"
+      - "main"
       - "**"
   pull_request:
     branches:
@@ -25,8 +25,8 @@ jobs:
           version: latest
           use-tool-cache: true
       - name: Setup & Run grcov
-        run: rustup component add llvm-tools-preview
         run: |
+        	rustup component add llvm-tools-preview
           export RUSTFLAGS="-Cinstrument-coverage"
           cargo build --verbose
           export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
