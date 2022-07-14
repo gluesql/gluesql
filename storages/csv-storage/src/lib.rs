@@ -11,7 +11,11 @@ use {
     },
 };
 
-/// A type that contains data info of imported CSV file.
+/// A type that contains database info of imported CSV file(s).
+///
+/// ## Fields
+///
+/// `pub db`: A database, which is a list of table schemas
 pub struct CsvStorage {
     pub db: Vec<Schema>,
 }
@@ -39,16 +43,6 @@ impl CsvStorage {
     }
 }
 
-pub fn fetch_schema_from_entry(entry: io::Result<DirEntry>) -> Result<Schema> {
-    match entry {
-        Ok(dir_entry) => {
-            let csv_path = dir_entry.path();
-            fetch_schema_from_path(csv_path)
-        }
-        Err(_) => Err(Error::StorageMsg("Cannot read entry from given dir".into())),
-    }
-}
-
 pub fn read_dir(dir_path: impl AsRef<Path>) -> Result<ReadDir> {
     match fs::read_dir(dir_path) {
         Ok(read_dir) => Ok(read_dir),
@@ -68,6 +62,16 @@ pub fn fetch_schema_from_path(csv_path: impl AsRef<Path>) -> Result<Schema> {
             let records: Result<Vec<_>> = rdr.records().map(check_record).collect();
             check_schema(&records?)
         }
+    }
+}
+
+pub fn fetch_schema_from_entry(entry: io::Result<DirEntry>) -> Result<Schema> {
+    match entry {
+        Ok(dir_entry) => {
+            let csv_path = dir_entry.path();
+            fetch_schema_from_path(csv_path)
+        }
+        Err(_) => Err(Error::StorageMsg("Cannot read entry from given dir".into())),
     }
 }
 
