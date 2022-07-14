@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "main"
-      - "**"
   pull_request:
     branches:
       - "main"
@@ -18,18 +17,21 @@ jobs:
     steps:
       - name: Setup Rust
         uses: hecrj/setup-rust-action@v1
-      - name: Install Tarpaulin
+      - name: Install grcov
         uses: actions-rs/install@v0.1
         with:
-          crate: cargo-tarpaulin
+          crate: grcov
           version: latest
           use-tool-cache: true
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Generate Code Coverage
+      - name: Setup & Run grcov
+        run: rustup component add llvm-tools-preview
         run: |
-          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml --exclude-files cli --exclude gluesql-js
-      - name: Upload to codecov.io
-        uses: codecov/codecov-action@v2
+          export RUSTFLAGS="-Cinstrument-coverage"
+          cargo build --verbose
+          export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
+          cargo test
+          grcov . --binary-path ./target/debug/ -t coveralls -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
         with:
-          fail_ci_if_error: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
