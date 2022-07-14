@@ -23,7 +23,7 @@ pub use expr::{col, expr, nested, num, text, ExprNode};
 pub use expr::{
     aggregate::{max, sum, AggregateNode},
     function::{
-        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, pi, right, sin, tan, upper,
+        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, pi, reverse, right, sin, tan, upper,
         FunctionNode,
     },
 };

@@ -22,6 +22,7 @@ pub enum FunctionNode {
     Pi,
     Left(ExprNode, ExprNode),
     Right(ExprNode, ExprNode),
+    Reverse(ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Expr {
@@ -101,6 +102,11 @@ impl TryFrom<FunctionNode> for Expr {
                     .map(Box::new)
                     .map(Expr::Function)
             }),
+            FunctionNode::Reverse(expr_node) => expr_node
+                .try_into()
+                .map(Function::Reverse)
+                .map(Box::new)
+                .map(Expr::Function),
         }
     }
 }
@@ -144,6 +150,10 @@ impl ExprNode {
     }
     pub fn right(self, size: Self) -> Self {
         right(self, size)
+    }
+
+    pub fn reverse(self) -> ExprNode {
+        reverse(self)
     }
 }
 
@@ -191,11 +201,15 @@ pub fn right<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode
     ExprNode::Function(Box::new(FunctionNode::Right(expr.into(), size.into())))
 }
 
+pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Reverse(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, num, pi, right, sin, tan,
-        test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, num, pi, reverse, right,
+        sin, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -333,6 +347,17 @@ mod tests {
 
         let actual = expr("GlueSQL").right(num(2));
         let expected = "RIGHT(GlueSQL, 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_reverse() {
+        let actual = reverse(text("GlueSQL"));
+        let expected = "REVERSE('GlueSQL')";
+        test_expr(actual, expected);
+
+        let actual = expr("GlueSQL").reverse();
+        let expected = "REVERSE(GlueSQL)";
         test_expr(actual, expected);
     }
 }
