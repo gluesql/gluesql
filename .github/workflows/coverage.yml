@@ -25,7 +25,7 @@ jobs:
           version: latest
           use-tool-cache: true
       - name: Build
-        run: cargo build --all-features--verbose
+        run: cargo build --all-features --verbose
       - run: export RUSTFLAGS="-Cinstrument-coverage"
       - run: export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
       - run: cargo test
