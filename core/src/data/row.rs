@@ -118,7 +118,7 @@ impl Row {
         Ok(())
     }
 
-    pub fn to_rows(exprs_list: &Vec<Vec<Expr>>) -> Result<Vec<Result<Self>>> {
+    pub fn to_rows(exprs_list: &[Vec<Expr>]) -> Result<Vec<Result<Self>>> {
         let rows = exprs_list
             .iter()
             .map(|exprs| Self::to_row(exprs))
@@ -127,9 +127,9 @@ impl Row {
         Ok(rows)
     }
 
-    fn to_row(exprs: &Vec<Expr>) -> Result<Self> {
+    fn to_row(exprs: &[Expr]) -> Result<Self> {
         let values = exprs
-            .into_iter()
+            .iter()
             // .map(|expr| evaluate_stateless(None, expr).unwrap().try_into().unwrap())
             .map(|expr| evaluate_stateless(None, expr))
             .filter_map(Result::ok)
