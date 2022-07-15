@@ -14,18 +14,18 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Setup Rust
-        uses: hecrj/setup-rust-action@v1
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: rustup component add llvm-tools-preview
       - name: Install grcov
         uses: actions-rs/install@v0.1
         with:
           crate: grcov
           version: latest
           use-tool-cache: true
-      - name: llvm-tools-preview
-        run: rustup component add llvm-tools-preview
       - name: build
         env:
           RUSTFLAGS: -Cinstrument-coverage
