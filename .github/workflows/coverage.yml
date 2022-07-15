@@ -36,7 +36,9 @@ jobs:
           LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
         run: cargo test --all-features --verbose
       - name: Run grcov
-        run: grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing -o ./coverage/lcov.info
+        run: |
+          mkdir coverage
+          grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing -o ./coverage/lcov.info
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
