@@ -38,7 +38,15 @@ jobs:
       - name: Run grcov
         run: |
           mkdir coverage
-          grcov . --binary-path ./target/debug/ -s . -t lcov --branch --ignore-not-existing --ignore "/*" -o ./coverage/lcov.info
+          grcov . \
+            --binary-path ./target/debug/ \
+            -s . \
+            -t lcov \
+            --branch \
+            --ignore-not-existing \
+            --ignore "/*" \
+            --excl-line "#\\[derive\\("
+            -o ./coverage/lcov.info
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
