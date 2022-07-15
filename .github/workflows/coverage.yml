@@ -45,7 +45,7 @@ jobs:
             --branch \
             --ignore-not-existing \
             --ignore "/*" \
-            --excl-line "#\\[derive\\("
+            --excl-line "#\\[derive\\(" \
             -o ./coverage/lcov.info
       - name: Coveralls
         uses: coverallsapp/github-action@master
