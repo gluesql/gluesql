@@ -7,7 +7,7 @@ use {
     std::{
         fs::{self, DirEntry, ReadDir},
         io,
-        path::Path,
+        path::{Path, PathBuf},
     },
 };
 
@@ -21,9 +21,7 @@ pub struct CsvStorage {
 }
 
 impl CsvStorage {
-    /// Constructs new `CsvStorage` instance from given CSV file
-    /// It will create one-table-database since single CSV file only stands
-    /// for a single table.
+    /// Constructs single-table database from given CSV file.
     pub fn read_file(csv_path: impl AsRef<Path>) -> Result<Self> {
         let schema = fetch_schema_from_path(csv_path)?;
         let db = vec![schema];
@@ -31,25 +29,49 @@ impl CsvStorage {
         Ok(CsvStorage { db })
     }
 
-    /// Constructs new `CsvStorage` instance from given directory.
-    /// It will create multi-table-database if there's more than one
-    /// interpretable CSV files.
+    /// Constructs multi-table database from given directory.
+    ///
+    /// This method should work only if ...
+    ///
+    /// - there's at least one CSV file in directory.
+    /// - every CSV file should be convertable to table schema.
     pub fn read_dir(dir_path: &str) -> Result<Self> {
-        let schemas: Result<Vec<Schema>> =
-            read_dir(dir_path)?.map(fetch_schema_from_entry).collect();
-        let db = schemas?;
+        let db = get_files_from_dir(dir_path)?
+            .filter_map(get_csv_file)
+            .map(fetch_schema_from_path)
+            .collect::<Result<Vec<Schema>>>()?;
+
+        if db.is_empty() {
+            return Err(StorageMsg(
+                "No interpretable CSV files in given directory".into(),
+            ));
+        }
 
         Ok(CsvStorage { db })
     }
 }
 
-pub fn read_dir(dir_path: impl AsRef<Path>) -> Result<ReadDir> {
+pub fn get_files_from_dir(dir_path: impl AsRef<Path>) -> Result<ReadDir> {
     match fs::read_dir(dir_path) {
         Ok(read_dir) => Ok(read_dir),
         Err(_) => Err(StorageMsg("Cannot read dir from given path".into())),
     }
 }
 
+pub fn get_csv_file(entry: io::Result<DirEntry>) -> Option<PathBuf> {
+    match entry {
+        Ok(dir_entry) => {
+            let path = dir_entry.path();
+            if path.ends_with(".csv") {
+                return Some(path);
+            }
+            None
+        }
+        Err(_) => None,
+    }
+}
+
+/// Fetch schema from given csv
 pub fn fetch_schema_from_path(csv_path: impl AsRef<Path>) -> Result<Schema> {
     match csv::ReaderBuilder::new()
         .has_headers(false)
@@ -57,19 +79,9 @@ pub fn fetch_schema_from_path(csv_path: impl AsRef<Path>) -> Result<Schema> {
     {
         Err(_) => Err(StorageMsg("Cannot read CSV file from given path".into())),
         Ok(mut rdr) => {
-            let records: Result<Vec<_>> = rdr.records().map(check_record).collect();
+            let records: Result<Vec<StringRecord>> = rdr.records().map(check_record).collect();
             check_schema(&records?)
         }
-    }
-}
-
-pub fn fetch_schema_from_entry(entry: io::Result<DirEntry>) -> Result<Schema> {
-    match entry {
-        Ok(dir_entry) => {
-            let csv_path = dir_entry.path();
-            fetch_schema_from_path(csv_path)
-        }
-        Err(_) => Err(StorageMsg("Cannot read entry from given dir".into())),
     }
 }
 
