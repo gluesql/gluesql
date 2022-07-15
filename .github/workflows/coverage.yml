@@ -26,10 +26,14 @@ jobs:
           crate: grcov
           version: latest
           use-tool-cache: true
-      - run: export RUSTFLAGS="-Cinstrument-coverage"
+      - name: export RUSTFLAGS
+        env:
+          RUSTFLAGS: -Cinstrument-coverage
       - name: Build
         run: cargo build --all-features --verbose
-      - run: export LLVM_PROFILE_FILE="gluesql-%p-%m.profraw"
+      - name: export LLVM_PROFILE_FILE
+        env:
+          LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
       - run: cargo test --verbose
       - run: grcov . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing -o ./target/debug/coverage/
       - run: grcov . --binary-path ./target/debug/ -t coveralls -s . --token ${{ secrets.COVERALLS_TOKEN }} > coveralls.json
