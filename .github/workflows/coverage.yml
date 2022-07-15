@@ -45,6 +45,7 @@ jobs:
             --branch \
             --ignore-not-existing \
             --ignore "/*" \
+            --ignore cli/ \
             --excl-line "#\\[derive\\(" \
             -o ./coverage/lcov.info
       - name: Coveralls
