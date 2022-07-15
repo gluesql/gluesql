@@ -132,34 +132,12 @@ pub async fn select_with_labels<'a>(
                 .enumerate()
                 .map(|(i, _)| format!("column{}", i + 1))
                 .collect::<Vec<_>>();
-            // let rows = values_list
-            //     .iter()
-            //     .map(|values| {
-            //         let values = values
-            //             .iter()
-            //             .map(|value| {
-            //                 let value: Value =
-            //                     evaluate_stateless(None, value).unwrap().try_into().unwrap();
-            //                 value
-            //             })
-            //             .collect::<Vec<_>>();
-            //         Ok(Row(values))
-            //     })
-            //     .collect::<Vec<_>>();
-
             let rows = Row::to_rows(values_list)?;
-
-            // let rows = values_list
-            //     .iter()
-            //     .map(|values| Row::new(&column_defs, columns.as_slice(), values));
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
-            // let labels = vec!["column1".to_string(), "column2".to_string()];
+
             return Ok((labels, rows));
-            // return rows.try_collect::<Vec<_>>().await;
-        } // _ => {
-          //     return Err(SelectError::Unreachable.into());
-          // }
+        }
     };
 
     let TableWithJoins { relation, joins } = &table_with_joins;
