@@ -117,4 +117,26 @@ impl Row {
 
         Ok(())
     }
+
+    pub fn to_rows(exprs_list: &Vec<Vec<Expr>>) -> Result<Vec<Result<Self>>> {
+        let rows = exprs_list
+            .iter()
+            .map(|exprs| Self::to_row(exprs))
+            .collect::<Vec<_>>();
+
+        Ok(rows)
+    }
+
+    fn to_row(exprs: &Vec<Expr>) -> Result<Self> {
+        let values = exprs
+            .into_iter()
+            // .map(|expr| evaluate_stateless(None, expr).unwrap().try_into().unwrap())
+            .map(|expr| evaluate_stateless(None, expr))
+            .filter_map(Result::ok)
+            .map(|evaluated| evaluated.try_into())
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>();
+
+        Ok(Self(values))
+    }
 }

@@ -4,8 +4,6 @@ mod error;
 pub use error::SelectError;
 use futures::stream;
 
-use crate::prelude::Value;
-
 use super::fetch::fetch_relation_columns;
 
 use {
@@ -13,7 +11,6 @@ use {
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        evaluate_stateless,
         fetch::{fetch_join_columns, fetch_relation_rows},
         filter::Filter,
         join::Join,
@@ -135,20 +132,23 @@ pub async fn select_with_labels<'a>(
                 .enumerate()
                 .map(|(i, _)| format!("column{}", i + 1))
                 .collect::<Vec<_>>();
-            let rows = values_list
-                .iter()
-                .map(|values| {
-                    let values = values
-                        .iter()
-                        .map(|value| {
-                            let value: Value =
-                                evaluate_stateless(None, value).unwrap().try_into().unwrap();
-                            value
-                        })
-                        .collect::<Vec<_>>();
-                    Ok(Row(values))
-                })
-                .collect::<Vec<_>>();
+            // let rows = values_list
+            //     .iter()
+            //     .map(|values| {
+            //         let values = values
+            //             .iter()
+            //             .map(|value| {
+            //                 let value: Value =
+            //                     evaluate_stateless(None, value).unwrap().try_into().unwrap();
+            //                 value
+            //             })
+            //             .collect::<Vec<_>>();
+            //         Ok(Row(values))
+            //     })
+            //     .collect::<Vec<_>>();
+
+            let rows = Row::to_rows(values_list)?;
+
             // let rows = values_list
             //     .iter()
             //     .map(|values| Row::new(&column_defs, columns.as_slice(), values));
