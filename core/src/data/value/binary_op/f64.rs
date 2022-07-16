@@ -16,6 +16,7 @@ impl PartialEq<Value> for f64 {
 
         match *other {
             I8(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
+            I16(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             I32(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             I64(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             I128(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
@@ -32,6 +33,7 @@ impl PartialOrd<Value> for f64 {
     fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
         match *other {
             I8(rhs) => self.partial_cmp(&(rhs as f64)),
+            I16(rhs) => self.partial_cmp(&(rhs as f64)),
             I32(rhs) => self.partial_cmp(&(rhs as f64)),
             I64(rhs) => self.partial_cmp(&(rhs as f64)),
             I128(rhs) => self.partial_cmp(&(rhs as f64)),
@@ -52,6 +54,7 @@ impl TryBinaryOperator for f64 {
 
         match *rhs {
             I8(rhs) => Ok(F64(lhs + rhs as f64)),
+            I16(rhs) => Ok(F64(lhs + rhs as f64)),
             I32(rhs) => Ok(F64(lhs + rhs as f64)),
             I64(rhs) => Ok(F64(lhs + rhs as f64)),
             I128(rhs) => Ok(F64(lhs + rhs as f64)),
@@ -74,6 +77,7 @@ impl TryBinaryOperator for f64 {
 
         match *rhs {
             I8(rhs) => Ok(F64(lhs - rhs as f64)),
+            I16(rhs) => Ok(F64(lhs - rhs as f64)),
             I32(rhs) => Ok(F64(lhs - rhs as f64)),
             I64(rhs) => Ok(F64(lhs - rhs as f64)),
             I128(rhs) => Ok(F64(lhs - rhs as f64)),
@@ -96,6 +100,7 @@ impl TryBinaryOperator for f64 {
 
         match *rhs {
             I8(rhs) => Ok(F64(lhs * rhs as f64)),
+            I16(rhs) => Ok(F64(lhs * rhs as f64)),
             I32(rhs) => Ok(F64(lhs * rhs as f64)),
             I64(rhs) => Ok(F64(lhs * rhs as f64)),
             I128(rhs) => Ok(F64(lhs * rhs as f64)),
@@ -119,6 +124,7 @@ impl TryBinaryOperator for f64 {
 
         match *rhs {
             I8(rhs) => Ok(F64(lhs / rhs as f64)),
+            I16(rhs) => Ok(F64(lhs / rhs as f64)),
             I32(rhs) => Ok(F64(lhs / rhs as f64)),
             I64(rhs) => Ok(F64(lhs / rhs as f64)),
             I128(rhs) => Ok(F64(lhs / rhs as f64)),
@@ -141,6 +147,7 @@ impl TryBinaryOperator for f64 {
 
         match *rhs {
             I8(rhs) => Ok(F64(lhs % rhs as f64)),
+            I16(rhs) => Ok(F64(lhs % rhs as f64)),
             I32(rhs) => Ok(F64(lhs % rhs as f64)),
             I64(rhs) => Ok(F64(lhs % rhs as f64)),
             I128(rhs) => Ok(F64(lhs % rhs as f64)),
@@ -184,6 +191,7 @@ mod tests {
         let base = 1.0_f64;
 
         assert_eq!(base, I8(1));
+        assert_eq!(base, I16(1));
         assert_eq!(base, I32(1));
         assert_eq!(base, I64(1));
         assert_eq!(base, I128(1));
@@ -198,6 +206,7 @@ mod tests {
         let base = 1.0_f64;
 
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&I16(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
@@ -215,6 +224,7 @@ mod tests {
         let base = 1.0_f64;
 
         assert!(matches!(base.try_add(&I8(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
+        assert!(matches!(base.try_add(&I16(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_add(&I32(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_add(&I64(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_add(&I128(1)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON ));
@@ -239,6 +249,9 @@ mod tests {
         let base = 1.0_f64;
 
         assert!(matches!(base.try_subtract(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
+        assert!(
+            matches!(base.try_subtract(&I16(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
+        );
         assert!(
             matches!(base.try_subtract(&I32(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );
@@ -272,6 +285,9 @@ mod tests {
 
         assert!(matches!(base.try_multiply(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(
+            matches!(base.try_multiply(&I16(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
+        );
+        assert!(
             matches!(base.try_multiply(&I32(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON )
         );
         assert!(
@@ -303,6 +319,7 @@ mod tests {
         let base = 1.0_f64;
 
         assert!(matches!(base.try_divide(&I8(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
+        assert!(matches!(base.try_divide(&I16(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_divide(&I32(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_divide(&I64(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_divide(&I128(1)), Ok(F64(x)) if (x - 1.0).abs() < f64::EPSILON ));
@@ -329,6 +346,7 @@ mod tests {
         let base = 1.0_f64;
 
         assert!(matches!(base.try_modulo(&I8(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
+        assert!(matches!(base.try_modulo(&I16(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_modulo(&I32(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_modulo(&I64(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
         assert!(matches!(base.try_modulo(&I128(1)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON ));
