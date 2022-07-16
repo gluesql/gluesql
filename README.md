@@ -6,7 +6,7 @@
 [![LICENSE](https://img.shields.io/crates/l/gluesql.svg)](https://github.com/gluesql/gluesql/blob/main/LICENSE)
 ![Rust](https://github.com/gluesql/gluesql/workflows/Rust/badge.svg)
 [![Chat](https://img.shields.io/discord/780298017940176946)](https://discord.gg/C6TDEgzDzY)
-[![codecov.io](https://codecov.io/github/gluesql/gluesql/coverage.svg?branch=main)](https://codecov.io/github/gluesql/gluesql?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 
 ## SQL Database Engine as a Library
 
