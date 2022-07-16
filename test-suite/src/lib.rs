@@ -239,7 +239,7 @@ macro_rules! generate_transaction_alter_table_tests {
         }
 
         glue!(
-            alter_table_rename_table,
+            transaction_alter_table_rename_table,
             transaction::alter_table_rename_table
         );
         glue!(
