@@ -24,7 +24,11 @@ impl SelectNode {
     }
 
     pub fn filter<T: Into<ExprNode>>(mut self, expr: T) -> Self {
-        self.filter_expr = Some(expr.into());
+        if let Some(exprs) = self.filter_expr {
+            self.filter_expr = Some(exprs.and(expr));
+        } else {
+            self.filter_expr = Some(expr.into());
+        }
 
         self
     }
@@ -92,6 +96,15 @@ mod tests {
 
         let actual = table("Bar").select().filter("id IS NULL").build();
         let expected = "SELECT * FROM Bar WHERE id IS NULL";
+        test(actual, expected);
+
+        let actual = table("Bar")
+            .select()
+            .filter("id IS NULL")
+            .filter("id > 10")
+            .filter("id < 20")
+            .build();
+        let expected = "SELECT * FROM Bar WHERE id IS NULL AND id > 10 AND id < 20";
         test(actual, expected);
 
         let actual = table("Foo")
