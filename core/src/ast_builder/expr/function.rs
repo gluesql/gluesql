@@ -231,8 +231,8 @@ pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, log2, log10, num, pi, reverse, right,
-        sin, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, log10, log2, num, pi,
+        reverse, right, sin, tan, test_expr, text, upper,
     };
 
     #[test]
