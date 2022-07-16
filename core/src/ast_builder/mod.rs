@@ -2,6 +2,7 @@ mod delete;
 mod expr;
 mod expr_list;
 mod select;
+mod select_item;
 mod select_item_list;
 mod table;
 
@@ -12,6 +13,7 @@ pub use {
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
         ProjectNode, SelectNode,
     },
+    select_item::SelectItemNode,
     select_item_list::SelectItemList,
     table::TableNode,
 };
