@@ -45,12 +45,24 @@ impl ExprNode {
         self.binary_op(BinaryOperator::Gt, other)
     }
 
+    pub fn gteq<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::GtEq, other)
+    }
+
     pub fn lt<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Lt, other)
     }
 
+    pub fn lteq<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::LtEq, other)
+    }
+
     pub fn and<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::And, other)
+    }
+
+    pub fn or<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::Or, other)
     }
 }
 
@@ -92,12 +104,24 @@ mod tests {
         let expected = "id > Bar.id";
         test_expr(actual, expected);
 
+        let actual = col("id").gteq(col("Bar.id"));
+        let expected = "id >= Bar.id";
+        test_expr(actual, expected);
+
         let actual = col("id").lt(col("Bar.id"));
         let expected = "id < Bar.id";
         test_expr(actual, expected);
 
+        let actual = col("id").lteq(col("Bar.id"));
+        let expected = "id <= Bar.id";
+        test_expr(actual, expected);
+
         let actual = (col("id").gt(num(10))).and(col("id").lt(num(20)));
         let expected = "id > 10 AND id < 20";
+        test_expr(actual, expected);
+
+        let actual = (col("id").gt(num(10))).or(col("id").lt(num(20)));
+        let expected = "id > 10 OR id < 20";
         test_expr(actual, expected);
     }
 }
