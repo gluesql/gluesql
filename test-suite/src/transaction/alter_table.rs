@@ -2,7 +2,7 @@
 
 use {
     crate::*,
-    gluesql_core::{prelude::Value::*, store::AlterTableError},
+    gluesql_core::{executor::FetchError, prelude::Value::*},
 };
 
 test_case!(alter_table_rename_table, async move {
@@ -11,13 +11,13 @@ test_case!(alter_table_rename_table, async move {
     run!("BEGIN;");
     run!("ALTER TABLE RenameTable RENAME TO NewName;");
     test!(
-        Err(AlterTableError::TableNotFound("RenameTable".to_owned()).into()),
+        Err(FetchError::TableNotFound("RenameTable".to_owned()).into()),
         "SELECT * FROM RenameTable"
     );
     test!(Ok(select!(id I64; 1)), "SELECT * FROM NewName");
     run!("ROLLBACK;");
     test!(
-        Err(AlterTableError::TableNotFound("NewName".to_owned()).into()),
+        Err(FetchError::TableNotFound("NewName".to_owned()).into()),
         "SELECT * FROM NewName"
     );
     test!(Ok(select!(id I64; 1)), "SELECT * FROM RenameTable");
