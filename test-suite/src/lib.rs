@@ -239,6 +239,10 @@ macro_rules! generate_transaction_alter_table_tests {
         }
 
         glue!(
+            alter_table_rename_table,
+            transaction::alter_table_rename_table
+        );
+        glue!(
             transaction_alter_table_rename_column,
             transaction::alter_table_rename_column
         );
