@@ -47,6 +47,16 @@ pub fn parse_comma_separated_exprs<Sql: AsRef<str>>(sql_exprs: Sql) -> Result<Ve
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
 
+pub fn parse_select_item<Sql: AsRef<str>>(sql_select_item: Sql) -> Result<SqlSelectItem> {
+    let tokens = Tokenizer::new(&DIALECT, sql_select_item.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_select_item()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
 pub fn parse_select_items<Sql: AsRef<str>>(sql_select_items: Sql) -> Result<Vec<SqlSelectItem>> {
     let tokens = Tokenizer::new(&DIALECT, sql_select_items.as_ref())
         .tokenize()

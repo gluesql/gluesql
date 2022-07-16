@@ -120,7 +120,7 @@ impl Prebuild for ProjectNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{col, table, test};
 
     #[test]
     fn project() {
@@ -134,14 +134,17 @@ mod tests {
 
         let actual = table("Foo")
             .select()
-            .project("col1, col2")
+            .project(vec!["col1", "col2"])
             .project("col3")
-            .project("col4, col5, col6")
+            .project(vec!["col4".into(), col("col5")])
+            .project(col("col6"))
+            .project("col7 as hello")
             .build();
         let expected = "
             SELECT
                 col1, col2, col3,
-                col4, col5, col6
+                col4, col5, col6,
+                col7 as hello
             FROM
                 Foo
         ";
@@ -182,7 +185,7 @@ mod tests {
             .filter(r#"type = "cute""#)
             .group_by("age")
             .having("SUM(length) < 1000")
-            .project("age")
+            .project(col("age"))
             .project("SUM(length)")
             .build();
         let expected = r#"
