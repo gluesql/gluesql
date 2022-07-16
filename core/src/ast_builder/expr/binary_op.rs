@@ -45,7 +45,7 @@ impl ExprNode {
         self.binary_op(BinaryOperator::Gt, other)
     }
 
-    pub fn gteq<T: Into<Self>>(self, other: T) -> Self {
+    pub fn gte<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::GtEq, other)
     }
 
@@ -53,7 +53,7 @@ impl ExprNode {
         self.binary_op(BinaryOperator::Lt, other)
     }
 
-    pub fn lteq<T: Into<Self>>(self, other: T) -> Self {
+    pub fn lte<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::LtEq, other)
     }
 
@@ -104,7 +104,7 @@ mod tests {
         let expected = "id > Bar.id";
         test_expr(actual, expected);
 
-        let actual = col("id").gteq(col("Bar.id"));
+        let actual = col("id").gte(col("Bar.id"));
         let expected = "id >= Bar.id";
         test_expr(actual, expected);
 
@@ -112,7 +112,7 @@ mod tests {
         let expected = "id < Bar.id";
         test_expr(actual, expected);
 
-        let actual = col("id").lteq(col("Bar.id"));
+        let actual = col("id").lte(col("Bar.id"));
         let expected = "id <= Bar.id";
         test_expr(actual, expected);
 
