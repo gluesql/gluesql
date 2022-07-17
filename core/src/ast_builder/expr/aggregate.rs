@@ -1,7 +1,7 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr, ToSql},
+        ast::{Aggregate, CountArgExpr, Expr},
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
@@ -10,7 +10,7 @@ use {
 
 #[derive(Clone)]
 pub enum AggregateNode {
-    Count(CountExprNode),
+    Count(CountArgExprNode),
     Sum(ExprNode),
     Min(ExprNode),
     Max(ExprNode),
@@ -19,44 +19,35 @@ pub enum AggregateNode {
 }
 
 #[derive(Clone)]
-pub enum CountExprNode {
+pub enum CountArgExprNode {
     Text(String),
+    Expr(ExprNode),
 }
 
-impl From<&str> for CountExprNode {
-    fn from(count_arg: &str) -> Self {
-        Self::Text(count_arg.to_owned())
+impl From<&str> for CountArgExprNode {
+    fn from(count_arg_str: &str) -> Self {
+        Self::Text(count_arg_str.to_owned())
     }
 }
 
-impl From<ExprNode> for CountExprNode {
+impl From<ExprNode> for CountArgExprNode {
     fn from(expr_node: ExprNode) -> Self {
-        match expr_node {
-            ExprNode::Identifier(str) => {
-                if str == *"*" {
-                    CountExprNode::Text(CountArgExpr::Wildcard.to_sql())
-                } else {
-                    CountExprNode::Text(CountArgExpr::Expr(Expr::Identifier(str)).to_sql())
-                }
-            }
-            _ => CountExprNode::Text(CountArgExpr::Wildcard.to_sql()),
-        }
+        Self::Expr(expr_node)
     }
 }
 
-impl TryFrom<CountExprNode> for CountArgExpr {
+impl TryFrom<CountArgExprNode> for CountArgExpr {
     type Error = Error;
 
-    fn try_from(count_expr_node: CountExprNode) -> Result<Self> {
+    fn try_from(count_expr_node: CountArgExprNode) -> Result<Self> {
         match count_expr_node {
-            CountExprNode::Text(s) => {
-                if s == *"*" {
-                    Ok(CountArgExpr::Wildcard)
-                } else {
-                    let expr = parse_expr(s).and_then(|ex| translate_expr(&ex))?;
-                    Ok(CountArgExpr::Expr(expr))
-                }
+            CountArgExprNode::Text(s) if &s == "*" => Ok(CountArgExpr::Wildcard),
+            CountArgExprNode::Text(s) => {
+                let expr = parse_expr(s).and_then(|expr| translate_expr(&expr))?;
+
+                Ok(CountArgExpr::Expr(expr))
             }
+            CountArgExprNode::Expr(expr_node) => expr_node.try_into().map(CountArgExpr::Expr),
         }
     }
 }
@@ -66,7 +57,7 @@ impl TryFrom<AggregateNode> for Expr {
 
     fn try_from(aggr_node: AggregateNode) -> Result<Self> {
         match aggr_node {
-            AggregateNode::Count(count_expr_node) => count_expr_node
+            AggregateNode::Count(count_arg_expr_node) => count_arg_expr_node
                 .try_into()
                 .map(Aggregate::Count)
                 .map(Box::new)
@@ -126,7 +117,7 @@ impl ExprNode {
     }
 }
 
-pub fn count<T: Into<CountExprNode>>(expr: T) -> ExprNode {
+pub fn count<T: Into<CountArgExprNode>>(expr: T) -> ExprNode {
     ExprNode::Aggregate(Box::new(AggregateNode::Count(expr.into())))
 }
 
@@ -162,10 +153,6 @@ mod tests {
 
         let actual = count("id");
         let expected = "COUNT(id)";
-        test_expr(actual, expected);
-
-        let actual = col("*").count();
-        let expected = "COUNT(*)";
         test_expr(actual, expected);
 
         let actual = count("*");
