@@ -12,6 +12,7 @@ pub enum FunctionNode {
     Upper(ExprNode),
     IfNull(ExprNode, ExprNode),
     Ceil(ExprNode),
+    Round(ExprNode),
     Floor(ExprNode),
     Asin(ExprNode),
     Acos(ExprNode),
@@ -52,6 +53,11 @@ impl TryFrom<FunctionNode> for Expr {
             FunctionNode::Ceil(expr_node) => expr_node
                 .try_into()
                 .map(Function::Ceil)
+                .map(Box::new)
+                .map(Expr::Function),
+            FunctionNode::Round(expr_node) => expr_node
+                .try_into()
+                .map(Function::Round)
                 .map(Box::new)
                 .map(Expr::Function),
             FunctionNode::Floor(expr_node) => expr_node
@@ -136,6 +142,9 @@ impl ExprNode {
     pub fn ceil(self) -> ExprNode {
         ceil(self)
     }
+    pub fn round(self) -> ExprNode {
+        round(self)
+    }
     pub fn floor(self) -> ExprNode {
         floor(self)
     }
@@ -187,6 +196,9 @@ pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, then: V) -> ExprNod
 pub fn ceil<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ceil(expr.into())))
 }
+pub fn round<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
+}
 pub fn floor<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Floor(expr.into())))
 }
@@ -232,7 +244,7 @@ pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, log10, log2, num, pi,
-        reverse, right, sin, tan, test_expr, text, upper,
+        reverse, right, round, sin, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -275,6 +287,17 @@ mod tests {
 
         let actual = expr("base - 10").ceil();
         let expected = "CEIL(base - 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_round() {
+        let actual = round(col("num"));
+        let expected = "ROUND(num)";
+        test_expr(actual, expected);
+
+        let actual = expr("base - 10").round();
+        let expected = "ROUND(base - 10)";
         test_expr(actual, expected);
     }
 
