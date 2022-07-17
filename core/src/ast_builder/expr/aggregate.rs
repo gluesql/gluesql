@@ -1,13 +1,16 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Aggregate, Expr},
+        ast::{Aggregate, CountArgExpr, Expr, ToSql},
+        parse_sql::parse_expr,
         result::{Error, Result},
+        translate::translate_expr,
     },
 };
 
 #[derive(Clone)]
 pub enum AggregateNode {
+    Count(CountExprNode),
     Sum(ExprNode),
     Min(ExprNode),
     Max(ExprNode),
@@ -15,11 +18,59 @@ pub enum AggregateNode {
     Variance(ExprNode),
 }
 
+#[derive(Clone)]
+pub enum CountExprNode {
+    Text(String),
+}
+
+impl From<&str> for CountExprNode {
+    fn from(count_arg: &str) -> Self {
+        Self::Text(count_arg.to_owned())
+    }
+}
+
+impl From<ExprNode> for CountExprNode {
+    fn from(expr_node: ExprNode) -> Self {
+        match expr_node {
+            ExprNode::Identifier(str) => {
+                if str == *"*" {
+                    CountExprNode::Text(CountArgExpr::Wildcard.to_sql())
+                } else {
+                    CountExprNode::Text(CountArgExpr::Expr(Expr::Identifier(str)).to_sql())
+                }
+            }
+            _ => CountExprNode::Text(CountArgExpr::Wildcard.to_sql()),
+        }
+    }
+}
+
+impl TryFrom<CountExprNode> for CountArgExpr {
+    type Error = Error;
+
+    fn try_from(count_expr_node: CountExprNode) -> Result<Self> {
+        match count_expr_node {
+            CountExprNode::Text(s) => {
+                if s == *"*" {
+                    Ok(CountArgExpr::Wildcard)
+                } else {
+                    let expr = parse_expr(s).and_then(|ex| translate_expr(&ex))?;
+                    Ok(CountArgExpr::Expr(expr))
+                }
+            }
+        }
+    }
+}
+
 impl TryFrom<AggregateNode> for Expr {
     type Error = Error;
 
     fn try_from(aggr_node: AggregateNode) -> Result<Self> {
         match aggr_node {
+            AggregateNode::Count(count_expr_node) => count_expr_node
+                .try_into()
+                .map(Aggregate::Count)
+                .map(Box::new)
+                .map(Expr::Aggregate),
             AggregateNode::Sum(expr_node) => expr_node
                 .try_into()
                 .map(Aggregate::Sum)
@@ -50,6 +101,10 @@ impl TryFrom<AggregateNode> for Expr {
 }
 
 impl ExprNode {
+    pub fn count(self) -> Self {
+        count(self)
+    }
+
     pub fn sum(self) -> Self {
         sum(self)
     }
@@ -69,6 +124,10 @@ impl ExprNode {
     pub fn variance(self) -> Self {
         variance(self)
     }
+}
+
+pub fn count<T: Into<CountExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Aggregate(Box::new(AggregateNode::Count(expr.into())))
 }
 
 pub fn sum<T: Into<ExprNode>>(expr: T) -> ExprNode {
@@ -93,10 +152,26 @@ pub fn variance<T: Into<ExprNode>>(expr: T) -> ExprNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{avg, col, max, min, sum, test_expr, variance};
+    use crate::ast_builder::{avg, col, count, max, min, sum, test_expr, variance};
 
     #[test]
     fn aggregate() {
+        let actual = col("id").count();
+        let expected = "COUNT(id)";
+        test_expr(actual, expected);
+
+        let actual = count("id");
+        let expected = "COUNT(id)";
+        test_expr(actual, expected);
+
+        let actual = col("*").count();
+        let expected = "COUNT(*)";
+        test_expr(actual, expected);
+
+        let actual = count("*");
+        let expected = "COUNT(*)";
+        test_expr(actual, expected);
+
         let actual = col("amount").sum();
         let expected = "SUM(amount)";
         test_expr(actual, expected);
