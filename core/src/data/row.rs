@@ -119,13 +119,19 @@ impl Row {
     }
 
     pub fn to_rows(exprs_list: &[Vec<Expr>]) -> Result<Vec<Result<Self>>> {
-        let length = exprs_list[0].len();
+        let validate_num_values = |current_len: usize| -> Result<()> {
+            let first_len = exprs_list[0].len();
+            if current_len != first_len {
+                return Err(RowError::NumberOfValuesDifferent.into());
+            }
+
+            Ok(())
+        };
         let rows: Result<Vec<Result<Self>>> = exprs_list
             .iter()
             .map(|exprs| {
-                if exprs.len() != length {
-                    return Err(RowError::NumberOfValuesDifferent.into());
-                }
+                validate_num_values(exprs.len())?;
+
                 Ok(exprs.try_into())
             })
             .collect();
