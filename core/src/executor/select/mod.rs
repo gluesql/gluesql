@@ -141,10 +141,8 @@ pub async fn select_with_labels<'a>(
                     let values = exprs
                         .iter()
                         .map(|expr| evaluate_stateless(None, expr))
-                        .filter_map(Result::ok)
-                        .map(|evaluated| evaluated.try_into())
-                        .filter_map(Result::ok)
-                        .collect::<Vec<_>>();
+                        .map(|result| result.and_then(|evaluated| evaluated.try_into()))
+                        .collect::<Result<Vec<_>>>()?;
 
                     Ok(Row(values))
                 })
