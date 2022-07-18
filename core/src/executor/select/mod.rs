@@ -2,9 +2,8 @@ mod blend;
 mod error;
 
 pub use error::SelectError;
-use futures::stream;
 
-use super::fetch::fetch_relation_columns;
+use super::{evaluate_stateless, fetch::fetch_relation_columns};
 
 use {
     self::blend::Blend,
@@ -19,12 +18,12 @@ use {
     },
     crate::{
         ast::{Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
-        data::{get_alias, get_name, Row},
+        data::{get_alias, get_name, Row, RowError},
         result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
     std::{iter::once, rc::Rc},
 };
@@ -132,7 +131,24 @@ pub async fn select_with_labels<'a>(
                 .enumerate()
                 .map(|(i, _)| format!("column{}", i + 1))
                 .collect::<Vec<_>>();
-            let rows = Row::to_rows(values_list)?;
+            let first_len = values_list[0].len();
+            let rows = values_list
+                .iter()
+                .map(|exprs| {
+                    if exprs.len() != first_len {
+                        return Err(RowError::NumberOfValuesDifferent.into());
+                    }
+                    let values = exprs
+                        .iter()
+                        .map(|expr| evaluate_stateless(None, expr))
+                        .filter_map(Result::ok)
+                        .map(|evaluated| evaluated.try_into())
+                        .filter_map(Result::ok)
+                        .collect::<Vec<_>>();
+
+                    Ok(Row(values))
+                })
+                .collect::<Vec<_>>();
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 

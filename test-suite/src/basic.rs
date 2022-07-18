@@ -83,10 +83,6 @@ CREATE TABLE TestA (
             Err(RowError::NumberOfValuesDifferent.into()),
             "VALUES (1, 'a'), (2)",
         ),
-        // (
-        //     Err(RowError::ValuesTypeDifferent("Text".into(), "Integer".into()).into()),
-        //     "VALUES (1, 'a'), (2, 3)",
-        // ),
     ];
 
     for (expected, sql) in test_cases {

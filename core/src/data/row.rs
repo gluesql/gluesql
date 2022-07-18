@@ -3,7 +3,7 @@ use {
         ast::{ColumnDef, Expr},
         data::{schema::ColumnDefExt, Value},
         executor::evaluate_stateless,
-        result::{Error, Result},
+        result::Result,
     },
     serde::{Deserialize, Serialize},
     std::fmt::Debug,
@@ -26,9 +26,6 @@ pub enum RowError {
 
     #[error("VALUES lists must all be the same length")]
     NumberOfValuesDifferent,
-
-    #[error("VALUES types {0} and {1} cannot be matched")]
-    ValuesTypeDifferent(String, String),
 }
 
 #[derive(iter_enum::Iterator)]
@@ -116,55 +113,5 @@ impl Row {
         }
 
         Ok(())
-    }
-
-    pub fn to_rows(exprs_list: &[Vec<Expr>]) -> Result<Vec<Result<Self>>> {
-        let validate_num_values = |current_len: usize| -> Result<()> {
-            let first_len = exprs_list[0].len();
-            if current_len != first_len {
-                return Err(RowError::NumberOfValuesDifferent.into());
-            }
-
-            Ok(())
-        };
-        let rows: Result<Vec<Result<Self>>> = exprs_list
-            .iter()
-            .map(|exprs| {
-                validate_num_values(exprs.len())?;
-
-                Ok(exprs.try_into())
-            })
-            .collect();
-
-        rows
-    }
-
-    // fn to_row(exprs: &[Expr]) -> Result<Self> {
-    //     let values = exprs
-    //         .iter()
-    //         // .map(|expr| evaluate_stateless(None, expr).unwrap().try_into().unwrap())
-    //         .map(|expr| evaluate_stateless(None, expr))
-    //         .filter_map(Result::ok)
-    //         .map(|evaluated| evaluated.try_into())
-    //         .filter_map(Result::ok)
-    //         .collect::<Vec<_>>();
-
-    //     Ok(Self(values))
-    // }
-}
-
-impl TryFrom<&Vec<Expr>> for Row {
-    type Error = Error;
-
-    fn try_from(exprs: &Vec<Expr>) -> Result<Self> {
-        let values = exprs
-            .iter()
-            .map(|expr| evaluate_stateless(None, expr))
-            .filter_map(Result::ok)
-            .map(|evaluated| evaluated.try_into())
-            .filter_map(Result::ok)
-            .collect::<Vec<_>>();
-
-        Ok(Self(values))
     }
 }
