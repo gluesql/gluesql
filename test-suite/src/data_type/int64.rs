@@ -54,7 +54,7 @@ test_case!(int64, async move {
             1                  parse_i64("-1");
             parse_i64("-2")    2;
             3                  3;
-            parse_i64("-4")    parse_i64("-4")
+            -4    parse_i64("-4")
         )),
         "SELECT field_one, field_two FROM Item"
     );
