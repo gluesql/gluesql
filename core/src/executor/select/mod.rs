@@ -3,7 +3,7 @@ mod error;
 
 pub use error::SelectError;
 
-use super::fetch::fetch_relation_columns;
+use super::{evaluate_stateless, fetch::fetch_relation_columns};
 
 use {
     self::blend::Blend,
@@ -17,13 +17,13 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins},
-        data::{get_alias, get_name, Row},
+        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
+        data::{get_alias, get_name, Row, RowError},
         result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
-    futures::stream::{StreamExt, TryStream, TryStreamExt},
+    futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
     std::{iter::once, rc::Rc},
 };
@@ -124,8 +124,32 @@ pub async fn select_with_labels<'a>(
         order_by,
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
-        _ => {
-            return Err(SelectError::Unreachable.into());
+        SetExpr::Values(Values(values_list)) => {
+            let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
+            let first_len = values_list[0].len();
+            let labels = (1..first_len + 1)
+                .into_iter()
+                .map(|i| format!("column{}", i))
+                .collect::<Vec<_>>();
+            let rows = values_list
+                .iter()
+                .map(|exprs| {
+                    if exprs.len() != first_len {
+                        return Err(RowError::NumberOfValuesDifferent.into());
+                    }
+                    let values = exprs
+                        .iter()
+                        .map(|expr| evaluate_stateless(None, expr))
+                        .map(|result| result.and_then(|evaluated| evaluated.try_into()))
+                        .collect::<Result<Vec<_>>>()?;
+
+                    Ok(Row(values))
+                })
+                .collect::<Vec<_>>();
+            let rows = stream::iter(rows);
+            let rows = limit.apply(rows);
+
+            return Ok((labels, rows));
         }
     };
 
