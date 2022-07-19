@@ -126,12 +126,11 @@ pub async fn select_with_labels<'a>(
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-            let labels = values_list
-                .iter()
-                .enumerate()
-                .map(|(i, _)| format!("column{}", i + 1))
-                .collect::<Vec<_>>();
             let first_len = values_list[0].len();
+            let labels = (1..first_len + 1)
+                .into_iter()
+                .map(|i| format!("column{}", i))
+                .collect::<Vec<_>>();
             let rows = values_list
                 .iter()
                 .map(|exprs| {
