@@ -109,6 +109,29 @@ impl Value {
         }
     }
 
+    pub fn get_type(&self) -> Option<DataType> {
+        match self {
+            Value::I8(_) => Some(DataType::Int8),
+            Value::I16(_) => Some(DataType::Int16),
+            Value::I32(_) => Some(DataType::Int32),
+            Value::I64(_) => Some(DataType::Int),
+            Value::I128(_) => Some(DataType::Int128),
+            Value::F64(_) => Some(DataType::Float),
+            Value::Decimal(_) => Some(DataType::Decimal),
+            Value::Bool(_) => Some(DataType::Boolean),
+            Value::Str(_) => Some(DataType::Text),
+            Value::Bytea(_) => Some(DataType::Bytea),
+            Value::Date(_) => Some(DataType::Date),
+            Value::Timestamp(_) => Some(DataType::Timestamp),
+            Value::Time(_) => Some(DataType::Time),
+            Value::Interval(_) => Some(DataType::Interval),
+            Value::Uuid(_) => Some(DataType::Uuid),
+            Value::Map(_) => Some(DataType::Map),
+            Value::List(_) => Some(DataType::List),
+            Value::Null => None,
+        }
+    }
+
     pub fn validate_type(&self, data_type: &DataType) -> Result<()> {
         let valid = match self {
             Value::I8(_) => matches!(data_type, DataType::Int8),
