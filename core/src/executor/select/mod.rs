@@ -133,12 +133,8 @@ pub async fn select_with_labels<'a>(
                 .into_iter()
                 .map(|i| format!("column{}", i))
                 .collect::<Vec<_>>();
-            // iterate till every columns are not null, else do
-            // 1. get first_types
-            // 2. get indexes of nulls
-            // 3. inspect if those index has type => mutate null to the type
-            // 4. if there is no null is first_types, break
-            let mut column_defs = values_list[0]
+
+            let mut column_types = values_list[0]
                 .iter()
                 .map(|expr| {
                     evaluate_stateless(None, expr)
@@ -157,7 +153,7 @@ pub async fn select_with_labels<'a>(
             };
 
             for exprs in values_list {
-                let null_indexes = get_null_indexes(&column_defs);
+                let null_indexes = get_null_indexes(&column_types);
                 if null_indexes.len() == 0 {
                     break;
                 };
@@ -168,14 +164,16 @@ pub async fn select_with_labels<'a>(
                     .try_for_each(|(i, expr)| -> Result<()> {
                         let value: Value = evaluate_stateless(None, expr)?.try_into()?;
                         if let Some(data_type) = value.get_type() {
-                            column_defs[i] = Some(data_type);
+                            column_types[i] = Some(data_type);
                         }
 
                         Ok(())
                     })?;
             }
 
-            println!("{:?}", column_defs);
+            println!("{:?}", column_types);
+
+            let column_defs = labels.iter().zip(column_types.iter()).collect::<Vec<_>>();
 
             let rows = values_list
                 .iter()
