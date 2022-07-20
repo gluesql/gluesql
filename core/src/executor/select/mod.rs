@@ -133,7 +133,12 @@ pub async fn select_with_labels<'a>(
                 .into_iter()
                 .map(|i| format!("column{}", i))
                 .collect::<Vec<_>>();
-            let first_types = values_list[0]
+            // iterate till every columns are not null, else do
+            // 1. get first_types
+            // 2. get indexes of nulls
+            // 3. inspect if those index has type => mutate null to the type
+            // 4. if there is no null is first_types, break
+            let mut column_defs = values_list[0]
                 .iter()
                 .map(|expr| {
                     evaluate_stateless(None, expr)
@@ -141,6 +146,37 @@ pub async fn select_with_labels<'a>(
                         .and_then(|value: Value| Ok(value.get_type()))
                 })
                 .collect::<Result<Vec<_>>>()?;
+
+            let get_null_indexes = |types: &Vec<Option<DataType>>| -> Vec<usize> {
+                types
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, t)| t.is_none())
+                    .map(|(i, _)| i)
+                    .collect::<Vec<_>>()
+            };
+
+            for exprs in values_list {
+                let null_indexes = get_null_indexes(&column_defs);
+                if null_indexes.len() == 0 {
+                    break;
+                };
+                exprs
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| null_indexes.contains(i))
+                    .try_for_each(|(i, expr)| -> Result<()> {
+                        let value: Value = evaluate_stateless(None, expr)?.try_into()?;
+                        if let Some(data_type) = value.get_type() {
+                            column_defs[i] = Some(data_type);
+                        }
+
+                        Ok(())
+                    })?;
+            }
+
+            println!("{:?}", column_defs);
+
             let rows = values_list
                 .iter()
                 .map(|exprs| {
