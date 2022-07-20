@@ -33,6 +33,14 @@ test_case!(values, async move {
             Err(RowError::NumberOfValuesDifferent.into()),
         ),
         (
+            "VALUES (1, 'a'), (2, 3)",
+            Err(RowError::ValuesTypeDifferent("Str".into(), "Int".into()).into()),
+        ),
+        (
+            "VALUES (1, 'a'), ('b', 'c')",
+            Err(RowError::ValuesTypeDifferent("Int".into(), "Str".into()).into()),
+        ),
+        (
             "VALUES (1), (2) limit 1",
             Ok(select!(
                 column1;
