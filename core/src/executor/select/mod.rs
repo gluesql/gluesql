@@ -3,6 +3,8 @@ mod error;
 
 pub use error::SelectError;
 
+use crate::prelude::{DataType, Value};
+
 use super::{evaluate_stateless, fetch::fetch_relation_columns};
 
 use {
@@ -131,6 +133,14 @@ pub async fn select_with_labels<'a>(
                 .into_iter()
                 .map(|i| format!("column{}", i))
                 .collect::<Vec<_>>();
+            let first_types = values_list[0]
+                .iter()
+                .map(|expr| {
+                    evaluate_stateless(None, expr)
+                        .and_then(|evaluated| evaluated.try_into())
+                        .and_then(|value: Value| Ok(value.get_type()))
+                })
+                .collect::<Result<Vec<_>>>()?;
             let rows = values_list
                 .iter()
                 .map(|exprs| {
