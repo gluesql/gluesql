@@ -139,7 +139,7 @@ pub async fn select_with_labels<'a>(
                 .map(|expr| {
                     evaluate_stateless(None, expr)
                         .and_then(|evaluated| evaluated.try_into())
-                        .and_then(|value: Value| Ok(value.get_type()))
+                        .map(|value: Value| value.get_type())
                 })
                 .collect::<Result<Vec<_>>>()?;
 
@@ -154,7 +154,7 @@ pub async fn select_with_labels<'a>(
 
             for exprs in values_list {
                 let null_indexes = get_null_indexes(&column_types);
-                if null_indexes.len() == 0 {
+                if null_indexes.is_empty() {
                     break;
                 };
                 exprs
