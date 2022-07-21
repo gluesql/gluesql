@@ -33,22 +33,6 @@ test_case!(values, async move {
             )),
         ),
         (
-            "VALUES (1), (2, 'b')",
-            Err(RowError::NumberOfValuesDifferent.into()),
-        ),
-        (
-            "VALUES (1, 'a'), (2)",
-            Err(RowError::NumberOfValuesDifferent.into()),
-        ),
-        // (
-        //     "VALUES (1, 'a'), (2, 3)",
-        //     Err(RowError::ValuesTypeDifferent("Str".into(), "Int".into()).into()),
-        // ),
-        // (
-        //     "VALUES (1, 'a'), ('b', 'c')",
-        //     Err(RowError::ValuesTypeDifferent("Int".into(), "Str".into()).into()),
-        // ),
-        (
             "VALUES (1), (2) limit 1",
             Ok(select!(
                 column1;
@@ -65,11 +49,36 @@ test_case!(values, async move {
             )),
         ),
         (
-            "VALUES (1, NULL)",
+            "VALUES (1, NULL), (2, NULL)",
             Ok(select_with_null!(
                 column1 | column2;
-                I64(1)    Null
+                I64(1)    Null;
+                I64(2)    Null
             )),
+        ),
+        (
+            "VALUES (1), (2, 'b')",
+            Err(RowError::NumberOfValuesDifferent.into()),
+        ),
+        (
+            "VALUES (1, 'a'), (2)",
+            Err(RowError::NumberOfValuesDifferent.into()),
+        ),
+        (
+            "VALUES (1, 'a'), (2, 3)",
+            Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: DataType::Text,
+                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(3)))),
+            }
+            .into()),
+        ),
+        (
+            "VALUES (1, 'a'), ('b', 'c')",
+            Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: DataType::Int,
+                literal: format!("{:?}", Literal::Text(Cow::Owned("b".to_owned()))),
+            }
+            .into()),
         ),
         (
             "VALUES (1, NULL), (2, 'a'), (3, 4)",
