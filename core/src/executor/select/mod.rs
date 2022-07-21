@@ -173,7 +173,7 @@ pub async fn select_with_labels<'a>(
 
             println!("{:?}", column_types);
 
-            let column_defs = labels.iter().zip(column_types.iter()).collect::<Vec<_>>();
+            // let values_defs = labels.iter().zip(column_types.iter()).collect::<Vec<_>>();
 
             let rows = values_list
                 .iter()
@@ -183,8 +183,14 @@ pub async fn select_with_labels<'a>(
                     }
                     let values = exprs
                         .iter()
-                        .map(|expr| evaluate_stateless(None, expr))
-                        .map(|result| result.and_then(|evaluated| evaluated.try_into()))
+                        .zip(column_types.iter())
+                        .map(|(expr, column_type)| (evaluate_stateless(None, expr), column_type))
+                        .map(|(result, column_type)| {
+                            result.and_then(|evaluated| match column_type {
+                                Some(data_type) => evaluated.try_into_value(data_type, true),
+                                None => Ok(Value::Null),
+                            })
+                        })
                         .collect::<Result<Vec<_>>>()?;
 
                     Ok(Row(values))

@@ -1,3 +1,11 @@
+use std::borrow::Cow;
+
+use bigdecimal::BigDecimal;
+use gluesql_core::{
+    data::{Literal, ValueError},
+    prelude::DataType,
+};
+
 use {
     crate::*,
     gluesql_core::{data::RowError, prelude::Value::*},
@@ -65,7 +73,11 @@ test_case!(values, async move {
         ),
         (
             "VALUES (1, NULL), (2, 'a'), (3, 4)",
-            Err(RowError::ValuesTypeDifferent("Str".into(), "Int".into()).into()),
+            Err(ValueError::IncompatibleLiteralForDataType {
+                data_type: DataType::Text,
+                literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(4)))),
+            }
+            .into()),
         ),
     ];
     for (sql, expected) in test_cases {
