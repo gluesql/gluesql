@@ -193,6 +193,16 @@ pub async fn select_with_labels<'a>(
                         })
                         .collect::<Result<Vec<_>>>()?;
 
+                    // below cannot handle VALUES (Null), (Some) case
+                    // column_types = column_types
+                    //     .iter()
+                    //     .zip(values.iter())
+                    //     .map(|(column_type, value)| match (column_type, value) {
+                    //         (None, value) => value.get_type(),
+                    //         _ => column_type.to_owned(),
+                    //     })
+                    //     .collect::<Vec<_>>();
+
                     Ok(Row(values))
                 })
                 .collect::<Vec<_>>();
