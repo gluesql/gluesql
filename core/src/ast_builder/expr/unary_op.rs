@@ -7,6 +7,7 @@ impl ExprNode {
     pub fn minus(self) -> Self {
         minus(self)
     }
+    #[allow(clippy::should_implement_trait)]
     pub fn not(self) -> Self {
         not(self)
     }
