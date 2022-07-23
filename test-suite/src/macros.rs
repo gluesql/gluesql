@@ -132,7 +132,7 @@ macro_rules! select_with_comma {
             rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
         }
     });
-    ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
+    ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr ),+ $(,)? ) => (
         gluesql_core::executor::Payload::Select {
             labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
             rows: vec![row!($( $t )+ ; $( $v )+ )],
