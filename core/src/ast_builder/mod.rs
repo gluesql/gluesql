@@ -1,6 +1,7 @@
 mod delete;
 mod expr;
 mod expr_list;
+mod index;
 mod select;
 mod select_item;
 mod select_item_list;
@@ -9,6 +10,8 @@ mod table;
 pub use {
     delete::DeleteNode,
     expr_list::ExprList,
+    index::CreateIndexNode,
+    index::DropIndexNode,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
         ProjectNode, SelectNode,
