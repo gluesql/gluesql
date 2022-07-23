@@ -64,8 +64,7 @@ impl DropIndexNode {
     }
 }
 
-#[cfg(feature = "index")]
-#[cfg(test)]
+#[cfg(all(test, feature = "index"))]
 mod tests {
     use crate::ast_builder::{table, test};
 

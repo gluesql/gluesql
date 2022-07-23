@@ -1,6 +1,7 @@
 mod delete;
 mod expr;
 mod expr_list;
+#[cfg(feature = "index")]
 mod index;
 mod select;
 mod select_item;
@@ -10,8 +11,6 @@ mod table;
 pub use {
     delete::DeleteNode,
     expr_list::ExprList,
-    index::CreateIndexNode,
-    index::DropIndexNode,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
         ProjectNode, SelectNode,
@@ -23,6 +22,8 @@ pub use {
 
 /// Available expression builder functions
 pub use expr::{col, expr, nested, num, text, ExprNode};
+#[cfg(feature = "index")]
+pub use {index::CreateIndexNode, index::DropIndexNode};
 
 /// Available aggregate or normal SQL functions
 pub use expr::{
