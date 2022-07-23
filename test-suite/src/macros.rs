@@ -138,10 +138,4 @@ macro_rules! select_with_comma {
             rows: vec![row!($( $t )+ ; $( $v )+ )],
         }
     );
-    ( $( $c: tt )|+ $( ; )?) => (
-        gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
-            rows: vec![],
-        }
-    );
 }
