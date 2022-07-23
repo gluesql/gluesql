@@ -1,7 +1,7 @@
 use super::{DeleteNode, SelectNode};
 
 #[cfg(feature = "index")]
-use super::{CreateIndexNode, DropIndexNode};
+use super::{CreateIndexNode, DropIndexNode, ShowIndexNode};
 
 #[derive(Clone)]
 pub struct TableNode {
@@ -25,5 +25,10 @@ impl TableNode {
     #[cfg(feature = "index")]
     pub fn create_index(self, name: &str) -> CreateIndexNode {
         CreateIndexNode::new(self.table_name, name.to_string())
+    }
+
+    #[cfg(feature = "index")]
+    pub fn show_index(self) -> ShowIndexNode {
+        ShowIndexNode::new(self.table_name)
     }
 }
