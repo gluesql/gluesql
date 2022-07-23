@@ -507,10 +507,8 @@ impl Value {
                 } else {
                     Err(ValueError::SqrtOnNegativeNumeric.into())
                 }
-            },
-            _ => {
-                Err(ValueError::SqrtOnNonNumeric.into())
             }
+            _ => Err(ValueError::SqrtOnNonNumeric.into()),
         }
     }
 
