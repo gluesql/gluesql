@@ -119,3 +119,29 @@ macro_rules! concat_with_null {
         concat_with_null!($rows ; $( $( $v2 )* );* )
     });
 }
+
+#[macro_export]
+macro_rules! select_with_comma {
+    ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr ),+; $( $( $v2: expr ),+ );+) => ({
+        let mut rows = vec![
+            row!($( $t )+ ; $( $v )+),
+        ];
+
+        gluesql_core::executor::Payload::Select {
+            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
+        }
+    });
+    ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
+        gluesql_core::executor::Payload::Select {
+            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            rows: vec![row!($( $t )+ ; $( $v )+ )],
+        }
+    );
+    ( $( $c: tt )|+ $( ; )?) => (
+        gluesql_core::executor::Payload::Select {
+            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            rows: vec![],
+        }
+    );
+}
