@@ -12,8 +12,6 @@ test_case!(int16, async move {
     );
     run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
 
-    let parse_i16 = |text: &str| -> i16 { text.parse().unwrap() };
-
     test!(
         Err(ValueError::FailedToParseNumber.into()),
         "INSERT INTO Item VALUES (32768, 32768);"
@@ -24,13 +22,13 @@ test_case!(int16, async move {
     );
 
     test!(
-        Ok(select!(
+        Ok(select_with_comma!(
             field_one        |  field_two
             I16              |  I16;
-            1                   parse_i16("-1");
-            parse_i16("-2")     2;
-            3                   3;
-            parse_i16("-4")     parse_i16("-4")
+            1                ,  -1;
+            -2               ,   2;
+            3                ,   3;
+            -4               ,  -4
         )),
         "SELECT field_one, field_two FROM Item"
     );
