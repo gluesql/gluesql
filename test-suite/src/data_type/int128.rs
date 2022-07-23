@@ -12,8 +12,6 @@ test_case!(int128, async move {
     );
     run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
 
-    let parse_i128 = |text: &str| -> i128 { text.parse().unwrap() };
-
     let max_str = "170141183460469231731687303715884105728";
     let min_str = "-170141183460469231731687303715884105729";
 
@@ -36,13 +34,13 @@ test_case!(int128, async move {
 
     // lets try some valid SQL
     test!(
-        Ok(select!(
+        Ok(select_with_comma!(
             field_one          | field_two
             I128               |  I128;
-            1                    parse_i128("-1");
-            parse_i128("-2")     2;
-            3                    3;
-            parse_i128("-4")     parse_i128("-4")
+            1                  ,    -1;
+            -2                 ,     2;
+            3                  ,     3;
+            -4                 ,    -4
         )),
         "SELECT field_one, field_two FROM Item"
     );
