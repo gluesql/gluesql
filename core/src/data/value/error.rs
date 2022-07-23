@@ -158,6 +158,12 @@ pub enum ValueError {
         rhs: Value,
         operator: NumericBinaryOperator,
     },
+
+    #[error("non numeric value in sqrt")]
+    SqrtOnNonNumeric,
+
+    #[error("negative numeric value in sqrt")]
+    SqrtOnNegativeNumeric,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]

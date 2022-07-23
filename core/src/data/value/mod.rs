@@ -497,6 +497,23 @@ impl Value {
         Ok(Value::I64(value))
     }
 
+    pub fn sqrt(&self) -> Result<Value> {
+        use Value::*;
+        match self {
+            I8(_) | I16(_) | I64(_) | I128(_) | F64(_) => {
+                let a: f64 = self.try_into()?;
+                if a >= 0.0 {
+                    Ok(Value::F64(a.sqrt()))
+                } else {
+                    Err(ValueError::SqrtOnNegativeNumeric.into())
+                }
+            },
+            _ => {
+                Err(ValueError::SqrtOnNonNumeric.into())
+            }
+        }
+    }
+
     /// Value to Big-Endian for comparison purpose
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
         self.try_into().map(|key: Key| key.to_cmp_be_bytes())
@@ -1317,5 +1334,19 @@ mod tests {
             Str("5".to_string()).unary_factorial(),
             Err(ValueError::FactorialOnNonNumeric.into())
         );
+    }
+
+    #[test]
+    fn sqrt() {
+        assert_eq!(I8(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I16(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I64(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I128(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(F64(9.0).sqrt(), Ok(F64(3.0)));
+        assert_eq!(
+            F64(-9.0).sqrt(),
+            Err(ValueError::SqrtOnNegativeNumeric.into())
+        );
+        assert_eq!(Null.sqrt(), Err(ValueError::SqrtOnNonNumeric.into()));
     }
 }
