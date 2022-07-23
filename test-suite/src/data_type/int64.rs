@@ -48,13 +48,13 @@ test_case!(int64, async move {
 
     // lets try some valid SQL
     test!(
-        Ok(select!(
+        Ok(select_with_comma!(
             field_one          | field_two
             I64                |    I64;
-            1                  parse_i64("-1");
-            parse_i64("-2")    2;
-            3                  3;
-            -4    parse_i64("-4")
+            1                  , -1;
+            -2                 , 2;
+            3                  , 3;
+            -4                 , -4
         )),
         "SELECT field_one, field_two FROM Item"
     );
