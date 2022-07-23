@@ -62,7 +62,7 @@
 //! Example code to see,
 //! * [tests/memory_storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/memory-storage/tests/memory_storage.rs)
 //! * [tests/sled_storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/sled-storage/tests/sled_storage.rs)
-//!
+//! * [tests/shared-memory-storage.rs](https://github.com/gluesql/gluesql/blob/main/storages/shared-memory-storage/tests/shared_memory_storage.rs)
 //! After you implement `Tester` trait, the only thing you need to do is calling `generate_tests!` macro.
 
 pub mod core {
