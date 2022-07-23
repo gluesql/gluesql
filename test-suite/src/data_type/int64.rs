@@ -65,8 +65,8 @@ test_case!(int64, async move {
     );
 
     test!(
-        Ok(select!(field_one I64; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one > 0"
+        Ok(select_with_comma!(field_one | field_two; I64 | I64; 1, -1)),
+        "SELECT field_one, field_two FROM Item WHERE field_one = 1"
     );
 
     test!(
