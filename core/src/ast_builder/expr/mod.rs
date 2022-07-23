@@ -3,13 +3,13 @@ mod is_null;
 mod nested;
 
 pub mod aggregate;
+pub mod extract;
 pub mod function;
-
 pub use nested::nested;
 
 use {
     crate::{
-        ast::{AstLiteral, BinaryOperator, Expr},
+        ast::{AstLiteral, BinaryOperator, DateTimeField, Expr},
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
@@ -29,6 +29,10 @@ pub enum ExprNode {
         left: Box<ExprNode>,
         op: BinaryOperator,
         right: Box<ExprNode>,
+    },
+    Extract {
+        field: DateTimeField,
+        expr: Box<ExprNode>,
     },
     IsNull(Box<ExprNode>),
     IsNotNull(Box<ExprNode>),
@@ -55,6 +59,10 @@ impl TryFrom<ExprNode> for Expr {
                 let right = Expr::try_from(*right).map(Box::new)?;
 
                 Ok(Expr::BinaryOp { left, op, right })
+            }
+            ExprNode::Extract { field, expr } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                Ok(Expr::Extract { field, expr })
             }
             ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
