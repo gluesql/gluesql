@@ -11,11 +11,7 @@ pub use nested::nested;
 
 use {
     crate::{
-<<<<<<< HEAD
-        ast::{AstLiteral, BinaryOperator, DateTimeField, Expr},
-=======
-        ast::{AstLiteral, BinaryOperator, Expr, UnaryOperator},
->>>>>>> Feat: unary_op (+, -, NOT, fac) in ast_builder
+        ast::{AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator},
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
@@ -70,15 +66,13 @@ impl TryFrom<ExprNode> for Expr {
 
                 Ok(Expr::BinaryOp { left, op, right })
             }
-<<<<<<< HEAD
-            ExprNode::Extract { field, expr } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
-                Ok(Expr::Extract { field, expr })
-=======
             ExprNode::UnaryOp { op, expr } => {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
                 Ok(Expr::UnaryOp { op, expr })
->>>>>>> Feat: unary_op (+, -, NOT, fac) in ast_builder
+            }
+            ExprNode::Extract { field, expr } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                Ok(Expr::Extract { field, expr })
             }
             ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
