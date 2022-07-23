@@ -2,6 +2,7 @@ mod delete;
 mod expr;
 mod expr_list;
 mod select;
+mod select_item;
 mod select_item_list;
 mod table;
 
@@ -12,6 +13,7 @@ pub use {
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
         ProjectNode, SelectNode,
     },
+    select_item::SelectItemNode,
     select_item_list::SelectItemList,
     table::TableNode,
 };
@@ -21,10 +23,10 @@ pub use expr::{col, expr, nested, num, text, ExprNode};
 
 /// Available aggregate or normal SQL functions
 pub use expr::{
-    aggregate::{avg, max, min, sum, variance, AggregateNode},
+    aggregate::{avg, count, max, min, sum, variance, AggregateNode},
     function::{
         abs, acos, asin, atan, ceil, cos, floor, ifnull, left, log10, log2, pi, reverse, right,
-        sin, tan, upper, FunctionNode,
+        round, sin, tan, upper, FunctionNode,
     },
 };
 

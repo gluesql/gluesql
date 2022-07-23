@@ -105,7 +105,7 @@ fn translate_function_one_arg<T: FnOnce(Expr) -> Function>(
         .map(Expr::Function)
 }
 
-fn translate_aggrecate_one_arg<T: FnOnce(Expr) -> Aggregate>(
+fn translate_aggregate_one_arg<T: FnOnce(Expr) -> Aggregate>(
     func: T,
     args: Vec<&SqlExpr>,
     name: String,
@@ -183,11 +183,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         .collect::<Result<Vec<_>>>()?;
 
     match name.as_str() {
-        "SUM" => translate_aggrecate_one_arg(Aggregate::Sum, args, name),
-        "MIN" => translate_aggrecate_one_arg(Aggregate::Min, args, name),
-        "MAX" => translate_aggrecate_one_arg(Aggregate::Max, args, name),
-        "AVG" => translate_aggrecate_one_arg(Aggregate::Avg, args, name),
-        "VARIANCE" => translate_aggrecate_one_arg(Aggregate::Variance, args, name),
+        "SUM" => translate_aggregate_one_arg(Aggregate::Sum, args, name),
+        "MIN" => translate_aggregate_one_arg(Aggregate::Min, args, name),
+        "MAX" => translate_aggregate_one_arg(Aggregate::Max, args, name),
+        "AVG" => translate_aggregate_one_arg(Aggregate::Avg, args, name),
+        "VARIANCE" => translate_aggregate_one_arg(Aggregate::Variance, args, name),
         "CONCAT" => {
             check_len_min(name, args.len(), 1)?;
             let exprs = args

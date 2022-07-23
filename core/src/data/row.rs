@@ -23,6 +23,9 @@ pub enum RowError {
 
     #[error("conflict! row cannot be empty")]
     ConflictOnEmptyRow,
+
+    #[error("VALUES lists must all be the same length")]
+    NumberOfValuesDifferent,
 }
 
 #[derive(iter_enum::Iterator)]

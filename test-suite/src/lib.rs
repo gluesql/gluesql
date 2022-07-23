@@ -26,6 +26,7 @@ pub mod transaction;
 pub mod type_match;
 pub mod unary_operator;
 pub mod validate;
+pub mod values;
 
 mod tester;
 
@@ -69,6 +70,7 @@ macro_rules! generate_store_tests {
         glue!(error, error::error);
         glue!(filter, filter::filter);
         glue!(inline_view, inline_view::inline_view);
+        glue!(values, values::values);
         glue!(unary_operator, unary_operator::unary_operator);
         glue!(function_upper_lower, function::upper_lower::upper_lower);
         glue!(function_gcd_lcm, function::gcd_lcm::gcd_lcm);
