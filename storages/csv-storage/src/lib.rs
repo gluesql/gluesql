@@ -11,20 +11,23 @@ use {
     },
 };
 
+/// A simple database type that contains a list of schemas.
+pub struct Db(Vec<Schema>);
+
 /// A type that contains database info of imported CSV file(s).
 ///
 /// ## Fields
 ///
 /// `pub db`: A database, which is a list of table schemas
 pub struct CsvStorage {
-    pub db: Vec<Schema>,
+    pub db: Db,
 }
 
 impl CsvStorage {
     /// Constructs single-table database from given CSV file.
     pub fn read_file(csv_path: impl AsRef<Path>) -> Result<Self> {
         let schema = fetch_schema_from_path(csv_path)?;
-        let db = vec![schema];
+        let db = Db(vec![schema]);
 
         Ok(CsvStorage { db })
     }
@@ -33,27 +36,52 @@ impl CsvStorage {
     ///
     /// This method should work only if ...
     ///
-    /// - there's at least one CSV file in directory.
-    /// - every CSV file should be convertable to table schema.
+    /// * There's at least one CSV file in directory.
+    /// * Every CSV file should be convertable to table schema.
     pub fn read_dir(dir_path: &str) -> Result<Self> {
         let db = get_files_from_dir(dir_path)?
-            .filter_map(get_csv_file)
-            .map(fetch_schema_from_path)
-            .collect::<Result<Vec<Schema>>>()?;
-
-        if db.is_empty() {
-            return Err(StorageMsg(
-                "No interpretable CSV files in given directory".into(),
-            ));
-        }
+            .fetch_schemas_from_csv_files()?
+            .check_empty_and_create_db()?;
 
         Ok(CsvStorage { db })
     }
 }
 
-pub fn get_files_from_dir(dir_path: impl AsRef<Path>) -> Result<ReadDir> {
+/// Transient container for schema list that hasn't been empty-checked.
+pub struct UncheckedDb(Vec<Schema>);
+
+impl UncheckedDb {
+    /// Checks unchecked schema list.
+    ///
+    /// * If the list contains at least one item, return `Ok(Db)`.
+    /// * If theres no item in the list, return `Error`.
+    pub fn check_empty_and_create_db(self) -> Result<Db> {
+        if self.0.is_empty() {
+            return Err(StorageMsg(
+                "No interpretable CSV files in given directory".into(),
+            ));
+        }
+
+        Ok(Db(self.0))
+    }
+}
+
+/// Transient container that contains list of files info of certain directory.
+pub struct DirEntries(ReadDir);
+
+impl DirEntries {
+    pub fn fetch_schemas_from_csv_files(self) -> Result<UncheckedDb> {
+        self.0
+            .filter_map(get_csv_file)
+            .map(fetch_schema_from_path)
+            .collect::<Result<Vec<Schema>>>()
+            .map(UncheckedDb)
+    }
+}
+
+pub fn get_files_from_dir(dir_path: impl AsRef<Path>) -> Result<DirEntries> {
     match fs::read_dir(dir_path) {
-        Ok(read_dir) => Ok(read_dir),
+        Ok(read_dir) => Ok(DirEntries(read_dir)),
         Err(_) => Err(StorageMsg("Cannot read dir from given path".into())),
     }
 }
