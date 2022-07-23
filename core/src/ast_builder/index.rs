@@ -64,23 +64,6 @@ impl DropIndexNode {
     }
 }
 
-#[derive(Clone)]
-pub struct ShowIndexNode {
-    table_name: String,
-}
-
-impl ShowIndexNode {
-    pub fn new(table_name: String) -> Self {
-        Self { table_name }
-    }
-
-    pub fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_name]);
-
-        Ok(Statement::ShowIndexes(table_name))
-    }
-}
-
 #[cfg(all(test, feature = "index"))]
 mod tests {
     use crate::ast_builder::{table, test};
@@ -106,13 +89,6 @@ mod tests {
     fn drop_index() {
         let actual = table("Foo").drop_index("nameIndex").build();
         let expected = "DROP INDEX Foo.nameIndex";
-        test(actual, expected);
-    }
-
-    #[test]
-    fn show_index() {
-        let actual = table("Foo").show_index().build();
-        let expected = "SHOW INDEX FROM Foo";
         test(actual, expected);
     }
 }
