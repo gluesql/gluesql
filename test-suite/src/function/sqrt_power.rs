@@ -1,6 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
+        data::ValueError,
         executor::EvaluateError,
         prelude::{Payload, Value::*},
     },
@@ -45,7 +46,7 @@ test_case!(sqrt, async move {
         ),
         (
             "SELECT SQRT('string') AS sqrt FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue(String::from("SQRT")).into()),
+            Err(ValueError::SqrtOnNonNumeric(Str("string".to_string())).into()),
         ),
         (
             "SELECT SQRT(NULL) AS sqrt FROM SingleItem",

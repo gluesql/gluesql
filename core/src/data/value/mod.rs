@@ -502,13 +502,10 @@ impl Value {
         match self {
             I8(_) | I16(_) | I64(_) | I128(_) | F64(_) => {
                 let a: f64 = self.try_into()?;
-                if a >= 0.0 {
-                    Ok(Value::F64(a.sqrt()))
-                } else {
-                    Err(ValueError::SqrtOnNegativeNumeric.into())
-                }
+                Ok(Value::F64(a.sqrt()))
             }
-            _ => Err(ValueError::SqrtOnNonNumeric.into()),
+            Null => Ok(Value::Null),
+            _ => Err(ValueError::SqrtOnNonNumeric(self.clone()).into()),
         }
     }
 
@@ -1341,10 +1338,10 @@ mod tests {
         assert_eq!(I64(9).sqrt(), Ok(F64(3.0)));
         assert_eq!(I128(9).sqrt(), Ok(F64(3.0)));
         assert_eq!(F64(9.0).sqrt(), Ok(F64(3.0)));
+        assert!(Null.sqrt().unwrap().is_null());
         assert_eq!(
-            F64(-9.0).sqrt(),
-            Err(ValueError::SqrtOnNegativeNumeric.into())
+            Str("9".to_string()).sqrt(),
+            Err(ValueError::SqrtOnNonNumeric(Str("9".to_string())).into())
         );
-        assert_eq!(Null.sqrt(), Err(ValueError::SqrtOnNonNumeric.into()));
     }
 }

@@ -159,11 +159,8 @@ pub enum ValueError {
         operator: NumericBinaryOperator,
     },
 
-    #[error("non numeric value in sqrt")]
-    SqrtOnNonNumeric,
-
-    #[error("negative numeric value in sqrt")]
-    SqrtOnNegativeNumeric,
+    #[error("non numeric value in sqrt {0:?}")]
+    SqrtOnNonNumeric(Value),
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]
