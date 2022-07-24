@@ -298,7 +298,7 @@ async fn evaluate_function<'a>(
         // --- float ---
         Function::Abs(expr) => f::abs(name(), eval(expr).await?),
         Function::Sign(expr) => f::sign(name(), eval(expr).await?),
-        Function::Sqrt(expr) => f::sqrt(name(), eval(expr).await?),
+        Function::Sqrt(expr) => f::sqrt(eval(expr).await?),
         Function::Power { expr, power } => {
             let expr = eval(expr).await?;
             let power = eval(power).await?;
