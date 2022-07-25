@@ -3,7 +3,7 @@ mod error;
 
 pub use error::SelectError;
 
-use crate::prelude::{DataType, Value};
+use crate::prelude::Value;
 
 use super::{evaluate_stateless, fetch::fetch_relation_columns};
 
@@ -143,37 +143,33 @@ pub async fn select_with_labels<'a>(
                 })
                 .collect::<Result<Vec<_>>>()?;
 
-            let get_null_indexes = |types: &Vec<Option<DataType>>| -> Vec<usize> {
-                types
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, t)| t.is_none())
-                    .map(|(i, _)| i)
-                    .collect::<Vec<_>>()
-            };
+            // let get_null_indexes = |types: &Vec<Option<DataType>>| -> Vec<usize> {
+            //     types
+            //         .iter()
+            //         .enumerate()
+            //         .filter(|(_, t)| t.is_none())
+            //         .map(|(i, _)| i)
+            //         .collect::<Vec<_>>()
+            // };
 
-            for exprs in values_list {
-                let null_indexes = get_null_indexes(&column_types);
-                if null_indexes.is_empty() {
-                    break;
-                };
-                exprs
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, _)| null_indexes.contains(i))
-                    .try_for_each(|(i, expr)| -> Result<()> {
-                        let value: Value = evaluate_stateless(None, expr)?.try_into()?;
-                        if let Some(data_type) = value.get_type() {
-                            column_types[i] = Some(data_type);
-                        }
+            // for exprs in values_list {
+            //     let null_indexes = get_null_indexes(&column_types);
+            //     if null_indexes.is_empty() {
+            //         break;
+            //     };
+            //     exprs
+            //         .iter()
+            //         .enumerate()
+            //         .filter(|(i, _)| null_indexes.contains(i))
+            //         .try_for_each(|(i, expr)| -> Result<()> {
+            //             let value: Value = evaluate_stateless(None, expr)?.try_into()?;
+            //             if let Some(data_type) = value.get_type() {
+            //                 column_types[i] = Some(data_type);
+            //             }
 
-                        Ok(())
-                    })?;
-            }
-
-            println!("{:?}", column_types);
-
-            // let values_defs = labels.iter().zip(column_types.iter()).collect::<Vec<_>>();
+            //             Ok(())
+            //         })?;
+            // }
 
             let rows = values_list
                 .iter()
@@ -188,20 +184,19 @@ pub async fn select_with_labels<'a>(
                         .map(|(result, column_type)| {
                             result.and_then(|evaluated| match column_type {
                                 Some(data_type) => evaluated.try_into_value(data_type, true),
-                                None => Ok(Value::Null),
+                                None => evaluated.try_into(), // Ok(Value::Null),
                             })
                         })
                         .collect::<Result<Vec<_>>>()?;
 
-                    // below cannot handle VALUES (Null), (Some) case
-                    // column_types = column_types
-                    //     .iter()
-                    //     .zip(values.iter())
-                    //     .map(|(column_type, value)| match (column_type, value) {
-                    //         (None, value) => value.get_type(),
-                    //         _ => column_type.to_owned(),
-                    //     })
-                    //     .collect::<Vec<_>>();
+                    column_types = column_types
+                        .iter()
+                        .zip(values.iter())
+                        .map(|(column_type, value)| match (column_type, value) {
+                            (None, value) => value.get_type(),
+                            _ => column_type.to_owned(),
+                        })
+                        .collect::<Vec<_>>();
 
                     Ok(Row(values))
                 })
