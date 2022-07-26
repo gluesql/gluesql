@@ -26,11 +26,11 @@ impl<'a> From<&'a Value> for Evaluated<'a> {
     }
 }
 
-impl TryInto<Value> for Evaluated<'_> {
+impl TryFrom<Evaluated<'_>> for Value {
     type Error = Error;
 
-    fn try_into(self) -> Result<Value> {
-        match self {
+    fn try_from(e: Evaluated<'_>) -> Result<Value> {
+        match e {
             Evaluated::Literal(v) => Value::try_from(v),
             Evaluated::Value(v) => Ok(v.into_owned()),
         }
@@ -58,11 +58,11 @@ impl TryFrom<&Evaluated<'_>> for Key {
     }
 }
 
-impl TryInto<bool> for Evaluated<'_> {
+impl TryFrom<Evaluated<'_>> for bool {
     type Error = Error;
 
-    fn try_into(self) -> Result<bool> {
-        match self {
+    fn try_from(e: Evaluated<'_>) -> Result<bool> {
+        match e {
             Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
