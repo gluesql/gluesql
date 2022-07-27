@@ -80,6 +80,10 @@ impl ExprNode {
     pub fn not_like<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::NotLike, other)
     }
+
+    pub fn not_ilike<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::NotILike, other)
+    }
 }
 
 #[cfg(test)]
@@ -154,6 +158,10 @@ mod tests {
 
         let actual = col("name").not_like(text("a%"));
         let expected = "name NOT LIKE 'a%'";
+        test_expr(actual, expected);
+
+        let actual = col("name").not_ilike(text("a%"));
+        let expected = "name NOT ILIKE 'a%'";
         test_expr(actual, expected);
     }
 }
