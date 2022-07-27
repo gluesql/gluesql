@@ -1,41 +1,32 @@
 #![cfg(feature = "index")]
 
 use crate::{
-    ast::{Expr, ObjectName, OrderByExpr, Statement},
+    ast::{ObjectName, Statement},
     result::Result,
 };
+
+use super::OrderByExprNode;
 
 #[derive(Clone)]
 pub struct CreateIndexNode {
     name: String,
     table_name: String,
-    column: String,
-    asc: bool,
+    column: OrderByExprNode,
 }
 
 impl CreateIndexNode {
-    pub fn new(table_name: String, name: String) -> Self {
+    pub fn new(table_name: String, name: String, column: OrderByExprNode) -> Self {
         Self {
             table_name,
             name,
-            column: String::new(),
-            asc: true,
+            column,
         }
-    }
-
-    pub fn column(mut self, column: &str, asc: bool) -> Self {
-        self.column = column.to_string();
-        self.asc = asc;
-        self
     }
 
     pub fn build(self) -> Result<Statement> {
         let table_name = ObjectName(vec![self.table_name]);
         let name = ObjectName(vec![self.name]);
-        let column = OrderByExpr {
-            expr: Expr::Identifier(self.column.clone()),
-            asc: Some(self.asc),
-        };
+        let column = self.column.try_into()?;
 
         Ok(Statement::CreateIndex {
             name,
@@ -70,16 +61,12 @@ mod tests {
 
     #[test]
     fn create_index() {
-        let actual = table("Foo")
-            .create_index("nameIndex")
-            .column("name", true)
-            .build();
+        let actual = table("Foo").create_index("nameIndex", "name", true).build();
         let expected = "CREATE INDEX nameIndex ON Foo (name Asc)";
         test(actual, expected);
 
         let actual = table("Foo")
-            .create_index("nameIndex")
-            .column("name", false)
+            .create_index("nameIndex", "name", false)
             .build();
         let expected = "CREATE INDEX nameIndex ON Foo (name Desc)";
         test(actual, expected);
