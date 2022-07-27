@@ -72,6 +72,10 @@ impl ExprNode {
     pub fn like<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Like, other)
     }
+
+    pub fn ilike<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::ILike, other)
+    }
 }
 
 #[cfg(test)]
@@ -138,6 +142,10 @@ mod tests {
 
         let actual = col("name").like(text("a%"));
         let expected = "name LIKE 'a%'";
+        test_expr(actual, expected);
+
+        let actual = col("name").ilike(text("a%"));
+        let expected = "name ILIKE 'a%'";
         test_expr(actual, expected);
     }
 }
