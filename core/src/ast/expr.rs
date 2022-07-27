@@ -431,5 +431,12 @@ mod tests {
             ))))
             .to_sql()
         );
+        assert_eq!(
+            "STDEV(total)",
+            &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
+                "total".to_string()
+            ))))
+            .to_sql()
+        );
     }
 }
