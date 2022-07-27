@@ -68,6 +68,10 @@ impl ExprNode {
     pub fn or<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Or, other)
     }
+
+    pub fn like<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::Like, other)
+    }
 }
 
 #[cfg(test)]
@@ -130,6 +134,10 @@ mod tests {
 
         let actual = (col("id").gt(num(10))).or(col("id").lt(num(20)));
         let expected = "id > 10 OR id < 20";
+        test_expr(actual, expected);
+
+        let actual = col("name").like(text("a%"));
+        let expected = "name LIKE 'a%'";
         test_expr(actual, expected);
     }
 }
