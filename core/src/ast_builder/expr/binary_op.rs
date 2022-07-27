@@ -29,6 +29,10 @@ impl ExprNode {
         self.binary_op(BinaryOperator::Divide, other)
     }
 
+    pub fn modulo<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::Modulo, other)
+    }
+
     pub fn concat<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::StringConcat, other)
     }
@@ -86,6 +90,10 @@ mod tests {
 
         let actual = col("amount").div(30);
         let expected = "amount / 30";
+        test_expr(actual, expected);
+
+        let actual = col("amount").modulo(30);
+        let expected = "amount % 30";
         test_expr(actual, expected);
 
         let actual = text("hello").concat(r#""world""#);
