@@ -10,9 +10,9 @@ use {
 };
 
 mod binary_op;
+mod convert;
 mod date;
 mod error;
-mod convert;
 mod json;
 mod literal;
 mod selector;
