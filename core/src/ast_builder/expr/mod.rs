@@ -1,6 +1,7 @@
 mod binary_op;
 mod is_null;
 mod nested;
+mod unary_op;
 
 pub mod aggregate;
 pub mod between;
@@ -11,7 +12,7 @@ pub use nested::nested;
 
 use {
     crate::{
-        ast::{AstLiteral, BinaryOperator, DateTimeField, Expr},
+        ast::{AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator},
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
@@ -37,6 +38,10 @@ pub enum ExprNode {
         left: Box<ExprNode>,
         op: BinaryOperator,
         right: Box<ExprNode>,
+    },
+    UnaryOp {
+        op: UnaryOperator,
+        expr: Box<ExprNode>,
     },
     Extract {
         field: DateTimeField,
@@ -84,6 +89,10 @@ impl TryFrom<ExprNode> for Expr {
                 let right = Expr::try_from(*right).map(Box::new)?;
 
                 Ok(Expr::BinaryOp { left, op, right })
+            }
+            ExprNode::UnaryOp { op, expr } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                Ok(Expr::UnaryOp { op, expr })
             }
             ExprNode::Extract { field, expr } => {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
