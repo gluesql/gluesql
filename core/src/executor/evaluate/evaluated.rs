@@ -41,9 +41,7 @@ impl TryFrom<Evaluated<'_>> for Key {
     type Error = Error;
 
     fn try_from(evaluated: Evaluated<'_>) -> Result<Self> {
-        let value: Value = evaluated.try_into()?;
-
-        Self::try_from(value)
+        Self::try_from(&evaluated)
     }
 }
 
