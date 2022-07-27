@@ -139,13 +139,12 @@ impl<'a> AggrValue {
                 sum_square,
                 sum,
                 count,
-            } => {
-                let sum_expr1 = sum_square.multiply(&Value::I64(count))?;
-                let sum_expr2 = sum.multiply(&sum)?;
-                let expr_sub = sum_expr1.subtract(&sum_expr2)?;
-                let cnt_square = Value::F64(count as f64).multiply(&Value::F64(count as f64))?;
-                expr_sub.divide(&cnt_square)?.sqrt()
-            }
+            } => Self::export(Self::Variance {
+                sum_square,
+                sum,
+                count,
+            })?
+            .sqrt(),
         }
     }
 }
