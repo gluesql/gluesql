@@ -31,6 +31,11 @@ enum AggrValue {
         sum: Value,
         count: i64,
     },
+    Stdev {
+        sum_square: Value,
+        sum: Value,
+        count: i64,
+    },
 }
 
 impl<'a> AggrValue {
@@ -54,6 +59,11 @@ impl<'a> AggrValue {
                 count: 1,
             },
             Aggregate::Variance(_) => AggrValue::Variance {
+                sum_square: value.multiply(&value)?,
+                sum: value,
+                count: 1,
+            },
+            Aggregate::Stdev(_) => AggrValue::Stdev {
                 sum_square: value.multiply(&value)?,
                 sum: value,
                 count: 1,
@@ -97,6 +107,15 @@ impl<'a> AggrValue {
                 sum: sum.add(new_value)?,
                 count: count + 1,
             })),
+            Self::Stdev {
+                sum_square,
+                sum,
+                count,
+            } => Ok(Some(Self::Stdev {
+                sum_square: sum_square.add(&new_value.multiply(new_value)?)?,
+                sum: sum.add(new_value)?,
+                count: count + 1,
+            })),
         }
     }
 
@@ -115,6 +134,17 @@ impl<'a> AggrValue {
                 let expr_sub = sum_expr1.subtract(&sum_expr2)?;
                 let cnt_square = Value::F64(count as f64).multiply(&Value::F64(count as f64))?;
                 expr_sub.divide(&cnt_square)
+            }
+            Self::Stdev {
+                sum_square,
+                sum,
+                count,
+            } => {
+                let sum_expr1 = sum_square.multiply(&Value::I64(count))?;
+                let sum_expr2 = sum.multiply(&sum)?;
+                let expr_sub = sum_expr1.subtract(&sum_expr2)?;
+                let cnt_square = Value::F64(count as f64).multiply(&Value::F64(count as f64))?;
+                expr_sub.divide(&cnt_square)?.sqrt()
             }
         }
     }
@@ -236,8 +266,9 @@ impl<'a> State<'a> {
             | Aggregate::Sum(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)
-            | Aggregate::Avg(expr) => get_value(expr)?,
-            Aggregate::Variance(expr) => get_value(expr)?,
+            | Aggregate::Avg(expr)
+            | Aggregate::Variance(expr)
+            | Aggregate::Stdev(expr) => get_value(expr)?,
         };
 
         let aggr_value = match self.get(aggr) {

@@ -16,6 +16,7 @@ pub enum AggregateNode {
     Max(ExprNode),
     Avg(ExprNode),
     Variance(ExprNode),
+    Stdev(ExprNode),
 }
 
 #[derive(Clone)]
@@ -87,6 +88,11 @@ impl TryFrom<AggregateNode> for Expr {
                 .map(Aggregate::Variance)
                 .map(Box::new)
                 .map(Expr::Aggregate),
+            AggregateNode::Stdev(expr_node) => expr_node
+                .try_into()
+                .map(Aggregate::Stdev)
+                .map(Box::new)
+                .map(Expr::Aggregate),
         }
     }
 }
@@ -115,6 +121,10 @@ impl ExprNode {
     pub fn variance(self) -> Self {
         variance(self)
     }
+
+    pub fn stdev(self) -> Self {
+        stdev(self)
+    }
 }
 
 pub fn count<T: Into<CountArgExprNode>>(expr: T) -> ExprNode {
@@ -141,9 +151,13 @@ pub fn variance<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Aggregate(Box::new(AggregateNode::Variance(expr.into())))
 }
 
+pub fn stdev<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Aggregate(Box::new(AggregateNode::Stdev(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{avg, col, count, max, min, sum, test_expr, variance};
+    use crate::ast_builder::{avg, col, count, max, min, stdev, sum, test_expr, variance};
 
     #[test]
     fn aggregate() {
@@ -196,6 +210,14 @@ mod tests {
 
         let actual = variance("statistic");
         let expected = "VARIANCE(statistic)";
+        test_expr(actual, expected);
+
+        let actual = col("scatterplot").stdev();
+        let expected = "STDEV(scatterplot)";
+        test_expr(actual, expected);
+
+        let actual = stdev("scatterplot");
+        let expected = "STDEV(scatterplot)";
         test_expr(actual, expected);
     }
 }

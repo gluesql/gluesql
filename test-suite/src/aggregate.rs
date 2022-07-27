@@ -12,17 +12,18 @@ test_case!(aggregate, async move {
             id INTEGER,
             quantity INTEGER,
             age INTEGER NULL,
+            total INTEGER,
         );
     "
     );
     run!(
         "
-        INSERT INTO Item (id, quantity, age) VALUES
-            (1, 10,   11),
-            (2,  0,   90),
-            (3,  9, NULL),
-            (4,  3,    3),
-            (5, 25, NULL);
+        INSERT INTO Item (id, quantity, age, total) VALUES
+            (1, 10,   11, 1),
+            (2,  0,   90, 2),
+            (3,  9, NULL, 3),
+            (4,  3,    3, 1),
+            (5, 25, NULL, 1);
     "
     );
 
@@ -61,6 +62,10 @@ test_case!(aggregate, async move {
             select_with_null!("VARIANCE(age)"; Null),
         ),
         (
+            "SELECT STDEV(age) FROM Item",
+            select_with_null!("STDEV(age)"; Null),
+        ),
+        (
             "SELECT COUNT(age), COUNT(quantity) FROM Item",
             select!("COUNT(age)" | "COUNT(quantity)"; I64 | I64; 3 5),
         ),
@@ -78,6 +83,14 @@ test_case!(aggregate, async move {
                 "VARIANCE(id)" | "VARIANCE(quantity)"
                 F64            | F64;
                 2.0              74.64
+            ),
+        ),
+        (
+            "SELECT STDEV(total) FROM Item",
+            select!(
+                "STDEV(total)"
+                F64;
+                0.8
             ),
         ),
     ];
