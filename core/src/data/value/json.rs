@@ -43,6 +43,7 @@ impl TryFrom<Value> for JsonValue {
             Value::I128(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
                 .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
+            Value::F32(v) => Ok(JsonValue::Number(JsonNumber::from_f64(v as f64).unwrap())),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)

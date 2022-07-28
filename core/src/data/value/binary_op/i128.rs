@@ -18,6 +18,7 @@ impl PartialEq<Value> for i128 {
             I32(other) => self == &(*other as i128),
             I64(other) => self == &(*other as i128),
             I128(other) => self == other,
+            F32(other) => ((*self as f32) - other).abs() < f32::EPSILON,
             F64(other) => ((*self as f64) - other).abs() < f64::EPSILON,
             Decimal(other) => Decimal::from(*self) == *other,
             _ => false,
@@ -33,6 +34,7 @@ impl PartialOrd<Value> for i128 {
             I32(other) => PartialOrd::partial_cmp(self, &(*other as i128)),
             I64(other) => PartialOrd::partial_cmp(self, &(*other as i128)),
             I128(other) => PartialOrd::partial_cmp(self, other),
+            F32(other) => PartialOrd::partial_cmp(&(*self as f32), other),
             F64(other) => PartialOrd::partial_cmp(&(*self as f64), other),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
@@ -103,6 +105,7 @@ impl TryBinaryOperator for i128 {
                     .into()
                 })
                 .map(I128),
+            F32(rhs) => Ok(F32(lhs as f32 + rhs)),
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
@@ -174,6 +177,7 @@ impl TryBinaryOperator for i128 {
                     .into()
                 })
                 .map(I128),
+            F32(rhs) => Ok(F32(lhs as f32 - rhs)),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
 
@@ -244,6 +248,7 @@ impl TryBinaryOperator for i128 {
                     .into()
                 })
                 .map(I128),
+            F32(rhs) => Ok(F32(lhs as f32 * rhs)),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
@@ -316,6 +321,7 @@ impl TryBinaryOperator for i128 {
                     .into()
                 })
                 .map(I128),
+            F32(rhs) => Ok(F32(lhs as f32 / rhs)),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
             Null => Ok(Null),
@@ -386,6 +392,7 @@ impl TryBinaryOperator for i128 {
                     .into()
                 })
                 .map(I128),
+            F32(rhs) => Ok(F32(lhs as f32 % rhs)),
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) % rhs)),
             Null => Ok(Null),
@@ -676,6 +683,7 @@ mod tests {
         assert_eq!(base, I32(1));
         assert_eq!(base, I64(1));
         assert_eq!(base, I128(1));
+        assert_eq!(base, F32(1.0_f32));
         assert_eq!(base, F64(1.0));
         assert_eq!(base, Decimal(Decimal::ONE));
 
@@ -691,6 +699,7 @@ mod tests {
         assert_eq!(base.partial_cmp(&I32(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&I64(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&I128(0)), Some(Ordering::Greater));
+        assert_eq!(base.partial_cmp(&F32(0.0_f32)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&F64(0.0)), Some(Ordering::Greater));
 
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
@@ -698,6 +707,7 @@ mod tests {
         assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&F32(1.0_f32)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
 
         assert_eq!(base.partial_cmp(&I8(2)), Some(Ordering::Less));
@@ -705,6 +715,7 @@ mod tests {
         assert_eq!(base.partial_cmp(&I32(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&I64(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&I128(2)), Some(Ordering::Less));
+        assert_eq!(base.partial_cmp(&F32(2.0_f32)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&F64(2.0)), Some(Ordering::Less));
 
         assert_eq!(
@@ -725,6 +736,9 @@ mod tests {
         assert_eq!(base.try_add(&I64(1)), Ok(I128(2)));
         assert_eq!(base.try_add(&I128(1)), Ok(I128(2)));
 
+        assert!(
+            matches!(base.try_add(&F32(1.0)), Ok(F32(x)) if (x - 2.0_f32).abs() < f32::EPSILON)
+        );
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
         assert_eq!(
             base.try_add(&Decimal(Decimal::ONE)),
@@ -752,6 +766,9 @@ mod tests {
         assert_eq!(base.try_subtract(&I64(1)), Ok(I128(0)));
         assert_eq!(base.try_subtract(&I128(1)), Ok(I128(0)));
 
+        assert!(
+            matches!(base.try_subtract(&F32(1.0)), Ok(F32(x)) if (x - 0.0_f32).abs() < f32::EPSILON )
+        );
         assert!(
             matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
         );
@@ -788,6 +805,9 @@ mod tests {
         assert_eq!(base.try_multiply(&I64(-1)), Ok(I128(-3)));
         assert_eq!(base.try_multiply(&I128(-1)), Ok(I128(-3)));
 
+        assert!(
+            matches!(base.try_multiply(&F32(1.0)), Ok(F32(x)) if (x - 3.0_f32).abs() < f32::EPSILON )
+        );
         assert!(
             matches!(base.try_multiply(&F64(1.0)), Ok(F64(x)) if (x - 3.0).abs() < f64::EPSILON )
         );
@@ -826,6 +846,9 @@ mod tests {
         assert_eq!(base.try_divide(&I128(-6)), Ok(I128(-1)));
 
         assert!(
+            matches!(base.try_divide(&F32(1.0)), Ok(F32(x)) if (x - 6.0_f32).abs() < f32::EPSILON )
+        );
+        assert!(
             matches!(base.try_divide(&F64(1.0)), Ok(F64(x)) if (x - 6.0).abs() < f64::EPSILON )
         );
 
@@ -861,6 +884,7 @@ mod tests {
         assert_eq!(base.try_modulo(&I64(2)), Ok(I128(1)));
         assert_eq!(base.try_modulo(&I128(2)), Ok(I128(1)));
 
+        assert!(matches!(base.try_modulo(&F32(1.0)), Ok(F32(x)) if (x).abs() < f32::EPSILON ));
         assert!(matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x).abs() < f64::EPSILON ));
         assert_eq!(
             base.try_modulo(&Decimal(Decimal::ONE)),

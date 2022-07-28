@@ -10,6 +10,7 @@ pub enum DataType {
     Int32,
     Int,
     Int128,
+    Float32,
     Float,
     Text,
     Bytea,

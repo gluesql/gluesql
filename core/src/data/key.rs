@@ -84,6 +84,7 @@ impl TryFrom<Value> for Key {
             Uuid(v) => Ok(Key::Uuid(v)),
             Decimal(v) => Ok(Key::Decimal(v)),
             Null => Ok(Key::None),
+            F32(_) => Err(KeyError::FloatTypeKeyNotSupported.into()),
             F64(_) => Err(KeyError::FloatTypeKeyNotSupported.into()),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
             List(_) => Err(KeyError::ListTypeKeyNotSupported.into()),
