@@ -37,6 +37,10 @@ impl Store for SledStorage {
         Ok(schema)
     }
 
+    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<Row>> {
+        todo!();
+    }
+
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let (txid, created_at) = match self.state {
             State::Transaction {

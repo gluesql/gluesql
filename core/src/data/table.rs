@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ObjectName, TableAlias, TableFactor},
+        ast::{IndexItem, ObjectName, TableAlias, TableFactor},
         result::Result,
     },
     serde::Serialize,
@@ -35,9 +35,6 @@ pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
     }
 }
 
-#[cfg(feature = "index")]
-use crate::ast::IndexItem;
-#[cfg(feature = "index")]
 pub fn get_index(table_factor: &TableFactor) -> Option<&IndexItem> {
     match table_factor {
         TableFactor::Table { index, .. } => index.as_ref(),

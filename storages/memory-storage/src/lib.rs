@@ -36,6 +36,16 @@ impl Store for MemoryStorage {
             .transpose()
     }
 
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+        let row = self
+            .items
+            .get(table_name)
+            .map(|item| item.rows.get(key).map(Clone::clone))
+            .flatten();
+
+        Ok(row)
+    }
+
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let rows: RowIter = match self.items.get(table_name) {
             Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
