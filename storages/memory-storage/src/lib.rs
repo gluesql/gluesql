@@ -40,8 +40,7 @@ impl Store for MemoryStorage {
         let row = self
             .items
             .get(table_name)
-            .map(|item| item.rows.get(key).map(Clone::clone))
-            .flatten();
+            .and_then(|item| item.rows.get(key).map(Clone::clone));
 
         Ok(row)
     }

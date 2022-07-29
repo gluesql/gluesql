@@ -147,6 +147,7 @@ mod tests {
         super::MockStorage,
         crate::{
             result::MutResult,
+            data::Key,
             store::{Store, StoreMut},
         },
         futures::executor::block_on,
@@ -168,7 +169,7 @@ mod tests {
         let storage = MockStorage::default();
 
         assert!(block_on(storage.scan_data("Foo")).is_err());
-        assert!(block_on(storage.fetch_data("Foo", Key::None)).is_err());
+        assert!(block_on(storage.fetch_data("Foo", &Key::None)).is_err());
         assert!(block_on(storage.fetch_schema("__Err__")).is_err());
         let storage = test(storage.delete_schema("Foo"));
         let storage = test(storage.insert_data("Foo", Vec::new()));
