@@ -4,6 +4,7 @@ mod expr_list;
 mod select;
 mod select_item;
 mod select_item_list;
+mod show_columns;
 mod table;
 
 pub use {
@@ -15,6 +16,7 @@ pub use {
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
+    show_columns::ShowColumnsNode,
     table::TableNode,
 };
 
@@ -23,10 +25,10 @@ pub use expr::{col, expr, nested, num, text, ExprNode};
 
 /// Available aggregate or normal SQL functions
 pub use expr::{
-    aggregate::{avg, count, max, min, sum, variance, AggregateNode},
+    aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
-        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, ln, log10, log2, pi, reverse, right,
-        round, sin, tan, upper, FunctionNode,
+        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, ln, log10, log2, now, pi, reverse,
+        right, round, sin, tan, upper, FunctionNode,
     },
 };
 
