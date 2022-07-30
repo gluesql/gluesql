@@ -120,6 +120,14 @@ impl<'a> AggrValue {
     }
 
     fn export(self) -> Result<Value> {
+        let variance = |sum_square: Value, sum: Value, count: i64| {
+            let sum_expr1 = sum_square.multiply(&Value::I64(count))?;
+            let sum_expr2 = sum.multiply(&sum)?;
+            let expr_sub = sum_expr1.subtract(&sum_expr2)?;
+            let cnt_square = Value::F64(count as f64).multiply(&Value::F64(count as f64))?;
+            expr_sub.divide(&cnt_square)
+        };
+
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
             Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
@@ -128,23 +136,12 @@ impl<'a> AggrValue {
                 sum_square,
                 sum,
                 count,
-            } => {
-                let sum_expr1 = sum_square.multiply(&Value::I64(count))?;
-                let sum_expr2 = sum.multiply(&sum)?;
-                let expr_sub = sum_expr1.subtract(&sum_expr2)?;
-                let cnt_square = Value::F64(count as f64).multiply(&Value::F64(count as f64))?;
-                expr_sub.divide(&cnt_square)
-            }
+            } => variance(sum_square, sum, count),
             Self::Stdev {
                 sum_square,
                 sum,
                 count,
-            } => Self::export(Self::Variance {
-                sum_square,
-                sum,
-                count,
-            })?
-            .sqrt(),
+            } => variance(sum_square, sum, count)?.sqrt(),
         }
     }
 }
