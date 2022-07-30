@@ -4,6 +4,7 @@ mod nested;
 mod unary_op;
 
 pub mod aggregate;
+pub mod between;
 pub mod extract;
 pub mod function;
 
@@ -27,6 +28,12 @@ pub enum ExprNode {
     SqlExpr(String),
     Identifier(String),
     CompoundIdentifier(Vec<String>),
+    Between {
+        expr: Box<ExprNode>,
+        negated: bool,
+        low: Box<ExprNode>,
+        high: Box<ExprNode>,
+    },
     BinaryOp {
         left: Box<ExprNode>,
         op: BinaryOperator,
@@ -60,6 +67,23 @@ impl TryFrom<ExprNode> for Expr {
             }
             ExprNode::Identifier(ident) => Ok(Expr::Identifier(ident)),
             ExprNode::CompoundIdentifier(idents) => Ok(Expr::CompoundIdentifier(idents)),
+            ExprNode::Between {
+                expr,
+                negated,
+                low,
+                high,
+            } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let low = Expr::try_from(*low).map(Box::new)?;
+                let high = Expr::try_from(*high).map(Box::new)?;
+
+                Ok(Expr::Between {
+                    expr,
+                    negated,
+                    low,
+                    high,
+                })
+            }
             ExprNode::BinaryOp { left, op, right } => {
                 let left = Expr::try_from(*left).map(Box::new)?;
                 let right = Expr::try_from(*right).map(Box::new)?;
