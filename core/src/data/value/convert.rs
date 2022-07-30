@@ -46,11 +46,11 @@ impl From<Value> for String {
     }
 }
 
-impl TryInto<bool> for &Value {
+impl TryFrom<&Value> for bool {
     type Error = Error;
 
-    fn try_into(self) -> Result<bool> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<Self> {
+        Ok(match v {
             Value::Bool(value) => *value,
             Value::I8(value) => match value {
                 1 => true,
@@ -113,19 +113,11 @@ impl TryInto<bool> for &Value {
     }
 }
 
-impl TryInto<bool> for Value {
+impl TryFrom<&Value> for i8 {
     type Error = Error;
 
-    fn try_into(self) -> Result<bool> {
-        (&self).try_into()
-    }
-}
-
-impl TryInto<i8> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<i8> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<i8> {
+        Ok(match v {
             Value::Bool(value) => {
                 if *value {
                     1
@@ -156,27 +148,11 @@ impl TryInto<i8> for &Value {
     }
 }
 
-impl TryInto<i8> for Value {
+impl TryFrom<&Value> for i16 {
     type Error = Error;
 
-    fn try_into(self) -> Result<i8> {
-        (&self).try_into()
-    }
-}
-
-impl TryInto<i16> for Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<i16> {
-        (&self).try_into()
-    }
-}
-
-impl TryInto<i16> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<i16> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<i16> {
+        Ok(match v {
             Value::Bool(value) => {
                 if *value {
                     1
@@ -207,11 +183,11 @@ impl TryInto<i16> for &Value {
     }
 }
 
-impl TryInto<i32> for &Value {
+impl TryFrom<&Value> for i32 {
     type Error = Error;
 
-    fn try_into(self) -> Result<i32> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<i32> {
+        Ok(match v {
             Value::Bool(value) => {
                 if *value {
                     1
@@ -242,19 +218,11 @@ impl TryInto<i32> for &Value {
     }
 }
 
-impl TryInto<i32> for Value {
+impl TryFrom<&Value> for i64 {
     type Error = Error;
 
-    fn try_into(self) -> Result<i32> {
-        (&self).try_into()
-    }
-}
-
-impl TryInto<i64> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<i64> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<i64> {
+        Ok(match v {
             Value::Bool(value) => {
                 if *value {
                     1
@@ -285,19 +253,11 @@ impl TryInto<i64> for &Value {
     }
 }
 
-impl TryInto<i64> for Value {
+impl TryFrom<&Value> for i128 {
     type Error = Error;
 
-    fn try_into(self) -> Result<i64> {
-        (&self).try_into()
-    }
-}
-
-impl TryInto<i128> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<i128> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<i128> {
+        Ok(match v {
             Value::Bool(value) => {
                 if *value {
                     1
@@ -328,19 +288,11 @@ impl TryInto<i128> for &Value {
     }
 }
 
-impl TryInto<i128> for Value {
+impl TryFrom<&Value> for f64 {
     type Error = Error;
 
-    fn try_into(self) -> Result<i128> {
-        (&self).try_into()
-    }
-}
-
-impl TryInto<f64> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<f64> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<f64> {
+        Ok(match v {
             Value::Bool(value) => {
                 if *value {
                     1.0
@@ -371,19 +323,11 @@ impl TryInto<f64> for &Value {
     }
 }
 
-impl TryInto<f64> for Value {
+impl TryFrom<&Value> for Decimal {
     type Error = Error;
 
-    fn try_into(self) -> Result<f64> {
-        (&self).try_into()
-    }
-}
-
-impl TryInto<Decimal> for &Value {
-    type Error = Error;
-
-    fn try_into(self) -> Result<Decimal> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<Decimal> {
+        Ok(match v {
             Value::Bool(value) => {
                 if *value {
                     Decimal::ONE
@@ -414,19 +358,26 @@ impl TryInto<Decimal> for &Value {
     }
 }
 
-impl TryInto<Decimal> for Value {
-    type Error = Error;
+// implies `TryFrom<Value> for T` from `TryFrom<&Value> for T`
+macro_rules! try_from_owned_value {
+    ($($target:ty), *) => {$(
+        impl TryFrom<Value> for $target {
+            type Error = Error;
 
-    fn try_into(self) -> Result<Decimal> {
-        (&self).try_into()
-    }
+            fn try_from(v: Value) -> Result<Self> {
+                Self::try_from(&v)
+            }
+        }
+    )*}
 }
 
-impl TryInto<NaiveDate> for &Value {
+try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u128, Decimal);
+
+impl TryFrom<&Value> for NaiveDate {
     type Error = Error;
 
-    fn try_into(self) -> Result<NaiveDate> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<NaiveDate> {
+        Ok(match v {
             Value::Date(value) => *value,
             Value::Timestamp(value) => value.date(),
             Value::Str(value) => parse_date(value).ok_or(ValueError::ImpossibleCast)?,
@@ -435,11 +386,11 @@ impl TryInto<NaiveDate> for &Value {
     }
 }
 
-impl TryInto<NaiveTime> for &Value {
+impl TryFrom<&Value> for NaiveTime {
     type Error = Error;
 
-    fn try_into(self) -> Result<NaiveTime> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<NaiveTime> {
+        Ok(match v {
             Value::Time(value) => *value,
             Value::Str(value) => parse_time(value).ok_or(ValueError::ImpossibleCast)?,
             _ => return Err(ValueError::ImpossibleCast.into()),
@@ -447,11 +398,11 @@ impl TryInto<NaiveTime> for &Value {
     }
 }
 
-impl TryInto<NaiveDateTime> for &Value {
+impl TryFrom<&Value> for NaiveDateTime {
     type Error = Error;
 
-    fn try_into(self) -> Result<NaiveDateTime> {
-        Ok(match self {
+    fn try_from(v: &Value) -> Result<NaiveDateTime> {
+        Ok(match v {
             Value::Date(value) => value.and_hms(0, 0, 0),
             Value::Str(value) => parse_timestamp(value).ok_or(ValueError::ImpossibleCast)?,
             Value::Timestamp(value) => *value,
@@ -460,22 +411,22 @@ impl TryInto<NaiveDateTime> for &Value {
     }
 }
 
-impl TryInto<Interval> for &Value {
+impl TryFrom<&Value> for Interval {
     type Error = Error;
 
-    fn try_into(self) -> Result<Interval> {
-        match self {
+    fn try_from(v: &Value) -> Result<Interval> {
+        match v {
             Value::Str(value) => Interval::try_from(value.as_str()),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
     }
 }
 
-impl TryInto<u128> for &Value {
+impl TryFrom<&Value> for u128 {
     type Error = Error;
 
-    fn try_into(self) -> Result<u128> {
-        match self {
+    fn try_from(v: &Value) -> Result<u128> {
+        match v {
             Value::Uuid(value) => Ok(*value),
             _ => Err(ValueError::ImpossibleCast.into()),
         }
@@ -534,7 +485,8 @@ mod tests {
     fn try_into_bool() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<bool>, $to)
+                assert_eq!($from.try_into() as Result<bool>, $to);
+                assert_eq!(bool::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -606,7 +558,8 @@ mod tests {
     fn try_into_i8() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<i8>, $to)
+                assert_eq!($from.try_into() as Result<i8>, $to);
+                assert_eq!(i8::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -667,7 +620,8 @@ mod tests {
     fn try_into_i16() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<i16>, $to)
+                assert_eq!($from.try_into() as Result<i16>, $to);
+                assert_eq!(i16::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -722,7 +676,8 @@ mod tests {
     fn try_into_i32() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<i32>, $to)
+                assert_eq!($from.try_into() as Result<i32>, $to);
+                assert_eq!(i32::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -777,7 +732,8 @@ mod tests {
     fn try_into_i64() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<i64>, $to)
+                assert_eq!($from.try_into() as Result<i64>, $to);
+                assert_eq!(i64::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -832,7 +788,8 @@ mod tests {
     fn try_into_i128() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<i128>, $to)
+                assert_eq!($from.try_into() as Result<i128>, $to);
+                assert_eq!(i128::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -887,7 +844,8 @@ mod tests {
     fn try_into_f64() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<f64>, $to)
+                assert_eq!($from.try_into() as Result<f64>, $to);
+                assert_eq!(f64::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -944,7 +902,8 @@ mod tests {
     fn try_into_naive_date() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<chrono::NaiveDate>, $to)
+                assert_eq!($from.try_into() as Result<chrono::NaiveDate>, $to);
+                assert_eq!(chrono::NaiveDate::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -963,7 +922,8 @@ mod tests {
     fn try_into_naive_time() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<chrono::NaiveTime>, $to)
+                assert_eq!($from.try_into() as Result<chrono::NaiveTime>, $to);
+                assert_eq!(chrono::NaiveTime::try_from($from), $to);
             };
         }
         let time = chrono::NaiveTime::from_hms_milli;
@@ -975,7 +935,8 @@ mod tests {
     fn try_into_naive_date_time() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
-                assert_eq!($from.try_into() as Result<chrono::NaiveDateTime>, $to)
+                assert_eq!($from.try_into() as Result<chrono::NaiveDateTime>, $to);
+                assert_eq!(chrono::NaiveDateTime::try_from($from), $to);
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -1003,12 +964,17 @@ mod tests {
         assert_eq!(
             (&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())).try_into() as Result<I>,
             Ok(I::Month(274))
-        )
+        );
+        assert_eq!(
+            I::try_from(&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())),
+            Ok(I::Month(274))
+        );
     }
 
     #[test]
     fn try_into_u128() {
         let uuid = 195965723427462096757863453463987888808;
-        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid))
+        assert_eq!((&Value::Uuid(uuid)).try_into() as Result<u128>, Ok(uuid));
+        assert_eq!(u128::try_from(&Value::Uuid(uuid)), Ok(uuid));
     }
 }

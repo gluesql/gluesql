@@ -21,9 +21,11 @@ pub enum FunctionNode {
     Cos(ExprNode),
     Tan(ExprNode),
     Pi,
+    Now,
     Left(ExprNode, ExprNode),
     Log2(ExprNode),
     Log10(ExprNode),
+    Ln(ExprNode),
     Right(ExprNode, ExprNode),
     Reverse(ExprNode),
 }
@@ -96,6 +98,7 @@ impl TryFrom<FunctionNode> for Expr {
                 .map(Box::new)
                 .map(Expr::Function),
             FunctionNode::Pi => Ok(Expr::Function(Box::new(Function::Pi()))),
+            FunctionNode::Now => Ok(Expr::Function(Box::new(Function::Now()))),
             FunctionNode::Left(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
                 size_node
                     .try_into()
@@ -111,6 +114,11 @@ impl TryFrom<FunctionNode> for Expr {
             FunctionNode::Log10(expr_node) => expr_node
                 .try_into()
                 .map(Function::Log10)
+                .map(Box::new)
+                .map(Expr::Function),
+            FunctionNode::Ln(expr_node) => expr_node
+                .try_into()
+                .map(Function::Ln)
                 .map(Box::new)
                 .map(Expr::Function),
             FunctionNode::Right(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
@@ -175,6 +183,9 @@ impl ExprNode {
     pub fn log10(self) -> ExprNode {
         log10(self)
     }
+    pub fn ln(self) -> ExprNode {
+        ln(self)
+    }
     pub fn right(self, size: Self) -> Self {
         right(self, size)
     }
@@ -223,6 +234,9 @@ pub fn tan<T: Into<ExprNode>>(expr: T) -> ExprNode {
 pub fn pi() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Pi))
 }
+pub fn now() -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Now))
+}
 pub fn left<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Left(expr.into(), size.into())))
 }
@@ -231,6 +245,9 @@ pub fn log2<T: Into<ExprNode>>(expr: T) -> ExprNode {
 }
 pub fn log10<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Log10(expr.into())))
+}
+pub fn ln<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Ln(expr.into())))
 }
 pub fn right<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Right(expr.into(), size.into())))
@@ -243,8 +260,8 @@ pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, log10, log2, num, pi,
-        reverse, right, round, sin, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, now,
+        num, pi, reverse, right, round, sin, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -375,6 +392,13 @@ mod tests {
     }
 
     #[test]
+    fn function_now() {
+        let actual = now();
+        let expected = "NOW()";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_left() {
         let actual = left(text("GlueSQL"), num(2));
         let expected = "LEFT('GlueSQL', 2)";
@@ -404,6 +428,17 @@ mod tests {
 
         let actual = col("num").log10();
         let expected = "LOG10(num)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_ln() {
+        let actual = ln(num(2));
+        let expected = "LN(2)";
+        test_expr(actual, expected);
+
+        let actual = num(2).ln();
+        let expected = "LN(2)";
         test_expr(actual, expected);
     }
 

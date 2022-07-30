@@ -10,9 +10,9 @@ use {
 };
 
 mod binary_op;
+mod convert;
 mod date;
 mod error;
-mod into;
 mod json;
 mod literal;
 mod selector;
@@ -518,6 +518,18 @@ impl Value {
         };
 
         Ok(Value::I64(value))
+    }
+
+    pub fn sqrt(&self) -> Result<Value> {
+        use Value::*;
+        match self {
+            I8(_) | I16(_) | I64(_) | I128(_) | F64(_) => {
+                let a: f64 = self.try_into()?;
+                Ok(Value::F64(a.sqrt()))
+            }
+            Null => Ok(Value::Null),
+            _ => Err(ValueError::SqrtOnNonNumeric(self.clone()).into()),
+        }
     }
 
     /// Value to Big-Endian for comparison purpose
@@ -1343,12 +1355,27 @@ mod tests {
     }
 
     #[test]
+    fn sqrt() {
+        assert_eq!(I8(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I16(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I64(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I128(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(F64(9.0).sqrt(), Ok(F64(3.0)));
+        assert!(Null.sqrt().unwrap().is_null());
+        assert_eq!(
+            Str("9".to_string()).sqrt(),
+            Err(ValueError::SqrtOnNonNumeric(Str("9".to_string())).into())
+        );
+    }
+
+    #[test]
     fn values() {
         use {
             super::Value,
             crate::{ast::DataType as D, data::Interval as I},
             chrono::{NaiveDate, NaiveTime},
         };
+
         let decimal = Decimal(rust_decimal::Decimal::ONE);
         let date = Date(NaiveDate::from_ymd(2021, 5, 1));
         let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));

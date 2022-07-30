@@ -251,8 +251,8 @@ pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
     Ok(Value::I8(x.signum() as i8))
 }
 
-pub fn sqrt(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).sqrt()))
+pub fn sqrt(n: Evaluated<'_>) -> Result<Value> {
+    Value::sqrt(&n.try_into()?)
 }
 
 pub fn power(name: String, expr: Evaluated<'_>, power: Evaluated<'_>) -> Result<Value> {

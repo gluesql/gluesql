@@ -185,7 +185,7 @@ fn evaluate_function<'a>(
         }
 
         // --- float ---
-        Function::Sqrt(expr) => f::sqrt(name(), eval(expr)?),
+        Function::Sqrt(expr) => f::sqrt(eval(expr)?),
         Function::Power { expr, power } => {
             let expr = eval(expr)?;
             let power = eval(power)?;
