@@ -10,11 +10,9 @@ pub mod function;
 
 pub use nested::nested;
 
-use crate::ast::Aggregate;
-
 use {
     crate::{
-        ast::{AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator},
+        ast::{AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator, Aggregate},
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
