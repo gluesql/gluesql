@@ -2,16 +2,16 @@ use {
     super::ExprNode,
     crate::{
         ast::{Expr, OrderByExpr},
-        parse_sql::parse_expr,
+        parse_sql::parse_order_by_expr,
         result::{Error, Result},
-        translate::translate_expr,
+        translate::translate_order_by_expr,
     },
 };
 
 #[derive(Clone)]
 pub enum OrderByExprNode {
     Expr(ExprNode, Option<bool>),
-    Text(String, Option<bool>),
+    Text(String),
 }
 
 impl From<(ExprNode, Option<bool>)> for OrderByExprNode {
@@ -20,9 +20,9 @@ impl From<(ExprNode, Option<bool>)> for OrderByExprNode {
     }
 }
 
-impl From<(&str, Option<bool>)> for OrderByExprNode {
-    fn from((expr, asc): (&str, Option<bool>)) -> Self {
-        Self::Text(expr.to_owned(), asc)
+impl From<&str> for OrderByExprNode {
+    fn from(expr: &str) -> Self {
+        Self::Text(expr.to_owned())
     }
 }
 
@@ -35,9 +35,9 @@ impl TryFrom<OrderByExprNode> for OrderByExpr {
                 expr: Expr::try_from(node)?,
                 asc,
             }),
-            OrderByExprNode::Text(expr, asc) => {
-                let expr = parse_expr(expr).and_then(|item| translate_expr(&item))?;
-                Ok(OrderByExpr { expr, asc })
+            OrderByExprNode::Text(expr) => {
+                let expr = parse_order_by_expr(expr).and_then(|op| translate_order_by_expr(&op))?;
+                Ok(expr)
             }
         }
     }
@@ -71,11 +71,11 @@ mod tests {
         let expected = "foo DESC";
         test(actual, expected);
 
-        let actual = OrderByExprNode::Text("foo".to_string(), Some(true));
+        let actual = OrderByExprNode::Text("foo asc".to_string());
         let expected = "foo ASC";
         test(actual, expected);
 
-        let actual = OrderByExprNode::Text("foo".to_string(), Some(false));
+        let actual = OrderByExprNode::Text("foo desc".to_string());
         let expected = "foo DESC";
         test(actual, expected);
     }

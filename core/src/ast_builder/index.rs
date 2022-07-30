@@ -61,13 +61,11 @@ mod tests {
 
     #[test]
     fn create_index() {
-        let actual = table("Foo").create_index("nameIndex", "name", true).build();
+        let actual = table("Foo").create_index("nameIndex", "name asc").build();
         let expected = "CREATE INDEX nameIndex ON Foo (name Asc)";
         test(actual, expected);
 
-        let actual = table("Foo")
-            .create_index("nameIndex", "name", false)
-            .build();
+        let actual = table("Foo").create_index("nameIndex", "name desc").build();
         let expected = "CREATE INDEX nameIndex ON Foo (name Desc)";
         test(actual, expected);
     }

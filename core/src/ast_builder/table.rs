@@ -23,11 +23,11 @@ impl TableNode {
     }
 
     #[cfg(feature = "index")]
-    pub fn create_index(self, name: &str, column_name: &str, asc: bool) -> CreateIndexNode {
+    pub fn create_index(self, name: &str, column: &str) -> CreateIndexNode {
         CreateIndexNode::new(
             self.table_name,
             name.to_string(),
-            OrderByExprNode::Text(column_name.to_string(), Some(asc)),
+            OrderByExprNode::Text(column.to_string()),
         )
     }
 
