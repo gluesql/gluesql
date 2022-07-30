@@ -1,7 +1,11 @@
 mod blend;
 mod error;
 
+use std::iter;
+
 pub use error::SelectError;
+
+use crate::ast::Expr;
 
 use {
     self::blend::Blend,
@@ -105,6 +109,52 @@ pub fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
+fn into_rows(exprs_list: &Vec<Vec<Expr>>) -> (Vec<Result<Row>>, Vec<String>) {
+    let first_len = exprs_list[0].len();
+    let labels = (1..=first_len)
+        .into_iter()
+        .map(|i| format!("column{}", i))
+        .collect::<Vec<_>>();
+    let rows = exprs_list
+        .into_iter()
+        .scan(
+            iter::repeat(None)
+                .take(first_len)
+                .collect::<Vec<Option<DataType>>>(),
+            move |column_types, exprs| {
+                if exprs.len() != first_len {
+                    return Some(Err(RowError::NumberOfValuesDifferent.into()));
+                }
+
+                let values = column_types
+                    .iter_mut()
+                    .zip(exprs.iter())
+                    .map(|(column_type, expr)| -> Result<_> {
+                        let evaluated = evaluate_stateless(None, expr)?;
+
+                        let value = match column_type {
+                            Some(data_type) => evaluated.try_into_value(data_type, true)?,
+                            None => {
+                                let value: Value = evaluated.try_into()?;
+                                *column_type = value.get_type();
+
+                                value
+                            }
+                        };
+
+                        Ok(value)
+                    })
+                    .collect::<Result<Vec<_>>>()
+                    .map(Row);
+
+                Some(values)
+            },
+        )
+        .collect::<Vec<_>>();
+
+    (rows, labels)
+}
+
 #[async_recursion(?Send)]
 pub async fn select_with_labels<'a>(
     storage: &'a dyn GStore,
@@ -126,70 +176,7 @@ pub async fn select_with_labels<'a>(
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-            let first_len = values_list[0].len();
-            let labels = (1..first_len + 1)
-                .into_iter()
-                .map(|i| format!("column{}", i))
-                .collect::<Vec<_>>();
-
-            let mut column_types = values_list[0]
-                .iter()
-                .map(|expr| {
-                    evaluate_stateless(None, expr)
-                        .and_then(|evaluated| evaluated.try_into())
-                        .map(|value: Value| value.get_type())
-                })
-                .collect::<Result<Vec<_>>>()?;
-
-            let get_null_indexes = |types: &Vec<Option<DataType>>| -> Vec<usize> {
-                types
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, t)| t.is_none())
-                    .map(|(i, _)| i)
-                    .collect::<Vec<_>>()
-            };
-
-            for exprs in values_list {
-                let null_indexes = get_null_indexes(&column_types);
-                if null_indexes.is_empty() {
-                    break;
-                };
-                exprs
-                    .iter()
-                    .enumerate()
-                    .filter(|(i, _)| null_indexes.contains(i))
-                    .try_for_each(|(i, expr)| -> Result<()> {
-                        let value: Value = evaluate_stateless(None, expr)?.try_into()?;
-                        if let Some(data_type) = value.get_type() {
-                            column_types[i] = Some(data_type);
-                        }
-
-                        Ok(())
-                    })?;
-            }
-
-            let rows = values_list
-                .iter()
-                .map(|exprs| {
-                    if exprs.len() != first_len {
-                        return Err(RowError::NumberOfValuesDifferent.into());
-                    }
-                    let values = exprs
-                        .iter()
-                        .map(|expr| evaluate_stateless(None, expr))
-                        .zip(column_types.iter())
-                        .map(|(result, column_type)| {
-                            result.and_then(|evaluated| match column_type {
-                                Some(data_type) => evaluated.try_into_value(data_type, true),
-                                None => evaluated.try_into(),
-                            })
-                        })
-                        .collect::<Result<Vec<_>>>()?;
-
-                    Ok(Row(values))
-                })
-                .collect::<Vec<_>>();
+            let (rows, labels) = into_rows(values_list);
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
