@@ -7,6 +7,7 @@ pub mod aggregate;
 pub mod between;
 pub mod extract;
 pub mod function;
+pub mod in_list;
 
 pub use nested::nested;
 
@@ -49,6 +50,11 @@ pub enum ExprNode {
     },
     IsNull(Box<ExprNode>),
     IsNotNull(Box<ExprNode>),
+    InList {
+        expr: Box<ExprNode>,
+        list: Vec<ExprNode>,
+        negated: bool,
+    },
     Nested(Box<ExprNode>),
     Function(Box<FunctionNode>),
     Aggregate(Box<AggregateNode>),
@@ -100,6 +106,20 @@ impl TryFrom<ExprNode> for Expr {
             }
             ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
+            ExprNode::InList {
+                expr,
+                list,
+                negated,
+            } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let list = list.into_iter().map(|x| Expr::try_from(x)).collect::<Result<Vec<_>>>()?;
+
+                Ok(Expr::InList {
+                    expr,
+                    list,
+                    negated,
+                })
+            },
             ExprNode::Nested(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::Nested),
             ExprNode::Function(func_expr) => Expr::try_from(*func_expr),
             ExprNode::Aggregate(aggr_expr) => Expr::try_from(*aggr_expr),
