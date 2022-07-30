@@ -12,7 +12,7 @@ pub use nested::nested;
 
 use {
     crate::{
-        ast::{AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator, Aggregate},
+        ast::{Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator},
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
