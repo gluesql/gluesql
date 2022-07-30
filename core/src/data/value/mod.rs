@@ -1341,4 +1341,41 @@ mod tests {
             Err(ValueError::FactorialOnNonNumeric.into())
         );
     }
+
+    #[test]
+    fn values() {
+        use {
+            super::Value,
+            crate::{ast::DataType as D, data::Interval as I},
+            chrono::{NaiveDate, NaiveTime},
+        };
+        let decimal = Decimal(rust_decimal::Decimal::ONE);
+        let date = Date(NaiveDate::from_ymd(2021, 5, 1));
+        let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
+        let time = Time(NaiveTime::from_hms(12, 30, 11));
+        let interval = Interval(I::hours(5));
+        let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
+        let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
+        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let bytea = Bytea(hex::decode("9001").unwrap());
+
+        assert_eq!(I8(1).get_type(), Some(D::Int8));
+        assert_eq!(I16(1).get_type(), Some(D::Int16));
+        assert_eq!(I32(1).get_type(), Some(D::Int32));
+        assert_eq!(I64(1).get_type(), Some(D::Int));
+        assert_eq!(I128(1).get_type(), Some(D::Int128));
+        assert_eq!(F64(1.1).get_type(), Some(D::Float));
+        assert_eq!(decimal.get_type(), Some(D::Decimal));
+        assert_eq!(Bool(true).get_type(), Some(D::Boolean));
+        assert_eq!(Str('1'.into()).get_type(), Some(D::Text));
+        assert_eq!(bytea.get_type(), Some(D::Bytea));
+        assert_eq!(date.get_type(), Some(D::Date));
+        assert_eq!(timestamp.get_type(), Some(D::Timestamp));
+        assert_eq!(time.get_type(), Some(D::Time));
+        assert_eq!(interval.get_type(), Some(D::Interval));
+        assert_eq!(uuid.get_type(), Some(D::Uuid));
+        assert_eq!(map.get_type(), Some(D::Map));
+        assert_eq!(list.get_type(), Some(D::List));
+        assert_eq!(Null.get_type(), None);
+    }
 }

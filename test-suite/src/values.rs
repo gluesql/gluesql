@@ -1,14 +1,13 @@
-use std::borrow::Cow;
-
-use bigdecimal::BigDecimal;
-use gluesql_core::{
-    data::{Literal, ValueError},
-    prelude::DataType,
-};
-
 use {
     crate::*,
-    gluesql_core::{data::RowError, prelude::Value::*},
+    bigdecimal::BigDecimal,
+    gluesql_core::{
+        data::RowError,
+        data::{Literal, ValueError},
+        prelude::DataType,
+        prelude::Value::*,
+    },
+    std::borrow::Cow,
 };
 
 test_case!(values, async move {
