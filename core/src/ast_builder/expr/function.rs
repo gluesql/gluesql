@@ -21,6 +21,7 @@ pub enum FunctionNode {
     Cos(ExprNode),
     Tan(ExprNode),
     Pi,
+    Now,
     Left(ExprNode, ExprNode),
     Log2(ExprNode),
     Log10(ExprNode),
@@ -97,6 +98,7 @@ impl TryFrom<FunctionNode> for Expr {
                 .map(Box::new)
                 .map(Expr::Function),
             FunctionNode::Pi => Ok(Expr::Function(Box::new(Function::Pi()))),
+            FunctionNode::Now => Ok(Expr::Function(Box::new(Function::Now()))),
             FunctionNode::Left(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
                 size_node
                     .try_into()
@@ -232,6 +234,9 @@ pub fn tan<T: Into<ExprNode>>(expr: T) -> ExprNode {
 pub fn pi() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Pi))
 }
+pub fn now() -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Now))
+}
 pub fn left<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Left(expr.into(), size.into())))
 }
@@ -255,9 +260,10 @@ pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, num, pi,
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, num, pi, now,
         reverse, right, round, sin, tan, test_expr, text, upper,
     };
+
 
     #[test]
     fn function_abs() {
@@ -386,6 +392,13 @@ mod tests {
         test_expr(actual, expected);
     }
 
+    #[test]
+    fn function_now(){
+        let actual = now();
+        let expected = "NOW()";
+        test_expr(actual, expected);
+    }
+    
     #[test]
     fn function_left() {
         let actual = left(text("GlueSQL"), num(2));
