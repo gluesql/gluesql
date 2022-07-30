@@ -112,14 +112,17 @@ impl TryFrom<ExprNode> for Expr {
                 negated,
             } => {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
-                let list = list.into_iter().map(|x| Expr::try_from(x)).collect::<Result<Vec<_>>>()?;
+                let list = list
+                    .into_iter()
+                    .map(Expr::try_from)
+                    .collect::<Result<Vec<_>>>()?;
 
                 Ok(Expr::InList {
                     expr,
                     list,
                     negated,
                 })
-            },
+            }
             ExprNode::Nested(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::Nested),
             ExprNode::Function(func_expr) => Expr::try_from(*func_expr),
             ExprNode::Aggregate(aggr_expr) => Expr::try_from(*aggr_expr),
