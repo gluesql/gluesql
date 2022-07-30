@@ -7,6 +7,7 @@ mod order_by_expr;
 mod select;
 mod select_item;
 mod select_item_list;
+mod show_columns;
 mod table;
 
 pub use {
@@ -19,6 +20,7 @@ pub use {
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
+    show_columns::ShowColumnsNode,
     table::TableNode,
 };
 
@@ -31,7 +33,7 @@ pub use {index::CreateIndexNode, index::DropIndexNode};
 pub use expr::{
     aggregate::{avg, count, max, min, sum, variance, AggregateNode},
     function::{
-        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, log10, log2, pi, reverse, right,
+        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, ln, log10, log2, pi, reverse, right,
         round, sin, tan, upper, FunctionNode,
     },
 };

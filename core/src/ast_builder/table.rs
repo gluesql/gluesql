@@ -1,4 +1,4 @@
-use super::{DeleteNode, SelectNode};
+use super::{DeleteNode, SelectNode, ShowColumnsNode};
 
 #[cfg(feature = "index")]
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
@@ -29,5 +29,9 @@ impl TableNode {
             name.to_string(),
             OrderByExprNode::Text(column_name.to_string(), Some(asc)),
         )
+    }
+
+    pub fn show_columns(self) -> ShowColumnsNode {
+        ShowColumnsNode::new(self.table_name)
     }
 }
