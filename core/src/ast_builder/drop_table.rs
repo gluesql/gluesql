@@ -31,19 +31,11 @@ mod tests {
 
     #[test]
     fn drop_table() {
-        let actual = table("Foo").drop().build();
-        let expected = "DROP TABLE Foo";
-        test(actual, expected);
-
         let actual = table("Foo").drop_table().build();
         let expected = "DROP TABLE Foo";
         test(actual, expected);
 
-        let actual = table("Foo").drop_exists().build();
-        let expected = "DROP TABLE IF EXISTS Foo";
-        test(actual, expected);
-
-        let actual = table("Foo").drop_exists_table().build();
+        let actual = table("Foo").drop_table_if_exists().build();
         let expected = "DROP TABLE IF EXISTS Foo";
         test(actual, expected);
     }

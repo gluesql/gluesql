@@ -22,15 +22,7 @@ impl TableNode {
         DropTableNode::new(self.table_name, false)
     }
 
-    pub fn drop(self) -> DropTableNode {
-        DropTableNode::new(self.table_name, false)
-    }
-
-    pub fn drop_exists(self) -> DropTableNode {
-        DropTableNode::new(self.table_name, true)
-    }
-
-    pub fn drop_exists_table(self) -> DropTableNode {
+    pub fn drop_table_if_exists(self) -> DropTableNode {
         DropTableNode::new(self.table_name, true)
     }
 }
