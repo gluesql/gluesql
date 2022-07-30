@@ -260,10 +260,9 @@ pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, num, pi, now,
-        reverse, right, round, sin, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, now,
+        num, pi, reverse, right, round, sin, tan, test_expr, text, upper,
     };
-
 
     #[test]
     fn function_abs() {
@@ -393,12 +392,12 @@ mod tests {
     }
 
     #[test]
-    fn function_now(){
+    fn function_now() {
         let actual = now();
         let expected = "NOW()";
         test_expr(actual, expected);
     }
-    
+
     #[test]
     fn function_left() {
         let actual = left(text("GlueSQL"), num(2));
