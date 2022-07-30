@@ -4,6 +4,7 @@ mod expr_list;
 mod select;
 mod select_item;
 mod select_item_list;
+mod show_columns;
 mod table;
 
 pub use {
@@ -15,6 +16,7 @@ pub use {
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
+    show_columns::ShowColumnsNode,
     table::TableNode,
 };
 
