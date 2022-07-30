@@ -1369,7 +1369,7 @@ mod tests {
     }
 
     #[test]
-    fn values() {
+    fn get_type() {
         use {
             super::Value,
             crate::{ast::DataType as D, data::Interval as I},
