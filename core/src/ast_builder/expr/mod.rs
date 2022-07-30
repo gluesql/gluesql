@@ -10,6 +10,8 @@ pub mod function;
 
 pub use nested::nested;
 
+use crate::ast::Aggregate;
+
 use {
     crate::{
         ast::{AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator},
@@ -102,7 +104,9 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
             ExprNode::Nested(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::Nested),
             ExprNode::Function(func_expr) => Expr::try_from(*func_expr),
-            ExprNode::Aggregate(aggr_expr) => Expr::try_from(*aggr_expr),
+            ExprNode::Aggregate(aggr_expr) => Aggregate::try_from(*aggr_expr)
+                .map(Box::new)
+                .map(Expr::Aggregate),
         }
     }
 }
