@@ -109,14 +109,14 @@ pub fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-fn into_rows(exprs_list: &Vec<Vec<Expr>>) -> (Vec<Result<Row>>, Vec<String>) {
+fn into_rows(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
         .into_iter()
         .map(|i| format!("column{}", i))
         .collect::<Vec<_>>();
     let rows = exprs_list
-        .into_iter()
+        .iter()
         .scan(
             iter::repeat(None)
                 .take(first_len)
