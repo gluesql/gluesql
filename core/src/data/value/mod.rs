@@ -542,8 +542,7 @@ impl Value {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::value::uuid::parse_uuid,
-        crate::data::ValueError,
+        crate::data::{value::uuid::parse_uuid, ValueError},
         rust_decimal::Decimal,
     };
 
