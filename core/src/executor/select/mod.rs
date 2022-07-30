@@ -1,11 +1,7 @@
 mod blend;
 mod error;
 
-use std::iter;
-
 pub use error::SelectError;
-
-use crate::ast::Expr;
 
 use {
     self::blend::Blend,
@@ -20,7 +16,7 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
+        ast::{Expr, Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
         data::{get_alias, get_name, Row, RowError},
         prelude::{DataType, Value},
         result::{Error, Result},
@@ -29,7 +25,10 @@ use {
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
-    std::{iter::once, rc::Rc},
+    std::{
+        iter::{self, once},
+        rc::Rc,
+    },
 };
 
 pub fn get_labels<'a>(
