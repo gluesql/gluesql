@@ -10,6 +10,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  clippy_root:
+    name: Clippy (root)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Add clippy
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          profile: minimal
+          default: true
+          components: clippy
+      - run: cargo clippy -- -D warnings
+
   clippy_core:
     name: Clippy (core)
     runs-on: ubuntu-latest
