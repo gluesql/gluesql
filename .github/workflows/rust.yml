@@ -2,7 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [main]
+    branches: [main, run_job_parallel]
   pull_request:
     branches: [main]
 
