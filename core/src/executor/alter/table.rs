@@ -1,7 +1,7 @@
 use {
     super::{validate, AlterError},
     crate::{
-        ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor},
+        ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor, Values},
         data::{get_name, Schema, TableError},
         executor::select::select,
         result::{Error, MutResult, TrySelf},
@@ -41,6 +41,10 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     return Err(Error::Table(TableError::Unreachable));
                 }
             }
+            Some(Query {
+                body: SetExpr::Values(Values(values_list)),
+                ..
+            }) => todo!(),
             _ => column_defs.to_vec(),
         };
 
