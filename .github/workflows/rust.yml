@@ -14,8 +14,13 @@ jobs:
     name: Clippy (core)
     runs-on: ubuntu-latest
     steps:
-      - name: Add clippy
-        run: rustup component add clippy      
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: clippy
       - uses: actions/checkout@v3        
       - run: |
           cd core
@@ -34,8 +39,13 @@ jobs:
   rust_fmt:
     runs-on: ubuntu-latest
     steps:
-      - name: Add rustfmt
-        run: rustup component add rustfmt
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: clippy
       - uses: actions/checkout@v3
       - run: |
           cargo fmt -- --check
