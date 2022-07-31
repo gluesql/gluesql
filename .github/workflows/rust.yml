@@ -10,18 +10,12 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  clippy_core:
+    name: Clippy (core)
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - uses: jetli/wasm-pack-action@v0.3.0
+      - uses: actions/checkout@v3      
       - run: rustup component add clippy rustfmt
-      - name: Clippy (root)
-        run: cargo clippy -- -D warnings
       - name: Clippy (core)
         run: |
           cd core
@@ -36,23 +30,54 @@ jobs:
           cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
           cargo clippy --all-features --all-targets -- -D warnings
           cd ../
+  
+  rust_fmt:
+    runs-on: ubuntu-latest
+    steps:
       - name: Rustfmt
-        run: cargo fmt -- --check
+      - uses: actions/checkout@v3
+      - run: cargo fmt -- --check
+  
+  rust_build:
+    runs-on: ubuntu-latest
+    steps:
       - name: Build
-        run: cargo build --all-features --verbose
+      - uses: actions/checkout@v3
+      - run: cargo build --all-features --verbose
+
+  gluesql_js_build:
+    runs-on: ubuntu-latest
+    steps:
       - name: Build (gluesql-js)
-        run: |
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - uses: jetli/wasm-pack-action@v0.3.0
+      - run: |
           cd gluesql-js/web
           yarn install
           yarn build
           cd ../../
+  
+  run_tests:
+    runs-on: ubuntu-latest
+    steps:
       - name: Run tests
-        run: |
+      - uses: actions/checkout@v3
+      - run: |
           cargo test --no-default-features --verbose
           cargo test --all-features --all-targets --verbose
+  
+  run_examples:
+    runs-on: ubuntu-latest
+    steps:
       - name: Run examples
-        run: |
+      - uses: actions/checkout@v3
+      - run: |
           cargo run --package gluesql --example hello_world
           cargo run --package gluesql --example api_usage
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
+
+
