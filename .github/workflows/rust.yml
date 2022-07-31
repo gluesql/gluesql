@@ -14,13 +14,13 @@ jobs:
     name: Clippy (core)
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Add clippy
         uses: actions-rs/toolchain@v1.0.6
         with:
           profile: minimal
           default: true
           components: clippy
-      - uses: actions/checkout@v3        
       - run: |
           cd core
           cargo clippy --no-default-features -- -D warnings
@@ -38,13 +38,13 @@ jobs:
   rust_fmt:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Add rustfmt
         uses: actions-rs/toolchain@v1.0.6
         with:
           profile: minimal
           default: true
           components: rustfmt
-      - uses: actions/checkout@v3
       - run: |
           cargo fmt -- --check
   
@@ -57,13 +57,13 @@ jobs:
   gluesql_js_build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Set up node              
         uses: actions/setup-node@v3
         with:
           node-version: 16
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.3.0
-      - uses: actions/checkout@v3
       - run: |
           cd gluesql-js/web
           yarn install
