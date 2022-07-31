@@ -240,6 +240,7 @@ pub trait Tester<T: GStore + GStoreMut> {
     fn get_cell(&mut self) -> Rc<RefCell<Option<T>>>;
 }
 
+#[allow(clippy::crate_in_macro_def)]
 #[macro_export]
 macro_rules! test_case {
     ($name: ident, $content: expr) => {
