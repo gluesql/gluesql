@@ -38,7 +38,7 @@ enum AggrValue {
     },
 }
 
-impl AggrValue {
+impl<'a> AggrValue {
     fn new(aggr: &Aggregate, value: &Value) -> Result<Self> {
         let value = value.clone();
 
