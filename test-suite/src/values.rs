@@ -91,13 +91,12 @@ test_case!(values, async move {
         ),
         (
             "SELECT * FROM Tab",
-            Ok(Payload::Create),
-            // Ok(select!(
-            //     column1 | column2    | column3;
-            //     I64     | Str        | Boolean;
-            //     1         "a".into() | True;
-            //     2         "b".into() | False
-            // )),
+            Ok(select!(
+                column1 | column2    | column3;
+                I64     | Str        | Bool;
+                1         "a".into()   true;
+                2         "b".into()   false
+            )),
         ),
     ];
     for (sql, expected) in test_cases {
