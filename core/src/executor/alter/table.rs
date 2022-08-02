@@ -1,13 +1,21 @@
+use crate::ast::{ColumnOption, ColumnOptionDef};
+
 use {
     super::{validate, AlterError},
     crate::{
         ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor, Values},
         data::{get_name, Schema, TableError},
-        executor::select::select,
-        result::{Error, MutResult, TrySelf},
+        executor::{evaluate_stateless, select::select},
+        prelude::{DataType, Value},
+        result::{Error, MutResult, Result, TrySelf},
         store::{GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
+    itertools::{
+        FoldWhile::{Continue, Done},
+        Itertools,
+    },
+    std::iter,
 };
 
 pub async fn create_table<T: GStore + GStoreMut>(
@@ -20,32 +28,91 @@ pub async fn create_table<T: GStore + GStoreMut>(
     let (storage, target_table_name) = get_name(name).try_self(storage)?;
     let schema = (|| async {
         let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
-            Some(Query {
-                body: SetExpr::Select(select_query),
-                ..
-            }) => {
-                if let TableFactor::Table {
-                    name: source_name, ..
-                } = &select_query.from.relation
-                {
-                    let table_name = get_name(source_name)?;
-                    let schema = storage.fetch_schema(table_name).await?;
-                    let Schema {
-                        column_defs: source_column_defs,
-                        ..
-                    } = schema.ok_or_else(|| -> Error {
-                        AlterError::CtasSourceTableNotFound(table_name.to_owned()).into()
-                    })?;
-                    source_column_defs
-                } else {
-                    return Err(Error::Table(TableError::Unreachable));
+            Some(Query { body, .. }) => match body {
+                SetExpr::Select(select_query) => {
+                    if let TableFactor::Table {
+                        name: source_name, ..
+                    } = &select_query.from.relation
+                    {
+                        let table_name = get_name(source_name)?;
+                        let schema = storage.fetch_schema(table_name).await?;
+                        let Schema {
+                            column_defs: source_column_defs,
+                            ..
+                        } = schema.ok_or_else(|| -> Error {
+                            AlterError::CtasSourceTableNotFound(table_name.to_owned()).into()
+                        })?;
+                        source_column_defs
+                    } else {
+                        return Err(Error::Table(TableError::Unreachable));
+                    }
                 }
-            }
-            Some(Query {
-                body: SetExpr::Values(Values(values_list)),
-                ..
-            }) => todo!(),
-            _ => column_defs.to_vec(),
+                SetExpr::Values(Values(values_list)) => {
+                    let first_len = values_list[0].len();
+                    let column_types = values_list
+                        .iter()
+                        .fold_while(
+                            Ok(iter::repeat(None)
+                                .take(first_len)
+                                .collect::<Vec<Option<DataType>>>()),
+                            |column_types, exprs| {
+                                let column_types = column_types.and_then(|column_types| {
+                                    column_types
+                                        .iter()
+                                        .zip(exprs.iter())
+                                        .map(|(column_type, expr)| -> Result<_> {
+                                            let column_type = match column_type {
+                                                Some(data_type) => Some(data_type.to_owned()),
+                                                None => {
+                                                    let value: Value =
+                                                        evaluate_stateless(None, expr)?
+                                                            .try_into()?;
+
+                                                    value.get_type()
+                                                }
+                                            };
+
+                                            Ok(column_type)
+                                        })
+                                        .collect::<Result<Vec<Option<DataType>>>>()
+                                });
+
+                                // inspect none again? or use mutable counter?
+                                let has_none = column_types
+                                    .as_ref()
+                                    .unwrap()
+                                    .iter()
+                                    .any(|column_type| column_type.is_none());
+
+                                match has_none {
+                                    true => Continue(column_types),
+                                    false => Done(column_types),
+                                }
+                            },
+                        )
+                        .into_inner();
+
+                    let column_defs = column_types?
+                        .iter()
+                        .map(|column_type| match column_type {
+                            Some(column_type) => column_type.to_owned(),
+                            None => DataType::Text,
+                        })
+                        .enumerate()
+                        .map(|(i, data_type)| ColumnDef {
+                            name: format!("column{}", i + 1),
+                            data_type,
+                            options: vec![ColumnOptionDef {
+                                name: None, // what is name?
+                                option: ColumnOption::Null,
+                            }],
+                        })
+                        .collect::<Vec<_>>();
+
+                    column_defs
+                }
+            },
+            None => column_defs.to_vec(),
         };
 
         let schema = Schema {
