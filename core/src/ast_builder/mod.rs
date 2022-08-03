@@ -1,4 +1,5 @@
 mod delete;
+mod drop_table;
 mod expr;
 mod expr_list;
 mod select;
@@ -9,6 +10,7 @@ mod table;
 
 pub use {
     delete::DeleteNode,
+    drop_table::DropTableNode,
     expr_list::ExprList,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,

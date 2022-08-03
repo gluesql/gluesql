@@ -411,6 +411,7 @@ async fn sled_transaction_gc() {
 const TX_TIMEOUT: Option<u128> = Some(200);
 const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
 
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 #[tokio::test]
 async fn sled_transaction_timeout_store() {
     let path = &format!("{}/transaction_timeout_store", PATH_PREFIX);
@@ -542,6 +543,7 @@ async fn sled_transaction_timeout_store() {
     );
 }
 
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 #[tokio::test]
 async fn sled_transaction_timeout_alter() {
     let path = &format!("{}/transaction_timeout_alter", PATH_PREFIX);
@@ -618,6 +620,7 @@ async fn sled_transaction_timeout_alter() {
     test!(glue2 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
 }
 
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 #[tokio::test]
 async fn sled_transaction_timeout_index() {
     use ast::IndexOperator::Eq;

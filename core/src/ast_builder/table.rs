@@ -1,4 +1,4 @@
-use super::{DeleteNode, SelectNode, ShowColumnsNode};
+use super::{DeleteNode, DropTableNode, SelectNode, ShowColumnsNode};
 
 #[derive(Clone)]
 pub struct TableNode {
@@ -16,5 +16,13 @@ impl TableNode {
 
     pub fn show_columns(self) -> ShowColumnsNode {
         ShowColumnsNode::new(self.table_name)
+    }
+
+    pub fn drop_table(self) -> DropTableNode {
+        DropTableNode::new(self.table_name, false)
+    }
+
+    pub fn drop_table_if_exists(self) -> DropTableNode {
+        DropTableNode::new(self.table_name, true)
     }
 }

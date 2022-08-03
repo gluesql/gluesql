@@ -1,7 +1,7 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr},
+        ast::{Aggregate, CountArgExpr},
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
@@ -53,46 +53,20 @@ impl TryFrom<CountArgExprNode> for CountArgExpr {
     }
 }
 
-impl TryFrom<AggregateNode> for Expr {
+impl TryFrom<AggregateNode> for Aggregate {
     type Error = Error;
 
     fn try_from(aggr_node: AggregateNode) -> Result<Self> {
         match aggr_node {
-            AggregateNode::Count(count_arg_expr_node) => count_arg_expr_node
-                .try_into()
-                .map(Aggregate::Count)
-                .map(Box::new)
-                .map(Expr::Aggregate),
-            AggregateNode::Sum(expr_node) => expr_node
-                .try_into()
-                .map(Aggregate::Sum)
-                .map(Box::new)
-                .map(Expr::Aggregate),
-            AggregateNode::Min(expr_node) => expr_node
-                .try_into()
-                .map(Aggregate::Min)
-                .map(Box::new)
-                .map(Expr::Aggregate),
-            AggregateNode::Max(expr_node) => expr_node
-                .try_into()
-                .map(Aggregate::Max)
-                .map(Box::new)
-                .map(Expr::Aggregate),
-            AggregateNode::Avg(expr_node) => expr_node
-                .try_into()
-                .map(Aggregate::Avg)
-                .map(Box::new)
-                .map(Expr::Aggregate),
-            AggregateNode::Variance(expr_node) => expr_node
-                .try_into()
-                .map(Aggregate::Variance)
-                .map(Box::new)
-                .map(Expr::Aggregate),
-            AggregateNode::Stdev(expr_node) => expr_node
-                .try_into()
-                .map(Aggregate::Stdev)
-                .map(Box::new)
-                .map(Expr::Aggregate),
+            AggregateNode::Count(count_arg_expr_node) => {
+                count_arg_expr_node.try_into().map(Aggregate::Count)
+            }
+            AggregateNode::Sum(expr_node) => expr_node.try_into().map(Aggregate::Sum),
+            AggregateNode::Min(expr_node) => expr_node.try_into().map(Aggregate::Min),
+            AggregateNode::Max(expr_node) => expr_node.try_into().map(Aggregate::Max),
+            AggregateNode::Avg(expr_node) => expr_node.try_into().map(Aggregate::Avg),
+            AggregateNode::Variance(expr_node) => expr_node.try_into().map(Aggregate::Variance),
+            AggregateNode::Stdev(expr_node) => expr_node.try_into().map(Aggregate::Stdev),
         }
     }
 }
