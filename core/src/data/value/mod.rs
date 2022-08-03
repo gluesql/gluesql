@@ -120,6 +120,7 @@ impl Value {
             Value::I32(_) => Some(DataType::Int32),
             Value::I64(_) => Some(DataType::Int),
             Value::I128(_) => Some(DataType::Int128),
+            Value::F32(_) => Some(DataType::Float32),
             Value::F64(_) => Some(DataType::Float),
             Value::Decimal(_) => Some(DataType::Decimal),
             Value::Bool(_) => Some(DataType::Boolean),
