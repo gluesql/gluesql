@@ -1,23 +1,13 @@
-use {
-    super::ExprNode,
-    crate::{
-        ast::{Expr, OrderByExpr},
-        parse_sql::parse_order_by_expr,
-        result::{Error, Result},
-        translate::translate_order_by_expr,
-    },
+use crate::{
+    ast::OrderByExpr,
+    parse_sql::parse_order_by_expr,
+    result::{Error, Result},
+    translate::translate_order_by_expr,
 };
 
 #[derive(Clone)]
 pub enum OrderByExprNode {
-    Expr(ExprNode, Option<bool>),
     Text(String),
-}
-
-impl From<(ExprNode, Option<bool>)> for OrderByExprNode {
-    fn from((node, asc): (ExprNode, Option<bool>)) -> Self {
-        Self::Expr(node, asc)
-    }
 }
 
 impl From<&str> for OrderByExprNode {
@@ -31,10 +21,6 @@ impl TryFrom<OrderByExprNode> for OrderByExpr {
 
     fn try_from(node: OrderByExprNode) -> Result<Self> {
         match node {
-            OrderByExprNode::Expr(node, asc) => Ok(OrderByExpr {
-                expr: Expr::try_from(node)?,
-                asc,
-            }),
             OrderByExprNode::Text(expr) => {
                 let expr = parse_order_by_expr(expr).and_then(|op| translate_order_by_expr(&op))?;
                 Ok(expr)
@@ -46,8 +32,7 @@ impl TryFrom<OrderByExprNode> for OrderByExpr {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast_builder::{col, OrderByExprNode},
-        parse_sql::parse_order_by_expr,
+        ast_builder::OrderByExprNode, parse_sql::parse_order_by_expr,
         translate::translate_order_by_expr,
     };
 
@@ -58,24 +43,16 @@ mod tests {
     }
 
     #[test]
-    fn select_item() {
-        let actual = OrderByExprNode::Expr(col("foo"), None);
+    fn order_by_expr() {
+        let actual = OrderByExprNode::Text("foo".into());
         let expected = "foo";
         test(actual, expected);
 
-        let actual = OrderByExprNode::Expr(col("foo"), Some(true));
+        let actual = OrderByExprNode::Text("foo asc".into());
         let expected = "foo ASC";
         test(actual, expected);
 
-        let actual = OrderByExprNode::Expr(col("foo"), Some(false));
-        let expected = "foo DESC";
-        test(actual, expected);
-
-        let actual = OrderByExprNode::Text("foo asc".to_string());
-        let expected = "foo ASC";
-        test(actual, expected);
-
-        let actual = OrderByExprNode::Text("foo desc".to_string());
+        let actual = OrderByExprNode::Text("foo desc".into());
         let expected = "foo DESC";
         test(actual, expected);
     }
