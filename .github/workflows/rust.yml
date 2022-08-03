@@ -10,20 +10,31 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  clippy_root:
+    name: Clippy (root)
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Add clippy
+        uses: actions-rs/toolchain@v1.0.6
         with:
-          node-version: 16
-      - uses: jetli/wasm-pack-action@v0.3.0
-      - run: rustup component add clippy rustfmt
-      - name: Clippy (root)
-        run: cargo clippy -- -D warnings
-      - name: Clippy (core)
-        run: |
+          profile: minimal
+          default: true
+          components: clippy
+      - run: cargo clippy -- -D warnings
+
+  clippy_core:
+    name: Clippy (core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Add clippy
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          profile: minimal
+          default: true
+          components: clippy
+      - run: |
           cd core
           cargo clippy --no-default-features -- -D warnings
           cargo clippy --no-default-features --features metadata -- -D warnings
@@ -36,23 +47,63 @@ jobs:
           cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
           cargo clippy --all-features --all-targets -- -D warnings
           cd ../
-      - name: Rustfmt
-        run: cargo fmt -- --check
-      - name: Build
-        run: cargo build --all-features --verbose
-      - name: Build (gluesql-js)
-        run: |
+  
+  rust_fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Add rustfmt
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+          profile: minimal
+          default: true
+          components: rustfmt
+      - run: |
+          cargo fmt -- --check
+  
+  rust_build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: cargo build --all-features --verbose
+
+  gluesql_js_build:
+    name: Build (gluesql-js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up node              
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Set up wasm pack
+        uses: jetli/wasm-pack-action@v0.3.0
+      - run: |
           cd gluesql-js/web
           yarn install
           yarn build
           cd ../../
-      - name: Run tests
-        run: |
+  
+  run_tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
           cargo test --no-default-features --verbose
           cargo test --all-features --all-targets --verbose
-      - name: Run examples
-        run: |
+  
+  run_examples:
+    name: Run examples  
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
           cargo run --package gluesql --example hello_world
           cargo run --package gluesql --example api_usage
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
+
+
