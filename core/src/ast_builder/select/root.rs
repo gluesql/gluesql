@@ -3,7 +3,8 @@ use {
     crate::{
         ast::{Expr, ObjectName, SelectItem, Statement, TableFactor, TableWithJoins},
         ast_builder::{
-            ExprList, ExprNode, GroupByNode, LimitNode, OffsetNode, ProjectNode, SelectItemList,
+            ExprList, ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
+            ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -49,6 +50,10 @@ impl SelectNode {
         ProjectNode::new(self, select_items)
     }
 
+    pub fn order_by<T: Into<OrderByExprList>>(self, order_list: T) -> OrderByNode {
+        OrderByNode::new(self, order_list)
+    }
+
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
     }
@@ -74,6 +79,7 @@ impl Prebuild for SelectNode {
             from,
             selection,
             group_by: vec![],
+            order_by: vec![],
             having: None,
             offset: None,
             limit: None,
@@ -116,6 +122,10 @@ mod tests {
             })
             .build();
         let expected = "SELECT * FROM Foo WHERE col1 > col2";
+        test(actual, expected);
+
+        let actual = table("Foo").select().group_by("Country, Age").build();
+        let expected = "SELECT * FROM Foo GROUP BY Country, Age";
         test(actual, expected);
     }
 }

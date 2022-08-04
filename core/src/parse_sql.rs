@@ -2,8 +2,8 @@ use {
     crate::result::{Error, Result},
     sqlparser::{
         ast::{
-            Expr as SqlExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
-            Statement as SqlStatement,
+            Expr as SqlExpr, OrderByExpr as SqlOrderByExpr, Query as SqlQuery,
+            SelectItem as SqlSelectItem, Statement as SqlStatement,
         },
         dialect::GenericDialect,
         parser::Parser,
@@ -64,6 +64,28 @@ pub fn parse_select_items<Sql: AsRef<str>>(sql_select_items: Sql) -> Result<Vec<
 
     Parser::new(tokens, &DIALECT)
         .parse_comma_separated(Parser::parse_select_item)
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_order_by_expr<Sql: AsRef<str>>(sql_orderby_expr: Sql) -> Result<SqlOrderByExpr> {
+    let tokens = Tokenizer::new(&DIALECT, sql_orderby_expr.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_order_by_expr()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_order_by_exprs<Sql: AsRef<str>>(
+    sql_orderby_exprs: Sql,
+) -> Result<Vec<SqlOrderByExpr>> {
+    let tokens = Tokenizer::new(&DIALECT, sql_orderby_exprs.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_comma_separated(Parser::parse_order_by_expr)
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
 

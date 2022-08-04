@@ -1,3 +1,7 @@
+use crate::ast_builder::OrderByExprList;
+
+use super::OrderByNode;
+
 use {
     super::{NodeData, Prebuild},
     crate::{
@@ -46,6 +50,10 @@ impl HavingNode {
 
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
         LimitNode::new(self, expr)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList>>(self, expr_list: T) -> OrderByNode {
+        OrderByNode::new(self, expr_list)
     }
 
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {

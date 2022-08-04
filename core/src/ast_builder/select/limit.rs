@@ -1,3 +1,5 @@
+use super::OrderByNode;
+
 use {
     super::{NodeData, Prebuild},
     crate::{
@@ -15,6 +17,7 @@ pub enum PrevNode {
     Select(SelectNode),
     GroupBy(GroupByNode),
     Having(HavingNode),
+    OrderBy(OrderByNode),
 }
 
 impl Prebuild for PrevNode {
@@ -23,6 +26,7 @@ impl Prebuild for PrevNode {
             Self::Select(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
+            Self::OrderBy(node) => node.prebuild(),
         }
     }
 }
@@ -42,6 +46,12 @@ impl From<GroupByNode> for PrevNode {
 impl From<HavingNode> for PrevNode {
     fn from(node: HavingNode) -> Self {
         PrevNode::Having(node)
+    }
+}
+
+impl From<OrderByNode> for PrevNode {
+    fn from(node: OrderByNode) -> Self {
+        PrevNode::OrderBy(node)
     }
 }
 
@@ -66,6 +76,8 @@ impl LimitNode {
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
         ProjectNode::new(self, select_items)
     }
+
+    // pub fn order_by<T: Into<>>(self, )
 
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)

@@ -2,6 +2,8 @@ mod delete;
 mod drop_table;
 mod expr;
 mod expr_list;
+mod order_by_expr;
+mod order_by_expr_list;
 mod select;
 mod select_item;
 mod select_item_list;
@@ -12,9 +14,11 @@ pub use {
     delete::DeleteNode,
     drop_table::DropTableNode,
     expr_list::ExprList,
+    order_by_expr::OrderByExprNode,
+    order_by_expr_list::OrderByExprList,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
-        ProjectNode, SelectNode,
+        OrderByNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
