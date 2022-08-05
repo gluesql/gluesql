@@ -40,7 +40,7 @@ impl TryFrom<OrderByExprNode> for OrderByExpr {
         match order_by_expr_node {
             OrderByExprNode::OrderByExpr(order_by_expr) => Ok(order_by_expr),
             OrderByExprNode::Text(order_by_expr) => {
-                parse_order_by_expr(order_by_expr).and_then(|item| translate_order_by_expr(&item))
+                parse_order_by_expr(order_by_expr).and_then(|op| translate_order_by_expr(&op))
             }
             OrderByExprNode::Expr(expr_node) => {
                 let expr = Expr::try_from(expr_node)?;
@@ -52,4 +52,30 @@ impl TryFrom<OrderByExprNode> for OrderByExpr {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use crate::{
+        ast_builder::OrderByExprNode, parse_sql::parse_order_by_expr,
+        translate::translate_order_by_expr,
+    };
+
+    fn test(actual: OrderByExprNode, expected: &str) {
+        let parsed = &parse_order_by_expr(expected).unwrap();
+        let expected = translate_order_by_expr(parsed);
+        assert_eq!(actual.try_into(), expected);
+    }
+
+    #[test]
+    fn order_by_expr() {
+        let actual = OrderByExprNode::Text("foo".into());
+        let expected = "foo";
+        test(actual, expected);
+
+        let actual = OrderByExprNode::Text("foo asc".into());
+        let expected = "foo ASC";
+        test(actual, expected);
+
+        let actual = OrderByExprNode::Text("foo desc".into());
+        let expected = "foo DESC";
+        test(actual, expected);
+    }
+}

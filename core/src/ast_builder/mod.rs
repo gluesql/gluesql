@@ -2,6 +2,8 @@ mod delete;
 mod drop_table;
 mod expr;
 mod expr_list;
+#[cfg(feature = "index")]
+mod index;
 mod order_by_expr;
 mod order_by_expr_list;
 mod select;
@@ -28,6 +30,8 @@ pub use {
 
 /// Available expression builder functions
 pub use expr::{col, expr, nested, num, text, ExprNode};
+#[cfg(feature = "index")]
+pub use {index::CreateIndexNode, index::DropIndexNode};
 
 /// Available aggregate or normal SQL functions
 pub use expr::{
