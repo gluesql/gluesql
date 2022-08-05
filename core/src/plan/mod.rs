@@ -4,6 +4,7 @@ mod evaluable;
 mod expr;
 mod index;
 mod join;
+mod planner;
 mod primary_key;
 mod schema;
 mod validate;

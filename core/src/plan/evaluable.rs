@@ -176,17 +176,19 @@ mod tests {
     #[test]
     fn evaluable() {
         let context = {
-            let next_child = Context::new("Empty".to_owned(), Vec::new(), None, None);
+            let next_child = Context::new("Empty".to_owned(), Vec::new(), None, None, None);
             let next = Context::new(
                 "Foo".to_owned(),
                 vec!["id", "name"],
+                None,
                 Some(Rc::new(next_child)),
                 None,
             );
-            let next2_child = Context::new("Src".to_owned(), Vec::new(), None, None);
+            let next2_child = Context::new("Src".to_owned(), Vec::new(), None, None, None);
             let next2 = Context::new(
                 "Bar".to_owned(),
                 vec!["id", "rate"],
+                None,
                 None,
                 Some(Rc::new(next2_child)),
             );

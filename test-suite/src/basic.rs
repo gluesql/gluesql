@@ -68,4 +68,11 @@ CREATE TABLE TestA (
     for (expected, sql) in test_cases {
         test!(expected, sql);
     }
+
+    run!("CREATE TABLE HelloWorld (id INTEGER PRIMARY KEY)");
+    run!("INSERT INTO HelloWorld VALUES (1), (2);");
+    test!(
+        Ok(select!(id I64; 1)),
+        "SELECT id FROM HelloWorld WHERE id = 1"
+    );
 });

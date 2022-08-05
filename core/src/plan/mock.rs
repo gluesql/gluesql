@@ -146,8 +146,8 @@ mod tests {
     use {
         super::MockStorage,
         crate::{
-            result::MutResult,
             data::Key,
+            result::MutResult,
             store::{Store, StoreMut},
         },
         futures::executor::block_on,
