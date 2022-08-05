@@ -5,10 +5,12 @@ mod unary_op;
 
 pub mod aggregate;
 pub mod between;
+pub mod case;
 pub mod extract;
 pub mod function;
 pub mod in_list;
 
+pub use case::case;
 pub use nested::nested;
 
 use {
@@ -54,6 +56,11 @@ pub enum ExprNode {
         expr: Box<ExprNode>,
         list: Vec<ExprNode>,
         negated: bool,
+    },
+    Case {
+        operand: Option<Box<ExprNode>>,
+        when_then: Vec<(ExprNode, ExprNode)>,
+        else_result: Option<Box<ExprNode>>,
     },
     Nested(Box<ExprNode>),
     Function(Box<FunctionNode>),
@@ -128,6 +135,30 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::Aggregate(aggr_expr) => Aggregate::try_from(*aggr_expr)
                 .map(Box::new)
                 .map(Expr::Aggregate),
+            ExprNode::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                let operand_expr = operand.map(|expr| Expr::try_from(*expr).map(Box::new).unwrap());
+                let when_then_expr = when_then
+                    .into_iter()
+                    .map(|(when, then)| {
+                        let when_expr = Expr::try_from(when).unwrap();
+                        let then_expr = Expr::try_from(then).unwrap();
+
+                        (when_expr, then_expr)
+                    })
+                    .collect();
+                let else_result_expr =
+                    else_result.map(|expr| Expr::try_from(*expr).map(Box::new).unwrap());
+
+                Ok(Expr::Case {
+                    operand: operand_expr,
+                    when_then: when_then_expr,
+                    else_result: else_result_expr,
+                })
+            }
         }
     }
 }

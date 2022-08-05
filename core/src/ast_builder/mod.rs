@@ -27,7 +27,7 @@ pub use {
 };
 
 /// Available expression builder functions
-pub use expr::{col, expr, nested, num, text, ExprNode};
+pub use expr::{case, col, expr, nested, num, text, ExprNode};
 #[cfg(feature = "index")]
 pub use {index::CreateIndexNode, index::DropIndexNode};
 
