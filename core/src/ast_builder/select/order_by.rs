@@ -80,7 +80,7 @@ impl Prebuild for OrderByNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, table, test, text};
+    use crate::ast_builder::{table, test};
 
     #[test]
     fn order_by() {
