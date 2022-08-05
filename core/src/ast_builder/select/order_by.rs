@@ -80,7 +80,7 @@ impl Prebuild for OrderByNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{col, table, test, text};
 
     #[test]
     fn order_by() {
@@ -111,9 +111,9 @@ mod tests {
 
         let actual = table("Bar")
             .select()
-            .order_by(vec!["name asc", "id desc"])
+            .order_by(vec!["name asc", "id desc", "country"])
             .build();
-        let expected = "SELECT * FROM Bar ORDER BY name asc, id desc";
+        let expected = "SELECT * FROM Bar ORDER BY name asc, id desc, country";
         test(actual, expected);
     }
 }
