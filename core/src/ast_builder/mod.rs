@@ -10,6 +10,8 @@ mod select_item;
 mod select_item_list;
 mod show_columns;
 mod table;
+#[cfg(feature = "transaction")]
+mod transaction;
 
 pub use {
     delete::DeleteNode,
@@ -46,6 +48,9 @@ pub fn table(table_name: &str) -> TableNode {
 
     TableNode { table_name }
 }
+
+/// Functions for building transaction statements
+pub use transaction::{begin, commit, rollback};
 
 #[cfg(test)]
 fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
