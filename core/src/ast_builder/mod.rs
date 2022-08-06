@@ -5,18 +5,19 @@ mod expr_list;
 #[cfg(feature = "index")]
 mod index;
 mod order_by_expr;
+mod query;
 mod select;
 mod select_item;
 mod select_item_list;
 mod show_columns;
 mod table;
-mod query;
 
 pub use {
     delete::DeleteNode,
     drop_table::DropTableNode,
     expr_list::ExprList,
     order_by_expr::OrderByExprNode,
+    query::QueryNode,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
         ProjectNode, SelectNode,
@@ -25,7 +26,6 @@ pub use {
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
     table::TableNode,
-    query::QueryNode,
 };
 
 /// Available expression builder functions

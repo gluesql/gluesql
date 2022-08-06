@@ -1,10 +1,8 @@
-use {
-    crate::{
-        ast::Query,
-        parse_sql::parse_query,
-        result::{Error, Result},
-        translate::translate_query,
-    },
+use crate::{
+    ast::Query,
+    parse_sql::parse_query,
+    result::{Error, Result},
+    translate::translate_query,
 };
 
 #[derive(Clone)]

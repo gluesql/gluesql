@@ -15,10 +15,10 @@ pub use nested::nested;
 use {
     crate::{
         ast::{Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, Query, UnaryOperator},
+        ast_builder::QueryNode,
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
-        ast_builder::QueryNode,
     },
     aggregate::AggregateNode,
     bigdecimal::BigDecimal,
