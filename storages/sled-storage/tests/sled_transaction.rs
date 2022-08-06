@@ -557,81 +557,78 @@ mod timeout_test {
             Err(FetchError::TableNotFound("TxGarlic".to_owned()).into())
         );
     }
-}
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
-#[tokio::test]
-async fn sled_transaction_timeout_alter() {
-    use timeout_test::{sleep, TX_TIMEOUT};
+    #[tokio::test]
+    async fn sled_transaction_timeout_alter() {
+        let path = &format!("{}/transaction_timeout_alter", PATH_PREFIX);
+        fs::remove_dir_all(path).unwrap_or(());
 
-    let path = &format!("{}/transaction_timeout_alter", PATH_PREFIX);
-    fs::remove_dir_all(path).unwrap_or(());
+        let mut storage1 = SledStorage::new(path).unwrap();
+        storage1.set_transaction_timeout(TX_TIMEOUT);
+        let storage2 = storage1.clone();
 
-    let mut storage1 = SledStorage::new(path).unwrap();
-    storage1.set_transaction_timeout(TX_TIMEOUT);
-    let storage2 = storage1.clone();
+        let mut glue1 = Glue::new(storage1);
+        let mut glue2 = Glue::new(storage2);
 
-    let mut glue1 = Glue::new(storage1);
-    let mut glue2 = Glue::new(storage2);
+        exec!(glue1 "CREATE TABLE TxAlter (id INTEGER, num INTEGER);");
+        exec!(glue1 "INSERT INTO TxAlter VALUES (1, 100);");
 
-    exec!(glue1 "CREATE TABLE TxAlter (id INTEGER, num INTEGER);");
-    exec!(glue1 "INSERT INTO TxAlter VALUES (1, 100);");
+        // DROP COLUMN
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "ALTER TABLE TxAlter DROP COLUMN num;");
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id I64; 1)));
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        sleep();
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "ALTER TABLE TxAlter DROP COLUMN num;");
+        exec!(glue2 "ROLLBACK;");
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
 
-    // DROP COLUMN
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "ALTER TABLE TxAlter DROP COLUMN num;");
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id I64; 1)));
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    sleep();
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "ALTER TABLE TxAlter DROP COLUMN num;");
-    exec!(glue2 "ROLLBACK;");
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        // ADD COLUMN
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "ALTER TABLE TxAlter ADD COLUMN flag BOOLEAN DEFAULT TRUE;");
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num | flag I64 | I64 | Bool; 1 100 true)));
 
-    // ADD COLUMN
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "ALTER TABLE TxAlter ADD COLUMN flag BOOLEAN DEFAULT TRUE;");
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num | flag I64 | I64 | Bool; 1 100 true)));
+        exec!(glue1 "ROLLBACK;");
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        sleep();
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        exec!(glue2 "ROLLBACK;");
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
 
-    exec!(glue1 "ROLLBACK;");
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    sleep();
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    exec!(glue2 "ROLLBACK;");
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        // RENAME COLUMN
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "ALTER TABLE TxAlter RENAME COLUMN id TO jd;");
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(jd | num I64 | I64; 1 100)));
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        sleep();
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "ALTER TABLE TxAlter RENAME COLUMN id TO kd;");
+        exec!(glue2 "COMMIT;");
+        exec!(glue1 "ROLLBACK;");
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
 
-    // RENAME COLUMN
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "ALTER TABLE TxAlter RENAME COLUMN id TO jd;");
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(jd | num I64 | I64; 1 100)));
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    sleep();
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "ALTER TABLE TxAlter RENAME COLUMN id TO kd;");
-    exec!(glue2 "COMMIT;");
-    exec!(glue1 "ROLLBACK;");
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
-
-    // RENAME TABLE
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "ALTER TABLE TxAlter RENAME TO TxAltericano;");
-    test!(glue2 "SELECT * FROM TxAltericano;", Ok(select!(kd | num I64 | I64; 1 100)));
-    test!(
-        glue2 "SELECT * FROM TxAlter;",
-        Err(FetchError::TableNotFound("TxAlter".to_owned()).into())
-    );
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
-    test!(
-        glue1 "SELECT * FROM TxAlterericano;",
-        Err(FetchError::TableNotFound("TxAlterericano".to_owned()).into())
-    );
-    sleep();
-    exec!(glue1 "ALTER TABLE TxAlter RENAME TO TxSoprano;");
-    test!(glue1 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
-    exec!(glue2 "ROLLBACK;");
-    test!(glue2 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
+        // RENAME TABLE
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "ALTER TABLE TxAlter RENAME TO TxAltericano;");
+        test!(glue2 "SELECT * FROM TxAltericano;", Ok(select!(kd | num I64 | I64; 1 100)));
+        test!(
+            glue2 "SELECT * FROM TxAlter;",
+            Err(FetchError::TableNotFound("TxAlter".to_owned()).into())
+        );
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
+        test!(
+            glue1 "SELECT * FROM TxAlterericano;",
+            Err(FetchError::TableNotFound("TxAlterericano".to_owned()).into())
+        );
+        sleep();
+        exec!(glue1 "ALTER TABLE TxAlter RENAME TO TxSoprano;");
+        test!(glue1 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
+        exec!(glue2 "ROLLBACK;");
+        test!(glue2 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
+    }
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
