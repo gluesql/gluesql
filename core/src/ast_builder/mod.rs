@@ -50,6 +50,7 @@ pub fn table(table_name: &str) -> TableNode {
 }
 
 /// Functions for building transaction statements
+#[cfg(feature = "transaction")]
 pub use transaction::{begin, commit, rollback};
 
 #[cfg(test)]

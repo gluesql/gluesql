@@ -14,8 +14,7 @@ pub fn rollback() -> Result<Statement> {
 
 #[cfg(all(test, feature = "transaction"))]
 mod tests {
-    use crate::ast_builder::test;
-    use crate::ast_builder::transaction::{begin, commit, rollback};
+    use crate::ast_builder::{begin, commit, rollback, test};
 
     #[test]
     fn transaction() {
