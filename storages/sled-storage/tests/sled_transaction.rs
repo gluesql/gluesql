@@ -424,10 +424,10 @@ mod timeout_test {
 
     use crate::PATH_PREFIX;
 
-    pub const TX_TIMEOUT: Option<u128> = Some(200);
-    pub const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
+    const TX_TIMEOUT: Option<u128> = Some(200);
+    const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
 
-    pub fn sleep() {
+    fn sleep() {
         std::thread::sleep(TX_SLEEP_TICK);
     }
 
