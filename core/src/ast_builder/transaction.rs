@@ -1,17 +1,20 @@
 #![cfg(feature = "transaction")]
 
-use crate::{
-    ast::Statement,
-    result::Result,
-};
+use crate::{ast::Statement, result::Result};
 
-pub fn begin() -> Result<Statement> {Ok(Statement::StartTransaction)}
-pub fn commit() -> Result<Statement> {Ok(Statement::Commit)}
-pub fn rollback() -> Result<Statement> {Ok(Statement::Rollback)}
+pub fn begin() -> Result<Statement> {
+    Ok(Statement::StartTransaction)
+}
+pub fn commit() -> Result<Statement> {
+    Ok(Statement::Commit)
+}
+pub fn rollback() -> Result<Statement> {
+    Ok(Statement::Rollback)
+}
 
 #[cfg(all(test, feature = "transaction"))]
 mod tests {
-    use crate::ast_builder::{test};
+    use crate::ast_builder::test;
     use crate::ast_builder::transaction::{begin, commit, rollback};
 
     #[test]
