@@ -431,9 +431,8 @@ mod timeout_test {
         std::thread::sleep(TX_SLEEP_TICK);
     }
 
-    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
     #[tokio::test]
-    pub async fn sled_transaction_timeout_store() {
+    async fn sled_transaction_timeout_store() {
         let path = &format!("{}/transaction_timeout_store", PATH_PREFIX);
         fs::remove_dir_all(path).unwrap_or(());
 
