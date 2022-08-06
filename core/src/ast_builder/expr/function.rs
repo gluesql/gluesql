@@ -28,6 +28,7 @@ pub enum FunctionNode {
     Ln(ExprNode),
     Right(ExprNode, ExprNode),
     Reverse(ExprNode),
+    Sign(ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Expr {
@@ -133,6 +134,11 @@ impl TryFrom<FunctionNode> for Expr {
                 .map(Function::Reverse)
                 .map(Box::new)
                 .map(Expr::Function),
+            FunctionNode::Sign(expr_node) => expr_node
+                .try_into()
+                .map(Function::Sign)
+                .map(Box::new)
+                .map(Expr::Function),
         }
     }
 }
@@ -192,6 +198,10 @@ impl ExprNode {
 
     pub fn reverse(self) -> ExprNode {
         reverse(self)
+    }
+
+    pub fn sign(self) -> ExprNode {
+        sign(self)
     }
 }
 
@@ -257,11 +267,15 @@ pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Reverse(expr.into())))
 }
 
+pub fn sign<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Sign(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, now,
-        num, pi, reverse, right, round, sin, tan, test_expr, text, upper,
+        num, pi, reverse, right, round, sign, sin, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -461,6 +475,17 @@ mod tests {
 
         let actual = expr("GlueSQL").reverse();
         let expected = "REVERSE(GlueSQL)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_sign() {
+        let actual = sign(col("id"));
+        let expected = "SIGN(id)";
+        test_expr(actual, expected);
+
+        let actual = expr("id").sign();
+        let expected = "SIGN(id)";
         test_expr(actual, expected);
     }
 }

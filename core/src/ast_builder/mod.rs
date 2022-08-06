@@ -11,6 +11,8 @@ mod select_item;
 mod select_item_list;
 mod show_columns;
 mod table;
+#[cfg(feature = "transaction")]
+mod transaction;
 mod update;
 
 pub use {
@@ -40,7 +42,7 @@ pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
         abs, acos, asin, atan, ceil, cos, floor, ifnull, left, ln, log10, log2, now, pi, reverse,
-        right, round, sin, tan, upper, FunctionNode,
+        right, round, sign, sin, tan, upper, FunctionNode,
     },
 };
 
@@ -50,6 +52,10 @@ pub fn table(table_name: &str) -> TableNode {
 
     TableNode { table_name }
 }
+
+/// Functions for building transaction statements
+#[cfg(feature = "transaction")]
+pub use transaction::{begin, commit, rollback};
 
 #[cfg(test)]
 fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {

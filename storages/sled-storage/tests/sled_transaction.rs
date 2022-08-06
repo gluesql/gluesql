@@ -408,327 +408,321 @@ async fn sled_transaction_gc() {
     );
 }
 
-const TX_TIMEOUT: Option<u128> = Some(200);
-const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
-
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
-#[tokio::test]
-async fn sled_transaction_timeout_store() {
-    let path = &format!("{}/transaction_timeout_store", PATH_PREFIX);
-    fs::remove_dir_all(path).unwrap_or(());
+mod timeout_tests {
+    use super::*;
 
-    let mut storage1 = SledStorage::new(path).unwrap();
-    storage1.set_transaction_timeout(TX_TIMEOUT);
-    let storage2 = storage1.clone();
+    const TX_TIMEOUT: Option<u128> = Some(200);
+    const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
 
-    let mut glue1 = Glue::new(storage1);
-    let mut glue2 = Glue::new(storage2);
-
-    let sleep = || {
+    fn sleep() {
         std::thread::sleep(TX_SLEEP_TICK);
-    };
+    }
 
-    exec!(glue1 "BEGIN;");
+    #[tokio::test]
+    async fn sled_transaction_timeout_store() {
+        let path = &format!("{}/transaction_timeout_store", PATH_PREFIX);
+        fs::remove_dir_all(path).unwrap_or(());
 
-    // glue1 acquires lock
-    exec!(glue1 "CREATE TABLE TxGarlic (id INTEGER);");
+        let mut storage1 = SledStorage::new(path).unwrap();
+        storage1.set_transaction_timeout(TX_TIMEOUT);
+        let storage2 = storage1.clone();
 
-    // glue1 lock gets expired due to the timeout
-    sleep();
+        let mut glue1 = Glue::new(storage1);
+        let mut glue2 = Glue::new(storage2);
 
-    // timeout errors
-    test!(glue1 "COMMIT;", Err(Error::StorageMsg("fetch failed - expired transaction has used (timeout)".to_owned())));
-    test!(glue1 "SELECT * FROM TxGarlic", Err(Error::StorageMsg("fetch failed - expired transaction has used (timeout)".to_owned())));
-    assert_eq!(
-        glue1
-            .storage
-            .clone()
-            .unwrap()
-            .update_data("TxGarlic", vec![])
-            .await
-            .map(|(_, v)| v)
-            .map_err(|(_, e)| e),
-        Err(Error::StorageMsg(
-            "acquire failed - expired transaction has used (timeout)".to_owned()
-        )),
-    );
+        exec!(glue1 "BEGIN;");
 
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "CREATE TABLE RealGarlic (id INTEGER);");
-    exec!(glue1 "ROLLBACK;");
-    exec!(glue2 "ROLLBACK;");
+        // glue1 acquires lock
+        exec!(glue1 "CREATE TABLE TxGarlic (id INTEGER);");
 
-    // glue2 lock gets expired
-    sleep();
+        // glue1 lock gets expired due to the timeout
+        sleep();
 
-    // glue1 must succeed to create tables: TxGarlic & RealGarlic
-    exec!(glue1 "CREATE TABLE TxGarlic (id2 INTEGER);");
-    exec!(glue1 "CREATE TABLE RealGarlic (id2 INTEGER);");
+        // timeout errors
+        test!(glue1 "COMMIT;", Err(Error::StorageMsg("fetch failed - expired transaction has used (timeout)".to_owned())));
+        test!(glue1 "SELECT * FROM TxGarlic", Err(Error::StorageMsg("fetch failed - expired transaction has used (timeout)".to_owned())));
+        assert_eq!(
+            glue1
+                .storage
+                .clone()
+                .unwrap()
+                .update_data("TxGarlic", vec![])
+                .await
+                .map(|(_, v)| v)
+                .map_err(|(_, e)| e),
+            Err(Error::StorageMsg(
+                "acquire failed - expired transaction has used (timeout)".to_owned()
+            )),
+        );
 
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "INSERT INTO TxGarlic VALUES (10);");
-    sleep();
-    exec!(glue2 "INSERT INTO TxGarlic VALUES (20);");
-    test!(glue1 "COMMIT;", Err(Error::StorageMsg("fetch failed - expired transaction has used (timeout)".to_owned())));
-    exec!(glue1 "ROLLBACK;");
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "CREATE TABLE RealGarlic (id INTEGER);");
+        exec!(glue1 "ROLLBACK;");
+        exec!(glue2 "ROLLBACK;");
 
-    // glue1 lock has expired, so TxGarlic table has only a single row (20)
-    test!(
-        glue1 "SELECT * FROM TxGarlic;",
-        Ok(select!(id2 I64; 20))
-    );
+        // glue2 lock gets expired
+        sleep();
 
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "UPDATE TxGarlic SET id2 = id2 * 2;");
-    test!(
-        glue1 "SELECT * FROM TxGarlic;",
-        Ok(select!(id2 I64; 40))
-    );
+        // glue1 must succeed to create tables: TxGarlic & RealGarlic
+        exec!(glue1 "CREATE TABLE TxGarlic (id2 INTEGER);");
+        exec!(glue1 "CREATE TABLE RealGarlic (id2 INTEGER);");
 
-    // glue1 lock gets expired
-    sleep();
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "INSERT INTO TxGarlic VALUES (10);");
+        sleep();
+        exec!(glue2 "INSERT INTO TxGarlic VALUES (20);");
+        test!(glue1 "COMMIT;", Err(Error::StorageMsg("fetch failed - expired transaction has used (timeout)".to_owned())));
+        exec!(glue1 "ROLLBACK;");
 
-    // glue1 tx must rollback
-    test!(
-        glue2 "SELECT * FROM TxGarlic;",
-        Ok(select!(id2 I64; 20))
-    );
+        // glue1 lock has expired, so TxGarlic table has only a single row (20)
+        test!(
+            glue1 "SELECT * FROM TxGarlic;",
+            Ok(select!(id2 I64; 20))
+        );
 
-    exec!(glue1 "ROLLBACK;");
-    test!(
-        glue1 "SELECT * FROM TxGarlic;",
-        Ok(select!(id2 I64; 20))
-    );
-    test!(
-        glue2 "SELECT * FROM TxGarlic;",
-        Ok(select!(id2 I64; 20))
-    );
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "UPDATE TxGarlic SET id2 = id2 * 2;");
+        test!(
+            glue1 "SELECT * FROM TxGarlic;",
+            Ok(select!(id2 I64; 40))
+        );
 
-    // UPDATE
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "UPDATE TxGarlic SET id2 = id2 + 1;");
-    sleep();
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "UPDATE TxGarlic SET id2 = id2 + 1;");
-    exec!(glue2 "ROLLBACK;");
-    exec!(glue1 "ROLLBACK;");
+        // glue1 lock gets expired
+        sleep();
 
-    // DELETE
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "DELETE FROM TxGarlic;");
-    test!(glue1 "SELECT * FROM TxGarlic;", Ok(select!(id2)));
-    sleep();
-    test!(glue2 "SELECT * FROM TxGarlic;", Ok(select!(id2 I64; 20)));
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "DELETE FROM TxGarlic");
-    exec!(glue1 "ROLLBACK;");
-    exec!(glue2 "ROLLBACK;");
-    test!(glue1 "SELECT * FROM TxGarlic;", Ok(select!(id2 I64; 20)));
-    test!(glue2 "SELECT * FROM TxGarlic;", Ok(select!(id2 I64; 20)));
+        // glue1 tx must rollback
+        test!(
+            glue2 "SELECT * FROM TxGarlic;",
+            Ok(select!(id2 I64; 20))
+        );
 
-    // DROP TABLE
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "DROP TABLE TxGarlic;");
-    sleep();
-    test!(glue2 "COMMIT;", Err(Error::StorageMsg("fetch failed - expired transaction has used (timeout)".to_owned())));
-    exec!(glue1 "DROP TABLE TxGarlic;");
-    test!(
-        glue1 "SELECT * FROM TxGarlic;",
-        Err(FetchError::TableNotFound("TxGarlic".to_owned()).into())
-    );
-    exec!(glue2 "ROLLBACK;");
-    test!(
-        glue2 "SELECT * FROM TxGarlic;",
-        Err(FetchError::TableNotFound("TxGarlic".to_owned()).into())
-    );
-}
+        exec!(glue1 "ROLLBACK;");
+        test!(
+            glue1 "SELECT * FROM TxGarlic;",
+            Ok(select!(id2 I64; 20))
+        );
+        test!(
+            glue2 "SELECT * FROM TxGarlic;",
+            Ok(select!(id2 I64; 20))
+        );
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
-#[tokio::test]
-async fn sled_transaction_timeout_alter() {
-    let path = &format!("{}/transaction_timeout_alter", PATH_PREFIX);
-    fs::remove_dir_all(path).unwrap_or(());
+        // UPDATE
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "UPDATE TxGarlic SET id2 = id2 + 1;");
+        sleep();
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "UPDATE TxGarlic SET id2 = id2 + 1;");
+        exec!(glue2 "ROLLBACK;");
+        exec!(glue1 "ROLLBACK;");
 
-    let mut storage1 = SledStorage::new(path).unwrap();
-    storage1.set_transaction_timeout(TX_TIMEOUT);
-    let storage2 = storage1.clone();
+        // DELETE
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "DELETE FROM TxGarlic;");
+        test!(glue1 "SELECT * FROM TxGarlic;", Ok(select!(id2)));
+        sleep();
+        test!(glue2 "SELECT * FROM TxGarlic;", Ok(select!(id2 I64; 20)));
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "DELETE FROM TxGarlic");
+        exec!(glue1 "ROLLBACK;");
+        exec!(glue2 "ROLLBACK;");
+        test!(glue1 "SELECT * FROM TxGarlic;", Ok(select!(id2 I64; 20)));
+        test!(glue2 "SELECT * FROM TxGarlic;", Ok(select!(id2 I64; 20)));
 
-    let mut glue1 = Glue::new(storage1);
-    let mut glue2 = Glue::new(storage2);
+        // DROP TABLE
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "DROP TABLE TxGarlic;");
+        sleep();
+        test!(glue2 "COMMIT;", Err(Error::StorageMsg("fetch failed - expired transaction has used (timeout)".to_owned())));
+        exec!(glue1 "DROP TABLE TxGarlic;");
+        test!(
+            glue1 "SELECT * FROM TxGarlic;",
+            Err(FetchError::TableNotFound("TxGarlic".to_owned()).into())
+        );
+        exec!(glue2 "ROLLBACK;");
+        test!(
+            glue2 "SELECT * FROM TxGarlic;",
+            Err(FetchError::TableNotFound("TxGarlic".to_owned()).into())
+        );
+    }
 
-    let sleep = || {
-        std::thread::sleep(TX_SLEEP_TICK);
-    };
+    #[tokio::test]
+    async fn sled_transaction_timeout_alter() {
+        let path = &format!("{}/transaction_timeout_alter", PATH_PREFIX);
+        fs::remove_dir_all(path).unwrap_or(());
 
-    exec!(glue1 "CREATE TABLE TxAlter (id INTEGER, num INTEGER);");
-    exec!(glue1 "INSERT INTO TxAlter VALUES (1, 100);");
+        let mut storage1 = SledStorage::new(path).unwrap();
+        storage1.set_transaction_timeout(TX_TIMEOUT);
+        let storage2 = storage1.clone();
 
-    // DROP COLUMN
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "ALTER TABLE TxAlter DROP COLUMN num;");
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id I64; 1)));
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    sleep();
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "ALTER TABLE TxAlter DROP COLUMN num;");
-    exec!(glue2 "ROLLBACK;");
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        let mut glue1 = Glue::new(storage1);
+        let mut glue2 = Glue::new(storage2);
 
-    // ADD COLUMN
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "ALTER TABLE TxAlter ADD COLUMN flag BOOLEAN DEFAULT TRUE;");
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num | flag I64 | I64 | Bool; 1 100 true)));
+        exec!(glue1 "CREATE TABLE TxAlter (id INTEGER, num INTEGER);");
+        exec!(glue1 "INSERT INTO TxAlter VALUES (1, 100);");
 
-    exec!(glue1 "ROLLBACK;");
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    sleep();
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    exec!(glue2 "ROLLBACK;");
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        // DROP COLUMN
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "ALTER TABLE TxAlter DROP COLUMN num;");
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id I64; 1)));
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        sleep();
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "ALTER TABLE TxAlter DROP COLUMN num;");
+        exec!(glue2 "ROLLBACK;");
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
 
-    // RENAME COLUMN
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "ALTER TABLE TxAlter RENAME COLUMN id TO jd;");
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(jd | num I64 | I64; 1 100)));
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
-    sleep();
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "ALTER TABLE TxAlter RENAME COLUMN id TO kd;");
-    exec!(glue2 "COMMIT;");
-    exec!(glue1 "ROLLBACK;");
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
-    test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
+        // ADD COLUMN
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "ALTER TABLE TxAlter ADD COLUMN flag BOOLEAN DEFAULT TRUE;");
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num | flag I64 | I64 | Bool; 1 100 true)));
 
-    // RENAME TABLE
-    exec!(glue2 "BEGIN;");
-    exec!(glue2 "ALTER TABLE TxAlter RENAME TO TxAltericano;");
-    test!(glue2 "SELECT * FROM TxAltericano;", Ok(select!(kd | num I64 | I64; 1 100)));
-    test!(
-        glue2 "SELECT * FROM TxAlter;",
-        Err(FetchError::TableNotFound("TxAlter".to_owned()).into())
-    );
-    test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
-    test!(
-        glue1 "SELECT * FROM TxAlterericano;",
-        Err(FetchError::TableNotFound("TxAlterericano".to_owned()).into())
-    );
-    sleep();
-    exec!(glue1 "ALTER TABLE TxAlter RENAME TO TxSoprano;");
-    test!(glue1 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
-    exec!(glue2 "ROLLBACK;");
-    test!(glue2 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
-}
+        exec!(glue1 "ROLLBACK;");
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        sleep();
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        exec!(glue2 "ROLLBACK;");
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
-#[tokio::test]
-async fn sled_transaction_timeout_index() {
-    use ast::IndexOperator::Eq;
+        // RENAME COLUMN
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "ALTER TABLE TxAlter RENAME COLUMN id TO jd;");
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(jd | num I64 | I64; 1 100)));
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(id | num I64 | I64; 1 100)));
+        sleep();
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "ALTER TABLE TxAlter RENAME COLUMN id TO kd;");
+        exec!(glue2 "COMMIT;");
+        exec!(glue1 "ROLLBACK;");
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
+        test!(glue2 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
 
-    let path = &format!("{}/transaction_timeout_index", PATH_PREFIX);
-    fs::remove_dir_all(path).unwrap_or(());
+        // RENAME TABLE
+        exec!(glue2 "BEGIN;");
+        exec!(glue2 "ALTER TABLE TxAlter RENAME TO TxAltericano;");
+        test!(glue2 "SELECT * FROM TxAltericano;", Ok(select!(kd | num I64 | I64; 1 100)));
+        test!(
+            glue2 "SELECT * FROM TxAlter;",
+            Err(FetchError::TableNotFound("TxAlter".to_owned()).into())
+        );
+        test!(glue1 "SELECT * FROM TxAlter;", Ok(select!(kd | num I64 | I64; 1 100)));
+        test!(
+            glue1 "SELECT * FROM TxAlterericano;",
+            Err(FetchError::TableNotFound("TxAlterericano".to_owned()).into())
+        );
+        sleep();
+        exec!(glue1 "ALTER TABLE TxAlter RENAME TO TxSoprano;");
+        test!(glue1 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
+        exec!(glue2 "ROLLBACK;");
+        test!(glue2 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
+    }
 
-    let mut storage1 = SledStorage::new(path).unwrap();
-    storage1.set_transaction_timeout(TX_TIMEOUT);
-    let storage2 = storage1.clone();
+    #[tokio::test]
+    async fn sled_transaction_timeout_index() {
+        use crate::ast::IndexOperator::Eq;
 
-    let mut glue1 = Glue::new(storage1);
-    let mut glue2 = Glue::new(storage2);
+        let path = &format!("{}/transaction_timeout_index", PATH_PREFIX);
+        fs::remove_dir_all(path).unwrap_or(());
 
-    let sleep = || {
-        std::thread::sleep(TX_SLEEP_TICK);
-    };
+        let mut storage1 = SledStorage::new(path).unwrap();
+        storage1.set_transaction_timeout(TX_TIMEOUT);
+        let storage2 = storage1.clone();
 
-    exec!(glue1 "CREATE TABLE TxIndex (id INTEGER);");
-    exec!(glue1 "INSERT INTO TxIndex VALUES (1);");
+        let mut glue1 = Glue::new(storage1);
+        let mut glue2 = Glue::new(storage2);
 
-    // CREATE INDEX
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    sleep();
-    exec!(glue2 "CREATE INDEX idx_id ON TxIndex (id);");
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    exec!(glue1 "ROLLBACK;");
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
+        exec!(glue1 "CREATE TABLE TxIndex (id INTEGER);");
+        exec!(glue1 "INSERT INTO TxIndex VALUES (1);");
 
-    // DROP INDEX
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "DROP INDEX TxIndex.idx_id;");
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    sleep();
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    exec!(glue1 "ROLLBACK;");
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
+        // CREATE INDEX
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        sleep();
+        exec!(glue2 "CREATE INDEX idx_id ON TxIndex (id);");
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        exec!(glue1 "ROLLBACK;");
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
 
-    // DROP AND DROP INDEX
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "DROP INDEX TxIndex.idx_id;");
-    exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
-    sleep();
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    exec!(glue1 "ROLLBACK;");
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
+        // DROP INDEX
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "DROP INDEX TxIndex.idx_id;");
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        sleep();
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        exec!(glue1 "ROLLBACK;");
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
 
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "DROP INDEX TxIndex.idx_id;");
-    sleep();
-    exec!(glue2 "DROP INDEX TxIndex.idx_id;");
-    sleep();
-    exec!(glue1 "ROLLBACK;");
-    exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
+        // DROP AND DROP INDEX
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "DROP INDEX TxIndex.idx_id;");
+        exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
+        sleep();
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        exec!(glue1 "ROLLBACK;");
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "DROP INDEX TxIndex.idx_id;");
+        sleep();
+        exec!(glue2 "DROP INDEX TxIndex.idx_id;");
+        sleep();
+        exec!(glue1 "ROLLBACK;");
+        exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+    }
 }
 
 #[test]

@@ -34,7 +34,7 @@ use {
 
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     match sql_statement {
-        SqlStatement::Query(query) => translate_query(query).map(Box::new).map(Statement::Query),
+        SqlStatement::Query(query) => translate_query(query).map(Statement::Query),
         SqlStatement::Insert {
             table_name,
             columns,
@@ -43,7 +43,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         } => Ok(Statement::Insert {
             table_name: translate_object_name(table_name),
             columns: translate_idents(columns),
-            source: translate_query(source).map(Box::new)?,
+            source: translate_query(source)?,
         }),
         SqlStatement::Update {
             table,
