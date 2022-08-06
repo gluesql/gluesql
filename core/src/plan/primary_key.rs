@@ -12,9 +12,9 @@ pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> State
 
     match statement {
         Statement::Query(query) => {
-            let query = planner.query(None, *query);
+            let query = planner.query(None, query);
 
-            Statement::Query(Box::new(query))
+            Statement::Query(query)
         }
         _ => statement,
     }
