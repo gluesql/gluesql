@@ -409,7 +409,7 @@ async fn sled_transaction_gc() {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
-mod timeout_test {
+mod timeout_tests {
     use {
         gluesql_core::{
             executor::FetchError,
