@@ -15,7 +15,7 @@ use {
     gluesql_sled_storage::{self, SledStorage, State},
     std::{
         fs,
-        time::{Duration, SystemTime, UNIX_EPOCH},
+        time::{SystemTime, UNIX_EPOCH},
     },
     test_suite::*,
 };
@@ -629,114 +629,112 @@ mod timeout_test {
         exec!(glue2 "ROLLBACK;");
         test!(glue2 "SELECT * FROM TxSoprano;", Ok(select!(kd | num I64 | I64; 1 100)));
     }
-}
 
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
-#[tokio::test]
-async fn sled_transaction_timeout_index() {
-    use ast::IndexOperator::Eq;
-    use timeout_test::{sleep, TX_TIMEOUT};
+    #[tokio::test]
+    async fn sled_transaction_timeout_index() {
+        use crate::ast::IndexOperator::Eq;
 
-    let path = &format!("{}/transaction_timeout_index", PATH_PREFIX);
-    fs::remove_dir_all(path).unwrap_or(());
+        let path = &format!("{}/transaction_timeout_index", PATH_PREFIX);
+        fs::remove_dir_all(path).unwrap_or(());
 
-    let mut storage1 = SledStorage::new(path).unwrap();
-    storage1.set_transaction_timeout(TX_TIMEOUT);
-    let storage2 = storage1.clone();
+        let mut storage1 = SledStorage::new(path).unwrap();
+        storage1.set_transaction_timeout(TX_TIMEOUT);
+        let storage2 = storage1.clone();
 
-    let mut glue1 = Glue::new(storage1);
-    let mut glue2 = Glue::new(storage2);
+        let mut glue1 = Glue::new(storage1);
+        let mut glue2 = Glue::new(storage2);
 
-    exec!(glue1 "CREATE TABLE TxIndex (id INTEGER);");
-    exec!(glue1 "INSERT INTO TxIndex VALUES (1);");
+        exec!(glue1 "CREATE TABLE TxIndex (id INTEGER);");
+        exec!(glue1 "INSERT INTO TxIndex VALUES (1);");
 
-    // CREATE INDEX
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    sleep();
-    exec!(glue2 "CREATE INDEX idx_id ON TxIndex (id);");
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    exec!(glue1 "ROLLBACK;");
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
+        // CREATE INDEX
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        sleep();
+        exec!(glue2 "CREATE INDEX idx_id ON TxIndex (id);");
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        exec!(glue1 "ROLLBACK;");
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
 
-    // DROP INDEX
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "DROP INDEX TxIndex.idx_id;");
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    sleep();
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    exec!(glue1 "ROLLBACK;");
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
+        // DROP INDEX
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "DROP INDEX TxIndex.idx_id;");
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        sleep();
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        exec!(glue1 "ROLLBACK;");
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
 
-    // DROP AND DROP INDEX
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "DROP INDEX TxIndex.idx_id;");
-    exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
-    sleep();
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    exec!(glue1 "ROLLBACK;");
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
+        // DROP AND DROP INDEX
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "DROP INDEX TxIndex.idx_id;");
+        exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
+        sleep();
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        exec!(glue1 "ROLLBACK;");
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
 
-    exec!(glue1 "BEGIN;");
-    exec!(glue1 "DROP INDEX TxIndex.idx_id;");
-    sleep();
-    exec!(glue2 "DROP INDEX TxIndex.idx_id;");
-    sleep();
-    exec!(glue1 "ROLLBACK;");
-    exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
-    test_idx!(
-        glue2 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
-    test_idx!(
-        glue1 "SELECT * FROM TxIndex WHERE id = 1;",
-        idx!(idx_id, Eq, "1"),
-        Ok(select!(id I64; 1))
-    );
+        exec!(glue1 "BEGIN;");
+        exec!(glue1 "DROP INDEX TxIndex.idx_id;");
+        sleep();
+        exec!(glue2 "DROP INDEX TxIndex.idx_id;");
+        sleep();
+        exec!(glue1 "ROLLBACK;");
+        exec!(glue1 "CREATE INDEX idx_id ON TxIndex (id);");
+        test_idx!(
+            glue2 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+        test_idx!(
+            glue1 "SELECT * FROM TxIndex WHERE id = 1;",
+            idx!(idx_id, Eq, "1"),
+            Ok(select!(id I64; 1))
+        );
+    }
 }
 
 #[test]
