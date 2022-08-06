@@ -212,7 +212,6 @@ impl StoreMut for SledStorage {
 
             for (key, new_row) in tx_rows.iter() {
                 let key = IVec::from(key.to_cmp_be_bytes());
-                // TODO: handle empty value - it would be good to make another PR to resolve this
                 let snapshot = tree
                     .get(&key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
