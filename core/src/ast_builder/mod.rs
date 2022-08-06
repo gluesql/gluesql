@@ -1,3 +1,4 @@
+mod assignment;
 mod delete;
 mod drop_table;
 mod expr;
@@ -10,8 +11,10 @@ mod select_item;
 mod select_item_list;
 mod show_columns;
 mod table;
+mod update;
 
 pub use {
+    assignment::AssignmentNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
     expr_list::ExprList,
@@ -24,6 +27,7 @@ pub use {
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
     table::TableNode,
+    update::UpdateNode,
 };
 
 /// Available expression builder functions
