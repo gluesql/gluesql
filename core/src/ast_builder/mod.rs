@@ -10,6 +10,7 @@ mod select_item;
 mod select_item_list;
 mod show_columns;
 mod table;
+mod query;
 
 pub use {
     delete::DeleteNode,
@@ -24,6 +25,7 @@ pub use {
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
     table::TableNode,
+    query::QueryNode,
 };
 
 /// Available expression builder functions
