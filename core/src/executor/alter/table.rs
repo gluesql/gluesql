@@ -56,37 +56,39 @@ pub async fn create_table<T: GStore + GStoreMut>(
                                 .take(first_len)
                                 .collect::<Vec<Option<DataType>>>()),
                             |column_types, exprs| {
-                                let column_types = column_types.and_then(|column_types| {
-                                    column_types
-                                        .iter()
-                                        .zip(exprs.iter())
-                                        .map(|(column_type, expr)| -> Result<_> {
-                                            let column_type = match column_type {
-                                                Some(data_type) => Some(data_type.to_owned()),
-                                                None => {
-                                                    let value: Value =
-                                                        evaluate_stateless(None, expr)?
-                                                            .try_into()?;
+                                let result = column_types.and_then(
+                                    |column_types| -> Result<(Vec<Option<DataType>>, bool)> {
+                                        let column_types = column_types
+                                            .iter()
+                                            .zip(exprs.iter())
+                                            .map(|(column_type, expr)| -> Result<_> {
+                                                let column_type = match column_type {
+                                                    Some(data_type) => Some(data_type.to_owned()),
+                                                    None => {
+                                                        let value: Value =
+                                                            evaluate_stateless(None, expr)?
+                                                                .try_into()?;
 
-                                                    value.get_type()
-                                                }
-                                            };
+                                                        value.get_type()
+                                                    }
+                                                };
 
-                                            Ok(column_type)
-                                        })
-                                        .collect::<Result<Vec<Option<DataType>>>>()
-                                });
+                                                Ok(column_type)
+                                            })
+                                            .collect::<Result<Vec<Option<DataType>>>>()?;
 
-                                // inspect none again? or use mutable counter?
-                                let has_none = column_types
-                                    .as_ref()
-                                    .unwrap()
-                                    .iter()
-                                    .any(|column_type| column_type.is_none());
+                                        let has_none = column_types
+                                            .iter()
+                                            .any(|column_type| column_type.is_none());
 
-                                match has_none {
-                                    true => Continue(column_types),
-                                    false => Done(column_types),
+                                        Ok((column_types, has_none))
+                                    },
+                                );
+
+                                match result {
+                                    Ok((column_types, true)) => Continue(Ok(column_types)),
+                                    Ok((column_types, false)) => Done(Ok(column_types)),
+                                    Err(error) => Done(Err(error)),
                                 }
                             },
                         )
@@ -103,7 +105,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                             name: format!("column{}", i + 1),
                             data_type,
                             options: vec![ColumnOptionDef {
-                                name: None, // what is name?
+                                name: None,
                                 option: ColumnOption::Null,
                             }],
                         })
