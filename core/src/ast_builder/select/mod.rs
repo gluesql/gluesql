@@ -60,6 +60,6 @@ impl NodeData {
             limit,
         };
 
-        Statement::Query(Box::new(query))
+        Statement::Query(query)
     }
 }
