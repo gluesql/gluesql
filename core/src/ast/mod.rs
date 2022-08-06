@@ -28,7 +28,7 @@ pub enum Statement {
     ShowColumns {
         table_name: ObjectName,
     },
-    /// SELECT
+    /// SELECT, VALUES
     Query(Query),
     /// INSERT
     Insert {
