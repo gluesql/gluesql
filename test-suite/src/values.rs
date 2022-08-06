@@ -86,20 +86,32 @@ test_case!(values, async move {
             .into()),
         ),
         (
-            "CREATE TABLE Tab AS VALUES (1, 'a', True), (2, 'b', False)",
+            "CREATE TABLE TableFromValues AS VALUES (1, 'a', True, Null, Null), (2, 'b', False, 3, Null)",
             Ok(Payload::Create),
         ),
         (
-            "SELECT * FROM Tab",
-            Ok(select!(
-                column1 | column2    | column3;
-                I64     | Str        | Bool;
-                1         "a".into()   true;
-                2         "b".into()   false
+            "SELECT * FROM TableFromValues",
+            Ok(select_with_null!(
+                column1 | column2         | column3    | column4 | column5;
+                I64(1)    Str("a".into())   Bool(true)   Null      Null   ;
+                I64(2)    Str("b".into())   Bool(false)  I64(3)    Null
             )),
         ),
     ];
     for (sql, expected) in test_cases {
         test!(expected, sql);
     }
+});
+
+test_case!(type_match, async {
+    type_match!(
+        &[
+            DataType::Int,
+            DataType::Text,
+            DataType::Boolean,
+            DataType::Int,
+            DataType::Text,
+        ],
+        "SELECT * FROM TableFromValues"
+    );
 });
