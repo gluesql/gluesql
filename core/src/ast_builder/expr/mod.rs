@@ -14,7 +14,10 @@ pub use nested::nested;
 
 use {
     crate::{
-        ast::{Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, Query, UnaryOperator},
+        ast::{
+            Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, Function, Query,
+            UnaryOperator,
+        },
         ast_builder::QueryNode,
         parse_sql::parse_expr,
         result::{Error, Result},
@@ -145,7 +148,9 @@ impl TryFrom<ExprNode> for Expr {
                 })
             }
             ExprNode::Nested(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::Nested),
-            ExprNode::Function(func_expr) => Expr::try_from(*func_expr),
+            ExprNode::Function(func_expr) => Function::try_from(*func_expr)
+                .map(Box::new)
+                .map(Expr::Function),
             ExprNode::Aggregate(aggr_expr) => Aggregate::try_from(*aggr_expr)
                 .map(Box::new)
                 .map(Expr::Aggregate),
