@@ -1,5 +1,6 @@
+use super::ExprNode;
 use crate::{
-    ast::Assignment,
+    ast::{Assignment, Expr},
     parse_sql::parse_sql_assignment,
     result::{Error, Result},
     translate::translate_assignment,
@@ -7,6 +8,7 @@ use crate::{
 
 #[derive(Clone)]
 pub enum AssignmentNode {
+    Expr(String, ExprNode),
     Text(String),
 }
 
@@ -16,14 +18,26 @@ impl From<&str> for AssignmentNode {
     }
 }
 
+impl From<(String, ExprNode)> for AssignmentNode {
+    fn from(expr: (String, ExprNode)) -> Self {
+        Self::Expr(expr.0, expr.1)
+    }
+}
+
 impl TryFrom<AssignmentNode> for Assignment {
     type Error = Error;
 
     fn try_from(node: AssignmentNode) -> Result<Self> {
         match node {
             AssignmentNode::Text(expr) => {
-                let expr = parse_sql_assignment(expr).and_then(|op| translate_assignment(&op))?;
+                let expr = parse_sql_assignment(expr)
+                    .and_then(|assignment| translate_assignment(&assignment))?;
                 Ok(expr)
+            }
+            AssignmentNode::Expr(col, expr_node) => {
+                let value = Expr::try_from(expr_node)?;
+                let id = col;
+                Ok(Assignment { id, value })
             }
         }
     }
@@ -48,8 +62,16 @@ mod tests {
         let expected = "foo = 1";
         test(actual, expected);
 
-        let actual = AssignmentNode::Text("foo = \"cocoa\"".into());
-        let expected = "foo = \"cocoa\"";
+        let actual = AssignmentNode::Text(r#"foo = "cocoa""#.into());
+        let expected = r#"foo = "cocoa""#;
+        test(actual, expected);
+
+        let actual = AssignmentNode::Expr("foo".into(), "1".into());
+        let expected = "foo = 1";
+        test(actual, expected);
+
+        let actual = AssignmentNode::Expr("foo".into(), "cocoa".into());
+        let expected = r#"foo = "cocoa""#;
         test(actual, expected);
     }
 }

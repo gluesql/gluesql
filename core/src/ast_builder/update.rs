@@ -26,10 +26,13 @@ impl UpdateNode {
         self.selection = Some(expr.into());
         self
     }
-    pub fn set<T: Into<AssignmentNode>>(mut self, assignment: T) -> Self {
-        self.assignments.push(assignment.into());
+
+    pub fn set<T: Into<ExprNode>>(mut self, id: &str, value: T) -> Self {
+        self.assignments
+            .push(AssignmentNode::Expr(id.to_owned(), value.into()));
         self
     }
+
     pub fn build(self) -> Result<Statement> {
         let table_name = ObjectName(vec![self.table_name]);
         let selection = self.selection.map(Expr::try_from).transpose()?;
@@ -52,31 +55,34 @@ mod tests {
 
     #[test]
     fn update() {
-        let actual = table("Foo").update().set("id=2").build();
+        let actual = table("Foo").update().set("id", "2").build();
         let expected = "UPDATE Foo SET id = 2";
         test(actual, expected);
 
         let actual = table("Foo")
             .update()
-            .set("id = 2")
-            .set("name = '😝'")
+            .set("id", "2")
+            .set("name", "Bar")
             .build();
-        let expected = "UPDATE Foo SET id = 2, name='😝'";
+        let expected = "UPDATE Foo SET id = 2, name=Bar";
         test(actual, expected);
 
         let actual = table("Foo")
             .update()
-            .set("id = 2")
-            .set("name = '😝'")
+            .set("id", "2")
+            .set("name", "americano")
             .filter("Bar = 1")
             .build();
-        let expected = "UPDATE Foo SET id = 2, name='😝' WHERE Bar = 1";
+        let expected = "UPDATE Foo SET id = 2, name = americano WHERE Bar = 1";
         test(actual, expected);
 
         let actual = table("Foo")
             .update()
-            .set("id = 2")
-            .set("head_item = (SELECT id FROM head_item WHERE level = 3 LIMIT 1)")
+            .set("id", "2")
+            .set(
+                "head_item",
+                "(SELECT id FROM head_item WHERE level = 3 LIMIT 1)",
+            )
             .filter("body_item = 1")
             .build();
         let expected = "UPDATE Foo SET id = 2, head_item = (SELECT id FROM head_item WHERE level = 3 LIMIT 1) WHERE body_item = 1";
