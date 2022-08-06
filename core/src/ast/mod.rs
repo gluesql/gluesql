@@ -28,8 +28,8 @@ pub enum Statement {
     ShowColumns {
         table_name: ObjectName,
     },
-    /// SELECT
-    Query(Box<Query>),
+    /// SELECT, VALUES
+    Query(Query),
     /// INSERT
     Insert {
         /// TABLE
@@ -37,7 +37,7 @@ pub enum Statement {
         /// COLUMNS
         columns: Vec<String>,
         /// A SQL query that specifies what to insert
-        source: Box<Query>,
+        source: Query,
     },
     /// UPDATE
     Update {

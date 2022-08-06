@@ -38,7 +38,7 @@ pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
         abs, acos, asin, atan, ceil, cos, floor, ifnull, left, ln, log10, log2, now, pi, reverse,
-        right, round, sin, tan, upper, FunctionNode,
+        right, round, sign, sin, tan, upper, FunctionNode,
     },
 };
 
