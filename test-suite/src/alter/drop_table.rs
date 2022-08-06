@@ -62,6 +62,84 @@ CREATE TABLE DropTable (
             "DROP VIEW DropTable;",
             Err(TranslateError::UnsupportedStatement("DROP VIEW DropTable".to_owned()).into()),
         ),
+        (
+            r#"
+        CREATE TABLE DropTable1 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable2 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        ("DROP TABLE DropTable1, DropTable2;", Ok(Payload::DropTable)),
+        (
+            "SELECT id, num, name FROM DropTable1;",
+            Err(FetchError::TableNotFound("DropTable1".to_owned()).into()),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable2;",
+            Err(FetchError::TableNotFound("DropTable2".to_owned()).into()),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable1 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable2 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        (
+            "DROP TABLE IF EXISTS DropTable1, DropTable2;",
+            Ok(Payload::DropTable),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable1;",
+            Err(FetchError::TableNotFound("DropTable1".to_owned()).into()),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable2;",
+            Err(FetchError::TableNotFound("DropTable2".to_owned()).into()),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable1 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        (
+            "DROP TABLE IF EXISTS DropTable1, DropTable2;",
+            Ok(Payload::DropTable),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable1;",
+            Err(FetchError::TableNotFound("DropTable1".to_owned()).into()),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable2;",
+            Err(FetchError::TableNotFound("DropTable2".to_owned()).into()),
+        ),
     ];
 
     for (sql, expected) in sqls {
