@@ -6,6 +6,7 @@ use {
         result::{Error, Result},
         store::{RowIter, Store},
     },
+    sled::IVec,
 };
 
 #[async_trait(?Send)]
@@ -37,8 +38,30 @@ impl Store for SledStorage {
         Ok(schema)
     }
 
-    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<Row>> {
-        todo!();
+    async fn fetch_data(&self, _table_name: &str, key: &Key) -> Result<Option<Row>> {
+        let (txid, created_at) = match self.state {
+            State::Transaction {
+                txid, created_at, ..
+            } => (txid, created_at),
+            State::Idle => {
+                return Err(Error::StorageMsg(
+                    "conflict - fetch_data failed, lock does not exist".to_owned(),
+                ));
+            }
+        };
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
+
+        let key = IVec::from(key.to_cmp_be_bytes());
+        let row = self
+            .tree
+            .get(&key)
+            .map_err(err_into)?
+            .map(|v| bincode::deserialize(&v))
+            .transpose()
+            .map_err(err_into)?
+            .and_then(|snapshot: Snapshot<Row>| snapshot.extract(txid, lock_txid));
+
+        Ok(row)
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
