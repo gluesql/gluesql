@@ -1,9 +1,10 @@
-use crate::ast::{ColumnOption, ColumnOptionDef};
-
 use {
     super::{validate, AlterError},
     crate::{
-        ast::{ColumnDef, ObjectName, Query, SetExpr, TableFactor, Values},
+        ast::{
+            ColumnDef, ColumnOption, ColumnOptionDef, ObjectName, Query, SetExpr, TableFactor,
+            Values,
+        },
         data::{get_name, Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
