@@ -212,28 +212,36 @@ impl StoreMut for SledStorage {
 
             for (key, new_row) in tx_rows.iter() {
                 let key = IVec::from(key.to_cmp_be_bytes());
-                let snapshot = tree
-                    .get(&key)?
-                    .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())
-                    .map_err(ConflictableTransactionError::Abort)?;
-                let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
-                    .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)?;
+                let snapshot = match tree.get(&key)? {
+                    Some(snapshot) => {
+                        let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
+                            .map_err(err_into)
+                            .map_err(ConflictableTransactionError::Abort)?;
 
-                let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
-                let old_row = match old_row {
-                    Some(row) => row,
+                        let (snapshot, old_row) = snapshot.update(txid, new_row.clone());
+                        let old_row = match old_row {
+                            Some(row) => row,
+                            None => {
+                                continue;
+                            }
+                        };
+
+                        index_sync.update(&key, &old_row, new_row)?;
+
+                        snapshot
+                    }
                     None => {
-                        continue;
+                        index_sync.insert(&key, new_row)?;
+
+                        Snapshot::new(txid, new_row.clone())
                     }
                 };
 
-                bincode::serialize(&snapshot)
+                let snapshot = bincode::serialize(&snapshot)
                     .map_err(err_into)
-                    .map_err(ConflictableTransactionError::Abort)
-                    .map(|snapshot| tree.insert(&key, snapshot))??;
+                    .map_err(ConflictableTransactionError::Abort)?;
 
-                index_sync.update(&key, &old_row, new_row)?;
+                tree.insert(&key, snapshot)?;
 
                 if !autocommit {
                     let temp_key = key::temp_data(txid, &key);
