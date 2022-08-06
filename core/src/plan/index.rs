@@ -13,9 +13,7 @@ use {
 
 pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Result<Statement> {
     match statement {
-        Statement::Query(query) => plan_query(schema_map, *query)
-            .map(Box::new)
-            .map(Statement::Query),
+        Statement::Query(query) => plan_query(schema_map, query).map(Statement::Query),
         _ => Ok(statement),
     }
 }
