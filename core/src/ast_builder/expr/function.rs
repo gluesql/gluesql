@@ -1,7 +1,7 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Expr, Function},
+        ast::Function,
         result::{Error, Result},
     },
 };
@@ -31,114 +31,44 @@ pub enum FunctionNode {
     Sign(ExprNode),
 }
 
-impl TryFrom<FunctionNode> for Expr {
+impl TryFrom<FunctionNode> for Function {
     type Error = Error;
 
     fn try_from(func_node: FunctionNode) -> Result<Self> {
         match func_node {
-            FunctionNode::Abs(expr_node) => expr_node
-                .try_into()
-                .map(Function::Abs)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Upper(expr_node) => expr_node
-                .try_into()
-                .map(Function::Upper)
-                .map(Box::new)
-                .map(Expr::Function),
+            FunctionNode::Abs(expr_node) => expr_node.try_into().map(Function::Abs),
+            FunctionNode::Upper(expr_node) => expr_node.try_into().map(Function::Upper),
             FunctionNode::IfNull(expr_node, then_node) => expr_node.try_into().and_then(|expr| {
                 then_node
                     .try_into()
                     .map(|then| Function::IfNull { expr, then })
-                    .map(Box::new)
-                    .map(Expr::Function)
             }),
-            FunctionNode::Ceil(expr_node) => expr_node
-                .try_into()
-                .map(Function::Ceil)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Round(expr_node) => expr_node
-                .try_into()
-                .map(Function::Round)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Floor(expr_node) => expr_node
-                .try_into()
-                .map(Function::Floor)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Asin(expr_node) => expr_node
-                .try_into()
-                .map(Function::Asin)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Acos(expr_node) => expr_node
-                .try_into()
-                .map(Function::Acos)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Atan(expr_node) => expr_node
-                .try_into()
-                .map(Function::Atan)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Sin(expr_node) => expr_node
-                .try_into()
-                .map(Function::Sin)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Cos(expr_node) => expr_node
-                .try_into()
-                .map(Function::Cos)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Tan(expr_node) => expr_node
-                .try_into()
-                .map(Function::Tan)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Pi => Ok(Expr::Function(Box::new(Function::Pi()))),
-            FunctionNode::Now => Ok(Expr::Function(Box::new(Function::Now()))),
+            FunctionNode::Ceil(expr_node) => expr_node.try_into().map(Function::Ceil),
+            FunctionNode::Round(expr_node) => expr_node.try_into().map(Function::Round),
+            FunctionNode::Floor(expr_node) => expr_node.try_into().map(Function::Floor),
+            FunctionNode::Asin(expr_node) => expr_node.try_into().map(Function::Asin),
+            FunctionNode::Acos(expr_node) => expr_node.try_into().map(Function::Acos),
+            FunctionNode::Atan(expr_node) => expr_node.try_into().map(Function::Atan),
+            FunctionNode::Sin(expr_node) => expr_node.try_into().map(Function::Sin),
+            FunctionNode::Cos(expr_node) => expr_node.try_into().map(Function::Cos),
+            FunctionNode::Tan(expr_node) => expr_node.try_into().map(Function::Tan),
+            FunctionNode::Pi => Ok(Function::Pi()),
+            FunctionNode::Now => Ok(Function::Now()),
             FunctionNode::Left(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
                 size_node
                     .try_into()
                     .map(|size| Function::Left { expr, size })
-                    .map(Box::new)
-                    .map(Expr::Function)
             }),
-            FunctionNode::Log2(expr_node) => expr_node
-                .try_into()
-                .map(Function::Log2)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Log10(expr_node) => expr_node
-                .try_into()
-                .map(Function::Log10)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Ln(expr_node) => expr_node
-                .try_into()
-                .map(Function::Ln)
-                .map(Box::new)
-                .map(Expr::Function),
+            FunctionNode::Log2(expr_node) => expr_node.try_into().map(Function::Log2),
+            FunctionNode::Log10(expr_node) => expr_node.try_into().map(Function::Log10),
+            FunctionNode::Ln(expr_node) => expr_node.try_into().map(Function::Ln),
             FunctionNode::Right(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
                 size_node
                     .try_into()
                     .map(|size| Function::Right { expr, size })
-                    .map(Box::new)
-                    .map(Expr::Function)
             }),
-            FunctionNode::Reverse(expr_node) => expr_node
-                .try_into()
-                .map(Function::Reverse)
-                .map(Box::new)
-                .map(Expr::Function),
-            FunctionNode::Sign(expr_node) => expr_node
-                .try_into()
-                .map(Function::Sign)
-                .map(Box::new)
-                .map(Expr::Function),
+            FunctionNode::Reverse(expr_node) => expr_node.try_into().map(Function::Reverse),
+            FunctionNode::Sign(expr_node) => expr_node.try_into().map(Function::Sign),
         }
     }
 }
