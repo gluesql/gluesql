@@ -408,12 +408,23 @@ async fn sled_transaction_gc() {
     );
 }
 
-const TX_TIMEOUT: Option<u128> = Some(200);
-const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+mod timeout_test {
+    use std::time::Duration;
+
+    pub const TX_TIMEOUT: Option<u128> = Some(200);
+    pub const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
+
+    pub fn sleep() {
+        std::thread::sleep(TX_SLEEP_TICK);
+    }
+}
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 #[tokio::test]
 async fn sled_transaction_timeout_store() {
+    use timeout_test::{sleep, TX_TIMEOUT};
+
     let path = &format!("{}/transaction_timeout_store", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -423,10 +434,6 @@ async fn sled_transaction_timeout_store() {
 
     let mut glue1 = Glue::new(storage1);
     let mut glue2 = Glue::new(storage2);
-
-    let sleep = || {
-        std::thread::sleep(TX_SLEEP_TICK);
-    };
 
     exec!(glue1 "BEGIN;");
 
@@ -546,6 +553,8 @@ async fn sled_transaction_timeout_store() {
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 #[tokio::test]
 async fn sled_transaction_timeout_alter() {
+    use timeout_test::{sleep, TX_TIMEOUT};
+
     let path = &format!("{}/transaction_timeout_alter", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
@@ -555,10 +564,6 @@ async fn sled_transaction_timeout_alter() {
 
     let mut glue1 = Glue::new(storage1);
     let mut glue2 = Glue::new(storage2);
-
-    let sleep = || {
-        std::thread::sleep(TX_SLEEP_TICK);
-    };
 
     exec!(glue1 "CREATE TABLE TxAlter (id INTEGER, num INTEGER);");
     exec!(glue1 "INSERT INTO TxAlter VALUES (1, 100);");
@@ -624,6 +629,7 @@ async fn sled_transaction_timeout_alter() {
 #[tokio::test]
 async fn sled_transaction_timeout_index() {
     use ast::IndexOperator::Eq;
+    use timeout_test::{sleep, TX_TIMEOUT};
 
     let path = &format!("{}/transaction_timeout_index", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
@@ -634,10 +640,6 @@ async fn sled_transaction_timeout_index() {
 
     let mut glue1 = Glue::new(storage1);
     let mut glue2 = Glue::new(storage2);
-
-    let sleep = || {
-        std::thread::sleep(TX_SLEEP_TICK);
-    };
 
     exec!(glue1 "CREATE TABLE TxIndex (id INTEGER);");
     exec!(glue1 "INSERT INTO TxIndex VALUES (1);");
