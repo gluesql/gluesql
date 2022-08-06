@@ -1,32 +1,44 @@
 mod delete;
+mod drop_table;
 mod expr;
 mod expr_list;
+#[cfg(feature = "index")]
+mod index;
+mod order_by_expr;
 mod select;
 mod select_item;
 mod select_item_list;
+mod show_columns;
 mod table;
+#[cfg(feature = "transaction")]
+mod transaction;
 
 pub use {
     delete::DeleteNode,
+    drop_table::DropTableNode,
     expr_list::ExprList,
+    order_by_expr::OrderByExprNode,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
         ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
+    show_columns::ShowColumnsNode,
     table::TableNode,
 };
 
 /// Available expression builder functions
 pub use expr::{col, expr, nested, num, text, ExprNode};
+#[cfg(feature = "index")]
+pub use {index::CreateIndexNode, index::DropIndexNode};
 
 /// Available aggregate or normal SQL functions
 pub use expr::{
-    aggregate::{avg, count, max, min, sum, variance, AggregateNode},
+    aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
-        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, ln, log10, log2, pi, reverse, right,
-        round, sin, tan, upper, FunctionNode,
+        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, ln, log10, log2, now, pi, reverse,
+        right, round, sin, tan, upper, FunctionNode,
     },
 };
 
@@ -36,6 +48,10 @@ pub fn table(table_name: &str) -> TableNode {
 
     TableNode { table_name }
 }
+
+/// Functions for building transaction statements
+#[cfg(feature = "transaction")]
+pub use transaction::{begin, commit, rollback};
 
 #[cfg(test)]
 fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {

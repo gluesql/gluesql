@@ -115,6 +115,7 @@ pub enum Aggregate {
     Min(Expr),
     Avg(Expr),
     Variance(Expr),
+    Stdev(Expr),
 }
 
 impl ToSql for Aggregate {
@@ -126,6 +127,7 @@ impl ToSql for Aggregate {
             Aggregate::Min(e) => format!("MIN({})", e.to_sql()),
             Aggregate::Avg(e) => format!("AVG({})", e.to_sql()),
             Aggregate::Variance(e) => format!("VARIANCE({})", e.to_sql()),
+            Aggregate::Stdev(e) => format!("STDEV({})", e.to_sql()),
         }
     }
 }
