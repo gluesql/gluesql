@@ -8,12 +8,17 @@ pub mod between;
 pub mod extract;
 pub mod function;
 pub mod in_list;
+pub mod in_subquery;
 
 pub use nested::nested;
 
 use {
     crate::{
-        ast::{Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator},
+        ast::{
+            Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, Function, Query,
+            UnaryOperator,
+        },
+        ast_builder::QueryNode,
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
@@ -53,6 +58,11 @@ pub enum ExprNode {
     InList {
         expr: Box<ExprNode>,
         list: Vec<ExprNode>,
+        negated: bool,
+    },
+    InSubquery {
+        expr: Box<ExprNode>,
+        subquery: Box<QueryNode>,
         negated: bool,
     },
     Nested(Box<ExprNode>),
@@ -123,8 +133,24 @@ impl TryFrom<ExprNode> for Expr {
                     negated,
                 })
             }
+            ExprNode::InSubquery {
+                expr,
+                subquery,
+                negated,
+            } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let subquery = Query::try_from(*subquery).map(Box::new)?;
+
+                Ok(Expr::InSubquery {
+                    expr,
+                    subquery,
+                    negated,
+                })
+            }
             ExprNode::Nested(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::Nested),
-            ExprNode::Function(func_expr) => Expr::try_from(*func_expr),
+            ExprNode::Function(func_expr) => Function::try_from(*func_expr)
+                .map(Box::new)
+                .map(Expr::Function),
             ExprNode::Aggregate(aggr_expr) => Aggregate::try_from(*aggr_expr)
                 .map(Box::new)
                 .map(Expr::Aggregate),

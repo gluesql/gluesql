@@ -15,7 +15,7 @@ use {
     gluesql_sled_storage::{self, SledStorage, State},
     std::{
         fs,
-        time::{Duration, SystemTime, UNIX_EPOCH},
+        time::{SystemTime, UNIX_EPOCH},
     },
     test_suite::*,
 };
@@ -410,7 +410,7 @@ async fn sled_transaction_gc() {
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod timeout_tests {
-    use super::*;
+    use {super::*, std::time::Duration};
 
     const TX_TIMEOUT: Option<u128> = Some(200);
     const TX_SLEEP_TICK: Duration = Duration::from_millis(201);
