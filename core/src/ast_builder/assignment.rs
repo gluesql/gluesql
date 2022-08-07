@@ -62,16 +62,24 @@ mod tests {
         let expected = "foo = 1";
         test(actual, expected);
 
-        let actual = AssignmentNode::Text(r#"foo = "cocoa""#.into());
-        let expected = r#"foo = "cocoa""#;
+        let actual = AssignmentNode::Text(r#"foo = "choco""#.into());
+        let expected = r#"foo = "choco""#;
+        test(actual, expected);
+
+        let actual = AssignmentNode::Text(r#"Bar = mild"#.into());
+        let expected = r#"Bar = mild"#;
         test(actual, expected);
 
         let actual = AssignmentNode::Expr("foo".into(), "1".into());
         let expected = "foo = 1";
         test(actual, expected);
 
-        let actual = AssignmentNode::Expr("foo".into(), "cocoa".into());
+        let actual = AssignmentNode::Expr("foo".into(), r#""cocoa""#.into());
         let expected = r#"foo = "cocoa""#;
+        test(actual, expected);
+
+        let actual = AssignmentNode::Expr("Bar".into(), "mild".into());
+        let expected = "Bar = mild";
         test(actual, expected);
     }
 }
