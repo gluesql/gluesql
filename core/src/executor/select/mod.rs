@@ -170,7 +170,6 @@ pub async fn select_with_labels<'a>(
         projection,
         group_by,
         having,
-        order_by,
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
@@ -241,7 +240,7 @@ pub async fn select_with_labels<'a>(
         None,
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-    let sort = Sort::new(storage, filter_context, order_by);
+    let sort = Sort::new(storage, filter_context, &query.order_by);
 
     let rows = join.apply(rows).await?;
     let rows = rows.try_filter_map(move |blend_context| {

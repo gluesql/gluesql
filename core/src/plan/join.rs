@@ -30,7 +30,14 @@ struct JoinPlanner<'a> {
 
 impl<'a> Planner<'a> for JoinPlanner<'a> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
-        let body = match query.body {
+        let Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        } = query;
+
+        let body = match body {
             SetExpr::Select(select) => {
                 let select = self.select(outer_context, *select);
 
@@ -39,7 +46,12 @@ impl<'a> Planner<'a> for JoinPlanner<'a> {
             SetExpr::Values(_) => query.body,
         };
 
-        Query { body, ..query }
+        Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        }
     }
 
     fn get_schema(&self, name: &str) -> Option<&'a Schema> {
@@ -55,7 +67,6 @@ impl<'a> JoinPlanner<'a> {
             selection,
             group_by,
             having,
-            order_by,
         } = select;
 
         let (outer_context, from) = self.table_with_joins(outer_context, from);
@@ -67,7 +78,6 @@ impl<'a> JoinPlanner<'a> {
             selection,
             group_by,
             having,
-            order_by,
         }
     }
 
@@ -448,6 +458,7 @@ mod tests {
     fn select(select: Select) -> Statement {
         Statement::Query(Query {
             body: SetExpr::Select(Box::new(select)),
+            order_by: vec![],
             limit: None,
             offset: None,
         })
@@ -478,7 +489,6 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "basic select:\n{sql}");
 
@@ -509,7 +519,6 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "basic nested loop join:\n{sql}");
 
@@ -532,7 +541,6 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "basic nested loop join 2:\n{sql}");
 
@@ -563,7 +571,6 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "self multiple joins:\n{sql}");
 
@@ -593,7 +600,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "basic hash join query:\n{sql}");
@@ -629,7 +635,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(
@@ -656,7 +661,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "subquery in join_constraint:\n{sql}");
@@ -709,7 +713,6 @@ mod tests {
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "where_clause AND hash_join expr:\n{sql}");
@@ -743,7 +746,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(
@@ -781,7 +783,6 @@ mod tests {
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "complex where_clause:\n{sql}");
@@ -815,7 +816,6 @@ mod tests {
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "hash_join expr AND where_clause:\n{sql}");
@@ -855,8 +855,8 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    order_by: Vec::new(),
                 })),
+                order_by: vec![],
                 limit: None,
                 offset: None,
             };
@@ -878,7 +878,6 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "hash join in subquery:\n{sql}");
@@ -916,8 +915,8 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    order_by: Vec::new(),
                 })),
+                order_by: vec![],
                 limit: None,
                 offset: None,
             };
@@ -936,8 +935,8 @@ mod tests {
                     }),
                     group_by: Vec::new(),
                     having: None,
-                    order_by: Vec::new(),
                 })),
+                order_by: vec![],
                 limit: None,
                 offset: None,
             };
@@ -955,7 +954,6 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "hash join in nested subquery:\n{sql}");
@@ -993,7 +991,6 @@ mod tests {
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(
@@ -1034,7 +1031,6 @@ mod tests {
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(
@@ -1086,8 +1082,8 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    order_by: Vec::new(),
                 })),
+                order_by: vec![],
                 limit: None,
                 offset: None,
             })
@@ -1104,7 +1100,6 @@ mod tests {
                 selection: Some(selection),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
 
