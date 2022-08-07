@@ -71,7 +71,7 @@ impl<T: Clone> Snapshot<T> {
             })
             .collect::<Vec<_>>();
 
-        (!items.is_empty()).then(|| Snapshot(items))
+        (!items.is_empty()).then_some(Snapshot(items))
     }
 
     pub fn extract(self, txid: u64, lock_txid: Option<u64>) -> Option<T> {
@@ -132,6 +132,6 @@ impl<T: Clone> Snapshot<T> {
             })
             .collect::<Vec<_>>();
 
-        (!items.is_empty()).then(|| Self(items))
+        (!items.is_empty()).then_some(Self(items))
     }
 }
