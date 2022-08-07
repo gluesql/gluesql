@@ -29,6 +29,8 @@ pub enum FunctionNode {
     Right(ExprNode, ExprNode),
     Reverse(ExprNode),
     Sign(ExprNode),
+    Power(ExprNode, ExprNode),
+    Sqrt(ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -69,6 +71,12 @@ impl TryFrom<FunctionNode> for Function {
             }),
             FunctionNode::Reverse(expr_node) => expr_node.try_into().map(Function::Reverse),
             FunctionNode::Sign(expr_node) => expr_node.try_into().map(Function::Sign),
+            FunctionNode::Power(expr_node, power_node) => expr_node.try_into().and_then(|expr| {
+                power_node
+                    .try_into()
+                    .map(|power| Function::Power { expr, power })
+            }),
+            FunctionNode::Sqrt(expr_node) => expr_node.try_into().map(Function::Sqrt),
         }
     }
 }
@@ -132,6 +140,14 @@ impl ExprNode {
 
     pub fn sign(self) -> ExprNode {
         sign(self)
+    }
+
+    pub fn power(self, pwr: ExprNode) -> ExprNode {
+        power(self, pwr)
+    }
+
+    pub fn sqrt(self) -> ExprNode {
+        sqrt(self)
     }
 }
 
@@ -201,11 +217,19 @@ pub fn sign<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Sign(expr.into())))
 }
 
+pub fn power<V: Into<ExprNode>>(expr: V, power: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Power(expr.into(), power.into())))
+}
+
+pub fn sqrt<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Sqrt(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, now,
-        num, pi, reverse, right, round, sign, sin, tan, test_expr, text, upper,
+        num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -416,6 +440,27 @@ mod tests {
 
         let actual = expr("id").sign();
         let expected = "SIGN(id)";
+        test_expr(actual, expected);
+    }
+    #[test]
+    fn function_power() {
+        let actual = power(num(2), num(4));
+        let expected = "POWER(2,4)";
+        test_expr(actual, expected);
+
+        let actual = num(2).power(num(4));
+        let expected = "POWER(2,4)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_sqrt() {
+        let actual = sqrt(num(9));
+        let expected = "SQRT(9)";
+        test_expr(actual, expected);
+
+        let actual = num(9).sqrt();
+        let expected = "SQRT(9)";
         test_expr(actual, expected);
     }
 }
