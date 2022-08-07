@@ -7,7 +7,7 @@ use {
     self::blend::Blend,
     super::{
         aggregate::Aggregator,
-        context::{BlendContext, FilterContext},
+        context::{AggregateContext, BlendContext, FilterContext},
         evaluate_stateless,
         fetch::{fetch_join_columns, fetch_relation_columns, fetch_relation_rows},
         filter::Filter,
@@ -256,14 +256,25 @@ pub async fn select_with_labels<'a>(
     });
 
     let rows = aggregate.apply(rows).await?;
-    let rows = sort
-        .apply(rows)
-        .await?
-        .and_then(move |(aggregated, context)| {
-            let blend = Rc::clone(&blend);
 
-            async move { blend.apply(aggregated, context).await }
-        });
+    // AndThen<Pin<Box<dyn Stream<Item = Result<(Option<Rc<HashMap<&Aggregate, Value>>>, Rc<BlendContext>), Error>>>>, impl Future<Output = Result<Row, Error>>, |(Option<Rc<HashMap<&Aggregate, Value>>>, Rc<BlendContext>)| -> impl Future<Output = Result<Row, Error>>>
+    let rows = rows.map_ok(|aggregate_context| async move {
+        let AggregateContext { aggregated, next } = aggregate_context;
+        let (aggregated, context) = (aggregated.map(Rc::new), next);
+        let blend = Rc::clone(&blend);
+
+        blend.apply(aggregated, context).await
+        // Ok(Box::pin(rows))
+    });
+
+    // let rows = sort
+    //     .apply(rows)
+    //     .await?
+    //     .and_then(move |(aggregated, context)| {
+    //         let blend = Rc::clone(&blend);
+
+    //         async move { blend.apply(aggregated, context).await }
+    //     });
     let rows = limit.apply(rows);
 
     Ok((labels, rows))
