@@ -398,7 +398,7 @@ impl AlterTable for SledStorage {
                     .0
                     .into_iter()
                     .enumerate()
-                    .filter_map(|(i, v)| (i != column_index).then(|| v))
+                    .filter_map(|(i, v)| (i != column_index).then_some(v))
                     .collect());
 
                 let (snapshot, _) = snapshot.update(txid, row);
@@ -419,7 +419,7 @@ impl AlterTable for SledStorage {
             let column_defs = column_defs
                 .into_iter()
                 .enumerate()
-                .filter_map(|(i, v)| (i != column_index).then(|| v))
+                .filter_map(|(i, v)| (i != column_index).then_some(v))
                 .collect::<Vec<ColumnDef>>();
 
             let temp_key = key::temp_schema(txid, &table_name);

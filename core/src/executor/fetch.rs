@@ -53,7 +53,7 @@ pub async fn fetch<'a>(
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
-                    .map(|pass| pass.then(|| (columns, key, row)))
+                    .map(|pass| pass.then_some((columns, key, row)))
             }
         });
 

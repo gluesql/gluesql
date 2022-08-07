@@ -268,7 +268,7 @@ impl<'a> JoinExecutor<'a> {
                     match where_clause {
                         Some(expr) => check_expr(storage, Some(filter_context), None, expr)
                             .await
-                            .map(|pass| pass.then(|| (hash_key, row))),
+                            .map(|pass| pass.then_some((hash_key, row))),
                         None => Ok(Some((hash_key, row))),
                     }
                 }
