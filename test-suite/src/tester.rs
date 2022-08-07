@@ -243,7 +243,7 @@ pub trait Tester<T: GStore + GStoreMut> {
 #[macro_export]
 macro_rules! test_case {
     ($name: ident, $content: expr) => {
-        pub async fn $name<T>(mut tester: impl crate::Tester<T>)
+        pub async fn $name<T>(mut tester: impl $crate::Tester<T>)
         where
             T: gluesql_core::store::GStore + gluesql_core::store::GStoreMut,
         {
