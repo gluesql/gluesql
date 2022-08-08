@@ -160,7 +160,7 @@ fn rows_from(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
 fn sort_stateless(
     rows: Vec<Result<Row>>,
     labels: &Vec<String>,
-    order_by: &Vec<OrderByExpr>,
+    order_by: &[OrderByExpr],
 ) -> Result<Vec<Result<Row>>> {
     let sorted = rows
         .into_iter()
