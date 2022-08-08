@@ -76,16 +76,20 @@ fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<
         return Err(TranslateError::TooManyTables.into());
     }
 
+    let from = match from.get(0) {
+        Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
+        None => TableWithJoins {
+            relation: TableFactor::Dummy("$Dummy".into()),
+            joins: vec![],
+        },
+    };
+
     Ok(Select {
         projection: projection
             .iter()
             .map(translate_select_item)
             .collect::<Result<_>>()?,
-        from: from
-            .iter()
-            .map(translate_table_with_joins)
-            .next()
-            .ok_or(TranslateError::LackOfTable)??,
+        from,
         selection: selection.as_ref().map(translate_expr).transpose()?,
         group_by: group_by.iter().map(translate_expr).collect::<Result<_>>()?,
         having: having.as_ref().map(translate_expr).transpose()?,
