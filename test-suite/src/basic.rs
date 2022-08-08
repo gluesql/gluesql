@@ -65,6 +65,7 @@ CREATE TABLE TestA (
             "SELECT id, num FROM Test",
         ),
         (
+            // SELECT without Table
             Ok(select!(
                 1   | 'a'       | true | "1 + 2" | "'a' || 'b'"
                 I64 | Str       | Bool | I64     | Str;
@@ -73,6 +74,7 @@ CREATE TABLE TestA (
             "SELECT 1, 'a', true, 1 + 2, 'a' || 'b'",
         ),
         (
+            // SELECT without Table in scalar subquery
             Ok(select!(
                 (SELECT 1)
                 I64;
@@ -81,12 +83,22 @@ CREATE TABLE TestA (
             "SELECT (SELECT 1)",
         ),
         (
+            // SELECT without Table with Column aliases
             Ok(select!(
                 id  | max
                 I64 | I64;
                 1     9
             )),
             "SELECT 1 AS id, (SELECT MAX(num) FROM TestA) AS max",
+        ),
+        (
+            // SELECT without Table in Drived
+            Ok(select!(
+                1
+                I64;
+                1
+            )),
+            "SELECT * FROM (SELECT 1) AS Drived",
         ),
     ];
 
