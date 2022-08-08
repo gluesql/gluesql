@@ -1,8 +1,6 @@
 mod blend;
 mod error;
 
-use std::cmp::Ordering;
-
 pub use error::SelectError;
 
 use {
@@ -28,6 +26,7 @@ use {
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
     std::{
+        cmp::Ordering,
         iter::{self, once},
         rc::Rc,
     },
@@ -111,7 +110,7 @@ pub fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-fn rows_from(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
+fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
         .into_iter()
@@ -237,7 +236,7 @@ pub async fn select_with_labels<'a>(
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-            let (rows, labels) = rows_from(values_list);
+            let (rows, labels) = rows_with_labels(values_list);
             let rows = sort_stateless(rows, &labels, &query.order_by)?;
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
