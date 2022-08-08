@@ -164,7 +164,7 @@ pub async fn fetch_relation_columns(
 ) -> Result<Vec<String>> {
     match table_factor {
         TableFactor::Table { name, .. } => {
-            let table_name = get_name(&name)?;
+            let table_name = get_name(name)?;
 
             fetch_columns(storage, table_name).await
         }
@@ -198,19 +198,14 @@ pub async fn fetch_relation_columns(
                 let alias_len = columns.len();
                 let labels = (alias_len + 1..=width)
                     .into_iter()
-                    .map(|i| format!("column{}", i))
-                    .collect::<Vec<_>>();
+                    .map(|i| format!("column{}", i));
                 let labels = match alias_len > width {
                     true => {
                         return Err(
                             FetchError::TooManyColumnAliases(name.into(), width, alias_len).into(),
                         )
                     }
-                    false => columns
-                        .to_owned()
-                        .into_iter()
-                        .chain(labels.into_iter())
-                        .collect::<Vec<_>>(),
+                    false => columns.iter().cloned().chain(labels).collect::<Vec<_>>(),
                 };
 
                 Ok(labels)
