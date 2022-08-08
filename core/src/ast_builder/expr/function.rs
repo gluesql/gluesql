@@ -32,6 +32,8 @@ pub enum FunctionNode {
     Sign(ExprNode),
     Power(ExprNode, ExprNode),
     Sqrt(ExprNode),
+    Gcd(ExprNode, ExprNode),
+    Lcm(ExprNode, ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -85,6 +87,16 @@ impl TryFrom<FunctionNode> for Function {
                     .map(|power| Function::Power { expr, power })
             }),
             FunctionNode::Sqrt(expr_node) => expr_node.try_into().map(Function::Sqrt),
+            FunctionNode::Gcd(left_node, right_node) => left_node.try_into().and_then(|left| {
+                right_node
+                    .try_into()
+                    .map(|right| Function::Gcd { left, right })
+            }),
+            FunctionNode::Lcm(left_node, right_node) => left_node.try_into().and_then(|left| {
+                right_node
+                    .try_into()
+                    .map(|right| Function::Lcm { left, right })
+            }),
         }
     }
 }
@@ -159,6 +171,12 @@ impl ExprNode {
 
     pub fn sqrt(self) -> ExprNode {
         sqrt(self)
+    }
+    pub fn gcd(self, right: ExprNode) -> ExprNode {
+        gcd(self, right)
+    }
+    pub fn lcm(self, right: ExprNode) -> ExprNode {
+        lcm(self, right)
     }
 }
 
@@ -239,11 +257,19 @@ pub fn sqrt<V: Into<ExprNode>>(expr: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Sqrt(expr.into())))
 }
 
+pub fn gcd<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Gcd(left.into(), right.into())))
+}
+
+pub fn lcm<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Lcm(left.into(), right.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log, log10, log2,
-        now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text, upper,
+        now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text, upper,gcd,lcm
     };
 
     #[test]
@@ -486,6 +512,28 @@ mod tests {
 
         let actual = num(9).sqrt();
         let expected = "SQRT(9)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_gcd() {
+        let actual = gcd(num(64), num(8));
+        let expected = "gcd(64,8)";
+        test_expr(actual, expected);
+
+        let actual = num(64).gcd(num(8));
+        let expected = "GCD(64,8)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_lcm() {
+        let actual = lcm(num(64), num(8));
+        let expected = "lcm(64,8)";
+        test_expr(actual, expected);
+
+        let actual = num(64).lcm(num(8));
+        let expected = "LCM(64,8)";
         test_expr(actual, expected);
     }
 }
