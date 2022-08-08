@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::Value};
+use {crate::*, gluesql_core::data::TableError, gluesql_core::prelude::Value};
 
 test_case!(basic, async move {
     run!(
@@ -99,6 +99,11 @@ CREATE TABLE TestA (
                 1
             )),
             "SELECT * FROM (SELECT 1) AS Drived",
+        ),
+        (
+            // CTAS without Table
+            Err(TableError::Unreachable.into()),
+            "CREATE TABLE TB AS SELECT 1",
         ),
     ];
 
