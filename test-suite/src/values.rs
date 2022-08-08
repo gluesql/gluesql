@@ -1,3 +1,5 @@
+use gluesql_core::executor::FetchError;
+
 use {
     crate::*,
     bigdecimal::BigDecimal,
@@ -134,7 +136,10 @@ test_case!(values, async move {
                     2         "b".to_owned()
                 )),
             ),
-
+(
+            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name, dummy)",
+            Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
+        ),
             ];
     for (sql, expected) in test_cases {
         test!(expected, sql);
