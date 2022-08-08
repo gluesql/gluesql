@@ -2,8 +2,8 @@ use {
     super::{context::FilterContext, evaluate::evaluate, filter::check_expr},
     crate::{
         ast::{
-            ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableFactor, TableWithJoins,
-            Values,
+            ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias, TableFactor,
+            TableWithJoins, Values,
         },
         data::{get_alias, get_index, get_name, Key, Row, TableError, Value},
         executor::select::{get_labels, select},
@@ -23,6 +23,8 @@ use {
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+    #[error("table '{0}' has {1} columns available but {2} column aliases specified")]
+    TooManyColumnAliases(String, usize, usize),
 }
 
 pub async fn fetch<'a>(
@@ -168,7 +170,7 @@ pub async fn fetch_relation_columns(
         }
         TableFactor::Derived {
             subquery: Query { body, .. },
-            alias: _,
+            alias: TableAlias { columns, name },
         } => match body {
             SetExpr::Select(statement) => {
                 let Select {
@@ -192,11 +194,24 @@ pub async fn fetch_relation_columns(
                 Ok(labels)
             }
             SetExpr::Values(Values(values_list)) => {
-                let first_len = values_list[0].len();
-                let labels = (1..=first_len)
+                let width = values_list[0].len();
+                let alias_len = columns.len();
+                let labels = (alias_len + 1..=width)
                     .into_iter()
                     .map(|i| format!("column{}", i))
                     .collect::<Vec<_>>();
+                let labels = match alias_len > width {
+                    true => {
+                        return Err(
+                            FetchError::TooManyColumnAliases(name.into(), width, alias_len).into(),
+                        )
+                    }
+                    false => columns
+                        .to_owned()
+                        .into_iter()
+                        .chain(labels.into_iter())
+                        .collect::<Vec<_>>(),
+                };
 
                 Ok(labels)
             }
