@@ -268,8 +268,9 @@ pub fn lcm<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log, log10, log2,
-        now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text, upper,gcd,lcm
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, ifnull, lcm, left, ln, log, log10,
+        log2, now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text,
+        upper,
     };
 
     #[test]
