@@ -57,9 +57,10 @@ pub async fn fetch<'a>(
 }
 
 #[derive(futures_enum::Stream)]
-pub enum Rows<I1, I2> {
+pub enum Rows<I1, I2, I3> {
     Derived(I1),
     Table(I2),
+    Dummy(I3),
 }
 
 pub async fn fetch_relation_rows<'a>(
@@ -140,6 +141,12 @@ pub async fn fetch_relation_rows<'a>(
 
             Ok(Rows::Table(stream::iter(rows)))
         }
+        TableFactor::Dummy(_) => {
+            let rows = vec![Ok(Row(vec![]))];
+            let rows = stream::iter(rows);
+
+            Ok(Rows::Dummy(rows))
+        }
     }
 }
 
@@ -193,6 +200,7 @@ pub async fn fetch_relation_columns(
             Ok(labels)
         }
         &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+        TableFactor::Dummy(_) => Ok(vec![]),
     }
 }
 pub async fn fetch_join_columns<'a>(
