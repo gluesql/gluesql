@@ -3,6 +3,7 @@ use {
     crate::{
         ast::{
             ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableFactor, TableWithJoins,
+            Values,
         },
         data::{get_alias, get_index, get_name, Key, Row, TableError, Value},
         executor::select::{get_labels, select},
@@ -161,38 +162,45 @@ pub async fn fetch_relation_columns(
 ) -> Result<Vec<String>> {
     match table_factor {
         TableFactor::Table { name, .. } => {
-            let table_name = get_name(name)?;
+            let table_name = get_name(&name)?;
 
             fetch_columns(storage, table_name).await
         }
         TableFactor::Derived {
-            subquery:
-                Query {
-                    body: SetExpr::Select(statement),
-                    ..
-                },
+            subquery: Query { body, .. },
             alias: _,
-        } => {
-            let Select {
-                from: TableWithJoins {
-                    relation, joins, ..
-                },
-                projection,
-                ..
-            } = statement.as_ref();
+        } => match body {
+            SetExpr::Select(statement) => {
+                let Select {
+                    from:
+                        TableWithJoins {
+                            relation, joins, ..
+                        },
+                    projection,
+                    ..
+                } = statement.as_ref();
 
-            let columns = fetch_relation_columns(storage, relation).await?;
-            let join_columns = fetch_join_columns(joins, storage).await?;
-            let labels = get_labels(
-                projection,
-                get_alias(relation)?,
-                &columns,
-                Some(&join_columns),
-            )?;
+                let columns = fetch_relation_columns(storage, relation).await?;
+                let join_columns = fetch_join_columns(joins, storage).await?;
+                let labels = get_labels(
+                    projection,
+                    get_alias(relation)?,
+                    &columns,
+                    Some(&join_columns),
+                )?;
 
-            Ok(labels)
-        }
-        &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+                Ok(labels)
+            }
+            SetExpr::Values(Values(values_list)) => {
+                let first_len = values_list[0].len();
+                let labels = (1..=first_len)
+                    .into_iter()
+                    .map(|i| format!("column{}", i))
+                    .collect::<Vec<_>>();
+
+                Ok(labels)
+            }
+        },
     }
 }
 pub async fn fetch_join_columns<'a>(
