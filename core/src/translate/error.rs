@@ -2,9 +2,6 @@ use {serde::Serialize, std::fmt::Debug, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum TranslateError {
-    #[error("unimplemented - select query without table is not supported")]
-    LackOfTable,
-
     #[error("unimplemented - select on two or more than tables are not supported")]
     TooManyTables,
 
