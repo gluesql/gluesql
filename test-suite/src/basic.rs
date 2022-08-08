@@ -66,11 +66,11 @@ CREATE TABLE TestA (
         ),
         (
             Ok(select!(
-                1   | 'a'       | true
-                I64 | Str       | Bool;
-                1     "a".into()  true
+                1   | 'a'       | true | "1 + 2" | "'a' || 'b'"
+                I64 | Str       | Bool | I64     | Str;
+                1     "a".into()  true   3         "ab".into()
             )),
-            "SELECT 1, 'a', true",
+            "SELECT 1, 'a', true, 1 + 2, 'a' || 'b'",
         ),
     ];
 
