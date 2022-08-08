@@ -23,6 +23,7 @@ pub enum FunctionNode {
     Pi,
     Now,
     Left(ExprNode, ExprNode),
+    Log(ExprNode, ExprNode),
     Log2(ExprNode),
     Log10(ExprNode),
     Ln(ExprNode),
@@ -61,6 +62,13 @@ impl TryFrom<FunctionNode> for Function {
                     .try_into()
                     .map(|size| Function::Left { expr, size })
             }),
+            FunctionNode::Log(antilog_node, base_node) => {
+                antilog_node.try_into().and_then(|antilog| {
+                    base_node
+                        .try_into()
+                        .map(|base| Function::Log { antilog, base })
+                })
+            }
             FunctionNode::Log2(expr_node) => expr_node.try_into().map(Function::Log2),
             FunctionNode::Log10(expr_node) => expr_node.try_into().map(Function::Log10),
             FunctionNode::Ln(expr_node) => expr_node.try_into().map(Function::Ln),
@@ -120,6 +128,9 @@ impl ExprNode {
     }
     pub fn left(self, size: Self) -> Self {
         left(self, size)
+    }
+    pub fn log(self, base: ExprNode) -> ExprNode {
+        log(self, base)
     }
     pub fn log2(self) -> ExprNode {
         log2(self)
@@ -196,6 +207,9 @@ pub fn now() -> ExprNode {
 pub fn left<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Left(expr.into(), size.into())))
 }
+pub fn log<V: Into<ExprNode>>(expr: V, base: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Log(expr.into(), base.into())))
+}
 pub fn log2<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Log2(expr.into())))
 }
@@ -228,8 +242,8 @@ pub fn sqrt<V: Into<ExprNode>>(expr: V) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, now,
-        num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log, log10, log2,
+        now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -374,6 +388,17 @@ mod tests {
 
         let actual = expr("GlueSQL").left(num(2));
         let expected = "LEFT(GlueSQL, 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_log() {
+        let actual = log(num(64), num(8));
+        let expected = "log(64,8)";
+        test_expr(actual, expected);
+
+        let actual = num(64).log(num(8));
+        let expected = "LOG(64,8)";
         test_expr(actual, expected);
     }
 
