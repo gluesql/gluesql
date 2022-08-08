@@ -80,6 +80,14 @@ CREATE TABLE TestA (
             )),
             "SELECT (SELECT 1)",
         ),
+        (
+            Ok(select!(
+                id  | max
+                I64 | I64;
+                1     9
+            )),
+            "SELECT 1 AS id, (SELECT MAX(num) FROM TestA) AS max",
+        ),
     ];
 
     for (expected, sql) in test_cases {
