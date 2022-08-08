@@ -72,6 +72,14 @@ CREATE TABLE TestA (
             )),
             "SELECT 1, 'a', true, 1 + 2, 'a' || 'b'",
         ),
+        (
+            Ok(select!(
+                (SELECT 1)
+                I64;
+                1
+            )),
+            "SELECT (SELECT 1)",
+        ),
     ];
 
     for (expected, sql) in test_cases {
