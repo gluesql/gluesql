@@ -64,6 +64,14 @@ CREATE TABLE TestA (
             Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),
             "SELECT id, num FROM Test",
         ),
+        (
+            Ok(select!(
+                1   | 'a'       | true
+                I64 | Str       | Bool;
+                1     "a".into()  true
+            )),
+            "SELECT 1, 'a', true",
+        ),
     ];
 
     for (expected, sql) in test_cases {
