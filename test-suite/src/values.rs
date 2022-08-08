@@ -101,9 +101,7 @@ test_case!(values, async move {
     for (sql, expected) in test_cases {
         test!(expected, sql);
     }
-});
 
-test_case!(type_match, async {
     type_match!(
         &[
             DataType::Int,
