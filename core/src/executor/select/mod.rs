@@ -1,6 +1,8 @@
 mod blend;
 mod error;
 
+use std::cmp::Ordering;
+
 pub use error::SelectError;
 
 use {
@@ -16,7 +18,7 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Expr, Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
+        ast::{Expr, OrderByExpr, Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
         data::{get_alias, get_name, Row, RowError},
         prelude::{DataType, Value},
         result::{Error, Result},
@@ -29,6 +31,7 @@ use {
         iter::{self, once},
         rc::Rc,
     },
+    utils::Vector,
 };
 
 pub fn get_labels<'a>(
@@ -154,6 +157,66 @@ fn into_rows(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
     (rows, labels)
 }
 
+fn sort_stateless(
+    rows: Vec<Result<Row>>,
+    labels: &Vec<String>,
+    order_by: &Vec<OrderByExpr>,
+) -> Result<Vec<Result<Row>>> {
+    let sorted = rows
+        .into_iter()
+        .map(|row| {
+            let values = order_by
+                .iter()
+                .map(|OrderByExpr { expr, asc }| -> Result<_> {
+                    let row = row.as_ref().ok();
+                    let context = row.map(|row| (labels.as_slice(), row));
+                    let value: Value = evaluate_stateless(context, expr)?.try_into()?;
+
+                    Ok((value, asc))
+                })
+                .collect::<Result<Vec<_>>>();
+
+            values.map(|values| (values, row))
+        })
+        .collect::<Result<Vec<_>>>()
+        .map(Vector::from)?
+        .sort_by(|(values_a, _), (values_b, _)| {
+            let pairs = values_a
+                .iter()
+                .map(|(a, _)| a)
+                .zip(values_b.iter())
+                .map(|(a, (b, asc))| (a, b, asc.unwrap_or(true)));
+
+            for (value_a, value_b, asc) in pairs {
+                let apply_asc = |ord: Ordering| if asc { ord } else { ord.reverse() };
+
+                match (value_a, value_b) {
+                    (Value::Null, Value::Null) => {}
+                    (Value::Null, _) => {
+                        return apply_asc(Ordering::Greater);
+                    }
+                    (_, Value::Null) => {
+                        return apply_asc(Ordering::Less);
+                    }
+                    _ => {}
+                };
+
+                match value_a.partial_cmp(value_b) {
+                    Some(ord) if ord != Ordering::Equal => {
+                        return apply_asc(ord);
+                    }
+                    _ => {}
+                }
+            }
+
+            Ordering::Equal
+        })
+        .into_iter()
+        .map(|(_, row)| row)
+        .collect::<Vec<_>>();
+
+    Ok(sorted)
+}
 #[async_recursion(?Send)]
 pub async fn select_with_labels<'a>(
     storage: &'a dyn GStore,
@@ -175,6 +238,7 @@ pub async fn select_with_labels<'a>(
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
             let (rows, labels) = into_rows(values_list);
+            let rows = sort_stateless(rows, &labels, &query.order_by)?;
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
