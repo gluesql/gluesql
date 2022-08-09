@@ -121,16 +121,16 @@ mod tests {
         let mut print = Print::new(Vec::new());
 
         let expected = "
-╭─────────────────────────────────────────╮
-│ command         description             │
-╞═════════════════════════════════════════╡
-│ .help           show help               │
-│ .quit           quit program            │
-│ .tables         show table names        │
-│ .columns TABLE  show table from TABLE   │
-│ .version        show version            │
-│ .execute FILE   execute SQL from a file │
-╰─────────────────────────────────────────╯";
+╭──────────────────────────────────────────╮
+│ command          description             │
+╞══════════════════════════════════════════╡
+│ .help            show help               │
+│ .quit            quit program            │
+│ .tables          show table names        │
+│ .columns TABLE   show columns from TABLE │
+│ .version         show version            │
+│ .execute FILE    execute SQL from a file │
+╰──────────────────────────────────────────╯";
         let found = {
             print.help().unwrap();
 
