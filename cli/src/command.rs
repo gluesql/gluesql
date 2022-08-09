@@ -49,8 +49,13 @@ mod tests {
         );
         assert_eq!(
             Ok(Command::Execute("SHOW COLUMNS FROM Foo".to_owned())),
-            Command::parse(".column Foo")
+            Command::parse(".columns Foo")
         );
+        assert_eq!(
+            Ok(Command::Execute("SHOW COLUMNS FROM Foo".to_owned())),
+            Command::parse(".columns")
+        );
+
         assert_eq!(
             Ok(Command::Execute("SHOW VERSION".to_owned())),
             Command::parse(".version")
