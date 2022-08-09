@@ -27,9 +27,9 @@ impl Command {
                 ".quit" => Ok(Self::Quit),
                 ".tables" => Ok(Self::Execute("SHOW TABLES".to_owned())),
                 ".columns" => match params.get(1) {
-                    Some(table_name) => Ok(Self::Execute(
-                        format!("SHOW COLUMNS FROM {}", table_name).to_owned(),
-                    )),
+                    Some(table_name) => {
+                        Ok(Self::Execute(format!("SHOW COLUMNS FROM {}", table_name)))
+                    }
                     None => Err(CommandError::LackOfTable),
                 },
                 ".version" => Ok(Self::Execute("SHOW VERSION".to_owned())),
