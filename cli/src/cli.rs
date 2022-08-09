@@ -67,7 +67,7 @@ where
             let command = match Command::parse(&line) {
                 Ok(command) => command,
                 Err(CommandError::LackOfTable) => {
-                    println!("\n[error] should specify table. eg: .columns TableName\n");
+                    println!("[error] should specify table. eg: .columns TableName\n");
                     continue;
                 }
                 Err(CommandError::NotSupported) => {
