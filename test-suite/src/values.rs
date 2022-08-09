@@ -2,6 +2,7 @@ use {
     crate::*,
     bigdecimal::BigDecimal,
     gluesql_core::{
+        ast::DataType::{Boolean, Int, Text},
         data::{Literal, RowError, ValueError},
         prelude::{DataType, Payload, Value::*},
     },
@@ -97,19 +98,12 @@ test_case!(values, async move {
                 I64(2)    Str("b".into())   Bool(false)  I64(3)    Null
             )),
         ),
+        (
+            "SHOW COLUMNS FROM TableFromValues",
+            Ok(Payload::ShowColumns(vec![("column1".into(), Int.into()), ("column2".into(), Text), ("column3".into(), Boolean), ("column4".into(), Int), ("column5".into(), Text)])),
+        ),
     ];
     for (sql, expected) in test_cases {
         test!(expected, sql);
     }
-
-    type_match!(
-        &[
-            DataType::Int,
-            DataType::Text,
-            DataType::Boolean,
-            DataType::Int,
-            DataType::Text,
-        ],
-        "SELECT * FROM TableFromValues"
-    );
 });
