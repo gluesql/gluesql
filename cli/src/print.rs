@@ -83,10 +83,11 @@ impl<W: Write> Print<W> {
 
     pub fn help(&mut self) -> Result<()> {
         const HEADER: [&str; 2] = ["command", "description"];
-        const CONTENT: [[&str; 2]; 5] = [
+        const CONTENT: [[&str; 2]; 6] = [
             [".help", "show help"],
             [".quit", "quit program"],
             [".tables", "show table names"],
+            [".columns TABLE", "show columns from TABLE"],
             [".version", "show version"],
             [".execute FILE", "execute SQL from a file"],
         ];
@@ -126,6 +127,7 @@ mod tests {
 │ .help           show help               │
 │ .quit           quit program            │
 │ .tables         show table names        │
+│ .columns TABLE  show table from TABLE   │
 │ .version        show version            │
 │ .execute FILE   execute SQL from a file │
 ╰─────────────────────────────────────────╯";
