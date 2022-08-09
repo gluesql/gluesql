@@ -100,7 +100,7 @@ test_case!(values, async move {
         ),
         (
             "SHOW COLUMNS FROM TableFromValues",
-            Ok(Payload::ShowColumns(vec![("column1".into(), Int.into()), ("column2".into(), Text), ("column3".into(), Boolean), ("column4".into(), Int), ("column5".into(), Text)])),
+            Ok(Payload::ShowColumns(vec![("column1".into(), Int), ("column2".into(), Text), ("column3".into(), Boolean), ("column4".into(), Int), ("column5".into(), Text)])),
         ),
     ];
     for (sql, expected) in test_cases {
