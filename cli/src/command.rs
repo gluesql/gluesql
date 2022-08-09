@@ -16,6 +16,12 @@ impl Command {
                 ".help" => Ok(Self::Help),
                 ".quit" => Ok(Self::Quit),
                 ".tables" => Ok(Self::Execute("SHOW TABLES".to_owned())),
+                ".columns" => match params.len() > 1 {
+                    true => Ok(Self::Execute(
+                        format!("SHOW COLUMNS FROM {}", params[1]).to_owned(),
+                    )),
+                    false => Err(()), // should throw another error
+                },
                 ".version" => Ok(Self::Execute("SHOW VERSION".to_owned())),
                 ".execute" if params.len() == 2 => Ok(Self::ExecuteFromFile(params[1].to_owned())),
                 _ => Err(()),
@@ -40,6 +46,10 @@ mod tests {
         assert_eq!(
             Ok(Command::Execute("SHOW TABLES".to_owned())),
             Command::parse(".tables")
+        );
+        assert_eq!(
+            Ok(Command::Execute("SHOW COLUMNS FROM Foo".to_owned())),
+            Command::parse(".column Foo")
         );
         assert_eq!(
             Ok(Command::Execute("SHOW VERSION".to_owned())),
