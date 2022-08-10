@@ -1,5 +1,9 @@
 use {
-    crate::{command::Command, helper::CliHelper, print::Print},
+    crate::{
+        command::{Command, CommandError},
+        helper::CliHelper,
+        print::Print,
+    },
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
@@ -64,7 +68,11 @@ where
 
             let command = match Command::parse(&line) {
                 Ok(command) => command,
-                Err(_) => {
+                Err(CommandError::LackOfTable) => {
+                    println!("[error] should specify table. eg: .columns TableName\n");
+                    continue;
+                }
+                Err(CommandError::NotSupported) => {
                     println!("[error] command not supported: {}", line);
                     println!("\n  type .help to list all available commands.\n");
                     continue;
