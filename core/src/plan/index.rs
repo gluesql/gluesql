@@ -76,7 +76,6 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 offset,
             });
         }
-        TableFactor::Dummy(name) => name,
     };
 
     let indexes = match schema_map.get(table_name) {
@@ -115,9 +114,6 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
                 TableFactor::Derived { .. } => {
-                    return Err(Error::Table(TableError::Unreachable));
-                }
-                TableFactor::Dummy(_) => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
             };
@@ -203,9 +199,6 @@ fn plan_select(
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
                 TableFactor::Derived { .. } => {
-                    return Err(Error::Table(TableError::Unreachable));
-                }
-                TableFactor::Dummy(_) => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
             };

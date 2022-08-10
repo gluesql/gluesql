@@ -148,12 +148,6 @@ pub async fn fetch_relation_rows<'a>(
 
             Ok(Rows::Table(stream::iter(rows)))
         }
-        TableFactor::Dummy(_) => {
-            let rows = vec![Ok(Row(vec![]))];
-            let rows = stream::iter(rows);
-
-            Ok(Rows::Dummy(rows))
-        }
     }
 }
 
@@ -210,7 +204,6 @@ pub async fn fetch_relation_columns(
             Ok(labels)
         }
         &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
-        TableFactor::Dummy(_) => Ok(vec![]),
     }
 }
 pub async fn fetch_join_columns<'a>(

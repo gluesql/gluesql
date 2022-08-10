@@ -32,7 +32,6 @@ pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
             alias: TableAlias { name, .. },
             ..
         } => Ok(name),
-        TableFactor::Dummy(name) => Ok(name),
     }
 }
 
@@ -40,6 +39,5 @@ pub fn get_index(table_factor: &TableFactor) -> Option<&IndexItem> {
     match table_factor {
         TableFactor::Table { index, .. } => index.as_ref(),
         TableFactor::Derived { .. } => None,
-        TableFactor::Dummy(_) => None,
     }
 }
