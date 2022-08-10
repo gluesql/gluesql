@@ -1,7 +1,9 @@
-use crate::command::CommandError;
-
 use {
-    crate::{command::Command, helper::CliHelper, print::Print},
+    crate::{
+        command::{Command, CommandError},
+        helper::CliHelper,
+        print::Print,
+    },
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
