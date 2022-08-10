@@ -25,6 +25,7 @@ pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
 pub mod unary_operator;
+pub mod update;
 pub mod validate;
 pub mod values;
 
@@ -55,7 +56,7 @@ macro_rules! generate_store_tests {
                 declare_test_fn!($test, $storage, $title, $func);
             };
         }
-
+        glue!(update, update::update);
         glue!(basic, basic::basic);
         glue!(aggregate, aggregate::aggregate);
         glue!(aggregate_group_by, aggregate::group_by);
