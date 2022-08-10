@@ -10,17 +10,24 @@ use {
 test_case!(update, async move {
     run!(
         r#"
-CREATE TABLE TableA (
-    id INTEGER,
-    num INTEGER,
-    num2 INTEGER,
-    name TEXT,
-)"#
+        CREATE TABLE TableA (
+            id INTEGER,
+            num INTEGER,
+            num2 INTEGER,
+            name TEXT,
+        )"#
     );
-    run!("INSERT INTO TableA (id, num, num2, name) VALUES (1, 2, 4, \"Hello\")");
-    run!("INSERT INTO TableA (id, num, num2, name) VALUES (1, 9, 5,\"World\")");
-    run!("INSERT INTO TableA (id, num, num2, name) VALUES (3, 4, 7,\"Great\")");
-    run!("INSERT INTO TableA (id, num, num2, name) VALUES (4, 7, 10,\"Job\")");
+
+    run!(
+        r#"
+        INSERT INTO TableA (id, num, num2, name)
+        VALUES
+            (1, 2, 4, "Hello"),
+            (1, 9, 5, "World"),
+            (3, 4, 7, "Great"),
+            (4, 7, 10, "Job");
+        "#
+    );
 
     run!(
         r#"
@@ -30,10 +37,17 @@ CREATE TABLE TableA (
             rank INTEGER,
         )"#
     );
-    run!("INSERT INTO TableB (id, num, rank) VALUES (1, 2, 1)");
-    run!("INSERT INTO TableB (id, num, rank) VALUES (2, 9, 2)");
-    run!("INSERT INTO TableB (id, num, rank) VALUES (3, 4, 3)");
-    run!("INSERT INTO TableB (id, num, rank) VALUES (4, 7, 4)");
+
+    run!(
+        r#"
+        INSERT INTO TableB (id, num, rank)
+        VALUES
+            (1, 2, 1),
+            (1, 9, 2),
+            (3, 4, 3),
+            (4, 7, 4);
+        "#
+    );
 
     use Value::*;
 
@@ -84,8 +98,7 @@ CREATE TABLE TableA (
 
     // Test Error cases for UPDATE
     run!("CREATE TABLE ErrTestTable (id INTEGER);");
-    run!("INSERT INTO ErrTestTable (id) VALUES (1);");
-    run!("INSERT INTO ErrTestTable (id) VALUES (9);");
+    run!("INSERT INTO ErrTestTable (id) VALUES (1),(9);");
 
     let error_cases = vec![
         (
