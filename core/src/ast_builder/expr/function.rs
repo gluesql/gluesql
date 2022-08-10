@@ -34,6 +34,7 @@ pub enum FunctionNode {
     Sqrt(ExprNode),
     Gcd(ExprNode, ExprNode),
     Lcm(ExprNode, ExprNode),
+    GenerateUuid,
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -97,6 +98,7 @@ impl TryFrom<FunctionNode> for Function {
                     .try_into()
                     .map(|right| Function::Lcm { left, right })
             }),
+            FunctionNode::GenerateUuid => Ok(Function::GenerateUuid()),
         }
     }
 }
@@ -219,6 +221,9 @@ pub fn tan<T: Into<ExprNode>>(expr: T) -> ExprNode {
 pub fn pi() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Pi))
 }
+pub fn generate_uuid() -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::GenerateUuid))
+}
 pub fn now() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Now))
 }
@@ -268,9 +273,9 @@ pub fn lcm<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, ifnull, lcm, left, ln, log, log10,
-        log2, now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text,
-        upper,
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
+        ln, log, log10, log2, now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan,
+        test_expr, text, upper,
     };
 
     #[test]
@@ -404,6 +409,13 @@ mod tests {
     fn function_now() {
         let actual = now();
         let expected = "NOW()";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_generate_uuid() {
+        let actual = generate_uuid();
+        let expected = "GENERATE_UUID()";
         test_expr(actual, expected);
     }
 
