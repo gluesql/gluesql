@@ -35,6 +35,7 @@ pub enum FunctionNode {
     Gcd(ExprNode, ExprNode),
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
+    Repeat(ExprNode, ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -99,6 +100,9 @@ impl TryFrom<FunctionNode> for Function {
                     .map(|right| Function::Lcm { left, right })
             }),
             FunctionNode::GenerateUuid => Ok(Function::GenerateUuid()),
+            FunctionNode::Repeat(expr, num) => expr
+                .try_into()
+                .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
         }
     }
 }
@@ -179,6 +183,9 @@ impl ExprNode {
     }
     pub fn lcm(self, right: ExprNode) -> ExprNode {
         lcm(self, right)
+    }
+    pub fn repeat(self, num: ExprNode) -> ExprNode {
+        repeat(self, num)
     }
 }
 
@@ -270,12 +277,16 @@ pub fn lcm<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Lcm(left.into(), right.into())))
 }
 
+pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
-        ln, log, log10, log2, now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan,
-        test_expr, text, upper,
+        ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin, sqrt,
+        tan, test_expr, text, upper,
     };
 
     #[test]
@@ -547,6 +558,17 @@ mod tests {
 
         let actual = num(64).lcm(num(8));
         let expected = "LCM(64,8)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_repeat() {
+        let actual = repeat(text("GlueSQL"), num(2));
+        let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").repeat(num(2));
+        let expected = "REPEAT('GlueSQL', 2)";
         test_expr(actual, expected);
     }
 }
