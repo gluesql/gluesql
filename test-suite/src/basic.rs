@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::data::TableError, gluesql_core::prelude::Value};
+use {crate::*, gluesql_core::executor::AlterError, gluesql_core::prelude::Value};
 
 test_case!(basic, async move {
     run!(
@@ -102,7 +102,7 @@ CREATE TABLE TestA (
         ),
         (
             // CTAS without Table
-            Err(TableError::Unreachable.into()),
+            Err(AlterError::CtasSourceTableNotFound("$Dummy".into()).into()),
             "CREATE TABLE TB AS SELECT 1",
         ),
     ];

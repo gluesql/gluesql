@@ -77,6 +77,13 @@ pub async fn fetch_relation_rows<'a>(
         }
         TableFactor::Table { name, .. } => {
             let table_name = get_name(name)?;
+            if table_name == "$Dummy" {
+                let rows = vec![Ok(Row(vec![]))];
+                let rows = stream::iter(rows);
+
+                return Ok(Rows::Dummy(rows));
+            }
+            #[cfg(feature = "index")]
             let rows = {
                 #[cfg(feature = "index")]
                 #[derive(Iterator)]
@@ -151,14 +158,17 @@ pub async fn fetch_relation_rows<'a>(
 }
 
 pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec<String>> {
-    Ok(storage
-        .fetch_schema(table_name)
-        .await?
-        .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
-        .column_defs
-        .into_iter()
-        .map(|ColumnDef { name, .. }| name)
-        .collect::<Vec<String>>())
+    match table_name {
+        "$Dummy" => Ok(vec![]),
+        _ => Ok(storage
+            .fetch_schema(table_name)
+            .await?
+            .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
+            .column_defs
+            .into_iter()
+            .map(|ColumnDef { name, .. }| name)
+            .collect::<Vec<String>>()),
+    }
 }
 
 #[async_recursion(?Send)]

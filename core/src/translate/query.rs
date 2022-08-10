@@ -1,3 +1,5 @@
+use crate::ast::ObjectName;
+
 use {
     super::{
         translate_expr, translate_idents, translate_object_name, translate_order_by_expr,
@@ -79,7 +81,11 @@ fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<
     let from = match from.get(0) {
         Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
         None => TableWithJoins {
-            relation: TableFactor::Dummy("$Dummy".into()),
+            relation: TableFactor::Table {
+                name: ObjectName(vec!["$Dummy".into()]),
+                alias: None,
+                index: None,
+            },
             joins: vec![],
         },
     };
