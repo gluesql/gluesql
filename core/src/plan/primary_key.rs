@@ -116,7 +116,11 @@ mod tests {
     use {
         super::plan as plan_primary_key,
         crate::{
-            ast::Statement,
+            ast::{
+                AstLiteral, BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor,
+                JoinOperator, ObjectName, Query, Select, SelectItem, SetExpr, Statement,
+                TableFactor, TableWithJoins, Values,
+            },
             parse_sql::parse,
             plan::{
                 fetch_schema_map,
@@ -135,6 +139,14 @@ mod tests {
         plan_primary_key(&schema_map, statement)
     }
 
+    fn select(select: Select) -> Statement {
+        Statement::Query(Query {
+            body: SetExpr::Select(Box::new(select)),
+            limit: None,
+            offset: None,
+        })
+    }
+
     #[test]
     fn basic() {
         let storage = run("
@@ -146,13 +158,16 @@ mod tests {
 
         let sql = "SELECT * FROM User WHERE id = 1;";
         let actual = plan(&storage, sql);
-
-        println!("{:#?}", actual);
-        /*
         let expected = select(Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
-                relation: table_factor("User", None),
+                relation: TableFactor::Table {
+                    name: ObjectName(vec!["User".to_owned()]),
+                    alias: None,
+                    index: Some(IndexItem::PrimaryKey(Expr::Literal(AstLiteral::Number(
+                        1.into(),
+                    )))),
+                },
                 joins: Vec::new(),
             },
             selection: None,
@@ -160,7 +175,153 @@ mod tests {
             having: None,
             order_by: Vec::new(),
         });
-        assert_eq!(actual, expected, "basic select:\n{sql}");
-        */
+        assert_eq!(actual, expected, "primary key in lhs:\n{sql}");
+
+        let sql = "SELECT * FROM User WHERE 1 = id;";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: ObjectName(vec!["User".to_owned()]),
+                    alias: None,
+                    index: Some(IndexItem::PrimaryKey(Expr::Literal(AstLiteral::Number(
+                        1.into(),
+                    )))),
+                },
+                joins: Vec::new(),
+            },
+            selection: None,
+            group_by: Vec::new(),
+            having: None,
+            order_by: Vec::new(),
+        });
+        assert_eq!(actual, expected, "primary key in rhs:\n{sql}");
+    }
+
+    #[test]
+    fn join_and_nested() {
+        let storage = run("
+            CREATE TABLE User (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+            );
+            CREATE TABLE Badge (
+                title TEXT PRIMARY KEY,
+                user_id INTEGER,
+            );
+        ");
+
+        let sql = "SELECT * FROM User JOIN Badge WHERE User.id = Badge.user_id";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: ObjectName(vec!["User".to_owned()]),
+                    alias: None,
+                    index: Some(IndexItem::PrimaryKey(Expr::CompoundIdentifier(vec![
+                        "Badge".to_owned(),
+                        "user_id".to_owned(),
+                    ]))),
+                },
+                joins: vec![Join {
+                    relation: TableFactor::Table {
+                        name: ObjectName(vec!["Badge".to_owned()]),
+                        alias: None,
+                        index: None,
+                    },
+                    join_operator: JoinOperator::Inner(JoinConstraint::None),
+                    join_executor: JoinExecutor::NestedLoop,
+                }],
+            },
+            selection: None,
+            group_by: Vec::new(),
+            having: None,
+            order_by: Vec::new(),
+        });
+        assert_eq!(actual, expected, "basic inner join:\n{sql}");
+    }
+
+    #[test]
+    fn not_found() {
+        let storage = run("
+            CREATE TABLE User (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
+        ");
+
+        let sql = "SELECT * FROM User WHERE name = (SELECT name FROM User LIMIT 1);";
+        let actual = plan(&storage, sql);
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Expr {
+                        expr: Expr::Identifier("name".to_owned()),
+                        label: "name".to_owned(),
+                    }],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: ObjectName(vec!["User".to_owned()]),
+                            alias: None,
+                            index: None,
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                    order_by: Vec::new(),
+                })),
+                limit: Some(Expr::Literal(AstLiteral::Number(1.into()))),
+                offset: None,
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: ObjectName(vec!["User".to_owned()]),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("name".to_owned())),
+                    op: BinaryOperator::Eq,
+                    right: Box::new(Expr::Subquery(Box::new(subquery))),
+                }),
+                group_by: Vec::new(),
+                having: None,
+                order_by: Vec::new(),
+            })
+        };
+        assert_eq!(actual, expected, "primary key in lhs:\n{sql}");
+
+        let sql = "DELETE FROM User WHERE id = 1;";
+        let actual = plan(&storage, sql);
+        let expected = Statement::Delete {
+            table_name: ObjectName(vec!["User".to_owned()]),
+            selection: Some(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("id".to_owned())),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Literal(AstLiteral::Number(1.into()))),
+            }),
+        };
+        assert_eq!(actual, expected, "delete statement:\n{sql}");
+
+        let sql = "VALUES (1), (2);";
+        let actual = plan(&storage, sql);
+        let expected = Statement::Query(Query {
+            body: SetExpr::Values(Values(vec![
+                vec![Expr::Literal(AstLiteral::Number(1.into()))],
+                vec![Expr::Literal(AstLiteral::Number(2.into()))],
+            ])),
+            limit: None,
+            offset: None,
+        });
+        assert_eq!(actual, expected, "values:\n{sql}");
     }
 }
