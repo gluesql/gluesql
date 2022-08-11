@@ -43,6 +43,14 @@ impl<'a> Planner<'a> for PrimaryKeyPlanner<'a> {
     }
 }
 
+enum PrimaryKey {
+    Found {
+        index_item: IndexItem,
+        expr: Option<Expr>,
+    },
+    NotFound(Expr),
+}
+
 impl<'a> PrimaryKeyPlanner<'a> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, mut select: Select) -> Select {
         let current_context = self.update_context(None, &select.from.relation);
@@ -54,46 +62,12 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 self.update_context(context, &join.relation)
             });
 
-        let check_primary_key = |key: &Expr| {
-            let key = match key {
-                Expr::Identifier(ident) => ident,
-                Expr::CompoundIdentifier(idents) => &idents[1],
-                _ => return false,
-            };
-
-            current_context
-                .as_ref()
-                .map(|context| context.contains_primary_key(key))
-                .unwrap_or(false)
-        };
-
         let (index, selection) = select
             .selection
-            .map(|expr| match expr {
-                Expr::BinaryOp {
-                    left: key,
-                    op: BinaryOperator::Eq,
-                    right: value,
-                }
-                | Expr::BinaryOp {
-                    left: value,
-                    op: BinaryOperator::Eq,
-                    right: key,
-                } if check_primary_key(key.as_ref())
-                    && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
-                    && check_evaluable(outer_context.as_ref().map(Rc::clone), &value) =>
-                {
-                    let index_item = IndexItem::PrimaryKey(*value);
-
-                    (Some(index_item), None)
-                }
-                _ => {
-                    let current_context = current_context.as_ref().map(Rc::clone);
-                    let outer_context =
-                        Some(Rc::new(Context::concat(current_context, outer_context)));
-
-                    (None, Some(self.subquery_expr(outer_context, expr)))
-                }
+            .map(|expr| self.expr(outer_context, current_context, expr))
+            .map(|primary_key| match primary_key {
+                PrimaryKey::Found { index_item, expr } => (Some(index_item), expr),
+                PrimaryKey::NotFound(expr) => (None, Some(expr)),
             })
             .unwrap_or((None, None));
 
@@ -109,6 +83,120 @@ impl<'a> PrimaryKeyPlanner<'a> {
         select.selection = selection;
         select
     }
+
+    fn expr(
+        &self,
+        outer_context: Option<Rc<Context<'a>>>,
+        current_context: Option<Rc<Context<'a>>>,
+        expr: Expr,
+    ) -> PrimaryKey {
+        let check_primary_key = |key: &Expr| {
+            let key = match key {
+                Expr::Identifier(ident) => ident,
+                Expr::CompoundIdentifier(idents) => &idents[1],
+                _ => return false,
+            };
+
+            current_context
+                .as_ref()
+                .map(|context| context.contains_primary_key(key))
+                .unwrap_or(false)
+        };
+
+        match expr {
+            Expr::BinaryOp {
+                left: key,
+                op: BinaryOperator::Eq,
+                right: value,
+            }
+            | Expr::BinaryOp {
+                left: value,
+                op: BinaryOperator::Eq,
+                right: key,
+            } if check_primary_key(key.as_ref())
+                && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
+                && check_evaluable(outer_context.as_ref().map(Rc::clone), &value) =>
+            {
+                let index_item = IndexItem::PrimaryKey(*value);
+
+                PrimaryKey::Found {
+                    index_item,
+                    expr: None,
+                }
+            }
+            Expr::BinaryOp {
+                left,
+                op: BinaryOperator::And,
+                right,
+            } => {
+                let primary_key = self.expr(
+                    outer_context.as_ref().map(Rc::clone),
+                    current_context.as_ref().map(Rc::clone),
+                    *left,
+                );
+
+                let left = match primary_key {
+                    PrimaryKey::Found { index_item, expr } => {
+                        let expr = match expr {
+                            Some(left) => Expr::BinaryOp {
+                                left: Box::new(left),
+                                op: BinaryOperator::And,
+                                right,
+                            },
+                            None => *right,
+                        };
+
+                        return PrimaryKey::Found {
+                            index_item,
+                            expr: Some(expr),
+                        };
+                    }
+                    PrimaryKey::NotFound(expr) => expr,
+                };
+
+                match self.expr(outer_context, current_context, *right) {
+                    PrimaryKey::Found { index_item, expr } => {
+                        let expr = match expr {
+                            Some(right) => Expr::BinaryOp {
+                                left: Box::new(left),
+                                op: BinaryOperator::And,
+                                right: Box::new(right),
+                            },
+                            None => left,
+                        };
+
+                        PrimaryKey::Found {
+                            index_item,
+                            expr: Some(expr),
+                        }
+                    }
+                    PrimaryKey::NotFound(expr) => {
+                        let expr = Expr::BinaryOp {
+                            left: Box::new(left),
+                            op: BinaryOperator::And,
+                            right: Box::new(expr),
+                        };
+
+                        PrimaryKey::NotFound(expr)
+                    }
+                }
+            }
+            Expr::Nested(expr) => match self.expr(outer_context, current_context, *expr) {
+                PrimaryKey::Found { index_item, expr } => {
+                    let expr = expr.map(Box::new).map(Expr::Nested);
+
+                    PrimaryKey::Found { index_item, expr }
+                }
+                PrimaryKey::NotFound(expr) => PrimaryKey::NotFound(Expr::Nested(Box::new(expr))),
+            },
+            _ => {
+                let outer_context = Some(Rc::new(Context::concat(current_context, outer_context)));
+                let expr = self.subquery_expr(outer_context, expr);
+
+                PrimaryKey::NotFound(expr)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -121,12 +209,12 @@ mod tests {
                 JoinOperator, ObjectName, Query, Select, SelectItem, SetExpr, Statement,
                 TableFactor, TableWithJoins, Values,
             },
-            parse_sql::parse,
+            parse_sql::{parse, parse_expr},
             plan::{
                 fetch_schema_map,
                 mock::{run, MockStorage},
             },
-            translate::translate,
+            translate::{translate, translate_expr},
         },
         futures::executor::block_on,
     };
@@ -147,8 +235,14 @@ mod tests {
         })
     }
 
+    fn expr(sql: &str) -> Expr {
+        let parsed = parse_expr(sql).expect(sql);
+
+        translate_expr(&parsed).expect(sql)
+    }
+
     #[test]
-    fn basic() {
+    fn where_expr() {
         let storage = run("
             CREATE TABLE User (
                 id INTEGER PRIMARY KEY,
@@ -164,9 +258,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: ObjectName(vec!["User".to_owned()]),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(Expr::Literal(AstLiteral::Number(
-                        1.into(),
-                    )))),
+                    index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
                 joins: Vec::new(),
             },
@@ -185,9 +277,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: ObjectName(vec!["User".to_owned()]),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(Expr::Literal(AstLiteral::Number(
-                        1.into(),
-                    )))),
+                    index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
                 joins: Vec::new(),
             },
@@ -197,6 +287,85 @@ mod tests {
             order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "primary key in rhs:\n{sql}");
+
+        let sql = "SELECT * FROM User WHERE id = 1 AND True;";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: ObjectName(vec!["User".to_owned()]),
+                    alias: None,
+                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(expr("True")),
+            group_by: Vec::new(),
+            having: None,
+            order_by: Vec::new(),
+        });
+        assert_eq!(actual, expected, "AND binary op:\n{sql}");
+
+        let sql = "
+            SELECT * FROM User
+            WHERE
+                name IS NOT NULL
+                AND id = 1
+                AND True;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: ObjectName(vec!["User".to_owned()]),
+                    alias: None,
+                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(expr("name IS NOT NULL AND True")),
+            group_by: Vec::new(),
+            having: None,
+            order_by: Vec::new(),
+        });
+        assert_eq!(actual, expected, "AND binary op 2:\n{sql}");
+
+        let sql = "
+            SELECT * FROM User
+            WHERE
+                name IS NOT NULL
+                AND True
+                AND id = 1;
+        ";
+        let actual = plan(&storage, sql);
+        let expected = expected.clone();
+        assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
+
+        let sql = "
+            SELECT * FROM User
+            WHERE
+                name IS NOT NULL
+                AND (True AND id = 1);
+        ";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: ObjectName(vec!["User".to_owned()]),
+                    alias: None,
+                    index: Some(IndexItem::PrimaryKey(expr("1"))),
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(expr("name IS NOT NULL AND (True)")),
+            group_by: Vec::new(),
+            having: None,
+            order_by: Vec::new(),
+        });
+        assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
     }
 
     #[test]
@@ -241,6 +410,55 @@ mod tests {
             order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "basic inner join:\n{sql}");
+
+        let sql = "
+            SELECT * FROM User
+            WHERE name IN (
+                SELECT * FROM User WHERE id = 1
+            )";
+        let actual = plan(&storage, sql);
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: ObjectName(vec!["User".to_owned()]),
+                            alias: None,
+                            index: Some(IndexItem::PrimaryKey(expr("1"))),
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                    order_by: Vec::new(),
+                })),
+                limit: None,
+                offset: None,
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: ObjectName(vec!["User".to_owned()]),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::InSubquery {
+                    expr: Box::new(expr("name")),
+                    subquery: Box::new(subquery),
+                    negated: false,
+                }),
+                group_by: Vec::new(),
+                having: None,
+                order_by: Vec::new(),
+            })
+        };
+        assert_eq!(actual, expected, "nested select:\n{sql}");
     }
 
     #[test]
@@ -274,7 +492,7 @@ mod tests {
                     having: None,
                     order_by: Vec::new(),
                 })),
-                limit: Some(Expr::Literal(AstLiteral::Number(1.into()))),
+                limit: Some(expr("1")),
                 offset: None,
             };
 
@@ -323,5 +541,24 @@ mod tests {
             offset: None,
         });
         assert_eq!(actual, expected, "values:\n{sql}");
+
+        let sql = "SELECT * FROM User WHERE (name);";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: ObjectName(vec!["User".to_owned()]),
+                    alias: None,
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(Expr::Nested(Box::new(expr("name")))),
+            group_by: Vec::new(),
+            having: None,
+            order_by: Vec::new(),
+        });
+        assert_eq!(actual, expected, "nested:\n{sql}");
     }
 }
