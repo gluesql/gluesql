@@ -340,7 +340,6 @@ mod tests {
                 AND id = 1;
         ";
         let actual = plan(&storage, sql);
-        let expected = expected.clone();
         assert_eq!(actual, expected, "AND binary op 3:\n{sql}");
 
         let sql = "
