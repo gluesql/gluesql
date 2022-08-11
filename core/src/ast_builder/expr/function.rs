@@ -23,12 +23,19 @@ pub enum FunctionNode {
     Pi,
     Now,
     Left(ExprNode, ExprNode),
+    Log(ExprNode, ExprNode),
     Log2(ExprNode),
     Log10(ExprNode),
     Ln(ExprNode),
     Right(ExprNode, ExprNode),
     Reverse(ExprNode),
     Sign(ExprNode),
+    Power(ExprNode, ExprNode),
+    Sqrt(ExprNode),
+    Gcd(ExprNode, ExprNode),
+    Lcm(ExprNode, ExprNode),
+    GenerateUuid,
+    Repeat(ExprNode, ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -59,6 +66,13 @@ impl TryFrom<FunctionNode> for Function {
                     .try_into()
                     .map(|size| Function::Left { expr, size })
             }),
+            FunctionNode::Log(antilog_node, base_node) => {
+                antilog_node.try_into().and_then(|antilog| {
+                    base_node
+                        .try_into()
+                        .map(|base| Function::Log { antilog, base })
+                })
+            }
             FunctionNode::Log2(expr_node) => expr_node.try_into().map(Function::Log2),
             FunctionNode::Log10(expr_node) => expr_node.try_into().map(Function::Log10),
             FunctionNode::Ln(expr_node) => expr_node.try_into().map(Function::Ln),
@@ -69,6 +83,26 @@ impl TryFrom<FunctionNode> for Function {
             }),
             FunctionNode::Reverse(expr_node) => expr_node.try_into().map(Function::Reverse),
             FunctionNode::Sign(expr_node) => expr_node.try_into().map(Function::Sign),
+            FunctionNode::Power(expr_node, power_node) => expr_node.try_into().and_then(|expr| {
+                power_node
+                    .try_into()
+                    .map(|power| Function::Power { expr, power })
+            }),
+            FunctionNode::Sqrt(expr_node) => expr_node.try_into().map(Function::Sqrt),
+            FunctionNode::Gcd(left_node, right_node) => left_node.try_into().and_then(|left| {
+                right_node
+                    .try_into()
+                    .map(|right| Function::Gcd { left, right })
+            }),
+            FunctionNode::Lcm(left_node, right_node) => left_node.try_into().and_then(|left| {
+                right_node
+                    .try_into()
+                    .map(|right| Function::Lcm { left, right })
+            }),
+            FunctionNode::GenerateUuid => Ok(Function::GenerateUuid()),
+            FunctionNode::Repeat(expr, num) => expr
+                .try_into()
+                .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
         }
     }
 }
@@ -113,6 +147,9 @@ impl ExprNode {
     pub fn left(self, size: Self) -> Self {
         left(self, size)
     }
+    pub fn log(self, base: ExprNode) -> ExprNode {
+        log(self, base)
+    }
     pub fn log2(self) -> ExprNode {
         log2(self)
     }
@@ -132,6 +169,23 @@ impl ExprNode {
 
     pub fn sign(self) -> ExprNode {
         sign(self)
+    }
+
+    pub fn power(self, pwr: ExprNode) -> ExprNode {
+        power(self, pwr)
+    }
+
+    pub fn sqrt(self) -> ExprNode {
+        sqrt(self)
+    }
+    pub fn gcd(self, right: ExprNode) -> ExprNode {
+        gcd(self, right)
+    }
+    pub fn lcm(self, right: ExprNode) -> ExprNode {
+        lcm(self, right)
+    }
+    pub fn repeat(self, num: ExprNode) -> ExprNode {
+        repeat(self, num)
     }
 }
 
@@ -174,11 +228,17 @@ pub fn tan<T: Into<ExprNode>>(expr: T) -> ExprNode {
 pub fn pi() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Pi))
 }
+pub fn generate_uuid() -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::GenerateUuid))
+}
 pub fn now() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Now))
 }
 pub fn left<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Left(expr.into(), size.into())))
+}
+pub fn log<V: Into<ExprNode>>(expr: V, base: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Log(expr.into(), base.into())))
 }
 pub fn log2<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Log2(expr.into())))
@@ -201,11 +261,32 @@ pub fn sign<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Sign(expr.into())))
 }
 
+pub fn power<V: Into<ExprNode>>(expr: V, power: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Power(expr.into(), power.into())))
+}
+
+pub fn sqrt<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Sqrt(expr.into())))
+}
+
+pub fn gcd<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Gcd(left.into(), right.into())))
+}
+
+pub fn lcm<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Lcm(left.into(), right.into())))
+}
+
+pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log10, log2, now,
-        num, pi, reverse, right, round, sign, sin, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
+        ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin, sqrt,
+        tan, test_expr, text, upper,
     };
 
     #[test]
@@ -343,6 +424,13 @@ mod tests {
     }
 
     #[test]
+    fn function_generate_uuid() {
+        let actual = generate_uuid();
+        let expected = "GENERATE_UUID()";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_left() {
         let actual = left(text("GlueSQL"), num(2));
         let expected = "LEFT('GlueSQL', 2)";
@@ -350,6 +438,17 @@ mod tests {
 
         let actual = expr("GlueSQL").left(num(2));
         let expected = "LEFT(GlueSQL, 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_log() {
+        let actual = log(num(64), num(8));
+        let expected = "log(64,8)";
+        test_expr(actual, expected);
+
+        let actual = num(64).log(num(8));
+        let expected = "LOG(64,8)";
         test_expr(actual, expected);
     }
 
@@ -416,6 +515,60 @@ mod tests {
 
         let actual = expr("id").sign();
         let expected = "SIGN(id)";
+        test_expr(actual, expected);
+    }
+    #[test]
+    fn function_power() {
+        let actual = power(num(2), num(4));
+        let expected = "POWER(2,4)";
+        test_expr(actual, expected);
+
+        let actual = num(2).power(num(4));
+        let expected = "POWER(2,4)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_sqrt() {
+        let actual = sqrt(num(9));
+        let expected = "SQRT(9)";
+        test_expr(actual, expected);
+
+        let actual = num(9).sqrt();
+        let expected = "SQRT(9)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_gcd() {
+        let actual = gcd(num(64), num(8));
+        let expected = "gcd(64,8)";
+        test_expr(actual, expected);
+
+        let actual = num(64).gcd(num(8));
+        let expected = "GCD(64,8)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_lcm() {
+        let actual = lcm(num(64), num(8));
+        let expected = "lcm(64,8)";
+        test_expr(actual, expected);
+
+        let actual = num(64).lcm(num(8));
+        let expected = "LCM(64,8)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_repeat() {
+        let actual = repeat(text("GlueSQL"), num(2));
+        let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").repeat(num(2));
+        let expected = "REPEAT('GlueSQL', 2)";
         test_expr(actual, expected);
     }
 }

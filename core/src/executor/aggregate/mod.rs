@@ -124,7 +124,7 @@ impl<'a> Aggregator<'a> {
                                 having,
                             )
                             .await
-                            .map(|pass| pass.then(|| (aggregated, next)))
+                            .map(|pass| pass.then_some((aggregated, next)))
                             .transpose()
                         }
                     }
