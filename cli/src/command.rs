@@ -6,12 +6,15 @@ pub enum Command {
     Quit,
     Execute(String),
     ExecuteFromFile(String),
+    SpoolOn(String),
 }
 
 #[derive(ThisError, Debug, PartialEq)]
 pub enum CommandError {
     #[error("should specify table")]
     LackOfTable,
+    #[error("should specify file path")]
+    LackOfFile,
     #[error("command not supported")]
     NotSupported,
 }
@@ -34,6 +37,10 @@ impl Command {
                 },
                 ".version" => Ok(Self::Execute("SHOW VERSION".to_owned())),
                 ".execute" if params.len() == 2 => Ok(Self::ExecuteFromFile(params[1].to_owned())),
+                ".spool" => match params.get(1) {
+                    Some(path) => Ok(Self::SpoolOn(path.to_string())),
+                    None => Err(CommandError::LackOfFile),
+                },
                 _ => Err(CommandError::NotSupported),
             }
         } else {
