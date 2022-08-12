@@ -118,7 +118,7 @@ impl<W: Write> Print<W> {
         Ok(())
     }
 
-    pub fn spool_off(&mut self) -> () {
+    pub fn spool_off(&mut self) {
         self.spool_file = None;
     }
 }
