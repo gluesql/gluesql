@@ -4,16 +4,29 @@ use {
         ast::ToSql,
         prelude::{Payload, PayloadVariable},
     },
-    std::io::{Result, Write},
+    std::{
+        fmt::Display,
+        fs::File,
+        io::{Result, Write},
+        path::Path,
+    },
 };
 
 pub struct Print<W: Write> {
     pub output: W,
+    spool_file: Option<File>,
 }
 
 impl<W: Write> Print<W> {
-    pub fn new(output: W) -> Self {
-        Print { output }
+    pub fn spool_on<P: AsRef<Path>>(&mut self, filename: P) -> Result<()> {
+        let file = File::create(filename)?;
+        self.spool_file = Some(file);
+
+        Ok(())
+    }
+
+    pub fn new(output: W, spool_file: Option<File>) -> Self {
+        Print { output, spool_file }
     }
 
     pub fn payloads(&mut self, payloads: &[Payload]) -> Result<()> {
@@ -35,16 +48,14 @@ impl<W: Write> Print<W> {
             Payload::Insert(n) => affected(*n, "inserted")?,
             Payload::Delete(n) => affected(*n, "deleted")?,
             Payload::Update(n) => affected(*n, "updated")?,
-            Payload::ShowVariable(PayloadVariable::Version(v)) => {
-                writeln!(self.output, "v{}\n", v)?
-            }
+            Payload::ShowVariable(PayloadVariable::Version(v)) => self.write(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
                 let mut table = get_table(["tables"]);
                 for name in names {
                     table.add_row([name]);
                 }
 
-                writeln!(self.output, "{}\n", table)?;
+                self.write(table)?;
             }
             Payload::ShowColumns(columns) => {
                 let mut table = get_table(vec!["Field", "Type"]);
@@ -52,7 +63,7 @@ impl<W: Write> Print<W> {
                     table.add_row([field, &field_type.to_string()]);
                 }
 
-                writeln!(self.output, "{}\n", table)?;
+                self.write(table)?;
             }
             Payload::ShowIndexes(indexes) => {
                 let mut table = get_table(vec!["Index Name", "Order", "Description"]);
@@ -63,7 +74,7 @@ impl<W: Write> Print<W> {
                         index.expr.to_sql(),
                     ]);
                 }
-                writeln!(self.output, "{}\n", table)?;
+                self.write(table)?;
             }
             Payload::Select { labels, rows } => {
                 let mut table = get_table(labels);
@@ -72,13 +83,19 @@ impl<W: Write> Print<W> {
 
                     table.add_row(values);
                 }
-
-                writeln!(self.output, "{}\n", table)?;
+                self.write(table)?;
             }
             _ => {}
         };
 
         Ok(())
+    }
+
+    fn write(&mut self, table: impl Display) -> Result<()> {
+        if let Some(file) = &self.spool_file {
+            writeln!(file.to_owned(), "{}\n", table)?;
+        };
+        writeln!(self.output, "{}\n", table)
     }
 
     pub fn help(&mut self) -> Result<()> {
@@ -113,12 +130,13 @@ fn get_table<T: Into<Row>>(header: T) -> Table {
 
 #[cfg(test)]
 mod tests {
+
     use super::Print;
     use gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd};
 
     #[test]
     fn print_help() {
-        let mut print = Print::new(Vec::new());
+        let mut print = Print::new(Vec::new(), None);
 
         let expected = "
 ╭──────────────────────────────────────────╮
@@ -150,7 +168,7 @@ mod tests {
             prelude::{Payload, PayloadVariable, Value},
         };
 
-        let mut print = Print::new(Vec::new());
+        let mut print = Print::new(Vec::new(), None);
 
         macro_rules! test {
             ($expected: literal, $payload: expr) => {
