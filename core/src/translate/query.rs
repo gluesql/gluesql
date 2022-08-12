@@ -1,5 +1,3 @@
-use crate::ast::ObjectName;
-
 use {
     super::{
         translate_expr, translate_idents, translate_object_name, translate_order_by_expr,
@@ -7,8 +5,8 @@ use {
     },
     crate::{
         ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SelectItem, SetExpr,
-            TableAlias, TableFactor, TableWithJoins, Values,
+            Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, Query, Select,
+            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
     },
