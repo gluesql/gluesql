@@ -82,5 +82,11 @@ mod tests {
             Ok(Command::Execute("SELECT * FROM Foo".to_owned())),
             Command::parse("SELECT * FROM Foo;")
         );
+        assert_eq!(
+            Ok(Command::SpoolOn("query.log".into())),
+            Command::parse(".spool query.log")
+        );
+        assert_eq!(Ok(Command::SpoolOff), Command::parse(".spool off"));
+        assert_eq!(Err(CommandError::LackOfFile), Command::parse(".spool"));
     }
 }
