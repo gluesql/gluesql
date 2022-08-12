@@ -5,7 +5,7 @@ use {
             ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias, TableFactor,
             TableWithJoins, Values,
         },
-        data::{get_alias, get_index, get_name, Key, Row, TableError, Value},
+        data::{get_alias, get_index, get_name, Key, Row, Value},
         executor::select::{get_labels, select},
         result::{Error, Result},
         store::GStore,

@@ -1,11 +1,10 @@
-use gluesql_core::executor::FetchError;
-
 use {
     crate::*,
     bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
         data::{Literal, RowError, ValueError},
+        executor::FetchError,
         prelude::{DataType, Payload, Value::*},
     },
     std::borrow::Cow,
