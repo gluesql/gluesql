@@ -28,13 +28,8 @@ impl<W: Write> Print<W> {
 
     pub fn payload(&mut self, payload: &Payload) -> Result<()> {
         let mut affected = |n: usize, msg: &str| -> Result<()> {
-            writeln!(
-                self.output,
-                "{} row{} {}\n",
-                n,
-                if n > 1 { "s" } else { "" },
-                msg
-            )
+            let payload = format!("{} row{} {}", n, if n > 1 { "s" } else { "" }, msg);
+            self.write(payload)
         };
 
         match payload {
@@ -84,11 +79,11 @@ impl<W: Write> Print<W> {
         Ok(())
     }
 
-    fn write(&mut self, table: impl Display) -> Result<()> {
+    fn write(&mut self, payload: impl Display) -> Result<()> {
         if let Some(file) = &self.spool_file {
-            writeln!(file.to_owned(), "{}\n", table)?;
+            writeln!(file.to_owned(), "{}\n", payload)?;
         };
-        writeln!(self.output, "{}\n", table)
+        writeln!(self.output, "{}\n", payload)
     }
 
     pub fn help(&mut self) -> Result<()> {
