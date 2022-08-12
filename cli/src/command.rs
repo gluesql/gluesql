@@ -39,7 +39,7 @@ impl Command {
                 ".version" => Ok(Self::Execute("SHOW VERSION".to_owned())),
                 ".execute" if params.len() == 2 => Ok(Self::ExecuteFromFile(params[1].to_owned())),
                 ".spool" => match params.get(1) {
-                    Some(&arg) if arg == "off" => Ok(Self::SpoolOff),
+                    Some(&"off") => Ok(Self::SpoolOff),
                     Some(path) => Ok(Self::SpoolOn(path.to_string())),
                     None => Err(CommandError::LackOfFile),
                 },
