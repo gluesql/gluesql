@@ -32,7 +32,7 @@ where
 {
     pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
-        let print = Print::new(output);
+        let print = Print::new(output, None);
 
         Self { glue, print }
     }
@@ -72,6 +72,10 @@ where
                     println!("[error] should specify table. eg: .columns TableName\n");
                     continue;
                 }
+                Err(CommandError::LackOfFile) => {
+                    println!("[error] should specify file path.\n");
+                    continue;
+                }
                 Err(CommandError::NotSupported) => {
                     println!("[error] command not supported: {}", line);
                     println!("\n  type .help to list all available commands.\n");
@@ -98,6 +102,9 @@ where
                     if let Err(e) = self.load(&filename) {
                         println!("[error] {}\n", e);
                     }
+                }
+                Command::SpoolOn(path) => {
+                    self.print.spool_on(path)?;
                 }
             }
         }
