@@ -106,6 +106,9 @@ where
                 Command::SpoolOn(path) => {
                     self.print.spool_on(path)?;
                 }
+                Command::SpoolOff => {
+                    self.print.spool_off();
+                }
             }
         }
 

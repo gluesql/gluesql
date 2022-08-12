@@ -18,13 +18,6 @@ pub struct Print<W: Write> {
 }
 
 impl<W: Write> Print<W> {
-    pub fn spool_on<P: AsRef<Path>>(&mut self, filename: P) -> Result<()> {
-        let file = File::create(filename)?;
-        self.spool_file = Some(file);
-
-        Ok(())
-    }
-
     pub fn new(output: W, spool_file: Option<File>) -> Self {
         Print { output, spool_file }
     }
@@ -115,6 +108,17 @@ impl<W: Write> Print<W> {
         }
 
         writeln!(self.output, "{}\n", table)
+    }
+
+    pub fn spool_on<P: AsRef<Path>>(&mut self, filename: P) -> Result<()> {
+        let file = File::create(filename)?;
+        self.spool_file = Some(file);
+
+        Ok(())
+    }
+
+    pub fn spool_off(&mut self) -> () {
+        self.spool_file = None;
     }
 }
 
