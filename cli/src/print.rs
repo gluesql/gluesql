@@ -93,13 +93,14 @@ impl<W: Write> Print<W> {
 
     pub fn help(&mut self) -> Result<()> {
         const HEADER: [&str; 2] = ["command", "description"];
-        const CONTENT: [[&str; 2]; 6] = [
+        const CONTENT: [[&str; 2]; 7] = [
             [".help", "show help"],
             [".quit", "quit program"],
             [".tables", "show table names"],
             [".columns TABLE", "show columns from TABLE"],
             [".version", "show version"],
             [".execute FILE", "execute SQL from a file"],
+            [".spool FILE|off", "spool to file or off"],
         ];
 
         let mut table = get_table(HEADER);
@@ -143,16 +144,17 @@ mod tests {
         let mut print = Print::new(Vec::new(), None);
 
         let expected = "
-╭──────────────────────────────────────────╮
-│ command          description             │
-╞══════════════════════════════════════════╡
-│ .help            show help               │
-│ .quit            quit program            │
-│ .tables          show table names        │
-│ .columns TABLE   show columns from TABLE │
-│ .version         show version            │
-│ .execute FILE    execute SQL from a file │
-╰──────────────────────────────────────────╯";
+╭───────────────────────────────────────────╮
+│ command           description             │
+╞═══════════════════════════════════════════╡
+│ .help             show help               │
+│ .quit             quit program            │
+│ .tables           show table names        │
+│ .columns TABLE    show columns from TABLE │
+│ .version          show version            │
+│ .execute FILE     execute SQL from a file │
+│ .spool FILE|off   spool to file or off    │
+╰───────────────────────────────────────────╯";
         let found = {
             print.help().unwrap();
 
