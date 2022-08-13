@@ -38,6 +38,8 @@ pub enum FunctionNode {
     Repeat(ExprNode, ExprNode),
     Degrees(ExprNode),
     Radians(ExprNode),
+    Div(ExprNode, ExprNode),
+    Mod(ExprNode, ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -107,6 +109,20 @@ impl TryFrom<FunctionNode> for Function {
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
+            FunctionNode::Div(dividend_node, divisor_node) => {
+                dividend_node.try_into().and_then(|dividend| {
+                    divisor_node
+                        .try_into()
+                        .map(|divisor| Function::Div { dividend, divisor })
+                })
+            }
+            FunctionNode::Mod(dividend_node, divisor_node) => {
+                dividend_node.try_into().and_then(|dividend| {
+                    divisor_node
+                        .try_into()
+                        .map(|divisor| Function::Mod { dividend, divisor })
+                })
+            }
         }
     }
 }
@@ -299,12 +315,20 @@ pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
 }
 
+pub fn div<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Div(dividend.into(), divisor.into())))
+}
+
+pub fn modulo<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Mod(dividend.into(), divisor.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, degrees, expr, floor, gcd, generate_uuid, ifnull,
-        lcm, left, ln, log, log10, log2, now, num, pi, power, radians, repeat, reverse, right,
-        round, sign, sin, sqrt, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, degrees, div, expr, floor, gcd, generate_uuid,
+        ifnull, lcm, left, ln, log, log10, log2, modulo, now, num, pi, power, radians, repeat,
+        reverse, right, round, sign, sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -609,6 +633,20 @@ mod tests {
 
         let actual = num(1).radians();
         let expected = "RADIANS(1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_mod() {
+        let actual = modulo(num(64), num(8));
+        let expected = "mod(64,8)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_div() {
+        let actual = div(num(64), num(8));
+        let expected = "div(64,8)";
         test_expr(actual, expected);
     }
 }
