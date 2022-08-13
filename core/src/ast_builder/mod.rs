@@ -39,9 +39,9 @@ pub use {index::CreateIndexNode, index::DropIndexNode};
 pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
-        abs, acos, asin, atan, ceil, cos, floor, gcd, generate_uuid, ifnull, lcm, left, ln, log,
-        log10, log2, lpad, now, pi, power, repeat, reverse, right, round, rpad, sign, sin, sqrt,
-        tan, upper, FunctionNode,
+        abs, acos, asin, atan, ceil, concat, cos, degrees, floor, gcd, generate_uuid, ifnull, lcm,
+        left, ln, log, log10, log2, lpad, now, pi, power, radians, repeat, reverse, right, round,
+        rpad, sign, sin, sqrt, tan, upper, FunctionNode,
     },
 };
 
