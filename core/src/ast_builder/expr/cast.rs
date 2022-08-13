@@ -23,7 +23,7 @@ mod tests {
         test_expr(actual, expected);
 
         let actual = col("date").cast("INTEGER");
-        let expected = "CAST(date AS INTESER)";
+        let expected = "CAST(date AS INTEGER)";
         test_expr(actual, expected);
     }
 }
