@@ -1,6 +1,7 @@
 mod error;
 mod state;
 
+pub use error::AggregateError;
 use {
     self::state::State,
     super::{
@@ -14,11 +15,10 @@ use {
         result::{Error, Result},
         store::GStore,
     },
+    async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     std::{convert::identity, pin::Pin, rc::Rc},
 };
-
-pub use error::AggregateError;
 
 pub struct Aggregator<'a> {
     storage: &'a dyn GStore,
@@ -85,15 +85,25 @@ impl<'a> Aggregator<'a> {
                         .collect::<Result<Vec<Key>>>()?;
 
                     let state = state.apply(index, group, Rc::clone(&blend_context));
-                    let state = self
-                        .fields
-                        .iter()
-                        .try_fold(state, |state, field| match field {
-                            SelectItem::Expr { expr, .. } => {
-                                aggregate(state, &blend_context, self.filter_context.clone(), expr)
+                    let state = stream::iter(self.fields)
+                        .fold(Ok(state), |state, field| {
+                            let blend_clone = Rc::clone(&blend_context);
+                            async move {
+                                match field {
+                                    SelectItem::Expr { expr, .. } => {
+                                        aggregate(
+                                            state?,
+                                            blend_clone,
+                                            self.filter_context.clone(),
+                                            expr,
+                                        )
+                                        .await
+                                    }
+                                    _ => state,
+                                }
                             }
-                            _ => Ok(state),
-                        })?;
+                        })
+                        .await?;
 
                     Ok(state)
                 },
@@ -161,27 +171,47 @@ impl<'a> Aggregator<'a> {
     }
 }
 
-fn aggregate<'a>(
+#[async_recursion(?Send)]
+async fn aggregate<'a>(
     state: State<'a>,
-    blend_context: &BlendContext<'_>,
-    //filter_context: Option<&FilterContext<'a>>,
+    blend_context: Rc<BlendContext<'async_recursion>>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     expr: &'a Expr,
 ) -> Result<State<'a>> {
-    let aggr = |state, expr| aggregate(state, blend_context, filter_context, expr);
-
+    let aggr = |state, expr| {
+        aggregate(
+            state,
+            Rc::clone(&blend_context),
+            filter_context.clone(),
+            expr,
+        )
+    };
     match expr {
         Expr::Between {
             expr, low, high, ..
-        } => [expr, low, high]
-            .iter()
-            .try_fold(state, |state, expr| aggr(state, expr)),
-        Expr::BinaryOp { left, right, .. } => [left, right]
-            .iter()
-            .try_fold(state, |state, expr| aggr(state, expr)),
-        Expr::UnaryOp { expr, .. } => aggr(state, expr),
-        Expr::Nested(expr) => aggr(state, expr),
-        Expr::Aggregate(aggr) => state.accumulate(blend_context, filter_context, aggr.as_ref()),
+        } => {
+            stream::iter([expr, low, high])
+                .fold(
+                    Ok(state),
+                    |state, expr| async move { aggr(state?, expr).await },
+                )
+                .await
+        }
+        Expr::BinaryOp { left, right, .. } => {
+            stream::iter([left, right])
+                .fold(
+                    Ok(state),
+                    |state, expr| async move { aggr(state?, expr).await },
+                )
+                .await
+        }
+        Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
+        Expr::Nested(expr) => aggr(state, expr).await,
+        Expr::Aggregate(aggr) => {
+            state
+                .accumulate(blend_context, filter_context, aggr.as_ref())
+                .await
+        }
         _ => Ok(state),
     }
 }

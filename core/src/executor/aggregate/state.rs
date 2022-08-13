@@ -243,12 +243,12 @@ impl<'a> State<'a> {
             .collect::<Result<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>>()
     }
 
-    pub fn accumulate(
+    pub async fn accumulate(
         self,
-        context: &BlendContext<'_>,
+        context: Rc<BlendContext<'_>>,
         filter_context: Option<Rc<FilterContext<'a>>>,
         aggr: &'a Aggregate,
-    ) -> Result<Self> {
+    ) -> Result<State<'a>> {
         // let get_value = |expr: &Expr| match expr {
         //     Expr::Identifier(ident) => context
         //         .get_value(ident)
@@ -275,9 +275,7 @@ impl<'a> State<'a> {
             | Aggregate::Max(expr)
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => {
-                evaluate(self.storage, filter_context, None, expr).try_from()
-            }
+            | Aggregate::Stdev(expr) => todo!(), //evaluate(self.storage, filter_context, None, expr),
         };
 
         let aggr_value = match self.get(aggr) {
