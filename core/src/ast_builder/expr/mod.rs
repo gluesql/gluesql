@@ -13,9 +13,8 @@ pub mod in_subquery;
 
 pub use nested::nested;
 
-use super::DataTypeNode;
-
 use {
+    super::DataTypeNode,
     crate::{
         ast::{
             Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, Function, Query,
