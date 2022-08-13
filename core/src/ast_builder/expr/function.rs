@@ -218,6 +218,12 @@ impl ExprNode {
     pub fn radians(self) -> ExprNode {
         radians(self)
     }
+    pub fn lpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
+        lpad(self, size, fill)
+    }
+    pub fn rpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
+        rpad(self, size, fill)
+    }
 }
 
 pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
@@ -672,6 +678,14 @@ mod tests {
         let actual = lpad(text("GlueSQL"), num(10), None);
         let expected = "LPAD('GlueSQL', 10)";
         test_expr(actual, expected);
+
+        let actual = text("GlueSQL").lpad(num(10), Some(text("Go")));
+        let expected = "LPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").lpad(num(10), None);
+        let expected = "LPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
     }
 
     #[test]
@@ -681,6 +695,14 @@ mod tests {
         test_expr(actual, expected);
 
         let actual = rpad(text("GlueSQL"), num(10), None);
+        let expected = "RPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").rpad(num(10), Some(text("Go")));
+        let expected = "RPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").rpad(num(10), None);
         let expected = "RPAD('GlueSQL', 10)";
         test_expr(actual, expected);
     }
