@@ -2,6 +2,7 @@ use {
     super::ExprNode,
     crate::{
         ast::Function,
+        ast_builder::ExprList,
         result::{Error, Result},
     },
 };
@@ -38,6 +39,9 @@ pub enum FunctionNode {
     Repeat(ExprNode, ExprNode),
     Ltrim(ExprNode, Option<ExprNode>),
     Rtrim(ExprNode, Option<ExprNode>),
+    Degrees(ExprNode),
+    Radians(ExprNode),
+    Concat(ExprList),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -117,6 +121,9 @@ impl TryFrom<FunctionNode> for Function {
                     .try_into()
                     .map(|expr| Function::Rtrim { expr, chars })
             }
+            FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
+            FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
+            FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
         }
     }
 }
@@ -207,6 +214,12 @@ impl ExprNode {
     pub fn ltrim(self, chars: Option<ExprNode>) -> ExprNode {
         ltrim(self, chars)
     }
+    pub fn degrees(self) -> ExprNode {
+        degrees(self)
+    }
+    pub fn radians(self) -> ExprNode {
+        radians(self)
+    }
 }
 
 pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
@@ -223,6 +236,9 @@ pub fn ceil<T: Into<ExprNode>>(expr: T) -> ExprNode {
 }
 pub fn round<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
+}
+pub fn concat<T: Into<ExprList>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Concat(expr.into())))
 }
 pub fn floor<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Floor(expr.into())))
@@ -315,12 +331,20 @@ pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
     )))
 }
 
+pub fn degrees<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Degrees(expr.into())))
+}
+
+pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
-        ln, log, log10, log2, ltrim, now, num, pi, power, repeat, reverse, right, round, rtrim,
-        sign, sin, sqrt, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, concat, cos, degrees, expr, floor, gcd, generate_uuid,
+        ifnull, lcm, left, ln, log, log10, log2, ltrim, now, num, pi, power, radians, repeat,
+        reverse, right, round, rtrim, sign, sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -603,6 +627,39 @@ mod tests {
 
         let actual = text("GlueSQL").repeat(num(2));
         let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_degrees() {
+        let actual = degrees(num(1));
+        let expected = "DEGREES(1)";
+        test_expr(actual, expected);
+
+        let actual = num(1).degrees();
+        let expected = "DEGREES(1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_radians() {
+        let actual = radians(num(1));
+        let expected = "RADIANS(1)";
+        test_expr(actual, expected);
+
+        let actual = num(1).radians();
+        let expected = "RADIANS(1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_concat() {
+        let actual = concat(vec![text("Glue"), text("SQL"), text("Go")]);
+        let expected = "CONCAT('Glue','SQL','Go')";
+        test_expr(actual, expected);
+
+        let actual = concat(vec!["Glue", "SQL", "Go"]);
+        let expected = "CONCAT(Glue, SQL, Go)";
         test_expr(actual, expected);
     }
 
