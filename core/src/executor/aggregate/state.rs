@@ -1,10 +1,12 @@
+use crate::executor::context::FilterContext;
+
 use {
-    super::error::AggregateError,
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr},
+        ast::{Aggregate, CountArgExpr},
         data::{Key, Value},
-        executor::context::BlendContext,
+        executor::{context::BlendContext, evaluate::evaluate},
         result::Result,
+        store::GStore,
     },
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
@@ -152,16 +154,18 @@ pub struct State<'a> {
     values: IndexMap<(Group, &'a Aggregate), (usize, AggrValue)>,
     groups: HashSet<Group>,
     contexts: Vector<Rc<BlendContext<'a>>>,
+    storage: &'a dyn GStore,
 }
 
 impl<'a> State<'a> {
-    pub fn new() -> Self {
+    pub fn new(storage: &'a dyn GStore) -> Self {
         State {
             index: 0,
             group: Rc::new(vec![Key::None]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
+            storage,
         }
     }
 
@@ -182,6 +186,7 @@ impl<'a> State<'a> {
             values: self.values,
             groups,
             contexts,
+            storage: self.storage,
         }
     }
 
@@ -194,6 +199,7 @@ impl<'a> State<'a> {
             values,
             groups: self.groups,
             contexts: self.contexts,
+            storage: self.storage,
         }
     }
 
@@ -237,25 +243,30 @@ impl<'a> State<'a> {
             .collect::<Result<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>>()
     }
 
-    pub fn accumulate(self, context: &BlendContext<'_>, aggr: &'a Aggregate) -> Result<Self> {
-        let get_value = |expr: &Expr| match expr {
-            Expr::Identifier(ident) => context
-                .get_value(ident)
-                .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
-            Expr::CompoundIdentifier(idents) => {
-                if idents.len() != 2 {
-                    return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
-                }
+    pub fn accumulate(
+        self,
+        context: &BlendContext<'_>,
+        filter_context: Option<Rc<FilterContext<'a>>>,
+        aggr: &'a Aggregate,
+    ) -> Result<Self> {
+        // let get_value = |expr: &Expr| match expr {
+        //     Expr::Identifier(ident) => context
+        //         .get_value(ident)
+        //         .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
+        //     Expr::CompoundIdentifier(idents) => {
+        //         if idents.len() != 2 {
+        //             return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
+        //         }
 
-                let table_alias = &idents[0];
-                let column = &idents[1];
+        //         let table_alias = &idents[0];
+        //         let column = &idents[1];
 
-                context
-                    .get_alias_value(table_alias, column)
-                    .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
-            }
-            _ => Err(AggregateError::OnlyIdentifierAllowed),
-        };
+        //         context
+        //             .get_alias_value(table_alias, column)
+        //             .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
+        //     }
+        //     _ => Err(AggregateError::OnlyIdentifierAllowed),
+        // };
         let value = match aggr {
             Aggregate::Count(CountArgExpr::Wildcard) => &Value::Null,
             Aggregate::Count(CountArgExpr::Expr(expr))
@@ -264,7 +275,9 @@ impl<'a> State<'a> {
             | Aggregate::Max(expr)
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => get_value(expr)?,
+            | Aggregate::Stdev(expr) => {
+                evaluate(self.storage, filter_context, None, expr).try_from()
+            }
         };
 
         let aggr_value = match self.get(aggr) {
