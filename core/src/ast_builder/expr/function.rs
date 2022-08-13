@@ -36,6 +36,8 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
+    Degrees(ExprNode),
+    Radians(ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -103,6 +105,8 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
+            FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
+            FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
         }
     }
 }
@@ -186,6 +190,12 @@ impl ExprNode {
     }
     pub fn repeat(self, num: ExprNode) -> ExprNode {
         repeat(self, num)
+    }
+    pub fn degrees(self) -> ExprNode {
+        degrees(self)
+    }
+    pub fn radians(self) -> ExprNode {
+        radians(self)
     }
 }
 
@@ -281,12 +291,20 @@ pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
 }
 
+pub fn degrees<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Degrees(expr.into())))
+}
+
+pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
-        ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin, sqrt,
-        tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, degrees, expr, floor, gcd, generate_uuid, ifnull,
+        lcm, left, ln, log, log10, log2, now, num, pi, power, radians, repeat, reverse, right,
+        round, sign, sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -569,6 +587,28 @@ mod tests {
 
         let actual = text("GlueSQL").repeat(num(2));
         let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_degrees() {
+        let actual = degrees(num(1));
+        let expected = "DEGREES(1)";
+        test_expr(actual, expected);
+
+        let actual = num(1).degrees();
+        let expected = "DEGREES(1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_radians() {
+        let actual = radians(num(1));
+        let expected = "RADIANS(1)";
+        test_expr(actual, expected);
+
+        let actual = num(1).radians();
+        let expected = "RADIANS(1)";
         test_expr(actual, expected);
     }
 }
