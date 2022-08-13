@@ -5,12 +5,15 @@ mod unary_op;
 
 pub mod aggregate;
 pub mod between;
+pub mod cast;
 pub mod extract;
 pub mod function;
 pub mod in_list;
 pub mod in_subquery;
 
 pub use nested::nested;
+
+use super::DataTypeNode;
 
 use {
     crate::{
@@ -68,6 +71,10 @@ pub enum ExprNode {
     Nested(Box<ExprNode>),
     Function(Box<FunctionNode>),
     Aggregate(Box<AggregateNode>),
+    Cast {
+        expr: Box<ExprNode>,
+        data_type: DataTypeNode,
+    },
 }
 
 impl TryFrom<ExprNode> for Expr {
@@ -113,6 +120,11 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::Extract { field, expr } => {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
                 Ok(Expr::Extract { field, expr })
+            }
+            ExprNode::Cast { expr, data_type } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let data_type = data_type.try_into()?;
+                Ok(Expr::Cast { expr, data_type })
             }
             ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),

@@ -1,3 +1,4 @@
+mod data_type;
 mod delete;
 mod drop_table;
 mod expr;
@@ -15,6 +16,7 @@ mod table;
 mod transaction;
 
 pub use {
+    data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
     expr_list::ExprList,
