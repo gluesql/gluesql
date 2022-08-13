@@ -36,6 +36,7 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
+    Substr(ExprNode, ExprNode, Option<ExprNode>),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -103,6 +104,14 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
+            FunctionNode::Substr(expr_node, start_node, count_node) => {
+                let count = count_node.map(|count| count.try_into().unwrap());
+                expr_node.try_into().and_then(|expr| {
+                    start_node
+                        .try_into()
+                        .map(|start| Function::Substr { expr, start, count })
+                })
+            }
         }
     }
 }
@@ -281,12 +290,20 @@ pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
 }
 
+pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Substr(
+        expr.into(),
+        start.into(),
+        count.map(|count_expr| count_expr.try_into().unwrap()),
+    )))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
         ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin, sqrt,
-        tan, test_expr, text, upper,
+        substr, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -569,6 +586,17 @@ mod tests {
 
         let actual = text("GlueSQL").repeat(num(2));
         let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_substr() {
+        let actual = substr(text("GlueSQL"), num(2), Some(num(4)));
+        let expected = "SUBSTR('GlueSQL', 2, 4)";
+        test_expr(actual, expected);
+
+        let actual = substr(text("GlueSQL"), num(2), None);
+        let expected = "SUBSTR('GlueSQL', 2)";
         test_expr(actual, expected);
     }
 }
