@@ -36,6 +36,8 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
+    Lpad(ExprNode, ExprNode, Option<ExprNode>),
+    Rpad(ExprNode, ExprNode, Option<ExprNode>),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -103,6 +105,22 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
+            FunctionNode::Lpad(expr_node, size_node, fill_node) => {
+                let fill = fill_node.map(|fill| fill.try_into().unwrap());
+                expr_node.try_into().and_then(|expr| {
+                    size_node
+                        .try_into()
+                        .map(|size| Function::Lpad { expr, size, fill })
+                })
+            }
+            FunctionNode::Rpad(expr_node, size_node, fill_node) => {
+                let fill = fill_node.map(|fill| fill.try_into().unwrap());
+                expr_node.try_into().and_then(|expr| {
+                    size_node
+                        .try_into()
+                        .map(|size| Function::Rpad { expr, size, fill })
+                })
+            }
         }
     }
 }
@@ -281,12 +299,28 @@ pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
 }
 
+pub fn lpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Lpad(
+        expr.into(),
+        size.into(),
+        fill.map(|fill_expr| fill_expr.try_into().unwrap()),
+    )))
+}
+
+pub fn rpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Rpad(
+        expr.into(),
+        size.into(),
+        fill.map(|fill_expr| fill_expr.try_into().unwrap()),
+    )))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
-        ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin, sqrt,
-        tan, test_expr, text, upper,
+        ln, log, log10, log2, lpad, now, num, pi, power, repeat, reverse, right, round, rpad, sign,
+        sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -569,6 +603,28 @@ mod tests {
 
         let actual = text("GlueSQL").repeat(num(2));
         let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_lpad() {
+        let actual = lpad(text("GlueSQL"), num(10), Some(text("Go")));
+        let expected = "LPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = lpad(text("GlueSQL"), num(10), None);
+        let expected = "LPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_rpad() {
+        let actual = rpad(text("GlueSQL"), num(10), Some(text("Go")));
+        let expected = "RPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = rpad(text("GlueSQL"), num(10), None);
+        let expected = "RPAD('GlueSQL', 10)";
         test_expr(actual, expected);
     }
 }
