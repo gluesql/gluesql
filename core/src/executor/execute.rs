@@ -243,15 +243,12 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = match primary_key {
                     Some(i) => rows
                         .into_iter()
-                        .filter_map(|row| {
-                            if let Some(value) = row.0.get(i) {
-                                Key::try_from(value)
-                                    .map(|key| (key, row))
-                                    .map(Some)
-                                    .transpose()
-                            } else {
-                                None
-                            }
+                        .filter_map(|row| match row.0.get(i) {
+                            Some(value) => Key::try_from(value)
+                                .map(|key| (key, row))
+                                .map(Some)
+                                .transpose(),
+                            None => None,
                         })
                         .collect::<Result<Vec<_>>>()
                         .map(RowsData::Update)?,
