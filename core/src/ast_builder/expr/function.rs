@@ -36,6 +36,7 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
+    Exp(ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -103,6 +104,7 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
+            FunctionNode::Exp(expr) => expr.try_into().map(Function::Exp),
         }
     }
 }
@@ -186,6 +188,9 @@ impl ExprNode {
     }
     pub fn repeat(self, num: ExprNode) -> ExprNode {
         repeat(self, num)
+    }
+    pub fn exp(self) -> ExprNode {
+        exp(self)
     }
 }
 
@@ -281,12 +286,15 @@ pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
 }
 
+pub fn exp<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Exp(expr.into())))
+}
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
-        ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin, sqrt,
-        tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, cos, exp, expr, floor, gcd, generate_uuid, ifnull, lcm,
+        left, ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin,
+        sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -569,6 +577,17 @@ mod tests {
 
         let actual = text("GlueSQL").repeat(num(2));
         let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_exp() {
+        let actual = exp(num(2));
+        let expected = "EXP(2)";
+        test_expr(actual, expected);
+
+        let actual = num(2).exp();
+        let expected = "EXP(2)";
         test_expr(actual, expected);
     }
 }
