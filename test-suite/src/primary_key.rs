@@ -1,4 +1,11 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        data::{Value::*, ValueError},
+        executor::{UpdateError, ValidateError},
+        prelude::Payload,
+    },
+};
 
 test_case!(primary_key, async move {
     run!(
@@ -9,8 +16,96 @@ test_case!(primary_key, async move {
         );
     "
     );
-    run!(
+    test!(
+        Ok(Payload::Insert(2)),
         "INSERT INTO Allegro VALUES (1, 'hello'), (2, 'world');"
-    )
-    // update fail, insert duplicate fail
+    );
+
+    test!(
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            1     "hello".to_owned();
+            2     "world".to_owned()
+        )),
+        "SELECT id, name FROM Allegro"
+    );
+    test!(
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            1     "hello".to_owned()
+        )),
+        "SELECT id, name FROM Allegro WHERE id = 1"
+    );
+    test!(
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            1     "hello".to_owned()
+        )),
+        "SELECT id, name FROM Allegro WHERE id < 2"
+    );
+
+    run!("INSERT INTO Allegro VALUES (3, 'foo'), (4, 'bar'), (5, 'neon');");
+
+    test!(
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            1     "hello".to_owned();
+            2     "world".to_owned();
+            3     "foo".to_owned();
+            4     "bar".to_owned();
+            5     "neon".to_owned()
+        )),
+        "SELECT id, name FROM Allegro"
+    );
+    test!(
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            2     "world".to_owned();
+            4     "bar".to_owned()
+        )),
+        "SELECT id, name FROM Allegro WHERE id % 2 = 0"
+    );
+    test!(
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            4     "bar".to_owned()
+        )),
+        "SELECT id, name FROM Allegro WHERE id = 4"
+    );
+
+    run!("DELETE FROM Allegro WHERE id > 3");
+    test!(
+        Ok(select!(
+            id  | name
+            I64 | Str;
+            1     "hello".to_owned();
+            2     "world".to_owned();
+            3     "foo".to_owned()
+        )),
+        "SELECT id, name FROM Allegro"
+    );
+
+    // PRIMARY KEY includes UNIQUE constraint
+    test!(
+        Err(ValidateError::DuplicateEntryOnUniqueField(I64(1), "id".to_owned()).into()),
+        "INSERT INTO Allegro VALUES (1, 'another hello');"
+    );
+
+    // PRIMARY KEY includes NOT NULL constraint
+    test!(
+        Err(ValueError::NullValueOnNotNullField.into()),
+        "INSERT INTO Allegro VALUES (NULL, 'hello');"
+    );
+
+    // UPDATE is not allowed for PRIMARY KEY applied column
+    test!(
+        Err(UpdateError::UpdateOnPrimaryKeyNotSupported("id".to_owned()).into()),
+        "UPDATE Allegro SET id = 100 WHERE id = 1"
+    );
 });

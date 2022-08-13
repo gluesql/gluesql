@@ -17,6 +17,7 @@ CREATE TABLE TestA (
     name TEXT
 )"#
     );
+
     run!("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
     run!("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
     run!("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\"), (4, 7, \"Job\")");
@@ -68,11 +69,4 @@ CREATE TABLE TestA (
     for (expected, sql) in test_cases {
         test!(expected, sql);
     }
-
-    run!("CREATE TABLE HelloWorld (id INTEGER PRIMARY KEY)");
-    run!("INSERT INTO HelloWorld VALUES (1), (2);");
-    test!(
-        Ok(select!(id I64; 1)),
-        "SELECT id FROM HelloWorld WHERE id = 1"
-    );
 });
