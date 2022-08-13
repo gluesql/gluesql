@@ -2,6 +2,7 @@ use {
     super::ExprNode,
     crate::{
         ast::Function,
+        ast_builder::ExprList,
         result::{Error, Result},
     },
 };
@@ -36,6 +37,7 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
+    Concat(ExprList),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -103,6 +105,7 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
+            FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
         }
     }
 }
@@ -204,6 +207,9 @@ pub fn ceil<T: Into<ExprNode>>(expr: T) -> ExprNode {
 pub fn round<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
 }
+pub fn concat<T: Into<ExprList>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Concat(expr.into())))
+}
 pub fn floor<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Floor(expr.into())))
 }
@@ -284,9 +290,9 @@ pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
-        ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin, sqrt,
-        tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, concat, cos, expr, floor, gcd, generate_uuid, ifnull,
+        lcm, left, ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign,
+        sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -569,6 +575,16 @@ mod tests {
 
         let actual = text("GlueSQL").repeat(num(2));
         let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+    #[test]
+    fn function_concat() {
+        let actual = concat(vec![text("Glue"), text("SQL"), text("Go")]);
+        let expected = "CONCAT('Glue','SQL','Go')";
+        test_expr(actual, expected);
+
+        let actual = concat(vec!["Glue", "SQL", "Go"]);
+        let expected = "CONCAT(Glue, SQL, Go)";
         test_expr(actual, expected);
     }
 }
