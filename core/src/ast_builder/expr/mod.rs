@@ -35,7 +35,10 @@ pub enum ExprNode {
     Expr(Expr),
     SqlExpr(String),
     Identifier(String),
-    CompoundIdentifier(Vec<String>),
+    CompoundIdentifier {
+        alias: String,
+        ident: String,
+    },
     Between {
         expr: Box<ExprNode>,
         negated: bool,
@@ -88,7 +91,9 @@ impl TryFrom<ExprNode> for Expr {
                 translate_expr(&expr)
             }
             ExprNode::Identifier(ident) => Ok(Expr::Identifier(ident)),
-            ExprNode::CompoundIdentifier(idents) => Ok(Expr::CompoundIdentifier(idents)),
+            ExprNode::CompoundIdentifier { alias, ident } => {
+                Ok(Expr::CompoundIdentifier { alias, ident })
+            }
             ExprNode::Between {
                 expr,
                 negated,
@@ -192,12 +197,14 @@ pub fn expr(value: &str) -> ExprNode {
 }
 
 pub fn col(value: &str) -> ExprNode {
-    let idents = value.split('.').collect::<Vec<_>>();
+    let idents = value.split('.').map(|v| v.to_string()).collect::<Vec<_>>();
 
-    if idents.len() == 1 {
-        ExprNode::Identifier(value.to_owned())
-    } else {
-        ExprNode::CompoundIdentifier(idents.into_iter().map(ToOwned::to_owned).collect())
+    match &idents[..] {
+        [alias, ident] => ExprNode::CompoundIdentifier {
+            alias: alias.to_owned(),
+            ident: ident.to_owned(),
+        },
+        _ => ExprNode::Identifier(value.to_owned()),
     }
 }
 

@@ -10,13 +10,19 @@ use {
 pub enum PlanExpr<'a> {
     None,
     Identifier(&'a str),
-    CompoundIdentifier(&'a [String]),
+    CompoundIdentifier {
+        alias: &'a String,
+        ident: &'a String,
+    },
     Expr(&'a Expr),
     TwoExprs(&'a Expr, &'a Expr),
     ThreeExprs(&'a Expr, &'a Expr, &'a Expr),
     MultiExprs(Vec<&'a Expr>),
     Query(&'a Query),
-    QueryAndExpr { query: &'a Query, expr: &'a Expr },
+    QueryAndExpr {
+        query: &'a Query,
+        expr: &'a Expr,
+    },
 }
 
 impl<'a> From<&'a Expr> for PlanExpr<'a> {
@@ -24,7 +30,9 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
         match expr {
             Expr::Literal(_) | Expr::TypedString { .. } => PlanExpr::None,
             Expr::Identifier(ident) => PlanExpr::Identifier(ident),
-            Expr::CompoundIdentifier(idents) => PlanExpr::CompoundIdentifier(idents),
+            Expr::CompoundIdentifier { alias, ident } => {
+                PlanExpr::CompoundIdentifier { alias, ident }
+            }
             Expr::Nested(expr)
             | Expr::UnaryOp { expr, .. }
             | Expr::Cast { expr, .. }
@@ -116,8 +124,10 @@ mod tests {
 
         // PlanExpr::CompoundIdentifier
         let actual = expr("Foo.id");
-        let expected = ["Foo".to_owned(), "id".to_owned()];
-        let expected = PlanExpr::CompoundIdentifier(&expected);
+        let expected = PlanExpr::CompoundIdentifier {
+            alias: &"Foo".to_string(),
+            ident: &"id".to_string(),
+        };
         test!(actual, expected);
 
         // PlanExpr::Expr

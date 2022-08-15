@@ -242,13 +242,13 @@ impl<'a> State<'a> {
             Expr::Identifier(ident) => context
                 .get_value(ident)
                 .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
-            Expr::CompoundIdentifier(idents) => {
-                if idents.len() != 2 {
-                    return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
-                }
+            Expr::CompoundIdentifier { alias, ident } => {
+                // if idents.len() != 2 {
+                //     return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
+                // }
 
-                let table_alias = &idents[0];
-                let column = &idents[1];
+                let table_alias = &alias;
+                let column = &ident;
 
                 context
                     .get_alias_value(table_alias, column)
