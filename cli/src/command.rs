@@ -8,6 +8,7 @@ pub enum Command {
     ExecuteFromFile(String),
     SpoolOn(String),
     SpoolOff,
+    Set(String, String),
 }
 
 #[derive(ThisError, Debug, PartialEq)]
@@ -16,6 +17,10 @@ pub enum CommandError {
     LackOfTable,
     #[error("should specify file path")]
     LackOfFile,
+    #[error("should specify value for option")]
+    LackOfValue,
+    #[error("should specify option")]
+    LackOfOption,
     #[error("command not supported")]
     NotSupported,
 }
@@ -42,6 +47,12 @@ impl Command {
                     Some(&"off") => Ok(Self::SpoolOff),
                     Some(path) => Ok(Self::SpoolOn(path.to_string())),
                     None => Err(CommandError::LackOfFile),
+                },
+                ".set" => match (params.get(1), params.get(2)) {
+                    (Some(name), Some(value)) => Ok(Self::Set(name.to_string(), value.to_string())),
+                    (Some(_), None) => Err(CommandError::LackOfValue),
+                    (None, Some(_)) => Err(CommandError::LackOfOption),
+                    (None, None) => Err(CommandError::LackOfOption),
                 },
                 _ => Err(CommandError::NotSupported),
             }
