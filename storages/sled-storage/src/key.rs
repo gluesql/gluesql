@@ -4,6 +4,20 @@ const TEMP_DATA: &str = "temp_data/";
 const TEMP_SCHEMA: &str = "temp_schema/";
 const TEMP_INDEX: &str = "temp_index/";
 
+pub fn data_prefix(table_name: &str) -> String {
+    format!("data/{table_name}/")
+}
+
+pub fn data(table_name: &str, key: Vec<u8>) -> IVec {
+    let key = data_prefix(table_name)
+        .into_bytes()
+        .into_iter()
+        .chain(key.into_iter())
+        .collect::<Vec<_>>();
+
+    IVec::from(key)
+}
+
 macro_rules! prefix {
     ($txid: ident, $prefix: ident) => {
         $prefix
