@@ -60,6 +60,12 @@ impl Store for MockStorage {
             .transpose()
     }
 
+    async fn fetch_data(&self, _table_name: &str, _key: &Key) -> Result<Option<Row>> {
+        Err(Error::StorageMsg(
+            "[MockStorage] fetch_data not supported".to_owned(),
+        ))
+    }
+
     async fn scan_data(&self, _table_name: &str) -> Result<RowIter> {
         Err(Error::StorageMsg(
             "[MockStorage] scan_data not supported".to_owned(),
@@ -140,6 +146,7 @@ mod tests {
     use {
         super::MockStorage,
         crate::{
+            data::Key,
             result::MutResult,
             store::{Store, StoreMut},
         },
@@ -162,6 +169,7 @@ mod tests {
         let storage = MockStorage::default();
 
         assert!(block_on(storage.scan_data("Foo")).is_err());
+        assert!(block_on(storage.fetch_data("Foo", &Key::None)).is_err());
         assert!(block_on(storage.fetch_schema("__Err__")).is_err());
         let storage = test(storage.delete_schema("Foo"));
         let storage = test(storage.insert_data("Foo", Vec::new()));
