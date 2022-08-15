@@ -4,7 +4,7 @@ use {
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, ColumnDef},
+        ast::{Assignment, ColumnDef, ColumnOption, ColumnOptionDef},
         data::{schema::ColumnDefExt, Row, Value},
         result::Result,
         store::GStore,
@@ -19,6 +19,9 @@ use {
 pub enum UpdateError {
     #[error("column not found {0}")]
     ColumnNotFound(String),
+
+    #[error("update on primary key is not supported: {0}")]
+    UpdateOnPrimaryKeyNotSupported(String),
 
     #[error("conflict on schema, row data does not fit to schema")]
     ConflictOnSchema,
@@ -43,6 +46,16 @@ impl<'a> Update<'a> {
 
             if column_defs.iter().all(|col_def| &col_def.name != id) {
                 return Err(UpdateError::ColumnNotFound(id.to_owned()).into());
+            } else if column_defs.iter().any(|ColumnDef { name, options, .. }| {
+                if name != id {
+                    return false;
+                }
+
+                options.iter().any(|ColumnOptionDef { option, .. }| {
+                    option == &ColumnOption::Unique { is_primary: true }
+                })
+            }) {
+                return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
             }
         }
 
