@@ -207,11 +207,7 @@ async fn aggregate<'a>(
         }
         Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
         Expr::Nested(expr) => aggr(state, expr).await,
-        Expr::Aggregate(aggr) => {
-            state
-                .accumulate(blend_context, filter_context, aggr.as_ref())
-                .await
-        }
+        Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
         _ => Ok(state),
     }
 }

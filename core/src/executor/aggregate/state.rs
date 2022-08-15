@@ -245,39 +245,23 @@ impl<'a> State<'a> {
 
     pub async fn accumulate(
         self,
-        context: Rc<BlendContext<'_>>,
         filter_context: Option<Rc<FilterContext<'a>>>,
         aggr: &'a Aggregate,
     ) -> Result<State<'a>> {
-        // let get_value = |expr: &Expr| match expr {
-        //     Expr::Identifier(ident) => context
-        //         .get_value(ident)
-        //         .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
-        //     Expr::CompoundIdentifier(idents) => {
-        //         if idents.len() != 2 {
-        //             return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
-        //         }
-
-        //         let table_alias = &idents[0];
-        //         let column = &idents[1];
-
-        //         context
-        //             .get_alias_value(table_alias, column)
-        //             .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
-        //     }
-        //     _ => Err(AggregateError::OnlyIdentifierAllowed),
-        // };
         let value = match aggr {
-            Aggregate::Count(CountArgExpr::Wildcard) => &Value::Null,
+            Aggregate::Count(CountArgExpr::Wildcard) => Value::Null,
             Aggregate::Count(CountArgExpr::Expr(expr))
             | Aggregate::Sum(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => todo!(), //evaluate(self.storage, filter_context, None, expr),
+            | Aggregate::Stdev(expr) => {
+                let evaluated = evaluate(self.storage, filter_context, None, expr).await?;
+                evaluated.try_into()?
+            }
         };
-
+        let value = &value;
         let aggr_value = match self.get(aggr) {
             Some((index, _)) if self.index <= *index => None,
             Some((_, aggr_value)) => aggr_value.accumulate(value)?,
