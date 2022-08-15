@@ -46,6 +46,23 @@ test_case!(primary_key, async move {
         )),
         "SELECT id, name FROM Allegro WHERE id < 2"
     );
+    test!(
+        Ok(select!(id I64; 1; 2)),
+        "
+            SELECT a.id
+            FROM Allegro a
+            JOIN Allegro a2
+            WHERE a.id = a2.id;
+        "
+    );
+    test!(
+        Ok(select!(id I64; 1; 2)),
+        "
+            SELECT id FROM Allegro WHERE id IN (
+                SELECT id FROM Allegro WHERE id = id
+            );
+        "
+    );
 
     run!("INSERT INTO Allegro VALUES (3, 'foo'), (4, 'bar'), (5, 'neon');");
 
