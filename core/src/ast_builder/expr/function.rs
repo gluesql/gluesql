@@ -117,29 +117,17 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
-            FunctionNode::Lpad {
-                expr: expr_node,
-                size: size_node,
-                fill: fill_node,
-            } => {
-                let fill = fill_node.map(|fill| fill.try_into()).transpose()?;
-                expr_node.try_into().and_then(|expr| {
-                    size_node
-                        .try_into()
-                        .map(|size| Function::Lpad { expr, size, fill })
-                })
+            FunctionNode::Lpad { expr, size, fill } => {
+                let fill = fill.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Lpad { expr, size, fill })
             }
-            FunctionNode::Rpad {
-                expr: expr_node,
-                size: size_node,
-                fill: fill_node,
-            } => {
-                let fill = fill_node.map(|fill| fill.try_into()).transpose()?;
-                expr_node.try_into().and_then(|expr| {
-                    size_node
-                        .try_into()
-                        .map(|size| Function::Rpad { expr, size, fill })
-                })
+            FunctionNode::Rpad { expr, size, fill } => {
+                let fill = fill.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Rpad { expr, size, fill })
             }
             FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
