@@ -29,8 +29,8 @@ struct JoinPlanner<'a> {
 }
 
 impl<'a> Planner<'a> for JoinPlanner<'a> {
-    fn query(&self, outer_context: Option<Rc<Context<'a>>>, mut query: Query) -> Query {
-        query.body = match query.body {
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
+        let body = match query.body {
             SetExpr::Select(select) => {
                 let select = self.select(outer_context, *select);
 
@@ -39,7 +39,7 @@ impl<'a> Planner<'a> for JoinPlanner<'a> {
             SetExpr::Values(_) => query.body,
         };
 
-        query
+        Query { body, ..query }
     }
 
     fn get_schema(&self, name: &str) -> Option<&'a Schema> {

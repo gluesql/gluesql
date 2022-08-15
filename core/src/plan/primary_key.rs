@@ -1,7 +1,10 @@
 use {
     super::{context::Context, evaluable::check_expr as check_evaluable, planner::Planner},
     crate::{
-        ast::{BinaryOperator, Expr, IndexItem, Query, Select, SetExpr, Statement, TableFactor},
+        ast::{
+            BinaryOperator, Expr, IndexItem, Query, Select, SetExpr, Statement, TableFactor,
+            TableWithJoins,
+        },
         data::Schema,
     },
     std::{collections::HashMap, rc::Rc},
@@ -25,8 +28,8 @@ struct PrimaryKeyPlanner<'a> {
 }
 
 impl<'a> Planner<'a> for PrimaryKeyPlanner<'a> {
-    fn query(&self, outer_context: Option<Rc<Context<'a>>>, mut query: Query) -> Query {
-        query.body = match query.body {
+    fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
+        let body = match query.body {
             SetExpr::Select(select) => {
                 let select = self.select(outer_context, *select);
 
@@ -35,7 +38,7 @@ impl<'a> Planner<'a> for PrimaryKeyPlanner<'a> {
             SetExpr::Values(_) => query.body,
         };
 
-        query
+        Query { body, ..query }
     }
 
     fn get_schema(&self, name: &str) -> Option<&'a Schema> {
@@ -52,7 +55,7 @@ enum PrimaryKey {
 }
 
 impl<'a> PrimaryKeyPlanner<'a> {
-    fn select(&self, outer_context: Option<Rc<Context<'a>>>, mut select: Select) -> Select {
+    fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: Select) -> Select {
         let current_context = self.update_context(None, &select.from.relation);
         let outer_context = select
             .from
@@ -77,11 +80,22 @@ impl<'a> PrimaryKeyPlanner<'a> {
             index: None,
         } = select.from.relation
         {
-            select.from.relation = TableFactor::Table { name, alias, index };
-        }
+            let from = TableWithJoins {
+                relation: TableFactor::Table { name, alias, index },
+                ..select.from
+            };
 
-        select.selection = selection;
-        select
+            Select {
+                selection,
+                from,
+                ..select
+            }
+        } else {
+            Select {
+                selection,
+                ..select
+            }
+        }
     }
 
     fn expr(
