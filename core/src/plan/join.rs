@@ -1,18 +1,18 @@
 use {
-    super::{context::Context, evaluable::check_expr as check_evaluable},
+    super::{context::Context, evaluable::check_expr as check_evaluable, planner::Planner},
     crate::{
         ast::{
-            BinaryOperator, ColumnDef, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator,
-            Query, Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
+            BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select,
+            SetExpr, Statement, TableWithJoins,
         },
-        data::{get_name, Schema},
+        data::Schema,
     },
     std::{collections::HashMap, rc::Rc},
     utils::Vector,
 };
 
 pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Statement {
-    let planner = Planner { schema_map };
+    let planner = JoinPlanner { schema_map };
 
     match statement {
         Statement::Query(query) => {
@@ -24,34 +24,30 @@ pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> State
     }
 }
 
-struct Planner<'a> {
+struct JoinPlanner<'a> {
     schema_map: &'a HashMap<String, Schema>,
 }
 
-impl<'a> Planner<'a> {
+impl<'a> Planner<'a> for JoinPlanner<'a> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
-        let Query {
-            body,
-            limit,
-            offset,
-        } = query;
-
-        let body = match body {
+        let body = match query.body {
             SetExpr::Select(select) => {
                 let select = self.select(outer_context, *select);
 
                 SetExpr::Select(Box::new(select))
             }
-            SetExpr::Values(_) => body,
+            SetExpr::Values(_) => query.body,
         };
 
-        Query {
-            body,
-            limit,
-            offset,
-        }
+        Query { body, ..query }
     }
 
+    fn get_schema(&self, name: &str) -> Option<&'a Schema> {
+        self.schema_map.get(name)
+    }
+}
+
+impl<'a> JoinPlanner<'a> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: Select) -> Select {
         let Select {
             projection,
@@ -460,36 +456,6 @@ impl<'a> Planner<'a> {
             }
             _ => (JoinExecutor::NestedLoop, Some(expr)),
         }
-    }
-
-    fn update_context(
-        &self,
-        next: Option<Rc<Context<'a>>>,
-        table_factor: &TableFactor,
-    ) -> Option<Rc<Context<'a>>> {
-        let (name, alias) = match table_factor {
-            TableFactor::Table { name, alias, .. } => {
-                let name = match get_name(name) {
-                    Ok(name) => name.clone(),
-                    Err(_) => return next,
-                };
-                let alias = alias.as_ref().map(|TableAlias { name, .. }| name.clone());
-
-                (name, alias)
-            }
-            TableFactor::Derived { .. } => return next,
-        };
-        let column_defs = match self.schema_map.get(&name) {
-            Some(Schema { column_defs, .. }) => column_defs,
-            None => return next,
-        };
-        let columns = column_defs
-            .iter()
-            .map(|ColumnDef { name, .. }| name.as_str())
-            .collect::<Vec<_>>();
-
-        let context = Context::new(alias.unwrap_or(name), columns, next, None);
-        Some(Rc::new(context))
     }
 }
 

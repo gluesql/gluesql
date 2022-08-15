@@ -51,6 +51,13 @@ impl Store for SharedMemoryStorage {
         database.fetch_schema(table_name).await
     }
 
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+        let database = Arc::clone(&self.database);
+        let database = database.read().await;
+
+        database.fetch_data(table_name, key).await
+    }
+
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let database = Arc::clone(&self.database);
         let database = database.read().await;

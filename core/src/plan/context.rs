@@ -9,17 +9,23 @@ pub struct Context<'a> {
 struct Content<'a> {
     alias: String,
     columns: Vec<&'a str>,
+    primary_key: Option<&'a str>,
 }
 
 impl<'a> Context<'a> {
     pub fn new(
         alias: String,
         columns: Vec<&'a str>,
+        primary_key: Option<&'a str>,
         next: Option<Rc<Context<'a>>>,
         next2: Option<Rc<Context<'a>>>,
     ) -> Self {
         Context {
-            content: Some(Content { alias, columns }),
+            content: Some(Content {
+                alias,
+                columns,
+                primary_key,
+            }),
             next,
             next2,
         }
@@ -67,7 +73,7 @@ impl<'a> Context<'a> {
 
     pub fn contains_aliased_column(&self, target_alias: &str, target_column: &str) -> bool {
         if let Some(content) = &self.content {
-            let Content { alias, columns } = content;
+            let Content { alias, columns, .. } = content;
 
             if alias == target_alias {
                 return columns.iter().any(|column| column == &target_column);
@@ -81,6 +87,29 @@ impl<'a> Context<'a> {
             }
             (Some(context), None) | (None, Some(context)) => {
                 context.contains_aliased_column(target_alias, target_column)
+            }
+            (None, None) => false,
+        }
+    }
+
+    pub fn contains_primary_key(&self, target_column: &str) -> bool {
+        if let Some(Content {
+            primary_key: Some(primary_key),
+            ..
+        }) = &self.content
+        {
+            if primary_key == &target_column {
+                return true;
+            }
+        }
+
+        match (self.next.as_ref(), self.next2.as_ref()) {
+            (Some(next), Some(next2)) => {
+                next.contains_primary_key(target_column)
+                    || next2.contains_primary_key(target_column)
+            }
+            (Some(context), None) | (None, Some(context)) => {
+                context.contains_primary_key(target_column)
             }
             (None, None) => false,
         }
