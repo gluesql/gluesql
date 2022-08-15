@@ -14,11 +14,8 @@ use {
         result::{Error, MutResult, Result, TrySelf},
         store::{IndexError, IndexMut, Store},
     },
-    sled::{
-        transaction::{
-            ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
-        },
-        IVec,
+    sled::transaction::{
+        ConflictableTransactionError, ConflictableTransactionResult, TransactionalTree,
     },
     std::iter::once,
 };
@@ -105,7 +102,7 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             for (data_key, row) in rows.iter() {
-                let data_key = IVec::from(data_key.to_cmp_be_bytes());
+                let data_key = key::data(table_name, data_key.to_cmp_be_bytes());
 
                 index_sync.insert_index(&index, &data_key, row)?;
             }
@@ -178,7 +175,7 @@ impl IndexMut for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             for (data_key, row) in rows.iter() {
-                let data_key = IVec::from(data_key.to_cmp_be_bytes());
+                let data_key = key::data(table_name, data_key.to_cmp_be_bytes());
 
                 index_sync.delete_index(&index, &data_key, row)?;
             }

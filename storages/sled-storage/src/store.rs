@@ -1,5 +1,5 @@
 use {
-    super::{err_into, lock, SledStorage, Snapshot, State},
+    super::{err_into, key, lock, SledStorage, Snapshot, State},
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Row, Schema},
@@ -77,16 +77,17 @@ impl Store for SledStorage {
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
-        let prefix = format!("data/{}/", table_name);
+        let prefix = key::data_prefix(table_name);
+        let prefix_len = prefix.len();
         let result_set = self
             .tree
             .scan_prefix(prefix.as_bytes())
             .map(move |item| {
                 let (key, value) = item.map_err(err_into)?;
-                let key = Key::Bytea(key.to_vec());
+                let key = key.subslice(prefix_len, key.len() - prefix_len).to_vec();
                 let snapshot: Snapshot<Row> = bincode::deserialize(&value).map_err(err_into)?;
                 let row = snapshot.extract(txid, lock_txid);
-                let item = row.map(|row| (key, row));
+                let item = row.map(|row| (Key::Bytea(key), row));
 
                 Ok(item)
             })
