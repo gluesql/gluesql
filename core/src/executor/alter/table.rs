@@ -12,11 +12,10 @@ use {
         store::{GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
-    itertools::{
-        FoldWhile::{Continue, Done},
-        Itertools,
+    std::{
+        iter,
+        ops::ControlFlow::{Break, Continue},
     },
-    std::iter,
 };
 
 pub async fn create_table<T: GStore + GStoreMut>(
@@ -53,40 +52,42 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     let init_types = iter::repeat(None)
                         .take(first_len)
                         .collect::<Vec<Option<DataType>>>();
-                    let column_types = values_list
-                        .iter()
-                        .fold_while(Ok(init_types), |column_types, exprs| {
-                            let result = column_types.and_then(
-                                |column_types| -> Result<(Vec<Option<DataType>>, bool)> {
-                                    let column_types = column_types
-                                        .iter()
-                                        .zip(exprs.iter())
-                                        .map(|(column_type, expr)| -> Result<_> {
-                                            let column_type = match column_type {
-                                                Some(data_type) => Some(data_type.to_owned()),
-                                                None => evaluate_stateless(None, expr)
-                                                    .and_then(Value::try_from)?
-                                                    .get_type(),
-                                            };
+                    let column_types =
+                        values_list
+                            .iter()
+                            .try_fold(Ok(init_types), |column_types, exprs| {
+                                let result = column_types.and_then(
+                                    |column_types| -> Result<(Vec<Option<DataType>>, bool)> {
+                                        let column_types = column_types
+                                            .iter()
+                                            .zip(exprs.iter())
+                                            .map(|(column_type, expr)| -> Result<_> {
+                                                let column_type = match column_type {
+                                                    Some(data_type) => Some(data_type.to_owned()),
+                                                    None => evaluate_stateless(None, expr)
+                                                        .and_then(Value::try_from)?
+                                                        .get_type(),
+                                                };
 
-                                            Ok(column_type)
-                                        })
-                                        .collect::<Result<Vec<Option<DataType>>>>()?;
+                                                Ok(column_type)
+                                            })
+                                            .collect::<Result<Vec<Option<DataType>>>>()?;
 
-                                    let has_none = column_types.iter().any(Option::is_none);
+                                        let has_none = column_types.iter().any(Option::is_none);
 
-                                    Ok((column_types, has_none))
-                                },
-                            );
+                                        Ok((column_types, has_none))
+                                    },
+                                );
 
-                            match result {
-                                Ok((column_types, true)) => Continue(Ok(column_types)),
-                                Ok((column_types, false)) => Done(Ok(column_types)),
-                                Err(error) => Done(Err(error)),
-                            }
-                        })
-                        .into_inner();
-
+                                match result {
+                                    Ok((column_types, true)) => Continue(Ok(column_types)),
+                                    Ok((column_types, false)) => Break(Ok(column_types)),
+                                    Err(error) => Break(Err(error)),
+                                }
+                            });
+                    let column_types = match column_types {
+                        Continue(column_types) | Break(column_types) => column_types,
+                    };
                     let column_defs = column_types?
                         .iter()
                         .map(|column_type| match column_type {
