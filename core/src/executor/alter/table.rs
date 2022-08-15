@@ -8,7 +8,7 @@ use {
         data::{get_name, Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
-        result::{Error, MutResult, Result, TrySelf},
+        result::{Error, IntoControlFlow, MutResult, Result, TrySelf},
         store::{GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
@@ -55,40 +55,29 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     let column_types =
                         values_list
                             .iter()
-                            .try_fold(Ok(init_types), |column_types, exprs| {
-                                let result = column_types.and_then(
-                                    |column_types| -> Result<(Vec<Option<DataType>>, bool)> {
-                                        let column_types = column_types
-                                            .iter()
-                                            .zip(exprs.iter())
-                                            .map(|(column_type, expr)| -> Result<_> {
-                                                let column_type = match column_type {
-                                                    Some(data_type) => Some(data_type.to_owned()),
-                                                    None => evaluate_stateless(None, expr)
-                                                        .and_then(Value::try_from)?
-                                                        .get_type(),
-                                                };
+                            .try_fold(init_types, |column_types, exprs| {
+                                let column_types = column_types
+                                    .iter()
+                                    .zip(exprs.iter())
+                                    .map(|(column_type, expr)| match column_type {
+                                        Some(data_type) => Ok(Some(data_type.to_owned())),
+                                        None => evaluate_stateless(None, expr)
+                                            .and_then(Value::try_from)
+                                            .map(|value| value.get_type()),
+                                    })
+                                    .collect::<Result<Vec<Option<DataType>>>>()
+                                    .into_control_flow()?;
 
-                                                Ok(column_type)
-                                            })
-                                            .collect::<Result<Vec<Option<DataType>>>>()?;
-
-                                        let has_none = column_types.iter().any(Option::is_none);
-
-                                        Ok((column_types, has_none))
-                                    },
-                                );
-
-                                match result {
-                                    Ok((column_types, true)) => Continue(Ok(column_types)),
-                                    Ok((column_types, false)) => Break(Ok(column_types)),
-                                    Err(error) => Break(Err(error)),
+                                match column_types.iter().any(Option::is_none) {
+                                    true => Continue(column_types),
+                                    false => Break(Ok(column_types)),
                                 }
                             });
                     let column_types = match column_types {
-                        Continue(column_types) | Break(column_types) => column_types,
+                        Continue(column_types) => column_types,
+                        Break(column_types) => column_types?,
                     };
-                    let column_defs = column_types?
+                    let column_defs = column_types
                         .iter()
                         .map(|column_type| match column_type {
                             Some(column_type) => column_type.to_owned(),
