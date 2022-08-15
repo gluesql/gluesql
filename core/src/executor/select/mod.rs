@@ -255,17 +255,26 @@ pub async fn select_with_labels<'a>(
         }
     });
 
-    let rows = aggregate.apply(rows).await?;
+    // let rows = aggregate.apply(rows).await?;
 
+    let contexts = aggregate.apply(rows).await?;
     // AndThen<Pin<Box<dyn Stream<Item = Result<(Option<Rc<HashMap<&Aggregate, Value>>>, Rc<BlendContext>), Error>>>>, impl Future<Output = Result<Row, Error>>, |(Option<Rc<HashMap<&Aggregate, Value>>>, Rc<BlendContext>)| -> impl Future<Output = Result<Row, Error>>>
-    let rows = rows.map_ok(|aggregate_context| async move {
-        let AggregateContext { aggregated, next } = aggregate_context;
-        let (aggregated, context) = (aggregated.map(Rc::new), next);
-        let blend = Rc::clone(&blend);
+    let rows = contexts
+        .and_then(|AggregateContext { aggregated, next }| {
+            let blend = Rc::clone(&blend);
 
-        blend.apply(aggregated, context).await
-        // Ok(Box::pin(rows))
-    });
+            async move {
+                let (aggregated, context) = (aggregated.map(Rc::new), next);
+                let row = blend.apply(aggregated, context).await?;
+
+                Ok((aggregated, row))
+
+                // Ok(Box::pin(rows))
+            }
+        })
+        .await?;
+
+    let rows2 = sort.apply(rows).await?;
 
     // let rows = sort
     //     .apply(rows)

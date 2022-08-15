@@ -1,3 +1,5 @@
+use crate::data::Row;
+
 use {
     super::{
         context::{AggregateContext, BlendContext, FilterContext},
@@ -41,10 +43,13 @@ impl<'a> Sort<'a> {
 
     pub async fn apply(
         &self,
-        rows: impl Stream<Item = Result<AggregateContext<'a>>> + 'a,
+        // rows: impl Stream<Item = Result<AggregateContext<'a>>> + 'a,
+        // rows: impl Stream<Item = Result<Row>>,
+        rows: impl Stream<Item = Result<(AggregateContext<'a>, String, Row)>> + 'a,
+        // impl Future<Output = Result<(AggregateContext, String, Row), {unknown}>>>
     ) -> Result<Pin<Box<dyn Stream<Item = Item<'a>> + 'a>>> {
         if self.order_by.is_empty() {
-            let rows = rows.map_ok(|aggregate_context| {
+            let rows = rows.map_ok(|(aggregate_context, label, row)| {
                 let AggregateContext { aggregated, next } = aggregate_context;
 
                 (aggregated.map(Rc::new), next)
@@ -54,31 +59,35 @@ impl<'a> Sort<'a> {
         }
 
         let rows = rows
-            .and_then(move |AggregateContext { aggregated, next }| async move {
-                let blend_context = Rc::clone(&next);
-                let filter_context = Rc::new(FilterContext::concat(
-                    self.context.as_ref().map(Rc::clone),
-                    Some(Rc::clone(&next)),
-                ));
-                let aggregated = aggregated.map(Rc::new);
+            .and_then(
+                move |(AggregateContext { aggregated, next }, ..)| async move {
+                    let blend_context = Rc::clone(&next);
+                    let filter_context = Rc::new(FilterContext::concat(
+                        self.context.as_ref().map(Rc::clone),
+                        Some(Rc::clone(&next)),
+                    ));
+                    let aggregated = aggregated.map(Rc::new);
 
-                let values = stream::iter(self.order_by.iter())
-                    .then(|OrderByExpr { expr, asc }| {
-                        let context = Some(Rc::clone(&filter_context));
-                        let aggregated = aggregated.as_ref().map(Rc::clone);
+                    // don't need to evaluate again
 
-                        async move {
-                            evaluate(self.storage, context, aggregated, expr)
-                                .await?
-                                .try_into()
-                                .map(|value| (value, *asc))
-                        }
-                    })
-                    .try_collect::<Vec<_>>()
-                    .await?;
+                    let values = stream::iter(self.order_by.iter())
+                        .then(|OrderByExpr { expr, asc }| {
+                            let context = Some(Rc::clone(&filter_context));
+                            let aggregated = aggregated.as_ref().map(Rc::clone);
 
-                Ok((values, aggregated, blend_context))
-            })
+                            async move {
+                                evaluate(self.storage, context, aggregated, expr)
+                                    .await?
+                                    .try_into()
+                                    .map(|value| (value, *asc))
+                            }
+                        })
+                        .try_collect::<Vec<_>>()
+                        .await?;
+
+                    Ok((values, aggregated, blend_context))
+                },
+            )
             .try_collect::<Vec<_>>()
             .await
             .map(Vector::from)?
