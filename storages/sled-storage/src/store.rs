@@ -6,7 +6,6 @@ use {
         result::{Error, Result},
         store::{RowIter, Store},
     },
-    sled::IVec,
 };
 
 #[async_trait(?Send)]
@@ -38,7 +37,7 @@ impl Store for SledStorage {
         Ok(schema)
     }
 
-    async fn fetch_data(&self, _table_name: &str, key: &Key) -> Result<Option<Row>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
         let (txid, created_at) = match self.state {
             State::Transaction {
                 txid, created_at, ..
@@ -51,7 +50,7 @@ impl Store for SledStorage {
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
-        let key = IVec::from(key.to_cmp_be_bytes());
+        let key = key::data(table_name, key.to_cmp_be_bytes());
         let row = self
             .tree
             .get(&key)
