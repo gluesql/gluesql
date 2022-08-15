@@ -40,6 +40,8 @@ pub enum FunctionNode {
     Degrees(ExprNode),
     Radians(ExprNode),
     Concat(ExprList),
+    Ltrim(ExprNode, Option<ExprNode>),
+    Rtrim(ExprNode, Option<ExprNode>),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -110,6 +112,18 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
+            FunctionNode::Ltrim(expr_node, chars_node) => {
+                let chars = chars_node.map(|chars| chars.try_into().unwrap());
+                expr_node
+                    .try_into()
+                    .map(|expr| Function::Ltrim { expr, chars })
+            }
+            FunctionNode::Rtrim(expr_node, chars_node) => {
+                let chars = chars_node.map(|chars| chars.try_into().unwrap());
+                expr_node
+                    .try_into()
+                    .map(|expr| Function::Rtrim { expr, chars })
+            }
         }
     }
 }
@@ -199,6 +213,12 @@ impl ExprNode {
     }
     pub fn radians(self) -> ExprNode {
         radians(self)
+    }
+    pub fn rtrim(self, chars: Option<ExprNode>) -> ExprNode {
+        rtrim(self, chars)
+    }
+    pub fn ltrim(self, chars: Option<ExprNode>) -> ExprNode {
+        ltrim(self, chars)
     }
 }
 
@@ -305,12 +325,26 @@ pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
 }
 
+pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Ltrim(
+        expr.into(),
+        chars.map(|chars_node| chars_node.try_into().unwrap()),
+    )))
+}
+
+pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Rtrim(
+        expr.into(),
+        chars.map(|chars_node| chars_node.try_into().unwrap()),
+    )))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, concat, cos, degrees, expr, floor, gcd, generate_uuid,
-        ifnull, lcm, left, ln, log, log10, log2, now, num, pi, power, radians, repeat, reverse,
-        right, round, sign, sin, sqrt, tan, test_expr, text, upper,
+        ifnull, lcm, left, ln, log, log10, log2, ltrim, now, num, pi, power, radians, repeat,
+        reverse, right, round, rtrim, sign, sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -626,6 +660,44 @@ mod tests {
 
         let actual = concat(vec!["Glue", "SQL", "Go"]);
         let expected = "CONCAT(Glue, SQL, Go)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_rtrim() {
+        let actual = rtrim(text("GlueSQL      "), None);
+        let expected = "RTRIM('GlueSQL      ')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL      ").rtrim(None);
+        let expected = "RTRIM('GlueSQL      ')";
+        test_expr(actual, expected);
+
+        let actual = rtrim(text("GlueSQLABC"), Some(text("ABC")));
+        let expected = "RTRIM('GlueSQLABC','ABC')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQLABC").rtrim(Some(text("ABC")));
+        let expected = "RTRIM('GlueSQLABC','ABC')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_ltrim() {
+        let actual = ltrim(text("      GlueSQL"), None);
+        let expected = "LTRIM('      GlueSQL')";
+        test_expr(actual, expected);
+
+        let actual = text("      GlueSQL").ltrim(None);
+        let expected = "LTRIM('      GlueSQL')";
+        test_expr(actual, expected);
+
+        let actual = ltrim(text("ABCGlueSQL"), Some(text("ABC")));
+        let expected = "LTRIM('ABCGlueSQL','ABC')";
+        test_expr(actual, expected);
+
+        let actual = text("ABCGlueSQL").ltrim(Some(text("ABC")));
+        let expected = "LTRIM('ABCGlueSQL','ABC')";
         test_expr(actual, expected);
     }
 }
