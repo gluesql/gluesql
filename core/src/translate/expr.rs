@@ -4,7 +4,7 @@ use {
         data_type::translate_data_type,
         function::translate_function,
         operator::{translate_binary_operator, translate_unary_operator},
-        translate_idents, translate_query, TranslateError,
+        translate_query, TranslateError,
     },
     crate::{
         ast::{AstLiteral, Expr, OrderByExpr},
@@ -21,7 +21,18 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             None => Ok(Expr::Identifier(ident.value.clone())),
         },
         SqlExpr::CompoundIdentifier(idents) => {
-            Ok(Expr::CompoundIdentifier(translate_idents(idents)))
+            let values = idents
+                .iter()
+                .map(|ident| ident.value.to_owned())
+                .collect::<Vec<_>>();
+
+            match values.as_slice() {
+                [alias, ident] => Ok(Expr::CompoundIdentifier {
+                    alias: alias.to_owned(),
+                    ident: ident.to_owned(),
+                }),
+                _ => Err(TranslateError::UnsupportedExpr(values.join(".")).into()),
+            }
         }
         SqlExpr::IsNull(expr) => translate_expr(expr).map(Box::new).map(Expr::IsNull),
         SqlExpr::IsNotNull(expr) => translate_expr(expr).map(Box::new).map(Expr::IsNotNull),
