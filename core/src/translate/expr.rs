@@ -26,7 +26,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 .map(|ident| ident.value.to_owned())
                 .collect::<Vec<_>>();
 
-            match values.as_slice() {
+            match &values[..] {
                 [alias, ident] => Ok(Expr::CompoundIdentifier {
                     alias: alias.to_owned(),
                     ident: ident.to_owned(),
