@@ -15,10 +15,6 @@ pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &Expr) -> bool {
         PlanExpr::None => true,
         PlanExpr::Identifier(ident) => context.map(|c| c.contains_column(ident)).unwrap_or(false),
         PlanExpr::CompoundIdentifier { alias, ident } => {
-            // if idents.len() != 2 {
-            //     return false;
-            // }
-
             let table_alias = &alias;
             let column = &ident;
 

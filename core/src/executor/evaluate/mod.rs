@@ -54,10 +54,6 @@ pub async fn evaluate<'a>(
         }
         Expr::Nested(expr) => eval(expr).await,
         Expr::CompoundIdentifier { alias, ident } => {
-            // if idents.len() != 2 {
-            //     return Err(EvaluateError::UnsupportedCompoundIdentifier(expr.clone()).into());
-            // }
-
             let table_alias = &alias;
             let column = &ident;
             let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
