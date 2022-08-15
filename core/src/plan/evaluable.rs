@@ -213,7 +213,6 @@ mod tests {
         test!("Bar.rate", true);
         test!("Foo.rate", false);
         test!("Rand.id", false);
-        // test!("a.b.c", false);
 
         // PlanExpr::Expr
         test!("-10", true);
