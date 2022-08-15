@@ -92,13 +92,26 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn contains_primary_key(&self, target_key: &str) -> bool {
-        match self.content {
-            Some(Content {
-                primary_key: Some(primary_key),
-                ..
-            }) => primary_key == target_key,
-            _ => false,
+    pub fn contains_primary_key(&self, target_column: &str) -> bool {
+        if let Some(Content {
+            primary_key: Some(primary_key),
+            ..
+        }) = &self.content
+        {
+            if primary_key == &target_column {
+                return true;
+            }
+        }
+
+        match (self.next.as_ref(), self.next2.as_ref()) {
+            (Some(next), Some(next2)) => {
+                next.contains_primary_key(target_column)
+                    || next2.contains_primary_key(target_column)
+            }
+            (Some(context), None) | (None, Some(context)) => {
+                context.contains_primary_key(target_column)
+            }
+            (None, None) => false,
         }
     }
 }

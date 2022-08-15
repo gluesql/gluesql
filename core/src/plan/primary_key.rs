@@ -57,11 +57,11 @@ enum PrimaryKey {
 impl<'a> PrimaryKeyPlanner<'a> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: Select) -> Select {
         let current_context = self.update_context(None, &select.from.relation);
-        let outer_context = select
+        let current_context = select
             .from
             .joins
             .iter()
-            .fold(outer_context, |context, join| {
+            .fold(current_context, |context, join| {
                 self.update_context(context, &join.relation)
             });
 
@@ -129,7 +129,7 @@ impl<'a> PrimaryKeyPlanner<'a> {
                 right: key,
             } if check_primary_key(key.as_ref())
                 && check_evaluable(current_context.as_ref().map(Rc::clone), &key)
-                && check_evaluable(outer_context.as_ref().map(Rc::clone), &value) =>
+                && check_evaluable(None, &value) =>
             {
                 let index_item = IndexItem::PrimaryKey(*value);
 
@@ -394,7 +394,7 @@ mod tests {
             );
         ");
 
-        let sql = "SELECT * FROM User JOIN Badge WHERE User.id = Badge.user_id";
+        let sql = "SELECT * FROM User JOIN Badge WHERE User.id = 1";
         let actual = plan(&storage, sql);
         let expected = select(Select {
             projection: vec![SelectItem::Wildcard],
@@ -402,10 +402,7 @@ mod tests {
                 relation: TableFactor::Table {
                     name: ObjectName(vec!["User".to_owned()]),
                     alias: None,
-                    index: Some(IndexItem::PrimaryKey(Expr::CompoundIdentifier(vec![
-                        "Badge".to_owned(),
-                        "user_id".to_owned(),
-                    ]))),
+                    index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
@@ -423,6 +420,33 @@ mod tests {
             order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "basic inner join:\n{sql}");
+
+        let sql = "SELECT * FROM User JOIN Badge WHERE User.id = Badge.user_id";
+        let actual = plan(&storage, sql);
+        let expected = select(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: ObjectName(vec!["User".to_owned()]),
+                    alias: None,
+                    index: None,
+                },
+                joins: vec![Join {
+                    relation: TableFactor::Table {
+                        name: ObjectName(vec!["Badge".to_owned()]),
+                        alias: None,
+                        index: None,
+                    },
+                    join_operator: JoinOperator::Inner(JoinConstraint::None),
+                    join_executor: JoinExecutor::NestedLoop,
+                }],
+            },
+            selection: Some(expr("User.id = Badge.user_id")),
+            group_by: Vec::new(),
+            having: None,
+            order_by: Vec::new(),
+        });
+        assert_eq!(actual, expected, "join but no primary key:\n{sql}");
 
         let sql = "
             SELECT * FROM User
@@ -529,7 +553,59 @@ mod tests {
                 order_by: Vec::new(),
             })
         };
-        assert_eq!(actual, expected, "primary key in lhs:\n{sql}");
+        assert_eq!(actual, expected, "name is not primary key:\n{sql}");
+
+        let sql = "
+            SELECT * FROM User WHERE id IN (
+                SELECT id FROM User WHERE id = id
+            );
+        ";
+        let actual = plan(&storage, sql);
+        let expected = {
+            let subquery = Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Expr {
+                        expr: Expr::Identifier("id".to_owned()),
+                        label: "id".to_owned(),
+                    }],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: ObjectName(vec!["User".to_owned()]),
+                            alias: None,
+                            index: None,
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: Some(expr("id = id")),
+                    group_by: Vec::new(),
+                    having: None,
+                    order_by: Vec::new(),
+                })),
+                limit: None,
+                offset: None,
+            };
+
+            select(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: ObjectName(vec!["User".to_owned()]),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: Some(Expr::InSubquery {
+                    expr: Box::new(Expr::Identifier("id".to_owned())),
+                    subquery: Box::new(subquery),
+                    negated: false,
+                }),
+                group_by: Vec::new(),
+                having: None,
+                order_by: Vec::new(),
+            })
+        };
+        assert_eq!(actual, expected, "ambiguous nested contexts:\n{sql}");
 
         let sql = "DELETE FROM User WHERE id = 1;";
         let actual = plan(&storage, sql);
