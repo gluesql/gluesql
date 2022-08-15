@@ -174,7 +174,7 @@ impl<'a> Aggregator<'a> {
 #[async_recursion(?Send)]
 async fn aggregate<'a>(
     state: State<'a>,
-    blend_context: Rc<BlendContext<'async_recursion>>,
+    blend_context: Rc<BlendContext<'a>>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     expr: &'a Expr,
 ) -> Result<State<'a>> {
@@ -182,7 +182,7 @@ async fn aggregate<'a>(
         aggregate(
             state,
             Rc::clone(&blend_context),
-            filter_context.clone(),
+            filter_context.as_ref().map(Rc::clone),
             expr,
         )
     };
@@ -207,7 +207,11 @@ async fn aggregate<'a>(
         }
         Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
         Expr::Nested(expr) => aggr(state, expr).await,
-        Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
+        Expr::Aggregate(aggr) => {
+            state
+                .accumulate(blend_context, filter_context, aggr.as_ref())
+                .await
+        }
         _ => Ok(state),
     }
 }
