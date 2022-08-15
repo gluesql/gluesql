@@ -15,11 +15,34 @@ use {
 pub struct Print<W: Write> {
     pub output: W,
     spool_file: Option<File>,
+    option: PrintOption,
+}
+
+pub struct PrintOption {
+    colsep: String,
+    colwrap: String,
+    tabular: String,
+    heading: String,
+}
+
+impl Default for PrintOption {
+    fn default() -> Self {
+        Self {
+            colsep: " ".to_string(),
+            colwrap: "".to_string(),
+            tabular: "on".to_string(),
+            heading: "on".to_string(),
+        }
+    }
 }
 
 impl<W: Write> Print<W> {
-    pub fn new(output: W, spool_file: Option<File>) -> Self {
-        Print { output, spool_file }
+    pub fn new(output: W, spool_file: Option<File>, option: PrintOption) -> Self {
+        Print {
+            output,
+            spool_file,
+            option,
+        }
     }
 
     pub fn payloads(&mut self, payloads: &[Payload]) -> Result<()> {
@@ -120,6 +143,26 @@ impl<W: Write> Print<W> {
     pub fn spool_off(&mut self) {
         self.spool_file = None;
     }
+
+    pub fn get_option(self, name: String) -> String {
+        match name.as_str() {
+            "colsep" => self.option.colsep,
+            "colwrap" => self.option.colwrap,
+            "tabular" => self.option.tabular,
+            "heading" => self.option.heading,
+            _ => todo!(),
+        }
+    }
+
+    pub fn set_option(&mut self, name: String, value: String) {
+        match name.as_str() {
+            "colsep" => self.option.colsep = value,
+            "colwrap" => self.option.colwrap = value,
+            "tabular" => self.option.tabular = value,
+            "heading" => self.option.heading = value,
+            _ => todo!(),
+        }
+    }
 }
 
 fn get_table<'a, T: IntoIterator<Item = &'a str>>(header: T) -> Builder {
@@ -141,7 +184,7 @@ mod tests {
 
     #[test]
     fn print_help() {
-        let mut print = Print::new(Vec::new(), None);
+        let mut print = Print::new(Vec::new(), None, Default::default());
 
         let expected = "
 | command         | description             |
@@ -172,7 +215,7 @@ mod tests {
             prelude::{Payload, PayloadVariable, Value},
         };
 
-        let mut print = Print::new(Vec::new(), None);
+        let mut print = Print::new(Vec::new(), None, Default::default());
 
         macro_rules! test {
             ($expected: literal, $payload: expr) => {

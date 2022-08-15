@@ -32,7 +32,7 @@ where
 {
     pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
-        let print = Print::new(output, None);
+        let print = Print::new(output, None, Default::default());
 
         Self { glue, print }
     }
@@ -81,6 +81,14 @@ where
                     println!("\n  type .help to list all available commands.\n");
                     continue;
                 }
+                Err(CommandError::LackOfOption) => {
+                    println!("[error] should specify option.\n");
+                    continue;
+                }
+                Err(CommandError::LackOfValue) => {
+                    println!("[error] should specify value.\n");
+                    continue;
+                }
             };
 
             match command {
@@ -109,6 +117,7 @@ where
                 Command::SpoolOff => {
                     self.print.spool_off();
                 }
+                Command::Set(name, value) => self.print.set_option(name, value),
             }
         }
 
