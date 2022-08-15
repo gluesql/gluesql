@@ -37,8 +37,16 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
-    Lpad(ExprNode, ExprNode, Option<ExprNode>),
-    Rpad(ExprNode, ExprNode, Option<ExprNode>),
+    Lpad {
+        expr: ExprNode,
+        size: ExprNode,
+        fill: Option<ExprNode>,
+    },
+    Rpad {
+        expr: ExprNode,
+        size: ExprNode,
+        fill: Option<ExprNode>,
+    },
     Degrees(ExprNode),
     Radians(ExprNode),
     Concat(ExprList),
@@ -109,16 +117,24 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
-            FunctionNode::Lpad(expr_node, size_node, fill_node) => {
-                let fill = fill_node.map(|fill| fill.try_into().unwrap());
+            FunctionNode::Lpad {
+                expr: expr_node,
+                size: size_node,
+                fill: fill_node,
+            } => {
+                let fill = fill_node.map(|fill| fill.try_into()).transpose()?;
                 expr_node.try_into().and_then(|expr| {
                     size_node
                         .try_into()
                         .map(|size| Function::Lpad { expr, size, fill })
                 })
             }
-            FunctionNode::Rpad(expr_node, size_node, fill_node) => {
-                let fill = fill_node.map(|fill| fill.try_into().unwrap());
+            FunctionNode::Rpad {
+                expr: expr_node,
+                size: size_node,
+                fill: fill_node,
+            } => {
+                let fill = fill_node.map(|fill| fill.try_into()).transpose()?;
                 expr_node.try_into().and_then(|expr| {
                     size_node
                         .try_into()
@@ -322,19 +338,19 @@ pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
 }
 
 pub fn lpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Lpad(
-        expr.into(),
-        size.into(),
-        fill.map(|fill_expr| fill_expr.try_into().unwrap()),
-    )))
+    ExprNode::Function(Box::new(FunctionNode::Lpad {
+        expr: expr.into(),
+        size: size.into(),
+        fill: fill.map(|v| v.into()),
+    }))
 }
 
 pub fn rpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Rpad(
-        expr.into(),
-        size.into(),
-        fill.map(|fill_expr| fill_expr.try_into().unwrap()),
-    )))
+    ExprNode::Function(Box::new(FunctionNode::Rpad {
+        expr: expr.into(),
+        size: size.into(),
+        fill: fill.map(|v| v.into()),
+    }))
 }
 
 pub fn degrees<V: Into<ExprNode>>(expr: V) -> ExprNode {
