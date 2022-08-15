@@ -162,9 +162,12 @@ mod tests {
 
     fn test(context: &Rc<Context<'_>>, sql: &str, expected: bool) {
         let parsed = parse_expr(sql).unwrap();
-        let expr = translate_expr(&parsed).unwrap();
+        let expr = translate_expr(&parsed);
         let context = Some(Rc::clone(context));
-        let actual = check_expr(context, &expr);
+        let actual = match expr {
+            Ok(expr) => check_expr(context, &expr),
+            Err(_) => false,
+        };
 
         assert_eq!(actual, expected, "{sql}");
     }
@@ -213,6 +216,7 @@ mod tests {
         test!("Bar.rate", true);
         test!("Foo.rate", false);
         test!("Rand.id", false);
+        test!("a.b.c", false);
 
         // PlanExpr::Expr
         test!("-10", true);
