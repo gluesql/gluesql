@@ -387,8 +387,8 @@ pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, concat, cos, degrees, expr, floor, gcd, generate_uuid,
-        ifnull, lcm, left, ln, log, log10, log2, lpad, now, num, pi, power, radians, repeat,
-        reverse, right, round, rpad, sign, sin, sqrt, tan, test_expr, text, upper,ltrim,rtrim,
+        ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, now, num, pi, power, radians, repeat,
+        reverse, right, round, rpad, rtrim, sign, sin, sqrt, tan, test_expr, text, upper,
     };
 
     #[test]
