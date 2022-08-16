@@ -50,8 +50,14 @@ pub enum FunctionNode {
     Degrees(ExprNode),
     Radians(ExprNode),
     Concat(ExprList),
-    Ltrim(ExprNode, Option<ExprNode>),
-    Rtrim(ExprNode, Option<ExprNode>),
+    Ltrim {
+        expr_node: ExprNode,
+        chars_node: Option<ExprNode>,
+    },
+    Rtrim {
+        expr_node: ExprNode,
+        chars_node: Option<ExprNode>,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -134,17 +140,21 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
-            FunctionNode::Ltrim(expr_node, chars_node) => {
+            FunctionNode::Ltrim {
+                expr_node,
+                chars_node,
+            } => {
                 let chars = chars_node.map(TryInto::try_into).transpose()?;
-                expr_node
-                    .try_into()
-                    .map(|expr| Function::Ltrim { expr, chars })
+                let expr = expr_node.try_into()?;
+                Ok(Function::Ltrim { expr, chars })
             }
-            FunctionNode::Rtrim(expr_node, chars_node) => {
+            FunctionNode::Rtrim {
+                expr_node,
+                chars_node,
+            } => {
                 let chars = chars_node.map(TryInto::try_into).transpose()?;
-                expr_node
-                    .try_into()
-                    .map(|expr| Function::Rtrim { expr, chars })
+                let expr = expr_node.try_into()?;
+                Ok(Function::Rtrim { expr, chars })
             }
         }
     }
@@ -370,17 +380,17 @@ pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
 }
 
 pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Ltrim(
-        expr.into(),
-        chars.map(|t| t.into()),
-    )))
+    ExprNode::Function(Box::new(FunctionNode::Ltrim {
+        expr_node: expr.into(),
+        chars_node: chars.map(|t| t.into()),
+    }))
 }
 
 pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Rtrim(
-        expr.into(),
-        chars.map(|t| t.into()),
-    )))
+    ExprNode::Function(Box::new(FunctionNode::Rtrim {
+        expr_node: expr.into(),
+        chars_node: chars.map(|t| t.into()),
+    }))
 }
 
 #[cfg(test)]
