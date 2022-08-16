@@ -10,19 +10,13 @@ use {
 pub enum PlanExpr<'a> {
     None,
     Identifier(&'a str),
-    CompoundIdentifier {
-        alias: &'a String,
-        ident: &'a String,
-    },
+    CompoundIdentifier { alias: &'a str, ident: &'a str },
     Expr(&'a Expr),
     TwoExprs(&'a Expr, &'a Expr),
     ThreeExprs(&'a Expr, &'a Expr, &'a Expr),
     MultiExprs(Vec<&'a Expr>),
     Query(&'a Query),
-    QueryAndExpr {
-        query: &'a Query,
-        expr: &'a Expr,
-    },
+    QueryAndExpr { query: &'a Query, expr: &'a Expr },
 }
 
 impl<'a> From<&'a Expr> for PlanExpr<'a> {
@@ -125,8 +119,8 @@ mod tests {
         // PlanExpr::CompoundIdentifier
         let actual = expr("Foo.id");
         let expected = PlanExpr::CompoundIdentifier {
-            alias: &"Foo".to_string(),
-            ident: &"id".to_string(),
+            alias: "Foo",
+            ident: "id",
         };
         test!(actual, expected);
 
