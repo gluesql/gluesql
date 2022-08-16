@@ -6,12 +6,16 @@ pub enum Command {
     Quit,
     Execute(String),
     ExecuteFromFile(String),
+    SpoolOn(String),
+    SpoolOff,
 }
 
 #[derive(ThisError, Debug, PartialEq)]
 pub enum CommandError {
     #[error("should specify table")]
     LackOfTable,
+    #[error("should specify file path")]
+    LackOfFile,
     #[error("command not supported")]
     NotSupported,
 }
@@ -34,6 +38,11 @@ impl Command {
                 },
                 ".version" => Ok(Self::Execute("SHOW VERSION".to_owned())),
                 ".execute" if params.len() == 2 => Ok(Self::ExecuteFromFile(params[1].to_owned())),
+                ".spool" => match params.get(1) {
+                    Some(&"off") => Ok(Self::SpoolOff),
+                    Some(path) => Ok(Self::SpoolOn(path.to_string())),
+                    None => Err(CommandError::LackOfFile),
+                },
                 _ => Err(CommandError::NotSupported),
             }
         } else {
@@ -73,5 +82,11 @@ mod tests {
             Ok(Command::Execute("SELECT * FROM Foo".to_owned())),
             Command::parse("SELECT * FROM Foo;")
         );
+        assert_eq!(
+            Ok(Command::SpoolOn("query.log".into())),
+            Command::parse(".spool query.log")
+        );
+        assert_eq!(Ok(Command::SpoolOff), Command::parse(".spool off"));
+        assert_eq!(Err(CommandError::LackOfFile), Command::parse(".spool"));
     }
 }

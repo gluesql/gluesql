@@ -17,9 +17,6 @@ pub use {
     row::{Row, RowError},
     schema::{Schema, SchemaIndex, SchemaIndexOrd},
     string_ext::{StringExt, StringExtError},
-    table::{get_alias, get_name, TableError},
+    table::{get_alias, get_index, get_name, TableError},
     value::{NumericBinaryOperator, Value, ValueError},
 };
-
-#[cfg(feature = "index")]
-pub use table::get_index;

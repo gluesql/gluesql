@@ -2,6 +2,7 @@ use {
     super::ExprNode,
     crate::{
         ast::Function,
+        ast_builder::ExprList,
         result::{Error, Result},
     },
 };
@@ -36,6 +37,20 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
+    Exp(ExprNode),
+    Lpad {
+        expr: ExprNode,
+        size: ExprNode,
+        fill: Option<ExprNode>,
+    },
+    Rpad {
+        expr: ExprNode,
+        size: ExprNode,
+        fill: Option<ExprNode>,
+    },
+    Degrees(ExprNode),
+    Radians(ExprNode),
+    Concat(ExprList),
     Substr {
         expr: ExprNode,
         start: ExprNode,
@@ -108,6 +123,22 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
+            FunctionNode::Lpad { expr, size, fill } => {
+                let fill = fill.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Lpad { expr, size, fill })
+            }
+            FunctionNode::Rpad { expr, size, fill } => {
+                let fill = fill.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Rpad { expr, size, fill })
+            }
+            FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
+            FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
+            FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
+            FunctionNode::Exp(expr) => expr.try_into().map(Function::Exp),
             FunctionNode::Substr { expr, start, count } => {
                 let count = count.map(TryInto::try_into).transpose()?;
                 let expr = expr.try_into()?;
@@ -198,6 +229,21 @@ impl ExprNode {
     pub fn repeat(self, num: ExprNode) -> ExprNode {
         repeat(self, num)
     }
+    pub fn degrees(self) -> ExprNode {
+        degrees(self)
+    }
+    pub fn radians(self) -> ExprNode {
+        radians(self)
+    }
+    pub fn lpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
+        lpad(self, size, fill)
+    }
+    pub fn rpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
+        rpad(self, size, fill)
+    }
+    pub fn exp(self) -> ExprNode {
+        exp(self)
+    }
     pub fn substr(self, start: ExprNode, count: Option<ExprNode>) -> ExprNode {
         substr(self, start, count)
     }
@@ -217,6 +263,9 @@ pub fn ceil<T: Into<ExprNode>>(expr: T) -> ExprNode {
 }
 pub fn round<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
+}
+pub fn concat<T: Into<ExprList>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Concat(expr.into())))
 }
 pub fn floor<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Floor(expr.into())))
@@ -295,6 +344,33 @@ pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
 }
 
+pub fn lpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Lpad {
+        expr: expr.into(),
+        size: size.into(),
+        fill: fill.map(|v| v.into()),
+    }))
+}
+
+pub fn rpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Rpad {
+        expr: expr.into(),
+        size: size.into(),
+        fill: fill.map(|v| v.into()),
+    }))
+}
+
+pub fn degrees<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Degrees(expr.into())))
+}
+
+pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
+}
+
+pub fn exp<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Exp(expr.into())))
+}
 pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Substr {
         expr: expr.into(),
@@ -306,9 +382,9 @@ pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNod
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, gcd, generate_uuid, ifnull, lcm, left,
-        ln, log, log10, log2, now, num, pi, power, repeat, reverse, right, round, sign, sin, sqrt,
-        substr, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, concat, cos, degrees, exp, expr, floor, gcd,
+        generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, now, num, pi, power, radians,
+        repeat, reverse, right, round, rpad, sign, sin, sqrt, substr, tan, test_expr, text, upper,
     };
 
     #[test]
@@ -591,6 +667,88 @@ mod tests {
 
         let actual = text("GlueSQL").repeat(num(2));
         let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_degrees() {
+        let actual = degrees(num(1));
+        let expected = "DEGREES(1)";
+        test_expr(actual, expected);
+
+        let actual = num(1).degrees();
+        let expected = "DEGREES(1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_radians() {
+        let actual = radians(num(1));
+        let expected = "RADIANS(1)";
+        test_expr(actual, expected);
+
+        let actual = num(1).radians();
+        let expected = "RADIANS(1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_concat() {
+        let actual = concat(vec![text("Glue"), text("SQL"), text("Go")]);
+        let expected = "CONCAT('Glue','SQL','Go')";
+        test_expr(actual, expected);
+
+        let actual = concat(vec!["Glue", "SQL", "Go"]);
+        let expected = "CONCAT(Glue, SQL, Go)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_lpad() {
+        let actual = lpad(text("GlueSQL"), num(10), Some(text("Go")));
+        let expected = "LPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = lpad(text("GlueSQL"), num(10), None);
+        let expected = "LPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").lpad(num(10), Some(text("Go")));
+        let expected = "LPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").lpad(num(10), None);
+        let expected = "LPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_rpad() {
+        let actual = rpad(text("GlueSQL"), num(10), Some(text("Go")));
+        let expected = "RPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = rpad(text("GlueSQL"), num(10), None);
+        let expected = "RPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").rpad(num(10), Some(text("Go")));
+        let expected = "RPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").rpad(num(10), None);
+        let expected = "RPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_exp() {
+        let actual = exp(num(2));
+        let expected = "EXP(2)";
+        test_expr(actual, expected);
+
+        let actual = num(2).exp();
+        let expected = "EXP(2)";
         test_expr(actual, expected);
     }
 
