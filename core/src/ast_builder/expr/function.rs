@@ -135,13 +135,13 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
             FunctionNode::Ltrim(expr_node, chars_node) => {
-                let chars = chars_node.map(|chars| chars.try_into().unwrap());
+                let chars = chars_node.map(TryInto::try_into).transpose()?;
                 expr_node
                     .try_into()
                     .map(|expr| Function::Ltrim { expr, chars })
             }
             FunctionNode::Rtrim(expr_node, chars_node) => {
-                let chars = chars_node.map(|chars| chars.try_into().unwrap());
+                let chars = chars_node.map(TryInto::try_into).transpose()?;
                 expr_node
                     .try_into()
                     .map(|expr| Function::Rtrim { expr, chars })
