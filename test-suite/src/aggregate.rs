@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        data::KeyError, executor::AggregateError, prelude::Value::*, translate::TranslateError,
+        data::KeyError, executor::EvaluateError, prelude::Value::*, translate::TranslateError,
     },
 };
 
@@ -93,6 +93,38 @@ test_case!(aggregate, async move {
                 0.8
             ),
         ),
+        (
+            "SELECT SUM(ifnull(age, 0)) from Item;",
+            select!(
+                "SUM(ifnull(age, 0))"
+                I64;
+                104
+            ),
+        ),
+        (
+            "SELECT SUM(1 + 2) FROM Item;",
+            select!(
+                "SUM(1 + 2)"
+                I64;
+                15
+            ),
+        ),
+        (
+            "SELECT MIN(id + quantity) FROM Item;",
+            select!(
+                "MIN(id + quantity)"
+                I64;
+                2
+            ),
+        ),
+        (
+            "SELECT MAX(id - quantity) FROM Item;",
+            select!(
+                "MAX(id - quantity)"
+                I64;
+                2
+            ),
+        ),
     ];
 
     for (sql, expected) in test_cases {
@@ -101,19 +133,11 @@ test_case!(aggregate, async move {
 
     let error_cases = vec![
         (
-            AggregateError::OnlyIdentifierAllowed.into(),
-            "SELECT SUM(ifnull(age, 0)) from Item;",
-        ),
-        (
-            AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
+            EvaluateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
         ),
         (
-            AggregateError::OnlyIdentifierAllowed.into(),
-            "SELECT SUM(1 + 2) FROM Item;",
-        ),
-        (
-            AggregateError::ValueNotFound("num".to_owned()).into(),
+            EvaluateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",
         ),
         (
