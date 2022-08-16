@@ -372,14 +372,14 @@ pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
 pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ltrim(
         expr.into(),
-        chars.map(|chars_node| chars_node.try_into().unwrap()),
+        chars.map(|t|t.into()),
     )))
 }
 
 pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Rtrim(
         expr.into(),
-        chars.map(|chars_node| chars_node.try_into().unwrap()),
+        chars.map(|t|t.into()),
     )))
 }
 
