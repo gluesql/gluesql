@@ -36,7 +36,11 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
-    Substr(ExprNode, ExprNode, Option<ExprNode>),
+    Substr {
+        expr: ExprNode,
+        start: ExprNode,
+        count: Option<ExprNode>,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -104,13 +108,11 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Repeat(expr, num) => expr
                 .try_into()
                 .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
-            FunctionNode::Substr(expr_node, start_node, count_node) => {
-                let count = count_node.map(|count| count.try_into().unwrap());
-                expr_node.try_into().and_then(|expr| {
-                    start_node
-                        .try_into()
-                        .map(|start| Function::Substr { expr, start, count })
-                })
+            FunctionNode::Substr { expr, start, count } => {
+                let count = count.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let start = start.try_into()?;
+                Ok(Function::Substr { expr, start, count })
             }
         }
     }
@@ -195,6 +197,9 @@ impl ExprNode {
     }
     pub fn repeat(self, num: ExprNode) -> ExprNode {
         repeat(self, num)
+    }
+    pub fn substr(self, start: ExprNode, count: Option<ExprNode>) -> ExprNode {
+        substr(self, start, count)
     }
 }
 
@@ -291,11 +296,11 @@ pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
 }
 
 pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Substr(
-        expr.into(),
-        start.into(),
-        count.map(|count_expr| count_expr.try_into().unwrap()),
-    )))
+    ExprNode::Function(Box::new(FunctionNode::Substr {
+        expr: expr.into(),
+        start: start.into(),
+        count: count.map(|v| v.into()),
+    }))
 }
 
 #[cfg(test)]
@@ -596,6 +601,14 @@ mod tests {
         test_expr(actual, expected);
 
         let actual = substr(text("GlueSQL"), num(2), None);
+        let expected = "SUBSTR('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").substr(num(2), Some(num(4)));
+        let expected = "SUBSTR('GlueSQL', 2, 4)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").substr(num(2), None);
         let expected = "SUBSTR('GlueSQL', 2)";
         test_expr(actual, expected);
     }
