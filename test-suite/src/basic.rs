@@ -17,6 +17,7 @@ CREATE TABLE TestA (
     name TEXT
 )"#
     );
+
     run!("INSERT INTO Test (id, num, name) VALUES (1, 2, \"Hello\")");
     run!("INSERT INTO Test (id, num, name) VALUES (1, 9, \"World\")");
     run!("INSERT INTO Test (id, num, name) VALUES (3, 4, \"Great\"), (4, 7, \"Job\")");

@@ -90,11 +90,13 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
     };
 
     let index = select.order_by.last().and_then(|value_expr| {
-        indexes.find_ordered(value_expr).map(|name| IndexItem {
-            name,
-            asc: value_expr.asc,
-            cmp_expr: None,
-        })
+        indexes
+            .find_ordered(value_expr)
+            .map(|name| IndexItem::NonClustered {
+                name,
+                asc: value_expr.asc,
+                cmp_expr: None,
+            })
     });
 
     match index {
@@ -201,7 +203,7 @@ fn plan_select(
                 }
             };
 
-            let index = Some(IndexItem {
+            let index = Some(IndexItem::NonClustered {
                 name: index_name,
                 asc: None,
                 cmp_expr: Some((index_op, index_value_expr)),
