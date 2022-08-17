@@ -37,6 +37,7 @@ pub enum FunctionNode {
     Lcm(ExprNode, ExprNode),
     GenerateUuid,
     Repeat(ExprNode, ExprNode),
+    Exp(ExprNode),
     Lpad {
         expr: ExprNode,
         size: ExprNode,
@@ -140,6 +141,7 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
+            FunctionNode::Exp(expr) => expr.try_into().map(Function::Exp),
             FunctionNode::Ltrim {
                 expr_node,
                 chars_node,
@@ -251,6 +253,9 @@ impl ExprNode {
     }
     pub fn rpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
         rpad(self, size, fill)
+    }
+    pub fn exp(self) -> ExprNode {
+        exp(self)
     }
     pub fn rtrim(self, chars: Option<ExprNode>) -> ExprNode {
         rtrim(self, chars)
@@ -379,6 +384,9 @@ pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
 }
 
+pub fn exp<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Exp(expr.into())))
+}
 pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ltrim {
         expr_node: expr.into(),
@@ -396,9 +404,10 @@ pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, concat, cos, degrees, expr, floor, gcd, generate_uuid,
-        ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, now, num, pi, power, radians, repeat,
-        reverse, right, round, rpad, rtrim, sign, sin, sqrt, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, concat, cos, degrees, exp, expr, floor, gcd,
+        generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, now, num, pi, power,
+        radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, tan, test_expr, text,
+        upper,
     };
 
     #[test]
@@ -752,6 +761,17 @@ mod tests {
 
         let actual = text("GlueSQL").rpad(num(10), None);
         let expected = "RPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_exp() {
+        let actual = exp(num(2));
+        let expected = "EXP(2)";
+        test_expr(actual, expected);
+
+        let actual = num(2).exp();
+        let expected = "EXP(2)";
         test_expr(actual, expected);
     }
 
