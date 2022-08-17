@@ -1,11 +1,14 @@
 use {
-    super::{context::FilterContext, evaluate::evaluate, filter::check_expr},
+    super::{context::FilterContext, filter::check_expr},
     crate::{
         ast::{
             ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableFactor, TableWithJoins,
         },
         data::{get_alias, get_index, get_name, Key, Row, TableError, Value},
-        executor::select::{get_labels, select},
+        executor::{
+            evaluate::evaluate,
+            select::{get_labels, select},
+        },
         result::{Error, Result},
         store::GStore,
     },
@@ -83,7 +86,6 @@ pub async fn fetch_relation_rows<'a>(
 
                 return Ok(Rows::Dummy(rows));
             }
-            #[cfg(feature = "index")]
             let rows = {
                 #[cfg(feature = "index")]
                 #[derive(Iterator)]
