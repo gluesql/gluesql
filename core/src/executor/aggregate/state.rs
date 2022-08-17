@@ -1,10 +1,8 @@
-use crate::executor::context::FilterContext;
-
 use {
     crate::{
         ast::{Aggregate, CountArgExpr},
         data::{Key, Value},
-        executor::{context::BlendContext, evaluate::evaluate},
+        executor::{context::BlendContext, context::FilterContext, evaluate::evaluate},
         result::Result,
         store::GStore,
     },
