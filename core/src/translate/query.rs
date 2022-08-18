@@ -8,13 +8,16 @@ use {
             Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, Query, Select,
             SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
+        data::get_name,
         result::Result,
     },
+    bigdecimal::ToPrimitive,
     sqlparser::ast::{
-        Expr as SqlExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
-        JoinOperator as SqlJoinOperator, OrderByExpr, Query as SqlQuery, Select as SqlSelect,
-        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
-        TableFactor as SqlTableFactor, TableWithJoins as SqlTableWithJoins,
+        Expr as SqlExpr, FunctionArg, FunctionArgExpr, Join as SqlJoin,
+        JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator, OrderByExpr,
+        Query as SqlQuery, Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
+        TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
+        TableWithJoins as SqlTableWithJoins, Value as SqlValue,
     },
 };
 
@@ -139,9 +142,24 @@ fn translate_table_with_joins(sql_table_with_joins: &SqlTableWithJoins) -> Resul
     })
 }
 
+fn translate_args(args: &Option<Vec<FunctionArg>>) -> Result<i64> {
+    match args {
+        Some(function_args) => match &function_args[0] {
+            FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::Value(SqlValue::Number(
+                big_decimal,
+                _,
+            )))) => Ok(big_decimal.to_i64().unwrap()),
+            _ => todo!(),
+        },
+        None => todo!(),
+    }
+}
+
 fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFactor> {
     match sql_table_factor {
-        SqlTableFactor::Table { name, alias, .. } => Ok(TableFactor::Table {
+        SqlTableFactor::Table {
+            name, alias, args, ..
+        } if get_name(&translate_object_name(name))? == "Series" => Ok(TableFactor::Series {
             name: translate_object_name(name),
             alias: alias
                 .as_ref()
@@ -149,8 +167,20 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                     name: name.value.to_owned(),
                     columns: translate_idents(columns),
                 }),
-            index: None, // query execution plan
+            size: translate_args(args)?,
         }),
+        SqlTableFactor::Table { name, alias, .. } => {
+            Ok(TableFactor::Table {
+                name: translate_object_name(name),
+                alias: alias
+                    .as_ref()
+                    .map(|SqlTableAlias { name, columns }| TableAlias {
+                        name: name.value.to_owned(),
+                        columns: translate_idents(columns),
+                    }),
+                index: None, // query execution plan
+            })
+        }
         SqlTableFactor::Derived {
             subquery, alias, ..
         } => {
