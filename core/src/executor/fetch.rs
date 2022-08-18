@@ -145,7 +145,7 @@ pub async fn fetch_relation_rows<'a>(
             Ok(Rows::Table(stream::iter(rows)))
         }
         TableFactor::Series { size, .. } => {
-            let rows = (1..=size.clone()).collect::<Vec<_>>();
+            let rows = (1..=*size).collect::<Vec<_>>();
             let rows = stream::iter(rows).map(|v| Ok(Row(vec![Value::I64(v)])));
             Ok(Rows::Series(rows))
         }
@@ -153,16 +153,14 @@ pub async fn fetch_relation_rows<'a>(
 }
 
 pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec<String>> {
-    match table_name {
-        _ => Ok(storage
-            .fetch_schema(table_name)
-            .await?
-            .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
-            .column_defs
-            .into_iter()
-            .map(|ColumnDef { name, .. }| name)
-            .collect::<Vec<String>>()),
-    }
+    Ok(storage
+        .fetch_schema(table_name)
+        .await?
+        .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
+        .column_defs
+        .into_iter()
+        .map(|ColumnDef { name, .. }| name)
+        .collect::<Vec<String>>())
 }
 
 #[async_recursion(?Send)]
