@@ -63,7 +63,7 @@ pub async fn fetch<'a>(
 pub enum Rows<I1, I2, I3> {
     Derived(I1),
     Table(I2),
-    Dummy(I3),
+    Series(I3),
 }
 
 pub async fn fetch_relation_rows<'a>(
@@ -80,12 +80,6 @@ pub async fn fetch_relation_rows<'a>(
         }
         TableFactor::Table { name, .. } => {
             let table_name = get_name(name)?;
-            if table_name == "$Dummy" {
-                let rows = vec![Ok(Row(vec![]))];
-                let rows = stream::iter(rows);
-
-                return Ok(Rows::Dummy(rows));
-            }
             let rows = {
                 #[cfg(feature = "index")]
                 #[derive(Iterator)]
@@ -150,6 +144,11 @@ pub async fn fetch_relation_rows<'a>(
 
             Ok(Rows::Table(stream::iter(rows)))
         }
+        TableFactor::Series { size, .. } => {
+            let rows = (1..=size.clone()).collect::<Vec<_>>();
+            let rows = stream::iter(rows).map(|v| Ok(Row(vec![Value::I64(v)])));
+            Ok(Rows::Series(rows))
+        }
     }
 }
 
@@ -206,6 +205,7 @@ pub async fn fetch_relation_columns(
             Ok(labels)
         }
         &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+        TableFactor::Series { .. } => Ok(vec!["N".to_string()]),
     }
 }
 pub async fn fetch_join_columns<'a>(

@@ -100,11 +100,11 @@ CREATE TABLE TestA (
             )),
             "SELECT * FROM (SELECT 1) AS Drived",
         ),
-        (
-            // CTAS without Table
-            Err(AlterError::CtasSourceTableNotFound("$Dummy".into()).into()),
-            "CREATE TABLE TB AS SELECT 1",
-        ),
+        // (
+        //     // CTAS without Table
+        //     Err(AlterError::CtasSourceTableNotFound("$Dummy".into()).into()),
+        //     "CREATE TABLE TB AS SELECT 1",
+        // ),
     ];
 
     for (expected, sql) in test_cases {

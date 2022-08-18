@@ -149,6 +149,18 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
                 .unwrap_or_else(|| name.clone())
         }
         TableFactor::Derived { alias, .. } => alias.to_owned().name,
+        TableFactor::Series { name, alias, .. } => {
+            // refactor with get_alias
+            let name = match get_name(name) {
+                Ok(name) => name,
+                Err(_) => return false,
+            };
+
+            alias
+                .as_ref()
+                .map(|TableAlias { name, .. }| name.clone())
+                .unwrap_or_else(|| name.clone())
+        }
     };
 
     context

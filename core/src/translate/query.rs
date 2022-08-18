@@ -79,10 +79,10 @@ fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<
     let from = match from.get(0) {
         Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
         None => TableWithJoins {
-            relation: TableFactor::Table {
-                name: ObjectName(vec!["$Dummy".into()]),
+            relation: TableFactor::Series {
+                name: ObjectName(vec!["Series".into()]),
                 alias: None,
-                index: None,
+                size: 1,
             },
             joins: vec![],
         },
