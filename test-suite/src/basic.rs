@@ -110,7 +110,6 @@ CREATE TABLE TestA (
             "SELECT *",
         ),
         (
-            // `SELECT *` fetch column `N` temporally
             Ok(select!(
                 N
                 I64;
@@ -119,6 +118,16 @@ CREATE TABLE TestA (
                 3
             )),
             "SELECT * FROM Series(3)",
+        ),
+        (
+            Ok(select!(
+                N
+                I64;
+                1;
+                2;
+                3
+            )),
+            "SELECT S.* FROM Series(3) as S",
         ),
         // (
         //     // CTAS without Table
