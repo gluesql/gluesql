@@ -43,7 +43,7 @@ pub use expr::{
     function::{
         abs, acos, asin, atan, ceil, concat, cos, degrees, exp, floor, gcd, generate_uuid, ifnull,
         lcm, left, ln, log, log10, log2, lpad, now, pi, power, radians, repeat, reverse, right,
-        round, rpad, sign, sin, sqrt, tan, upper, FunctionNode,
+        round, rpad, sign, sin, sqrt, substr, tan, upper, FunctionNode,
     },
 };
 
