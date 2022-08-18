@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::executor::AlterError, gluesql_core::prelude::Value};
+use {crate::*, gluesql_core::prelude::Value};
 
 test_case!(basic, async move {
     run!(
@@ -108,6 +108,17 @@ CREATE TABLE TestA (
                 1
             )),
             "SELECT *",
+        ),
+        (
+            // `SELECT *` fetch column `N` temporally
+            Ok(select!(
+                N
+                I64;
+                1;
+                2;
+                3
+            )),
+            "SELECT * FROM Series(3)",
         ),
         // (
         //     // CTAS without Table
