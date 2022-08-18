@@ -100,6 +100,15 @@ CREATE TABLE TestA (
             )),
             "SELECT * FROM (SELECT 1) AS Drived",
         ),
+        (
+            // `SELECT *` fetch column `N` temporally
+            Ok(select!(
+                N
+                I64;
+                1
+            )),
+            "SELECT *",
+        ),
         // (
         //     // CTAS without Table
         //     Err(AlterError::CtasSourceTableNotFound("$Dummy".into()).into()),
