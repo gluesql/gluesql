@@ -154,7 +154,6 @@ pub async fn fetch_relation_rows<'a>(
 
 pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec<String>> {
     match table_name {
-        "$Dummy" => Ok(vec![]),
         _ => Ok(storage
             .fetch_schema(table_name)
             .await?
