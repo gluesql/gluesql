@@ -1,3 +1,4 @@
+mod data_type;
 mod delete;
 mod drop_table;
 mod expr;
@@ -15,6 +16,7 @@ mod table;
 mod transaction;
 
 pub use {
+    data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
     expr_list::ExprList,
@@ -39,9 +41,9 @@ pub use {index::CreateIndexNode, index::DropIndexNode};
 pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
-        abs, acos, asin, atan, ceil, cos, degrees, div, floor, gcd, generate_uuid, ifnull, lcm,
-        left, ln, log, log10, log2, modulo, now, pi, power, radians, repeat, reverse, right, round,
-        sign, sin, sqrt, tan, upper, FunctionNode,
+        abs, acos, asin, atan, ceil, concat, cos, degrees, div, exp, floor, gcd, generate_uuid,
+        ifnull, lcm, left, ln, log, log10, log2, lpad, modulo, now, pi, power, radians, repeat,
+        reverse, right, round, rpad, sign, sin, sqrt, substr, tan, upper, FunctionNode,
     },
 };
 
