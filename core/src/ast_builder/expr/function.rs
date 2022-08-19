@@ -56,8 +56,14 @@ pub enum FunctionNode {
         start: ExprNode,
         count: Option<ExprNode>,
     },
-    Div(ExprNode, ExprNode),
-    Mod(ExprNode, ExprNode),
+    Div {
+        dividend: ExprNode,
+        divisor: ExprNode,
+    },
+    Mod {
+        dividend: ExprNode,
+        divisor: ExprNode,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -147,19 +153,15 @@ impl TryFrom<FunctionNode> for Function {
                 let start = start.try_into()?;
                 Ok(Function::Substr { expr, start, count })
             }
-            FunctionNode::Div(dividend_node, divisor_node) => {
-                dividend_node.try_into().and_then(|dividend| {
-                    divisor_node
-                        .try_into()
-                        .map(|divisor| Function::Div { dividend, divisor })
-                })
+            FunctionNode::Div { dividend, divisor } => {
+                let dividend = dividend.try_into()?;
+                let divisor = divisor.try_into()?;
+                Ok(Function::Div { dividend, divisor })
             }
-            FunctionNode::Mod(dividend_node, divisor_node) => {
-                dividend_node.try_into().and_then(|dividend| {
-                    divisor_node
-                        .try_into()
-                        .map(|divisor| Function::Mod { dividend, divisor })
-                })
+            FunctionNode::Mod { dividend, divisor } => {
+                let dividend = dividend.try_into()?;
+                let divisor = divisor.try_into()?;
+                Ok(Function::Mod { dividend, divisor })
             }
         }
     }
@@ -396,11 +398,17 @@ pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNod
 }
 
 pub fn div<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Div(dividend.into(), divisor.into())))
+    ExprNode::Function(Box::new(FunctionNode::Div {
+        dividend: dividend.into(),
+        divisor: divisor.into(),
+    }))
 }
 
 pub fn modulo<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Mod(dividend.into(), divisor.into())))
+    ExprNode::Function(Box::new(FunctionNode::Mod {
+        dividend: dividend.into(),
+        divisor: divisor.into(),
+    }))
 }
 
 #[cfg(test)]
