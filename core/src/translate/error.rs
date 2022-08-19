@@ -110,4 +110,13 @@ pub enum TranslateError {
 
     #[error("Every derived table must have its own alias")]
     LackOfAlias,
+
+    #[error("Series should have size")]
+    LackOfSeriesSize,
+
+    #[error("Series size should be positive but: {0}")]
+    WrongSeriesSize(i64),
+
+    #[error("unsupported table args: {0}")]
+    UnsupportedTableArgs(String),
 }

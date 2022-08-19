@@ -1,3 +1,6 @@
+use bigdecimal::BigDecimal;
+use sqlparser::ast::UnaryOperator;
+
 use {
     super::{
         translate_expr, translate_idents, translate_object_name, translate_order_by_expr,
@@ -142,16 +145,42 @@ fn translate_table_with_joins(sql_table_with_joins: &SqlTableWithJoins) -> Resul
     })
 }
 
-fn translate_args(args: &Option<Vec<FunctionArg>>) -> Result<i64> {
+fn translate_table_args(args: &Option<Vec<FunctionArg>>) -> Result<i64> {
+    let size_from = |big_decimal: &BigDecimal| {
+        big_decimal
+            .to_i64()
+            .and_then(|size| match size == 0 {
+                true => None,
+                false => Some(size),
+            })
+            .ok_or_else(|| TranslateError::LackOfSeriesSize.into())
+    };
+
     match args {
-        Some(function_args) => match &function_args[0] {
-            FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::Value(SqlValue::Number(
-                big_decimal,
-                _,
-            )))) => Ok(big_decimal.to_i64().unwrap()),
-            _ => todo!(),
+        Some(function_args) => match &function_args.get(0) {
+            Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::Value(
+                SqlValue::Number(big_decimal, _),
+            )))) => size_from(big_decimal),
+            Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::UnaryOp { op, expr }))) => {
+                match (op, expr.as_ref()) {
+                    (UnaryOperator::Minus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
+                        let size = size_from(big_decimal)?;
+
+                        Err(TranslateError::WrongSeriesSize(-size).into())
+                    }
+                    (UnaryOperator::Plus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
+                        size_from(big_decimal)
+                    }
+                    _ => Err(TranslateError::UnsupportedTableArgs(
+                        format!("op: {:?}, expr {:?}", op, expr).into(),
+                    )
+                    .into()),
+                }
+            }
+            None => Err(TranslateError::LackOfSeriesSize.into()),
+            _ => Err(TranslateError::UnsupportedTableArgs(format!("{:?}", function_args)).into()),
         },
-        None => todo!(),
+        None => Err(TranslateError::UnsupportedTableArgs("None".into()).into()),
     }
 }
 
@@ -159,16 +188,18 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
     match sql_table_factor {
         SqlTableFactor::Table {
             name, alias, args, ..
-        } if get_name(&translate_object_name(name))? == "Series" => Ok(TableFactor::Series {
-            name: translate_object_name(name),
-            alias: alias
-                .as_ref()
-                .map(|SqlTableAlias { name, columns }| TableAlias {
-                    name: name.value.to_owned(),
-                    columns: translate_idents(columns),
-                }),
-            size: translate_args(args)?,
-        }),
+        } if get_name(&translate_object_name(name))? == "Series" && args.is_some() => {
+            Ok(TableFactor::Series {
+                name: translate_object_name(name),
+                alias: alias
+                    .as_ref()
+                    .map(|SqlTableAlias { name, columns }| TableAlias {
+                        name: name.value.to_owned(),
+                        columns: translate_idents(columns),
+                    }),
+                size: translate_table_args(args)?,
+            })
+        }
         SqlTableFactor::Table { name, alias, .. } => {
             Ok(TableFactor::Table {
                 name: translate_object_name(name),
@@ -196,7 +227,6 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                 Err(TranslateError::LackOfAlias.into())
             }
         }
-
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
     }
 }

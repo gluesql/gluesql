@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::prelude::Value};
+use {
+    crate::*,
+    gluesql_core::{executor::FetchError, prelude::Value, translate::TranslateError},
+};
 
 test_case!(basic, async move {
     run!(
@@ -128,6 +131,32 @@ CREATE TABLE TestA (
                 3
             )),
             "SELECT S.* FROM Series(3) as S",
+        ),
+        (
+            Ok(select!(
+                N
+                I64;
+                1;
+                2;
+                3
+            )),
+            "SELECT * FROM Series(+3)",
+        ),
+        (
+            Err(FetchError::TableNotFound("Series".into()).into()),
+            "SELECT * FROM Series",
+        ),
+        (
+            Err(TranslateError::LackOfSeriesSize.into()),
+            "SELECT * FROM Series()",
+        ),
+        (
+            Err(TranslateError::LackOfSeriesSize.into()),
+            "SELECT * FROM Series(0)",
+        ),
+        (
+            Err(TranslateError::WrongSeriesSize(-1).into()),
+            "SELECT * FROM Series(-1)",
         ),
         // (
         //     // CTAS without Table
