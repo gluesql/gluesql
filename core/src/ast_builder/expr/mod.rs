@@ -197,12 +197,12 @@ pub fn expr(value: &str) -> ExprNode {
 }
 
 pub fn col(value: &str) -> ExprNode {
-    let idents = value.split('.').map(|v| v.to_string()).collect::<Vec<_>>();
+    let idents = value.split('.').collect::<Vec<_>>();
 
-    match &idents[..] {
+    match idents.as_slice() {
         [alias, ident] => ExprNode::CompoundIdentifier {
-            alias: alias.to_owned(),
-            ident: ident.to_owned(),
+            alias: alias.to_string(),
+            ident: ident.to_string(),
         },
         _ => ExprNode::Identifier(value.to_owned()),
     }
