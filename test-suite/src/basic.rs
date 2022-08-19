@@ -1,6 +1,10 @@
 use {
     crate::*,
-    gluesql_core::{executor::FetchError, prelude::Value, translate::TranslateError},
+    gluesql_core::{
+        executor::FetchError,
+        prelude::{Payload, Value},
+        translate::TranslateError,
+    },
 };
 
 test_case!(basic, async move {
@@ -157,6 +161,34 @@ CREATE TABLE TestA (
             "SELECT * FROM SERIES(+3)",
         ),
         (
+            // CTAS without Table
+            Ok(Payload::Create),
+            "CREATE TABLE TargetTable AS SELECT 1",
+        ),
+        (
+            Ok(select!(
+                N
+                I64;
+                1
+            )),
+            "SELECT * FROM TargetTable",
+        ),
+        (
+            // CTAS with SERIES(N)
+            Ok(Payload::Create),
+            "CREATE TABLE SeriesTable AS SELECT * FROM SERIES(3)",
+        ),
+        (
+            Ok(select!(
+                N
+                I64;
+                1;
+                2;
+                3
+            )),
+            "SELECT * FROM SeriesTable",
+        ),
+        (
             // SERIES without parentheses is a normal table name
             Err(FetchError::TableNotFound("SERIES".into()).into()),
             "SELECT * FROM SERIES",
@@ -176,11 +208,6 @@ CREATE TABLE TestA (
             Err(TranslateError::WrongSeriesSize(-1).into()),
             "SELECT * FROM SERIES(-1)",
         ),
-        // (
-        //     // CTAS without Table
-        //     Err(AlterError::CtasSourceTableNotFound("$Dummy".into()).into()),
-        //     "CREATE TABLE TB AS SELECT 1",
-        // ),
     ];
 
     for (expected, sql) in test_cases {
