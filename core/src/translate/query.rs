@@ -171,9 +171,10 @@ fn translate_table_args(args: &Option<Vec<FunctionArg>>) -> Result<i64> {
                     (UnaryOperator::Plus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
                         size_from(big_decimal)
                     }
-                    _ => Err(TranslateError::UnsupportedTableArgs(
-                        format!("op: {:?}, expr {:?}", op, expr).into(),
-                    )
+                    _ => Err(TranslateError::UnsupportedTableArgs(format!(
+                        "op: {:?}, expr {:?}",
+                        op, expr
+                    ))
                     .into()),
                 }
             }
