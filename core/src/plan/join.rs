@@ -43,7 +43,7 @@ impl<'a> Planner<'a> for JoinPlanner<'a> {
 
                 SetExpr::Select(Box::new(select))
             }
-            SetExpr::Values(_) => query.body,
+            SetExpr::Values(_) => body,
         };
 
         Query {
