@@ -77,7 +77,7 @@ CREATE TABLE TestA (
             "SELECT 1, 'a', true, 1 + 2, 'a' || 'b'",
         ),
         (
-            // SELECT without Table in scalar subquery
+            // SELECT without Table in Scalar subquery
             Ok(select!(
                 (SELECT 1)
                 I64;
@@ -104,7 +104,7 @@ CREATE TABLE TestA (
             "SELECT * FROM (SELECT 1) AS Drived",
         ),
         (
-            // `SELECT *` fetch column `N` temporally
+            // `SELECT *` fetches column `N` for now
             Ok(select!(
                 N
                 I64;
@@ -113,6 +113,7 @@ CREATE TABLE TestA (
             "SELECT *",
         ),
         (
+            // SERIES(N) has intenal column `N`
             Ok(select!(
                 N
                 I64;
@@ -120,9 +121,10 @@ CREATE TABLE TestA (
                 2;
                 3
             )),
-            "SELECT * FROM Series(3)",
+            "SELECT * FROM SERIES(3)",
         ),
         (
+            // SERIES(N) with lowercase works
             Ok(select!(
                 N
                 I64;
@@ -130,9 +132,10 @@ CREATE TABLE TestA (
                 2;
                 3
             )),
-            "SELECT S.* FROM Series(3) as S",
+            "SELECT * FROM series(3)",
         ),
         (
+            // SERIES(N) with table alias
             Ok(select!(
                 N
                 I64;
@@ -140,23 +143,38 @@ CREATE TABLE TestA (
                 2;
                 3
             )),
-            "SELECT * FROM Series(+3)",
+            "SELECT S.* FROM SERIES(3) as S",
         ),
         (
-            Err(FetchError::TableNotFound("Series".into()).into()),
-            "SELECT * FROM Series",
+            // SERIES with unary plus is allowed
+            Ok(select!(
+                N
+                I64;
+                1;
+                2;
+                3
+            )),
+            "SELECT * FROM SERIES(+3)",
         ),
         (
+            // SERIES without parentheses is a normal table name
+            Err(FetchError::TableNotFound("SERIES".into()).into()),
+            "SELECT * FROM SERIES",
+        ),
+        (
+            // SERIES without size is not allowed
             Err(TranslateError::LackOfSeriesSize.into()),
-            "SELECT * FROM Series()",
+            "SELECT * FROM SERIES()",
         ),
         (
+            // SERIES with size 0 is not allowed
             Err(TranslateError::LackOfSeriesSize.into()),
-            "SELECT * FROM Series(0)",
+            "SELECT * FROM SERIES(0)",
         ),
         (
+            // SERIES with unary minus is not allowed
             Err(TranslateError::WrongSeriesSize(-1).into()),
-            "SELECT * FROM Series(-1)",
+            "SELECT * FROM SERIES(-1)",
         ),
         // (
         //     // CTAS without Table

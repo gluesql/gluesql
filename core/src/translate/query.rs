@@ -188,7 +188,9 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
     match sql_table_factor {
         SqlTableFactor::Table {
             name, alias, args, ..
-        } if get_name(&translate_object_name(name))? == "Series" && args.is_some() => {
+        } if get_name(&translate_object_name(name))?.to_uppercase() == "SERIES"
+            && args.is_some() =>
+        {
             Ok(TableFactor::Series {
                 name: translate_object_name(name),
                 alias: alias
