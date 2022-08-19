@@ -128,7 +128,7 @@ pub trait Planner<'a> {
         table_factor: &TableFactor,
     ) -> Option<Rc<Context<'a>>> {
         let (name, alias) = match table_factor {
-            TableFactor::Table { name, alias, .. } => {
+            TableFactor::Table { name, alias, .. } | TableFactor::Series { name, alias, .. } => {
                 let name = match get_name(name) {
                     Ok(name) => name.clone(),
                     Err(_) => return next,
@@ -138,16 +138,6 @@ pub trait Planner<'a> {
                 (name, alias)
             }
             TableFactor::Derived { .. } => return next,
-            TableFactor::Series { name, alias, .. } => {
-                // refactor with get_alias
-                let name = match get_name(name) {
-                    Ok(name) => name.clone(),
-                    Err(_) => return next,
-                };
-                let alias = alias.as_ref().map(|TableAlias { name, .. }| name.clone());
-
-                (name, alias)
-            }
         };
 
         let column_defs = match self.get_schema(&name) {
