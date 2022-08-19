@@ -61,8 +61,12 @@ macro_rules! generate_store_tests {
         glue!(basic, basic::basic);
         glue!(aggregate, aggregate::aggregate);
         glue!(aggregate_group_by, aggregate::group_by);
-        glue!(arithmetic, arithmetic::arithmetic);
-        glue!(arithmetic_blend, arithmetic::blend);
+        glue!(arithmetic_error_value, arithmetic::error::error_value);
+        glue!(arithmetic_error_update, arithmetic::error::error_update);
+        glue!(arithmetic_error_literal, arithmetic::error::error_literal);
+        glue!(arithmetic_error_evaluate, arithmetic::error::error_evaluate);
+        glue!(arithmetic_blend, arithmetic::blend::blend);
+        glue!(arithmetic_where, arithmetic::on_where::on_where);
         glue!(concat, concat::concat);
         glue!(blend, blend::blend);
         glue!(create_table, alter::create_table);
