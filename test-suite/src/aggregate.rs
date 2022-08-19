@@ -105,7 +105,7 @@ test_case!(aggregate, async move {
             "SELECT SUM(ifnull(age, 0)) from Item;",
         ),
         (
-            AggregateError::UnsupportedCompoundIdentifier(expr!("id.name.ok")).into(),
+            TranslateError::UnsupportedExpr("id.name.ok".to_owned()).into(),
             "SELECT SUM(id.name.ok) FROM Item;",
         ),
         (
