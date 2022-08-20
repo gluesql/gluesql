@@ -15,7 +15,7 @@ pub trait Planner<'a> {
     fn subquery_expr(&self, outer_context: Option<Rc<Context<'a>>>, expr: Expr) -> Expr {
         match expr {
             Expr::Identifier(_)
-            | Expr::CompoundIdentifier(_)
+            | Expr::CompoundIdentifier { .. }
             | Expr::Literal(_)
             | Expr::TypedString { .. } => expr,
             Expr::IsNull(expr) => Expr::IsNull(Box::new(self.subquery_expr(outer_context, *expr))),

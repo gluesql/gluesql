@@ -13,7 +13,7 @@ use {
 test_case!(bytea, async move {
     let bytea = |v| hex::decode(v).unwrap();
 
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE Bytea (key BYTEA)", Ok(Payload::Create)),
         (
             "INSERT INTO Bytea VALUES
@@ -47,7 +47,7 @@ test_case!(bytea, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

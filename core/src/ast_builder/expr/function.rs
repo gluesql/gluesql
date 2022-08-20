@@ -51,6 +51,19 @@ pub enum FunctionNode {
     Degrees(ExprNode),
     Radians(ExprNode),
     Concat(ExprList),
+    Substr {
+        expr: ExprNode,
+        start: ExprNode,
+        count: Option<ExprNode>,
+    },
+    Ltrim {
+        expr: ExprNode,
+        chars: Option<ExprNode>,
+    },
+    Rtrim {
+        expr: ExprNode,
+        chars: Option<ExprNode>,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -134,6 +147,22 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
             FunctionNode::Exp(expr) => expr.try_into().map(Function::Exp),
+            FunctionNode::Substr { expr, start, count } => {
+                let count = count.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let start = start.try_into()?;
+                Ok(Function::Substr { expr, start, count })
+            }
+            FunctionNode::Ltrim { expr, chars } => {
+                let chars = chars.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                Ok(Function::Ltrim { expr, chars })
+            }
+            FunctionNode::Rtrim { expr, chars } => {
+                let chars = chars.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                Ok(Function::Rtrim { expr, chars })
+            }
         }
     }
 }
@@ -232,6 +261,15 @@ impl ExprNode {
     }
     pub fn exp(self) -> ExprNode {
         exp(self)
+    }
+    pub fn substr(self, start: ExprNode, count: Option<ExprNode>) -> ExprNode {
+        substr(self, start, count)
+    }
+    pub fn rtrim(self, chars: Option<ExprNode>) -> ExprNode {
+        rtrim(self, chars)
+    }
+    pub fn ltrim(self, chars: Option<ExprNode>) -> ExprNode {
+        ltrim(self, chars)
     }
 }
 
@@ -357,12 +395,35 @@ pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
 pub fn exp<V: Into<ExprNode>>(expr: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Exp(expr.into())))
 }
+pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Substr {
+        expr: expr.into(),
+        start: start.into(),
+        count: count.map(|v| v.into()),
+    }))
+}
+
+pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Ltrim {
+        expr: expr.into(),
+        chars: chars.map(|t| t.into()),
+    }))
+}
+
+pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Rtrim {
+        expr: expr.into(),
+        chars: chars.map(|t| t.into()),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, concat, cos, degrees, exp, expr, floor, gcd,
-        generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, now, num, pi, power, radians,
-        repeat, reverse, right, round, rpad, sign, sin, sqrt, tan, test_expr, text, upper,
+        generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, now, num, pi, power,
+        radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
+        test_expr, text, upper,
     };
 
     #[test]
@@ -727,6 +788,63 @@ mod tests {
 
         let actual = num(2).exp();
         let expected = "EXP(2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_substr() {
+        let actual = substr(text("GlueSQL"), num(2), Some(num(4)));
+        let expected = "SUBSTR('GlueSQL', 2, 4)";
+        test_expr(actual, expected);
+
+        let actual = substr(text("GlueSQL"), num(2), None);
+        let expected = "SUBSTR('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").substr(num(2), Some(num(4)));
+        let expected = "SUBSTR('GlueSQL', 2, 4)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").substr(num(2), None);
+        let expected = "SUBSTR('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_rtrim() {
+        let actual = rtrim(text("GlueSQL      "), None);
+        let expected = "RTRIM('GlueSQL      ')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL      ").rtrim(None);
+        let expected = "RTRIM('GlueSQL      ')";
+        test_expr(actual, expected);
+
+        let actual = rtrim(text("GlueSQLABC"), Some(text("ABC")));
+        let expected = "RTRIM('GlueSQLABC','ABC')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQLABC").rtrim(Some(text("ABC")));
+        let expected = "RTRIM('GlueSQLABC','ABC')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_ltrim() {
+        let actual = ltrim(text("      GlueSQL"), None);
+        let expected = "LTRIM('      GlueSQL')";
+        test_expr(actual, expected);
+
+        let actual = text("      GlueSQL").ltrim(None);
+        let expected = "LTRIM('      GlueSQL')";
+        test_expr(actual, expected);
+
+        let actual = ltrim(text("ABCGlueSQL"), Some(text("ABC")));
+        let expected = "LTRIM('ABCGlueSQL','ABC')";
+        test_expr(actual, expected);
+
+        let actual = text("ABCGlueSQL").ltrim(Some(text("ABC")));
+        let expected = "LTRIM('ABCGlueSQL','ABC')";
         test_expr(actual, expected);
     }
 }

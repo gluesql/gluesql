@@ -26,7 +26,20 @@ CREATE TABLE TestA (
     run!("CREATE TABLE TestB (id INTEGER);");
     run!("INSERT INTO TestB (id) SELECT id FROM Test");
 
-    test!(Ok(select!(id I64; 1; 1; 3; 4)), "SELECT * FROM TestB");
+    let test_cases = [
+        (Ok(select!(id I64; 1; 1; 3; 4)), "SELECT * FROM TestB"),
+        (
+            Ok(select!(
+                id  | num | name
+                I64 | I64 | Str;
+                1     2     "Hello".to_owned();
+                1     9     "World".to_owned();
+                3     4     "Great".to_owned();
+                4     7     "Job".to_owned()
+            )),
+            "SELECT id, num, name FROM TestA",
+        ),
+    ];
 
     test!(
         Ok(select!(
@@ -51,12 +64,15 @@ CREATE TABLE TestA (
         )),
         "SELECT id, num, name FROM TestA"
     );
+    for (expected, sql) in test_cases {
+        test!(expected, sql);
+    }
 
     count!(4, "SELECT * FROM Test");
 
     run!("UPDATE Test SET id = 2");
 
-    let test_cases = vec![
+    let test_cases = [
         (Ok(select!(id; I64; 2; 2; 2; 2)), "SELECT id FROM Test"),
         (
             Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),

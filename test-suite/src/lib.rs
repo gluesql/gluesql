@@ -60,10 +60,19 @@ macro_rules! generate_store_tests {
         }
         glue!(update, update::update);
         glue!(basic, basic::basic);
-        glue!(aggregate, aggregate::aggregate);
-        glue!(aggregate_group_by, aggregate::group_by);
-        glue!(arithmetic, arithmetic::arithmetic);
-        glue!(arithmetic_blend, arithmetic::blend);
+        glue!(aggregate_avg, aggregate::avg::avg);
+        glue!(aggregate_count, aggregate::count::count);
+        glue!(aggregate_group_by, aggregate::group_by::group_by);
+        glue!(aggregate_max, aggregate::max::max);
+        glue!(aggregate_min, aggregate::min::min);
+        glue!(aggregate_stdev, aggregate::stdev::stdev);
+        glue!(aggregate_sum, aggregate::sum::sum);
+        glue!(aggregate_variance, aggregate::variance::variance);
+        glue!(aggregate_error, aggregate::error::error);
+        glue!(aggregate_error_group_by, aggregate::error::error_group_by);
+        glue!(arithmetic_error, arithmetic::error::error);
+        glue!(arithmetic_blend, arithmetic::blend::blend);
+        glue!(arithmetic_on_where, arithmetic::on_where::on_where);
         glue!(concat, concat::concat);
         glue!(blend, blend::blend);
         glue!(create_table, alter::create_table);

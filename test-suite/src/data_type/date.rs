@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, gluesql_core::prelude::Value::*};
 
 test_case!(date, async move {
     run!(
@@ -18,8 +18,6 @@ INSERT INTO DateLog VALUES
     (3, "2021-05-01", "2021-05-01");
 "#
     );
-
-    use gluesql_core::prelude::Value::*;
 
     macro_rules! date {
         ($date: expr) => {

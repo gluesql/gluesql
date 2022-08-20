@@ -2,6 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         executor::{AlterError, FetchError, Payload},
+        prelude::Value::*,
         translate::TranslateError,
     },
 };
@@ -18,13 +19,11 @@ CREATE TABLE DropTable (
 
     let sqls = ["INSERT INTO DropTable (id, num, name) VALUES (1, 2, \"Hello\")"];
 
-    for sql in sqls.iter() {
+    for sql in sqls {
         run!(sql);
     }
 
-    use gluesql_core::prelude::Value::*;
-
-    let sqls = vec![
+    let sqls = [
         (
             "SELECT id, num, name FROM DropTable;",
             Ok(select!(

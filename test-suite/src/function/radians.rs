@@ -1,13 +1,14 @@
-use crate::*;
-
-test_case!(radians, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
-    let test_cases = vec![
+test_case!(radians, async move {
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT RADIANS(180))",
             Ok(Payload::Create),
