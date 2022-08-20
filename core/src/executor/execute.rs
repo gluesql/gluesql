@@ -181,8 +181,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             ..
         } => {
             enum RowsData {
-                Insert(Vec<Row>),
-                Update(Vec<(Key, Row)>),
+                Append(Vec<Row>),
+                Insert(Vec<(Key, Row)>),
             }
 
             let (rows, num_rows, table_name) = try_block!(storage, {
@@ -251,16 +251,16 @@ pub async fn execute<T: GStore + GStoreMut>(
                             None => None,
                         })
                         .collect::<Result<Vec<_>>>()
-                        .map(RowsData::Update)?,
-                    None => RowsData::Insert(rows),
+                        .map(RowsData::Insert)?,
+                    None => RowsData::Append(rows),
                 };
 
                 Ok((rows, num_rows, table_name))
             });
 
             match rows {
-                RowsData::Insert(rows) => storage.append_data(table_name, rows).await,
-                RowsData::Update(rows) => storage.insert_data(table_name, rows).await,
+                RowsData::Append(rows) => storage.append_data(table_name, rows).await,
+                RowsData::Insert(rows) => storage.insert_data(table_name, rows).await,
             }
             .map(|(storage, _)| (storage, Payload::Insert(num_rows)))
         }
