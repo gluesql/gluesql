@@ -31,11 +31,7 @@ mod test {
 
         let actual = table("FOO")
             .select()
-            .filter(exists(
-                table("BAR")
-                    .select()
-                    .filter("id IS NOT NULL")
-            ).not())
+            .filter(exists(table("BAR").select().filter("id IS NOT NULL")).not())
             .build();
         let expected =
             "SELECT * FROM FOO WHERE NOT EXISTS (SELECT * FROM BAR WHERE id IS NOT NULL)";
