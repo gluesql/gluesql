@@ -41,6 +41,10 @@ mod test {
         let expected = "EXISTS (SELECT * FROM FOO WHERE id > 2)";
         test_expr(actual, expected);
 
+        let actual = exists(table("FOO").select().filter(col("id").gt(2))).not();
+        let expected = "NOT EXISTS (SELECT * FROM FOO WHERE id > 2)";
+        test_expr(actual, expected);
+
         let actual = exists("SELECT * FROM FOO");
         let expected = "EXISTS (SELECT * FROM FOO)";
         test_expr(actual, expected);
