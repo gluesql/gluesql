@@ -17,12 +17,12 @@ use crate::{
     result::Result,
 };
 
-trait Prebuild {
+pub trait Prebuild {
     fn prebuild(self) -> Result<NodeData>;
 }
 
 #[derive(Clone)]
-struct NodeData {
+pub struct NodeData {
     pub projection: Vec<SelectItem>,
     pub from: TableWithJoins,
     /// WHERE
@@ -34,7 +34,7 @@ struct NodeData {
 }
 
 impl NodeData {
-    fn build_stmt(self) -> Statement {
+    pub fn build_query(self) -> Query {
         let NodeData {
             projection,
             from,
@@ -54,11 +54,14 @@ impl NodeData {
             order_by: vec![],
         };
 
-        let query = Query {
+        Query {
             body: SetExpr::Select(Box::new(select)),
             offset,
             limit,
-        };
+        }
+    }
+    fn build_stmt(self) -> Statement {
+        let query = self.build_query();
 
         Statement::Query(query)
     }
