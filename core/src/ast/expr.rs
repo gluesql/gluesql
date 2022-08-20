@@ -225,6 +225,15 @@ mod tests {
         );
 
         assert_eq!(
+            "id + num",
+            &Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("id".to_string())),
+                op: BinaryOperator::StringConcat,
+                right: Box::new(Expr::Identifier("num".to_string()))
+            }
+            .to_sql()
+        );
+        assert_eq!(
             "+id",
             Expr::UnaryOp {
                 op: UnaryOperator::Plus,
