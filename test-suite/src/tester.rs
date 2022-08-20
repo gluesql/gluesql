@@ -247,6 +247,8 @@ macro_rules! test_case {
         where
             T: gluesql_core::store::GStore + gluesql_core::store::GStoreMut,
         {
+            use std::rc::Rc;
+
             let cell = tester.get_cell();
 
             #[allow(unused_macros)]
