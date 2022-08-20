@@ -171,17 +171,25 @@ fn translate_table_args(args: &Option<Vec<FunctionArg>>) -> Result<i64> {
                     (UnaryOperator::Plus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
                         size_from(big_decimal)
                     }
-                    _ => Err(TranslateError::UnsupportedTableArgs(format!(
-                        "op: {:?}, expr {:?}",
-                        op, expr
-                    ))
+                    _ => Err(TranslateError::UnsupportedArgsUnaryOp {
+                        op: format!("{op}"),
+                        expr: format!("{expr}"),
+                    }
                     .into()),
                 }
             }
             None => Err(TranslateError::LackOfSeriesSize.into()),
-            _ => Err(TranslateError::UnsupportedTableArgs(format!("{:?}", function_args)).into()),
+            _ => Err(TranslateError::UnsupportedArgs(format!(
+                "{}",
+                function_args
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ))
+            .into()),
         },
-        None => Err(TranslateError::UnsupportedTableArgs("None".into()).into()),
+        None => Err(TranslateError::LackOfArgs.into()),
     }
 }
 

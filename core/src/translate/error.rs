@@ -118,5 +118,11 @@ pub enum TranslateError {
     WrongSeriesSize(i64),
 
     #[error("unsupported table args: {0}")]
-    UnsupportedTableArgs(String),
+    UnsupportedArgs(String),
+
+    #[error("unsupported args: op: {op}, expr: {expr}")]
+    UnsupportedArgsUnaryOp { op: String, expr: String },
+
+    #[error("could not find args")]
+    LackOfArgs,
 }
