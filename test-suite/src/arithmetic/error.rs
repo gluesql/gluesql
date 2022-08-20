@@ -8,7 +8,7 @@ use {
     },
     std::borrow::Cow,
 };
-test_case!(error_value, async move {
+test_case!(error, async move {
     run!(
         "
         CREATE TABLE Arith (
@@ -76,68 +76,10 @@ test_case!(error_value, async move {
             .into(),
             "SELECT * FROM Arith WHERE name % id < 1",
         ),
-    ];
-
-    for (error, sql) in test_cases {
-        test!(Err(error), sql);
-    }
-});
-
-test_case!(error_update, async move {
-    run!(
-        "
-        CREATE TABLE Arith (
-            id INTEGER,
-            num INTEGER,
-            name TEXT,
-        );
-    "
-    );
-    run!("DELETE FROM Arith");
-    run!(
-        "
-        INSERT INTO Arith (id, num, name) VALUES
-            (1, 6, \"A\"),
-            (2, 8, \"B\"),
-            (3, 4, \"C\"),
-            (4, 2, \"D\"),
-            (5, 3, \"E\");
-    "
-    );
-
-    let test_cases = vec![(
-        UpdateError::ColumnNotFound("aaa".to_owned()).into(),
-        "UPDATE Arith SET aaa = 1",
-    )];
-
-    for (error, sql) in test_cases {
-        test!(Err(error), sql);
-    }
-});
-
-test_case!(error_literal, async move {
-    run!(
-        "
-        CREATE TABLE Arith (
-            id INTEGER,
-            num INTEGER,
-            name TEXT,
-        );
-    "
-    );
-    run!("DELETE FROM Arith");
-    run!(
-        "
-        INSERT INTO Arith (id, num, name) VALUES
-            (1, 6, \"A\"),
-            (2, 8, \"B\"),
-            (3, 4, \"C\"),
-            (4, 2, \"D\"),
-            (5, 3, \"E\");
-    "
-    );
-
-    let test_cases = vec![
+        (
+            UpdateError::ColumnNotFound("aaa".to_owned()).into(),
+            "UPDATE Arith SET aaa = 1",
+        ),
         (
             LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", Literal::Boolean(true)),
@@ -170,36 +112,6 @@ test_case!(error_literal, async move {
             LiteralError::DivisorShouldNotBeZero.into(),
             "SELECT * FROM Arith WHERE id = 2 % 0.0",
         ),
-    ];
-
-    for (error, sql) in test_cases {
-        test!(Err(error), sql);
-    }
-});
-
-test_case!(error_evaluate, async move {
-    run!(
-        "
-        CREATE TABLE Arith (
-            id INTEGER,
-            num INTEGER,
-            name TEXT,
-        );
-    "
-    );
-    run!("DELETE FROM Arith");
-    run!(
-        "
-        INSERT INTO Arith (id, num, name) VALUES
-            (1, 6, \"A\"),
-            (2, 8, \"B\"),
-            (3, 4, \"C\"),
-            (4, 2, \"D\"),
-            (5, 3, \"E\");
-    "
-    );
-
-    let test_cases = vec![
         (
             EvaluateError::BooleanTypeRequired(format!(
                 "{:?}",
