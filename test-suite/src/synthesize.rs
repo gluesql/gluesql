@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::*};
+use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(synthesize, async move {
     let create_sql = "
@@ -67,8 +67,6 @@ test_case!(synthesize, async move {
     for insert_sql in insert_sqls {
         run!(insert_sql);
     }
-
-    use Value::I64;
 
     let test_cases = [
         (

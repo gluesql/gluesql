@@ -5,6 +5,7 @@ use {
         prelude::*,
         translate::TranslateError,
     },
+    Value::*,
 };
 
 test_case!(update, async move {
@@ -48,8 +49,6 @@ test_case!(update, async move {
             (4, 7, 4);
         "#
     );
-
-    use Value::*;
 
     let test_cases = [
         (Ok(Payload::Update(4)), "UPDATE TableA SET id = 2"),

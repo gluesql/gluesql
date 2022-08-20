@@ -1,10 +1,11 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError,
+    },
+};
 
 test_case!(migrate, async move {
-    use gluesql_core::{
-        data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError,
-    };
-
     run!(
         "
         CREATE TABLE Test (

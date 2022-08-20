@@ -1,5 +1,6 @@
 use {
     crate::*,
+    chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
         data::Interval as I,
         data::ValueError,
@@ -13,8 +14,6 @@ use {
 };
 
 test_case!(cast_literal, async move {
-    use chrono::{NaiveDate, NaiveTime};
-
     let test_cases = [
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),

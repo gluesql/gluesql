@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::*};
+use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(join, async move {
     let create_sqls: [&str; 2] = [
@@ -182,8 +182,6 @@ test_case!(blend, async move {
     for insert_sql in insert_sqls {
         run!(insert_sql);
     }
-
-    use Value::{Null, Str, I64};
 
     let sql = "
         SELECT p.id, i.id

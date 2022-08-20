@@ -1,11 +1,12 @@
-use crate::*;
-
-test_case!(unary_operator, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         data::{LiteralError, ValueError},
         prelude::{Payload, Value::*},
-    };
+    },
+};
 
+test_case!(unary_operator, async move {
     let test_cases = [
         (
             "CREATE TABLE Test (v1 INT, v2 FLOAT, v3 TEXT, v4 INT, v5 INT, v6 INT(8))",

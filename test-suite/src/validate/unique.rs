@@ -1,8 +1,9 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{executor::ValidateError, prelude::Value},
+};
 
 test_case!(unique, async move {
-    use gluesql_core::{executor::ValidateError, prelude::Value};
-
     run!(
         r#"
 CREATE TABLE TestA (

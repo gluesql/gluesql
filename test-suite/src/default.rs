@@ -1,14 +1,13 @@
-use crate::*;
+use {
+    crate::*,
+    chrono::NaiveDate,
+    gluesql_core::{
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+    },
+};
 
 test_case!(default, async move {
-    use {
-        chrono::NaiveDate,
-        gluesql_core::{
-            executor::EvaluateError,
-            prelude::{Payload, Value::*},
-        },
-    };
-
     let test_cases = [
         (
             "CREATE TABLE Test (

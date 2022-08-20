@@ -1,12 +1,13 @@
-use crate::*;
-
-test_case!(lpad_rpad, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
+test_case!(lpad_rpad, async move {
     let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT LPAD("a", 5) || LPAD("b", 3))"#,

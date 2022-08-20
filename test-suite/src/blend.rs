@@ -1,11 +1,12 @@
-use crate::*;
-
-test_case!(blend, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::{EvaluateError, SelectError},
         prelude::Value::*,
-    };
+    },
+};
 
+test_case!(blend, async move {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE BlendUser (

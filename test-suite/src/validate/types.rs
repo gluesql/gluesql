@@ -1,15 +1,14 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        ast::DataType,
+        data::{Literal, ValueError},
+        prelude::Value,
+    },
+    std::borrow::Cow,
+};
 
 test_case!(types, async move {
-    use {
-        gluesql_core::{
-            ast::DataType,
-            data::{Literal, ValueError},
-            prelude::Value,
-        },
-        std::borrow::Cow,
-    };
-
     run!("CREATE TABLE TableB (id BOOLEAN);");
     run!("CREATE TABLE TableC (uid INTEGER, null_val INTEGER NULL);");
     run!("INSERT INTO TableB VALUES (FALSE);");

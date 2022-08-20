@@ -1,8 +1,6 @@
-use {crate::*, gluesql_core::prelude::*};
+use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(limit, async move {
-    use Value::I64;
-
     let test_cases = [
         (
             "CREATE TABLE Test (

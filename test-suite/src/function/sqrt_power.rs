@@ -60,8 +60,6 @@ test_case!(sqrt, async move {
 });
 
 test_case!(power, async move {
-    use gluesql_core::prelude::Value::{Null, F64};
-
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT POWER(3, 4))",

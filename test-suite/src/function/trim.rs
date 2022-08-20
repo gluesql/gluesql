@@ -1,14 +1,12 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        executor::EvaluateError,
+        prelude::{Payload, Value},
+    },
+};
 
 test_case!(trim, async move {
-    use {
-        crate::*,
-        gluesql_core::{
-            executor::EvaluateError,
-            prelude::{Payload, Value},
-        },
-    };
-
     let test_cases = [
         (
             r#"CREATE TABLE Item (
