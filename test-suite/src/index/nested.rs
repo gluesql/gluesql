@@ -1,4 +1,10 @@
-use {crate::*, gluesql_core::prelude::Payload};
+use {
+    crate::*,
+    gluesql_core::{
+        ast::IndexOperator::*,
+        prelude::{Payload, Value::*},
+    },
+};
 
 test_case!(nested, async move {
     run!(
@@ -22,8 +28,6 @@ CREATE TABLE User (
             (5, 2, "Builder");
     "#
     );
-
-    use gluesql_core::{ast::IndexOperator::*, prelude::Value::*};
 
     test!(Ok(Payload::CreateIndex), "CREATE INDEX idx_id ON User (id)");
 

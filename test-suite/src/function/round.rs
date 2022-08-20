@@ -1,12 +1,13 @@
-use crate::*;
-
-test_case!(round, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
+test_case!(round, async move {
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT ROUND(3.5))",

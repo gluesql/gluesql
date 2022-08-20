@@ -1,7 +1,12 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        data::{Interval as I, IntervalError},
+        prelude::Value::*,
+    },
+};
 
 test_case!(interval, async move {
-    use gluesql_core::data::IntervalError;
     run!(
         r#"
 CREATE TABLE IntervalLog (
@@ -23,9 +28,6 @@ INSERT INTO IntervalLog VALUES
     (7, INTERVAL "-1000-11" YEAR TO MONTH,    INTERVAL "-30:11" MINUTE TO SECOND);
 "#
     );
-
-    use gluesql_core::data::Interval as I;
-    use gluesql_core::prelude::Value::*;
 
     test!(
         Ok(select!(

@@ -1,13 +1,14 @@
-use crate::*;
-
-test_case!(error, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         data::RowError,
         executor::{EvaluateError, ExecuteError, FetchError},
         plan::PlanError,
         translate::TranslateError,
-    };
+    },
+};
 
+test_case!(error, async move {
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
     run!("INSERT INTO TableA (id) VALUES (9);");

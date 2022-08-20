@@ -1,10 +1,8 @@
 #![cfg(feature = "transaction")]
 
-use {crate::*, gluesql_core::prelude::*};
+use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(basic, async move {
-    use Value::*;
-
     run!(
         "
         CREATE TABLE TxTest (

@@ -1,11 +1,12 @@
-use crate::*;
-
-test_case!(pi, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
+test_case!(pi, async move {
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT PI())",

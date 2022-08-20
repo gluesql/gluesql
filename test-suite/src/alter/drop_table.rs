@@ -2,6 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         executor::{AlterError, FetchError, Payload},
+        prelude::Value::*,
         translate::TranslateError,
     },
 };
@@ -21,8 +22,6 @@ CREATE TABLE DropTable (
     for sql in sqls {
         run!(sql);
     }
-
-    use gluesql_core::prelude::Value::*;
 
     let sqls = [
         (

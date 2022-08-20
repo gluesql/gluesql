@@ -1,12 +1,13 @@
-use crate::*;
-
-test_case!(degrees, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
+test_case!(degrees, async move {
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT DEGREES(90))",

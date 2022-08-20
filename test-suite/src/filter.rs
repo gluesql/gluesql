@@ -1,12 +1,11 @@
-use crate::*;
+use {
+    crate::*,
+    bigdecimal::BigDecimal,
+    gluesql_core::data::*,
+    std::{borrow::Cow, str::FromStr},
+};
 
 test_case!(filter, async move {
-    use {
-        bigdecimal::BigDecimal,
-        gluesql_core::data::*,
-        std::{borrow::Cow, str::FromStr},
-    };
-
     let create_sqls = [
         "
         CREATE TABLE Boss (

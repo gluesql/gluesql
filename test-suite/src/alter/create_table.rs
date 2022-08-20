@@ -1,14 +1,14 @@
 use {
     crate::*,
-    gluesql_core::data::value::Value::{Null, Str, I64},
-};
-
-test_case!(create_table, async move {
-    use gluesql_core::{
+    gluesql_core::{
+        data::value::Value::{Null, Str, I64},
         executor::{AlterError, EvaluateError},
         prelude::Payload,
         translate::TranslateError,
-    };
+    },
+};
+
+test_case!(create_table, async move {
     let test_cases = [
         (
             r#"

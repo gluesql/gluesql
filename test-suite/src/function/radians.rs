@@ -1,12 +1,13 @@
-use crate::*;
-
-test_case!(radians, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
+test_case!(radians, async move {
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT RADIANS(180))",

@@ -1,12 +1,13 @@
-use crate::*;
-
-test_case!(div_mod, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
+test_case!(div_mod, async move {
     let eval_div = |dividend, divisor| (dividend / divisor) as i64;
     let eval_mod = |dividend, divisor| dividend % divisor;
     let test_cases = [

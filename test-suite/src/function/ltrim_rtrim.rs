@@ -1,14 +1,15 @@
-use crate::*;
-
-test_case!(ltrim_rtrim, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{
             Payload,
             Value::{self, *},
         },
-    };
+    },
+};
 
+test_case!(ltrim_rtrim, async move {
     let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT RTRIM(LTRIM("   abc   ")))"#,

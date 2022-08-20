@@ -51,8 +51,6 @@ test_case!(log2, async move {
 });
 
 test_case!(log10, async move {
-    use gluesql_core::prelude::Value::{Null, F64};
-
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT LOG10(100))",
@@ -97,8 +95,6 @@ test_case!(log10, async move {
 });
 
 test_case!(ln, async move {
-    use gluesql_core::prelude::Value::{Null, F64};
-
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT LN(10))",
@@ -143,8 +139,6 @@ test_case!(ln, async move {
 });
 
 test_case!(log, async move {
-    use gluesql_core::prelude::Value::{Null, F64};
-
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT LOG(2, 64))",
@@ -197,8 +191,6 @@ test_case!(log, async move {
 });
 
 test_case!(exp, async move {
-    use gluesql_core::prelude::Value::{Null, F64};
-
     let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT EXP(3.3))",

@@ -1,14 +1,12 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+    },
+};
 
 test_case!(substr, async move {
-    use {
-        crate::*,
-        gluesql_core::{
-            executor::EvaluateError,
-            prelude::{Payload, Value::*},
-        },
-    };
-
     let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT SUBSTR("abc", 0, 2))"#,
