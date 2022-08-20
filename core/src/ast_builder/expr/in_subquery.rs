@@ -28,7 +28,8 @@ mod test {
         let expected = "id IN (SELECT * FROM FOO WHERE id IS NULL LIMIT 10)";
         test_expr(actual, expected);
 
-        let actual = col("id").not_in_subquery(table("FOO").select().filter("id IS NULL").limit(10));
+        let actual =
+            col("id").not_in_subquery(table("FOO").select().filter("id IS NULL").limit(10));
         let expected = "id NOT IN (SELECT * FROM FOO WHERE id IS NULL LIMIT 10)";
         test_expr(actual, expected);
 
