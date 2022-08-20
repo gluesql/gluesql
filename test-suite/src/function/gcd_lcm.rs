@@ -6,7 +6,7 @@ test_case!(gcd_lcm, async move {
         prelude::{Payload, Value::*},
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"
         CREATE TABLE GcdI64 (

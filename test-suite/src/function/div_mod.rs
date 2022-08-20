@@ -9,7 +9,7 @@ test_case!(div_mod, async move {
 
     let eval_div = |dividend, divisor| (dividend / divisor) as i64;
     let eval_mod = |dividend, divisor| dividend % divisor;
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE FloatDiv (
                 dividend FLOAT DEFAULT MOD(30, 11),

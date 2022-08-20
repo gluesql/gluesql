@@ -112,7 +112,7 @@ test_case!(filter, async move {
         count!(*num, sql);
     }
 
-    let error_sqls = vec![
+    let error_sqls = [
         (
             LiteralError::UnaryOperationOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE +'abcd' > 1.0",

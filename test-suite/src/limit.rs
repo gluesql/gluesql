@@ -3,7 +3,7 @@ use {crate::*, gluesql_core::prelude::*};
 test_case!(limit, async move {
     use Value::I64;
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE Test (
                 id INTEGER

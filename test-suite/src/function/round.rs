@@ -7,7 +7,7 @@ test_case!(round, async move {
         translate::TranslateError,
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT ROUND(3.5))",
             Ok(Payload::Create),

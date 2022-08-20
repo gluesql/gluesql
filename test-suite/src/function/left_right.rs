@@ -7,7 +7,7 @@ test_case!(left_right, async move {
         translate::TranslateError,
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT LEFT("abc", 1))"#,
             Ok(Payload::Create),

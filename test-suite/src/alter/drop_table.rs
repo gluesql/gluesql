@@ -24,7 +24,7 @@ CREATE TABLE DropTable (
 
     use gluesql_core::prelude::Value::*;
 
-    let sqls = vec![
+    let sqls = [
         (
             "SELECT id, num, name FROM DropTable;",
             Ok(select!(

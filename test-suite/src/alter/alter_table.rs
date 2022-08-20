@@ -6,7 +6,7 @@ use {
 };
 
 test_case!(alter_table_rename, async move {
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         (
             "INSERT INTO Foo VALUES (1), (2), (3);",
@@ -39,7 +39,7 @@ test_case!(alter_table_add_drop, async move {
     use gluesql_core::{
         ast::*, executor::AlterError, executor::EvaluateError, store::*, translate::TranslateError,
     };
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),
         ("SELECT * FROM Foo;", Ok(select!(id; I64; 1; 2))),

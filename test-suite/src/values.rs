@@ -10,7 +10,7 @@ use {
 };
 
 test_case!(values, async move {
-    let test_cases = vec![
+    let test_cases = [
         (
             "VALUES (1), (2), (3)",
             Ok(select!(

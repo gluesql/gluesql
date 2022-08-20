@@ -11,7 +11,7 @@ use {
 };
 
 test_case!(sin, async move {
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT SIN(3.141592))",
             Ok(Payload::Create),
@@ -72,7 +72,7 @@ test_case!(sin, async move {
 test_case!(cos, async move {
     use gluesql_core::prelude::Value::{self, F64};
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT COS(3.141592))",
             Ok(Payload::Create),
@@ -133,7 +133,7 @@ test_case!(cos, async move {
 test_case!(tan, async move {
     use gluesql_core::prelude::Value::{self, F64};
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT TAN(3.141592))",
             Ok(Payload::Create),
@@ -195,7 +195,7 @@ test_case!(asin, async move {
     use gluesql_core::prelude::Value::Null;
     use gluesql_core::prelude::Value::F64;
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT ASIN(3.1415926))",
             Ok(Payload::Create),
@@ -246,7 +246,7 @@ test_case!(asin, async move {
 });
 
 test_case!(acos, async move {
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT ACOS(3.1415926))",
             Ok(Payload::Create),
@@ -304,7 +304,7 @@ test_case!(atan, async move {
     use gluesql_core::prelude::Value::Null;
     use gluesql_core::prelude::Value::F64;
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT ATAN(3.14))",
             Ok(Payload::Create),

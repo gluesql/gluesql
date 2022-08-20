@@ -70,7 +70,7 @@ test_case!(synthesize, async move {
 
     use Value::I64;
 
-    let test_cases = vec![
+    let test_cases = [
         (
             select!(id | test; I64 | I64; 1 100),
             "SELECT id, test FROM TableA LIMIT 1;",

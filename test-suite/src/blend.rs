@@ -53,7 +53,7 @@ test_case!(blend, async move {
         run!(insert_sql);
     }
 
-    let test_cases = vec![
+    let test_cases = [
         ("SELECT 1 FROM BlendUser", select!(1; I64; 1; 1; 1)),
         (
             "SELECT id, name FROM BlendUser",
@@ -145,7 +145,7 @@ test_case!(blend, async move {
         test!(Ok(expected), sql);
     }
 
-    let error_cases = vec![
+    let error_cases = [
         (
             SelectError::TableAliasNotFound("Whatever".to_owned()).into(),
             "SELECT Whatever.* FROM BlendUser",

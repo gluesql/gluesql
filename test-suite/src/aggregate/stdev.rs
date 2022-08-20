@@ -22,7 +22,7 @@ test_case!(stdev, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT STDEV(age) FROM Item",
             select_with_null!("STDEV(age)"; Null),

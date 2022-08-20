@@ -4,7 +4,7 @@ test_case!(sign, async move {
     use gluesql_core::{
         executor::EvaluateError, executor::Payload, prelude::Value::*, translate::TranslateError,
     };
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
         (
             r#"INSERT INTO SingleItem VALUES (0)"#,

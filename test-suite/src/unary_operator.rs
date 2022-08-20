@@ -6,7 +6,7 @@ test_case!(unary_operator, async move {
         prelude::{Payload, Value::*},
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE Test (v1 INT, v2 FLOAT, v3 TEXT, v4 INT, v5 INT, v6 INT(8))",
             Ok(Payload::Create),

@@ -7,7 +7,7 @@ test_case!(repeat, async move {
         translate::TranslateError,
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT REPEAT("hello", 2))"#,
             Ok(Payload::Create),
