@@ -149,10 +149,7 @@ fn translate_table_args(args: &Option<Vec<FunctionArg>>) -> Result<i64> {
     let size_from = |big_decimal: &BigDecimal| {
         big_decimal
             .to_i64()
-            .and_then(|size| match size == 0 {
-                true => None,
-                false => Some(size),
-            })
+            .and_then(|size| (size != 0).then_some(size))
             .ok_or_else(|| TranslateError::LackOfSeriesSize.into())
     };
 
