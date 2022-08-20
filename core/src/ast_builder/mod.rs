@@ -1,3 +1,5 @@
+mod column_def;
+mod create_table;
 mod delete;
 mod drop_table;
 mod expr;
@@ -15,6 +17,8 @@ mod table;
 mod transaction;
 
 pub use {
+    column_def::ColumnDefNode,
+    create_table::CreateTableNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
     expr_list::ExprList,

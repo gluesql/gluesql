@@ -2,7 +2,7 @@ use {
     crate::result::{Error, Result},
     sqlparser::{
         ast::{
-            Expr as SqlExpr, OrderByExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
+            ColumnOptionDef as SqlColumnOptionDef, Expr as SqlExpr, OrderByExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
             Statement as SqlStatement,
         },
         dialect::GenericDialect,
@@ -10,6 +10,7 @@ use {
         tokenizer::Tokenizer,
     },
 };
+use crate::ast::ColumnOptionDef;
 
 const DIALECT: GenericDialect = GenericDialect {};
 
@@ -85,4 +86,14 @@ pub fn parse_order_by_expr<Sql: AsRef<str>>(sql_order_by_expr: Sql) -> Result<Or
     Parser::new(tokens, &DIALECT)
         .parse_order_by_expr()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_column_option_def<Sql: AsRef<str>>(sql_column_option_def: Sql) -> Result<SqlColumnOptionDef> {
+    let tokens = Tokenizer::new(&DIALECT, sql_column_option.as_ref())
+        .tokenize()
+        .map_err(|e|Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_column_option_def()
+        .map_err(|e|Error::Parser(format!("{:#?}", e)))
 }

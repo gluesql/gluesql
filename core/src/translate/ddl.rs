@@ -69,7 +69,7 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
     })
 }
 
-fn translate_column_option_def(
+pub fn translate_column_option_def(
     sql_column_option_def: &SqlColumnOptionDef,
 ) -> Result<ColumnOptionDef> {
     let SqlColumnOptionDef { name, option } = sql_column_option_def;
