@@ -14,13 +14,9 @@ pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &Expr) -> bool {
     match expr.into() {
         PlanExpr::None => true,
         PlanExpr::Identifier(ident) => context.map(|c| c.contains_column(ident)).unwrap_or(false),
-        PlanExpr::CompoundIdentifier(idents) => {
-            if idents.len() != 2 {
-                return false;
-            }
-
-            let table_alias = &idents[0];
-            let column = &idents[1];
+        PlanExpr::CompoundIdentifier { alias, ident } => {
+            let table_alias = &alias;
+            let column = &ident;
 
             context
                 .map(|c| c.contains_aliased_column(table_alias, column))
@@ -166,9 +162,12 @@ mod tests {
 
     fn test(context: &Rc<Context<'_>>, sql: &str, expected: bool) {
         let parsed = parse_expr(sql).unwrap();
-        let expr = translate_expr(&parsed).unwrap();
+        let expr = translate_expr(&parsed);
         let context = Some(Rc::clone(context));
-        let actual = check_expr(context, &expr);
+        let actual = match expr {
+            Ok(expr) => check_expr(context, &expr),
+            Err(_) => false,
+        };
 
         assert_eq!(actual, expected, "{sql}");
     }

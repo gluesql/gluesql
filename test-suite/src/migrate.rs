@@ -33,7 +33,7 @@ test_case!(migrate, async move {
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
         ),
         (
-            EvaluateError::UnsupportedCompoundIdentifier(expr!("Here.User.id")).into(),
+            TranslateError::UnsupportedExpr("Here.User.id".to_owned()).into(),
             "SELECT * FROM Test WHERE Here.User.id = 1",
         ),
         (
