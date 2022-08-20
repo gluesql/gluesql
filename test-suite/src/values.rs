@@ -2,10 +2,9 @@ use {
     crate::*,
     bigdecimal::BigDecimal,
     gluesql_core::{
-        data::RowError,
-        data::{Literal, ValueError},
-        prelude::DataType,
-        prelude::Value::*,
+        ast::DataType::{Boolean, Int, Text},
+        data::{Literal, RowError, ValueError},
+        prelude::{DataType, Payload, Value::*},
     },
     std::borrow::Cow,
 };
@@ -86,6 +85,27 @@ test_case!(values, async move {
                 literal: format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(4)))),
             }
             .into()),
+        ),
+        (
+            "CREATE TABLE TableFromValues AS VALUES (1, 'a', True, Null, Null), (2, 'b', False, 3, Null)",
+            Ok(Payload::Create),
+        ),
+        (
+            "SELECT * FROM TableFromValues",
+            Ok(select_with_null!(
+                column1 | column2         | column3    | column4 | column5;
+                I64(1)    Str("a".into())   Bool(true)   Null      Null   ;
+                I64(2)    Str("b".into())   Bool(false)  I64(3)    Null
+            )),
+        ),
+        (
+            "SHOW COLUMNS FROM TableFromValues",
+            Ok(Payload::ShowColumns(vec![
+                ("column1".into(), Int), 
+                ("column2".into(), Text), 
+                ("column3".into(), Boolean), 
+                ("column4".into(), Int), 
+                ("column5".into(), Text)])),
         ),
     ];
     for (sql, expected) in test_cases {

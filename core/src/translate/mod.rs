@@ -8,6 +8,7 @@ mod operator;
 mod query;
 
 pub use self::{
+    data_type::translate_data_type,
     ddl::translate_column_option_def,
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},

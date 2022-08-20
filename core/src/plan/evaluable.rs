@@ -14,13 +14,9 @@ pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &Expr) -> bool {
     match expr.into() {
         PlanExpr::None => true,
         PlanExpr::Identifier(ident) => context.map(|c| c.contains_column(ident)).unwrap_or(false),
-        PlanExpr::CompoundIdentifier(idents) => {
-            if idents.len() != 2 {
-                return false;
-            }
-
-            let table_alias = &idents[0];
-            let column = &idents[1];
+        PlanExpr::CompoundIdentifier { alias, ident } => {
+            let table_alias = &alias;
+            let column = &ident;
 
             context
                 .map(|c| c.contains_aliased_column(table_alias, column))
@@ -166,9 +162,12 @@ mod tests {
 
     fn test(context: &Rc<Context<'_>>, sql: &str, expected: bool) {
         let parsed = parse_expr(sql).unwrap();
-        let expr = translate_expr(&parsed).unwrap();
+        let expr = translate_expr(&parsed);
         let context = Some(Rc::clone(context));
-        let actual = check_expr(context, &expr);
+        let actual = match expr {
+            Ok(expr) => check_expr(context, &expr),
+            Err(_) => false,
+        };
 
         assert_eq!(actual, expected, "{sql}");
     }
@@ -176,17 +175,19 @@ mod tests {
     #[test]
     fn evaluable() {
         let context = {
-            let next_child = Context::new("Empty".to_owned(), Vec::new(), None, None);
+            let next_child = Context::new("Empty".to_owned(), Vec::new(), None, None, None);
             let next = Context::new(
                 "Foo".to_owned(),
                 vec!["id", "name"],
+                None,
                 Some(Rc::new(next_child)),
                 None,
             );
-            let next2_child = Context::new("Src".to_owned(), Vec::new(), None, None);
+            let next2_child = Context::new("Src".to_owned(), Vec::new(), None, None, None);
             let next2 = Context::new(
                 "Bar".to_owned(),
                 vec!["id", "rate"],
+                None,
                 None,
                 Some(Rc::new(next2_child)),
             );

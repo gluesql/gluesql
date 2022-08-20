@@ -1,16 +1,16 @@
+use crate::ast::ColumnOptionDef;
 use {
     crate::result::{Error, Result},
     sqlparser::{
         ast::{
-            ColumnOptionDef as SqlColumnOptionDef, Expr as SqlExpr, OrderByExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
-            Statement as SqlStatement,
+            ColumnOptionDef as SqlColumnOptionDef, DataType as SqlDataType, Expr as SqlExpr,
+            OrderByExpr, Query as SqlQuery, SelectItem as SqlSelectItem, Statement as SqlStatement,
         },
         dialect::GenericDialect,
         parser::Parser,
         tokenizer::Tokenizer,
     },
 };
-use crate::ast::ColumnOptionDef;
 
 const DIALECT: GenericDialect = GenericDialect {};
 
@@ -88,12 +88,24 @@ pub fn parse_order_by_expr<Sql: AsRef<str>>(sql_order_by_expr: Sql) -> Result<Or
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
 
-pub fn parse_column_option_def<Sql: AsRef<str>>(sql_column_option_def: Sql) -> Result<SqlColumnOptionDef> {
+pub fn parse_column_option_def<Sql: AsRef<str>>(
+    sql_column_option_def: Sql,
+) -> Result<SqlColumnOptionDef> {
     let tokens = Tokenizer::new(&DIALECT, sql_column_option.as_ref())
         .tokenize()
-        .map_err(|e|Error::Parser(format!("{:#?}", e)))?;
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 
     Parser::new(tokens, &DIALECT)
         .parse_column_option_def()
-        .map_err(|e|Error::Parser(format!("{:#?}", e)))
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_data_type<Sql: AsRef<str>>(sql_data_type: Sql) -> Result<SqlDataType> {
+    let tokens = Tokenizer::new(&DIALECT, sql_data_type.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_data_type()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }

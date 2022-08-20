@@ -92,8 +92,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
-          cargo test --no-default-features --verbose
-          cargo test --all-features --all-targets --verbose
+          cargo test --all-features --lib --bins --tests --examples --verbose -- --skip sled_transaction_timeout
+          cargo test sled_transaction_timeout --verbose -- --test-threads=1
+          cargo test --benches
   
   run_examples:
     name: Run examples  

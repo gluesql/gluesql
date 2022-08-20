@@ -65,13 +65,16 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
         options: options
             .iter()
             .map(translate_column_option_def)
-            .collect::<Result<_>>()?,
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect(),
     })
 }
 
 pub fn translate_column_option_def(
     sql_column_option_def: &SqlColumnOptionDef,
-) -> Result<ColumnOptionDef> {
+) -> Result<Vec<ColumnOptionDef>> {
     let SqlColumnOptionDef { name, option } = sql_column_option_def;
 
     let name = name.as_ref().map(|name| name.value.to_owned());
@@ -79,11 +82,23 @@ pub fn translate_column_option_def(
         SqlColumnOption::Null => Ok(ColumnOption::Null),
         SqlColumnOption::NotNull => Ok(ColumnOption::NotNull),
         SqlColumnOption::Default(expr) => translate_expr(expr).map(ColumnOption::Default),
-        SqlColumnOption::Unique { is_primary: false } => {
+        SqlColumnOption::Unique { is_primary } if !is_primary => {
             Ok(ColumnOption::Unique { is_primary: false })
+        }
+        SqlColumnOption::Unique { .. } => {
+            return Ok(vec![
+                ColumnOptionDef {
+                    name: name.clone(),
+                    option: ColumnOption::Unique { is_primary: true },
+                },
+                ColumnOptionDef {
+                    name,
+                    option: ColumnOption::NotNull,
+                },
+            ]);
         }
         _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
     }?;
 
-    Ok(ColumnOptionDef { name, option })
+    Ok(vec![ColumnOptionDef { name, option }])
 }
