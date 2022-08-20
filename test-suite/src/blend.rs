@@ -22,13 +22,13 @@ test_case!(blend, async move {
     ",
     ];
 
-    for sql in create_sqls.iter() {
+    for sql in create_sqls {
         run!(sql);
     }
 
     let delete_sqls = ["DELETE FROM BlendUser", "DELETE FROM BlendItem"];
 
-    for sql in delete_sqls.iter() {
+    for sql in delete_sqls {
         run!(sql);
     }
 
@@ -49,7 +49,7 @@ test_case!(blend, async move {
         ",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 

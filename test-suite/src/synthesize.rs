@@ -23,7 +23,7 @@ test_case!(synthesize, async move {
         "INSERT INTO TableA VALUES (4, 500, 3);",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 
@@ -60,11 +60,11 @@ test_case!(synthesize, async move {
         (3, "DELETE FROM TableA;"),
     ];
 
-    for (num, sql) in test_cases.iter() {
-        count!(*num, sql);
+    for (num, sql) in test_cases {
+        count!(num, sql);
     }
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 

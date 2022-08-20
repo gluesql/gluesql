@@ -81,7 +81,7 @@ test_case!(sign, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });
