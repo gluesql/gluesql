@@ -20,9 +20,14 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             Some(_) => Ok(Expr::Literal(AstLiteral::QuotedString(ident.value.clone()))),
             None => Ok(Expr::Identifier(ident.value.clone())),
         },
-        SqlExpr::CompoundIdentifier(idents) => {
-            Ok(Expr::CompoundIdentifier(translate_idents(idents)))
-        }
+        SqlExpr::CompoundIdentifier(idents) => (idents.len() == 2)
+            .then(|| Expr::CompoundIdentifier {
+                alias: idents[0].value.clone(),
+                ident: idents[1].value.clone(),
+            })
+            .ok_or_else(|| {
+                TranslateError::UnsupportedExpr(translate_idents(idents).join(".")).into()
+            }),
         SqlExpr::IsNull(expr) => translate_expr(expr).map(Box::new).map(Expr::IsNull),
         SqlExpr::IsNotNull(expr) => translate_expr(expr).map(Box::new).map(Expr::IsNotNull),
         SqlExpr::InList {

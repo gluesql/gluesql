@@ -1,10 +1,7 @@
-use {crate::ast::Expr, serde::Serialize, std::fmt::Debug, thiserror::Error};
+use {serde::Serialize, std::fmt::Debug, thiserror::Error};
 
 #[derive(Error, Serialize, Debug, PartialEq)]
 pub enum AggregateError {
-    #[error("unsupported compound identifier: {0:#?}")]
-    UnsupportedCompoundIdentifier(Expr),
-
     #[error("only identifier is allowed in aggregation")]
     OnlyIdentifierAllowed,
 
