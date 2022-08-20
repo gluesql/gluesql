@@ -1,7 +1,7 @@
 use {
     super::{
-        function::translate_arg_exprs, translate_expr, translate_idents, translate_object_name,
-        translate_order_by_expr, TranslateError,
+        function::translate_function_arg_exprs, translate_expr, translate_idents,
+        translate_object_name, translate_order_by_expr, TranslateError,
     },
     crate::{
         ast::{
@@ -141,27 +141,7 @@ fn translate_table_with_joins(sql_table_with_joins: &SqlTableWithJoins) -> Resul
     })
 }
 
-fn translate_table_args(args: &Option<Vec<SqlFunctionArg>>) -> Result<Expr> {
-    let args = args
-        .as_ref()
-        .ok_or_else(|| crate::result::Error::from(TranslateError::LackOfArgs))?;
-    let function_arg_exprs = args
-        .iter()
-        .map(|arg| match arg {
-            SqlFunctionArg::Named { .. } => {
-                Err(TranslateError::NamedFunctionArgNotSupported.into())
-            }
-            SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    match translate_arg_exprs(function_arg_exprs)?.get(0) {
-        Some(expr) => Ok(translate_expr(expr)?),
-        None => Err(TranslateError::LackOfArgs.into()),
-    }
-}
-
-fn translate_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
+fn translate_table_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
     alias
         .as_ref()
         .map(|SqlTableAlias { name, columns }| TableAlias {
@@ -171,6 +151,26 @@ fn translate_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
 }
 
 fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFactor> {
+    let translate_table_args = |args: &Option<Vec<SqlFunctionArg>>| -> Result<Expr> {
+        let args = args
+            .as_ref()
+            .ok_or_else(|| crate::result::Error::from(TranslateError::LackOfArgs))?;
+        let function_arg_exprs = args
+            .iter()
+            .map(|arg| match arg {
+                SqlFunctionArg::Named { .. } => {
+                    Err(TranslateError::NamedFunctionArgNotSupported.into())
+                }
+                SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        match translate_function_arg_exprs(function_arg_exprs)?.get(0) {
+            Some(expr) => Ok(translate_expr(expr)?),
+            None => Err(TranslateError::LackOfArgs.into()),
+        }
+    };
+
     match sql_table_factor {
         SqlTableFactor::Table {
             name, alias, args, ..
@@ -179,14 +179,14 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         {
             Ok(TableFactor::Series {
                 name: translate_object_name(name),
-                alias: translate_alias(alias),
+                alias: translate_table_alias(alias),
                 size: translate_table_args(args)?,
             })
         }
         SqlTableFactor::Table { name, alias, .. } => {
             Ok(TableFactor::Table {
                 name: translate_object_name(name),
-                alias: translate_alias(alias),
+                alias: translate_table_alias(alias),
                 index: None, // query execution plan
             })
         }
