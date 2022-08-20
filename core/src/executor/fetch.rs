@@ -194,19 +194,20 @@ pub async fn fetch_relation_columns(
                 Ok(labels)
             }
             SetExpr::Values(Values(values_list)) => {
-                let width = values_list[0].len();
+                let total_len = values_list[0].len();
                 let alias_len = columns.len();
-                let labels = (alias_len + 1..=width)
+                if alias_len > total_len {
+                    return Err(FetchError::TooManyColumnAliases(
+                        name.into(),
+                        total_len,
+                        alias_len,
+                    )
+                    .into());
+                }
+                let labels = (alias_len + 1..=total_len)
                     .into_iter()
                     .map(|i| format!("column{}", i));
-                let labels = match alias_len > width {
-                    true => {
-                        return Err(
-                            FetchError::TooManyColumnAliases(name.into(), width, alias_len).into(),
-                        )
-                    }
-                    false => columns.iter().cloned().chain(labels).collect::<Vec<_>>(),
-                };
+                let labels = columns.iter().cloned().chain(labels).collect::<Vec<_>>();
 
                 Ok(labels)
             }
