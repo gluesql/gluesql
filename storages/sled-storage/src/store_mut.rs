@@ -143,7 +143,7 @@ impl StoreMut for SledStorage {
             .await
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
         let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -183,11 +183,11 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.insert_data(table_name, rows))
+        self.check_and_retry(tx_result, |storage| storage.append_data(table_name, rows))
             .await
     }
 
-    async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -245,7 +245,7 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.update_data(table_name, rows))
+        self.check_and_retry(tx_result, |storage| storage.insert_data(table_name, rows))
             .await
     }
 

@@ -91,14 +91,14 @@ impl StoreMut for MockStorage {
         Err((self, Error::StorageMsg(msg)))
     }
 
-    async fn insert_data(self, _table_name: &str, _rows: Vec<Row>) -> MutResult<Self, ()> {
-        let msg = "[MockStorage] insert_data is not supported".to_owned();
+    async fn append_data(self, _table_name: &str, _rows: Vec<Row>) -> MutResult<Self, ()> {
+        let msg = "[MockStorage] append_data is not supported".to_owned();
 
         Err((self, Error::StorageMsg(msg)))
     }
 
-    async fn update_data(self, _table_name: &str, _rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
-        let msg = "[MockStorage] update_data is not supported".to_owned();
+    async fn insert_data(self, _table_name: &str, _rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+        let msg = "[MockStorage] insert_data is not supported".to_owned();
 
         Err((self, Error::StorageMsg(msg)))
     }
@@ -172,8 +172,8 @@ mod tests {
         assert!(block_on(storage.fetch_data("Foo", &Key::None)).is_err());
         assert!(block_on(storage.fetch_schema("__Err__")).is_err());
         let storage = test(storage.delete_schema("Foo"));
+        let storage = test(storage.append_data("Foo", Vec::new()));
         let storage = test(storage.insert_data("Foo", Vec::new()));
-        let storage = test(storage.update_data("Foo", Vec::new()));
         let storage = test(storage.delete_data("Foo", Vec::new()));
 
         #[cfg(feature = "alter-table")]
