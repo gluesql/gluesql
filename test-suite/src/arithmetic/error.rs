@@ -30,7 +30,7 @@ test_case!(error, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),

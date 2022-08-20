@@ -24,7 +24,7 @@ test_case!(blend, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT 1 * 2 + 1 - 3 / 1 FROM Arith LIMIT 1;",
             select!("1 * 2 + 1 - 3 / 1"; I64; 0),
