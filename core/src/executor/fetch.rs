@@ -1,7 +1,5 @@
-use super::evaluate_stateless;
-
 use {
-    super::{context::FilterContext, filter::check_expr},
+    super::{context::FilterContext, evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
             ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableFactor, TableWithJoins,
