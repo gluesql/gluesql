@@ -137,7 +137,9 @@ fn translate_function_trim<T: FnOnce(Expr, Option<Expr>) -> Function>(
     Ok(Expr::Function(Box::new(result)))
 }
 
-pub fn translate_arg_exprs(function_arg_exprs: Vec<&SqlFunctionArgExpr>) -> Result<Vec<&SqlExpr>> {
+pub fn translate_function_arg_exprs(
+    function_arg_exprs: Vec<&SqlFunctionArgExpr>,
+) -> Result<Vec<&SqlExpr>> {
     function_arg_exprs
         .into_iter()
         .map(|function_arg| match function_arg {
@@ -184,7 +186,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         return Ok(Expr::Aggregate(Box::new(Aggregate::Count(count_arg))));
     }
 
-    let args = translate_arg_exprs(function_arg_exprs)?;
+    let args = translate_function_arg_exprs(function_arg_exprs)?;
 
     match name.as_str() {
         "SUM" => translate_aggregate_one_arg(Aggregate::Sum, args, name),
