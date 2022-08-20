@@ -1,10 +1,7 @@
-use {
-    super::column_def,
-    crate::{
-        ast::{DataType, ObjectName, Query, Statement},
-        ast_builder::{ColumnDefNode, QueryNode},
-        result::Result,
-    },
+use crate::{
+    ast::{ObjectName, Statement},
+    ast_builder::{ColumnDefNode, DataTypeNode, QueryNode},
+    result::Result,
 };
 
 #[derive(Clone)]
@@ -12,7 +9,7 @@ pub struct CreateTableNode {
     table_name: String,
     if_not_exists: bool,
     columns: Vec<ColumnDefNode>,
-    source: Option<Box<QueryNode>>,
+    source: Option<Box<QueryNode>>, // TODO
 }
 
 impl CreateTableNode {
@@ -27,25 +24,31 @@ impl CreateTableNode {
 
     pub fn build(self) -> Result<Statement> {
         let table_name = ObjectName(vec![self.table_name]);
-        let columns = self.columns.into_iter().map(TryInto::try_into()).collect();
+        let columns = self.columns.into_iter().map(TryInto::try_into)?.collect();
         Ok(Statement::CreateTable {
             name: table_name,
             if_not_exists: self.if_not_exists,
             columns,
-            source,
+            source: None,
         })
     }
 
-    pub fn set_col<T: Into<DataTypeNode>>(self, col_name: &str, datatype: T) -> ColumnDefNode {
-        ColumnDefNode::new(self, col_name.to_string(), datatype.into())
+    // coldefnode -> option 설정 fsm 하려고 이렇게 한 건데 그러면 set_col().set_col() 가 안 됨..
+    pub fn set_col<T: Into<DataTypeNode>>(mut self, col_name: &str, data_type: T) -> ColumnDefNode {
+        ColumnDefNode::new(self, col_name.to_string(), data_type.into())
+    }
+    // column data 를 데리고 다니다가 마지막에 추가 .. ?
+    pub fn push_col_node(mut self, col: ColumnDefNode) -> Self {
+        self.columns.push(col);
+        self
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::DataType,
-        ast_builder::{col, table, test},
+        ast::{ColumnOption, DataType},
+        ast_builder::{table, test},
     };
 
     #[test]
@@ -58,6 +61,18 @@ mod tests {
             .set_col("name", "text")
             .build();
         let expected = "CREATE TABLE Foo (id INTEGER NULL, num INTEGER, name TEXT)";
+        test(actual, expected);
+
+        let actual = table("Foo")
+            .create_table_if_not_exists()
+            .set_col("id", "UUID")
+            .option(vec![
+                ColumnOption::Null,
+                ColumnOption::Unique { is_primary: false },
+            ])
+            .build();
+        let expected = "CREATE TABLE IF NOT EXISTS Foo (id UUID UNIQUE NULL)";
+        test(actual, expected);
 
         let actual = table("Foo")
             .create_table_if_not_exists()
@@ -65,7 +80,14 @@ mod tests {
             .option("UNIQUE")
             .build();
         let expected = "CREATE TABLE IF NOT EXISTS Foo (id UUID UNIQUE)";
-
         test(actual, expected);
+        //
+        // let actual = table("Foo")
+        //     .create_table_if_not_exists()
+        //     .set_col("id", "UUID")
+        //     .build();
+        // let expected = "CREATE TABLE IF NOT EXISTS Foo (id UUID UNIQUE)";
+        //
+        // test(actual, expected);
     }
 }

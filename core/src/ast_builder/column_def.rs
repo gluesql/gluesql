@@ -1,9 +1,9 @@
-use crate::parse_sql::parse_column_option_def;
 use {
     super::create_table::CreateTableNode,
     crate::{
-        ast::{ColumnOption, ColumnOptionDef, DataType},
-        parse_sql::parse_column_option,
+        ast::{ColumnDef, ColumnOption, ColumnOptionDef},
+        ast_builder::DataTypeNode,
+        parse_sql::parse_column_option_def,
         result::{Error, Result},
         translate::translate_column_option_def,
     },
@@ -11,57 +11,105 @@ use {
 
 #[derive(Clone)]
 pub struct ColumnDefNode {
-    prev_node: CreateTableNode,
+    create_table_node: CreateTableNode,
     name: String,
-    data_type: DataType,
-    options: Vec<ColumnOptionDef>,
+    data_type: DataTypeNode,
+    options: ColumnOptionDefList,
 }
 
 impl ColumnDefNode {
-    pub fn new(prev_node: CreateTableNode, name: String, data_type: DataType) -> Self {
+    pub fn new(create_table_node: CreateTableNode, name: String, data_type: DataTypeNode) -> Self {
         Self {
-            prev_node,
+            create_table_node,
             name,
             data_type,
-            options: Vec::new(),
+            options: ColumnOptionDefList::ColumnOptionDefs(vec![]),
         }
     }
 
-    pub fn option<T: Into<ColumnOptionDefNode>>(self, options: T) -> CreateTableNode {
-        self.prev_node // TODO
+    pub fn set_col<T: Into<DataTypeNode>>(self, col_name: &str, data_type: T) -> CreateTableNode {
+        let new_column = ColumnDefNode::new(
+            self.create_table_node,
+            col_name.to_string(),
+            data_type.into(),
+        );
+        self.create_table_node.push_col_node(new_column)
+    }
+
+    pub fn option<T: Into<ColumnOptionDefList>>(mut self, options: T) -> CreateTableNode {
+        let col_option_defs = options.into(); // column def 노드 만들어서 push 해주고 넣어주기..
+        self.options = col_option_defs;
+        self.create_table_node.push_col_node(self)
+    }
+}
+
+impl TryFrom<ColumnDefNode> for ColumnDef {
+    type Error = Error;
+
+    fn try_from(column_def_node: ColumnDefNode) -> Result<ColumnDef> {
+        let name = column_def_node.name;
+        let data_type = column_def_node.data_type.try_into()?;
+        let options = column_def_node.options;
+        Ok(ColumnDef {
+            name,
+            data_type,
+            options,
+        })
     }
 }
 
 #[derive(Clone)]
-pub enum ColumnOptionDefNode {
+pub enum ColumnOptionDefList {
     Text(String),
-    ColumnOptionDef(ColumnOptionDef), //Options(Vec<ColumnOptionDef>),
+    ColumnOptionDefs(Vec<ColumnOptionDef>), // Vec<ColumnOption>??
 }
 
-impl From<&str> for ColumnOptionDefNode {
+impl From<&str> for ColumnOptionDefList {
     fn from(option: &str) -> Self {
-        ColumnOptionDefNode::Text(option.to_owned())
+        ColumnOptionDefList::Text(option.to_owned())
     }
 }
 
-impl From<ColumnOptionDef> for ColumnOptionDefNode {
+impl From<ColumnOption> for ColumnOptionDefList {
+    fn from(option: ColumnOption) -> Self {
+        ColumnOptionDefList::ColumnOptionDefs(vec![ColumnOptionDef { name: None, option }])
+    }
+}
+
+impl From<Vec<ColumnOption>> for ColumnOptionDefList {
+    fn from(options: Vec<ColumnOption>) -> Self {
+        ColumnOptionDefList::ColumnOptionDefs(
+            options
+                .into_iter()
+                .map(|option| ColumnOptionDef { name: None, option })
+                .collect(),
+        )
+    }
+}
+
+impl From<ColumnOptionDef> for ColumnOptionDefList {
     fn from(option: ColumnOptionDef) -> Self {
-        ColumnOptionDefNode::ColumnOptionDef(option)
+        ColumnOptionDefList::ColumnOptionDefs(vec![option])
     }
 }
 
-// Vec<ColumnOptionDef> ??
-impl TryFrom<ColumnOptionDefNode> for ColumnOptionDef {
+impl From<Vec<ColumnOptionDef>> for ColumnOptionDefList {
+    fn from(options: Vec<ColumnOptionDef>) -> Self {
+        ColumnOptionDefList::ColumnOptionDefs(options)
+    }
+}
+
+impl TryFrom<ColumnOptionDefList> for Vec<ColumnOptionDef> {
     type Error = Error;
 
-    fn try_from(column_option_def_node: ColumnOptionDefNode) -> Result<Self> {
-        match column_option_def_node {
-            ColumnOptionDefNode::Text(column_option) => parse_column_option_def(column_option)
+    fn try_from(column_option_def_list: ColumnOptionDefList) -> Result<Self> {
+        match column_option_def_list {
+            ColumnOptionDefList::Text(column_option) => parse_column_option_def(column_option)
                 .and_then(|option| translate_column_option_def(&option)),
 
-            ColumnOptionDefNode::ColumnOptionDef(node) => node.into(),
+            ColumnOptionDefList::ColumnOptionDefs(options) => Ok(options),
         }
     }
 }
 
-// TODO test ColumnOptionDefNode
+// TODO test 추가, 파일 쪼개기

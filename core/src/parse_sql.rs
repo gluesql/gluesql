@@ -1,4 +1,3 @@
-use crate::ast::ColumnOptionDef;
 use {
     crate::result::{Error, Result},
     sqlparser::{
@@ -91,7 +90,7 @@ pub fn parse_order_by_expr<Sql: AsRef<str>>(sql_order_by_expr: Sql) -> Result<Or
 pub fn parse_column_option_def<Sql: AsRef<str>>(
     sql_column_option_def: Sql,
 ) -> Result<SqlColumnOptionDef> {
-    let tokens = Tokenizer::new(&DIALECT, sql_column_option.as_ref())
+    let tokens = Tokenizer::new(&DIALECT, sql_column_option_def.as_ref())
         .tokenize()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 
