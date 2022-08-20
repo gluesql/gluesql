@@ -1,7 +1,7 @@
 use {
     super::{
-        translate_expr, translate_idents, translate_object_name, translate_order_by_expr,
-        TranslateError,
+        function::translate_arg_exprs, translate_expr, translate_idents, translate_object_name,
+        translate_order_by_expr, TranslateError,
     },
     crate::{
         ast::{
@@ -12,7 +12,7 @@ use {
         result::Result,
     },
     sqlparser::ast::{
-        Expr as SqlExpr, FunctionArg, FunctionArgExpr, Join as SqlJoin,
+        Expr as SqlExpr, FunctionArg as SqlFunctionArg, Join as SqlJoin,
         JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator, OrderByExpr,
         Query as SqlQuery, Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
         TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
@@ -141,23 +141,23 @@ fn translate_table_with_joins(sql_table_with_joins: &SqlTableWithJoins) -> Resul
     })
 }
 
-fn translate_table_args(args: &Option<Vec<FunctionArg>>) -> Result<Expr> {
-    let function_args = args
+fn translate_table_args(args: &Option<Vec<SqlFunctionArg>>) -> Result<Expr> {
+    let args = args
         .as_ref()
         .ok_or_else(|| crate::result::Error::from(TranslateError::LackOfArgs))?;
+    let function_arg_exprs = args
+        .iter()
+        .map(|arg| match arg {
+            SqlFunctionArg::Named { .. } => {
+                Err(TranslateError::NamedFunctionArgNotSupported.into())
+            }
+            SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
+        })
+        .collect::<Result<Vec<_>>>()?;
 
-    match function_args.get(0) {
-        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))) => Ok(translate_expr(expr)?),
+    match translate_arg_exprs(function_arg_exprs)?.get(0) {
+        Some(expr) => Ok(translate_expr(expr)?),
         None => Err(TranslateError::LackOfArgs.into()),
-        _ => Err(TranslateError::UnsupportedArgs(format!(
-            "{}",
-            function_args
-                .iter()
-                .map(|v| v.to_string())
-                .collect::<Vec<_>>()
-                .join(", ")
-        ))
-        .into()),
     }
 }
 

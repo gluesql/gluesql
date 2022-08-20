@@ -113,7 +113,4 @@ pub enum TranslateError {
 
     #[error("Series should have size")]
     LackOfArgs,
-
-    #[error("unsupported table args: {0}")]
-    UnsupportedArgs(String),
 }

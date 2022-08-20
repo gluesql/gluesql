@@ -137,7 +137,7 @@ fn translate_function_trim<T: FnOnce(Expr, Option<Expr>) -> Function>(
     Ok(Expr::Function(Box::new(result)))
 }
 
-fn translate_arg_exprs(function_arg_exprs: Vec<&SqlFunctionArgExpr>) -> Result<Vec<&SqlExpr>> {
+pub fn translate_arg_exprs(function_arg_exprs: Vec<&SqlFunctionArgExpr>) -> Result<Vec<&SqlExpr>> {
     function_arg_exprs
         .into_iter()
         .map(|function_arg| match function_arg {
