@@ -93,57 +93,55 @@ impl TryFrom<QueryNode> for Query {
 #[cfg(test)]
 mod test {
 
-    use {
-        super::QueryNode,
-        crate::ast_builder::{table, test_query},
-    };
+    use crate::ast_builder::{table, test_query};
 
     #[test]
     fn query() {
-        let actual = QueryNode::Select(table("FOO").select());
+        let actual = table("FOO").select().into();
         let expected = "SELECT * FROM FOO";
         test_query(actual, expected);
 
-        let actual = QueryNode::GroupBy(table("FOO").select().group_by("id"));
+        let actual = table("FOO").select().group_by("id").into();
         let expected = "SELECT * FROM FOO GROUP BY id";
         test_query(actual, expected);
 
-        let actual = QueryNode::Having(
-            table("FOO")
-                .select()
-                .group_by("id")
-                .having("COUNT(id) > 10"),
-        );
+        let actual = table("FOO")
+            .select()
+            .group_by("id")
+            .having("COUNT(id) > 10")
+            .into();
         let expected = "SELECT * FROM FOO GROUP BY id HAVING COUNT(id) > 10";
         test_query(actual, expected);
 
-        let actual = QueryNode::Limit(
-            table("FOO")
-                .select()
-                .group_by("city")
-                .having("COUNT(name) < 100")
-                .limit(3),
-        );
+        let actual = table("FOO")
+            .select()
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .limit(3)
+            .into();
         let expected = "SELECT * FROM FOO GROUP BY city HAVING COUNT(name) < 100 LIMIT 3";
         test_query(actual, expected);
 
-        let actual =
-            QueryNode::LimitOffset(table("FOO").select().filter("id > 2").limit(100).offset(3));
+        let actual = table("FOO")
+            .select()
+            .filter("id > 2")
+            .limit(100)
+            .offset(3)
+            .into();
         let expected = "SELECT * FROM FOO WHERE id > 2 OFFSET 3 LIMIT 100";
         test_query(actual, expected);
 
-        let actual = QueryNode::Offset(table("FOO").select().offset(10));
+        let actual = table("FOO").select().offset(10).into();
         let expected = "SELECT * FROM FOO OFFSET 10";
         test_query(actual, expected);
 
-        let actual = QueryNode::OffsetLimit(
-            table("FOO")
-                .select()
-                .group_by("city")
-                .having("COUNT(name) < 100")
-                .offset(1)
-                .limit(3),
-        );
+        let actual = table("FOO")
+            .select()
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .offset(1)
+            .limit(3)
+            .into();
         let expected = "SELECT * FROM FOO GROUP BY city HAVING COUNT(name) < 100 OFFSET 1 LIMIT 3";
         test_query(actual, expected);
     }
