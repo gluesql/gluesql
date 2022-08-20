@@ -146,47 +146,49 @@ fn translate_table_with_joins(sql_table_with_joins: &SqlTableWithJoins) -> Resul
 }
 
 fn translate_table_args(args: &Option<Vec<FunctionArg>>) -> Result<i64> {
-    let size_from = |big_decimal: &BigDecimal| {
+    let size_from = |big_decimal: &BigDecimal| -> Result<_> {
         big_decimal
             .to_i64()
             .and_then(|size| (size != 0).then_some(size))
             .ok_or_else(|| TranslateError::LackOfSeriesSize.into())
     };
 
-    match args {
-        Some(function_args) => match &function_args.get(0) {
-            Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::Value(
-                SqlValue::Number(big_decimal, _),
-            )))) => size_from(big_decimal),
-            Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::UnaryOp { op, expr }))) => {
-                match (op, expr.as_ref()) {
-                    (UnaryOperator::Minus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
-                        let size = size_from(big_decimal)?;
+    let function_args = args
+        .as_ref()
+        .ok_or_else(|| crate::result::Error::from(TranslateError::LackOfArgs))?;
 
-                        Err(TranslateError::WrongSeriesSize(-size).into())
-                    }
-                    (UnaryOperator::Plus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
-                        size_from(big_decimal)
-                    }
-                    _ => Err(TranslateError::UnsupportedArgsUnaryOp {
-                        op: format!("{op}"),
-                        expr: format!("{expr}"),
-                    }
-                    .into()),
+    match function_args.get(0) {
+        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::Value(SqlValue::Number(
+            big_decimal,
+            _,
+        ))))) => size_from(big_decimal),
+        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::UnaryOp { op, expr }))) => {
+            match (op, expr.as_ref()) {
+                (UnaryOperator::Minus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
+                    let size = size_from(big_decimal)?;
+
+                    Err(TranslateError::WrongSeriesSize(-size).into())
                 }
+                (UnaryOperator::Plus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
+                    size_from(big_decimal)
+                }
+                _ => Err(TranslateError::UnsupportedArgsUnaryOp {
+                    op: format!("{op}"),
+                    expr: format!("{expr}"),
+                }
+                .into()),
             }
-            None => Err(TranslateError::LackOfSeriesSize.into()),
-            _ => Err(TranslateError::UnsupportedArgs(format!(
-                "{}",
-                function_args
-                    .iter()
-                    .map(|v| v.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ))
-            .into()),
-        },
-        None => Err(TranslateError::LackOfArgs.into()),
+        }
+        None => Err(TranslateError::LackOfSeriesSize.into()),
+        _ => Err(TranslateError::UnsupportedArgs(format!(
+            "{}",
+            function_args
+                .iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))
+        .into()),
     }
 }
 
