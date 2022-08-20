@@ -161,6 +161,15 @@ fn translate_table_args(args: &Option<Vec<SqlFunctionArg>>) -> Result<Expr> {
     }
 }
 
+fn translate_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
+    alias
+        .as_ref()
+        .map(|SqlTableAlias { name, columns }| TableAlias {
+            name: name.value.to_owned(),
+            columns: translate_idents(columns),
+        })
+}
+
 fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFactor> {
     match sql_table_factor {
         SqlTableFactor::Table {
@@ -170,24 +179,14 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         {
             Ok(TableFactor::Series {
                 name: translate_object_name(name),
-                alias: alias
-                    .as_ref()
-                    .map(|SqlTableAlias { name, columns }| TableAlias {
-                        name: name.value.to_owned(),
-                        columns: translate_idents(columns),
-                    }),
+                alias: translate_alias(alias),
                 size: translate_table_args(args)?,
             })
         }
         SqlTableFactor::Table { name, alias, .. } => {
             Ok(TableFactor::Table {
                 name: translate_object_name(name),
-                alias: alias
-                    .as_ref()
-                    .map(|SqlTableAlias { name, columns }| TableAlias {
-                        name: name.value.to_owned(),
-                        columns: translate_idents(columns),
-                    }),
+                alias: translate_alias(alias),
                 index: None, // query execution plan
             })
         }
