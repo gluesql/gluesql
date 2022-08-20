@@ -42,8 +42,8 @@ pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
         abs, acos, asin, atan, ceil, concat, cos, degrees, exp, floor, gcd, generate_uuid, ifnull,
-        lcm, left, ln, log, log10, log2, lpad, now, pi, power, radians, repeat, reverse, right,
-        round, rpad, sign, sin, sqrt, substr, tan, upper, FunctionNode,
+        lcm, left, ln, log, log10, log2, lpad, ltrim, now, pi, power, radians, repeat, reverse,
+        right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, upper, FunctionNode,
     },
 };
 
@@ -73,5 +73,14 @@ fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
 
     let parsed = &parse_expr(expected).unwrap();
     let expected = translate_expr(parsed);
+    assert_eq!(actual.try_into(), expected);
+}
+
+#[cfg(test)]
+fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
+    use crate::{parse_sql::parse_query, translate::translate_query};
+
+    let parsed = &parse_query(expected).unwrap();
+    let expected = translate_query(parsed);
     assert_eq!(actual.try_into(), expected);
 }
