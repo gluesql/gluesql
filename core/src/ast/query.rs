@@ -68,7 +68,7 @@ pub enum TableFactor {
     Series {
         name: ObjectName,
         alias: Option<TableAlias>,
-        size: i64,
+        size: Expr,
     },
 }
 

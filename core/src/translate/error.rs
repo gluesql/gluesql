@@ -112,17 +112,8 @@ pub enum TranslateError {
     LackOfAlias,
 
     #[error("Series should have size")]
-    LackOfSeriesSize,
-
-    #[error("Series size should be positive but: {0}")]
-    WrongSeriesSize(i64),
+    LackOfArgs,
 
     #[error("unsupported table args: {0}")]
     UnsupportedArgs(String),
-
-    #[error("unsupported args: op: {op}, expr: {expr}")]
-    UnsupportedArgsUnaryOp { op: String, expr: String },
-
-    #[error("could not find args")]
-    LackOfArgs,
 }

@@ -1,3 +1,5 @@
+use super::evaluate_stateless;
+
 use {
     super::{context::FilterContext, filter::check_expr},
     crate::{
@@ -25,6 +27,8 @@ use {
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+    #[error("SERIES has wrong size: {0}")]
+    SeriesSizeWrong(i64),
 }
 
 pub async fn fetch<'a>(
@@ -145,7 +149,13 @@ pub async fn fetch_relation_rows<'a>(
             Ok(Rows::Table(stream::iter(rows)))
         }
         TableFactor::Series { size, .. } => {
-            let rows = (1..=*size).collect::<Vec<_>>();
+            let value: Value = evaluate_stateless(None, size)?.try_into()?;
+            let size: i64 = value.try_into()?;
+            let size = match size {
+                n if n >= 0 => size,
+                n => return Err(FetchError::SeriesSizeWrong(n).into()),
+            };
+            let rows = (1..=size).collect::<Vec<_>>();
             let rows = stream::iter(rows).map(|v| Ok(Row(vec![Value::I64(v)])));
             Ok(Rows::Series(rows))
         }

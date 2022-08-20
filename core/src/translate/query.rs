@@ -1,6 +1,3 @@
-use bigdecimal::BigDecimal;
-use sqlparser::ast::UnaryOperator;
-
 use {
     super::{
         translate_expr, translate_idents, translate_object_name, translate_order_by_expr,
@@ -8,19 +5,18 @@ use {
     },
     crate::{
         ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, Query, Select,
-            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
+            AstLiteral, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, Query,
+            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         data::get_name,
         result::Result,
     },
-    bigdecimal::ToPrimitive,
     sqlparser::ast::{
         Expr as SqlExpr, FunctionArg, FunctionArgExpr, Join as SqlJoin,
         JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator, OrderByExpr,
         Query as SqlQuery, Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
         TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
-        TableWithJoins as SqlTableWithJoins, Value as SqlValue,
+        TableWithJoins as SqlTableWithJoins,
     },
 };
 
@@ -88,7 +84,7 @@ fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<
             relation: TableFactor::Series {
                 name: ObjectName(vec!["Series".into()]),
                 alias: None,
-                size: 1,
+                size: Expr::Literal(AstLiteral::Number(1.into())),
             },
             joins: vec![],
         },
@@ -145,41 +141,14 @@ fn translate_table_with_joins(sql_table_with_joins: &SqlTableWithJoins) -> Resul
     })
 }
 
-fn translate_table_args(args: &Option<Vec<FunctionArg>>) -> Result<i64> {
-    let size_from = |big_decimal: &BigDecimal| -> Result<_> {
-        big_decimal
-            .to_i64()
-            .and_then(|size| (size != 0).then_some(size))
-            .ok_or_else(|| TranslateError::LackOfSeriesSize.into())
-    };
-
+fn translate_table_args(args: &Option<Vec<FunctionArg>>) -> Result<Expr> {
     let function_args = args
         .as_ref()
         .ok_or_else(|| crate::result::Error::from(TranslateError::LackOfArgs))?;
 
     match function_args.get(0) {
-        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::Value(SqlValue::Number(
-            big_decimal,
-            _,
-        ))))) => size_from(big_decimal),
-        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(SqlExpr::UnaryOp { op, expr }))) => {
-            match (op, expr.as_ref()) {
-                (UnaryOperator::Minus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
-                    let size = size_from(big_decimal)?;
-
-                    Err(TranslateError::WrongSeriesSize(-size).into())
-                }
-                (UnaryOperator::Plus, SqlExpr::Value(SqlValue::Number(big_decimal, _))) => {
-                    size_from(big_decimal)
-                }
-                _ => Err(TranslateError::UnsupportedArgsUnaryOp {
-                    op: format!("{op}"),
-                    expr: format!("{expr}"),
-                }
-                .into()),
-            }
-        }
-        None => Err(TranslateError::LackOfSeriesSize.into()),
+        Some(FunctionArg::Unnamed(FunctionArgExpr::Expr(expr))) => Ok(translate_expr(expr)?),
+        None => Err(TranslateError::LackOfArgs.into()),
         _ => Err(TranslateError::UnsupportedArgs(format!(
             "{}",
             function_args

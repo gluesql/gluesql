@@ -189,23 +189,26 @@ CREATE TABLE TestA (
             "SELECT * FROM SeriesTable",
         ),
         (
+            // SERIES with size 0 is allowed
+            Ok(Payload::Select {
+                labels: vec!["N".into()],
+                rows: Vec::new(),
+            }),
+            "SELECT * FROM SERIES(0)",
+        ),
+        (
             // SERIES without parentheses is a normal table name
             Err(FetchError::TableNotFound("SERIES".into()).into()),
             "SELECT * FROM SERIES",
         ),
         (
             // SERIES without size is not allowed
-            Err(TranslateError::LackOfSeriesSize.into()),
+            Err(TranslateError::LackOfArgs.into()),
             "SELECT * FROM SERIES()",
         ),
         (
-            // SERIES with size 0 is not allowed
-            Err(TranslateError::LackOfSeriesSize.into()),
-            "SELECT * FROM SERIES(0)",
-        ),
-        (
             // SERIES with unary minus is not allowed
-            Err(TranslateError::WrongSeriesSize(-1).into()),
+            Err(FetchError::SeriesSizeWrong(-1).into()),
             "SELECT * FROM SERIES(-1)",
         ),
     ];
