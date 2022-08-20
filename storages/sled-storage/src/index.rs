@@ -95,6 +95,7 @@ impl Index for SledStorage {
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 
+        let prefix_len = build_index_key_prefix(table_name, index_name).len();
         let tree = self.tree.clone();
         let flat_map = move |keys: Result<IVec>| {
             #[derive(Iterator)]
@@ -135,6 +136,7 @@ impl Index for SledStorage {
                         .ok_or(IndexError::ConflictOnEmptyIndexValueScan)?;
                     let snapshot: Snapshot<Row> = bincode::deserialize(&value).map_err(err_into)?;
                     let row = snapshot.extract(txid, lock_txid);
+                    let key = key.into_iter().skip(prefix_len).collect();
                     let item = row.map(|row| (Key::Bytea(key), row));
 
                     Ok(item)

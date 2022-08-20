@@ -1,25 +1,21 @@
 use {
-    super::{context::FilterContext, filter::check_expr},
+    super::{context::FilterContext, evaluate::evaluate, filter::check_expr},
     crate::{
-        ast::{ColumnDef, Expr, Join, Query, Select, SetExpr, TableFactor, TableWithJoins},
-        data::{get_alias, get_name, Key, Row, TableError},
+        ast::{
+            ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableFactor, TableWithJoins,
+        },
+        data::{get_alias, get_index, get_name, Key, Row, TableError, Value},
         executor::select::{get_labels, select},
         result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
-};
-
-#[cfg(feature = "index")]
-use {
-    super::evaluate::evaluate,
-    crate::{ast::IndexItem, data::get_index},
-    iter_enum::Iterator,
 };
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
@@ -53,7 +49,7 @@ pub async fn fetch<'a>(
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
-                    .map(|pass| pass.then(|| (columns, key, row)))
+                    .map(|pass| pass.then_some((columns, key, row)))
             }
         });
 
@@ -80,16 +76,24 @@ pub async fn fetch_relation_rows<'a>(
         }
         TableFactor::Table { name, .. } => {
             let table_name = get_name(name)?;
-            #[cfg(feature = "index")]
             let rows = {
+                #[cfg(feature = "index")]
+                #[derive(Iterator)]
+                enum Rows<I1, I2, I3> {
+                    Indexed(I1),
+                    PrimaryKey(I2),
+                    FullScan(I3),
+                }
+                #[cfg(not(feature = "index"))]
                 #[derive(Iterator)]
                 enum Rows<I1, I2> {
-                    FullScan(I1),
-                    Indexed(I2),
+                    PrimaryKey(I1),
+                    FullScan(I2),
                 }
 
                 match get_index(table_factor) {
-                    Some(IndexItem {
+                    #[cfg(feature = "index")]
+                    Some(IndexItem::NonClustered {
                         name: index_name,
                         asc,
                         cmp_expr,
@@ -103,22 +107,38 @@ pub async fn fetch_relation_rows<'a>(
                             None => None,
                         };
 
-                        storage
+                        let rows = storage
                             .scan_indexed_data(table_name, index_name, *asc, cmp_value)
-                            .await
-                            .map(Rows::Indexed)?
+                            .await?
+                            .map_ok(|(_, row)| row);
+
+                        Rows::Indexed(rows)
                     }
-                    None => storage.scan_data(table_name).await.map(Rows::FullScan)?,
+                    Some(IndexItem::PrimaryKey(expr)) => {
+                        let filter_context = filter_context.as_ref().map(Rc::clone);
+                        let key = evaluate(storage, filter_context, None, expr)
+                            .await
+                            .and_then(Value::try_from)
+                            .and_then(Key::try_from)?;
+
+                        let rows = storage
+                            .fetch_data(table_name, &key)
+                            .await
+                            .transpose()
+                            .map(|row| vec![row])
+                            .unwrap_or_else(Vec::new);
+
+                        Rows::PrimaryKey(rows.into_iter())
+                    }
+                    _ => {
+                        let rows = storage.scan_data(table_name).await?.map_ok(|(_, row)| row);
+
+                        Rows::FullScan(rows)
+                    }
                 }
             };
 
-            #[cfg(not(feature = "index"))]
-            let rows = storage.scan_data(table_name).await?;
-
-            let rows = rows.map_ok(|(_, row)| row);
-            let rows = stream::iter(rows);
-
-            Ok(Rows::Table(rows))
+            Ok(Rows::Table(stream::iter(rows)))
         }
     }
 }

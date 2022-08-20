@@ -243,7 +243,7 @@ pub trait Tester<T: GStore + GStoreMut> {
 #[macro_export]
 macro_rules! test_case {
     ($name: ident, $content: expr) => {
-        pub async fn $name<T>(mut tester: impl crate::Tester<T>)
+        pub async fn $name<T>(mut tester: impl $crate::Tester<T>)
         where
             T: gluesql_core::store::GStore + gluesql_core::store::GStoreMut,
         {
@@ -267,21 +267,21 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! expr {
                 ($sql: literal) => {
-                    crate::expr($sql)
+                    $crate::expr($sql)
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! run {
                 ($sql: expr) => {
-                    crate::run(Rc::clone(&cell), $sql, None).await.unwrap()
+                    $crate::run(Rc::clone(&cell), $sql, None).await.unwrap()
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! count {
                 ($count: expr, $sql: expr) => {
-                    match crate::run(Rc::clone(&cell), $sql, None).await.unwrap() {
+                    match $crate::run(Rc::clone(&cell), $sql, None).await.unwrap() {
                         gluesql_core::prelude::Payload::Select { rows, .. } => {
                             assert_eq!($count, rows.len())
                         }
@@ -295,27 +295,27 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! type_match {
                 ($expected: expr, $sql: expr) => {
-                    let found = crate::run(Rc::clone(&cell), $sql, None).await;
+                    let found = $crate::run(Rc::clone(&cell), $sql, None).await;
 
-                    crate::type_match($expected, found);
+                    $crate::type_match($expected, found);
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! test {
                 ($expected: expr, $sql: expr) => {
-                    let found = crate::run(Rc::clone(&cell), $sql, None).await;
+                    let found = $crate::run(Rc::clone(&cell), $sql, None).await;
 
-                    crate::test($expected, found);
+                    $crate::test($expected, found);
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! test_idx {
                 ($expected: expr, $indexes: expr, $sql: expr) => {
-                    let found = crate::run(Rc::clone(&cell), $sql, Some($indexes)).await;
+                    let found = $crate::run(Rc::clone(&cell), $sql, Some($indexes)).await;
 
-                    crate::test($expected, found);
+                    $crate::test($expected, found);
                 };
             }
 

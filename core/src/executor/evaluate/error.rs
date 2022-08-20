@@ -40,9 +40,6 @@ pub enum EvaluateError {
     #[error("only boolean value is accepted: {0}")]
     BooleanTypeRequired(String),
 
-    #[error("unsupported compound identifier {0:#?}")]
-    UnsupportedCompoundIdentifier(Expr),
-
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),
 

@@ -20,11 +20,13 @@ pub mod nested_select;
 pub mod nullable;
 pub mod order_by;
 pub mod ordering;
+pub mod primary_key;
 pub mod showcolumns;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
 pub mod unary_operator;
+pub mod update;
 pub mod validate;
 pub mod values;
 
@@ -55,7 +57,7 @@ macro_rules! generate_store_tests {
                 declare_test_fn!($test, $storage, $title, $func);
             };
         }
-
+        glue!(update, update::update);
         glue!(basic, basic::basic);
         glue!(aggregate, aggregate::aggregate);
         glue!(aggregate_group_by, aggregate::group_by);
@@ -106,6 +108,7 @@ macro_rules! generate_store_tests {
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
+        glue!(primary_key, primary_key::primary_key);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
         glue!(nullable_implicit_insert, nullable::nullable_implicit_insert);

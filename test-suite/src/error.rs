@@ -55,10 +55,6 @@ test_case!(error, async move {
             "INSERT INTO Nothing VALUES (1);",
         ),
         (
-            ExecuteError::TableNotFound("Nothing".to_owned()).into(),
-            "UPDATE Nothing SET a = 1;",
-        ),
-        (
             FetchError::TableNotFound("Nothing".to_owned()).into(),
             "SELECT * FROM Nothing;",
         ),
@@ -74,18 +70,6 @@ test_case!(error, async move {
         (
             TranslateError::UnsupportedJoinOperator("CrossJoin".to_owned()).into(),
             "SELECT * FROM TableA CROSS JOIN TableA as A;",
-        ),
-        (
-            TranslateError::JoinOnUpdateNotSupported.into(),
-            "UPDATE TableA INNER JOIN TableA ON 1 = 1 SET 1 = 1",
-        ),
-        (
-            TranslateError::UnsupportedTableFactor("(SELECT * FROM TableA)".to_owned()).into(),
-            "UPDATE (SELECT * FROM TableA) SET 1 = 1",
-        ),
-        (
-            TranslateError::CompoundIdentOnUpdateNotSupported("TableA.id = 1".to_owned()).into(),
-            "UPDATE TableA SET TableA.id = 1 WHERE id = 1",
         ),
         (
             EvaluateError::NestedSelectRowNotFound.into(),
