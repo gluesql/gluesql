@@ -2,7 +2,7 @@ use {super::ExprNode, crate::ast_builder::QueryNode};
 
 impl ExprNode {
     pub fn exists<T: Into<QueryNode>>(self, query: T) -> Self {
-        Self::Exists(Box::new(query.into()))
+        exists(query)
     }
 }
 
@@ -12,10 +12,7 @@ pub fn exists<T: Into<QueryNode>>(query: T) -> ExprNode {
 
 #[cfg(test)]
 mod test {
-    use {
-        super::exists,
-        crate::ast_builder::{col, table, test, test_expr},
-    };
+    use crate::ast_builder::{col, exists, table, test, test_expr};
 
     #[test]
     fn exist() {
