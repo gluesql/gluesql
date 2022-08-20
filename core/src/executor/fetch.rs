@@ -153,9 +153,9 @@ pub async fn fetch_relation_rows<'a>(
                 n if n >= 0 => size,
                 n => return Err(FetchError::SeriesSizeWrong(n).into()),
             };
-            let rows = (1..=size).collect::<Vec<_>>();
-            let rows = stream::iter(rows).map(|v| Ok(Row(vec![Value::I64(v)])));
-            Ok(Rows::Series(rows))
+            let rows = (1..=size).map(|v| Ok(Row(vec![Value::I64(v)])));
+
+            Ok(Rows::Series(stream::iter(rows)))
         }
     }
 }
