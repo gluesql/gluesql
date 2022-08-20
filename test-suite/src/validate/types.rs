@@ -15,7 +15,7 @@ test_case!(types, async move {
     run!("INSERT INTO TableB VALUES (FALSE);");
     run!("INSERT INTO TableC VALUES (1, NULL);");
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "INSERT INTO TableB SELECT uid FROM TableC;",
             Err(ValueError::IncompatibleDataType {

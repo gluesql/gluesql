@@ -60,7 +60,7 @@ test_case!(on_where, async move {
         (2, "SELECT * FROM Arith WHERE id <= 2;"),
     ];
 
-    for (num, sql) in test_cases.iter() {
-        count!(*num, sql);
+    for (num, sql) in test_cases {
+        count!(num, sql);
     }
 });

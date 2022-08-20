@@ -6,7 +6,7 @@ test_case!(reverse, async move {
         prelude::{Payload, Value},
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT REVERSE("world"))"#,
             Ok(Payload::Create),
@@ -40,7 +40,7 @@ test_case!(reverse, async move {
             Ok(select_with_null!(test; Value::Null)),
         ),
     ];
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

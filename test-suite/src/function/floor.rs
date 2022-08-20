@@ -7,7 +7,7 @@ test_case!(floor, async move {
         translate::TranslateError,
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT FLOOR(3.3))",
             Ok(Payload::Create),
@@ -57,7 +57,7 @@ test_case!(floor, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

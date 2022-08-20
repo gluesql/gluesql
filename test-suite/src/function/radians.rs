@@ -7,7 +7,7 @@ test_case!(radians, async move {
         translate::TranslateError,
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT RADIANS(180))",
             Ok(Payload::Create),

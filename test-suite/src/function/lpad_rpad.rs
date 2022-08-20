@@ -7,7 +7,7 @@ test_case!(lpad_rpad, async move {
         translate::TranslateError,
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT LPAD("a", 5) || LPAD("b", 3))"#,
             Ok(Payload::Create),
@@ -154,7 +154,7 @@ test_case!(lpad_rpad, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

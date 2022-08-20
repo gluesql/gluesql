@@ -18,7 +18,7 @@ test_case!(error, async move {
     run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
     run!(r#"INSERT INTO testers (id, nickname) VALUES (1, "Ron");"#);
 
-    let test_cases = vec![
+    let test_cases = [
         (
             TranslateError::UnsupportedStatement("TRUNCATE TABLE TableA".to_owned()).into(),
             "TRUNCATE TABLE TableA;",

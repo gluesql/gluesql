@@ -10,7 +10,7 @@ test_case!(upper_lower, async move {
         },
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"CREATE TABLE Item (
                 name TEXT DEFAULT UPPER("abc"),

@@ -51,7 +51,7 @@ test_case!(update, async move {
 
     use Value::*;
 
-    let test_cases = vec![
+    let test_cases = [
         (Ok(Payload::Update(4)), "UPDATE TableA SET id = 2"),
         (
             Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),
@@ -100,7 +100,7 @@ test_case!(update, async move {
     run!("CREATE TABLE ErrTestTable (id INTEGER);");
     run!("INSERT INTO ErrTestTable (id) VALUES (1),(9);");
 
-    let error_cases = vec![
+    let error_cases = [
         (
             Err(TranslateError::JoinOnUpdateNotSupported.into()),
             "UPDATE TableA INNER JOIN ErrTestTable ON 1 = 1 SET 1 = 1",

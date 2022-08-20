@@ -15,7 +15,7 @@ use {
 test_case!(cast_literal, async move {
     use chrono::{NaiveDate, NaiveTime};
 
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
         (
@@ -311,7 +311,7 @@ test_case!(cast_literal, async move {
 test_case!(cast_value, async move {
     // More test cases are in `gluesql::Value` unit tests.
 
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"
             CREATE TABLE Item (

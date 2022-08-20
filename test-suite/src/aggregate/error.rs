@@ -25,7 +25,7 @@ test_case!(error, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             AggregateError::OnlyIdentifierAllowed.into(),
             "SELECT SUM(ifnull(age, 0)) from Item;",

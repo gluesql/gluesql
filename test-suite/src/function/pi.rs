@@ -6,7 +6,7 @@ test_case!(pi, async move {
         translate::TranslateError,
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT PI())",
             Ok(Payload::Create),

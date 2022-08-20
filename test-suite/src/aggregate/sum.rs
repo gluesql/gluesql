@@ -22,7 +22,7 @@ test_case!(sum, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT SUM(age) FROM Item",
             select_with_null!(

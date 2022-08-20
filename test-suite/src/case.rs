@@ -6,7 +6,7 @@ test_case!(case, async move {
         translate::TranslateError,
     };
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE Item (id INTEGER, name TEXT);",
             Ok(Payload::Create),

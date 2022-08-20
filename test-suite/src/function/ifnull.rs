@@ -4,7 +4,7 @@ test_case!(ifnull, async move {
     use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
     use gluesql_core::{executor::Payload, prelude::Value::*};
     use rust_decimal::Decimal;
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"CREATE TABLE SingleItem (id integer null, int8 int(8) null, dec decimal null, 
                                         dt date null, mystring Text null,
@@ -64,7 +64,7 @@ test_case!(ifnull, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(Ok(expected), sql);
     }
 });

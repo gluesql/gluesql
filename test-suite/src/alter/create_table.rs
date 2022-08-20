@@ -9,7 +9,7 @@ test_case!(create_table, async move {
         prelude::Payload,
         translate::TranslateError,
     };
-    let test_cases = vec![
+    let test_cases = [
         (
             r#"
         CREATE TABLE CreateTable1 (
