@@ -29,11 +29,10 @@ pub async fn create_table<T: GStore + GStoreMut>(
     let schema = (|| async {
         let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
             Some(Query { body, .. }) => match body {
-                SetExpr::Select(select_query) => {
-                    if let TableFactor::Table {
+                SetExpr::Select(select_query) => match &select_query.from.relation {
+                    TableFactor::Table {
                         name: source_name, ..
-                    } = &select_query.from.relation
-                    {
+                    } => {
                         let table_name = get_name(source_name)?;
                         let schema = storage.fetch_schema(table_name).await?;
                         let Schema {
@@ -42,11 +41,25 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         } = schema.ok_or_else(|| -> Error {
                             AlterError::CtasSourceTableNotFound(table_name.to_owned()).into()
                         })?;
+
                         source_column_defs
-                    } else {
+                    }
+                    TableFactor::Series { .. } => {
+                        let column_def = ColumnDef {
+                            name: "N".into(),
+                            data_type: DataType::Int,
+                            options: vec![ColumnOptionDef {
+                                name: None,
+                                option: ColumnOption::NotNull,
+                            }],
+                        };
+
+                        vec![column_def]
+                    }
+                    _ => {
                         return Err(Error::Table(TableError::Unreachable));
                     }
-                }
+                },
                 SetExpr::Values(Values(values_list)) => {
                     let first_len = values_list[0].len();
                     let init_types = iter::repeat(None)

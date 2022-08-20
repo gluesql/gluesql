@@ -1,12 +1,15 @@
 use {
-    super::{context::FilterContext, evaluate::evaluate, filter::check_expr},
+    super::{context::FilterContext, evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
             ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias, TableFactor,
             TableWithJoins, Values,
         },
         data::{get_alias, get_index, get_name, Key, Row, Value},
-        executor::select::{get_labels, select},
+        executor::{
+            evaluate::evaluate,
+            select::{get_labels, select},
+        },
         result::{Error, Result},
         store::GStore,
     },
@@ -23,6 +26,8 @@ use {
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+    #[error("SERIES has wrong size: {0}")]
+    SeriesSizeWrong(i64),
     #[error("table '{0}' has {1} columns available but {2} column aliases specified")]
     TooManyColumnAliases(String, usize, usize),
 }
@@ -60,9 +65,10 @@ pub async fn fetch<'a>(
 }
 
 #[derive(futures_enum::Stream)]
-pub enum Rows<I1, I2> {
+pub enum Rows<I1, I2, I3> {
     Derived(I1),
     Table(I2),
+    Series(I3),
 }
 
 pub async fn fetch_relation_rows<'a>(
@@ -143,6 +149,17 @@ pub async fn fetch_relation_rows<'a>(
 
             Ok(Rows::Table(stream::iter(rows)))
         }
+        TableFactor::Series { size, .. } => {
+            let value: Value = evaluate_stateless(None, size)?.try_into()?;
+            let size: i64 = value.try_into()?;
+            let size = match size {
+                n if n >= 0 => size,
+                n => return Err(FetchError::SeriesSizeWrong(n).into()),
+            };
+            let rows = (1..=size).map(|v| Ok(Row(vec![Value::I64(v)])));
+
+            Ok(Rows::Series(stream::iter(rows)))
+        }
     }
 }
 
@@ -168,6 +185,7 @@ pub async fn fetch_relation_columns(
 
             fetch_columns(storage, table_name).await
         }
+        TableFactor::Series { .. } => Ok(vec!["N".to_string()]),
         TableFactor::Derived {
             subquery: Query { body, .. },
             alias: TableAlias { columns, name },

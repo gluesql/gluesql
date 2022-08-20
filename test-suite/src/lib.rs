@@ -21,6 +21,7 @@ pub mod nullable;
 pub mod order_by;
 pub mod ordering;
 pub mod primary_key;
+pub mod series;
 pub mod showcolumns;
 pub mod synthesize;
 pub mod transaction;
@@ -118,6 +119,7 @@ macro_rules! generate_store_tests {
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
         glue!(primary_key, primary_key::primary_key);
+        glue!(series, series::series);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
         glue!(nullable_implicit_insert, nullable::nullable_implicit_insert);

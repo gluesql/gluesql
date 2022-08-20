@@ -63,7 +63,6 @@ test_case!(error, async move {
             TranslateError::TooManyTables.into(),
             "SELECT * FROM TableA, TableB",
         ),
-        (TranslateError::LackOfTable.into(), "SELECT 1;"),
         (
             TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into(),
             "SELECT * FROM TableA JOIN TableA USING (id);",

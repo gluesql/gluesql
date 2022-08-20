@@ -133,7 +133,7 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
 
 fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFactor) -> bool {
     let alias = match table_factor {
-        TableFactor::Table { name, alias, .. } => {
+        TableFactor::Table { name, alias, .. } | TableFactor::Series { name, alias, .. } => {
             let name = match get_name(name) {
                 Ok(name) => name,
                 Err(_) => return false,
