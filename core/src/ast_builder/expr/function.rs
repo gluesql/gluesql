@@ -57,12 +57,12 @@ pub enum FunctionNode {
         count: Option<ExprNode>,
     },
     Ltrim {
-        expr_node: ExprNode,
-        chars_node: Option<ExprNode>,
+        expr: ExprNode,
+        chars: Option<ExprNode>,
     },
     Rtrim {
-        expr_node: ExprNode,
-        chars_node: Option<ExprNode>,
+        expr: ExprNode,
+        chars: Option<ExprNode>,
     },
 }
 
@@ -153,20 +153,14 @@ impl TryFrom<FunctionNode> for Function {
                 let start = start.try_into()?;
                 Ok(Function::Substr { expr, start, count })
             }
-            FunctionNode::Ltrim {
-                expr_node,
-                chars_node,
-            } => {
-                let chars = chars_node.map(TryInto::try_into).transpose()?;
-                let expr = expr_node.try_into()?;
+            FunctionNode::Ltrim { expr, chars } => {
+                let chars = chars.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
                 Ok(Function::Ltrim { expr, chars })
             }
-            FunctionNode::Rtrim {
-                expr_node,
-                chars_node,
-            } => {
-                let chars = chars_node.map(TryInto::try_into).transpose()?;
-                let expr = expr_node.try_into()?;
+            FunctionNode::Rtrim { expr, chars } => {
+                let chars = chars.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
                 Ok(Function::Rtrim { expr, chars })
             }
         }
@@ -411,15 +405,15 @@ pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNod
 
 pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ltrim {
-        expr_node: expr.into(),
-        chars_node: chars.map(|t| t.into()),
+        expr: expr.into(),
+        chars: chars.map(|t| t.into()),
     }))
 }
 
 pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Rtrim {
-        expr_node: expr.into(),
-        chars_node: chars.map(|t| t.into()),
+        expr: expr.into(),
+        chars: chars.map(|t| t.into()),
     }))
 }
 
