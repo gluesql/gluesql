@@ -86,13 +86,13 @@ features = ["alter-table", "index", "transaction", "metadata"]
 - [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/mod.rs)
 
 ```rust
-pub trait Store<T: Debug> {
+pub trait Store {
     async fn fetch_schema(..) -> ..;
     async fn fetch_data(..) -> ..;
     async fn scan_data(..) -> ..;
 }
 
-pub trait StoreMut<T: Debug> where Self: Sized {
+pub trait StoreMut where Self: Sized {
     async fn insert_schema(..) -> ..;
     async fn delete_schema(..) -> ..;
     async fn append_data(..) -> ..;
@@ -113,11 +113,11 @@ pub trait AlterTable where Self: Sized {
     async fn drop_column(..) -> ..;
 }
 
-pub trait Index<T: Debug> {
+pub trait Index {
     async fn scan_indexed_data(..) -> ..;
 }
 
-pub trait IndexMut<T: Debug> where Self: Sized {
+pub trait IndexMut where Self: Sized {
     async fn create_index(..) -> ..;
     async fn drop_index(..) -> ..;
 }
