@@ -10,6 +10,7 @@ use {
             IntervalError, LiteralError,
         },
         prelude::Payload,
+        translate::TranslateError,
     },
 };
 
@@ -88,6 +89,10 @@ test_case!(extract, async move {
         (
             r#"SELECT EXTRACT(HOUR FROM 100) FROM Item"#,
             Err(LiteralError::CannotExtract.into()),
+        ),
+        (
+            r#"SELECT EXTRACT(microseconds FROM "2011-01-1") FROM Item;"#,
+            Err(TranslateError::UnsupportedDateTimeField("MICROSECONDS".to_owned()).into()),
         ),
     ];
 

@@ -1,4 +1,8 @@
-use {crate::*, gluesql_core::prelude::*, Value::*};
+use {
+    crate::*,
+    gluesql_core::{plan::PlanError, prelude::*, translate::TranslateError},
+    Value::*,
+};
 
 test_case!(join, async move {
     let create_sqls: [&str; 2] = [
@@ -246,4 +250,29 @@ test_case!(blend, async move {
         I64(5)   Str("Hwan".to_owned())      Null       Null       Null
     );
     test!(Ok(expected), sql);
+
+    // To test `PlanError` while using `JOIN`
+    run!("CREATE TABLE users (id INTEGER, name TEXT);");
+    run!(r#"INSERT INTO users (id, name) VALUES (1, "Harry");"#);
+    run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
+    run!(r#"INSERT INTO testers (id, nickname) VALUES (1, "Ron");"#);
+
+    let error_cases = [
+        (
+            TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into(),
+            "SELECT * FROM TableA JOIN TableA USING (id);",
+        ),
+        (
+            TranslateError::UnsupportedJoinOperator("CrossJoin".to_owned()).into(),
+            "SELECT * FROM TableA CROSS JOIN TableA as A;",
+        ),
+        (
+            PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
+            "SELECT id FROM users JOIN testers ON users.id = testers.id;",
+        ),
+    ];
+
+    for (error, sql) in error_cases {
+        test!(Err(error), sql);
+    }
 });

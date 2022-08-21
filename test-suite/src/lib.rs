@@ -7,7 +7,6 @@ pub mod case;
 pub mod concat;
 pub mod data_type;
 pub mod default;
-pub mod error;
 pub mod filter;
 pub mod function;
 pub mod index;
@@ -79,7 +78,6 @@ macro_rules! generate_store_tests {
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
         glue!(limit, limit::limit);
-        glue!(error, error::error);
         glue!(filter, filter::filter);
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
