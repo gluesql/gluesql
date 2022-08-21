@@ -147,7 +147,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                 .await
                 .try_self(storage)?;
 
-            storage.insert_data(target_table_name, rows).await
+            storage.append_data(target_table_name, rows).await
         }
         None => Ok((storage, ())),
     }
