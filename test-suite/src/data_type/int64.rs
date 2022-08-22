@@ -15,8 +15,6 @@ test_case!(int64, async move {
     );
     run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
 
-    let parse_i64 = |text: &str| -> i64 { text.parse().unwrap() };
-
     test!(
         Err(ValueError::FailedToParseNumber.into()),
         &format!(
@@ -48,13 +46,13 @@ test_case!(int64, async move {
 
     // lets try some valid SQL
     test!(
-        Ok(select!(
+        Ok(select_with_comma!(
             field_one          | field_two
             I64                |    I64;
-            1                  parse_i64("-1");
-            parse_i64("-2")    2;
-            3                  3;
-            parse_i64("-4")    parse_i64("-4")
+            1                  ,     -1;
+            -2                 ,      2;
+            3                  ,      3;
+            -4                 ,     -4
         )),
         "SELECT field_one, field_two FROM Item"
     );
@@ -65,8 +63,8 @@ test_case!(int64, async move {
     );
 
     test!(
-        Ok(select!(field_one I64; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one > 0"
+        Ok(select_with_comma!(field_one | field_two; I64 | I64; 1, -1)),
+        "SELECT field_one, field_two FROM Item WHERE field_one = 1"
     );
 
     test!(
