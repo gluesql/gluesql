@@ -183,13 +183,16 @@ async fn scan_table_factor(storage: &dyn Store, table_factor: &TableFactor) -> R
             Ok(schema_list)
         }
         TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
+        TableFactor::Series { .. } => Ok(vec![]),
     }
 }
 
 #[async_recursion(?Send)]
 async fn scan_expr(storage: &dyn Store, expr: &Expr) -> Result<Vec<Schema>> {
     let schema_list = match expr.into() {
-        PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier(_) => Vec::new(),
+        PlanExpr::None | PlanExpr::Identifier(_) | PlanExpr::CompoundIdentifier { .. } => {
+            Vec::new()
+        }
         PlanExpr::Expr(expr) => scan_expr(storage, expr).await?,
         PlanExpr::TwoExprs(expr, expr2) => scan_expr(storage, expr)
             .await?

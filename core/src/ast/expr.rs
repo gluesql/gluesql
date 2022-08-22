@@ -9,7 +9,10 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Expr {
     Identifier(String),
-    CompoundIdentifier(Vec<String>),
+    CompoundIdentifier {
+        alias: String,
+        ident: String,
+    },
     IsNull(Box<Expr>),
     IsNotNull(Box<Expr>),
     InList {
@@ -69,7 +72,7 @@ impl ToSql for Expr {
             Expr::BinaryOp { left, op, right } => {
                 format!("{} {} {}", left.to_sql(), op.to_sql(), right.to_sql())
             }
-            Expr::CompoundIdentifier(idents) => idents.join("."),
+            Expr::CompoundIdentifier { alias, ident } => format!("{alias}.{ident}"),
             Expr::IsNull(s) => format!("{} IS NULL", s.to_sql()),
             Expr::IsNotNull(s) => format!("{} IS NOT NULL", s.to_sql()),
             Expr::InList {
@@ -258,12 +261,11 @@ mod tests {
         );
 
         assert_eq!(
-            "id.name.first",
-            Expr::CompoundIdentifier(vec![
-                "id".to_string(),
-                "name".to_string(),
-                "first".to_string()
-            ])
+            "alias.column",
+            Expr::CompoundIdentifier {
+                alias: "alias".into(),
+                ident: "column".into()
+            }
             .to_sql()
         );
 
@@ -428,6 +430,13 @@ mod tests {
             "VARIANCE(pay)",
             &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
                 "pay".to_string()
+            ))))
+            .to_sql()
+        );
+        assert_eq!(
+            "STDEV(total)",
+            &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
+                "total".to_string()
             ))))
             .to_sql()
         );

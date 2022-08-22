@@ -3,29 +3,32 @@ mod error;
 
 pub use error::SelectError;
 
-use super::{evaluate_stateless, fetch::fetch_relation_columns};
-
 use {
     self::blend::Blend,
     super::{
         aggregate::Aggregator,
         context::{BlendContext, FilterContext},
-        fetch::{fetch_join_columns, fetch_relation_rows},
+        evaluate_stateless,
+        fetch::{fetch_join_columns, fetch_relation_columns, fetch_relation_rows},
         filter::Filter,
         join::Join,
         limit::Limit,
         sort::Sort,
     },
     crate::{
-        ast::{Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
+        ast::{Expr, Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
         data::{get_alias, get_name, Row, RowError},
+        prelude::{DataType, Value},
         result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     iter_enum::Iterator,
-    std::{iter::once, rc::Rc},
+    std::{
+        iter::{self, once},
+        rc::Rc,
+    },
 };
 
 pub fn get_labels<'a>(
@@ -105,6 +108,52 @@ pub fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
+fn into_rows(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
+    let first_len = exprs_list[0].len();
+    let labels = (1..=first_len)
+        .into_iter()
+        .map(|i| format!("column{}", i))
+        .collect::<Vec<_>>();
+    let rows = exprs_list
+        .iter()
+        .scan(
+            iter::repeat(None)
+                .take(first_len)
+                .collect::<Vec<Option<DataType>>>(),
+            move |column_types, exprs| {
+                if exprs.len() != first_len {
+                    return Some(Err(RowError::NumberOfValuesDifferent.into()));
+                }
+
+                let values = column_types
+                    .iter_mut()
+                    .zip(exprs.iter())
+                    .map(|(column_type, expr)| -> Result<_> {
+                        let evaluated = evaluate_stateless(None, expr)?;
+
+                        let value = match column_type {
+                            Some(data_type) => evaluated.try_into_value(data_type, true)?,
+                            None => {
+                                let value: Value = evaluated.try_into()?;
+                                *column_type = value.get_type();
+
+                                value
+                            }
+                        };
+
+                        Ok(value)
+                    })
+                    .collect::<Result<Vec<_>>>()
+                    .map(Row);
+
+                Some(values)
+            },
+        )
+        .collect::<Vec<_>>();
+
+    (rows, labels)
+}
+
 #[async_recursion(?Send)]
 pub async fn select_with_labels<'a>(
     storage: &'a dyn GStore,
@@ -126,26 +175,7 @@ pub async fn select_with_labels<'a>(
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-            let first_len = values_list[0].len();
-            let labels = (1..first_len + 1)
-                .into_iter()
-                .map(|i| format!("column{}", i))
-                .collect::<Vec<_>>();
-            let rows = values_list
-                .iter()
-                .map(|exprs| {
-                    if exprs.len() != first_len {
-                        return Err(RowError::NumberOfValuesDifferent.into());
-                    }
-                    let values = exprs
-                        .iter()
-                        .map(|expr| evaluate_stateless(None, expr))
-                        .map(|result| result.and_then(|evaluated| evaluated.try_into()))
-                        .collect::<Result<Vec<_>>>()?;
-
-                    Ok(Row(values))
-                })
-                .collect::<Vec<_>>();
+            let (rows, labels) = into_rows(values_list);
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
@@ -221,7 +251,7 @@ pub async fn select_with_labels<'a>(
             filter
                 .check(Rc::clone(&blend_context))
                 .await
-                .map(|pass| pass.then(|| blend_context))
+                .map(|pass| pass.then_some(blend_context))
         }
     });
 

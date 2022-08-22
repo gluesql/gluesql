@@ -31,9 +31,14 @@ enum AggrValue {
         sum: Value,
         count: i64,
     },
+    Stdev {
+        sum_square: Value,
+        sum: Value,
+        count: i64,
+    },
 }
 
-impl<'a> AggrValue {
+impl AggrValue {
     fn new(aggr: &Aggregate, value: &Value) -> Result<Self> {
         let value = value.clone();
 
@@ -54,6 +59,11 @@ impl<'a> AggrValue {
                 count: 1,
             },
             Aggregate::Variance(_) => AggrValue::Variance {
+                sum_square: value.multiply(&value)?,
+                sum: value,
+                count: 1,
+            },
+            Aggregate::Stdev(_) => AggrValue::Stdev {
                 sum_square: value.multiply(&value)?,
                 sum: value,
                 count: 1,
@@ -97,10 +107,27 @@ impl<'a> AggrValue {
                 sum: sum.add(new_value)?,
                 count: count + 1,
             })),
+            Self::Stdev {
+                sum_square,
+                sum,
+                count,
+            } => Ok(Some(Self::Stdev {
+                sum_square: sum_square.add(&new_value.multiply(new_value)?)?,
+                sum: sum.add(new_value)?,
+                count: count + 1,
+            })),
         }
     }
 
     fn export(self) -> Result<Value> {
+        let variance = |sum_square: Value, sum: Value, count: i64| {
+            let sum_expr1 = sum_square.multiply(&Value::I64(count))?;
+            let sum_expr2 = sum.multiply(&sum)?;
+            let expr_sub = sum_expr1.subtract(&sum_expr2)?;
+            let cnt_square = Value::F64(count as f64).multiply(&Value::F64(count as f64))?;
+            expr_sub.divide(&cnt_square)
+        };
+
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
             Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
@@ -109,13 +136,12 @@ impl<'a> AggrValue {
                 sum_square,
                 sum,
                 count,
-            } => {
-                let sum_expr1 = sum_square.multiply(&Value::I64(count))?;
-                let sum_expr2 = sum.multiply(&sum)?;
-                let expr_sub = sum_expr1.subtract(&sum_expr2)?;
-                let cnt_square = Value::F64(count as f64).multiply(&Value::F64(count as f64))?;
-                expr_sub.divide(&cnt_square)
-            }
+            } => variance(sum_square, sum, count),
+            Self::Stdev {
+                sum_square,
+                sum,
+                count,
+            } => variance(sum_square, sum, count)?.sqrt(),
         }
     }
 }
@@ -216,13 +242,9 @@ impl<'a> State<'a> {
             Expr::Identifier(ident) => context
                 .get_value(ident)
                 .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
-            Expr::CompoundIdentifier(idents) => {
-                if idents.len() != 2 {
-                    return Err(AggregateError::UnsupportedCompoundIdentifier(expr.clone()));
-                }
-
-                let table_alias = &idents[0];
-                let column = &idents[1];
+            Expr::CompoundIdentifier { alias, ident } => {
+                let table_alias = &alias;
+                let column = &ident;
 
                 context
                     .get_alias_value(table_alias, column)
@@ -236,8 +258,9 @@ impl<'a> State<'a> {
             | Aggregate::Sum(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)
-            | Aggregate::Avg(expr) => get_value(expr)?,
-            Aggregate::Variance(expr) => get_value(expr)?,
+            | Aggregate::Avg(expr)
+            | Aggregate::Variance(expr)
+            | Aggregate::Stdev(expr) => get_value(expr)?,
         };
 
         let aggr_value = match self.get(aggr) {

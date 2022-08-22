@@ -10,9 +10,9 @@ use {
 };
 
 mod binary_op;
+mod convert;
 mod date;
 mod error;
-mod into;
 mod json;
 mod literal;
 mod selector;
@@ -106,6 +106,29 @@ impl Value {
             Value::F64(v) => *v == 0.0,
             Value::Decimal(v) => *v == Decimal::ZERO,
             _ => false,
+        }
+    }
+
+    pub fn get_type(&self) -> Option<DataType> {
+        match self {
+            Value::I8(_) => Some(DataType::Int8),
+            Value::I16(_) => Some(DataType::Int16),
+            Value::I32(_) => Some(DataType::Int32),
+            Value::I64(_) => Some(DataType::Int),
+            Value::I128(_) => Some(DataType::Int128),
+            Value::F64(_) => Some(DataType::Float),
+            Value::Decimal(_) => Some(DataType::Decimal),
+            Value::Bool(_) => Some(DataType::Boolean),
+            Value::Str(_) => Some(DataType::Text),
+            Value::Bytea(_) => Some(DataType::Bytea),
+            Value::Date(_) => Some(DataType::Date),
+            Value::Timestamp(_) => Some(DataType::Timestamp),
+            Value::Time(_) => Some(DataType::Time),
+            Value::Interval(_) => Some(DataType::Interval),
+            Value::Uuid(_) => Some(DataType::Uuid),
+            Value::Map(_) => Some(DataType::Map),
+            Value::List(_) => Some(DataType::List),
+            Value::Null => None,
         }
     }
 
@@ -497,6 +520,18 @@ impl Value {
         Ok(Value::I64(value))
     }
 
+    pub fn sqrt(&self) -> Result<Value> {
+        use Value::*;
+        match self {
+            I8(_) | I16(_) | I64(_) | I128(_) | F64(_) => {
+                let a: f64 = self.try_into()?;
+                Ok(Value::F64(a.sqrt()))
+            }
+            Null => Ok(Value::Null),
+            _ => Err(ValueError::SqrtOnNonNumeric(self.clone()).into()),
+        }
+    }
+
     /// Value to Big-Endian for comparison purpose
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
         self.try_into().map(|key: Key| key.to_cmp_be_bytes())
@@ -507,8 +542,7 @@ impl Value {
 mod tests {
     use {
         super::{Interval, Value::*},
-        crate::data::value::uuid::parse_uuid,
-        crate::data::ValueError,
+        crate::data::{value::uuid::parse_uuid, ValueError},
         rust_decimal::Decimal,
     };
 
@@ -1317,5 +1351,57 @@ mod tests {
             Str("5".to_string()).unary_factorial(),
             Err(ValueError::FactorialOnNonNumeric.into())
         );
+    }
+
+    #[test]
+    fn sqrt() {
+        assert_eq!(I8(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I16(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I64(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(I128(9).sqrt(), Ok(F64(3.0)));
+        assert_eq!(F64(9.0).sqrt(), Ok(F64(3.0)));
+        assert!(Null.sqrt().unwrap().is_null());
+        assert_eq!(
+            Str("9".to_string()).sqrt(),
+            Err(ValueError::SqrtOnNonNumeric(Str("9".to_string())).into())
+        );
+    }
+
+    #[test]
+    fn get_type() {
+        use {
+            super::Value,
+            crate::{ast::DataType as D, data::Interval as I},
+            chrono::{NaiveDate, NaiveTime},
+        };
+
+        let decimal = Decimal(rust_decimal::Decimal::ONE);
+        let date = Date(NaiveDate::from_ymd(2021, 5, 1));
+        let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
+        let time = Time(NaiveTime::from_hms(12, 30, 11));
+        let interval = Interval(I::hours(5));
+        let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
+        let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
+        let list = Value::parse_json_list(r#"[ true ]"#).unwrap();
+        let bytea = Bytea(hex::decode("9001").unwrap());
+
+        assert_eq!(I8(1).get_type(), Some(D::Int8));
+        assert_eq!(I16(1).get_type(), Some(D::Int16));
+        assert_eq!(I32(1).get_type(), Some(D::Int32));
+        assert_eq!(I64(1).get_type(), Some(D::Int));
+        assert_eq!(I128(1).get_type(), Some(D::Int128));
+        assert_eq!(F64(1.1).get_type(), Some(D::Float));
+        assert_eq!(decimal.get_type(), Some(D::Decimal));
+        assert_eq!(Bool(true).get_type(), Some(D::Boolean));
+        assert_eq!(Str('1'.into()).get_type(), Some(D::Text));
+        assert_eq!(bytea.get_type(), Some(D::Bytea));
+        assert_eq!(date.get_type(), Some(D::Date));
+        assert_eq!(timestamp.get_type(), Some(D::Timestamp));
+        assert_eq!(time.get_type(), Some(D::Time));
+        assert_eq!(interval.get_type(), Some(D::Interval));
+        assert_eq!(uuid.get_type(), Some(D::Uuid));
+        assert_eq!(map.get_type(), Some(D::Map));
+        assert_eq!(list.get_type(), Some(D::List));
+        assert_eq!(Null.get_type(), None);
     }
 }

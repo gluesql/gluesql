@@ -1,57 +1,53 @@
 use {
-    super::{context::Context, evaluable::check_expr as check_evaluable},
+    super::{context::Context, evaluable::check_expr as check_evaluable, planner::Planner},
     crate::{
         ast::{
-            BinaryOperator, ColumnDef, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator,
-            Query, Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
+            BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select,
+            SetExpr, Statement, TableWithJoins,
         },
-        data::{get_name, Schema},
+        data::Schema,
     },
     std::{collections::HashMap, rc::Rc},
     utils::Vector,
 };
 
 pub fn plan(schema_map: &HashMap<String, Schema>, statement: Statement) -> Statement {
-    let planner = Planner { schema_map };
+    let planner = JoinPlanner { schema_map };
 
     match statement {
         Statement::Query(query) => {
-            let query = planner.query(None, *query);
+            let query = planner.query(None, query);
 
-            Statement::Query(Box::new(query))
+            Statement::Query(query)
         }
         _ => statement,
     }
 }
 
-struct Planner<'a> {
+struct JoinPlanner<'a> {
     schema_map: &'a HashMap<String, Schema>,
 }
 
-impl<'a> Planner<'a> {
+impl<'a> Planner<'a> for JoinPlanner<'a> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
-        let Query {
-            body,
-            limit,
-            offset,
-        } = query;
-
-        let body = match body {
+        let body = match query.body {
             SetExpr::Select(select) => {
                 let select = self.select(outer_context, *select);
 
                 SetExpr::Select(Box::new(select))
             }
-            SetExpr::Values(_) => body,
+            SetExpr::Values(_) => query.body,
         };
 
-        Query {
-            body,
-            limit,
-            offset,
-        }
+        Query { body, ..query }
     }
 
+    fn get_schema(&self, name: &str) -> Option<&'a Schema> {
+        self.schema_map.get(name)
+    }
+}
+
+impl<'a> JoinPlanner<'a> {
     fn select(&self, outer_context: Option<Rc<Context<'a>>>, select: Select) -> Select {
         let Select {
             projection,
@@ -165,116 +161,6 @@ impl<'a> Planner<'a> {
         };
 
         (context, join)
-    }
-
-    fn subquery_expr(&self, outer_context: Option<Rc<Context<'a>>>, expr: Expr) -> Expr {
-        match expr {
-            Expr::Identifier(_)
-            | Expr::CompoundIdentifier(_)
-            | Expr::Literal(_)
-            | Expr::TypedString { .. } => expr,
-            Expr::IsNull(expr) => Expr::IsNull(Box::new(self.subquery_expr(outer_context, *expr))),
-            Expr::IsNotNull(expr) => {
-                Expr::IsNotNull(Box::new(self.subquery_expr(outer_context, *expr)))
-            }
-            Expr::InList {
-                expr,
-                list,
-                negated,
-            } => {
-                let list = list
-                    .into_iter()
-                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr))
-                    .collect();
-                let expr = Box::new(self.subquery_expr(outer_context, *expr));
-
-                Expr::InList {
-                    expr,
-                    list,
-                    negated,
-                }
-            }
-            Expr::Subquery(query) => Expr::Subquery(Box::new(self.query(outer_context, *query))),
-            Expr::Exists(query) => Expr::Exists(Box::new(self.query(outer_context, *query))),
-            Expr::InSubquery {
-                expr,
-                subquery,
-                negated,
-            } => {
-                let expr =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
-                let subquery = Box::new(self.query(outer_context, *subquery));
-
-                Expr::InSubquery {
-                    expr,
-                    subquery,
-                    negated,
-                }
-            }
-            Expr::Between {
-                expr,
-                negated,
-                low,
-                high,
-            } => {
-                let expr =
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
-                let low = Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *low));
-                let high = Box::new(self.subquery_expr(outer_context, *high));
-
-                Expr::Between {
-                    expr,
-                    negated,
-                    low,
-                    high,
-                }
-            }
-            Expr::BinaryOp { left, op, right } => Expr::BinaryOp {
-                left: Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *left)),
-                op,
-                right: Box::new(self.subquery_expr(outer_context, *right)),
-            },
-            Expr::UnaryOp { op, expr } => Expr::UnaryOp {
-                op,
-                expr: Box::new(self.subquery_expr(outer_context, *expr)),
-            },
-            Expr::Cast { expr, data_type } => Expr::Cast {
-                expr: Box::new(self.subquery_expr(outer_context, *expr)),
-                data_type,
-            },
-            Expr::Extract { field, expr } => Expr::Extract {
-                field,
-                expr: Box::new(self.subquery_expr(outer_context, *expr)),
-            },
-            Expr::Nested(expr) => Expr::Nested(Box::new(self.subquery_expr(outer_context, *expr))),
-            Expr::Case {
-                operand,
-                when_then,
-                else_result,
-            } => {
-                let operand = operand.map(|expr| {
-                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr))
-                });
-                let when_then = when_then
-                    .into_iter()
-                    .map(|(when, then)| {
-                        let when = self.subquery_expr(outer_context.as_ref().map(Rc::clone), when);
-                        let then = self.subquery_expr(outer_context.as_ref().map(Rc::clone), then);
-
-                        (when, then)
-                    })
-                    .collect();
-                let else_result =
-                    else_result.map(|expr| Box::new(self.subquery_expr(outer_context, *expr)));
-
-                Expr::Case {
-                    operand,
-                    when_then,
-                    else_result,
-                }
-            }
-            Expr::Function(_) | Expr::Aggregate(_) => expr,
-        }
     }
 
     fn join_expr(
@@ -461,36 +347,6 @@ impl<'a> Planner<'a> {
             _ => (JoinExecutor::NestedLoop, Some(expr)),
         }
     }
-
-    fn update_context(
-        &self,
-        next: Option<Rc<Context<'a>>>,
-        table_factor: &TableFactor,
-    ) -> Option<Rc<Context<'a>>> {
-        let (name, alias) = match table_factor {
-            TableFactor::Table { name, alias, .. } => {
-                let name = match get_name(name) {
-                    Ok(name) => name.clone(),
-                    Err(_) => return next,
-                };
-                let alias = alias.as_ref().map(|TableAlias { name, .. }| name.clone());
-
-                (name, alias)
-            }
-            TableFactor::Derived { .. } => return next,
-        };
-        let column_defs = match self.schema_map.get(&name) {
-            Some(Schema { column_defs, .. }) => column_defs,
-            None => return next,
-        };
-        let columns = column_defs
-            .iter()
-            .map(|ColumnDef { name, .. }| name.as_str())
-            .collect::<Vec<_>>();
-
-        let context = Context::new(alias.unwrap_or(name), columns, next, None);
-        Some(Rc::new(context))
-    }
 }
 
 type EvaluableExpr = Option<Expr>;
@@ -590,11 +446,11 @@ mod tests {
     }
 
     fn select(select: Select) -> Statement {
-        Statement::Query(Box::new(Query {
+        Statement::Query(Query {
             body: SetExpr::Select(Box::new(select)),
             limit: None,
             offset: None,
-        }))
+        })
     }
 
     #[test]

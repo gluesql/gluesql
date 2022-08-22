@@ -8,6 +8,7 @@ mod operator;
 mod query;
 
 pub use self::{
+    data_type::translate_data_type,
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
     query::{translate_query, translate_select_item},
@@ -34,7 +35,7 @@ use {
 
 pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     match sql_statement {
-        SqlStatement::Query(query) => translate_query(query).map(Box::new).map(Statement::Query),
+        SqlStatement::Query(query) => translate_query(query).map(Statement::Query),
         SqlStatement::Insert {
             table_name,
             columns,
@@ -43,7 +44,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         } => Ok(Statement::Insert {
             table_name: translate_object_name(table_name),
             columns: translate_idents(columns),
-            source: translate_query(source).map(Box::new)?,
+            source: translate_query(source)?,
         }),
         SqlStatement::Update {
             table,

@@ -2,8 +2,8 @@ use {
     crate::result::{Error, Result},
     sqlparser::{
         ast::{
-            Expr as SqlExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
-            Statement as SqlStatement,
+            DataType as SqlDataType, Expr as SqlExpr, OrderByExpr, Query as SqlQuery,
+            SelectItem as SqlSelectItem, Statement as SqlStatement,
         },
         dialect::GenericDialect,
         parser::Parser,
@@ -74,5 +74,25 @@ pub fn parse_interval<Sql: AsRef<str>>(sql_interval: Sql) -> Result<SqlExpr> {
 
     Parser::new(tokens, &DIALECT)
         .parse_literal_interval()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_order_by_expr<Sql: AsRef<str>>(sql_order_by_expr: Sql) -> Result<OrderByExpr> {
+    let tokens = Tokenizer::new(&DIALECT, sql_order_by_expr.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_order_by_expr()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_data_type<Sql: AsRef<str>>(sql_data_type: Sql) -> Result<SqlDataType> {
+    let tokens = Tokenizer::new(&DIALECT, sql_data_type.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_data_type()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }

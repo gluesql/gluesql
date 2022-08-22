@@ -29,8 +29,28 @@ impl ExprNode {
         self.binary_op(BinaryOperator::Divide, other)
     }
 
+    pub fn modulo<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::Modulo, other)
+    }
+
     pub fn concat<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::StringConcat, other)
+    }
+
+    pub fn gt<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::Gt, other)
+    }
+
+    pub fn lt<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::Lt, other)
+    }
+
+    pub fn gte<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::GtEq, other)
+    }
+
+    pub fn lte<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::LtEq, other)
     }
 
     pub fn eq<T: Into<Self>>(self, other: T) -> Self {
@@ -41,28 +61,28 @@ impl ExprNode {
         self.binary_op(BinaryOperator::NotEq, other)
     }
 
-    pub fn gt<T: Into<Self>>(self, other: T) -> Self {
-        self.binary_op(BinaryOperator::Gt, other)
-    }
-
-    pub fn gte<T: Into<Self>>(self, other: T) -> Self {
-        self.binary_op(BinaryOperator::GtEq, other)
-    }
-
-    pub fn lt<T: Into<Self>>(self, other: T) -> Self {
-        self.binary_op(BinaryOperator::Lt, other)
-    }
-
-    pub fn lte<T: Into<Self>>(self, other: T) -> Self {
-        self.binary_op(BinaryOperator::LtEq, other)
-    }
-
     pub fn and<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::And, other)
     }
 
     pub fn or<T: Into<Self>>(self, other: T) -> Self {
         self.binary_op(BinaryOperator::Or, other)
+    }
+
+    pub fn like<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::Like, other)
+    }
+
+    pub fn ilike<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::ILike, other)
+    }
+
+    pub fn not_like<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::NotLike, other)
+    }
+
+    pub fn not_ilike<T: Into<Self>>(self, other: T) -> Self {
+        self.binary_op(BinaryOperator::NotILike, other)
     }
 }
 
@@ -88,20 +108,20 @@ mod tests {
         let expected = "amount / 30";
         test_expr(actual, expected);
 
+        let actual = col("amount").modulo(30);
+        let expected = "amount % 30";
+        test_expr(actual, expected);
+
         let actual = text("hello").concat(r#""world""#);
         let expected = "'hello' || 'world'";
         test_expr(actual, expected);
 
-        let actual = col("id").eq(10);
-        let expected = "id = 10";
-        test_expr(actual, expected);
-
-        let actual = col("id").neq("'abcde'");
-        let expected = r#"id != "abcde""#;
-        test_expr(actual, expected);
-
         let actual = col("id").gt(col("Bar.id"));
         let expected = "id > Bar.id";
+        test_expr(actual, expected);
+
+        let actual = col("id").lt(col("Bar.id"));
+        let expected = "id < Bar.id";
         test_expr(actual, expected);
 
         let actual = col("id").gte(col("Bar.id"));
@@ -112,16 +132,36 @@ mod tests {
         let expected = "id <= Bar.id";
         test_expr(actual, expected);
 
-        let actual = (col("id").gt(num(10))).or(col("id").lt(num(20)));
-        let expected = "id > 10 OR id < 20";
+        let actual = col("id").eq(10);
+        let expected = "id = 10";
         test_expr(actual, expected);
 
-        let actual = col("id").lt(col("Bar.id"));
-        let expected = "id < Bar.id";
+        let actual = col("id").neq("'abcde'");
+        let expected = r#"id != "abcde""#;
         test_expr(actual, expected);
 
         let actual = (col("id").gt(num(10))).and(col("id").lt(num(20)));
         let expected = "id > 10 AND id < 20";
+        test_expr(actual, expected);
+
+        let actual = (col("id").gt(num(10))).or(col("id").lt(num(20)));
+        let expected = "id > 10 OR id < 20";
+        test_expr(actual, expected);
+
+        let actual = col("name").like(text("a%"));
+        let expected = "name LIKE 'a%'";
+        test_expr(actual, expected);
+
+        let actual = col("name").ilike(text("a%"));
+        let expected = "name ILIKE 'a%'";
+        test_expr(actual, expected);
+
+        let actual = col("name").not_like(text("a%"));
+        let expected = "name NOT LIKE 'a%'";
+        test_expr(actual, expected);
+
+        let actual = col("name").not_ilike(text("a%"));
+        let expected = "name NOT ILIKE 'a%'";
         test_expr(actual, expected);
     }
 }

@@ -2,6 +2,7 @@ use {
     crate::*,
     gluesql_core::{
         executor::{AlterError, FetchError, Payload},
+        prelude::Value::*,
         translate::TranslateError,
     },
 };
@@ -18,13 +19,11 @@ CREATE TABLE DropTable (
 
     let sqls = ["INSERT INTO DropTable (id, num, name) VALUES (1, 2, \"Hello\")"];
 
-    for sql in sqls.iter() {
+    for sql in sqls {
         run!(sql);
     }
 
-    use gluesql_core::prelude::Value::*;
-
-    let sqls = vec![
+    let sqls = [
         (
             "SELECT id, num, name FROM DropTable;",
             Ok(select!(
@@ -61,6 +60,84 @@ CREATE TABLE DropTable (
         (
             "DROP VIEW DropTable;",
             Err(TranslateError::UnsupportedStatement("DROP VIEW DropTable".to_owned()).into()),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable1 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable2 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        ("DROP TABLE DropTable1, DropTable2;", Ok(Payload::DropTable)),
+        (
+            "SELECT id, num, name FROM DropTable1;",
+            Err(FetchError::TableNotFound("DropTable1".to_owned()).into()),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable2;",
+            Err(FetchError::TableNotFound("DropTable2".to_owned()).into()),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable1 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable2 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        (
+            "DROP TABLE IF EXISTS DropTable1, DropTable2;",
+            Ok(Payload::DropTable),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable1;",
+            Err(FetchError::TableNotFound("DropTable1".to_owned()).into()),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable2;",
+            Err(FetchError::TableNotFound("DropTable2".to_owned()).into()),
+        ),
+        (
+            r#"
+        CREATE TABLE DropTable1 (
+            id INT,
+            num INT,
+            name TEXT
+        )"#,
+            Ok(Payload::Create),
+        ),
+        (
+            "DROP TABLE IF EXISTS DropTable1, DropTable2;",
+            Ok(Payload::DropTable),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable1;",
+            Err(FetchError::TableNotFound("DropTable1".to_owned()).into()),
+        ),
+        (
+            "SELECT id, num, name FROM DropTable2;",
+            Err(FetchError::TableNotFound("DropTable2".to_owned()).into()),
         ),
     ];
 

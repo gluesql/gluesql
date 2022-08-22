@@ -14,7 +14,7 @@ use {
 };
 
 test_case!(extract, async move {
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
         (

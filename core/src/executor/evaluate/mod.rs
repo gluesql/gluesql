@@ -53,13 +53,9 @@ pub async fn evaluate<'a>(
             .map(Evaluated::from)
         }
         Expr::Nested(expr) => eval(expr).await,
-        Expr::CompoundIdentifier(idents) => {
-            if idents.len() != 2 {
-                return Err(EvaluateError::UnsupportedCompoundIdentifier(expr.clone()).into());
-            }
-
-            let table_alias = &idents[0];
-            let column = &idents[1];
+        Expr::CompoundIdentifier { alias, ident } => {
+            let table_alias = &alias;
+            let column = &ident;
             let context = context.ok_or(EvaluateError::UnreachableEmptyContext)?;
 
             match context.get_alias_value(table_alias, column) {
@@ -298,7 +294,7 @@ async fn evaluate_function<'a>(
         // --- float ---
         Function::Abs(expr) => f::abs(name(), eval(expr).await?),
         Function::Sign(expr) => f::sign(name(), eval(expr).await?),
-        Function::Sqrt(expr) => f::sqrt(name(), eval(expr).await?),
+        Function::Sqrt(expr) => f::sqrt(eval(expr).await?),
         Function::Power { expr, power } => {
             let expr = eval(expr).await?;
             let power = eval(power).await?;

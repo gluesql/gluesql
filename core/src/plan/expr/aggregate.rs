@@ -8,8 +8,9 @@ impl Aggregate {
             | Aggregate::Sum(expr)
             | Aggregate::Max(expr)
             | Aggregate::Min(expr)
-            | Aggregate::Avg(expr) => Some(expr),
-            Aggregate::Variance(expr) => Some(expr),
+            | Aggregate::Avg(expr)
+            | Aggregate::Variance(expr)
+            | Aggregate::Stdev(expr) => Some(expr),
         }
     }
 }

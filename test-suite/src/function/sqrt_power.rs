@@ -1,13 +1,14 @@
 use {
     crate::*,
     gluesql_core::{
+        data::ValueError,
         executor::EvaluateError,
         prelude::{Payload, Value::*},
     },
 };
 
 test_case!(sqrt, async move {
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT SQRT(4))",
             Ok(Payload::Create),
@@ -45,7 +46,7 @@ test_case!(sqrt, async move {
         ),
         (
             "SELECT SQRT('string') AS sqrt FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue(String::from("SQRT")).into()),
+            Err(ValueError::SqrtOnNonNumeric(Str("string".to_string())).into()),
         ),
         (
             "SELECT SQRT(NULL) AS sqrt FROM SingleItem",
@@ -59,9 +60,7 @@ test_case!(sqrt, async move {
 });
 
 test_case!(power, async move {
-    use gluesql_core::prelude::Value::{Null, F64};
-
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id FLOAT DEFAULT POWER(3, 4))",
             Ok(Payload::Create),

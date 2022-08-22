@@ -68,7 +68,7 @@ pub fn evaluate_stateless<'a>(
 
                     eval(expr).map_or_else(
                         |error| Some(Err(error)),
-                        |evaluated| (target == &evaluated).then(|| Ok(!negated)),
+                        |evaluated| (target == &evaluated).then_some(Ok(!negated)),
                     )
                 })
                 .take(1)
@@ -185,7 +185,7 @@ fn evaluate_function<'a>(
         }
 
         // --- float ---
-        Function::Sqrt(expr) => f::sqrt(name(), eval(expr)?),
+        Function::Sqrt(expr) => f::sqrt(eval(expr)?),
         Function::Power { expr, power } => {
             let expr = eval(expr)?;
             let power = eval(power)?;

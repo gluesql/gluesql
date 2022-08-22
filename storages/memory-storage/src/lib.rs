@@ -36,6 +36,15 @@ impl Store for MemoryStorage {
             .transpose()
     }
 
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+        let row = self
+            .items
+            .get(table_name)
+            .and_then(|item| item.rows.get(key).map(Clone::clone));
+
+        Ok(row)
+    }
+
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let rows: RowIter = match self.items.get(table_name) {
             Some(item) => Box::new(item.rows.clone().into_iter().map(Ok)),
@@ -61,7 +70,7 @@ impl MemoryStorage {
         self.items.remove(table_name);
     }
 
-    pub fn insert_data(&mut self, table_name: &str, rows: Vec<Row>) {
+    pub fn append_data(&mut self, table_name: &str, rows: Vec<Row>) {
         if let Some(item) = self.items.get_mut(table_name) {
             for row in rows {
                 self.id_counter += 1;
@@ -71,7 +80,7 @@ impl MemoryStorage {
         }
     }
 
-    pub fn update_data(&mut self, table_name: &str, rows: Vec<(Key, Row)>) {
+    pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Row)>) {
         if let Some(item) = self.items.get_mut(table_name) {
             for (key, row) in rows {
                 item.rows.insert(key, row);
@@ -106,18 +115,18 @@ impl StoreMut for MemoryStorage {
         Ok((storage, ()))
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        MemoryStorage::insert_data(&mut storage, table_name, rows);
+        MemoryStorage::append_data(&mut storage, table_name, rows);
 
         Ok((storage, ()))
     }
 
-    async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        MemoryStorage::update_data(&mut storage, table_name, rows);
+        MemoryStorage::insert_data(&mut storage, table_name, rows);
 
         Ok((storage, ()))
     }
