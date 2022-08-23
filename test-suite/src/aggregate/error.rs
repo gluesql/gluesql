@@ -1,6 +1,8 @@
+use gluesql_core::executor::EvaluateError;
+
 use {
     crate::*,
-    gluesql_core::{data::KeyError, executor::AggregateError, translate::TranslateError},
+    gluesql_core::{data::KeyError, translate::TranslateError},
 };
 
 test_case!(error, async move {
@@ -27,19 +29,7 @@ test_case!(error, async move {
 
     let test_cases = [
         (
-            AggregateError::OnlyIdentifierAllowed.into(),
-            "SELECT SUM(ifnull(age, 0)) from Item;",
-        ),
-        (
-            TranslateError::UnsupportedExpr("id.name.ok".to_owned()).into(),
-            "SELECT SUM(id.name.ok) FROM Item;",
-        ),
-        (
-            AggregateError::OnlyIdentifierAllowed.into(),
-            "SELECT SUM(1 + 2) FROM Item;",
-        ),
-        (
-            AggregateError::ValueNotFound("num".to_owned()).into(),
+            EvaluateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",
         ),
         (
