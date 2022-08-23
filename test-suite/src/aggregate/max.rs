@@ -39,6 +39,14 @@ test_case!(max, async move {
             ),
         ),
         (
+            "SELECT MAX(id - quantity) FROM Item;",
+            select!(
+                "MAX(id - quantity)"
+                I64;
+                2
+            ),
+        ),
+        (
             "SELECT SUM(quantity) * 2 + MAX(quantity) - 3 / 1 FROM Item",
             select!("SUM(quantity) * 2 + MAX(quantity) - 3 / 1"; I64; 116),
         ),
