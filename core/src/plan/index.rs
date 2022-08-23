@@ -76,6 +76,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 offset,
             });
         }
+        TableFactor::Series { name, .. } => get_name(name)?,
     };
 
     let indexes = match schema_map.get(table_name) {
@@ -90,11 +91,13 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
     };
 
     let index = select.order_by.last().and_then(|value_expr| {
-        indexes.find_ordered(value_expr).map(|name| IndexItem {
-            name,
-            asc: value_expr.asc,
-            cmp_expr: None,
-        })
+        indexes
+            .find_ordered(value_expr)
+            .map(|name| IndexItem::NonClustered {
+                name,
+                asc: value_expr.asc,
+                cmp_expr: None,
+            })
     });
 
     match index {
@@ -114,6 +117,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 TableFactor::Derived { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
+                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let from = TableWithJoins {
@@ -199,9 +203,10 @@ fn plan_select(
                 TableFactor::Derived { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
+                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
-            let index = Some(IndexItem {
+            let index = Some(IndexItem::NonClustered {
                 name: index_name,
                 asc: None,
                 cmp_expr: Some((index_op, index_value_expr)),

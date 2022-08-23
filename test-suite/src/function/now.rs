@@ -10,7 +10,7 @@ test_case!(now, async move {
         };
     }
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE Item (time TIMESTAMP DEFAULT NOW())",
             Ok(Payload::Create),

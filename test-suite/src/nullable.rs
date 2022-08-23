@@ -21,7 +21,7 @@ CREATE TABLE Test (
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT id, num, name FROM Test",
             select_with_null!(
@@ -218,7 +218,7 @@ CREATE TABLE Test (
 
     run!("UPDATE Test SET id = 2");
 
-    let test_cases = vec![
+    let test_cases = [
         ("SELECT id FROM Test", Ok(select!(id I64; 2; 2; 2))),
         (
             "SELECT id, num FROM Test",

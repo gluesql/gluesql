@@ -1,6 +1,6 @@
 [package]
 name = "gluesql-js"
-version = "0.11.0"
+version = "0.12.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
@@ -35,8 +35,8 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 # Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
 wee_alloc = { version = "0.4.5", optional = true }
 
-gluesql-core = { path = "../../core", version = "0.11.0" }
-memory-storage = { package = "gluesql_memory_storage", path = "../../storages/memory-storage", version = "0.11.0" }
+gluesql-core = { path = "../../core", version = "0.12.0" }
+memory-storage = { package = "gluesql_memory_storage", path = "../../storages/memory-storage", version = "0.12.0" }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
@@ -44,5 +44,5 @@ wasm-bindgen-test = "0.3.13"
 [dev-dependencies.test-suite]
 package = "gluesql-test-suite"
 path = "../../test-suite"
-version = "0.11.0"
+version = "0.12.0"
 features = ["alter-table", "metadata"]

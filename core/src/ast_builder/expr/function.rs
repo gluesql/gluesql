@@ -2,6 +2,7 @@ use {
     super::ExprNode,
     crate::{
         ast::Function,
+        ast_builder::ExprList,
         result::{Error, Result},
     },
 };
@@ -32,6 +33,37 @@ pub enum FunctionNode {
     Sign(ExprNode),
     Power(ExprNode, ExprNode),
     Sqrt(ExprNode),
+    Gcd(ExprNode, ExprNode),
+    Lcm(ExprNode, ExprNode),
+    GenerateUuid,
+    Repeat(ExprNode, ExprNode),
+    Exp(ExprNode),
+    Lpad {
+        expr: ExprNode,
+        size: ExprNode,
+        fill: Option<ExprNode>,
+    },
+    Rpad {
+        expr: ExprNode,
+        size: ExprNode,
+        fill: Option<ExprNode>,
+    },
+    Degrees(ExprNode),
+    Radians(ExprNode),
+    Concat(ExprList),
+    Substr {
+        expr: ExprNode,
+        start: ExprNode,
+        count: Option<ExprNode>,
+    },
+    Ltrim {
+        expr: ExprNode,
+        chars: Option<ExprNode>,
+    },
+    Rtrim {
+        expr: ExprNode,
+        chars: Option<ExprNode>,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -85,6 +117,52 @@ impl TryFrom<FunctionNode> for Function {
                     .map(|power| Function::Power { expr, power })
             }),
             FunctionNode::Sqrt(expr_node) => expr_node.try_into().map(Function::Sqrt),
+            FunctionNode::Gcd(left_node, right_node) => left_node.try_into().and_then(|left| {
+                right_node
+                    .try_into()
+                    .map(|right| Function::Gcd { left, right })
+            }),
+            FunctionNode::Lcm(left_node, right_node) => left_node.try_into().and_then(|left| {
+                right_node
+                    .try_into()
+                    .map(|right| Function::Lcm { left, right })
+            }),
+            FunctionNode::GenerateUuid => Ok(Function::GenerateUuid()),
+            FunctionNode::Repeat(expr, num) => expr
+                .try_into()
+                .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
+            FunctionNode::Lpad { expr, size, fill } => {
+                let fill = fill.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Lpad { expr, size, fill })
+            }
+            FunctionNode::Rpad { expr, size, fill } => {
+                let fill = fill.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Rpad { expr, size, fill })
+            }
+            FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
+            FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
+            FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
+            FunctionNode::Exp(expr) => expr.try_into().map(Function::Exp),
+            FunctionNode::Substr { expr, start, count } => {
+                let count = count.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                let start = start.try_into()?;
+                Ok(Function::Substr { expr, start, count })
+            }
+            FunctionNode::Ltrim { expr, chars } => {
+                let chars = chars.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                Ok(Function::Ltrim { expr, chars })
+            }
+            FunctionNode::Rtrim { expr, chars } => {
+                let chars = chars.map(TryInto::try_into).transpose()?;
+                let expr = expr.try_into()?;
+                Ok(Function::Rtrim { expr, chars })
+            }
         }
     }
 }
@@ -160,6 +238,39 @@ impl ExprNode {
     pub fn sqrt(self) -> ExprNode {
         sqrt(self)
     }
+    pub fn gcd(self, right: ExprNode) -> ExprNode {
+        gcd(self, right)
+    }
+    pub fn lcm(self, right: ExprNode) -> ExprNode {
+        lcm(self, right)
+    }
+    pub fn repeat(self, num: ExprNode) -> ExprNode {
+        repeat(self, num)
+    }
+    pub fn degrees(self) -> ExprNode {
+        degrees(self)
+    }
+    pub fn radians(self) -> ExprNode {
+        radians(self)
+    }
+    pub fn lpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
+        lpad(self, size, fill)
+    }
+    pub fn rpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
+        rpad(self, size, fill)
+    }
+    pub fn exp(self) -> ExprNode {
+        exp(self)
+    }
+    pub fn substr(self, start: ExprNode, count: Option<ExprNode>) -> ExprNode {
+        substr(self, start, count)
+    }
+    pub fn rtrim(self, chars: Option<ExprNode>) -> ExprNode {
+        rtrim(self, chars)
+    }
+    pub fn ltrim(self, chars: Option<ExprNode>) -> ExprNode {
+        ltrim(self, chars)
+    }
 }
 
 pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
@@ -176,6 +287,9 @@ pub fn ceil<T: Into<ExprNode>>(expr: T) -> ExprNode {
 }
 pub fn round<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Round(expr.into())))
+}
+pub fn concat<T: Into<ExprList>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Concat(expr.into())))
 }
 pub fn floor<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Floor(expr.into())))
@@ -200,6 +314,9 @@ pub fn tan<T: Into<ExprNode>>(expr: T) -> ExprNode {
 }
 pub fn pi() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Pi))
+}
+pub fn generate_uuid() -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::GenerateUuid))
 }
 pub fn now() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Now))
@@ -239,11 +356,74 @@ pub fn sqrt<V: Into<ExprNode>>(expr: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Sqrt(expr.into())))
 }
 
+pub fn gcd<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Gcd(left.into(), right.into())))
+}
+
+pub fn lcm<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Lcm(left.into(), right.into())))
+}
+
+pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
+}
+
+pub fn lpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Lpad {
+        expr: expr.into(),
+        size: size.into(),
+        fill: fill.map(|v| v.into()),
+    }))
+}
+
+pub fn rpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Rpad {
+        expr: expr.into(),
+        size: size.into(),
+        fill: fill.map(|v| v.into()),
+    }))
+}
+
+pub fn degrees<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Degrees(expr.into())))
+}
+
+pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Radians(expr.into())))
+}
+
+pub fn exp<V: Into<ExprNode>>(expr: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Exp(expr.into())))
+}
+pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Substr {
+        expr: expr.into(),
+        start: start.into(),
+        count: count.map(|v| v.into()),
+    }))
+}
+
+pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Ltrim {
+        expr: expr.into(),
+        chars: chars.map(|t| t.into()),
+    }))
+}
+
+pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Rtrim {
+        expr: expr.into(),
+        chars: chars.map(|t| t.into()),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, cos, expr, floor, ifnull, left, ln, log, log10, log2,
-        now, num, pi, power, reverse, right, round, sign, sin, sqrt, tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, concat, cos, degrees, exp, expr, floor, gcd,
+        generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, now, num, pi, power,
+        radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
+        test_expr, text, upper,
     };
 
     #[test]
@@ -381,6 +561,13 @@ mod tests {
     }
 
     #[test]
+    fn function_generate_uuid() {
+        let actual = generate_uuid();
+        let expected = "GENERATE_UUID()";
+        test_expr(actual, expected);
+    }
+
+    #[test]
     fn function_left() {
         let actual = left(text("GlueSQL"), num(2));
         let expected = "LEFT('GlueSQL', 2)";
@@ -486,6 +673,178 @@ mod tests {
 
         let actual = num(9).sqrt();
         let expected = "SQRT(9)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_gcd() {
+        let actual = gcd(num(64), num(8));
+        let expected = "gcd(64,8)";
+        test_expr(actual, expected);
+
+        let actual = num(64).gcd(num(8));
+        let expected = "GCD(64,8)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_lcm() {
+        let actual = lcm(num(64), num(8));
+        let expected = "lcm(64,8)";
+        test_expr(actual, expected);
+
+        let actual = num(64).lcm(num(8));
+        let expected = "LCM(64,8)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_repeat() {
+        let actual = repeat(text("GlueSQL"), num(2));
+        let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").repeat(num(2));
+        let expected = "REPEAT('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_degrees() {
+        let actual = degrees(num(1));
+        let expected = "DEGREES(1)";
+        test_expr(actual, expected);
+
+        let actual = num(1).degrees();
+        let expected = "DEGREES(1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_radians() {
+        let actual = radians(num(1));
+        let expected = "RADIANS(1)";
+        test_expr(actual, expected);
+
+        let actual = num(1).radians();
+        let expected = "RADIANS(1)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_concat() {
+        let actual = concat(vec![text("Glue"), text("SQL"), text("Go")]);
+        let expected = "CONCAT('Glue','SQL','Go')";
+        test_expr(actual, expected);
+
+        let actual = concat(vec!["Glue", "SQL", "Go"]);
+        let expected = "CONCAT(Glue, SQL, Go)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_lpad() {
+        let actual = lpad(text("GlueSQL"), num(10), Some(text("Go")));
+        let expected = "LPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = lpad(text("GlueSQL"), num(10), None);
+        let expected = "LPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").lpad(num(10), Some(text("Go")));
+        let expected = "LPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").lpad(num(10), None);
+        let expected = "LPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_rpad() {
+        let actual = rpad(text("GlueSQL"), num(10), Some(text("Go")));
+        let expected = "RPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = rpad(text("GlueSQL"), num(10), None);
+        let expected = "RPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").rpad(num(10), Some(text("Go")));
+        let expected = "RPAD('GlueSQL', 10, 'Go')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").rpad(num(10), None);
+        let expected = "RPAD('GlueSQL', 10)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_exp() {
+        let actual = exp(num(2));
+        let expected = "EXP(2)";
+        test_expr(actual, expected);
+
+        let actual = num(2).exp();
+        let expected = "EXP(2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_substr() {
+        let actual = substr(text("GlueSQL"), num(2), Some(num(4)));
+        let expected = "SUBSTR('GlueSQL', 2, 4)";
+        test_expr(actual, expected);
+
+        let actual = substr(text("GlueSQL"), num(2), None);
+        let expected = "SUBSTR('GlueSQL', 2)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").substr(num(2), Some(num(4)));
+        let expected = "SUBSTR('GlueSQL', 2, 4)";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL").substr(num(2), None);
+        let expected = "SUBSTR('GlueSQL', 2)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_rtrim() {
+        let actual = rtrim(text("GlueSQL      "), None);
+        let expected = "RTRIM('GlueSQL      ')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQL      ").rtrim(None);
+        let expected = "RTRIM('GlueSQL      ')";
+        test_expr(actual, expected);
+
+        let actual = rtrim(text("GlueSQLABC"), Some(text("ABC")));
+        let expected = "RTRIM('GlueSQLABC','ABC')";
+        test_expr(actual, expected);
+
+        let actual = text("GlueSQLABC").rtrim(Some(text("ABC")));
+        let expected = "RTRIM('GlueSQLABC','ABC')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_ltrim() {
+        let actual = ltrim(text("      GlueSQL"), None);
+        let expected = "LTRIM('      GlueSQL')";
+        test_expr(actual, expected);
+
+        let actual = text("      GlueSQL").ltrim(None);
+        let expected = "LTRIM('      GlueSQL')";
+        test_expr(actual, expected);
+
+        let actual = ltrim(text("ABCGlueSQL"), Some(text("ABC")));
+        let expected = "LTRIM('ABCGlueSQL','ABC')";
+        test_expr(actual, expected);
+
+        let actual = text("ABCGlueSQL").ltrim(Some(text("ABC")));
+        let expected = "LTRIM('ABCGlueSQL','ABC')";
         test_expr(actual, expected);
     }
 }

@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::*};
+use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(join, async move {
     let create_sqls: [&str; 2] = [
@@ -17,13 +17,13 @@ test_case!(join, async move {
     ",
     ];
 
-    for sql in create_sqls.iter() {
+    for sql in create_sqls {
         run!(sql);
     }
 
     let delete_sqls = ["DELETE FROM Player", "DELETE FROM Item"];
 
-    for sql in delete_sqls.iter() {
+    for sql in delete_sqls {
         run!(sql);
     }
 
@@ -56,7 +56,7 @@ test_case!(join, async move {
         ",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 
@@ -132,11 +132,11 @@ test_case!(join, async move {
         (30, "SELECT * FROM Item INNER JOIN Item i2 ON i2.id IN (101, 103);"),
     ];
 
-    for (num, sql) in select_sqls.iter() {
-        count!(*num, sql);
+    for (num, sql) in select_sqls {
+        count!(num, sql);
     }
 
-    for sql in delete_sqls.iter() {
+    for sql in delete_sqls {
         run!(sql);
     }
 });
@@ -158,7 +158,7 @@ test_case!(blend, async move {
     ",
     ];
 
-    for sql in create_sqls.iter() {
+    for sql in create_sqls {
         run!(sql);
     }
 
@@ -179,11 +179,9 @@ test_case!(blend, async move {
         ",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
-
-    use Value::{Null, Str, I64};
 
     let sql = "
         SELECT p.id, i.id

@@ -1,6 +1,6 @@
 [package]
 name = "gluesql-shared-memory-storage"
-version = "0.11.0"
+version = "0.12.0"
 edition = "2021"
 authors = [
 	"Jiseok CHOI <jiseok.dev@gmail.com>",
@@ -12,8 +12,8 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-memory-storage = { package = "gluesql_memory_storage", version = "0.11.0", path = "../memory-storage" }
-gluesql-core = { path = "../../core", version = "0.11.0", features = [
+memory-storage = { package = "gluesql_memory_storage", version = "0.12.0", path = "../memory-storage" }
+gluesql-core = { path = "../../core", version = "0.12.0", features = [
 	"alter-table",
 	"index",
 	"transaction",
@@ -24,7 +24,7 @@ serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["sync"] }
 
 [dev-dependencies]
-test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.11.0", features = [
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.12.0", features = [
 	"alter-table",
 	"index",
 	"transaction",
