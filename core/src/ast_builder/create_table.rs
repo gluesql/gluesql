@@ -42,6 +42,11 @@ impl CreateTableNode {
         self.columns.push(col);
         self
     }
+
+    pub fn add_column<T: Into<ColumnDefNode>>(mut self, column: T) -> Self {
+        self.columns.push(column.into());
+        self
+    }
 }
 
 #[cfg(test)]
@@ -59,6 +64,15 @@ mod tests {
             .option("NULL")
             .set_col("num", DataType::Int)
             .set_col("name", "text")
+            .build();
+        let expected = "CREATE TABLE Foo (id INTEGER NULL, num INTEGER, name TEXT)";
+        test(actual, expected);
+
+        let actual = table("Foo")
+            .create_table()
+            .add_column("id INTEGER NULL")
+            .add_column("num INTEGER")
+            .add_column("name TEXT")
             .build();
         let expected = "CREATE TABLE Foo (id INTEGER NULL, num INTEGER, name TEXT)";
         test(actual, expected);

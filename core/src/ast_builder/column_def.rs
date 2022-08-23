@@ -3,19 +3,24 @@ use {
     crate::{
         ast::{ColumnDef, ColumnOption, ColumnOptionDef},
         ast_builder::DataTypeNode,
-        parse_sql::parse_column_option_def,
+        parse_sql::parse_column_def,
         result::{Error, Result},
-        translate::translate_column_option_def,
+        translate::{translate_column_def, translate_column_option_def},
     },
 };
 
 #[derive(Clone)]
-pub struct ColumnDefNode {
-    create_table_node: CreateTableNode,
-    name: String,
-    data_type: DataTypeNode,
-    options: ColumnOptionDefList,
+pub enum ColumnDefNode {
+    Text(String),
 }
+
+// #[derive(Clone)]
+// pub struct ColumnDefNode {
+//     create_table_node: CreateTableNode,
+//     name: String,
+//     data_type: DataTypeNode,
+//     options: ColumnOptionDefList,
+// }
 
 impl ColumnDefNode {
     pub fn new(create_table_node: CreateTableNode, name: String, data_type: DataTypeNode) -> Self {
@@ -43,18 +48,29 @@ impl ColumnDefNode {
     }
 }
 
+// impl TryFrom<ColumnDefNode> for ColumnDef {
+//     type Error = Error;
+//
+//     fn try_from(column_def_node: ColumnDefNode) -> Result<ColumnDef> {
+//         let name = column_def_node.name;
+//         let data_type = column_def_node.data_type.try_into()?;
+//         let options = column_def_node.options;
+//         Ok(ColumnDef {
+//             name,
+//             data_type,
+//             options,
+//         })
+//     }
+// }
+
 impl TryFrom<ColumnDefNode> for ColumnDef {
     type Error = Error;
 
     fn try_from(column_def_node: ColumnDefNode) -> Result<ColumnDef> {
-        let name = column_def_node.name;
-        let data_type = column_def_node.data_type.try_into()?;
-        let options = column_def_node.options;
-        Ok(ColumnDef {
-            name,
-            data_type,
-            options,
-        })
+        match column_def_node {
+            ColumnDefNode::Text(column_def) => parse_column_def(column_def)
+                .and_then(|column_def| translate_column_def(&column_def)),
+        }
     }
 }
 
