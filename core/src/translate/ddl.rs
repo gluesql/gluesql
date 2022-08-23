@@ -72,7 +72,7 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
     })
 }
 
-pub fn translate_column_option_def(
+fn translate_column_option_def(
     sql_column_option_def: &SqlColumnOptionDef,
 ) -> Result<Vec<ColumnOptionDef>> {
     let SqlColumnOptionDef { name, option } = sql_column_option_def;
