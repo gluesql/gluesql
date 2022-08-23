@@ -119,3 +119,25 @@ pub enum Variable {
     Tables,
     Version,
 }
+
+impl ToSql for Statement {
+    fn to_sql(&self) -> String {
+        match self {
+            Statement::ShowColumns => "UNIMPLEMENTED!".to_string(),
+            Statement::Query(q) => "UNIMPLEMENTED!".to_string(),
+            Statement::Insert => "UNIMPLEMENTED!".to_string(),
+            Statement::Update => "UNIMPLEMENTED!".to_string(),
+            Statement::Delete => "UNIMPLEMENTED!".to_string(),
+            Statement::CreateTable => "UNIMPLEMENTED!".to_string(),
+            Statement::AlterTable { name, operation } => "UNIMPLEMENTED!".to_string(),
+            Statement::DropTable => "UNIMPLEMENTED!".to_string(),
+            Statement::CreateIndex => "UNIMPLEMENTED!".to_string(),
+            Statement::DropIndex => "UNIMPLEMENTED!".to_string(),
+            Statement::StartTransaction => "UNIMPLEMENTED!".to_string(),
+            Statement::Commit => "UNIMPLEMENTED!".to_string(),
+            Statement::Rollback => "UNIMPLEMENTED!".to_string(),
+            Statement::ShowVariable(v) => "UNIMPLEMENTED!".to_string(),
+            Statement::ShowIndexes(o) => "UNIMPLEMENTED!".to_string(),
+        }
+    }
+}
