@@ -38,6 +38,22 @@ test_case!(sum, async move {
                 15                47
             ),
         ),
+        (
+            "SELECT SUM(ifnull(age, 0)) from Item;",
+            select!(
+                "SUM(ifnull(age, 0))"
+                I64;
+                104
+            ),
+        ),
+        (
+            "SELECT SUM(1 + 2) FROM Item;",
+            select!(
+                "SUM(1 + 2)"
+                I64;
+                15
+            ),
+        ),
     ];
 
     for (sql, expected) in test_cases {
