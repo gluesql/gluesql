@@ -88,6 +88,14 @@ pub enum FunctionNode {
         expr: ExprNode,
         chars: Option<ExprNode>,
     },
+    Div {
+        dividend: ExprNode,
+        divisor: ExprNode,
+    },
+    Mod {
+        dividend: ExprNode,
+        divisor: ExprNode,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -186,6 +194,16 @@ impl TryFrom<FunctionNode> for Function {
                 let chars = chars.map(TryInto::try_into).transpose()?;
                 let expr = expr.try_into()?;
                 Ok(Function::Rtrim { expr, chars })
+            }
+            FunctionNode::Div { dividend, divisor } => {
+                let dividend = dividend.try_into()?;
+                let divisor = divisor.try_into()?;
+                Ok(Function::Div { dividend, divisor })
+            }
+            FunctionNode::Mod { dividend, divisor } => {
+                let dividend = dividend.try_into()?;
+                let divisor = divisor.try_into()?;
+                Ok(Function::Mod { dividend, divisor })
             }
         }
     }
@@ -465,12 +483,26 @@ pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
     }))
 }
 
+pub fn divide<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Div {
+        dividend: dividend.into(),
+        divisor: divisor.into(),
+    }))
+}
+
+pub fn modulo<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Mod {
+        dividend: dividend.into(),
+        divisor: divisor.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, concat, cos, degrees, exp, expr, floor, gcd,
-        generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, now, num, pi, power,
-        radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
+        abs, acos, asin, atan, ceil, col, concat, cos, degrees, divide, exp, expr, floor, gcd,
+        generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo, now, num, pi,
+        power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
         test_expr, text, upper,
     };
 
@@ -893,6 +925,20 @@ mod tests {
 
         let actual = text("ABCGlueSQL").ltrim(Some(text("ABC")));
         let expected = "LTRIM('ABCGlueSQL','ABC')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_mod() {
+        let actual = modulo(num(64), num(8));
+        let expected = "mod(64,8)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_div() {
+        let actual = divide(num(64), num(8));
+        let expected = "div(64,8)";
         test_expr(actual, expected);
     }
 }
