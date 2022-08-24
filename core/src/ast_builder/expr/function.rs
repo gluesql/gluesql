@@ -435,7 +435,7 @@ pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
     }))
 }
 
-pub fn div<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
+pub fn divide<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Div {
         dividend: dividend.into(),
         divisor: divisor.into(),
@@ -452,7 +452,7 @@ pub fn modulo<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, concat, cos, degrees, div, exp, expr, floor, gcd,
+        abs, acos, asin, atan, ceil, col, concat, cos, degrees, divide, exp, expr, floor, gcd,
         generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo, now, num, pi,
         power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
         test_expr, text, upper,
@@ -889,7 +889,7 @@ mod tests {
 
     #[test]
     fn function_div() {
-        let actual = div(num(64), num(8));
+        let actual = divide(num(64), num(8));
         let expected = "div(64,8)";
         test_expr(actual, expected);
     }
