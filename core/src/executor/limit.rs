@@ -19,7 +19,7 @@ impl Limit {
         let eval = |expr| -> Result<usize> {
             let value: Value = evaluate_stateless(None, expr)?.try_into()?;
 
-            Ok(value.try_into()?)
+            value.try_into()
         };
 
         let limit = limit.map(eval).transpose()?;
