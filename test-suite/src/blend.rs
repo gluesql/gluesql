@@ -161,18 +161,6 @@ test_case!(blend, async move {
             "SELECT noname FROM BlendUser",
         ),
         (
-            EvaluateError::ValueNotFound("noname".to_owned()).into(),
-            "SELECT * FROM BlendUser WHERE noname = 1;",
-        ),
-        (
-            FetchError::TableNotFound("Nothing".to_owned()).into(),
-            "SELECT * FROM Nothing;",
-        ),
-        (
-            TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
-            "TRUNCATE TABLE BlendUser;",
-        ),
-        (
             EvaluateError::MoreThanOneRowReturned.into(),
             "SELECT (SELECT id FROM BlendItem) as id FROM BlendItem",
         ),

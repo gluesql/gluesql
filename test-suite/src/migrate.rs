@@ -1,7 +1,8 @@
 use {
     crate::*,
     gluesql_core::{
-        data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError,
+        data::ValueError, executor::EvaluateError, executor::FetchError, prelude::Value::*,
+        translate::TranslateError,
     },
 };
 
@@ -105,6 +106,18 @@ test_case!(migrate, async move {
             )
             .into(),
             "SELECT * FROM BlendItem UNION SELECT * FROM BlendItem;",
+        ),
+        (
+            EvaluateError::ValueNotFound("noname".to_owned()).into(),
+            "SELECT * FROM BlendUser WHERE noname = 1;",
+        ),
+        (
+            FetchError::TableNotFound("Nothing".to_owned()).into(),
+            "SELECT * FROM Nothing;",
+        ),
+        (
+            TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
+            "TRUNCATE TABLE BlendUser;",
         ),
     ];
 
