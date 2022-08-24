@@ -18,9 +18,8 @@ impl Limit {
     pub fn new(limit: Option<&Expr>, offset: Option<&Expr>) -> Result<Self> {
         let eval = |expr| -> Result<usize> {
             let value: Value = evaluate_stateless(None, expr)?.try_into()?;
-            let n: i64 = value.try_into()?;
 
-            Ok(n as usize)
+            Ok(value.try_into()?)
         };
 
         let limit = limit.map(eval).transpose()?;
