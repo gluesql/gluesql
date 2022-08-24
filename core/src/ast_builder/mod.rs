@@ -1,3 +1,4 @@
+mod assignment;
 mod data_type;
 mod delete;
 mod drop_table;
@@ -14,8 +15,10 @@ mod show_columns;
 mod table;
 #[cfg(feature = "transaction")]
 mod transaction;
+mod update;
 
 pub use {
+    assignment::AssignmentNode,
     data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
@@ -30,6 +33,7 @@ pub use {
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
     table::TableNode,
+    update::UpdateNode,
 };
 
 /// Available expression builder functions
