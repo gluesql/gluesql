@@ -406,7 +406,7 @@ macro_rules! try_from_owned_value {
     )*}
 }
 
-try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u128, Decimal);
+try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u128, usize, Decimal);
 
 impl TryFrom<&Value> for NaiveDate {
     type Error = Error;
@@ -939,32 +939,6 @@ mod tests {
             ($from: expr, $to: expr) => {
                 assert_eq!($from.try_into() as Result<usize>, $to);
                 assert_eq!(usize::try_from($from), $to);
-                // rustc: the trait bound `usize: From<data::value::Value>` is not satisfied
-                // the following other types implement trait `From<T>`:
-                //   <f32 as From<i16>>
-                //   <f32 as From<i8>>
-                //   <f32 as From<u16>>
-                //   <f32 as From<u8>>
-                //   <f64 as From<f32>>
-                //   <f64 as From<i16>>
-                //   <f64 as From<i32>>
-                //   <f64 as From<i8>>
-                // and 67 others
-                // required because of the requirements on the impl of `Into<usize>` for `data::value::Value`
-                // required because of the requirements on the impl of `TryFrom<data::value::Value>` for `usize` [E0277]
-                // rustc: the trait bound `usize: From<data::value::Value>` is not satisfied
-                // the following other types implement trait `From<T>`:
-                //   <f32 as From<i16>>
-                //   <f32 as From<i8>>
-                //   <f32 as From<u16>>
-                //   <f32 as From<u8>>
-                //   <f64 as From<f32>>
-                //   <f64 as From<i16>>
-                //   <f64 as From<i32>>
-                //   <f64 as From<i8>>
-                // and 67 others
-                // required because of the requirements on the impl of `Into<usize>` for `data::value::Value`
-                // required because of the requirements on the impl of `TryFrom<data::value::Value>` for `usize` [E0277]
             };
         }
         let timestamp = |y, m, d, hh, mm, ss, ms| {
@@ -986,35 +960,33 @@ mod tests {
         test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
         test!(
             Value::Date(date(2021, 11, 20)),
-            Err(ValueError::ImpossibleCast.into()) // rustc: the trait bound `Infallible: From<ValueError>` is not satisfied
-                                                   // the trait `From<!>` is implemented for `Infallible`
-                                                   // required because of the requirements on the impl of `Into<Infallible>` for `ValueError` [E0277]
+            Err(ValueError::ImpossibleCast.into())
         );
-        // test!(
-        //     Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
-        //     Err(ValueError::ImpossibleCast.into())
-        // );
-        // test!(
-        //     Value::Time(time(10, 0, 0, 0)),
-        //     Err(ValueError::ImpossibleCast.into())
-        // );
-        // test!(
-        //     Value::Interval(I::Month(1)),
-        //     Err(ValueError::ImpossibleCast.into())
-        // );
-        // test!(
-        //     Value::Uuid(195965723427462096757863453463987888808),
-        //     Err(ValueError::ImpossibleCast.into())
-        // );
-        // test!(
-        //     Value::Map(HashMap::new()),
-        //     Err(ValueError::ImpossibleCast.into())
-        // );
-        // test!(
-        //     Value::List(Vec::new()),
-        //     Err(ValueError::ImpossibleCast.into())
-        // );
-        // test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
     }
 
     #[test]
