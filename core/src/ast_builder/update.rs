@@ -1,10 +1,10 @@
-use crate::{
-    ast::{Assignment, Expr, ObjectName, Statement},
-    result::Result,
+use {
+    super::{AssignmentNode, ExprNode},
+    crate::{
+        ast::{Assignment, Expr, ObjectName, Statement},
+        result::Result,
+    },
 };
-
-use super::AssignmentNode;
-use super::ExprNode;
 
 #[derive(Clone)]
 pub struct UpdateNode {
