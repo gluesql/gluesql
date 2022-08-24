@@ -270,6 +270,10 @@ test_case!(blend, async move {
             PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
             "SELECT id FROM users JOIN testers ON users.id = testers.id;",
         ),
+        (
+            TranslateError::TooManyTables.into(),
+            "SELECT * FROM BlendUser, BlendItem",
+        ),
     ];
 
     for (error, sql) in error_cases {

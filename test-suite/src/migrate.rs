@@ -89,4 +89,26 @@ test_case!(migrate, async move {
     let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
     let expected = select!(id | num; I64 | I64; 2 9);
     assert_eq!(expected, found);
+
+    let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
+    let expected = select!(id | num; I64 | I64; 2 9);
+    assert_eq!(expected, found);
+
+    let error_cases = [
+        (
+            TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
+            "SELECT 1 ^ 2 FROM BlendUser;",
+        ),
+        (
+            TranslateError::UnsupportedQuerySetExpr(
+                "SELECT * FROM BlendItem UNION SELECT * FROM BlendItem".to_owned(),
+            )
+            .into(),
+            "SELECT * FROM BlendItem UNION SELECT * FROM BlendItem;",
+        ),
+    ];
+
+    for (error, sql) in error_cases {
+        test!(Err(error), sql);
+    }
 });

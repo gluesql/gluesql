@@ -165,31 +165,12 @@ test_case!(blend, async move {
             "SELECT * FROM BlendUser WHERE noname = 1;",
         ),
         (
-            EvaluateError::NestedSelectRowNotFound.into(),
-            "SELECT * FROM BlendUser WHERE id = (SELECT id FROM BlendUser WHERE id = 9);",
-        ),
-        (
             FetchError::TableNotFound("Nothing".to_owned()).into(),
             "SELECT * FROM Nothing;",
         ),
         (
-            TranslateError::TooManyTables.into(),
-            "SELECT * FROM BlendUser, BlendItem",
-        ),
-        (
             TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
             "TRUNCATE TABLE BlendUser;",
-        ),
-        (
-            TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
-            "SELECT 1 ^ 2 FROM BlendUser;",
-        ),
-        (
-            TranslateError::UnsupportedQuerySetExpr(
-                "SELECT * FROM BlendItem UNION SELECT * FROM BlendItem".to_owned(),
-            )
-            .into(),
-            "SELECT * FROM BlendItem UNION SELECT * FROM BlendItem;",
         ),
         (
             EvaluateError::MoreThanOneRowReturned.into(),
