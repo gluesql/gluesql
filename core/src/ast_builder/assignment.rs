@@ -18,12 +18,6 @@ impl From<&str> for AssignmentNode {
     }
 }
 
-impl From<(String, ExprNode)> for AssignmentNode {
-    fn from(expr: (String, ExprNode)) -> Self {
-        Self::Expr(expr.0, expr.1)
-    }
-}
-
 impl TryFrom<AssignmentNode> for Assignment {
     type Error = Error;
 
@@ -58,15 +52,15 @@ mod tests {
 
     #[test]
     fn assignment() {
-        let actual = AssignmentNode::Text("foo = 1".into());
+        let actual = "foo = 1".into();
         let expected = "foo = 1";
         test(actual, expected);
 
-        let actual = AssignmentNode::Text(r#"foo = "choco""#.into());
+        let actual = r#"foo = "choco""#.into();
         let expected = r#"foo = "choco""#;
         test(actual, expected);
 
-        let actual = AssignmentNode::Text(r#"Bar = mild"#.into());
+        let actual = r#"Bar = mild"#.into();
         let expected = r#"Bar = mild"#;
         test(actual, expected);
 
