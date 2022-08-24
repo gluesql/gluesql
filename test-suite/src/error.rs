@@ -1,13 +1,14 @@
-use crate::*;
-
-test_case!(error, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         data::RowError,
         executor::{EvaluateError, ExecuteError, FetchError},
         plan::PlanError,
         translate::TranslateError,
-    };
+    },
+};
 
+test_case!(error, async move {
     run!("CREATE TABLE TableA (id INTEGER);");
     run!("INSERT INTO TableA (id) VALUES (1);");
     run!("INSERT INTO TableA (id) VALUES (9);");
@@ -18,7 +19,7 @@ test_case!(error, async move {
     run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
     run!(r#"INSERT INTO testers (id, nickname) VALUES (1, "Ron");"#);
 
-    let test_cases = vec![
+    let test_cases = [
         (
             TranslateError::UnsupportedStatement("TRUNCATE TABLE TableA".to_owned()).into(),
             "TRUNCATE TABLE TableA;",
@@ -62,7 +63,6 @@ test_case!(error, async move {
             TranslateError::TooManyTables.into(),
             "SELECT * FROM TableA, TableB",
         ),
-        (TranslateError::LackOfTable.into(), "SELECT 1;"),
         (
             TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into(),
             "SELECT * FROM TableA JOIN TableA USING (id);",

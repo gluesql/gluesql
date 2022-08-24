@@ -1,11 +1,15 @@
 use {
-    super::{context::FilterContext, evaluate::evaluate, filter::check_expr},
+    super::{context::FilterContext, evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
-            ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableFactor, TableWithJoins,
+            ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias, TableFactor,
+            TableWithJoins, Values,
         },
-        data::{get_alias, get_index, get_name, Key, Row, TableError, Value},
-        executor::select::{get_labels, select},
+        data::{get_alias, get_index, get_name, Key, Row, Value},
+        executor::{
+            evaluate::evaluate,
+            select::{get_labels, select},
+        },
         result::{Error, Result},
         store::GStore,
     },
@@ -22,6 +26,10 @@ use {
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+    #[error("SERIES has wrong size: {0}")]
+    SeriesSizeWrong(i64),
+    #[error("table '{0}' has {1} columns available but {2} column aliases specified")]
+    TooManyColumnAliases(String, usize, usize),
 }
 
 pub async fn fetch<'a>(
@@ -57,9 +65,10 @@ pub async fn fetch<'a>(
 }
 
 #[derive(futures_enum::Stream)]
-pub enum Rows<I1, I2> {
+pub enum Rows<I1, I2, I3> {
     Derived(I1),
     Table(I2),
+    Series(I3),
 }
 
 pub async fn fetch_relation_rows<'a>(
@@ -140,6 +149,17 @@ pub async fn fetch_relation_rows<'a>(
 
             Ok(Rows::Table(stream::iter(rows)))
         }
+        TableFactor::Series { size, .. } => {
+            let value: Value = evaluate_stateless(None, size)?.try_into()?;
+            let size: i64 = value.try_into()?;
+            let size = match size {
+                n if n >= 0 => size,
+                n => return Err(FetchError::SeriesSizeWrong(n).into()),
+            };
+            let rows = (1..=size).map(|v| Ok(Row(vec![Value::I64(v)])));
+
+            Ok(Rows::Series(stream::iter(rows)))
+        }
     }
 }
 
@@ -165,34 +185,51 @@ pub async fn fetch_relation_columns(
 
             fetch_columns(storage, table_name).await
         }
+        TableFactor::Series { .. } => Ok(vec!["N".to_string()]),
         TableFactor::Derived {
-            subquery:
-                Query {
-                    body: SetExpr::Select(statement),
+            subquery: Query { body, .. },
+            alias: TableAlias { columns, name },
+        } => match body {
+            SetExpr::Select(statement) => {
+                let Select {
+                    from:
+                        TableWithJoins {
+                            relation, joins, ..
+                        },
+                    projection,
                     ..
-                },
-            alias: _,
-        } => {
-            let Select {
-                from: TableWithJoins {
-                    relation, joins, ..
-                },
-                projection,
-                ..
-            } = statement.as_ref();
+                } = statement.as_ref();
 
-            let columns = fetch_relation_columns(storage, relation).await?;
-            let join_columns = fetch_join_columns(joins, storage).await?;
-            let labels = get_labels(
-                projection,
-                get_alias(relation)?,
-                &columns,
-                Some(&join_columns),
-            )?;
+                let columns = fetch_relation_columns(storage, relation).await?;
+                let join_columns = fetch_join_columns(joins, storage).await?;
+                let labels = get_labels(
+                    projection,
+                    get_alias(relation)?,
+                    &columns,
+                    Some(&join_columns),
+                )?;
 
-            Ok(labels)
-        }
-        &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+                Ok(labels)
+            }
+            SetExpr::Values(Values(values_list)) => {
+                let total_len = values_list[0].len();
+                let alias_len = columns.len();
+                if alias_len > total_len {
+                    return Err(FetchError::TooManyColumnAliases(
+                        name.into(),
+                        total_len,
+                        alias_len,
+                    )
+                    .into());
+                }
+                let labels = (alias_len + 1..=total_len)
+                    .into_iter()
+                    .map(|i| format!("column{}", i));
+                let labels = columns.iter().cloned().chain(labels).collect::<Vec<_>>();
+
+                Ok(labels)
+            }
+        },
     }
 }
 pub async fn fetch_join_columns<'a>(

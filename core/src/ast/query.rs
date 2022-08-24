@@ -65,6 +65,11 @@ pub enum TableFactor {
         subquery: Query,
         alias: TableAlias,
     },
+    Series {
+        name: ObjectName,
+        alias: Option<TableAlias>,
+        size: Expr,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

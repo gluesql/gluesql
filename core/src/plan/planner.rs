@@ -15,7 +15,7 @@ pub trait Planner<'a> {
     fn subquery_expr(&self, outer_context: Option<Rc<Context<'a>>>, expr: Expr) -> Expr {
         match expr {
             Expr::Identifier(_)
-            | Expr::CompoundIdentifier(_)
+            | Expr::CompoundIdentifier { .. }
             | Expr::Literal(_)
             | Expr::TypedString { .. } => expr,
             Expr::IsNull(expr) => Expr::IsNull(Box::new(self.subquery_expr(outer_context, *expr))),
@@ -128,7 +128,7 @@ pub trait Planner<'a> {
         table_factor: &TableFactor,
     ) -> Option<Rc<Context<'a>>> {
         let (name, alias) = match table_factor {
-            TableFactor::Table { name, alias, .. } => {
+            TableFactor::Table { name, alias, .. } | TableFactor::Series { name, alias, .. } => {
                 let name = match get_name(name) {
                     Ok(name) => name.clone(),
                     Err(_) => return next,

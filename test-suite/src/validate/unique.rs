@@ -1,8 +1,9 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{executor::ValidateError, prelude::Value},
+};
 
 test_case!(unique, async move {
-    use gluesql_core::{executor::ValidateError, prelude::Value};
-
     run!(
         r#"
 CREATE TABLE TestA (
@@ -38,7 +39,7 @@ CREATE TABLE TestC (
     run!("UPDATE TestC SET id = 1 WHERE num = 1");
     run!("UPDATE TestC SET id = NULL WHERE num = 1");
 
-    let error_cases = vec![
+    let error_cases = [
         (
             ValidateError::DuplicateEntryOnUniqueField(Value::I64(2), "id".to_owned()).into(),
             "INSERT INTO TestA VALUES (2, 2)",
