@@ -1,12 +1,13 @@
-use crate::*;
-
-test_case!(expr, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         ast::IndexOperator::*,
         executor::AlterError,
         prelude::{Payload, Value::*},
-    };
+    },
+};
 
+test_case!(expr, async move {
     run!(
         r#"
 CREATE TABLE Test (

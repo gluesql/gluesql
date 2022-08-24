@@ -1,13 +1,14 @@
-use crate::*;
-
-test_case!(round, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
-    let test_cases = vec![
+test_case!(round, async move {
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT ROUND(3.5))",
             Ok(Payload::Create),
@@ -51,7 +52,7 @@ test_case!(round, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

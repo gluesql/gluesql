@@ -68,7 +68,7 @@ pub fn evaluate_stateless<'a>(
 
                     eval(expr).map_or_else(
                         |error| Some(Err(error)),
-                        |evaluated| (target == &evaluated).then(|| Ok(!negated)),
+                        |evaluated| (target == &evaluated).then_some(Ok(!negated)),
                     )
                 })
                 .take(1)

@@ -1,8 +1,11 @@
-use crate::*;
+use {
+    crate::*,
+    chrono::{NaiveDate, NaiveTime},
+    gluesql_core::data::{IntervalError, ValueError},
+    gluesql_core::prelude::Value::*,
+};
 
 test_case!(time, async move {
-    use gluesql_core::data::{IntervalError, ValueError};
-
     run!(
         r#"
 CREATE TABLE TimeLog (
@@ -20,9 +23,6 @@ INSERT INTO TimeLog VALUES
     (3, "PM 2:59", "9:00:00 AM");
 "#
     );
-
-    use chrono::{NaiveDate, NaiveTime};
-    use gluesql_core::prelude::Value::*;
 
     let t = NaiveTime::from_hms_milli;
     let i = |h, m, s, ms| {

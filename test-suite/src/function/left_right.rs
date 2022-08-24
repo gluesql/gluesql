@@ -1,13 +1,14 @@
-use crate::*;
-
-test_case!(left_right, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
-    let test_cases = vec![
+test_case!(left_right, async move {
+    let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT LEFT("abc", 1))"#,
             Ok(Payload::Create),

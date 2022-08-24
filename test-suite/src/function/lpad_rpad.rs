@@ -1,13 +1,14 @@
-use crate::*;
-
-test_case!(lpad_rpad, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
-    let test_cases = vec![
+test_case!(lpad_rpad, async move {
+    let test_cases = [
         (
             r#"CREATE TABLE Item (name TEXT DEFAULT LPAD("a", 5) || LPAD("b", 3))"#,
             Ok(Payload::Create),
@@ -154,7 +155,7 @@ test_case!(lpad_rpad, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

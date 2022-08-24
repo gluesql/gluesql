@@ -1,9 +1,9 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{ast::DataType, executor::ExecuteError, executor::Payload},
+};
 
 test_case!(showcolumns, async move {
-    use gluesql_core::ast::DataType;
-    use gluesql_core::{executor::ExecuteError, executor::Payload};
-
     run!(
         "
         CREATE TABLE mytable (

@@ -1,9 +1,9 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{prelude::Value::*, translate::TranslateError},
+};
 
 test_case!(concat, async move {
-    use gluesql_core::prelude::Value::*;
-    use gluesql_core::translate::TranslateError;
-
     run!(
         "
         CREATE TABLE Concat (

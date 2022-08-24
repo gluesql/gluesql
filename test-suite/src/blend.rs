@@ -1,11 +1,12 @@
-use crate::*;
-
-test_case!(blend, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::{EvaluateError, SelectError},
         prelude::Value::*,
-    };
+    },
+};
 
+test_case!(blend, async move {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE BlendUser (
@@ -22,13 +23,13 @@ test_case!(blend, async move {
     ",
     ];
 
-    for sql in create_sqls.iter() {
+    for sql in create_sqls {
         run!(sql);
     }
 
     let delete_sqls = ["DELETE FROM BlendUser", "DELETE FROM BlendItem"];
 
-    for sql in delete_sqls.iter() {
+    for sql in delete_sqls {
         run!(sql);
     }
 
@@ -49,11 +50,11 @@ test_case!(blend, async move {
         ",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 
-    let test_cases = vec![
+    let test_cases = [
         ("SELECT 1 FROM BlendUser", select!(1; I64; 1; 1; 1)),
         (
             "SELECT id, name FROM BlendUser",
@@ -145,7 +146,7 @@ test_case!(blend, async move {
         test!(Ok(expected), sql);
     }
 
-    let error_cases = vec![
+    let error_cases = [
         (
             SelectError::TableAliasNotFound("Whatever".to_owned()).into(),
             "SELECT Whatever.* FROM BlendUser",

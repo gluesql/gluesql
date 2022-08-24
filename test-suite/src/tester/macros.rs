@@ -11,7 +11,7 @@ macro_rules! idx {
         vec![]
     };
     ($name: path, $op: path, $sql_expr: literal) => {
-        vec![gluesql_core::ast::IndexItem {
+        vec![gluesql_core::ast::IndexItem::NonClustered {
             name: stringify!($name).to_owned(),
             asc: None,
             cmp_expr: Some((
@@ -24,21 +24,21 @@ macro_rules! idx {
         }]
     };
     ($name: path) => {
-        vec![gluesql_core::ast::IndexItem {
+        vec![gluesql_core::ast::IndexItem::NonClustered {
             name: stringify!($name).to_owned(),
             asc: None,
             cmp_expr: None,
         }]
     };
     ($name: path, ASC) => {
-        vec![gluesql_core::ast::IndexItem {
+        vec![gluesql_core::ast::IndexItem::NonClustered {
             name: stringify!($name).to_owned(),
             asc: Some(true),
             cmp_expr: None,
         }]
     };
     ($name: path, DESC) => {
-        vec![gluesql_core::ast::IndexItem {
+        vec![gluesql_core::ast::IndexItem::NonClustered {
             name: stringify!($name).to_owned(),
             asc: Some(false),
             cmp_expr: None,

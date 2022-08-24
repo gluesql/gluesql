@@ -44,10 +44,13 @@ pub struct TableWithJoins {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct IndexItem {
-    pub name: String,
-    pub asc: Option<bool>,
-    pub cmp_expr: Option<(IndexOperator, Expr)>,
+pub enum IndexItem {
+    PrimaryKey(Expr),
+    NonClustered {
+        name: String,
+        asc: Option<bool>,
+        cmp_expr: Option<(IndexOperator, Expr)>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -61,6 +64,11 @@ pub enum TableFactor {
     Derived {
         subquery: Query,
         alias: TableAlias,
+    },
+    Series {
+        name: ObjectName,
+        alias: Option<TableAlias>,
+        size: Expr,
     },
 }
 

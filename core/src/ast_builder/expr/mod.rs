@@ -5,15 +5,22 @@ mod unary_op;
 
 pub mod aggregate;
 pub mod between;
+pub mod cast;
 pub mod extract;
 pub mod function;
 pub mod in_list;
+pub mod in_subquery;
 
 pub use nested::nested;
 
 use {
+    super::DataTypeNode,
     crate::{
-        ast::{Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, UnaryOperator},
+        ast::{
+            Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, Function, Query,
+            UnaryOperator,
+        },
+        ast_builder::QueryNode,
         parse_sql::parse_expr,
         result::{Error, Result},
         translate::translate_expr,
@@ -28,7 +35,10 @@ pub enum ExprNode {
     Expr(Expr),
     SqlExpr(String),
     Identifier(String),
-    CompoundIdentifier(Vec<String>),
+    CompoundIdentifier {
+        alias: String,
+        ident: String,
+    },
     Between {
         expr: Box<ExprNode>,
         negated: bool,
@@ -55,9 +65,18 @@ pub enum ExprNode {
         list: Vec<ExprNode>,
         negated: bool,
     },
+    InSubquery {
+        expr: Box<ExprNode>,
+        subquery: Box<QueryNode>,
+        negated: bool,
+    },
     Nested(Box<ExprNode>),
     Function(Box<FunctionNode>),
     Aggregate(Box<AggregateNode>),
+    Cast {
+        expr: Box<ExprNode>,
+        data_type: DataTypeNode,
+    },
 }
 
 impl TryFrom<ExprNode> for Expr {
@@ -72,7 +91,9 @@ impl TryFrom<ExprNode> for Expr {
                 translate_expr(&expr)
             }
             ExprNode::Identifier(ident) => Ok(Expr::Identifier(ident)),
-            ExprNode::CompoundIdentifier(idents) => Ok(Expr::CompoundIdentifier(idents)),
+            ExprNode::CompoundIdentifier { alias, ident } => {
+                Ok(Expr::CompoundIdentifier { alias, ident })
+            }
             ExprNode::Between {
                 expr,
                 negated,
@@ -104,6 +125,11 @@ impl TryFrom<ExprNode> for Expr {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
                 Ok(Expr::Extract { field, expr })
             }
+            ExprNode::Cast { expr, data_type } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let data_type = data_type.try_into()?;
+                Ok(Expr::Cast { expr, data_type })
+            }
             ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
             ExprNode::InList {
@@ -123,8 +149,24 @@ impl TryFrom<ExprNode> for Expr {
                     negated,
                 })
             }
+            ExprNode::InSubquery {
+                expr,
+                subquery,
+                negated,
+            } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let subquery = Query::try_from(*subquery).map(Box::new)?;
+
+                Ok(Expr::InSubquery {
+                    expr,
+                    subquery,
+                    negated,
+                })
+            }
             ExprNode::Nested(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::Nested),
-            ExprNode::Function(func_expr) => Expr::try_from(*func_expr),
+            ExprNode::Function(func_expr) => Function::try_from(*func_expr)
+                .map(Box::new)
+                .map(Expr::Function),
             ExprNode::Aggregate(aggr_expr) => Aggregate::try_from(*aggr_expr)
                 .map(Box::new)
                 .map(Expr::Aggregate),
@@ -157,10 +199,12 @@ pub fn expr(value: &str) -> ExprNode {
 pub fn col(value: &str) -> ExprNode {
     let idents = value.split('.').collect::<Vec<_>>();
 
-    if idents.len() == 1 {
-        ExprNode::Identifier(value.to_owned())
-    } else {
-        ExprNode::CompoundIdentifier(idents.into_iter().map(ToOwned::to_owned).collect())
+    match idents.as_slice() {
+        [alias, ident] => ExprNode::CompoundIdentifier {
+            alias: alias.to_string(),
+            ident: ident.to_string(),
+        },
+        _ => ExprNode::Identifier(value.to_owned()),
     }
 }
 

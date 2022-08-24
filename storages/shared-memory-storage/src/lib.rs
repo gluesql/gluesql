@@ -51,6 +51,13 @@ impl Store for SharedMemoryStorage {
         database.fetch_schema(table_name).await
     }
 
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+        let database = Arc::clone(&self.database);
+        let database = database.read().await;
+
+        database.fetch_data(table_name, key).await
+    }
+
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
         let database = Arc::clone(&self.database);
         let database = database.read().await;
@@ -79,20 +86,20 @@ impl StoreMut for SharedMemoryStorage {
         Ok((self, ()))
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::insert_data(&mut database, table_name, rows);
+        MemoryStorage::append_data(&mut database, table_name, rows);
 
         Ok((self, ()))
     }
 
-    async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
-        MemoryStorage::update_data(&mut database, table_name, rows);
+        MemoryStorage::insert_data(&mut database, table_name, rows);
 
         Ok((self, ()))
     }
