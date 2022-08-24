@@ -42,6 +42,29 @@ test_case!(migrate, async move {
             TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into(),
             "SELECT * FROM Test NATURAL JOIN Test",
         ),
+        (
+            TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
+            "SELECT 1 ^ 2 FROM Test;",
+        ),
+        (
+            TranslateError::UnsupportedQuerySetExpr(
+                "SELECT * FROM Test UNION SELECT * FROM Test".to_owned(),
+            )
+            .into(),
+            "SELECT * FROM Test UNION SELECT * FROM Test;",
+        ),
+        (
+            EvaluateError::ValueNotFound("noname".to_owned()).into(),
+            "SELECT * FROM Test WHERE noname = 1;",
+        ),
+        (
+            FetchError::TableNotFound("Nothing".to_owned()).into(),
+            "SELECT * FROM Nothing;",
+        ),
+        (
+            TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
+            "TRUNCATE TABLE BlendUser;",
+        ),
     ];
 
     for (error, sql) in error_cases {
@@ -94,34 +117,4 @@ test_case!(migrate, async move {
     let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
     let expected = select!(id | num; I64 | I64; 2 9);
     assert_eq!(expected, found);
-
-    let error_cases = [
-        (
-            TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
-            "SELECT 1 ^ 2 FROM BlendUser;",
-        ),
-        (
-            TranslateError::UnsupportedQuerySetExpr(
-                "SELECT * FROM BlendItem UNION SELECT * FROM BlendItem".to_owned(),
-            )
-            .into(),
-            "SELECT * FROM BlendItem UNION SELECT * FROM BlendItem;",
-        ),
-        (
-            EvaluateError::ValueNotFound("noname".to_owned()).into(),
-            "SELECT * FROM BlendUser WHERE noname = 1;",
-        ),
-        (
-            FetchError::TableNotFound("Nothing".to_owned()).into(),
-            "SELECT * FROM Nothing;",
-        ),
-        (
-            TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
-            "TRUNCATE TABLE BlendUser;",
-        ),
-    ];
-
-    for (error, sql) in error_cases {
-        test!(Err(error), sql);
-    }
 });
