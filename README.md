@@ -17,17 +17,18 @@ Developers can choose to use GlueSQL to build their own SQL database, or as an e
 ## Standalone Mode
 
 You can use GlueSQL as an embedded SQL database.  
-GlueSQL provides two reference storage options.
+GlueSQL provides three reference storage options.
 
 - `SledStorage` - Persistent storage engine based on [`sled`](https://github.com/spacejam/sled "sled")
 - `MemoryStorage` - Non-persistent storage engine based on `BTreeMap`
+- `SharedMemoryStorage` - Non-persistent storage engine which works in multi-threaded environment
 
 ### Installation
 
 * `Cargo.toml`
 ```toml
 [dependencies]
-gluesql = "0.11"
+gluesql = "0.12"
 ```
 
 * CLI application
@@ -66,7 +67,7 @@ fn main() {
 
 ```toml
 [dependencies.gluesql]
-version = "0.11"
+version = "0.12"
 default-features = false
 features = ["alter-table", "index", "transaction", "metadata"]
 ```
@@ -85,16 +86,17 @@ features = ["alter-table", "index", "transaction", "metadata"]
 - [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/mod.rs)
 
 ```rust
-pub trait Store<T: Debug> {
+pub trait Store {
     async fn fetch_schema(..) -> ..;
+    async fn fetch_data(..) -> ..;
     async fn scan_data(..) -> ..;
 }
 
-pub trait StoreMut<T: Debug> where Self: Sized {
+pub trait StoreMut where Self: Sized {
     async fn insert_schema(..) -> ..;
     async fn delete_schema(..) -> ..;
+    async fn append_data(..) -> ..;
     async fn insert_data(..) -> ..;
-    async fn update_data(..) -> ..;
     async fn delete_data(..) -> ..;
 }
 ```
@@ -111,11 +113,11 @@ pub trait AlterTable where Self: Sized {
     async fn drop_column(..) -> ..;
 }
 
-pub trait Index<T: Debug> {
+pub trait Index {
     async fn scan_indexed_data(..) -> ..;
 }
 
-pub trait IndexMut<T: Debug> where Self: Sized {
+pub trait IndexMut where Self: Sized {
     async fn create_index(..) -> ..;
     async fn drop_index(..) -> ..;
 }
@@ -144,9 +146,11 @@ GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedd
 GlueSQL currently supports a limited subset of queries. It's being actively developed.
 
 #### Data Types
-- **Numeric** `INT(8)`, `INT(16)`, `INT(32)`, `INT(64)`, `INT(128)`, `INTEGER`, `FLOAT`, `DECIMAL`
-- **Date** `DATE`, `TIMESTAMP`, `TIME` `INTERVAL`
-- `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`
+| Category | Type                                                                      |
+|----------|---------------------------------------------------------------------------|
+| Numeric  | `INT(8)`, `INT(16)`, `INT(32)`, `INTEGER`, `INT(128)`, `FLOAT`, `DECIMAL` |
+| Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                   |
+| Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                         |
 
 #### Queries
 - `CREATE TABLE`, `DROP TABLE`
@@ -159,11 +163,3 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 - Nested select, join, aggregations ...
 
 You can see tests for the currently supported queries in [test-suite/src/\*](https://github.com/gluesql/gluesql/tree/main/test-suite/src).
-
-## Contribution
-
-There are a few simple rules to follow.
-
-- No `mut` keywords in the `core` workspace (except `glue.rs`).
-- Every error must have corresponding integration test cases to generate.  
-  (except for `Unreachable-` and `Conflict-` error types)

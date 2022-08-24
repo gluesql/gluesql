@@ -30,9 +30,7 @@ pub mod update;
 pub mod validate;
 pub mod values;
 
-mod tester;
-
-pub mod macros;
+pub mod tester;
 
 pub use tester::*;
 
