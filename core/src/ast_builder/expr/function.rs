@@ -11,7 +11,10 @@ use {
 pub enum FunctionNode {
     Abs(ExprNode),
     Upper(ExprNode),
-    IfNull(ExprNode, ExprNode),
+    IfNull {
+        expr: ExprNode,
+        then: ExprNode,
+    },
     Ceil(ExprNode),
     Round(ExprNode),
     Floor(ExprNode),
@@ -23,20 +26,41 @@ pub enum FunctionNode {
     Tan(ExprNode),
     Pi,
     Now,
-    Left(ExprNode, ExprNode),
-    Log(ExprNode, ExprNode),
+    Left {
+        expr: ExprNode,
+        size: ExprNode,
+    },
+    Log {
+        antilog: ExprNode,
+        base: ExprNode,
+    },
     Log2(ExprNode),
     Log10(ExprNode),
     Ln(ExprNode),
-    Right(ExprNode, ExprNode),
+    Right {
+        expr: ExprNode,
+        size: ExprNode,
+    },
     Reverse(ExprNode),
     Sign(ExprNode),
-    Power(ExprNode, ExprNode),
+    Power {
+        expr: ExprNode,
+        power: ExprNode,
+    },
     Sqrt(ExprNode),
-    Gcd(ExprNode, ExprNode),
-    Lcm(ExprNode, ExprNode),
+    Gcd {
+        left: ExprNode,
+        right: ExprNode,
+    },
+    Lcm {
+        left: ExprNode,
+        right: ExprNode,
+    },
     GenerateUuid,
-    Repeat(ExprNode, ExprNode),
+    Repeat {
+        expr: ExprNode,
+        num: ExprNode,
+    },
     Exp(ExprNode),
     Lpad {
         expr: ExprNode,
@@ -73,11 +97,11 @@ impl TryFrom<FunctionNode> for Function {
         match func_node {
             FunctionNode::Abs(expr_node) => expr_node.try_into().map(Function::Abs),
             FunctionNode::Upper(expr_node) => expr_node.try_into().map(Function::Upper),
-            FunctionNode::IfNull(expr_node, then_node) => expr_node.try_into().and_then(|expr| {
-                then_node
-                    .try_into()
-                    .map(|then| Function::IfNull { expr, then })
-            }),
+            FunctionNode::IfNull { expr, then } => {
+                let expr = expr.try_into()?;
+                let then = then.try_into()?;
+                Ok(Function::IfNull { expr, then })
+            }
             FunctionNode::Ceil(expr_node) => expr_node.try_into().map(Function::Ceil),
             FunctionNode::Round(expr_node) => expr_node.try_into().map(Function::Round),
             FunctionNode::Floor(expr_node) => expr_node.try_into().map(Function::Floor),
@@ -89,48 +113,48 @@ impl TryFrom<FunctionNode> for Function {
             FunctionNode::Tan(expr_node) => expr_node.try_into().map(Function::Tan),
             FunctionNode::Pi => Ok(Function::Pi()),
             FunctionNode::Now => Ok(Function::Now()),
-            FunctionNode::Left(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
-                size_node
-                    .try_into()
-                    .map(|size| Function::Left { expr, size })
-            }),
-            FunctionNode::Log(antilog_node, base_node) => {
-                antilog_node.try_into().and_then(|antilog| {
-                    base_node
-                        .try_into()
-                        .map(|base| Function::Log { antilog, base })
-                })
+            FunctionNode::Left { expr, size } => {
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Left { expr, size })
+            }
+            FunctionNode::Log { antilog, base } => {
+                let antilog = antilog.try_into()?;
+                let base = base.try_into()?;
+                Ok(Function::Log { antilog, base })
             }
             FunctionNode::Log2(expr_node) => expr_node.try_into().map(Function::Log2),
             FunctionNode::Log10(expr_node) => expr_node.try_into().map(Function::Log10),
             FunctionNode::Ln(expr_node) => expr_node.try_into().map(Function::Ln),
-            FunctionNode::Right(expr_node, size_node) => expr_node.try_into().and_then(|expr| {
-                size_node
-                    .try_into()
-                    .map(|size| Function::Right { expr, size })
-            }),
+            FunctionNode::Right { expr, size } => {
+                let expr = expr.try_into()?;
+                let size = size.try_into()?;
+                Ok(Function::Right { expr, size })
+            }
             FunctionNode::Reverse(expr_node) => expr_node.try_into().map(Function::Reverse),
             FunctionNode::Sign(expr_node) => expr_node.try_into().map(Function::Sign),
-            FunctionNode::Power(expr_node, power_node) => expr_node.try_into().and_then(|expr| {
-                power_node
-                    .try_into()
-                    .map(|power| Function::Power { expr, power })
-            }),
+            FunctionNode::Power { expr, power } => {
+                let expr = expr.try_into()?;
+                let power = power.try_into()?;
+                Ok(Function::Power { expr, power })
+            }
             FunctionNode::Sqrt(expr_node) => expr_node.try_into().map(Function::Sqrt),
-            FunctionNode::Gcd(left_node, right_node) => left_node.try_into().and_then(|left| {
-                right_node
-                    .try_into()
-                    .map(|right| Function::Gcd { left, right })
-            }),
-            FunctionNode::Lcm(left_node, right_node) => left_node.try_into().and_then(|left| {
-                right_node
-                    .try_into()
-                    .map(|right| Function::Lcm { left, right })
-            }),
+            FunctionNode::Gcd { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::Gcd { left, right })
+            }
+            FunctionNode::Lcm { left, right } => {
+                let left = left.try_into()?;
+                let right = right.try_into()?;
+                Ok(Function::Lcm { left, right })
+            }
             FunctionNode::GenerateUuid => Ok(Function::GenerateUuid()),
-            FunctionNode::Repeat(expr, num) => expr
-                .try_into()
-                .and_then(|expr| num.try_into().map(|num| Function::Repeat { expr, num })),
+            FunctionNode::Repeat { expr, num } => {
+                let expr = expr.try_into()?;
+                let num = num.try_into()?;
+                Ok(Function::Repeat { expr, num })
+            }
             FunctionNode::Lpad { expr, size, fill } => {
                 let fill = fill.map(TryInto::try_into).transpose()?;
                 let expr = expr.try_into()?;
@@ -280,7 +304,10 @@ pub fn upper<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Upper(expr.into())))
 }
 pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, then: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::IfNull(expr.into(), then.into())))
+    ExprNode::Function(Box::new(FunctionNode::IfNull {
+        expr: expr.into(),
+        then: then.into(),
+    }))
 }
 pub fn ceil<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ceil(expr.into())))
@@ -322,10 +349,16 @@ pub fn now() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Now))
 }
 pub fn left<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Left(expr.into(), size.into())))
+    ExprNode::Function(Box::new(FunctionNode::Left {
+        expr: expr.into(),
+        size: size.into(),
+    }))
 }
-pub fn log<V: Into<ExprNode>>(expr: V, base: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Log(expr.into(), base.into())))
+pub fn log<V: Into<ExprNode>>(antilog: V, base: V) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Log {
+        antilog: antilog.into(),
+        base: base.into(),
+    }))
 }
 pub fn log2<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Log2(expr.into())))
@@ -337,7 +370,10 @@ pub fn ln<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ln(expr.into())))
 }
 pub fn right<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Right(expr.into(), size.into())))
+    ExprNode::Function(Box::new(FunctionNode::Right {
+        expr: expr.into(),
+        size: size.into(),
+    }))
 }
 
 pub fn reverse<T: Into<ExprNode>>(expr: T) -> ExprNode {
@@ -349,7 +385,10 @@ pub fn sign<T: Into<ExprNode>>(expr: T) -> ExprNode {
 }
 
 pub fn power<V: Into<ExprNode>>(expr: V, power: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Power(expr.into(), power.into())))
+    ExprNode::Function(Box::new(FunctionNode::Power {
+        expr: expr.into(),
+        power: power.into(),
+    }))
 }
 
 pub fn sqrt<V: Into<ExprNode>>(expr: V) -> ExprNode {
@@ -357,15 +396,24 @@ pub fn sqrt<V: Into<ExprNode>>(expr: V) -> ExprNode {
 }
 
 pub fn gcd<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Gcd(left.into(), right.into())))
+    ExprNode::Function(Box::new(FunctionNode::Gcd {
+        left: left.into(),
+        right: right.into(),
+    }))
 }
 
 pub fn lcm<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Lcm(left.into(), right.into())))
+    ExprNode::Function(Box::new(FunctionNode::Lcm {
+        left: left.into(),
+        right: right.into(),
+    }))
 }
 
 pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
-    ExprNode::Function(Box::new(FunctionNode::Repeat(expr.into(), num.into())))
+    ExprNode::Function(Box::new(FunctionNode::Repeat {
+        expr: expr.into(),
+        num: num.into(),
+    }))
 }
 
 pub fn lpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
