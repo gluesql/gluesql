@@ -1,10 +1,11 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError,
+    },
+};
 
 test_case!(migrate, async move {
-    use gluesql_core::{
-        data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError,
-    };
-
     run!(
         "
         CREATE TABLE Test (
@@ -23,7 +24,7 @@ test_case!(migrate, async move {
         "#
     );
 
-    let error_cases = vec![
+    let error_cases = [
         (
             ValueError::FailedToParseNumber.into(),
             r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
@@ -33,7 +34,7 @@ test_case!(migrate, async move {
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
         ),
         (
-            EvaluateError::UnsupportedCompoundIdentifier(expr!("Here.User.id")).into(),
+            TranslateError::UnsupportedExpr("Here.User.id".to_owned()).into(),
             "SELECT * FROM Test WHERE Here.User.id = 1",
         ),
         (

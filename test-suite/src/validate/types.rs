@@ -1,21 +1,20 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        ast::DataType,
+        data::{Literal, ValueError},
+        prelude::Value,
+    },
+    std::borrow::Cow,
+};
 
 test_case!(types, async move {
-    use {
-        gluesql_core::{
-            ast::DataType,
-            data::{Literal, ValueError},
-            prelude::Value,
-        },
-        std::borrow::Cow,
-    };
-
     run!("CREATE TABLE TableB (id BOOLEAN);");
     run!("CREATE TABLE TableC (uid INTEGER, null_val INTEGER NULL);");
     run!("INSERT INTO TableB VALUES (FALSE);");
     run!("INSERT INTO TableC VALUES (1, NULL);");
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "INSERT INTO TableB SELECT uid FROM TableC;",
             Err(ValueError::IncompatibleDataType {

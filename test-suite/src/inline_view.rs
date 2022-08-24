@@ -7,7 +7,7 @@ use {
     },
 };
 test_case!(inline_view, async move {
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE InnerTable (
                 id INTEGER,

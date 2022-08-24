@@ -1,15 +1,14 @@
-use crate::*;
+use {
+    crate::*,
+    chrono::NaiveDate,
+    gluesql_core::{
+        executor::EvaluateError,
+        prelude::{Payload, Value::*},
+    },
+};
 
 test_case!(default, async move {
-    use {
-        chrono::NaiveDate,
-        gluesql_core::{
-            executor::EvaluateError,
-            prelude::{Payload, Value::*},
-        },
-    };
-
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE Test (
                 id INTEGER DEFAULT 1,
@@ -45,7 +44,7 @@ test_case!(default, async move {
         test!(Ok(expected), sql);
     }
 
-    let stateless_function_test_cases = vec![
+    let stateless_function_test_cases = [
         (
             "CREATE TABLE FunctionTest (
                 uuid UUID,

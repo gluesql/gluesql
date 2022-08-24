@@ -76,6 +76,8 @@ pub type RowIter = Box<dyn Iterator<Item = Result<(Key, Row)>>>;
 pub trait Store {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>>;
+
     async fn scan_data(&self, table_name: &str) -> Result<RowIter>;
 }
 
@@ -90,9 +92,9 @@ where
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
 
-    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()>;
+    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()>;
 
-    async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()>;
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()>;
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
 }

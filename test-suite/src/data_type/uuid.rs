@@ -14,7 +14,7 @@ use {
 test_case!(uuid, async move {
     let parse_uuid = |v| UUID::parse_str(v).unwrap().as_u128();
 
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE UUID (uuid_field UUID)", Ok(Payload::Create)),
         (
             r#"INSERT INTO UUID VALUES (0)"#,
@@ -72,7 +72,7 @@ test_case!(uuid, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

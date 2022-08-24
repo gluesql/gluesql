@@ -5,7 +5,7 @@ use {
 };
 
 test_case!(decimal, async move {
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE DECIMAL_ITEM (decimal_field DECIMAL)",
             Ok(Payload::Create),
@@ -104,7 +104,7 @@ test_case!(decimal, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

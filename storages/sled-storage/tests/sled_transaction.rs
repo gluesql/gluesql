@@ -398,7 +398,7 @@ async fn sled_transaction_gc() {
         glue1
             .storage
             .unwrap()
-            .update_data("NewGarlic", vec![])
+            .insert_data("NewGarlic", vec![])
             .await
             .map(|(_, v)| v)
             .map_err(|(_, e)| e),
@@ -447,7 +447,7 @@ mod timeout_tests {
                 .storage
                 .clone()
                 .unwrap()
-                .update_data("TxGarlic", vec![])
+                .insert_data("TxGarlic", vec![])
                 .await
                 .map(|(_, v)| v)
                 .map_err(|(_, e)| e),

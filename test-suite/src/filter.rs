@@ -1,12 +1,11 @@
-use crate::*;
+use {
+    crate::*,
+    bigdecimal::BigDecimal,
+    gluesql_core::data::*,
+    std::{borrow::Cow, str::FromStr},
+};
 
 test_case!(filter, async move {
-    use {
-        bigdecimal::BigDecimal,
-        gluesql_core::data::*,
-        std::{borrow::Cow, str::FromStr},
-    };
-
     let create_sqls = [
         "
         CREATE TABLE Boss (
@@ -21,7 +20,7 @@ test_case!(filter, async move {
         );",
     ];
 
-    for sql in create_sqls.iter() {
+    for sql in create_sqls {
         run!(sql);
     }
 
@@ -42,7 +41,7 @@ test_case!(filter, async move {
         ",
     ];
 
-    for sql in insert_sqls.iter() {
+    for sql in insert_sqls {
         run!(sql);
     }
 
@@ -97,8 +96,8 @@ test_case!(filter, async move {
         (5, "SELECT name FROM Boss WHERE 'ABC' ILIKE '_B_'"),
     ];
 
-    for (num, sql) in select_sqls.iter() {
-        count!(*num, sql);
+    for (num, sql) in select_sqls {
+        count!(num, sql);
     }
 
     let select_opt_sqls = [
@@ -108,11 +107,11 @@ test_case!(filter, async move {
         (3, "SELECT id FROM Hunter WHERE +2 / 1.0 > +1.0"),
     ];
 
-    for (num, sql) in select_opt_sqls.iter() {
-        count!(*num, sql);
+    for (num, sql) in select_opt_sqls {
+        count!(num, sql);
     }
 
-    let error_sqls = vec![
+    let error_sqls = [
         (
             LiteralError::UnaryOperationOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE +'abcd' > 1.0",

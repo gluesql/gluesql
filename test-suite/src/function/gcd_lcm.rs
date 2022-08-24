@@ -1,12 +1,13 @@
-use crate::*;
-
-test_case!(gcd_lcm, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         executor::EvaluateError,
         prelude::{Payload, Value::*},
-    };
+    },
+};
 
-    let test_cases = vec![
+test_case!(gcd_lcm, async move {
+    let test_cases = [
         (
             r#"
         CREATE TABLE GcdI64 (
