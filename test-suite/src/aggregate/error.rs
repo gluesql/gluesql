@@ -1,8 +1,6 @@
-use gluesql_core::executor::EvaluateError;
-
 use {
     crate::*,
-    gluesql_core::{data::KeyError, translate::TranslateError},
+    gluesql_core::{data::KeyError, executor::EvaluateError, translate::TranslateError},
 };
 
 test_case!(error, async move {
