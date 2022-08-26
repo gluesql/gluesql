@@ -11,6 +11,8 @@ use {
     std::{cell::RefCell, rc::Rc},
 };
 
+pub mod macros;
+
 pub fn expr(sql: &str) -> Expr {
     let parsed = parse_expr(sql).unwrap();
 
@@ -295,7 +297,7 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! type_match {
                 ($expected: expr, $sql: expr) => {
-                    let found = $crate::run(Rc::clone(&cell), $sql, None).await;
+                    let found = run(Rc::clone(&cell), $sql, None).await;
 
                     $crate::type_match($expected, found);
                 };
@@ -304,7 +306,7 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! test {
                 ($expected: expr, $sql: expr) => {
-                    let found = $crate::run(Rc::clone(&cell), $sql, None).await;
+                    let found = run(Rc::clone(&cell), $sql, None).await;
 
                     $crate::test($expected, found);
                 };

@@ -4,13 +4,17 @@ use {
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
         data::{Literal, RowError, ValueError},
-        executor::FetchError,
+        executor::{ExecuteError, FetchError},
         prelude::{DataType, Payload, Value::*},
     },
     std::borrow::Cow,
 };
 
 test_case!(values, async move {
+    run!("CREATE TABLE TableA (id INTEGER);");
+    run!("INSERT INTO TableA (id) VALUES (1);");
+    run!("INSERT INTO TableA (id) VALUES (9);");
+
     let test_cases = [
         (
             "VALUES (1), (2), (3)",
@@ -147,6 +151,22 @@ test_case!(values, async move {
         (
             "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name, dummy)",
             Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
+        ),
+        (
+            "INSERT INTO TableA (id2) VALUES (1);",
+            Err(RowError::LackOfRequiredColumn("id".to_owned()).into()),
+        ),
+        (
+            "INSERT INTO TableA (id) VALUES ('test2', 3)",
+            Err(RowError::ColumnAndValuesNotMatched.into()),
+        ),
+        (
+            "INSERT INTO TableA VALUES (100), (100, 200);",
+            Err(RowError::TooManyValues.into()),
+        ),
+        (
+            "INSERT INTO Nothing VALUES (1);",
+            Err(ExecuteError::TableNotFound("Nothing".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {
