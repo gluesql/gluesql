@@ -243,7 +243,6 @@ impl<'a> State<'a> {
 
     pub async fn accumulate(
         self,
-        blend_context: Rc<BlendContext<'_>>,
         filter_context: Option<Rc<FilterContext<'a>>>,
         aggr: &'a Aggregate,
     ) -> Result<State<'a>> {
@@ -256,8 +255,8 @@ impl<'a> State<'a> {
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
             | Aggregate::Stdev(expr) => {
-                let filter_context =
-                    Some(FilterContext::concat(filter_context, Some(blend_context))).map(Rc::new);
+                // let filter_context =
+                //     Some(FilterContext::concat(filter_context, Some(blend_context))).map(Rc::new);
                 evaluate(self.storage, filter_context, None, expr)
                     .await?
                     .try_into()?

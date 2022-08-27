@@ -68,18 +68,20 @@ impl<'a> Aggregator<'a> {
             .try_fold(
                 State::new(self.storage),
                 |state, (index, blend_context)| async move {
+                    let filter_context = FilterContext::concat(
+                        self.filter_context.as_ref().map(Rc::clone),
+                        Some(&blend_context).map(Rc::clone),
+                    );
+                    let filter_context = Some(filter_context).map(Rc::new);
+
                     let evaluated: Vec<Evaluated<'_>> = stream::iter(self.group_by.iter())
                         .then(|expr| {
-                            let filter_context = FilterContext::concat(
-                                self.filter_context.as_ref().map(Rc::clone),
-                                Some(&blend_context).map(Rc::clone),
-                            );
-                            let filter_context = Some(filter_context).map(Rc::new);
-
-                            async move { evaluate(self.storage, filter_context, None, expr).await }
+                            let filter = filter_context.as_ref().map(Rc::clone);
+                            async move { evaluate(self.storage, filter, None, expr).await }
                         })
                         .try_collect::<Vec<_>>()
                         .await?;
+
                     let group = evaluated
                         .iter()
                         .map(Key::try_from)
@@ -87,21 +89,12 @@ impl<'a> Aggregator<'a> {
 
                     let state = state.apply(index, group, Rc::clone(&blend_context));
                     let state = stream::iter(self.fields)
-                        .fold(Ok(state), |state, field| {
-                            let blend_clone = Rc::clone(&blend_context);
-                            async move {
-                                match field {
-                                    SelectItem::Expr { expr, .. } => {
-                                        aggregate(
-                                            state?,
-                                            blend_clone,
-                                            self.filter_context.clone(),
-                                            expr,
-                                        )
-                                        .await
-                                    }
-                                    _ => state,
+                        .fold(Ok(state), |state, field| async move {
+                            match field {
+                                SelectItem::Expr { expr, .. } => {
+                                    aggregate(state?, self.filter_context.clone(), expr).await
                                 }
+                                _ => state,
                             }
                         })
                         .await?;
@@ -179,18 +172,10 @@ impl<'a> Aggregator<'a> {
 #[async_recursion(?Send)]
 async fn aggregate<'a>(
     state: State<'a>,
-    blend_context: Rc<BlendContext<'a>>,
     filter_context: Option<Rc<FilterContext<'a>>>,
     expr: &'a Expr,
 ) -> Result<State<'a>> {
-    let aggr = |state, expr| {
-        aggregate(
-            state,
-            Rc::clone(&blend_context),
-            filter_context.as_ref().map(Rc::clone),
-            expr,
-        )
-    };
+    let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
     match expr {
         Expr::Between {
             expr, low, high, ..
@@ -212,11 +197,7 @@ async fn aggregate<'a>(
         }
         Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
         Expr::Nested(expr) => aggr(state, expr).await,
-        Expr::Aggregate(aggr) => {
-            state
-                .accumulate(blend_context, filter_context, aggr.as_ref())
-                .await
-        }
+        Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
         _ => Ok(state),
     }
 }
