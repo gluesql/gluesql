@@ -3,11 +3,17 @@ use {
     crate::{
         ast::{Expr, ObjectName, SelectItem, Statement, TableFactor, TableWithJoins},
         ast_builder::{
-            ExprList, ExprNode, GroupByNode, LimitNode, OffsetNode, ProjectNode, SelectItemList,
+            ExprList, ExprNode, GroupByNode, JoinNode, LimitNode, OffsetNode, ProjectNode,
+            SelectItemList,
         },
         result::Result,
     },
 };
+
+pub enum JoinType {
+    Inner,
+    Left,
+}
 
 #[derive(Clone)]
 pub struct SelectNode {
@@ -52,6 +58,32 @@ impl SelectNode {
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
     }
+
+    pub fn join(self, table_name: &str) -> JoinNode {
+        JoinNode::new(self, table_name.to_string(), None, JoinType::Inner)
+    }
+
+    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
+        JoinNode::new(
+            self,
+            table_name.to_string(),
+            Some(alias.to_string()),
+            JoinType::Inner,
+        )
+    }
+
+    pub fn left_join(self, table_name: &str) -> JoinNode {
+        JoinNode::new(self, table_name.to_string(), None, JoinType::Left)
+    }
+
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
+        JoinNode::new(
+            self,
+            table_name.to_string(),
+            Some(alias.to_string()),
+            JoinType::Left,
+        )
+    }
 }
 
 impl Prebuild for SelectNode {
@@ -77,6 +109,7 @@ impl Prebuild for SelectNode {
             having: None,
             offset: None,
             limit: None,
+            join: vec![],
         })
     }
 }

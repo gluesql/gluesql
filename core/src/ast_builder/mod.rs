@@ -23,8 +23,8 @@ pub use {
     order_by_expr::OrderByExprNode,
     query::QueryNode,
     select::{
-        GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
-        ProjectNode, SelectNode,
+        FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+        LimitOffsetNode, OffsetLimitNode, OffsetNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,

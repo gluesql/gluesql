@@ -3,8 +3,8 @@ use {
     crate::{
         ast::Statement,
         ast_builder::{
-            ExprNode, GroupByNode, HavingNode, LimitOffsetNode, ProjectNode, SelectItemList,
-            SelectNode,
+            ExprNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitOffsetNode,
+            ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -15,6 +15,8 @@ pub enum PrevNode {
     Select(SelectNode),
     GroupBy(GroupByNode),
     Having(HavingNode),
+    Join(JoinNode),
+    JoinConstraint(JoinConstraintNode),
 }
 
 impl Prebuild for PrevNode {
@@ -23,6 +25,8 @@ impl Prebuild for PrevNode {
             Self::Select(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
+            Self::Join(node) => node.prebuild(),
+            Self::JoinConstraint(node) => node.prebuild(),
         }
     }
 }
@@ -45,6 +49,17 @@ impl From<HavingNode> for PrevNode {
     }
 }
 
+impl From<JoinConstraintNode> for PrevNode {
+    fn from(node: JoinConstraintNode) -> Self {
+        PrevNode::JoinConstraint(node)
+    }
+}
+
+impl From<JoinNode> for PrevNode {
+    fn from(node: JoinNode) -> Self {
+        PrevNode::Join(node)
+    }
+}
 #[derive(Clone)]
 pub struct LimitNode {
     prev_node: PrevNode,

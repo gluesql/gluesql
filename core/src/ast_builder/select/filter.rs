@@ -3,7 +3,7 @@ use {
     crate::{
         ast::Statement,
         ast_builder::{
-            ExprList, ExprNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode, OffsetNode,
+            ExprList, ExprNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode, OffsetNode,
             ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
@@ -15,6 +15,7 @@ pub enum PrevNode {
     Select(SelectNode),
     Join(JoinNode),
     JoinConstraint(JoinConstraintNode),
+    Filter(Box<FilterNode>),
 }
 
 impl Prebuild for PrevNode {
@@ -23,6 +24,7 @@ impl Prebuild for PrevNode {
             Self::Select(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
+            Self::Filter(node) => node.prebuild(),
         }
     }
 }
@@ -45,22 +47,27 @@ impl From<JoinConstraintNode> for PrevNode {
     }
 }
 
-#[derive(Clone)]
-pub struct GroupByNode {
-    prev_node: PrevNode,
-    expr_list: ExprList,
+impl From<FilterNode> for PrevNode {
+    fn from(node: FilterNode) -> Self {
+        PrevNode::Filter(Box::new(node))
+    }
 }
 
-impl GroupByNode {
-    pub fn new<N: Into<PrevNode>, T: Into<ExprList>>(prev_node: N, expr_list: T) -> Self {
+pub struct FilterNode {
+    prev_node: PrevNode,
+    expr: ExprNode,
+}
+
+impl FilterNode {
+    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
-            expr_list: expr_list.into(),
+            expr: expr.into(),
         }
     }
 
-    pub fn having<T: Into<ExprNode>>(self, expr: T) -> HavingNode {
-        HavingNode::new(self, expr)
+    pub fn filter<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
+        FilterNode::new(prev_node, expr)
     }
 
     pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
@@ -75,58 +82,52 @@ impl GroupByNode {
         ProjectNode::new(self, select_items)
     }
 
+    pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
+        GroupByNode::new(self, expr_list)
+    }
+
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
     }
 }
 
-impl Prebuild for GroupByNode {
+impl Prebuild for FilterNode {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.group_by = self.expr_list.try_into()?;
-
         Ok(select_data)
     }
 }
 
-#[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, table, test};
+    use crate::{
+        ast::{BinaryOperator, Expr},
+        ast_builder::{table, test},
+    };
 
     #[test]
-    fn group_by() {
+    fn filter() {
+        let actual = table("Bar").select().filter("id IS NULL").build();
+        let expected = "SELECT * FROM Bar WHERE id IS NULL";
+        test(actual, expected);
+
         let actual = table("Bar")
             .select()
-            .filter(col("id").is_null())
-            .group_by("id, (a + name)")
+            .filter("id IS NULL")
+            .filter("id > 10")
+            .filter("id < 20")
             .build();
-        let expected = "
-            SELECT * FROM Bar
-            WHERE id IS NULL
-            GROUP BY id, (a + name)
-        ";
+        let expected = "SELECT * FROM Bar WHERE id IS NULL AND id > 10 AND id < 20";
         test(actual, expected);
 
         let actual = table("Foo")
             .select()
-            .filter("name IS NOT NULL")
-            .group_by(vec![col("id"), col("a").add(col("name"))])
+            .filter(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("col1".to_owned())),
+                op: BinaryOperator::Gt,
+                right: Box::new(Expr::Identifier("col2".to_owned())),
+            })
             .build();
-        let expected = "
-            SELECT * FROM Foo
-            WHERE name IS NOT NULL
-            GROUP BY id, a + name
-        ";
-        test(actual, expected);
-
-        let actual = table("Foo")
-            .select()
-            .group_by(vec!["id", "a + name"])
-            .build();
-        let expected = "
-            SELECT * FROM Foo
-            GROUP BY id, a + name
-        ";
+        let expected = "SELECT * FROM Foo WHERE col1 > col2";
         test(actual, expected);
     }
 }

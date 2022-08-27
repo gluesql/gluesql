@@ -1,5 +1,8 @@
+mod filter;
 mod group_by;
 mod having;
+mod join;
+mod join_constraint;
 mod limit;
 mod limit_offset;
 mod offset;
@@ -8,12 +11,13 @@ mod project;
 mod root;
 
 pub use {
-    group_by::GroupByNode, having::HavingNode, limit::LimitNode, limit_offset::LimitOffsetNode,
+    filter::FilterNode, group_by::GroupByNode, having::HavingNode, join::JoinNode,
+    join_constraint::JoinConstraintNode, limit::LimitNode, limit_offset::LimitOffsetNode,
     offset::OffsetNode, offset_limit::OffsetLimitNode, project::ProjectNode, root::SelectNode,
 };
 
 use crate::{
-    ast::{Expr, Query, Select, SelectItem, SetExpr, Statement, TableWithJoins},
+    ast::{Expr, Join, Query, Select, SelectItem, SetExpr, Statement, TableWithJoins},
     result::Result,
 };
 
@@ -31,6 +35,7 @@ pub struct NodeData {
     pub having: Option<Expr>,
     pub limit: Option<Expr>,
     pub offset: Option<Expr>,
+    pub join: Vec<Join>,
 }
 
 impl NodeData {
@@ -43,6 +48,7 @@ impl NodeData {
             having,
             offset,
             limit,
+            join,
         } = self;
 
         let select = Select {

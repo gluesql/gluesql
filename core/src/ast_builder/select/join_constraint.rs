@@ -1,8 +1,11 @@
 use {
-    super::{NodeData, Prebuild},
+    super::{root::JoinType, NodeData, Prebuild},
     crate::{
-        ast::Statement,
-        ast_builder::{ExprNode, JoinNode, ProjectNode, SelectItemList},
+        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, Statement, TableFactor},
+        ast_builder::{
+            ExprList, ExprNode, GroupByNode, JoinNode, LimitNode, OffsetNode, ProjectNode,
+            SelectItemList,
+        },
         result::Result,
     },
 };
@@ -29,15 +32,77 @@ impl From<JoinNode> for PrevNode {
 #[derive(Clone)]
 pub struct JoinConstraintNode {
     prev_node: PrevNode,
-    expr: On(ExprNode),
+    relation: TableFactor,
+    join_operator: JoinOperator,
 }
 
 impl JoinConstraintNode {
-    pub fn new<N: Into<PrevNode>, T: Into<On>>(prev_node: N, expr: T) -> Self {
+    pub fn new<N: Into<PrevNode>, K: Into<TableFactor>, T: Into<ExprNode>>(
+        prev_node: N,
+        relation: K,
+        join_type: JoinType,
+        expr: T,
+    ) -> Self {
         Self {
             prev_node: prev_node.into(),
-            expr: expr.into(),
+            relation: relation.into(),
+            join_operator: match join_type {
+                JoinType::Inner => {
+                    JoinOperator::Inner(JoinConstraint::On(match expr.into().try_into() {
+                        Ok(expr) => expr,
+                        Err(err) => panic!("Problem in Change exprnode to expr: {:?}", err),
+                    }))
+                }
+                JoinType::Left => {
+                    JoinOperator::LeftOuter(JoinConstraint::On(match expr.into().try_into() {
+                        Ok(expr) => expr,
+                        Err(err) => panic!("Problem in Change exprnode to expr: {:?}", err),
+                    }))
+                }
+            },
         }
+    }
+
+    pub fn join(self, table_name: &str) -> JoinNode {
+        JoinNode::new(self, table_name.to_string(), None, JoinType::Inner)
+    }
+
+    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
+        JoinNode::new(
+            self,
+            table_name.to_string(),
+            Some(alias.to_string()),
+            JoinType::Inner,
+        )
+    }
+
+    pub fn left_join(self, table_name: &str) -> JoinNode {
+        JoinNode::new(self, table_name.to_string(), None, JoinType::Left)
+    }
+
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
+        JoinNode::new(
+            self,
+            table_name.to_string(),
+            Some(alias.to_string()),
+            JoinType::Left,
+        )
+    }
+
+    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+        ProjectNode::new(self, select_items)
+    }
+
+    pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
+        GroupByNode::new(self, expr_list)
+    }
+
+    pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
+        OffsetNode::new(self, expr)
+    }
+
+    pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
+        LimitNode::new(self, expr)
     }
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
@@ -47,7 +112,11 @@ impl JoinConstraintNode {
 impl Prebuild for JoinConstraintNode {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.join_constraint = Some(self.expr.try_into()?);
+        select_data.join.push(Join {
+            relation: self.relation,
+            join_operator: self.join_operator,
+            join_executor: JoinExecutor::NestedLoop,
+        });
         Ok(select_data)
     }
 }
@@ -58,11 +127,7 @@ mod tests {
 
     #[test]
     fn join_constraint() {
-        let actual = table("Bar")
-            .select()
-            .inner_join("b")
-            .on("a.id = b.id")
-            .build();
+        let actual = table("Bar").select().join("b").on("a.id = b.id").build();
         let statement = "SELECT * FROM Bar INNER JOIN b ON a.id = b.id";
         test(actual, statement);
     }
