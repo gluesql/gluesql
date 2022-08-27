@@ -181,24 +181,16 @@ impl<'a> State<'a> {
         Self {
             index,
             group,
-            values: self.values,
             groups,
             contexts,
-            storage: self.storage,
+            ..self
         }
     }
 
     fn update(self, aggr: &'a Aggregate, value: AggrValue) -> Self {
         let key = (Rc::clone(&self.group), aggr);
         let (values, _) = self.values.insert(key, (self.index, value));
-        Self {
-            index: self.index,
-            group: self.group,
-            values,
-            groups: self.groups,
-            contexts: self.contexts,
-            storage: self.storage,
-        }
+        Self { values, ..self }
     }
 
     fn get(&self, aggr: &'a Aggregate) -> Option<&(usize, AggrValue)> {
@@ -254,13 +246,9 @@ impl<'a> State<'a> {
             | Aggregate::Max(expr)
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => {
-                // let filter_context =
-                //     Some(FilterContext::concat(filter_context, Some(blend_context))).map(Rc::new);
-                evaluate(self.storage, filter_context, None, expr)
-                    .await?
-                    .try_into()?
-            }
+            | Aggregate::Stdev(expr) => evaluate(self.storage, filter_context, None, expr)
+                .await?
+                .try_into()?,
         };
         let aggr_value = match self.get(aggr) {
             Some((index, _)) if self.index <= *index => None,
