@@ -76,8 +76,8 @@ impl<'a> Aggregator<'a> {
 
                     let evaluated: Vec<Evaluated<'_>> = stream::iter(self.group_by.iter())
                         .then(|expr| {
-                            let filter = filter_context.as_ref().map(Rc::clone);
-                            async move { evaluate(self.storage, filter, None, expr).await }
+                            let filter_clone = filter_context.as_ref().map(Rc::clone);
+                            async move { evaluate(self.storage, filter_clone, None, expr).await }
                         })
                         .try_collect::<Vec<_>>()
                         .await?;
@@ -89,12 +89,16 @@ impl<'a> Aggregator<'a> {
 
                     let state = state.apply(index, group, Rc::clone(&blend_context));
                     let state = stream::iter(self.fields)
-                        .fold(Ok(state), |state, field| async move {
-                            match field {
-                                SelectItem::Expr { expr, .. } => {
-                                    aggregate(state?, self.filter_context.clone(), expr).await
+                        .fold(Ok(state), |state, field| {
+                            let filter_clone = filter_context.as_ref().map(Rc::clone);
+
+                            async move {
+                                match field {
+                                    SelectItem::Expr { expr, .. } => {
+                                        aggregate(state?, filter_clone, expr).await
+                                    }
+                                    _ => state,
                                 }
-                                _ => state,
                             }
                         })
                         .await?;
@@ -115,7 +119,6 @@ impl<'a> Aggregator<'a> {
             .export()?
             .into_iter()
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
-
         let rows = stream::iter(rows)
             .filter_map(move |(aggregated, next)| {
                 let filter_context = filter_context.as_ref().map(Rc::clone);
