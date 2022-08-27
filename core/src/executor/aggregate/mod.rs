@@ -111,14 +111,18 @@ impl<'a> Aggregator<'a> {
             )
             .await?;
 
+        self.group_by_having(state)
+    }
+
+    pub fn group_by_having(&self, state: State<'a>) -> Result<Pin<Box<Applied<'a>>>> {
         let storage = self.storage;
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
         let having = self.having;
-
         let rows = state
             .export()?
             .into_iter()
             .filter_map(|(aggregated, next)| next.map(|next| (aggregated, next)));
+
         let rows = stream::iter(rows)
             .filter_map(move |(aggregated, next)| {
                 let filter_context = filter_context.as_ref().map(Rc::clone);
