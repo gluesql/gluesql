@@ -33,7 +33,7 @@ pub use {
 };
 
 /// Available expression builder functions
-pub use expr::{col, exists::exists, expr, nested, num, text, ExprNode};
+pub use expr::{col, exists, expr, nested, num, text, ExprNode};
 #[cfg(feature = "index")]
 pub use {index::CreateIndexNode, index::DropIndexNode};
 

@@ -1,4 +1,5 @@
 mod binary_op;
+mod exists;
 mod is_null;
 mod nested;
 mod unary_op;
@@ -6,12 +7,12 @@ mod unary_op;
 pub mod aggregate;
 pub mod between;
 pub mod cast;
-pub mod exists;
 pub mod extract;
 pub mod function;
 pub mod in_list;
 pub mod in_subquery;
 
+pub use exists::exists;
 pub use nested::nested;
 
 use {
