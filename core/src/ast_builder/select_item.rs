@@ -62,7 +62,7 @@ mod tests {
     };
 
     fn test(actual: SelectItemNode, expected: &str) {
-        let parsed = &parse_select_item(expected).unwrap();
+        let parsed = &parse_select_item(expected).expect(expected);
         let expected = translate_select_item(parsed);
         assert_eq!(actual.try_into(), expected);
     }

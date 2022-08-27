@@ -66,7 +66,7 @@ mod tests {
     };
 
     fn test(actual: SelectItemList, expected: &str) {
-        let parsed = parse_select_items(expected).unwrap();
+        let parsed = parse_select_items(expected).expect(expected);
         let expected = parsed
             .iter()
             .map(translate_select_item)

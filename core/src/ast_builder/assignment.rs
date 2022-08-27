@@ -45,7 +45,7 @@ mod tests {
     };
 
     fn test(actual: AssignmentNode, expected: &str) {
-        let parsed = &parse_sql_assignment(expected).unwrap();
+        let parsed = &parse_sql_assignment(expected).expect(expected);
         let expected = translate_assignment(parsed);
         assert_eq!(actual.try_into(), expected);
     }
