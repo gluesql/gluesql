@@ -67,7 +67,7 @@ pub use transaction::{begin, commit, rollback};
 fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
     use crate::{parse_sql::parse, translate::translate};
 
-    let parsed = &parse(expected).unwrap()[0];
+    let parsed = &parse(expected).expect(expected)[0];
     let expected = translate(parsed);
     assert_eq!(actual, expected);
 }
@@ -76,7 +76,7 @@ fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
 fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
     use crate::{parse_sql::parse_expr, translate::translate_expr};
 
-    let parsed = &parse_expr(expected).unwrap();
+    let parsed = &parse_expr(expected).expect(expected);
     let expected = translate_expr(parsed);
     assert_eq!(actual.try_into(), expected);
 }
@@ -85,7 +85,7 @@ fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
 fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
     use crate::{parse_sql::parse_query, translate::translate_query};
 
-    let parsed = &parse_query(expected).unwrap();
+    let parsed = &parse_query(expected).expect(expected);
     let expected = translate_query(parsed);
     assert_eq!(actual.try_into(), expected);
 }
