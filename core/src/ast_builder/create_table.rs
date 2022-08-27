@@ -1,6 +1,6 @@
 use crate::{
     ast::{ObjectName, Statement},
-    ast_builder::{ColumnDefNode, QueryNode},
+    ast_builder::ColumnDefNode,
     result::Result,
 };
 
@@ -9,7 +9,6 @@ pub struct CreateTableNode {
     table_name: String,
     if_not_exists: bool,
     columns: Vec<ColumnDefNode>,
-    source: Option<Box<QueryNode>>,
 }
 
 impl CreateTableNode {
@@ -18,7 +17,6 @@ impl CreateTableNode {
             table_name,
             if_not_exists: not_exists,
             columns: Vec::new(),
-            source: None,
         }
     }
 
