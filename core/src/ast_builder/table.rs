@@ -31,9 +31,13 @@ impl TableNode {
         ShowColumnsNode::new(self.table_name)
     }
 
-    pub fn create_table(self) -> CreateTableNode { CreateTableNode::new(self.table_name, false) }
+    pub fn create_table(self) -> CreateTableNode {
+        CreateTableNode::new(self.table_name, false)
+    }
 
-    pub fn create_table_if_not_exists(self) -> CreateTableNode { CreateTableNode::new(self.table_name, true) }
+    pub fn create_table_if_not_exists(self) -> CreateTableNode {
+        CreateTableNode::new(self.table_name, true)
+    }
 
     pub fn drop_table(self) -> DropTableNode {
         DropTableNode::new(self.table_name, false)

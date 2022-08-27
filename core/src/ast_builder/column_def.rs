@@ -10,6 +10,12 @@ pub enum ColumnDefNode {
     Text(String),
 }
 
+impl From<&str> for ColumnDefNode {
+    fn from(column_def: &str) -> Self {
+        ColumnDefNode::Text(column_def.to_owned())
+    }
+}
+
 impl TryFrom<ColumnDefNode> for ColumnDef {
     type Error = Error;
 
@@ -18,11 +24,5 @@ impl TryFrom<ColumnDefNode> for ColumnDef {
             ColumnDefNode::Text(column_def) => parse_column_def(column_def)
                 .and_then(|column_def| translate_column_def(&column_def)),
         }
-    }
-}
-
-impl From<&str> for ColumnDefNode {
-    fn from(column_def: &str) -> Self {
-        ColumnDefNode::Text(column_def.to_owned())
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     ast::{ObjectName, Statement},
-    ast_builder::{ColumnDefNode, DataTypeNode, QueryNode},
+    ast_builder::{ColumnDefNode, QueryNode},
     result::Result,
 };
 
@@ -24,7 +24,11 @@ impl CreateTableNode {
 
     pub fn build(self) -> Result<Statement> {
         let table_name = ObjectName(vec![self.table_name]);
-        let columns = self.columns.into_iter().map(TryInto::try_into)?.collect();
+        let columns = self
+            .columns
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>>>()?;
         Ok(Statement::CreateTable {
             name: table_name,
             if_not_exists: self.if_not_exists,
@@ -55,14 +59,15 @@ mod tests {
         test(actual, expected);
 
         let actual = table("Foo")
-            .create_table_if_not_exist()
+            .create_table_if_not_exists()
             .add_column("id UUID UNIQUE")
             .add_column("name TEXT")
             .build();
-        let expected = "CREATE TABLE IF NOT EXIST (id UUID UNIQUE, name TEXT)";
+        let expected = "CREATE TABLE IF NOT EXISTS Foo (id UUID UNIQUE, name TEXT)";
         test(actual, expected);
     }
 
+    #[test]
     fn create_table_without_column() {
         let actual = table("Foo").create_table().build();
         let expected = "CREATE TABLE Foo";
