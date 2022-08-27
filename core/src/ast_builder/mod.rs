@@ -1,4 +1,5 @@
 mod assignment;
+mod column_list;
 mod data_type;
 mod delete;
 mod drop_table;
