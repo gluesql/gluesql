@@ -256,23 +256,23 @@ pub async fn select_with_labels<'a>(
     });
 
     // let rows = aggregate.apply(rows).await?;
+    let rows = aggregate.apply(rows).await?;
+    let rows = rows.zip(stream::iter(labels));
+    let rows = rows.map(|(aggregate_context, label)| Ok((aggregate_context?, label)));
+    let rows = rows.and_then(|(aggregate_context, label)| {
+        let blend = Rc::clone(&blend);
 
-    let contexts = aggregate.apply(rows).await?;
-    // AndThen<Pin<Box<dyn Stream<Item = Result<(Option<Rc<HashMap<&Aggregate, Value>>>, Rc<BlendContext>), Error>>>>, impl Future<Output = Result<Row, Error>>, |(Option<Rc<HashMap<&Aggregate, Value>>>, Rc<BlendContext>)| -> impl Future<Output = Result<Row, Error>>>
-    let rows = contexts
-        .and_then(|AggregateContext { aggregated, next }| {
-            let blend = Rc::clone(&blend);
+        async move {
+            let row = blend
+                .apply(
+                    aggregate_context.aggregated.map(Rc::new),
+                    Rc::clone(&aggregate_context.next),
+                )
+                .await?;
 
-            async move {
-                let (aggregated, context) = (aggregated.map(Rc::new), next);
-                let row = blend.apply(aggregated, context).await?;
-
-                Ok((aggregated, row))
-
-                // Ok(Box::pin(rows))
-            }
-        })
-        .await?;
+            Ok((aggregate_context, label, row))
+        }
+    });
 
     let rows2 = sort.apply(rows).await?;
 
