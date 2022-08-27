@@ -1,7 +1,9 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{data::ValueError, prelude::Value::*},
+};
 
 test_case!(timestamp, async move {
-    use gluesql_core::data::ValueError;
     run!(
         r#"
 CREATE TABLE TimestampLog (
@@ -25,8 +27,6 @@ INSERT INTO TimestampLog VALUES
             $timestamp.parse().unwrap()
         };
     }
-
-    use gluesql_core::prelude::Value::*;
 
     test!(
         Ok(select!(

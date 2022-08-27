@@ -10,11 +10,12 @@ use {
             IntervalError, LiteralError,
         },
         prelude::Payload,
+        translate::TranslateError,
     },
 };
 
 test_case!(extract, async move {
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
         (
@@ -88,6 +89,10 @@ test_case!(extract, async move {
         (
             r#"SELECT EXTRACT(HOUR FROM 100) FROM Item"#,
             Err(LiteralError::CannotExtract.into()),
+        ),
+        (
+            r#"SELECT EXTRACT(microseconds FROM "2011-01-1") FROM Item;"#,
+            Err(TranslateError::UnsupportedDateTimeField("MICROSECONDS".to_owned()).into()),
         ),
     ];
 

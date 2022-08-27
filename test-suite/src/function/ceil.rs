@@ -1,10 +1,12 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        executor::EvaluateError, executor::Payload, prelude::Value::*, translate::TranslateError,
+    },
+};
 
 test_case!(ceil, async move {
-    use gluesql_core::{
-        executor::EvaluateError, executor::Payload, prelude::Value::*, translate::TranslateError,
-    };
-    let test_cases = vec![
+    let test_cases = [
         (
             "CREATE TABLE SingleItem (id INTEGER DEFAULT CEIL(0.5))",
             Ok(Payload::Create),
@@ -52,7 +54,7 @@ test_case!(ceil, async move {
         ),
     ];
 
-    for (sql, expected) in test_cases.into_iter() {
+    for (sql, expected) in test_cases {
         test!(expected, sql);
     }
 });

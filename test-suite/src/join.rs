@@ -1,4 +1,8 @@
-use {crate::*, gluesql_core::prelude::*};
+use {
+    crate::*,
+    gluesql_core::{plan::PlanError, prelude::*, translate::TranslateError},
+    Value::*,
+};
 
 test_case!(join, async move {
     let create_sqls: [&str; 2] = [
@@ -17,13 +21,13 @@ test_case!(join, async move {
     ",
     ];
 
-    for sql in create_sqls.iter() {
+    for sql in create_sqls {
         run!(sql);
     }
 
     let delete_sqls = ["DELETE FROM Player", "DELETE FROM Item"];
 
-    for sql in delete_sqls.iter() {
+    for sql in delete_sqls {
         run!(sql);
     }
 
@@ -56,7 +60,7 @@ test_case!(join, async move {
         ",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 
@@ -132,11 +136,11 @@ test_case!(join, async move {
         (30, "SELECT * FROM Item INNER JOIN Item i2 ON i2.id IN (101, 103);"),
     ];
 
-    for (num, sql) in select_sqls.iter() {
-        count!(*num, sql);
+    for (num, sql) in select_sqls {
+        count!(num, sql);
     }
 
-    for sql in delete_sqls.iter() {
+    for sql in delete_sqls {
         run!(sql);
     }
 });
@@ -158,7 +162,7 @@ test_case!(blend, async move {
     ",
     ];
 
-    for sql in create_sqls.iter() {
+    for sql in create_sqls {
         run!(sql);
     }
 
@@ -179,11 +183,9 @@ test_case!(blend, async move {
         ",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
-
-    use Value::{Null, Str, I64};
 
     let sql = "
         SELECT p.id, i.id
@@ -248,4 +250,33 @@ test_case!(blend, async move {
         I64(5)   Str("Hwan".to_owned())      Null       Null       Null
     );
     test!(Ok(expected), sql);
+
+    // To test `PlanError` while using `JOIN`
+    run!("CREATE TABLE users (id INTEGER, name TEXT);");
+    run!(r#"INSERT INTO users (id, name) VALUES (1, "Harry");"#);
+    run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
+    run!(r#"INSERT INTO testers (id, nickname) VALUES (1, "Ron");"#);
+
+    let error_cases = [
+        (
+            TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into(),
+            "SELECT * FROM TableA JOIN TableA USING (id);",
+        ),
+        (
+            TranslateError::UnsupportedJoinOperator("CrossJoin".to_owned()).into(),
+            "SELECT * FROM TableA CROSS JOIN TableA as A;",
+        ),
+        (
+            PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
+            "SELECT id FROM users JOIN testers ON users.id = testers.id;",
+        ),
+        (
+            TranslateError::TooManyTables.into(),
+            "SELECT * FROM BlendUser, BlendItem",
+        ),
+    ];
+
+    for (error, sql) in error_cases {
+        test!(Err(error), sql);
+    }
 });

@@ -4,13 +4,18 @@ use {
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
         data::{Literal, RowError, ValueError},
+        executor::{ExecuteError, FetchError},
         prelude::{DataType, Payload, Value::*},
     },
     std::borrow::Cow,
 };
 
 test_case!(values, async move {
-    let test_cases = vec![
+    run!("CREATE TABLE TableA (id INTEGER);");
+    run!("INSERT INTO TableA (id) VALUES (1);");
+    run!("INSERT INTO TableA (id) VALUES (9);");
+
+    let test_cases = [
         (
             "VALUES (1), (2), (3)",
             Ok(select!(
@@ -101,11 +106,67 @@ test_case!(values, async move {
         (
             "SHOW COLUMNS FROM TableFromValues",
             Ok(Payload::ShowColumns(vec![
-                ("column1".into(), Int), 
-                ("column2".into(), Text), 
-                ("column3".into(), Boolean), 
-                ("column4".into(), Int), 
+                ("column1".into(), Int),
+                ("column2".into(), Text),
+                ("column3".into(), Boolean),
+                ("column4".into(), Int),
                 ("column5".into(), Text)])),
+            ),
+            (
+            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived",
+            Ok(select!(
+                column1 | column2;
+                I64     | Str;
+                1         "a".to_owned();
+                2         "b".to_owned()
+            )),
+        ),
+        (
+            "SELECT column1 AS id, column2 AS name FROM (VALUES (1, 'a'), (2, 'b')) AS Derived",
+            Ok(select!(
+                id      | name;
+                I64     | Str;
+                1         "a".to_owned();
+                2         "b".to_owned()
+            )),
+        ),
+        (
+            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id)",
+            Ok(select!(
+                id      | column2;
+                I64     | Str;
+                1         "a".to_owned();
+                2         "b".to_owned()
+            )),
+        ),
+        (
+            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name)",
+            Ok(select!(
+                id      | name;
+                I64     | Str;
+                1         "a".to_owned();
+                2         "b".to_owned()
+            )),
+        ),
+        (
+            "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name, dummy)",
+            Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
+        ),
+        (
+            "INSERT INTO TableA (id2) VALUES (1);",
+            Err(RowError::LackOfRequiredColumn("id".to_owned()).into()),
+        ),
+        (
+            "INSERT INTO TableA (id) VALUES ('test2', 3)",
+            Err(RowError::ColumnAndValuesNotMatched.into()),
+        ),
+        (
+            "INSERT INTO TableA VALUES (100), (100, 200);",
+            Err(RowError::TooManyValues.into()),
+        ),
+        (
+            "INSERT INTO Nothing VALUES (1);",
+            Err(ExecuteError::TableNotFound("Nothing".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {

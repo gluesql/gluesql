@@ -2,8 +2,9 @@ use {
     crate::result::{Error, Result},
     sqlparser::{
         ast::{
-            ColumnDef as SqlColumnDef, DataType as SqlDataType, Expr as SqlExpr, OrderByExpr,
-            Query as SqlQuery, SelectItem as SqlSelectItem, Statement as SqlStatement,
+            Assignment as SqlAssignment, ColumnDef as SqlColumnDef, DataType as SqlDataType,
+            Expr as SqlExpr, OrderByExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
+            Statement as SqlStatement,
         },
         dialect::GenericDialect,
         parser::Parser,
@@ -104,5 +105,15 @@ pub fn parse_data_type<Sql: AsRef<str>>(sql_data_type: Sql) -> Result<SqlDataTyp
 
     Parser::new(tokens, &DIALECT)
         .parse_data_type()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_sql_assignment<Sql: AsRef<str>>(sql_assignment: Sql) -> Result<SqlAssignment> {
+    let tokens = Tokenizer::new(&DIALECT, sql_assignment.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_assignment()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }

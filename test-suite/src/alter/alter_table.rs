@@ -2,11 +2,14 @@
 
 use {
     crate::*,
-    gluesql_core::{data::Value::*, prelude::Payload, store::AlterTableError},
+    gluesql_core::{
+        ast::*, data::Value::*, executor::AlterError, executor::EvaluateError, prelude::Payload,
+        store::AlterTableError, translate::TranslateError,
+    },
 };
 
 test_case!(alter_table_rename, async move {
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         (
             "INSERT INTO Foo VALUES (1), (2), (3);",
@@ -36,10 +39,7 @@ test_case!(alter_table_rename, async move {
 });
 
 test_case!(alter_table_add_drop, async move {
-    use gluesql_core::{
-        ast::*, executor::AlterError, executor::EvaluateError, store::*, translate::TranslateError,
-    };
-    let test_cases = vec![
+    let test_cases = [
         ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),
         ("SELECT * FROM Foo;", Ok(select!(id; I64; 1; 2))),
@@ -138,6 +138,20 @@ test_case!(alter_table_add_drop, async move {
                 I64(1)   Null;
                 I64(2)   Null
             )),
+        ),
+        (
+            r#"ALTER TABLE Foo ADD CONSTRAINT "hey" PRIMARY KEY (asdf);"#,
+            Err(TranslateError::UnsupportedAlterTableOperation(
+                r#"ADD CONSTRAINT "hey" PRIMARY KEY (asdf)"#.to_owned(),
+            )
+            .into()),
+        ),
+        (
+            "ALTER TABLE Foo ADD CONSTRAINT hello UNIQUE (id)",
+            Err(TranslateError::UnsupportedAlterTableOperation(
+                "ADD CONSTRAINT hello UNIQUE (id)".to_owned(),
+            )
+            .into()),
         ),
     ];
 

@@ -92,9 +92,9 @@ where
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()>;
 
-    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()>;
+    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()>;
 
-    async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()>;
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()>;
 
     async fn delete_data(self, table_name: &str, keys: Vec<Key>) -> MutResult<Self, ()>;
 }

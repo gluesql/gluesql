@@ -1,4 +1,4 @@
-use super::{CreateTableNode, DeleteNode, DropTableNode, SelectNode, ShowColumnsNode};
+use super::{CreateTableNode, DeleteNode, DropTableNode, SelectNode, ShowColumnsNode, UpdateNode};
 
 #[cfg(feature = "index")]
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
@@ -45,5 +45,9 @@ impl TableNode {
 
     pub fn drop_table_if_exists(self) -> DropTableNode {
         DropTableNode::new(self.table_name, true)
+    }
+
+    pub fn update(self) -> UpdateNode {
+        UpdateNode::new(self.table_name)
     }
 }
