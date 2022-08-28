@@ -14,6 +14,7 @@ use {
         result::{Error, Result},
         store::GStore,
     },
+    async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
     std::{convert::identity, pin::Pin, rc::Rc},
 };
@@ -64,41 +65,56 @@ impl<'a> Aggregator<'a> {
             .into_stream()
             .enumerate()
             .map(|(i, row)| row.map(|row| (i, row)))
-            .try_fold(State::new(), |state, (index, blend_context)| async move {
-                let evaluated: Vec<Evaluated<'_>> = stream::iter(self.group_by.iter())
-                    .then(|expr| {
-                        let filter_context = FilterContext::concat(
-                            self.filter_context.as_ref().map(Rc::clone),
-                            Some(&blend_context).map(Rc::clone),
-                        );
-                        let filter_context = Some(filter_context).map(Rc::new);
+            .try_fold(
+                State::new(self.storage),
+                |state, (index, blend_context)| async move {
+                    let filter_context = FilterContext::concat(
+                        self.filter_context.as_ref().map(Rc::clone),
+                        Some(&blend_context).map(Rc::clone),
+                    );
+                    let filter_context = Some(filter_context).map(Rc::new);
 
-                        async move { evaluate(self.storage, filter_context, None, expr).await }
-                    })
-                    .try_collect::<Vec<_>>()
-                    .await?;
-                let group = evaluated
-                    .iter()
-                    .map(Key::try_from)
-                    .collect::<Result<Vec<Key>>>()?;
+                    let evaluated: Vec<Evaluated<'_>> = stream::iter(self.group_by.iter())
+                        .then(|expr| {
+                            let filter_clone = filter_context.as_ref().map(Rc::clone);
+                            async move { evaluate(self.storage, filter_clone, None, expr).await }
+                        })
+                        .try_collect::<Vec<_>>()
+                        .await?;
 
-                let state = state.apply(index, group, Rc::clone(&blend_context));
-                let state = self
-                    .fields
-                    .iter()
-                    .try_fold(state, |state, field| match field {
-                        SelectItem::Expr { expr, .. } => aggregate(state, &blend_context, expr),
-                        _ => Ok(state),
-                    })?;
+                    let group = evaluated
+                        .iter()
+                        .map(Key::try_from)
+                        .collect::<Result<Vec<Key>>>()?;
 
-                Ok(state)
-            })
+                    let state = state.apply(index, group, Rc::clone(&blend_context));
+                    let state = stream::iter(self.fields)
+                        .fold(Ok(state), |state, field| {
+                            let filter_clone = filter_context.as_ref().map(Rc::clone);
+
+                            async move {
+                                match field {
+                                    SelectItem::Expr { expr, .. } => {
+                                        aggregate(state?, filter_clone, expr).await
+                                    }
+                                    _ => state,
+                                }
+                            }
+                        })
+                        .await?;
+
+                    Ok(state)
+                },
+            )
             .await?;
 
+        self.group_by_having(state)
+    }
+
+    pub fn group_by_having(&self, state: State<'a>) -> Result<Pin<Box<Applied<'a>>>> {
         let storage = self.storage;
         let filter_context = self.filter_context.as_ref().map(Rc::clone);
         let having = self.having;
-
         let rows = state
             .export()?
             .into_iter()
@@ -156,25 +172,35 @@ impl<'a> Aggregator<'a> {
     }
 }
 
-fn aggregate<'a>(
+#[async_recursion(?Send)]
+async fn aggregate<'a>(
     state: State<'a>,
-    context: &BlendContext<'_>,
+    filter_context: Option<Rc<FilterContext<'a>>>,
     expr: &'a Expr,
 ) -> Result<State<'a>> {
-    let aggr = |state, expr| aggregate(state, context, expr);
-
+    let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
     match expr {
         Expr::Between {
             expr, low, high, ..
-        } => [expr, low, high]
-            .iter()
-            .try_fold(state, |state, expr| aggr(state, expr)),
-        Expr::BinaryOp { left, right, .. } => [left, right]
-            .iter()
-            .try_fold(state, |state, expr| aggr(state, expr)),
-        Expr::UnaryOp { expr, .. } => aggr(state, expr),
-        Expr::Nested(expr) => aggr(state, expr),
-        Expr::Aggregate(aggr) => state.accumulate(context, aggr.as_ref()),
+        } => {
+            stream::iter([expr, low, high])
+                .fold(
+                    Ok(state),
+                    |state, expr| async move { aggr(state?, expr).await },
+                )
+                .await
+        }
+        Expr::BinaryOp { left, right, .. } => {
+            stream::iter([left, right])
+                .fold(
+                    Ok(state),
+                    |state, expr| async move { aggr(state?, expr).await },
+                )
+                .await
+        }
+        Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
+        Expr::Nested(expr) => aggr(state, expr).await,
+        Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
         _ => Ok(state),
     }
 }

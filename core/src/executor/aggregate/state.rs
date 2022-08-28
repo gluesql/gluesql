@@ -1,10 +1,10 @@
 use {
-    super::error::AggregateError,
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr},
+        ast::{Aggregate, CountArgExpr},
         data::{Key, Value},
-        executor::context::BlendContext,
+        executor::{context::BlendContext, context::FilterContext, evaluate::evaluate},
         result::Result,
+        store::GStore,
     },
     im_rc::{HashMap, HashSet},
     itertools::Itertools,
@@ -152,16 +152,18 @@ pub struct State<'a> {
     values: IndexMap<(Group, &'a Aggregate), (usize, AggrValue)>,
     groups: HashSet<Group>,
     contexts: Vector<Rc<BlendContext<'a>>>,
+    storage: &'a dyn GStore,
 }
 
 impl<'a> State<'a> {
-    pub fn new() -> Self {
+    pub fn new(storage: &'a dyn GStore) -> Self {
         State {
             index: 0,
             group: Rc::new(vec![Key::None]),
             values: IndexMap::new(),
             groups: HashSet::new(),
             contexts: Vector::new(),
+            storage,
         }
     }
 
@@ -179,22 +181,16 @@ impl<'a> State<'a> {
         Self {
             index,
             group,
-            values: self.values,
             groups,
             contexts,
+            ..self
         }
     }
 
     fn update(self, aggr: &'a Aggregate, value: AggrValue) -> Self {
         let key = (Rc::clone(&self.group), aggr);
         let (values, _) = self.values.insert(key, (self.index, value));
-        Self {
-            index: self.index,
-            group: self.group,
-            values,
-            groups: self.groups,
-            contexts: self.contexts,
-        }
+        Self { values, ..self }
     }
 
     fn get(&self, aggr: &'a Aggregate) -> Option<&(usize, AggrValue)> {
@@ -237,36 +233,27 @@ impl<'a> State<'a> {
             .collect::<Result<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>>()
     }
 
-    pub fn accumulate(self, context: &BlendContext<'_>, aggr: &'a Aggregate) -> Result<Self> {
-        let get_value = |expr: &Expr| match expr {
-            Expr::Identifier(ident) => context
-                .get_value(ident)
-                .ok_or_else(|| AggregateError::ValueNotFound(ident.to_string())),
-            Expr::CompoundIdentifier { alias, ident } => {
-                let table_alias = &alias;
-                let column = &ident;
-
-                context
-                    .get_alias_value(table_alias, column)
-                    .ok_or_else(|| AggregateError::ValueNotFound(column.to_string()))
-            }
-            _ => Err(AggregateError::OnlyIdentifierAllowed),
-        };
+    pub async fn accumulate(
+        self,
+        filter_context: Option<Rc<FilterContext<'a>>>,
+        aggr: &'a Aggregate,
+    ) -> Result<State<'a>> {
         let value = match aggr {
-            Aggregate::Count(CountArgExpr::Wildcard) => &Value::Null,
+            Aggregate::Count(CountArgExpr::Wildcard) => Value::Null,
             Aggregate::Count(CountArgExpr::Expr(expr))
             | Aggregate::Sum(expr)
             | Aggregate::Min(expr)
             | Aggregate::Max(expr)
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => get_value(expr)?,
+            | Aggregate::Stdev(expr) => evaluate(self.storage, filter_context, None, expr)
+                .await?
+                .try_into()?,
         };
-
         let aggr_value = match self.get(aggr) {
             Some((index, _)) if self.index <= *index => None,
-            Some((_, aggr_value)) => aggr_value.accumulate(value)?,
-            None => Some(AggrValue::new(aggr, value)?),
+            Some((_, aggr_value)) => aggr_value.accumulate(&value)?,
+            None => Some(AggrValue::new(aggr, &value)?),
         };
 
         match aggr_value {
