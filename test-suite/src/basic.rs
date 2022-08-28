@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {crate::*, gluesql_core::prelude::Value::*, std::collections::HashMap};
 
 test_case!(basic, async move {
     run!(
@@ -49,15 +49,28 @@ CREATE TABLE TestA (
 
     run!("UPDATE Test SET id = 2");
 
-    let test_cases = [
+    let mut test_cases: HashMap<
+        &str,
+        (
+            &str,
+            Result<gluesql_core::prelude::Payload, gluesql_core::result::Error>,
+        ),
+    > = HashMap::new();
+    test_cases.insert(
+        "hello",
         ("SELECT id FROM Test", Ok(select!(id; I64; 2; 2; 2; 2))),
+    );
+    test_cases.insert(
+        "hello2",
         (
             "SELECT id, num FROM Test",
             Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),
         ),
-    ];
+    );
 
-    for (sql, expected) in test_cases {
+    for (_test_name, res) in test_cases {
+        let sql = res.0;
+        let expected = res.1;
         test!(sql, expected);
     }
 });

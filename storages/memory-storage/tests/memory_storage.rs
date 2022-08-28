@@ -21,7 +21,7 @@ impl Tester<MemoryStorage> for MemoryTester {
     }
 }
 
-// generate_store_tests!(tokio::test, MemoryTester);
+generate_store_tests!(tokio::test, MemoryTester);
 
 // generate_metadata_tests!(tokio::test, MemoryTester);
 

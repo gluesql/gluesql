@@ -21,7 +21,7 @@ impl Tester<SharedMemoryStorage> for SharedMemoryTester {
     }
 }
 
-// generate_store_tests!(tokio::test, SharedMemoryTester);
+generate_store_tests!(tokio::test, SharedMemoryTester);
 
 // generate_metadata_tests!(tokio::test, SharedMemoryTester);
 
