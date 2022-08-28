@@ -38,12 +38,12 @@ impl Tester<SledStorage> for SledTester {
     }
 }
 
-generate_store_tests!(tokio::test, SledTester);
-generate_index_tests!(tokio::test, SledTester);
-generate_transaction_tests!(tokio::test, SledTester);
-generate_alter_table_tests!(tokio::test, SledTester);
-generate_alter_table_index_tests!(tokio::test, SledTester);
-generate_transaction_alter_table_tests!(tokio::test, SledTester);
-generate_transaction_index_tests!(tokio::test, SledTester);
-generate_metadata_tests!(tokio::test, SledTester);
-generate_transaction_metadata_tests!(tokio::test, SledTester);
+// generate_store_tests!(tokio::test, SledTester);
+// generate_index_tests!(tokio::test, SledTester);
+// generate_transaction_tests!(tokio::test, SledTester);
+// generate_alter_table_tests!(tokio::test, SledTester);
+// generate_alter_table_index_tests!(tokio::test, SledTester);
+// generate_transaction_alter_table_tests!(tokio::test, SledTester);
+// generate_transaction_index_tests!(tokio::test, SledTester);
+// generate_metadata_tests!(tokio::test, SledTester);
+// generate_transaction_metadata_tests!(tokio::test, SledTester);

@@ -27,8 +27,9 @@ CREATE TABLE TestA (
     run!("INSERT INTO TestB (id) SELECT id FROM Test");
 
     let test_cases = [
-        (Ok(select!(id I64; 1; 1; 3; 4)), "SELECT * FROM TestB"),
+        ("SELECT * FROM TestB", Ok(select!(id I64; 1; 1; 3; 4))),
         (
+            "SELECT id, num, name FROM TestA",
             Ok(select!(
                 id  | num | name
                 I64 | I64 | Str;
@@ -37,12 +38,11 @@ CREATE TABLE TestA (
                 3     4     "Great".to_owned();
                 4     7     "Job".to_owned()
             )),
-            "SELECT id, num, name FROM TestA",
         ),
     ];
 
-    for (expected, sql) in test_cases {
-        test!(expected, sql);
+    for (sql, expected) in test_cases {
+        test!(sql, expected);
     }
 
     count!(4, "SELECT * FROM Test");
@@ -50,14 +50,14 @@ CREATE TABLE TestA (
     run!("UPDATE Test SET id = 2");
 
     let test_cases = [
-        (Ok(select!(id; I64; 2; 2; 2; 2)), "SELECT id FROM Test"),
+        ("SELECT id FROM Test", Ok(select!(id; I64; 2; 2; 2; 2))),
         (
-            Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),
             "SELECT id, num FROM Test",
+            Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),
         ),
     ];
 
-    for (expected, sql) in test_cases {
-        test!(expected, sql);
+    for (sql, expected) in test_cases {
+        test!(sql, expected);
     }
 });
