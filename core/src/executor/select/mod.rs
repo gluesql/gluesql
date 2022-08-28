@@ -257,24 +257,25 @@ pub async fn select_with_labels<'a>(
 
     // let rows = aggregate.apply(rows).await?;
     let rows = aggregate.apply(rows).await?;
-    let rows = rows.zip(stream::iter(labels));
-    let rows = rows.map(|(aggregate_context, label)| Ok((aggregate_context?, label)));
-    let rows = rows.and_then(|(aggregate_context, label)| {
+    // let rows = rows.zip(stream::iter(labels));
+    // let rows = rows.map(|(aggregate_context, label)| Ok((aggregate_context?, label)));
+    let rows = rows.and_then(move |AggregateContext { aggregated, next }| {
         let blend = Rc::clone(&blend);
+        // let aggregate_context = Rc::new(aggregate_context);
+        //     let AggregateContext { aggregated, next } = aggregate_context;
+
+        // let aggregated = aggregated.as_ref().map(Rc::clone);
+        // let aggregated = &aggregate_context.aggregated.map(Rc::new);
+        let aggregated = aggregated.map(Rc::new);
 
         async move {
-            let row = blend
-                .apply(
-                    aggregate_context.aggregated.map(Rc::new),
-                    Rc::clone(&aggregate_context.next),
-                )
-                .await?;
+            let row = blend.apply(aggregated.clone(), Rc::clone(&next)).await?;
 
-            Ok((aggregate_context, label, row))
+            Ok((aggregated, row))
         }
     });
 
-    let rows2 = sort.apply(rows).await?;
+    let rows = sort.apply(rows, &labels).await;
 
     // let rows = sort
     //     .apply(rows)
