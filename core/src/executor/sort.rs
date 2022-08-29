@@ -1,21 +1,16 @@
-use futures::TryStream;
-
-use crate::{data::Row, result::Error};
-
 use {
     super::{
-        context::{AggregateContext, BlendContext, FilterContext},
+        context::{AggregateContext, FilterContext},
         evaluate::evaluate,
     },
     crate::{
-        ast::{Aggregate, OrderByExpr},
-        data::Value,
+        ast::OrderByExpr,
+        data::{Row, Value},
         result::Result,
         store::GStore,
     },
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
-    im_rc::HashMap,
-    std::{cmp::Ordering, pin::Pin, rc::Rc},
+    std::{cmp::Ordering, rc::Rc},
     utils::Vector,
 };
 
@@ -24,11 +19,6 @@ pub struct Sort<'a> {
     context: Option<Rc<FilterContext<'a>>>,
     order_by: &'a [OrderByExpr],
 }
-
-type Item<'a> = Result<(
-    Option<Rc<HashMap<&'a Aggregate, Value>>>,
-    Rc<BlendContext<'a>>,
-)>;
 
 impl<'a> Sort<'a> {
     pub fn new(
@@ -123,7 +113,7 @@ impl<'a> Sort<'a> {
                 Ordering::Equal
             })
             .into_iter()
-            .map(|(_, aggregated, blend_context, row)| Ok(row));
+            .map(|(.., row)| Ok(row));
 
         Ok(Rows::OrderBy(stream::iter(rows)))
     }
