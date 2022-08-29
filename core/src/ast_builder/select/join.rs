@@ -187,7 +187,7 @@ mod tests {
         ";
         test(actual, expected);
 
-        let actual = table("student")
+        let actual = table("students")
             .select()
             .join("marks")
             .on("students.id = marks.id")
@@ -202,11 +202,11 @@ mod tests {
             ])
             .build();
         let expected = "
-            SELECT s.id, s.name, m.rank, a.attendance
-            FROM students AS s
-            INNER JOIN marks AS m ON s.id=m.id
-            INNER JOIN attendance AS a on m.id=a.id
-            WHERE a.attendance>=75;
+            SELECT students.id, students.name, marks.rank, attendance.attendance
+            FROM students
+            INNER JOIN marks ON students.id=marks.id
+            INNER JOIN attendance on marks.id=attendance.id
+            WHERE attendance.attendance >= 75;
         ";
         test(actual, expected);
 
@@ -235,17 +235,17 @@ mod tests {
             .project(vec!["player.id", "item.id"])
             .build();
         let expected = "
-            SELECT p.id, i.id
-            FROM Player p
-            LEFT JOIN Item i
-            ON p.id = i.player_id
+            SELECT player.id, item.id
+            FROM player
+            LEFT JOIN item
+            ON player.id = item.id
         ";
         test(actual, expected);
 
         let actual = table("Item")
             .select()
             .left_join("Player")
-            .on("Item.player_id = Player.id")
+            .on("Player.id = Item.player_id")
             .left_join_as("Player", "p1")
             .on("p1.id = Item.player_id")
             .left_join_as("Player", "p2")
@@ -285,7 +285,7 @@ mod tests {
         let actual = table("Item")
             .select()
             .left_join("Player")
-            .on("Item.player_id = Player.id")
+            .on("Player.id = Item.player_id")
             .left_join_as("Player", "p1")
             .on("p1.id = Item.player_id")
             .left_join_as("Player", "p2")
