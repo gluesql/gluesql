@@ -4,7 +4,7 @@ use {
         ast::Statement,
         ast_builder::{
             ExprList, ExprNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode, OffsetNode,
-            ProjectNode, SelectItemList, SelectNode,
+            ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -12,7 +12,6 @@ use {
 
 #[derive(Clone)]
 pub enum PrevNode {
-    Select(SelectNode),
     Join(JoinNode),
     JoinConstraint(JoinConstraintNode),
     Filter(Box<FilterNode>),
@@ -21,17 +20,10 @@ pub enum PrevNode {
 impl Prebuild for PrevNode {
     fn prebuild(self) -> Result<NodeData> {
         match self {
-            Self::Select(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
         }
-    }
-}
-
-impl From<SelectNode> for PrevNode {
-    fn from(node: SelectNode) -> Self {
-        PrevNode::Select(node)
     }
 }
 
@@ -53,16 +45,17 @@ impl From<FilterNode> for PrevNode {
     }
 }
 
+#[derive(Clone)]
 pub struct FilterNode {
     prev_node: PrevNode,
-    expr: ExprNode,
+    filter_expr: ExprNode,
 }
 
 impl FilterNode {
     pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
-            expr: expr.into(),
+            filter_expr: expr.into(),
         }
     }
 
@@ -94,10 +87,12 @@ impl FilterNode {
 impl Prebuild for FilterNode {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
+        select_data.selection = Some(self.filter_expr.try_into()?);
         Ok(select_data)
     }
 }
 
+#[cfg(test)]
 mod tests {
     use crate::{
         ast::{BinaryOperator, Expr},

@@ -3,8 +3,8 @@ use {
     crate::{
         ast::Statement,
         ast_builder::{
-            GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode, LimitOffsetNode,
-            OffsetLimitNode, OffsetNode, SelectItemList, SelectNode,
+            FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+            LimitOffsetNode, OffsetLimitNode, OffsetNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -21,6 +21,7 @@ pub enum PrevNode {
     OffsetLimit(OffsetLimitNode),
     Join(JoinNode),
     JoinConstraint(JoinConstraintNode),
+    Filter(FilterNode),
 }
 
 impl Prebuild for PrevNode {
@@ -35,6 +36,7 @@ impl Prebuild for PrevNode {
             Self::OffsetLimit(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
+            Self::Filter(node) => node.prebuild(),
         }
     }
 }
@@ -90,6 +92,12 @@ impl From<JoinNode> for PrevNode {
 impl From<JoinConstraintNode> for PrevNode {
     fn from(node: JoinConstraintNode) -> Self {
         PrevNode::JoinConstraint(node)
+    }
+}
+
+impl From<FilterNode> for PrevNode {
+    fn from(node: FilterNode) -> Self {
+        PrevNode::Filter(node)
     }
 }
 

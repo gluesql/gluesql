@@ -17,7 +17,7 @@ pub use {
 };
 
 use crate::{
-    ast::{Expr, Join, Query, Select, SelectItem, SetExpr, Statement, TableWithJoins},
+    ast::{Expr, Join, Query, Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins},
     result::Result,
 };
 
@@ -28,28 +28,30 @@ pub trait Prebuild {
 #[derive(Clone)]
 pub struct NodeData {
     pub projection: Vec<SelectItem>,
-    pub from: TableWithJoins,
+    pub relation: TableFactor,
+    pub joins: Vec<Join>,
     /// WHERE
     pub selection: Option<Expr>,
     pub group_by: Vec<Expr>,
     pub having: Option<Expr>,
     pub limit: Option<Expr>,
     pub offset: Option<Expr>,
-    pub join: Vec<Join>,
 }
 
 impl NodeData {
     pub fn build_query(self) -> Query {
         let NodeData {
             projection,
-            from,
+            relation,
             selection,
             group_by,
             having,
             offset,
             limit,
-            join,
+            joins,
         } = self;
+
+        let from = TableWithJoins { relation, joins };
 
         let select = Select {
             projection,

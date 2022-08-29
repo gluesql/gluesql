@@ -1,7 +1,11 @@
+use std::vec;
+
+use crate::ast::Expr;
+
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::{Expr, ObjectName, SelectItem, Statement, TableFactor, TableWithJoins},
+        ast::{ObjectName, SelectItem, Statement, TableFactor, TableWithJoins},
         ast_builder::{
             ExprList, ExprNode, GroupByNode, JoinNode, LimitNode, OffsetNode, ProjectNode,
             SelectItemList,
@@ -94,22 +98,17 @@ impl Prebuild for SelectNode {
             index: None,
         };
 
-        let from = TableWithJoins {
-            relation,
-            joins: vec![],
-        };
-
         let selection = self.filter_expr.map(Expr::try_from).transpose()?;
 
         Ok(NodeData {
             projection: vec![SelectItem::Wildcard],
-            from,
+            relation,
             selection,
             group_by: vec![],
             having: None,
             offset: None,
             limit: None,
-            join: vec![],
+            joins: vec![],
         })
     }
 }

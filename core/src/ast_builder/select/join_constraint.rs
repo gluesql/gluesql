@@ -3,8 +3,8 @@ use {
     crate::{
         ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, Statement, TableFactor},
         ast_builder::{
-            ExprList, ExprNode, GroupByNode, JoinNode, LimitNode, OffsetNode, ProjectNode,
-            SelectItemList,
+            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
+            ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -104,6 +104,10 @@ impl JoinConstraintNode {
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
         LimitNode::new(self, expr)
     }
+    pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
+        FilterNode::new(self, expr)
+    }
+
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
     }
@@ -112,7 +116,7 @@ impl JoinConstraintNode {
 impl Prebuild for JoinConstraintNode {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.join.push(Join {
+        select_data.joins.push(Join {
             relation: self.relation,
             join_operator: self.join_operator,
             join_executor: JoinExecutor::NestedLoop,
@@ -128,7 +132,7 @@ mod tests {
     #[test]
     fn join_constraint() {
         let actual = table("Bar").select().join("b").on("a.id = b.id").build();
-        let statement = "SELECT * FROM Bar INNER JOIN b ON a.id = b.id";
-        test(actual, statement);
+        let expected = "SELECT * FROM Bar INNER JOIN b ON a.id = b.id";
+        test(actual, expected);
     }
 }

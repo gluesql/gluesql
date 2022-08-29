@@ -6,7 +6,7 @@ use {
             TableFactor,
         },
         ast_builder::{
-            ExprList, ExprNode, GroupByNode, JoinConstraintNode, LimitNode, OffsetNode,
+            ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, LimitNode, OffsetNode,
             ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
@@ -138,6 +138,10 @@ impl JoinNode {
         LimitNode::new(self, expr)
     }
 
+    pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
+        FilterNode::new(self, expr)
+    }
+
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
     }
@@ -146,7 +150,7 @@ impl JoinNode {
 impl Prebuild for JoinNode {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.join.push(Join {
+        select_data.joins.push(Join {
             relation: self.relation,
             join_operator: self.join_operator,
             join_executor: JoinExecutor::NestedLoop,
@@ -219,8 +223,10 @@ mod tests {
             SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate 
             FROM Orders INNER JOIN Customers
         ";
+        test(acutal, expected);
     }
 
+    #[test]
     fn left_join() {
         let actual = table("player")
             .select()
@@ -274,6 +280,7 @@ mod tests {
             LEFT JOIN Player p9 ON p9.id = Item.player_id
             WHERE Player.id = 1;
         ";
+        test(actual, expected);
 
         let actual = table("Item")
             .select()
@@ -298,5 +305,6 @@ mod tests {
             INNER JOIN Player p4 ON p4.id = Item.player_id AND Item.id > 101
             WHERE Player.id = 1;
         ";
+        test(actual, expected);
     }
 }
