@@ -5,7 +5,7 @@ use crate::ast::Expr;
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::{ObjectName, SelectItem, Statement, TableFactor, TableWithJoins},
+        ast::{ObjectName, SelectItem, Statement, TableFactor},
         ast_builder::{
             ExprList, ExprNode, GroupByNode, JoinNode, LimitNode, OffsetNode, ProjectNode,
             SelectItemList,

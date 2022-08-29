@@ -116,6 +116,7 @@ impl JoinConstraintNode {
 impl Prebuild for JoinConstraintNode {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
+        select_data.joins.pop();
         select_data.joins.push(Join {
             relation: self.relation,
             join_operator: self.join_operator,
