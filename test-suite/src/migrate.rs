@@ -1,10 +1,12 @@
-use crate::*;
+use {
+    crate::*,
+    gluesql_core::{
+        data::ValueError, executor::EvaluateError, executor::FetchError, prelude::Value::*,
+        translate::TranslateError,
+    },
+};
 
 test_case!(migrate, async move {
-    use gluesql_core::{
-        data::ValueError, executor::EvaluateError, prelude::Value::*, translate::TranslateError,
-    };
-
     run!(
         "
         CREATE TABLE Test (
@@ -23,7 +25,7 @@ test_case!(migrate, async move {
         "#
     );
 
-    let error_cases = vec![
+    let error_cases = [
         (
             ValueError::FailedToParseNumber.into(),
             r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
@@ -33,12 +35,35 @@ test_case!(migrate, async move {
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
         ),
         (
-            EvaluateError::UnsupportedCompoundIdentifier(expr!("Here.User.id")).into(),
+            TranslateError::UnsupportedExpr("Here.User.id".to_owned()).into(),
             "SELECT * FROM Test WHERE Here.User.id = 1",
         ),
         (
             TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into(),
             "SELECT * FROM Test NATURAL JOIN Test",
+        ),
+        (
+            TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
+            "SELECT 1 ^ 2 FROM Test;",
+        ),
+        (
+            TranslateError::UnsupportedQuerySetExpr(
+                "SELECT * FROM Test UNION SELECT * FROM Test".to_owned(),
+            )
+            .into(),
+            "SELECT * FROM Test UNION SELECT * FROM Test;",
+        ),
+        (
+            EvaluateError::ValueNotFound("noname".to_owned()).into(),
+            "SELECT * FROM Test WHERE noname = 1;",
+        ),
+        (
+            FetchError::TableNotFound("Nothing".to_owned()).into(),
+            "SELECT * FROM Nothing;",
+        ),
+        (
+            TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
+            "TRUNCATE TABLE BlendUser;",
         ),
     ];
 
@@ -83,6 +108,10 @@ test_case!(migrate, async move {
 
     let found = run!("SELECT id, num FROM Test");
     let expected = select!(id | num; I64 | I64; 2 2; 2 9; 2 4);
+    assert_eq!(expected, found);
+
+    let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");
+    let expected = select!(id | num; I64 | I64; 2 9);
     assert_eq!(expected, found);
 
     let found = run!("SELECT id, num FROM Test LIMIT 1 OFFSET 1");

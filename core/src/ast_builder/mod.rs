@@ -1,3 +1,5 @@
+mod assignment;
+mod data_type;
 mod delete;
 mod drop_table;
 mod expr;
@@ -13,8 +15,11 @@ mod show_columns;
 mod table;
 #[cfg(feature = "transaction")]
 mod transaction;
+mod update;
 
 pub use {
+    assignment::AssignmentNode,
+    data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
     expr_list::ExprList,
@@ -28,10 +33,11 @@ pub use {
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
     table::TableNode,
+    update::UpdateNode,
 };
 
 /// Available expression builder functions
-pub use expr::{col, expr, nested, num, text, ExprNode};
+pub use expr::{col, exists, expr, nested, num, text, ExprNode};
 #[cfg(feature = "index")]
 pub use {index::CreateIndexNode, index::DropIndexNode};
 
@@ -39,8 +45,10 @@ pub use {index::CreateIndexNode, index::DropIndexNode};
 pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
-        abs, acos, asin, atan, ceil, cos, floor, ifnull, left, ln, log10, log2, now, pi, reverse,
-        right, round, sign, sin, tan, upper, FunctionNode,
+        abs, acos, asin, atan, ceil, concat, cos, degrees, divide, exp, floor, gcd, generate_uuid,
+        ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo, now, pi, power, radians,
+        repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, upper,
+        FunctionNode,
     },
 };
 
@@ -59,7 +67,7 @@ pub use transaction::{begin, commit, rollback};
 fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
     use crate::{parse_sql::parse, translate::translate};
 
-    let parsed = &parse(expected).unwrap()[0];
+    let parsed = &parse(expected).expect(expected)[0];
     let expected = translate(parsed);
     assert_eq!(actual, expected);
 }
@@ -68,7 +76,16 @@ fn test(actual: crate::result::Result<crate::ast::Statement>, expected: &str) {
 fn test_expr(actual: crate::ast_builder::ExprNode, expected: &str) {
     use crate::{parse_sql::parse_expr, translate::translate_expr};
 
-    let parsed = &parse_expr(expected).unwrap();
+    let parsed = &parse_expr(expected).expect(expected);
     let expected = translate_expr(parsed);
+    assert_eq!(actual.try_into(), expected);
+}
+
+#[cfg(test)]
+fn test_query(actual: crate::ast_builder::QueryNode, expected: &str) {
+    use crate::{parse_sql::parse_query, translate::translate_query};
+
+    let parsed = &parse_query(expected).expect(expected);
+    let expected = translate_query(parsed);
     assert_eq!(actual.try_into(), expected);
 }

@@ -1,31 +1,35 @@
 use {
-    super::{context::FilterContext, filter::check_expr},
+    super::{context::FilterContext, evaluate_stateless, filter::check_expr},
     crate::{
-        ast::{ColumnDef, Expr, Join, Query, Select, SetExpr, TableFactor, TableWithJoins},
-        data::{get_alias, get_name, Key, Row, TableError},
-        executor::select::{get_labels, select},
+        ast::{
+            ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias, TableFactor,
+            TableWithJoins, Values,
+        },
+        data::{get_alias, get_index, get_name, Key, Row, Value},
+        executor::{
+            evaluate::evaluate,
+            select::{get_labels, select},
+        },
         result::{Error, Result},
         store::GStore,
     },
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
+    iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
     std::{fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
-#[cfg(feature = "index")]
-use {
-    super::evaluate::evaluate,
-    crate::{ast::IndexItem, data::get_index},
-    iter_enum::Iterator,
-};
-
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
+    #[error("SERIES has wrong size: {0}")]
+    SeriesSizeWrong(i64),
+    #[error("table '{0}' has {1} columns available but {2} column aliases specified")]
+    TooManyColumnAliases(String, usize, usize),
 }
 
 pub async fn fetch<'a>(
@@ -53,7 +57,7 @@ pub async fn fetch<'a>(
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
-                    .map(|pass| pass.then(|| (columns, key, row)))
+                    .map(|pass| pass.then_some((columns, key, row)))
             }
         });
 
@@ -61,9 +65,10 @@ pub async fn fetch<'a>(
 }
 
 #[derive(futures_enum::Stream)]
-pub enum Rows<I1, I2> {
+pub enum Rows<I1, I2, I3> {
     Derived(I1),
     Table(I2),
+    Series(I3),
 }
 
 pub async fn fetch_relation_rows<'a>(
@@ -80,16 +85,24 @@ pub async fn fetch_relation_rows<'a>(
         }
         TableFactor::Table { name, .. } => {
             let table_name = get_name(name)?;
-            #[cfg(feature = "index")]
             let rows = {
+                #[cfg(feature = "index")]
+                #[derive(Iterator)]
+                enum Rows<I1, I2, I3> {
+                    Indexed(I1),
+                    PrimaryKey(I2),
+                    FullScan(I3),
+                }
+                #[cfg(not(feature = "index"))]
                 #[derive(Iterator)]
                 enum Rows<I1, I2> {
-                    FullScan(I1),
-                    Indexed(I2),
+                    PrimaryKey(I1),
+                    FullScan(I2),
                 }
 
                 match get_index(table_factor) {
-                    Some(IndexItem {
+                    #[cfg(feature = "index")]
+                    Some(IndexItem::NonClustered {
                         name: index_name,
                         asc,
                         cmp_expr,
@@ -103,22 +116,49 @@ pub async fn fetch_relation_rows<'a>(
                             None => None,
                         };
 
-                        storage
+                        let rows = storage
                             .scan_indexed_data(table_name, index_name, *asc, cmp_value)
-                            .await
-                            .map(Rows::Indexed)?
+                            .await?
+                            .map_ok(|(_, row)| row);
+
+                        Rows::Indexed(rows)
                     }
-                    None => storage.scan_data(table_name).await.map(Rows::FullScan)?,
+                    Some(IndexItem::PrimaryKey(expr)) => {
+                        let filter_context = filter_context.as_ref().map(Rc::clone);
+                        let key = evaluate(storage, filter_context, None, expr)
+                            .await
+                            .and_then(Value::try_from)
+                            .and_then(Key::try_from)?;
+
+                        let rows = storage
+                            .fetch_data(table_name, &key)
+                            .await
+                            .transpose()
+                            .map(|row| vec![row])
+                            .unwrap_or_else(Vec::new);
+
+                        Rows::PrimaryKey(rows.into_iter())
+                    }
+                    _ => {
+                        let rows = storage.scan_data(table_name).await?.map_ok(|(_, row)| row);
+
+                        Rows::FullScan(rows)
+                    }
                 }
             };
 
-            #[cfg(not(feature = "index"))]
-            let rows = storage.scan_data(table_name).await?;
+            Ok(Rows::Table(stream::iter(rows)))
+        }
+        TableFactor::Series { size, .. } => {
+            let value: Value = evaluate_stateless(None, size)?.try_into()?;
+            let size: i64 = value.try_into()?;
+            let size = match size {
+                n if n >= 0 => size,
+                n => return Err(FetchError::SeriesSizeWrong(n).into()),
+            };
+            let rows = (1..=size).map(|v| Ok(Row(vec![Value::I64(v)])));
 
-            let rows = rows.map_ok(|(_, row)| row);
-            let rows = stream::iter(rows);
-
-            Ok(Rows::Table(rows))
+            Ok(Rows::Series(stream::iter(rows)))
         }
     }
 }
@@ -145,34 +185,51 @@ pub async fn fetch_relation_columns(
 
             fetch_columns(storage, table_name).await
         }
+        TableFactor::Series { .. } => Ok(vec!["N".to_string()]),
         TableFactor::Derived {
-            subquery:
-                Query {
-                    body: SetExpr::Select(statement),
+            subquery: Query { body, .. },
+            alias: TableAlias { columns, name },
+        } => match body {
+            SetExpr::Select(statement) => {
+                let Select {
+                    from:
+                        TableWithJoins {
+                            relation, joins, ..
+                        },
+                    projection,
                     ..
-                },
-            alias: _,
-        } => {
-            let Select {
-                from: TableWithJoins {
-                    relation, joins, ..
-                },
-                projection,
-                ..
-            } = statement.as_ref();
+                } = statement.as_ref();
 
-            let columns = fetch_relation_columns(storage, relation).await?;
-            let join_columns = fetch_join_columns(joins, storage).await?;
-            let labels = get_labels(
-                projection,
-                get_alias(relation)?,
-                &columns,
-                Some(&join_columns),
-            )?;
+                let columns = fetch_relation_columns(storage, relation).await?;
+                let join_columns = fetch_join_columns(joins, storage).await?;
+                let labels = get_labels(
+                    projection,
+                    get_alias(relation)?,
+                    &columns,
+                    Some(&join_columns),
+                )?;
 
-            Ok(labels)
-        }
-        &TableFactor::Derived { .. } => Err(Error::Table(TableError::Unreachable)),
+                Ok(labels)
+            }
+            SetExpr::Values(Values(values_list)) => {
+                let total_len = values_list[0].len();
+                let alias_len = columns.len();
+                if alias_len > total_len {
+                    return Err(FetchError::TooManyColumnAliases(
+                        name.into(),
+                        total_len,
+                        alias_len,
+                    )
+                    .into());
+                }
+                let labels = (alias_len + 1..=total_len)
+                    .into_iter()
+                    .map(|i| format!("column{}", i));
+                let labels = columns.iter().cloned().chain(labels).collect::<Vec<_>>();
+
+                Ok(labels)
+            }
+        },
     }
 }
 pub async fn fetch_join_columns<'a>(

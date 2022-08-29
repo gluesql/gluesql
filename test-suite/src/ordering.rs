@@ -61,7 +61,7 @@ test_case!(ordering, async move {
         (5, "SELECT * FROM Operator WHERE NOT (1 != 1);"),
     ];
 
-    for (num, sql) in test_cases.iter() {
-        count!(*num, sql);
+    for (num, sql) in test_cases {
+        count!(num, sql);
     }
 });

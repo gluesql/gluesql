@@ -1,15 +1,15 @@
 use {
     crate::*,
-    gluesql_core::data::value::Value::{Null, Str, I64},
-};
-
-test_case!(create_table, async move {
-    use gluesql_core::{
+    gluesql_core::{
+        data::value::Value::{Null, Str, I64},
         executor::{AlterError, EvaluateError},
         prelude::Payload,
         translate::TranslateError,
-    };
-    let test_cases = vec![
+    },
+};
+
+test_case!(create_table, async move {
+    let test_cases = [
         (
             r#"
         CREATE TABLE CreateTable1 (
@@ -63,10 +63,6 @@ test_case!(create_table, async move {
         (
             "CREATE TABLE Gluery (id INTEGER CHECK (true));",
             Err(TranslateError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
-        ),
-        (
-            "CREATE TABLE Glue (id INTEGER PRIMARY KEY)",
-            Err(TranslateError::UnsupportedColumnOption(("PRIMARY KEY").to_owned()).into()),
         ),
         (
             r#"

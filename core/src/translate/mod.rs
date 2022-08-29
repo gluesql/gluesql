@@ -8,6 +8,7 @@ mod operator;
 mod query;
 
 pub use self::{
+    data_type::translate_data_type,
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
     query::{translate_query, translate_select_item},
@@ -178,7 +179,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
     }
 }
 
-fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
+pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
     let SqlAssignment { id, value } = sql_assignment;
 
     if id.len() > 1 {

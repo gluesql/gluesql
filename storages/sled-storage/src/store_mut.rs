@@ -14,7 +14,7 @@ use {
         result::Result,
         store::{IndexError, StoreMut},
     },
-    sled::{transaction::ConflictableTransactionError, IVec},
+    sled::transaction::ConflictableTransactionError,
 };
 
 #[async_trait(?Send)]
@@ -143,7 +143,7 @@ impl StoreMut for SledStorage {
             .await
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
         let id_offset = self.id_offset;
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
@@ -162,15 +162,7 @@ impl StoreMut for SledStorage {
             for row in tx_rows.iter() {
                 let id = id_offset + tree.generate_id()?;
                 let id = id.to_be_bytes();
-                let prefix = format!("data/{}/", table_name);
-
-                let bytes = prefix
-                    .into_bytes()
-                    .into_iter()
-                    .chain(id.iter().copied())
-                    .collect::<Vec<_>>();
-
-                let key = IVec::from(bytes);
+                let key = key::data(table_name, id.to_vec());
 
                 index_sync.insert(&key, row)?;
 
@@ -191,11 +183,11 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.insert_data(table_name, rows))
+        self.check_and_retry(tx_result, |storage| storage.append_data(table_name, rows))
             .await
     }
 
-    async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
         let state = &self.state;
         let tx_timeout = self.tx_timeout;
         let tx_rows = &rows;
@@ -211,7 +203,7 @@ impl StoreMut for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             for (key, new_row) in tx_rows.iter() {
-                let key = IVec::from(key.to_cmp_be_bytes());
+                let key = key::data(table_name, key.to_cmp_be_bytes());
                 let snapshot = match tree.get(&key)? {
                     Some(snapshot) => {
                         let snapshot: Snapshot<Row> = bincode::deserialize(&snapshot)
@@ -253,7 +245,7 @@ impl StoreMut for SledStorage {
             Ok(TxPayload::Success)
         });
 
-        self.check_and_retry(tx_result, |storage| storage.update_data(table_name, rows))
+        self.check_and_retry(tx_result, |storage| storage.insert_data(table_name, rows))
             .await
     }
 
@@ -273,7 +265,7 @@ impl StoreMut for SledStorage {
             let index_sync = IndexSync::new(tree, txid, table_name)?;
 
             for key in tx_keys.iter() {
-                let key = IVec::from(key.to_cmp_be_bytes());
+                let key = key::data(table_name, key.to_cmp_be_bytes());
                 let snapshot = tree
                     .get(&key)?
                     .ok_or_else(|| IndexError::ConflictOnEmptyIndexValueDelete.into())

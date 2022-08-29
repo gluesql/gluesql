@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::translate::TranslateError};
+use {
+    crate::*,
+    gluesql_core::{prelude::Value::*, translate::TranslateError},
+};
 
 test_case!(order_by, async move {
     run!(
@@ -20,8 +23,6 @@ CREATE TABLE Test (
             (4, 7, "Thursday", NULL);
     "#
     );
-
-    use gluesql_core::prelude::Value::*;
 
     test!(
         Ok(select!(

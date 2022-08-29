@@ -1,5 +1,9 @@
 use {
-    crate::{command::Command, helper::CliHelper, print::Print},
+    crate::{
+        command::{Command, CommandError},
+        helper::CliHelper,
+        print::Print,
+    },
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
@@ -28,7 +32,7 @@ where
 {
     pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
-        let print = Print::new(output);
+        let print = Print::new(output, None);
 
         Self { glue, print }
     }
@@ -64,7 +68,15 @@ where
 
             let command = match Command::parse(&line) {
                 Ok(command) => command,
-                Err(_) => {
+                Err(CommandError::LackOfTable) => {
+                    println!("[error] should specify table. eg: .columns TableName\n");
+                    continue;
+                }
+                Err(CommandError::LackOfFile) => {
+                    println!("[error] should specify file path.\n");
+                    continue;
+                }
+                Err(CommandError::NotSupported) => {
                     println!("[error] command not supported: {}", line);
                     println!("\n  type .help to list all available commands.\n");
                     continue;
@@ -90,6 +102,12 @@ where
                     if let Err(e) = self.load(&filename) {
                         println!("[error] {}\n", e);
                     }
+                }
+                Command::SpoolOn(path) => {
+                    self.print.spool_on(path)?;
+                }
+                Command::SpoolOff => {
+                    self.print.spool_off();
                 }
             }
         }

@@ -251,7 +251,7 @@ pub async fn select_with_labels<'a>(
             filter
                 .check(Rc::clone(&blend_context))
                 .await
-                .map(|pass| pass.then(|| blend_context))
+                .map(|pass| pass.then_some(blend_context))
         }
     });
 
