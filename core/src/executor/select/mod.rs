@@ -255,27 +255,25 @@ pub async fn select_with_labels<'a>(
         }
     });
 
-    // let rows = aggregate.apply(rows).await?;
     let rows = aggregate.apply(rows).await?;
-    // let rows = rows.zip(stream::iter(labels));
-    // let rows = rows.map(|(aggregate_context, label)| Ok((aggregate_context?, label)));
-    let rows = rows.and_then(move |AggregateContext { aggregated, next }| {
+    let rows = rows.and_then(move |aggregate_context| {
         let blend = Rc::clone(&blend);
         // let aggregate_context = Rc::new(aggregate_context);
         //     let AggregateContext { aggregated, next } = aggregate_context;
 
         // let aggregated = aggregated.as_ref().map(Rc::clone);
         // let aggregated = &aggregate_context.aggregated.map(Rc::new);
-        let aggregated = aggregated.map(Rc::new);
+        let AggregateContext { aggregated, next } = aggregate_context;
+        let rc_aggregated = aggregated.clone().map(Rc::new);
 
         async move {
-            let row = blend.apply(aggregated.clone(), Rc::clone(&next)).await?;
+            let row = blend.apply(rc_aggregated.clone(), Rc::clone(&next)).await?;
 
-            Ok((aggregated, row))
+            Ok((AggregateContext { aggregated, next }, row))
         }
     });
 
-    let rows = sort.apply(rows, &labels).await;
+    let rows = sort.apply(rows, &labels).await?;
 
     // let rows = sort
     //     .apply(rows)

@@ -149,15 +149,15 @@ CREATE TABLE Test (
         Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into()),
         "SELECT * FROM Test ORDER BY id NULLS FIRST"
     );
-    test!(
-        Ok(select!(
-            id  | num
-            I64 | I64;
-            1     9;
-            1     2;
-            3     4;
-            4     7
-        )),
-        "SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC"
-    );
+    // test!(
+    //     Ok(select!(
+    //         id  | num
+    //         I64 | I64;
+    //         1     9;
+    //         1     2;
+    //         3     4;
+    //         4     7
+    //     )),
+    //     "SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC"
+    // );
 });
