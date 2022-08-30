@@ -11,6 +11,7 @@ use {
 };
 
 #[derive(Clone)]
+#[warn(clippy::large_enum_variant)]
 pub enum PrevNode {
     Join(JoinNode),
     JoinConstraint(JoinConstraintNode),

@@ -115,39 +115,58 @@ impl Prebuild for SelectNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{BinaryOperator, Expr},
-        ast_builder::{table, test},
-    };
+    use crate::ast_builder::{table, test};
 
     #[test]
     fn select() {
+        // Select to build
         let actual = table("App").select().build();
         let expected = "SELECT * FROM App";
         test(actual, expected);
 
+        // select node to filter node
         let actual = table("Bar").select().filter("id IS NULL").build();
         let expected = "SELECT * FROM Bar WHERE id IS NULL";
         test(actual, expected);
 
-        let actual = table("Bar")
-            .select()
-            .filter("id IS NULL")
-            .filter("id > 10")
-            .filter("id < 20")
-            .build();
-        let expected = "SELECT * FROM Bar WHERE id IS NULL AND id > 10 AND id < 20";
+        // select node to group by node
+        let actual = table("Foo").select().group_by("id").build();
+        let expected = "SELECT * FROM Foo GROUP BY id";
         test(actual, expected);
 
-        let actual = table("Foo")
-            .select()
-            .filter(Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("col1".to_owned())),
-                op: BinaryOperator::Gt,
-                right: Box::new(Expr::Identifier("col2".to_owned())),
-            })
-            .build();
-        let expected = "SELECT * FROM Foo WHERE col1 > col2";
+        // select node to offset node
+        let actual = table("Foo").select().offset(1).build();
+        let expected = "SELECT * FROM Foo OFFSET 1";
+        test(actual, expected);
+
+        // select node to limit node
+        let actual = table("Foo").select().limit(1).build();
+        let expected = "SELECT * FROM Foo LIMIT 1";
+        test(actual, expected);
+
+        // select node to project node
+        let actual = table("Foo").select().project(vec!["id", "name"]).build();
+        let expected = "SELECT id, name FROM Foo";
+        test(actual, expected);
+
+        // select node to join node
+        let actual = table("Foo").select().join("Bar").build();
+        let expected = "SELECT * FROM Foo JOIN Bar";
+        test(actual, expected);
+
+        // select node to join node with alias
+        let actual = table("Foo").select().join_as("Bar", "b").build();
+        let expected = "SELECT * FROM Foo JOIN Bar AS b";
+        test(actual, expected);
+
+        // select node to left join node
+        let actual = table("Foo").select().left_join("Bar").build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar";
+        test(actual, expected);
+
+        // select node to left join node with alias
+        let actual = table("Foo").select().left_join_as("Bar", "b").build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar AS b";
         test(actual, expected);
     }
 }

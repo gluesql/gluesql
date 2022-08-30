@@ -111,18 +111,57 @@ mod tests {
 
     #[test]
     fn offset() {
-        let actual = table("Hello").select().offset(10).build();
-        let expected = "SELECT * FROM Hello OFFSET 10";
+        // select node -> offset node -> build
+        let actual = table("Foo").select().offset(10).build();
+        let expected = "SELECT * FROM Foo OFFSET 10";
         test(actual, expected);
 
-        let actual = table("World").select().filter("id > 2").offset(100).build();
-        let expected = "SELECT * FROM World WHERE id > 2 OFFSET 100";
+        // select node -> offset node -> limit node
+        let actual = table("Foo").select().offset(10).limit(20).build();
+        let expected = "SELECT * FROM Foo OFFSET 10 LIMIT 20";
         test(actual, expected);
 
-        let actual = table("Foo").select().group_by("name").offset(5).build();
-        let expected = "SELECT * FROM Foo GROUP BY name OFFSET 5";
+        // select node -> offset node -> project node
+        let actual = table("Foo").select().offset(10).project("id").build();
+        let expected = "SELECT id FROM Foo OFFSET 10";
         test(actual, expected);
 
+        // group by node -> offset node -> build
+        let actual = table("Foo").select().group_by("id").offset(10).build();
+        let expected = "SELECT * FROM Foo GROUP BY id OFFSET 10";
+        test(actual, expected);
+
+        // group by node -> offset node -> limit node
+        let actual = table("Foo")
+            .select()
+            .group_by("id")
+            .offset(10)
+            .limit(20)
+            .build();
+        let expected = "SELECT * FROM Foo GROUP BY id OFFSET 10 LIMIT 20";
+        test(actual, expected);
+
+        // group by node -> offset node -> project node
+        let actual = table("Foo")
+            .select()
+            .group_by("id")
+            .offset(10)
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM Foo GROUP BY id OFFSET 10";
+        test(actual, expected);
+
+        // having node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .group_by("id")
+            .having("id > 10")
+            .offset(10)
+            .build();
+        let expected = "SELECT * FROM Foo GROUP BY id HAVING id > 10 OFFSET 10";
+        test(actual, expected);
+
+        // having node -> offset node -> build
         let actual = table("Bar")
             .select()
             .group_by("city")
@@ -130,11 +169,115 @@ mod tests {
             .offset(3)
             .build();
         let expected = "
-            SELECT * FROM Bar
-            GROUP BY city
-            HAVING COUNT(name) < 100
-            OFFSET 3;
-        ";
+                SELECT * FROM Bar
+                GROUP BY city
+                HAVING COUNT(name) < 100
+                OFFSET 3;
+            ";
+        test(actual, expected);
+
+        // having node -> offset node -> limit node
+        let actual = table("Foo")
+            .select()
+            .group_by("id")
+            .having("id > 10")
+            .offset(10)
+            .limit(20)
+            .build();
+        let expected = "SELECT * FROM Foo GROUP BY id HAVING id > 10 OFFSET 10 LIMIT 20";
+        test(actual, expected);
+
+        // having node -> offset node -> project node
+        let actual = table("Foo")
+            .select()
+            .group_by("id")
+            .having("id > 10")
+            .offset(10)
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM Foo GROUP BY id HAVING id > 10 OFFSET 10";
+        test(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo").select().join("Bar").offset(10).build();
+        let expected = "SELECT * FROM Foo JOIN Bar OFFSET 10";
+        test(actual, expected);
+
+        // join node -> offset node -> limit node
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .offset(10)
+            .limit(20)
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar OFFSET 10 LIMIT 20";
+        test(actual, expected);
+
+        // join node -> offset node -> project node
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .offset(10)
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM Foo JOIN Bar OFFSET 10";
+        test(actual, expected);
+
+        // join constraint node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .offset(10)
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id OFFSET 10";
+        test(actual, expected);
+
+        // join constraint node -> offset node -> limit node
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .offset(10)
+            .limit(20)
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id OFFSET 10 LIMIT 20";
+        test(actual, expected);
+
+        // join constraint node -> offset node -> project node
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .offset(10)
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM Foo JOIN Bar ON Foo.id = Bar.id OFFSET 10";
+        test(actual, expected);
+
+        // filter node -> offset node -> build
+        let actual = table("Bar").select().filter("id > 2").offset(100).build();
+        let expected = "SELECT * FROM Bar WHERE id > 2 OFFSET 100";
+        test(actual, expected);
+
+        // filter node -> offset node -> limit node
+        let actual = table("Bar")
+            .select()
+            .filter("id > 2")
+            .offset(100)
+            .limit(200)
+            .build();
+        let expected = "SELECT * FROM Bar WHERE id > 2 OFFSET 100 LIMIT 200";
+        test(actual, expected);
+
+        // filter node -> offset node -> project node
+        let actual = table("Bar")
+            .select()
+            .filter("id > 2")
+            .offset(100)
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM Bar WHERE id > 2 OFFSET 100";
         test(actual, expected);
     }
 }
