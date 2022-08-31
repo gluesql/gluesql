@@ -39,6 +39,7 @@ impl<'a> Sort<'a> {
         &self,
         rows: impl Stream<Item = Result<(AggregateContext<'a>, Row)>> + 'a,
         labels: Vec<String>,
+        table_alias: &'a String,
     ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
         #[derive(futures_enum::Stream)]
         enum Rows<I1, I2> {
@@ -53,20 +54,18 @@ impl<'a> Sort<'a> {
         let labels: Rc<[String]> = Rc::from(labels);
         let rows = rows
             .and_then(|(AggregateContext { aggregated, next }, row)| {
-                let blend_context = Rc::clone(&next);
                 // let table_alias = next.get_table_alias();
                 let labels = Rc::clone(&labels);
                 let filter_context = Rc::new(FilterContext::concat(
                     self.context.as_ref().map(Rc::clone),
                     Some(Rc::clone(&next)),
                 ));
-                let label_context = BlendContext::new("table_alias", labels, Some(row), None);
+                let label_context = BlendContext::new(table_alias, labels, Some(row.clone()), None);
                 let filter_context = Rc::new(FilterContext::concat(
                     Some(filter_context),
                     Some(Rc::from(label_context)),
                 ));
                 let aggregated = aggregated.map(Rc::new);
-                // don't need to evaluate again
                 async move {
                     let values = stream::iter(self.order_by.iter())
                         .then(|OrderByExpr { expr, asc }| {
@@ -83,7 +82,7 @@ impl<'a> Sort<'a> {
                         .try_collect::<Vec<_>>()
                         .await?;
 
-                    Ok((values, aggregated, blend_context))
+                    Ok((values, row))
                 }
             })
             .try_collect::<Vec<_>>()
@@ -121,14 +120,7 @@ impl<'a> Sort<'a> {
                 Ordering::Equal
             })
             .into_iter()
-            .map(|(values, ..)| {
-                let values = values
-                    .iter()
-                    .map(|(value, bool)| value.clone())
-                    .collect::<Vec<_>>();
-
-                Ok(Row(values))
-            });
+            .map(|(.., row)| Ok(row));
 
         Ok(Rows::OrderBy(stream::iter(rows)))
     }
