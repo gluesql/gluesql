@@ -1,22 +1,16 @@
-use bigdecimal::{BigDecimal, ToPrimitive};
-
-use crate::{
-    ast::{AstLiteral, Expr},
-    executor::{context::BlendContext, evaluate_stateless},
-    result::Error,
-};
-
 use {
     super::{
         context::{AggregateContext, FilterContext},
         evaluate::evaluate,
     },
     crate::{
-        ast::OrderByExpr,
+        ast::{AstLiteral, Expr, OrderByExpr},
         data::{Row, Value},
-        result::Result,
+        executor::context::BlendContext,
+        result::{Error, Result},
         store::GStore,
     },
+    bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     std::{cmp::Ordering, rc::Rc},
     utils::Vector,
@@ -45,7 +39,7 @@ impl<'a> Sort<'a> {
         &self,
         rows: impl Stream<Item = Result<(AggregateContext<'a>, Row)>> + 'a,
         labels: Vec<String>,
-        table_alias: &'a String,
+        table_alias: &'a str,
     ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
         #[derive(futures_enum::Stream)]
         enum Rows<I1, I2> {
@@ -89,15 +83,6 @@ impl<'a> Sort<'a> {
                                     evaluate(self.storage, context, aggregated, expr)
                                         .await?
                                         .try_into()?;
-
-                                // if let Value::I64(index) = value {
-                                //     let index: usize = index.try_into().unwrap();
-                                //     let index = index - 1;
-                                //     println!("index: {index}");
-                                //     let value = row.get_value(index).unwrap();
-
-                                //     return Ok::<_, Error>((value.clone(), *asc));
-                                // }
 
                                 Ok::<_, Error>((value, *asc))
                             }
