@@ -6,15 +6,24 @@ use {
     crate::{
         ast::{AstLiteral, Expr, OrderByExpr},
         data::{Row, Value},
-        executor::context::BlendContext,
+        executor::{context::BlendContext, evaluate_stateless},
         result::{Error, Result},
         store::GStore,
     },
     bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
+    serde::Serialize,
+    std::fmt::Debug,
     std::{cmp::Ordering, rc::Rc},
+    thiserror::Error as ThisError,
     utils::Vector,
 };
+
+#[derive(ThisError, Serialize, Debug, PartialEq)]
+pub enum SortError {
+    #[error("ORDER BY COLUMN_INDEX must be within SELECT-list but: {0}")]
+    ColumnIndexOutOfRange(usize),
+}
 
 pub struct Sort<'a> {
     storage: &'a dyn GStore,
@@ -73,18 +82,46 @@ impl<'a> Sort<'a> {
                             let aggregated = aggregated.as_ref().map(Rc::clone);
                             let row = row.clone();
                             async move {
-                                if let Expr::Literal(AstLiteral::Number(big_decimal)) = expr {
-                                    let value =
-                                        row.get_value(big_decimal.to_usize().unwrap() - 1).unwrap();
+                                // if let Expr::Literal(AstLiteral::Number(big_decimal)) = expr {
+                                //     let value =
+                                //         row.get_value(big_decimal.to_usize().unwrap() - 1).unwrap();
 
-                                    return Ok((value.clone(), *asc));
+                                //     return Ok((value.clone(), *asc));
+                                // }
+                                match expr {
+                                    Expr::Literal(AstLiteral::Number(_)) => {
+                                        let value: Value =
+                                            evaluate_stateless(None, expr)?.try_into()?;
+                                        match value {
+                                            Value::I64(_) => {
+                                                let index: usize = value.try_into()?;
+                                                // let size: usize =
+                                                //     (index - 1).try_into().map_err(|_| {
+                                                //         Err(SortError::ColumnIndexOutOfRange(index))
+                                                //     })?;
+                                                let value =
+                                                    row.get_value(index - 1).ok_or_else(|| {
+                                                        crate::result::Error::from(
+                                                            SortError::ColumnIndexOutOfRange(index),
+                                                        )
+                                                    })?;
+
+                                                Ok::<_, Error>((value.clone(), *asc))
+                                            }
+                                            _ => todo!(),
+                                        }
+                                        // let value =
+                                        //     row.get_value(big_decimal.to_usize().unwrap() - 1)?;
+                                    }
+                                    _ => {
+                                        let value: Value =
+                                            evaluate(self.storage, context, aggregated, expr)
+                                                .await?
+                                                .try_into()?;
+
+                                        Ok::<_, Error>((value, *asc))
+                                    }
                                 }
-                                let value: Value =
-                                    evaluate(self.storage, context, aggregated, expr)
-                                        .await?
-                                        .try_into()?;
-
-                                Ok::<_, Error>((value, *asc))
                             }
                         })
                         .try_collect::<Vec<_>>()
