@@ -170,15 +170,11 @@ CREATE TABLE Test (
             3     4;
             4     7
         )),
-        "SELECT id, num FROM Test ORDER BY 1 ASC, 2 DESC"
+        "SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC"
     );
     test!(
         Err(SortError::ColumnIndexOutOfRange(0).into()),
         "SELECT id, num FROM Test ORDER BY 0"
-    );
-    test!(
-        Err(SortError::ColumnIndexOutOfRange(1).into()),
-        "SELECT id, num FROM Test ORDER BY -1"
     );
     test!(
         Err(SortError::ColumnIndexOutOfRange(3).into()),

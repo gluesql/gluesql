@@ -4,13 +4,13 @@ use {
         evaluate::evaluate,
     },
     crate::{
-        ast::{AstLiteral, Expr, OrderByExpr},
+        ast::{AstLiteral, Expr, OrderByExpr, UnaryOperator},
         data::{Row, Value},
         executor::{context::BlendContext, evaluate_stateless},
         result::{Error, Result},
         store::GStore,
     },
-    bigdecimal::ToPrimitive,
+    // bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     serde::Serialize,
     std::fmt::Debug,
@@ -23,6 +23,8 @@ use {
 pub enum SortError {
     #[error("ORDER BY COLUMN_INDEX must be within SELECT-list but: {0}")]
     ColumnIndexOutOfRange(usize),
+    #[error("Unreachable ORDER BY Clause")]
+    Unreachable,
 }
 
 pub struct Sort<'a> {
@@ -89,18 +91,26 @@ impl<'a> Sort<'a> {
                                 //     return Ok((value.clone(), *asc));
                                 // }
                                 match expr {
-                                    Expr::Literal(AstLiteral::Number(_)) => {
+                                    Expr::Literal(AstLiteral::Number(_))
+                                    | Expr::UnaryOp {
+                                        op: UnaryOperator::Plus,
+                                        ..
+                                    } => {
                                         let value: Value =
                                             evaluate_stateless(None, expr)?.try_into()?;
+
                                         match value {
                                             Value::I64(_) => {
                                                 let index: usize = value.try_into()?;
-                                                // let size: usize =
-                                                //     (index - 1).try_into().map_err(|_| {
-                                                //         Err(SortError::ColumnIndexOutOfRange(index))
-                                                //     })?;
+                                                let zero_based =
+                                                    index.checked_sub(1).ok_or_else(|| {
+                                                        crate::result::Error::from(
+                                                            SortError::ColumnIndexOutOfRange(index),
+                                                        )
+                                                    })?;
+
                                                 let value =
-                                                    row.get_value(index - 1).ok_or_else(|| {
+                                                    row.get_value(zero_based).ok_or_else(|| {
                                                         crate::result::Error::from(
                                                             SortError::ColumnIndexOutOfRange(index),
                                                         )
@@ -108,16 +118,15 @@ impl<'a> Sort<'a> {
 
                                                 Ok::<_, Error>((value.clone(), *asc))
                                             }
-                                            _ => todo!(),
+                                            _ => Err(SortError::Unreachable.into()),
                                         }
-                                        // let value =
-                                        //     row.get_value(big_decimal.to_usize().unwrap() - 1)?;
                                     }
                                     _ => {
                                         let value: Value =
                                             evaluate(self.storage, context, aggregated, expr)
                                                 .await?
                                                 .try_into()?;
+                                        println!("value: {:?}", value);
 
                                         Ok::<_, Error>((value, *asc))
                                     }
