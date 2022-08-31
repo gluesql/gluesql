@@ -49,7 +49,7 @@ impl<'a> Sort<'a> {
     pub async fn apply(
         &self,
         rows: impl Stream<Item = Result<(AggregateContext<'a>, Row)>> + 'a,
-        labels: Vec<String>,
+        labels: &Vec<String>,
         table_alias: &'a str,
     ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
         #[derive(futures_enum::Stream)]
@@ -62,7 +62,7 @@ impl<'a> Sort<'a> {
 
             return Ok(Rows::NonOrderBy(Box::pin(rows)));
         }
-        let labels: Rc<[String]> = Rc::from(labels);
+        let labels = Rc::from(labels.clone());
         let rows = rows
             .and_then(|(AggregateContext { aggregated, next }, row)| {
                 // let table_alias = next.get_table_alias();
@@ -126,7 +126,6 @@ impl<'a> Sort<'a> {
                                             evaluate(self.storage, context, aggregated, expr)
                                                 .await?
                                                 .try_into()?;
-                                        println!("value: {:?}", value);
 
                                         Ok::<_, Error>((value, *asc))
                                     }

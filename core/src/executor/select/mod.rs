@@ -268,9 +268,7 @@ pub async fn select_with_labels<'a>(
         }
     });
 
-    let rows = sort
-        .apply(rows, labels.clone(), get_alias(relation)?)
-        .await?;
+    let rows = sort.apply(rows, &labels, get_alias(relation)?).await?;
 
     // let rows = sort
     //     .apply(rows)
