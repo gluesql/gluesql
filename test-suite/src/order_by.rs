@@ -151,6 +151,7 @@ CREATE TABLE Test (
         "SELECT * FROM Test ORDER BY id NULLS FIRST"
     );
     test!(
+        // ORDER BY aliases
         Ok(select!(
             C1  | C2
             I64 | I64;
@@ -162,6 +163,19 @@ CREATE TABLE Test (
         "SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC"
     );
     test!(
+        // original column_names still work even if aliased are used at SELECT clause
+        Ok(select!(
+            C1  | C2
+            I64 | I64;
+            1     9;
+            1     2;
+            3     4;
+            4     7
+        )),
+        "SELECT id AS C1, num AS C2 FROM Test ORDER BY id ASC, num DESC"
+    );
+    test!(
+        // ORDER BY I64 and UnaryOperator::PLUS work as COLUMN_INDEX
         Ok(select!(
             id  | num
             I64 | I64;
@@ -171,6 +185,18 @@ CREATE TABLE Test (
             4     7
         )),
         "SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC"
+    );
+    test!(
+        // ORDER BY UnaryOperator::MINUS works as a normal integer;
+        Ok(select!(
+            id  | num
+            I64 | I64;
+            1     2;
+            1     9;
+            3     4;
+            4     7
+        )),
+        "SELECT id, num FROM Test ORDER BY -1"
     );
     test!(
         Err(SortError::ColumnIndexOutOfRange(0).into()),
