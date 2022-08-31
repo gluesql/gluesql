@@ -1,4 +1,10 @@
-use crate::executor::context::BlendContext;
+use bigdecimal::{BigDecimal, ToPrimitive};
+
+use crate::{
+    ast::{AstLiteral, Expr},
+    executor::{context::BlendContext, evaluate_stateless},
+    result::Error,
+};
 
 use {
     super::{
@@ -71,12 +77,29 @@ impl<'a> Sort<'a> {
                         .then(|OrderByExpr { expr, asc }| {
                             let context = Some(Rc::clone(&filter_context));
                             let aggregated = aggregated.as_ref().map(Rc::clone);
-
+                            let row = row.clone();
                             async move {
-                                evaluate(self.storage, context, aggregated, expr)
-                                    .await?
-                                    .try_into()
-                                    .map(|value| (value, *asc))
+                                if let Expr::Literal(AstLiteral::Number(big_decimal)) = expr {
+                                    let value =
+                                        row.get_value(big_decimal.to_usize().unwrap() - 1).unwrap();
+
+                                    return Ok((value.clone(), *asc));
+                                }
+                                let value: Value =
+                                    evaluate(self.storage, context, aggregated, expr)
+                                        .await?
+                                        .try_into()?;
+
+                                // if let Value::I64(index) = value {
+                                //     let index: usize = index.try_into().unwrap();
+                                //     let index = index - 1;
+                                //     println!("index: {index}");
+                                //     let value = row.get_value(index).unwrap();
+
+                                //     return Ok::<_, Error>((value.clone(), *asc));
+                                // }
+
+                                Ok::<_, Error>((value, *asc))
                             }
                         })
                         .try_collect::<Vec<_>>()
