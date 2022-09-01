@@ -49,7 +49,7 @@ impl<'a> Sort<'a> {
     pub async fn apply(
         &self,
         rows: impl Stream<Item = Result<(AggregateContext<'a>, Row)>> + 'a,
-        labels: Vec<String>,
+        labels: Rc<Vec<String>>,
         table_alias: &'a str,
     ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
         #[derive(futures_enum::Stream)]
@@ -62,11 +62,10 @@ impl<'a> Sort<'a> {
 
             return Ok(Rows::NonOrderBy(Box::pin(rows)));
         }
-        let labels = Rc::from(labels.clone());
         let rows = rows
             .and_then(|(AggregateContext { aggregated, next }, row)| {
                 // let table_alias = next.get_table_alias();
-                let labels = Rc::clone(&labels);
+                let labels = Rc::from(labels.as_slice());
                 let filter_context = Rc::new(FilterContext::concat(
                     self.context.as_ref().map(Rc::clone),
                     Some(Rc::clone(&next)),
