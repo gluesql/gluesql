@@ -299,7 +299,9 @@ pub async fn select_with_labels<'a>(
         }
     });
     let labels = Rc::new(labels);
-    let rows = sort.apply(rows, labels, get_alias(relation)?).await?;
+    let rows = sort
+        .apply(rows, Rc::clone(&labels), get_alias(relation)?)
+        .await?;
     let rows = limit.apply(rows);
     let labels = Rc::try_unwrap(labels).map_err(|_| SelectError::Unreachable)?;
 
