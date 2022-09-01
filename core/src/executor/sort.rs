@@ -82,40 +82,45 @@ impl<'a> Sort<'a> {
             .try_collect::<Vec<_>>()
             .await
             .map(Vector::from)?
-            .sort_by(|(values_a, _, _), (values_b, _, _)| {
-                let pairs = values_a
-                    .iter()
-                    .map(|(a, _)| a)
-                    .zip(values_b.iter())
-                    .map(|(a, (b, asc))| (a, b, asc.unwrap_or(true)));
-
-                for (value_a, value_b, asc) in pairs {
-                    let apply_asc = |ord: Ordering| if asc { ord } else { ord.reverse() };
-
-                    match (value_a, value_b) {
-                        (Value::Null, Value::Null) => {}
-                        (Value::Null, _) => {
-                            return apply_asc(Ordering::Greater);
-                        }
-                        (_, Value::Null) => {
-                            return apply_asc(Ordering::Less);
-                        }
-                        _ => {}
-                    };
-
-                    match value_a.partial_cmp(value_b) {
-                        Some(ord) if ord != Ordering::Equal => {
-                            return apply_asc(ord);
-                        }
-                        _ => {}
-                    }
-                }
-
-                Ordering::Equal
-            })
+            .sort_by(|(values_a, _, _), (values_b, _, _)| Self::sort_by(values_a, values_b))
             .into_iter()
             .map(|(_, aggregated, blend_context)| Ok((aggregated, blend_context)));
 
         Ok(Box::pin(stream::iter(rows)))
+    }
+
+    pub fn sort_by(
+        values_a: &[(Value, Option<bool>)],
+        values_b: &[(Value, Option<bool>)],
+    ) -> Ordering {
+        let pairs = values_a
+            .iter()
+            .map(|(a, _)| a)
+            .zip(values_b.iter())
+            .map(|(a, (b, asc))| (a, b, asc.unwrap_or(true)));
+
+        for (value_a, value_b, asc) in pairs {
+            let apply_asc = |ord: Ordering| if asc { ord } else { ord.reverse() };
+
+            match (value_a, value_b) {
+                (Value::Null, Value::Null) => {}
+                (Value::Null, _) => {
+                    return apply_asc(Ordering::Greater);
+                }
+                (_, Value::Null) => {
+                    return apply_asc(Ordering::Less);
+                }
+                _ => {}
+            };
+
+            match value_a.partial_cmp(value_b) {
+                Some(ord) if ord != Ordering::Equal => {
+                    return apply_asc(ord);
+                }
+                _ => {}
+            }
+        }
+
+        Ordering::Equal
     }
 }
