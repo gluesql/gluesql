@@ -163,7 +163,7 @@ CREATE TABLE Test (
         "SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC"
     );
     test!(
-        // original column_names still work even if aliased are used at SELECT clause
+        // original column_names still work even if aliases were used at SELECT clause
         Ok(select!(
             C1  | C2
             I64 | I64;
