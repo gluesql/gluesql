@@ -49,7 +49,7 @@ impl<'a> Sort<'a> {
     pub async fn apply(
         &self,
         rows: impl Stream<Item = Result<(AggregateContext<'a>, Row)>> + 'a,
-        labels: &Vec<String>,
+        labels: Vec<String>,
         table_alias: &'a str,
     ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
         #[derive(futures_enum::Stream)]
