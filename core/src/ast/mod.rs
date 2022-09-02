@@ -123,21 +123,155 @@ pub enum Variable {
 impl ToSql for Statement {
     fn to_sql(&self) -> String {
         match self {
-            Statement::ShowColumns => "UNIMPLEMENTED!".to_string(),
-            Statement::Query(q) => "UNIMPLEMENTED!".to_string(),
-            Statement::Insert => "UNIMPLEMENTED!".to_string(),
-            Statement::Update => "UNIMPLEMENTED!".to_string(),
-            Statement::Delete => "UNIMPLEMENTED!".to_string(),
-            Statement::CreateTable => "UNIMPLEMENTED!".to_string(),
-            Statement::AlterTable { name, operation } => "UNIMPLEMENTED!".to_string(),
-            Statement::DropTable => "UNIMPLEMENTED!".to_string(),
-            Statement::CreateIndex => "UNIMPLEMENTED!".to_string(),
-            Statement::DropIndex => "UNIMPLEMENTED!".to_string(),
-            Statement::StartTransaction => "UNIMPLEMENTED!".to_string(),
-            Statement::Commit => "UNIMPLEMENTED!".to_string(),
-            Statement::Rollback => "UNIMPLEMENTED!".to_string(),
-            Statement::ShowVariable(v) => "UNIMPLEMENTED!".to_string(),
-            Statement::ShowIndexes(o) => "UNIMPLEMENTED!".to_string(),
+            Statement::CreateTable {
+                if_not_exists,
+                name,
+                columns,
+                source,
+            } => match source {
+                // TODO refactor
+                // 1. 너무 nested... {}{}{}{}
+                // 2. columns empty 일때를
+                Some(query) => format!("CREATE TABLE {name} AS (..query..)"),
+                None => {
+                    if columns.is_empty() {
+                        match if_not_exists {
+                            true => format!("CREATE TABLE IF NOT EXISTS {name}"),
+                            false => format!("CREATE TABLE {name}"),
+                        }
+                    } else {
+                        let columns = columns
+                            .iter()
+                            .map(ToSql::to_sql)
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        match if_not_exists {
+                            true => format!("CREATE TABLE IF NOT EXISTS {name} ({columns})"),
+                            false => format!("CREATE TABLE {name} ({columns})"),
+                        }
+                    }
+                }
+            },
+            Statement::AlterTable { name, operation } => {
+                let operation = operation.to_sql();
+                format!("ALTER TABLE {name} {operation}")
+            }
+            _ => "(..statement..)",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::AstLiteral::Number;
+    use crate::ast::Expr::Literal;
+    use crate::ast::Statement::Query;
+    use crate::ast::{
+        AlterTableOperation, ColumnDef, ColumnOption, ColumnOptionDef, DataType, ObjectName,
+        Statement, ToSql,
+    };
+    use bigdecimal::BigDecimal;
+    use regex::Regex;
+    use std::str::FromStr;
+
+    #[test]
+    fn to_sql_create_table() {
+        assert_eq!(
+            "CREATE TABLE IF NOT EXISTS Foo",
+            Statement::CreateTable {
+                if_not_exists: true,
+                name: ObjectName(vec!["Foo".to_string()]),
+                columns: vec![],
+                source: None
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CREATE TABLE Foo (id INTEGER, num INTEGER NULL, name TEXT)",
+            Statement::CreateTable {
+                if_not_exists: false,
+                name: ObjectName(vec!["Foo".to_string()]),
+                columns: vec![
+                    ColumnDef {
+                        name: "id".to_string(),
+                        data_type: DataType::Int,
+                        options: vec![]
+                    },
+                    ColumnDef {
+                        name: "num".to_string(),
+                        data_type: DataType::Int,
+                        options: vec![ColumnOptionDef {
+                            name: None,
+                            option: ColumnOption::Null
+                        }]
+                    },
+                    ColumnDef {
+                        name: "name".to_string(),
+                        data_type: DataType::Text,
+                        options: vec![]
+                    }
+                ],
+                source: None
+            }
+            .to_sql()
+        );
+    }
+
+    fn to_sql_alter_table() {
+        assert_eq!(
+            "ALTER TABLE Foo ADD COLUMN amount INTEGER DEFAULT 10",
+            Statement::AlterTable {
+                name: ObjectName(vec!["Foo".to_string()]),
+                operation: AlterTableOperation::AddColumn {
+                    column_def: ColumnDef {
+                        name: "amount".to_string(),
+                        data_type: DataType::Int,
+                        options: vec![ColumnOptionDef {
+                            name: None,
+                            option: ColumnOption::Default(Literal(Number(
+                                BigDecimal::from_str("10").unwrap()
+                            )))
+                        }]
+                    }
+                }
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "ALTER TABLE Foo DROP COLUMN IF EXISTS something;",
+            Statement::AlterTable {
+                name: ObjectName(vec!["Foo".to_string()]),
+                operation: AlterTableOperation::DropColumn {
+                    column_name: "something".to_string(),
+                    if_exists: true
+                }
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "ALTER TABLE Bar RENAME COLUMN id TO new_id",
+            Statement::AlterTable {
+                name: ObjectName(vec!["Bar".to_string()]),
+                operation: AlterTableOperation::RenameColumn {
+                    old_column_name: "id".to_string(),
+                    new_column_name: "new_id".to_string()
+                }
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "ALTER TABLE Foo RENAME TO Bar;",
+            Statement::AlterTable {
+                name: ObjectName(vec!["Foo".to_string()]),
+                operation: AlterTableOperation::RenameTable {
+                    table_name: ObjectName(vec!["Bar".to_string()])
+                }
+            }
+            .to_sql()
+        );
     }
 }
