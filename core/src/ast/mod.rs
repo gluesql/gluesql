@@ -137,21 +137,22 @@ impl ToSql for Statement {
                 columns,
                 source,
             } => match source {
-                Some(_query) => format!("CREATE TABLE {} AS (..query..)", name.to_sql()),
+                Some(_query) => match if_not_exists {
+                    true => format!(
+                        "CREATE TABLE IF NOT EXISTS {} AS (..query..)",
+                        name.to_sql()
+                    ),
+                    false => format!("CREATE TABLE {} AS (..query..)", name.to_sql()),
+                },
                 None => {
-                    let mut cols = "".to_string();
-                    if columns.is_empty() {
-                    } else {
-                        let columns = columns
-                            .iter()
-                            .map(ToSql::to_sql)
-                            .collect::<Vec<_>>()
-                            .join(", ");
-                        cols = format!(" ({columns})");
-                    }
+                    let columns = columns
+                        .iter()
+                        .map(ToSql::to_sql)
+                        .collect::<Vec<_>>()
+                        .join(", ");
                     match if_not_exists {
-                        true => format!("CREATE TABLE IF NOT EXISTS {}{cols}", name.to_sql()),
-                        false => format!("CREATE TABLE {}{cols}", name.to_sql()),
+                        true => format!("CREATE TABLE IF NOT EXISTS {} ({columns})", name.to_sql()),
+                        false => format!("CREATE TABLE {} ({columns})", name.to_sql()),
                     }
                 }
             },
@@ -193,7 +194,7 @@ mod tests {
     #[test]
     fn to_sql_create_table() {
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo",
+            "CREATE TABLE IF NOT EXISTS Foo ()",
             Statement::CreateTable {
                 if_not_exists: true,
                 name: ObjectName(vec!["Foo".to_string()]),
