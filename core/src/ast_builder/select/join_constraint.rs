@@ -1,7 +1,7 @@
 use {
     super::{join::JoinType, NodeData, Prebuild},
     crate::{
-        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, Statement, TableFactor},
+        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, Statement},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
             ProjectNode, SelectItemList,
@@ -11,55 +11,16 @@ use {
 };
 
 #[derive(Clone)]
-pub enum PrevNode {
-    Join(JoinNode),
-}
-
-impl Prebuild for PrevNode {
-    fn prebuild(self) -> Result<NodeData> {
-        match self {
-            Self::Join(node) => node.prebuild(),
-        }
-    }
-}
-
-impl From<JoinNode> for PrevNode {
-    fn from(node: JoinNode) -> Self {
-        PrevNode::Join(node)
-    }
-}
-
-#[derive(Clone)]
 pub struct JoinConstraintNode {
-    prev_node: PrevNode,
-    relation: TableFactor,
-    join_operator: JoinOperator,
+    join_node: JoinNode,
+    expr: ExprNode,
 }
 
 impl JoinConstraintNode {
-    pub fn new<N: Into<PrevNode>, K: Into<TableFactor>, T: Into<ExprNode>>(
-        prev_node: N,
-        relation: K,
-        join_type: JoinType,
-        expr: T,
-    ) -> Self {
+    pub fn new<T: Into<ExprNode>>(join_node: JoinNode, expr: T) -> Self {
         Self {
-            prev_node: prev_node.into(),
-            relation: relation.into(),
-            join_operator: match join_type {
-                JoinType::Inner => {
-                    JoinOperator::Inner(JoinConstraint::On(match expr.into().try_into() {
-                        Ok(expr) => expr,
-                        Err(err) => panic!("Problem in Change exprnode to expr: {:?}", err),
-                    }))
-                }
-                JoinType::Left => {
-                    JoinOperator::LeftOuter(JoinConstraint::On(match expr.into().try_into() {
-                        Ok(expr) => expr,
-                        Err(err) => panic!("Problem in Change exprnode to expr: {:?}", err),
-                    }))
-                }
-            },
+            join_node,
+            expr: expr.into(),
         }
     }
 
@@ -115,11 +76,16 @@ impl JoinConstraintNode {
 
 impl Prebuild for JoinConstraintNode {
     fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        select_data.joins.pop();
+        let (mut select_data, relation, join_operator_type) =
+            self.join_node.prebuild_for_constraint()?;
         select_data.joins.push(Join {
-            relation: self.relation,
-            join_operator: self.join_operator,
+            relation,
+            join_operator: match join_operator_type {
+                JoinType::Inner => JoinOperator::Inner(JoinConstraint::On(self.expr.try_into()?)),
+                JoinType::Left => {
+                    JoinOperator::LeftOuter(JoinConstraint::On(self.expr.try_into()?))
+                }
+            },
             join_executor: JoinExecutor::NestedLoop,
         });
         Ok(select_data)

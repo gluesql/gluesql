@@ -13,6 +13,7 @@ use {
     },
 };
 
+#[derive(Clone)]
 pub enum JoinType {
     Inner,
     Left,
@@ -58,6 +59,7 @@ pub struct JoinNode {
     prev_node: PrevNode,
     relation: TableFactor,
     join_operator: JoinOperator,
+    join_operator_type: JoinType,
 }
 
 impl JoinNode {
@@ -65,10 +67,11 @@ impl JoinNode {
         prev_node: N,
         table_name: String,
         alias: Option<String>,
-        join_type: JoinType,
+        join_operator_type: JoinType,
     ) -> Self {
         Self {
             prev_node: prev_node.into(),
+            join_operator_type: join_operator_type.clone(),
             relation: match alias {
                 Some(alias) => TableFactor::Table {
                     name: ObjectName(vec![table_name]),
@@ -84,7 +87,7 @@ impl JoinNode {
                     index: None,
                 },
             },
-            join_operator: match join_type {
+            join_operator: match join_operator_type {
                 JoinType::Inner => JoinOperator::Inner(JoinConstraint::None),
                 JoinType::Left => JoinOperator::LeftOuter(JoinConstraint::None),
             },
@@ -92,13 +95,7 @@ impl JoinNode {
     }
 
     pub fn on<T: Into<ExprNode>>(self, expr: T) -> JoinConstraintNode {
-        let join_type = match self.join_operator {
-            JoinOperator::Inner(JoinConstraint::None) => JoinType::Inner,
-            JoinOperator::LeftOuter(JoinConstraint::None) => JoinType::Left,
-            _ => panic!("on() can only be called on an inner or left join"),
-        };
-        let relation = self.relation.clone();
-        JoinConstraintNode::new(self, relation, join_type, expr)
+        JoinConstraintNode::new(self, expr)
     }
 
     pub fn join(self, table_name: &str) -> JoinNode {
@@ -149,6 +146,11 @@ impl JoinNode {
 
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
+    }
+
+    pub fn prebuild_for_constraint(self) -> Result<(NodeData, TableFactor, JoinType)> {
+        let select_data = self.prev_node.prebuild()?;
+        Ok((select_data, self.relation, self.join_operator_type))
     }
 }
 
