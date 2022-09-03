@@ -1,7 +1,5 @@
-use super::SelectNode;
-
 use {
-    super::{NodeData, Prebuild},
+    super::{NodeData, Prebuild, SelectNode},
     crate::{
         ast::Statement,
         ast_builder::{
@@ -13,7 +11,6 @@ use {
 };
 
 #[derive(Clone)]
-#[warn(clippy::large_enum_variant)]
 pub enum PrevNode {
     Select(SelectNode),
     Join(Box<JoinNode>),

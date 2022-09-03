@@ -81,7 +81,7 @@ impl JoinNode {
                     }),
                     index: None,
                 },
-                _ => TableFactor::Table {
+                None => TableFactor::Table {
                     name: ObjectName(vec![table_name]),
                     alias: None,
                     index: None,
@@ -203,9 +203,7 @@ mod tests {
         ";
         test(actual, expected);
 
-        // join node -> join node ->
-
-        // join constraint node -> join node -> join constraint node
+        // join node -> join constraint node -> join node -> join constraint node
         let actual = table("students")
             .select()
             .join("marks")

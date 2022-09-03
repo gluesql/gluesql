@@ -8,7 +8,6 @@ use {
         },
         result::Result,
     },
-    std::vec,
 };
 
 #[derive(Clone)]
