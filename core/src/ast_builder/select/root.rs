@@ -75,6 +75,7 @@ impl Prebuild for SelectNode {
             selection,
             group_by: vec![],
             having: None,
+            order_by: vec![],
             offset: None,
             limit: None,
         })

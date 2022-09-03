@@ -323,6 +323,41 @@ impl TryFrom<&Value> for f64 {
     }
 }
 
+impl TryFrom<&Value> for usize {
+    type Error = Error;
+
+    fn try_from(v: &Value) -> Result<usize> {
+        Ok(match v {
+            Value::Bool(value) => {
+                if *value {
+                    1
+                } else {
+                    0
+                }
+            }
+            Value::I8(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::I16(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::I32(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::I64(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::I128(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::F64(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::Str(value) => value
+                .parse::<usize>()
+                .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Bytea(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+
 impl TryFrom<&Value> for Decimal {
     type Error = Error;
 
@@ -371,7 +406,7 @@ macro_rules! try_from_owned_value {
     )*}
 }
 
-try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u128, Decimal);
+try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u128, usize, Decimal);
 
 impl TryFrom<&Value> for NaiveDate {
     type Error = Error;
@@ -867,6 +902,62 @@ mod tests {
             Value::Decimal(Decimal::new(12345678901, 1)),
             Ok(1234567890.1)
         );
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
+    fn try_into_usize() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<usize>, $to);
+                assert_eq!(usize::try_from($from), $to);
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1usize));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I16(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::I64(1234567890), Ok(1234567890));
+        test!(Value::F64(1234567890.0), Ok(1234567890));
+        test!(Value::F64(1234567890.1), Ok(1234567890));
+        test!(Value::Str("1234567890".to_owned()), Ok(1234567890));
+        test!(Value::Decimal(Decimal::new(1234567890, 0)), Ok(1234567890));
         test!(
             Value::Date(date(2021, 11, 20)),
             Err(ValueError::ImpossibleCast.into())
