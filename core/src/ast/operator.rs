@@ -254,7 +254,7 @@ mod tests {
         assert_eq!(
             "column_0 LIKE pattern",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier(" column_0".to_string())),
+                left: Box::new(Expr::Identifier("column_0".to_string())),
                 op: BinaryOperator::Like,
                 right: Box::new(Expr::Identifier("pattern".to_string()))
             }
