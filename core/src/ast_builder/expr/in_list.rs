@@ -9,7 +9,7 @@ use {
 #[derive(Clone)]
 pub enum InListNode {
     InList(Vec<ExprNode>),
-    Query(QueryNode),
+    Query(Box<QueryNode>),
     Text(String),
 }
 
@@ -21,43 +21,50 @@ impl From<Vec<ExprNode>> for InListNode {
 
 impl From<SelectNode> for InListNode {
     fn from(node: SelectNode) -> Self {
-        InListNode::Query(node.into())
+        let node = Box::new(node.into());
+        InListNode::Query(node)
     }
 }
 
 impl From<GroupByNode> for InListNode {
     fn from(node: GroupByNode) -> Self {
-        InListNode::Query(node.into())
+        let node = Box::new(node.into());
+        InListNode::Query(node)
     }
 }
 
 impl From<HavingNode> for InListNode {
     fn from(node: HavingNode) -> Self {
-        InListNode::Query(node.into())
+        let node = Box::new(node.into());
+        InListNode::Query(node)
     }
 }
 
 impl From<LimitNode> for InListNode {
     fn from(node: LimitNode) -> Self {
-        InListNode::Query(node.into())
+        let node = Box::new(node.into());
+        InListNode::Query(node)
     }
 }
 
 impl From<LimitOffsetNode> for InListNode {
     fn from(node: LimitOffsetNode) -> Self {
-        InListNode::Query(node.into())
+        let node = Box::new(node.into());
+        InListNode::Query(node)
     }
 }
 
 impl From<OffsetNode> for InListNode {
     fn from(node: OffsetNode) -> Self {
-        InListNode::Query(node.into())
+        let node = Box::new(node.into());
+        InListNode::Query(node)
     }
 }
 
 impl From<OffsetLimitNode> for InListNode {
     fn from(node: OffsetLimitNode) -> Self {
-        InListNode::Query(node.into())
+        let node = Box::new(node.into());
+        InListNode::Query(node)
     }
 }
 
@@ -110,6 +117,92 @@ mod test {
 
         let actual = col("id").not_in_list("a, b, c");
         let expected = "id NOT IN (a, b, c)";
+        test_expr(actual, expected);
+
+        let actual = col("id").in_list(table("FOO").select());
+        let expected = "id IN (SELECT * FROM FOO)";
+        test_expr(actual, expected);
+
+        let actual = col("id").not_in_list(table("FOO").select());
+        let expected = "id NOT IN (SELECT * FROM FOO)";
+        test_expr(actual, expected);
+
+        let actual = col("id").in_list(
+            table("Bar")
+                .select()
+                .filter(col("id").is_null())
+                .group_by("id, (a + name)"),
+        );
+        let expected = "id IN (SELECT * FROM Bar WHERE id IS NULL GROUP BY id, (a + name))";
+        test_expr(actual, expected);
+
+        let actual = col("id").not_in_list(
+            table("Bar")
+                .select()
+                .filter(col("id").is_null())
+                .group_by("id, (a + name)"),
+        );
+        let expected = "id NOT IN (SELECT * FROM Bar WHERE id IS NULL GROUP BY id, (a + name))";
+        test_expr(actual, expected);
+
+        let actual = col("id").in_list(
+            table("Bar")
+                .select()
+                .filter("id IS NULL")
+                .group_by("id, (a + name)")
+                .having("COUNT(id) > 10"),
+        );
+        let expected = "id IN (SELECT * FROM Bar WHERE id IS NULL GROUP BY id, (a + name) HAVING COUNT(id) > 10)";
+        test_expr(actual, expected);
+
+        let actual = col("id").not_in_list(
+            table("Bar")
+                .select()
+                .filter("id IS NULL")
+                .group_by("id, (a + name)")
+                .having("COUNT(id) > 10"),
+        );
+        let expected = "id NOT IN (SELECT * FROM Bar WHERE id IS NULL GROUP BY id, (a + name) HAVING COUNT(id) > 10)";
+        test_expr(actual, expected);
+
+        let actual = col("id").in_list(
+            table("World")
+                .select()
+                .filter("id > 2")
+                .limit(100)
+                .offset(3),
+        );
+        let expected = "id IN (SELECT * FROM World WHERE id > 2 OFFSET 3 LIMIT 100)";
+        test_expr(actual, expected);
+
+        let actual = col("id").not_in_list(
+            table("World")
+                .select()
+                .filter("id > 2")
+                .limit(100)
+                .offset(3),
+        );
+        let expected = "id NOT IN (SELECT * FROM World WHERE id > 2 OFFSET 3 LIMIT 100)";
+        test_expr(actual, expected);
+
+        let actual = col("id").in_list(table("Hello").select().offset(10));
+        let expected = "id IN (SELECT * FROM Hello OFFSET 10)";
+        test_expr(actual, expected);
+
+        let actual = col("id").not_in_list(table("Hello").select().offset(10));
+        let expected = "id NOT IN (SELECT * FROM Hello OFFSET 10)";
+        test_expr(actual, expected);
+
+        let actual = col("id").in_list(
+            table("Bar")
+                .select()
+                .group_by("city")
+                .having("COUNT(name) < 100")
+                .offset(1)
+                .limit(3),
+        );
+        let expected =
+            "id IN (SELECT * FROM Bar GROUP BY city HAVING COUNT(name) < 100 OFFSET 1 LIMIT 3)";
         test_expr(actual, expected);
 
         let actual = col("id").in_list(table("FOO").select().filter("id IS NULL").limit(10));
