@@ -15,6 +15,8 @@ pub mod in_subquery;
 pub use exists::exists;
 pub use nested::nested;
 
+use crate::{data::ValueError, parse_sql::parse_comma_separated_exprs};
+
 use {
     super::DataTypeNode,
     crate::{
@@ -23,13 +25,14 @@ use {
             UnaryOperator,
         },
         ast_builder::QueryNode,
-        parse_sql::parse_expr,
+        parse_sql::{parse_expr, parse_query},
         result::{Error, Result},
-        translate::translate_expr,
+        translate::{translate_expr, translate_query},
     },
     aggregate::AggregateNode,
     bigdecimal::BigDecimal,
     function::FunctionNode,
+    in_list::InListNode,
 };
 
 #[derive(Clone)]
@@ -64,7 +67,7 @@ pub enum ExprNode {
     IsNotNull(Box<ExprNode>),
     InList {
         expr: Box<ExprNode>,
-        list: Vec<ExprNode>,
+        list: Box<InListNode>,
         negated: bool,
     },
     InSubquery {
@@ -141,16 +144,58 @@ impl TryFrom<ExprNode> for Expr {
                 negated,
             } => {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
-                let list = list
-                    .into_iter()
-                    .map(Expr::try_from)
-                    .collect::<Result<Vec<_>>>()?;
 
-                Ok(Expr::InList {
-                    expr,
-                    list,
-                    negated,
-                })
+                match *list {
+                    InListNode::InList(list) => {
+                        let list = list
+                            .into_iter()
+                            .map(Expr::try_from)
+                            .collect::<Result<Vec<_>>>()?;
+                        Ok(Expr::InList {
+                            expr,
+                            list,
+                            negated,
+                        })
+                    }
+                    InListNode::Query(subquery) => {
+                        let subquery = Query::try_from(subquery).map(Box::new)?;
+                        Ok(Expr::InSubquery {
+                            expr,
+                            subquery,
+                            negated,
+                        })
+                    }
+                    InListNode::Text(value) => {
+                        let subquery = parse_query(value.clone())
+                            .and_then(|item| translate_query(&item))
+                            .map(Box::new);
+
+                        if let Ok(subquery) = subquery {
+                            return Ok(Expr::InSubquery {
+                                expr,
+                                subquery,
+                                negated,
+                            });
+                        }
+
+                        let list = parse_comma_separated_exprs(&*value.clone())?
+                            .iter()
+                            .map(translate_expr)
+                            .collect::<Result<Vec<_>>>();
+
+                        if let Ok(list) = list {
+                            return Ok(Expr::InList {
+                                expr,
+                                list,
+                                negated,
+                            });
+                        } else {
+                            return Err(Error::Value(
+                                ValueError::SelectorRequiresMapOrListTypes.into(),
+                            ));
+                        }
+                    }
+                }
             }
             ExprNode::InSubquery {
                 expr,
