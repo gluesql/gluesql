@@ -7,6 +7,7 @@ pub mod div_mod;
 pub mod exp_log;
 pub mod extract;
 pub mod floor;
+pub mod format;
 pub mod gcd_lcm;
 pub mod generate_uuid;
 pub mod ifnull;

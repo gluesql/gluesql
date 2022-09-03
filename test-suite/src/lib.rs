@@ -155,6 +155,7 @@ macro_rules! generate_store_tests {
             function::generate_uuid::generate_uuid
         );
         glue!(type_match, type_match::type_match);
+        glue!(function_format, function::format::format);
     };
 }
 

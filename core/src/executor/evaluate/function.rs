@@ -410,3 +410,15 @@ pub fn unwrap(name: String, expr: Evaluated<'_>, selector: Evaluated<'_>) -> Res
 pub fn generate_uuid() -> Value {
     Value::Uuid(Uuid::new_v4().as_u128())
 }
+
+pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()?{
+        Value::Date()=>Ok()
+        Value::Timestamp()=>Ok()
+        _=>Err(EvaluateError::FunctionRequiresFormattableValue(name).into());
+    }
+   }
+
+// fn format_date(a: &str, b: &str) -> String {
+//     chrono::NaiveDate::parse_from_str(a, b).unwrap()
+// }
