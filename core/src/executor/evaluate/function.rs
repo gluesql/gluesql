@@ -413,12 +413,20 @@ pub fn generate_uuid() -> Value {
 
 pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
     match expr.try_into()?{
-        Value::Date()=>Ok()
-        Value::Timestamp()=>Ok()
-        _=>Err(EvaluateError::FunctionRequiresFormattableValue(name).into());
+        Value::Date(expr)=>{
+            let expr = expr.to_string();
+            let format = eval_to_str!(name,format);
+            Ok(Value::Str(format_date(expr,format)))
+        }
+        // Value::Timestamp()=>Ok()
+        _=>{
+            return Err(EvaluateError::FunctionRequiresFormattableValue(name).into());
+        }
     }
    }
 
-// fn format_date(a: &str, b: &str) -> String {
-//     chrono::NaiveDate::parse_from_str(a, b).unwrap()
-// }
+fn format_date(a: String, b: String )-> String {
+    let a=a.as_str();
+    let b=b.as_str();
+    chrono::NaiveDate::parse_from_str(a, b).unwrap().to_string()
+}

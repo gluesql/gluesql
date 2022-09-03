@@ -7,7 +7,7 @@ test_case!(format, async move {
     };
 
     let test_cases = vec![(
-        r#"SELECT FORMAT("2017-06-15", "%Y")"#,
+        r#"SELECT FORMAT(DATE "2017-06-15", "%Y")"#,
         Ok(select!(
             date
             Str;
