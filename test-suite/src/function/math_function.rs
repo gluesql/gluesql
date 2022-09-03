@@ -65,7 +65,7 @@ test_case!(sin, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -124,7 +124,7 @@ test_case!(cos, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -183,7 +183,7 @@ test_case!(tan, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -234,7 +234,7 @@ test_case!(asin, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -289,7 +289,7 @@ test_case!(acos, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -344,6 +344,6 @@ test_case!(atan, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

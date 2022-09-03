@@ -18,24 +18,25 @@ test_case!(int128, async move {
     let min_str = "-170141183460469231731687303715884105729";
 
     test!(
-        Err(ValueError::FailedToParseNumber.into()),
-        &format!("INSERT INTO Item VALUES ({}, {})", max_str, max_str)
+        &format!("INSERT INTO Item VALUES ({}, {})", max_str, max_str),
+        Err(ValueError::FailedToParseNumber.into())
     );
 
     // cast i128::MAX+1
     test!(
-        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, max_str.to_string()).into()),
-        &format!("select cast({} as INT(128)) from Item", max_str)
+        &format!("select cast({} as INT(128)) from Item", max_str),
+        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, max_str.to_string()).into())
     );
 
     // cast i128::MIN-1
     test!(
-        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_string()).into()),
-        &format!("select cast({} as INT(128)) from Item", min_str)
+        &format!("select cast({} as INT(128)) from Item", min_str),
+        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_string()).into())
     );
 
     // lets try some valid SQL
     test!(
+        "SELECT field_one, field_two FROM Item",
         Ok(select!(
             field_one          | field_two
             I128               |  I128;
@@ -43,63 +44,62 @@ test_case!(int128, async move {
             parse_i128("-2")     2;
             3                    3;
             parse_i128("-4")     parse_i128("-4")
-        )),
-        "SELECT field_one, field_two FROM Item"
+        ))
     );
 
     test!(
-        Ok(select!(field_one I128; 1)),
-        "SELECT field_one FROM Item WHERE field_one = 1"
+        "SELECT field_one FROM Item WHERE field_one = 1",
+        Ok(select!(field_one I128; 1))
     );
 
     test!(
-        Ok(select!(field_one I128; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one > 0"
+        "SELECT field_one FROM Item WHERE field_one > 0",
+        Ok(select!(field_one I128; 1; 3))
     );
 
     test!(
-        Ok(select!(field_one I128; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one >= 0"
+        "SELECT field_one FROM Item WHERE field_one >= 0",
+        Ok(select!(field_one I128; 1; 3))
     );
 
     test!(
-        Ok(select!(field_one I128; -2)),
-        "SELECT field_one FROM Item WHERE field_one = -2"
+        "SELECT field_one FROM Item WHERE field_one = -2",
+        Ok(select!(field_one I128; -2))
     );
 
     test!(
-        Ok(select!(field_one I128; -2; -4)),
-        "SELECT field_one FROM Item WHERE field_one < 0"
+        "SELECT field_one FROM Item WHERE field_one < 0",
+        Ok(select!(field_one I128; -2; -4))
     );
 
     test!(
-        Ok(select!(field_one I128; -2; -4)),
-        "SELECT field_one FROM Item WHERE field_one <= 0"
+        "SELECT field_one FROM Item WHERE field_one <= 0",
+        Ok(select!(field_one I128; -2; -4))
     );
 
     test!(
-        Ok(select!(plus I128; 0; 0; 6; -8)),
-        "SELECT field_one + field_two AS plus FROM Item;"
+        "SELECT field_one + field_two AS plus FROM Item;",
+        Ok(select!(plus I128; 0; 0; 6; -8))
     );
 
     test!(
-        Ok(select!(sub I128; 2; -4; 0; 0)),
-        "SELECT field_one - field_two AS sub FROM Item;"
+        "SELECT field_one - field_two AS sub FROM Item;",
+        Ok(select!(sub I128; 2; -4; 0; 0))
     );
 
     test!(
-        Ok(select!(mul I128; -1; -4; 9; 16)),
-        "SELECT field_one * field_two AS mul FROM Item;"
+        "SELECT field_one * field_two AS mul FROM Item;",
+        Ok(select!(mul I128; -1; -4; 9; 16))
     );
 
     test!(
-        Ok(select!(div I128; -1; -1; 1; 1)),
-        "SELECT field_one / field_two AS div FROM Item;"
+        "SELECT field_one / field_two AS div FROM Item;",
+        Ok(select!(div I128; -1; -1; 1; 1))
     );
 
     test!(
-        Ok(select!(modulo I128; 0; 0; 0; 0)),
-        "SELECT field_one % field_two AS modulo FROM Item;"
+        "SELECT field_one % field_two AS modulo FROM Item;",
+        Ok(select!(modulo I128; 0; 0; 0; 0))
     );
 
     run!("DELETE FROM Item");

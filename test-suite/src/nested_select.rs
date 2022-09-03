@@ -78,11 +78,11 @@ test_case!(nested_select, async move {
     }
 
     let error_cases = [(
-        EvaluateError::NestedSelectRowNotFound.into(),
         "SELECT * FROM User WHERE id = (SELECT id FROM User WHERE id = 9);",
+        EvaluateError::NestedSelectRowNotFound.into(),
     )];
 
-    for (error, sql) in error_cases {
-        test!(Err(error), sql);
+    for (sql, error) in error_cases {
+        test!(sql, Err(error));
     }
 });

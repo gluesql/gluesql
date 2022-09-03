@@ -34,7 +34,7 @@ test_case!(alter_table_rename, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -156,6 +156,6 @@ test_case!(alter_table_add_drop, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

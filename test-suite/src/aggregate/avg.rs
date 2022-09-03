@@ -38,6 +38,6 @@ test_case!(avg, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(Ok(expected), sql);
+        test!(sql, Ok(expected));
     }
 });

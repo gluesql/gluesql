@@ -29,7 +29,7 @@ CREATE TABLE User (
     "#
     );
 
-    test!(Ok(Payload::CreateIndex), "CREATE INDEX idx_id ON User (id)");
+    test!("CREATE INDEX idx_id ON User (id)", Ok(Payload::CreateIndex));
 
     test_idx!(
         Ok(select!(
