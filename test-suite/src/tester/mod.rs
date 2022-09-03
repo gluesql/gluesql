@@ -305,16 +305,19 @@ macro_rules! test_case {
 
             #[allow(unused_macros)]
             macro_rules! test {
-                ($sql: expr, $expected: expr) => {
+                (name: $test_name: literal, sql: $sql: expr, expected: $expected: expr) => {
                     let found = run($sql, Rc::clone(&cell), None).await;
 
                     $crate::test(found, $expected);
                 };
-            }
 
-            #[allow(unused_macros)]
-            macro_rules! test_ex {
                 (sql: $sql: expr, expected: $expected: expr) => {
+                    let found = run($sql, Rc::clone(&cell), None).await;
+
+                    $crate::test(found, $expected);
+                };
+
+                ($sql: expr, $expected: expr) => {
                     let found = run($sql, Rc::clone(&cell), None).await;
 
                     $crate::test(found, $expected);

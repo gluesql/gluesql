@@ -119,10 +119,3 @@ macro_rules! concat_with_null {
         concat_with_null!($rows ; $( $( $v2 )* );* )
     });
 }
-
-#[macro_export]
-macro_rules! test_vec {
-    (("name" => $name: expr, "sql" => $sql: expr, "expected" => $expected: expr)) => {
-        vec![$sql, $expected]
-    };
-}

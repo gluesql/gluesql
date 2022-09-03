@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::Value::*, std::collections::HashMap};
+use {crate::*, gluesql_core::prelude::Value::*};
 
 test_case!(basic, async move {
     run!(
@@ -26,12 +26,13 @@ CREATE TABLE TestA (
     run!("CREATE TABLE TestB (id INTEGER);");
     run!("INSERT INTO TestB (id) SELECT id FROM Test");
 
-    test_ex! (
+    test! (
+        name: "select all from table",
         sql : "SELECT * FROM TestB",
         expected : Ok(select!(id I64; 1; 1; 3; 4))
     );
 
-    let test_cases = [(
+    test!(
         "SELECT id, num, name FROM TestA",
         Ok(select!(
             id  | num | name
@@ -40,39 +41,22 @@ CREATE TABLE TestA (
             1     9     "World".to_owned();
             3     4     "Great".to_owned();
             4     7     "Job".to_owned()
-        )),
-    )];
-
-    for (sql, expected) in test_cases {
-        test!(sql, expected);
-    }
+        ))
+    );
 
     count!(4, "SELECT * FROM Test");
 
     run!("UPDATE Test SET id = 2");
 
-    let mut test_cases: HashMap<
-        &str,
-        (
-            &str,
-            Result<gluesql_core::prelude::Payload, gluesql_core::result::Error>,
-        ),
-    > = HashMap::new();
-    test_cases.insert(
-        "hello",
+    let test_cases = [
         ("SELECT id FROM Test", Ok(select!(id; I64; 2; 2; 2; 2))),
-    );
-    test_cases.insert(
-        "hello2",
         (
             "SELECT id, num FROM Test",
             Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),
         ),
-    );
+    ];
 
-    for (_test_name, res) in test_cases {
-        let sql = res.0;
-        let expected = res.1;
+    for (sql, expected) in test_cases {
         test!(sql, expected);
     }
 });
