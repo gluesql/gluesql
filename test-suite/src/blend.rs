@@ -159,6 +159,10 @@ test_case!(blend, async move {
             EvaluateError::ValueNotFound("noname".to_owned()).into(),
             "SELECT noname FROM BlendUser",
         ),
+        (
+            EvaluateError::MoreThanOneRowReturned.into(),
+            "SELECT (SELECT id FROM BlendItem) as id FROM BlendItem",
+        ),
     ];
 
     for (error, sql) in error_cases {

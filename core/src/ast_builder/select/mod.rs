@@ -17,7 +17,10 @@ pub use {
 };
 
 use crate::{
-    ast::{Expr, Join, Query, Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins},
+    ast::{
+        Expr, Join, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+        TableWithJoins,
+    },
     result::Result,
 };
 
@@ -34,6 +37,7 @@ pub struct NodeData {
     /// WHERE
     pub group_by: Vec<Expr>,
     pub having: Option<Expr>,
+    pub order_by: Vec<OrderByExpr>,
     pub limit: Option<Expr>,
     pub offset: Option<Expr>,
 }
@@ -45,6 +49,7 @@ impl NodeData {
             relation,
             group_by,
             having,
+            order_by,
             offset,
             limit,
             joins,
@@ -60,11 +65,11 @@ impl NodeData {
             selection,
             group_by,
             having,
-            order_by: vec![],
         };
 
         Query {
             body: SetExpr::Select(Box::new(select)),
+            order_by,
             offset,
             limit,
         }

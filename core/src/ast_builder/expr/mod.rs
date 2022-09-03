@@ -1,4 +1,5 @@
 mod binary_op;
+mod exists;
 mod is_null;
 mod nested;
 mod unary_op;
@@ -11,6 +12,7 @@ pub mod function;
 pub mod in_list;
 pub mod in_subquery;
 
+pub use exists::exists;
 pub use nested::nested;
 
 use {
@@ -77,6 +79,7 @@ pub enum ExprNode {
         expr: Box<ExprNode>,
         data_type: DataTypeNode,
     },
+    Exists(Box<QueryNode>),
 }
 
 impl TryFrom<ExprNode> for Expr {
@@ -170,6 +173,10 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::Aggregate(aggr_expr) => Aggregate::try_from(*aggr_expr)
                 .map(Box::new)
                 .map(Expr::Aggregate),
+            ExprNode::Exists(query) => {
+                let query = Query::try_from(*query).map(Box::new)?;
+                Ok(Expr::Exists(query))
+            }
         }
     }
 }

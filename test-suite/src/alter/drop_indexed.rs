@@ -6,6 +6,7 @@ use {
         ast::IndexOperator::*,
         executor::{AlterError, FetchError},
         prelude::Value::*,
+        translate::TranslateError,
     },
 };
 
@@ -39,6 +40,15 @@ test_case!(drop_indexed_table, async move {
         Ok(select!(id I64; 3; 4)),
         idx!(idx_id, Lt, "10"),
         "SELECT * FROM Test WHERE id < 10"
+    );
+
+    test!(
+        Err(TranslateError::InvalidParamsInDropIndex.into()),
+        "DROP INDEX Test"
+    );
+    test!(
+        Err(TranslateError::InvalidParamsInDropIndex.into()),
+        "DROP INDEX Test.idx_id.IndexC"
     );
 });
 
