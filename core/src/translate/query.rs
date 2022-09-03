@@ -1,20 +1,22 @@
 use {
     super::{
-        translate_expr, translate_idents, translate_object_name, translate_order_by_expr,
-        TranslateError,
+        function::translate_function_arg_exprs, translate_expr, translate_idents,
+        translate_object_name, translate_order_by_expr, TranslateError,
     },
     crate::{
         ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SelectItem, SetExpr,
-            TableAlias, TableFactor, TableWithJoins, Values,
+            AstLiteral, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, Query,
+            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
+        data::get_name,
         result::Result,
     },
     sqlparser::ast::{
-        Expr as SqlExpr, Join as SqlJoin, JoinConstraint as SqlJoinConstraint,
-        JoinOperator as SqlJoinOperator, OrderByExpr, Query as SqlQuery, Select as SqlSelect,
-        SelectItem as SqlSelectItem, SetExpr as SqlSetExpr, TableAlias as SqlTableAlias,
-        TableFactor as SqlTableFactor, TableWithJoins as SqlTableWithJoins,
+        Expr as SqlExpr, FunctionArg as SqlFunctionArg, Join as SqlJoin,
+        JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator, Query as SqlQuery,
+        Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
+        TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
+        TableWithJoins as SqlTableWithJoins,
     },
 };
 
@@ -27,7 +29,11 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
         ..
     } = sql_query;
 
-    let body = translate_set_expr(body, order_by)?;
+    let body = translate_set_expr(body)?;
+    let order_by = order_by
+        .iter()
+        .map(translate_order_by_expr)
+        .collect::<Result<_>>()?;
 
     let limit = limit.as_ref().map(translate_expr).transpose()?;
     let offset = offset
@@ -37,16 +43,15 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
 
     Ok(Query {
         body,
+        order_by,
         limit,
         offset,
     })
 }
 
-fn translate_set_expr(sql_set_expr: &SqlSetExpr, order_by: &[OrderByExpr]) -> Result<SetExpr> {
+fn translate_set_expr(sql_set_expr: &SqlSetExpr) -> Result<SetExpr> {
     match sql_set_expr {
-        SqlSetExpr::Select(select) => translate_select(select, order_by)
-            .map(Box::new)
-            .map(SetExpr::Select),
+        SqlSetExpr::Select(select) => translate_select(select).map(Box::new).map(SetExpr::Select),
         SqlSetExpr::Values(values) => values
             .0
             .iter()
@@ -58,11 +63,7 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr, order_by: &[OrderByExpr]) -> Re
     }
 }
 
-fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<Select> {
-    let order_by = order_by
-        .iter()
-        .map(translate_order_by_expr)
-        .collect::<Result<_>>()?;
+fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
     let SqlSelect {
         projection,
         from,
@@ -76,20 +77,27 @@ fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<
         return Err(TranslateError::TooManyTables.into());
     }
 
+    let from = match from.get(0) {
+        Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
+        None => TableWithJoins {
+            relation: TableFactor::Series {
+                name: ObjectName(vec!["Series".into()]),
+                alias: None,
+                size: Expr::Literal(AstLiteral::Number(1.into())),
+            },
+            joins: vec![],
+        },
+    };
+
     Ok(Select {
         projection: projection
             .iter()
             .map(translate_select_item)
             .collect::<Result<_>>()?,
-        from: from
-            .iter()
-            .map(translate_table_with_joins)
-            .next()
-            .ok_or(TranslateError::LackOfTable)??,
+        from,
         selection: selection.as_ref().map(translate_expr).transpose()?,
         group_by: group_by.iter().map(translate_expr).collect::<Result<_>>()?,
         having: having.as_ref().map(translate_expr).transpose()?,
-        order_by,
     })
 }
 
@@ -131,18 +139,55 @@ fn translate_table_with_joins(sql_table_with_joins: &SqlTableWithJoins) -> Resul
     })
 }
 
+fn translate_table_alias(alias: &Option<SqlTableAlias>) -> Option<TableAlias> {
+    alias
+        .as_ref()
+        .map(|SqlTableAlias { name, columns }| TableAlias {
+            name: name.value.to_owned(),
+            columns: translate_idents(columns),
+        })
+}
+
 fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFactor> {
+    let translate_table_args = |args: &Option<Vec<SqlFunctionArg>>| -> Result<Expr> {
+        let args = args
+            .as_ref()
+            .ok_or_else(|| crate::result::Error::from(TranslateError::LackOfArgs))?;
+        let function_arg_exprs = args
+            .iter()
+            .map(|arg| match arg {
+                SqlFunctionArg::Named { .. } => {
+                    Err(TranslateError::NamedFunctionArgNotSupported.into())
+                }
+                SqlFunctionArg::Unnamed(arg_expr) => Ok(arg_expr),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        match translate_function_arg_exprs(function_arg_exprs)?.get(0) {
+            Some(expr) => Ok(translate_expr(expr)?),
+            None => Err(TranslateError::LackOfArgs.into()),
+        }
+    };
+
     match sql_table_factor {
-        SqlTableFactor::Table { name, alias, .. } => Ok(TableFactor::Table {
-            name: translate_object_name(name),
-            alias: alias
-                .as_ref()
-                .map(|SqlTableAlias { name, columns }| TableAlias {
-                    name: name.value.to_owned(),
-                    columns: translate_idents(columns),
-                }),
-            index: None, // query execution plan
-        }),
+        SqlTableFactor::Table {
+            name, alias, args, ..
+        } if get_name(&translate_object_name(name))?.to_uppercase() == "SERIES"
+            && args.is_some() =>
+        {
+            Ok(TableFactor::Series {
+                name: translate_object_name(name),
+                alias: translate_table_alias(alias),
+                size: translate_table_args(args)?,
+            })
+        }
+        SqlTableFactor::Table { name, alias, .. } => {
+            Ok(TableFactor::Table {
+                name: translate_object_name(name),
+                alias: translate_table_alias(alias),
+                index: None, // query execution plan
+            })
+        }
         SqlTableFactor::Derived {
             subquery, alias, ..
         } => {
@@ -158,7 +203,6 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                 Err(TranslateError::LackOfAlias.into())
             }
         }
-
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
     }
 }

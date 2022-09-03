@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::*};
+use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(synthesize, async move {
     let create_sql = "
@@ -23,7 +23,7 @@ test_case!(synthesize, async move {
         "INSERT INTO TableA VALUES (4, 500, 3);",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 
@@ -60,17 +60,15 @@ test_case!(synthesize, async move {
         (3, "DELETE FROM TableA;"),
     ];
 
-    for (num, sql) in test_cases.iter() {
-        count!(*num, sql);
+    for (num, sql) in test_cases {
+        count!(num, sql);
     }
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 
-    use Value::I64;
-
-    let test_cases = vec![
+    let test_cases = [
         (
             select!(id | test; I64 | I64; 1 100),
             "SELECT id, test FROM TableA LIMIT 1;",

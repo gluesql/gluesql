@@ -22,7 +22,7 @@ test_case!(max, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT MAX(age) FROM Item",
             select_with_null!(
@@ -36,6 +36,14 @@ test_case!(max, async move {
                 "MAX(id)" | "MAX(quantity)"
                 I64       | I64;
                 5           25
+            ),
+        ),
+        (
+            "SELECT MAX(id - quantity) FROM Item;",
+            select!(
+                "MAX(id - quantity)"
+                I64;
+                2
             ),
         ),
         (

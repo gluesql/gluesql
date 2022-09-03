@@ -21,7 +21,7 @@ test_case!(min, async move {
             (5, 25, NULL, 1);
     "
     );
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT MIN(age) FROM Item",
             select_with_null!(
@@ -35,6 +35,14 @@ test_case!(min, async move {
                 "MIN(id)" | "MIN(quantity)"
                 I64       | I64;
                 1           0
+            ),
+        ),
+        (
+            "SELECT MIN(id + quantity) FROM Item;",
+            select!(
+                "MIN(id + quantity)"
+                I64;
+                2
             ),
         ),
         (

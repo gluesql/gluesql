@@ -1,4 +1,9 @@
-use {crate::*, gluesql_core::prelude::*};
+use {
+    crate::*,
+    chrono::NaiveTime,
+    gluesql_core::{ast::IndexOperator::*, prelude::*},
+    Value::*,
+};
 
 test_case!(value, async move {
     run!(
@@ -32,10 +37,6 @@ CREATE TABLE IdxValue (
         Ok(Payload::CreateIndex),
         "CREATE INDEX idx_flag ON IdxValue (flag)"
     );
-
-    use chrono::NaiveTime;
-    use gluesql_core::ast::IndexOperator::*;
-    use Value::*;
 
     let t = |h, m| NaiveTime::from_hms(h, m, 0);
 

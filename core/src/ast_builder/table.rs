@@ -1,4 +1,4 @@
-use super::{DeleteNode, DropTableNode, SelectNode, ShowColumnsNode};
+use super::{CreateTableNode, DeleteNode, DropTableNode, SelectNode, ShowColumnsNode, UpdateNode};
 
 #[cfg(feature = "index")]
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
@@ -31,11 +31,23 @@ impl TableNode {
         ShowColumnsNode::new(self.table_name)
     }
 
+    pub fn create_table(self) -> CreateTableNode {
+        CreateTableNode::new(self.table_name, false)
+    }
+
+    pub fn create_table_if_not_exists(self) -> CreateTableNode {
+        CreateTableNode::new(self.table_name, true)
+    }
+
     pub fn drop_table(self) -> DropTableNode {
         DropTableNode::new(self.table_name, false)
     }
 
     pub fn drop_table_if_exists(self) -> DropTableNode {
         DropTableNode::new(self.table_name, true)
+    }
+
+    pub fn update(self) -> UpdateNode {
+        UpdateNode::new(self.table_name)
     }
 }

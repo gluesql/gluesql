@@ -22,7 +22,7 @@ test_case!(avg, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT AVG(age) FROM Item",
             select_with_null!("AVG(age)"; Null),

@@ -1,4 +1,4 @@
-use crate::*;
+use {crate::*, gluesql_core::executor::EvaluateError};
 
 test_case!(nested_select, async move {
     let create_sqls: [&str; 2] = [
@@ -17,7 +17,7 @@ test_case!(nested_select, async move {
     ",
     ];
 
-    for sql in create_sqls.iter() {
+    for sql in create_sqls {
         run!(sql);
     }
 
@@ -50,7 +50,7 @@ test_case!(nested_select, async move {
         ",
     ];
 
-    for insert_sql in insert_sqls.iter() {
+    for insert_sql in insert_sqls {
         run!(insert_sql);
     }
 
@@ -73,8 +73,16 @@ test_case!(nested_select, async move {
         (2, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE quantity IN (6, 7, 8, 9));"),
         (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM User WHERE name IN (\"Taehoon\", \"Hwan\"));"),
     ];
+    for (num, sql) in select_sqls {
+        count!(num, sql);
+    }
 
-    for (num, sql) in select_sqls.iter() {
-        count!(*num, sql);
+    let error_cases = [(
+        EvaluateError::NestedSelectRowNotFound.into(),
+        "SELECT * FROM User WHERE id = (SELECT id FROM User WHERE id = 9);",
+    )];
+
+    for (error, sql) in error_cases {
+        test!(Err(error), sql);
     }
 });

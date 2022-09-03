@@ -39,8 +39,8 @@ test_case!(sql_types, async move {
         (3, "SELECT * FROM Item;"),
     ];
 
-    for (num, sql) in test_sqls.iter() {
-        count!(*num, sql);
+    for (num, sql) in test_sqls {
+        count!(num, sql);
     }
 
     run!("DELETE FROM Item");

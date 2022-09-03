@@ -6,6 +6,7 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Query {
     pub body: SetExpr,
+    pub order_by: Vec<OrderByExpr>,
     pub limit: Option<Expr>,
     pub offset: Option<Expr>,
 }
@@ -24,7 +25,6 @@ pub struct Select {
     pub selection: Option<Expr>,
     pub group_by: Vec<Expr>,
     pub having: Option<Expr>,
-    pub order_by: Vec<OrderByExpr>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -64,6 +64,11 @@ pub enum TableFactor {
     Derived {
         subquery: Query,
         alias: TableAlias,
+    },
+    Series {
+        name: ObjectName,
+        alias: Option<TableAlias>,
+        size: Expr,
     },
 }
 

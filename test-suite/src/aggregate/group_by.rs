@@ -23,7 +23,7 @@ test_case!(group_by, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT id, COUNT(*) FROM Item GROUP BY id",
             select!(id | "COUNT(*)"; I64 | I64; 1 1; 2 1; 3 2; 4 1; 5 1),

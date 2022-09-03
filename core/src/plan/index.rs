@@ -51,6 +51,7 @@ impl Indexes {
 fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Query> {
     let Query {
         body,
+        order_by,
         limit,
         offset,
     } = query;
@@ -60,6 +61,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         SetExpr::Values(_) => {
             return Ok(Query {
                 body,
+                order_by,
                 limit,
                 offset,
             });
@@ -72,10 +74,12 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         TableFactor::Derived { .. } => {
             return Ok(Query {
                 body: SetExpr::Select(select),
+                order_by,
                 limit,
                 offset,
             });
         }
+        TableFactor::Series { name, .. } => get_name(name)?,
     };
 
     let indexes = match schema_map.get(table_name) {
@@ -83,13 +87,14 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         None => {
             return Ok(Query {
                 body: SetExpr::Select(select),
+                order_by,
                 limit,
                 offset,
             });
         }
     };
 
-    let index = select.order_by.last().and_then(|value_expr| {
+    let index = order_by.last().and_then(|value_expr| {
         indexes
             .find_ordered(value_expr)
             .map(|name| IndexItem::NonClustered {
@@ -107,7 +112,6 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 selection,
                 group_by,
                 having,
-                order_by,
             } = *select;
 
             let TableWithJoins { relation, joins } = from;
@@ -116,6 +120,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 TableFactor::Derived { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
+                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let from = TableWithJoins {
@@ -129,11 +134,11 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 selection,
                 group_by,
                 having,
-                order_by: Vector::from(order_by).pop().0.into(),
             };
 
             Ok(Query {
                 body: SetExpr::Select(Box::new(select)),
+                order_by: Vector::from(order_by).pop().0.into(),
                 limit,
                 offset,
             })
@@ -143,6 +148,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let body = SetExpr::Select(Box::new(select));
             let query = Query {
                 body,
+                order_by,
                 limit,
                 offset,
             };
@@ -163,7 +169,6 @@ fn plan_select(
         selection,
         group_by,
         having,
-        order_by,
     } = select;
 
     let selection = match selection {
@@ -175,7 +180,6 @@ fn plan_select(
                 selection,
                 group_by,
                 having,
-                order_by,
             });
         }
     };
@@ -187,7 +191,6 @@ fn plan_select(
             selection: Some(selection),
             group_by,
             having,
-            order_by,
         }),
         Planned::IndexedExpr {
             index_name,
@@ -201,6 +204,7 @@ fn plan_select(
                 TableFactor::Derived { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
+                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let index = Some(IndexItem::NonClustered {
@@ -219,7 +223,6 @@ fn plan_select(
                 selection,
                 group_by,
                 having,
-                order_by,
             })
         }
     }

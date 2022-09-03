@@ -70,7 +70,7 @@ impl MemoryStorage {
         self.items.remove(table_name);
     }
 
-    pub fn insert_data(&mut self, table_name: &str, rows: Vec<Row>) {
+    pub fn append_data(&mut self, table_name: &str, rows: Vec<Row>) {
         if let Some(item) = self.items.get_mut(table_name) {
             for row in rows {
                 self.id_counter += 1;
@@ -80,7 +80,7 @@ impl MemoryStorage {
         }
     }
 
-    pub fn update_data(&mut self, table_name: &str, rows: Vec<(Key, Row)>) {
+    pub fn insert_data(&mut self, table_name: &str, rows: Vec<(Key, Row)>) {
         if let Some(item) = self.items.get_mut(table_name) {
             for (key, row) in rows {
                 item.rows.insert(key, row);
@@ -115,18 +115,18 @@ impl StoreMut for MemoryStorage {
         Ok((storage, ()))
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        MemoryStorage::insert_data(&mut storage, table_name, rows);
+        MemoryStorage::append_data(&mut storage, table_name, rows);
 
         Ok((storage, ()))
     }
 
-    async fn update_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
         let mut storage = self;
 
-        MemoryStorage::update_data(&mut storage, table_name, rows);
+        MemoryStorage::insert_data(&mut storage, table_name, rows);
 
         Ok((storage, ()))
     }

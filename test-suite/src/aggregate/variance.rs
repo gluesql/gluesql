@@ -22,7 +22,7 @@ test_case!(variance, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT VARIANCE(age) FROM Item",
             select_with_null!("VARIANCE(age)"; Null),

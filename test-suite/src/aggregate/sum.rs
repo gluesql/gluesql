@@ -22,7 +22,7 @@ test_case!(sum, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         (
             "SELECT SUM(age) FROM Item",
             select_with_null!(
@@ -36,6 +36,38 @@ test_case!(sum, async move {
                 "SUM(id)" | "SUM(quantity)"
                 I64             | I64;
                 15                47
+            ),
+        ),
+        (
+            "SELECT SUM(ifnull(age, 0)) from Item;",
+            select!(
+                "SUM(ifnull(age, 0))"
+                I64;
+                104
+            ),
+        ),
+        (
+            "SELECT SUM(1 + 2) FROM Item;",
+            select!(
+                "SUM(1 + 2)"
+                I64;
+                15
+            ),
+        ),
+        (
+            "SELECT SUM(id + 1) FROM Item;",
+            select!(
+                "SUM(id + 1)"
+                I64;
+                20
+            ),
+        ),
+        (
+            "SELECT SUM(id * quantity) FROM Item;",
+            select!(
+                "SUM(id * quantity)"
+                I64;
+                174
             ),
         ),
     ];

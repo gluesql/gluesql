@@ -1,4 +1,4 @@
-use {crate::*, gluesql_core::prelude::*};
+use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(order_by, async move {
     run!(
@@ -32,8 +32,6 @@ CREATE TABLE Test (
         Ok(Payload::CreateIndex),
         "CREATE INDEX idx_num_desc ON Test (num DESC)"
     );
-
-    use Value::*;
 
     macro_rules! s {
         ($v: literal) => {
@@ -113,8 +111,6 @@ CREATE TABLE Multi (
         Ok(Payload::CreateIndex),
         "CREATE INDEX idx_id_num ON Multi (id + num DESC)"
     );
-
-    use Value::I64;
 
     test_idx!(
         Ok(select!(id | num I64 | I64;

@@ -22,7 +22,7 @@ test_case!(count, async move {
     "
     );
 
-    let test_cases = vec![
+    let test_cases = [
         ("SELECT COUNT(*) FROM Item", select!("COUNT(*)"; I64; 5)),
         ("SELECT count(*) FROM Item", select!("count(*)"; I64; 5)),
         (

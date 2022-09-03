@@ -1,12 +1,13 @@
-use crate::*;
-
-test_case!(case, async move {
-    use gluesql_core::{
+use {
+    crate::*,
+    gluesql_core::{
         prelude::{Payload, Value::*},
         translate::TranslateError,
-    };
+    },
+};
 
-    let test_cases = vec![
+test_case!(case, async move {
+    let test_cases = [
         (
             "CREATE TABLE Item (id INTEGER, name TEXT);",
             Ok(Payload::Create),
@@ -111,6 +112,10 @@ test_case!(case, async move {
                 END
             AS case FROM Item;
             "#,
+            Err(TranslateError::UnsupportedExpr("1 COLLATE Item".to_owned()).into()),
+        ),
+        (
+            "SELECT 1 COLLATE Item FROM Item;",
             Err(TranslateError::UnsupportedExpr("1 COLLATE Item".to_owned()).into()),
         ),
     ];

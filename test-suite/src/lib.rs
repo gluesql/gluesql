@@ -7,7 +7,6 @@ pub mod case;
 pub mod concat;
 pub mod data_type;
 pub mod default;
-pub mod error;
 pub mod filter;
 pub mod function;
 pub mod index;
@@ -21,6 +20,7 @@ pub mod nullable;
 pub mod order_by;
 pub mod ordering;
 pub mod primary_key;
+pub mod series;
 pub mod showcolumns;
 pub mod synthesize;
 pub mod transaction;
@@ -30,9 +30,7 @@ pub mod update;
 pub mod validate;
 pub mod values;
 
-mod tester;
-
-pub mod macros;
+pub mod tester;
 
 pub use tester::*;
 
@@ -78,7 +76,6 @@ macro_rules! generate_store_tests {
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
         glue!(limit, limit::limit);
-        glue!(error, error::error);
         glue!(filter, filter::filter);
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
@@ -118,6 +115,7 @@ macro_rules! generate_store_tests {
         glue!(migrate, migrate::migrate);
         glue!(nested_select, nested_select::nested_select);
         glue!(primary_key, primary_key::primary_key);
+        glue!(series, series::series);
         glue!(nullable, nullable::nullable);
         glue!(nullable_text, nullable::nullable_text);
         glue!(nullable_implicit_insert, nullable::nullable_implicit_insert);

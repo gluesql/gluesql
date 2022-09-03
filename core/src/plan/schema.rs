@@ -69,6 +69,7 @@ async fn scan_query(storage: &dyn Store, query: &Query) -> Result<Vec<Schema>> {
         body,
         limit,
         offset,
+        ..
     } = query;
 
     let schema_list = match body {
@@ -99,7 +100,6 @@ async fn scan_select(storage: &dyn Store, select: &Select) -> Result<Vec<Schema>
         selection,
         group_by,
         having,
-        order_by,
     } = select;
 
     let projection = stream::iter(projection)
@@ -116,11 +116,7 @@ async fn scan_select(storage: &dyn Store, select: &Select) -> Result<Vec<Schema>
 
     let from = scan_table_with_joins(storage, from).await?;
 
-    let exprs = selection
-        .iter()
-        .chain(group_by.iter())
-        .chain(having.iter())
-        .chain(order_by.iter().map(|order_by| &order_by.expr));
+    let exprs = selection.iter().chain(group_by.iter()).chain(having.iter());
 
     Ok(stream::iter(exprs)
         .then(|expr| scan_expr(storage, expr))
@@ -183,6 +179,7 @@ async fn scan_table_factor(storage: &dyn Store, table_factor: &TableFactor) -> R
             Ok(schema_list)
         }
         TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
+        TableFactor::Series { .. } => Ok(vec![]),
     }
 }
 
