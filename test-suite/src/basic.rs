@@ -26,20 +26,22 @@ CREATE TABLE TestA (
     run!("CREATE TABLE TestB (id INTEGER);");
     run!("INSERT INTO TestB (id) SELECT id FROM Test");
 
-    let test_cases = [
-        ("SELECT * FROM TestB", Ok(select!(id I64; 1; 1; 3; 4))),
-        (
-            "SELECT id, num, name FROM TestA",
-            Ok(select!(
-                id  | num | name
-                I64 | I64 | Str;
-                1     2     "Hello".to_owned();
-                1     9     "World".to_owned();
-                3     4     "Great".to_owned();
-                4     7     "Job".to_owned()
-            )),
-        ),
-    ];
+    test_ex! (
+        sql : "SELECT * FROM TestB",
+        expected : Ok(select!(id I64; 1; 1; 3; 4))
+    );
+
+    let test_cases = [(
+        "SELECT id, num, name FROM TestA",
+        Ok(select!(
+            id  | num | name
+            I64 | I64 | Str;
+            1     2     "Hello".to_owned();
+            1     9     "World".to_owned();
+            3     4     "Great".to_owned();
+            4     7     "Job".to_owned()
+        )),
+    )];
 
     for (sql, expected) in test_cases {
         test!(sql, expected);
