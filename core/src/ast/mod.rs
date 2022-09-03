@@ -258,6 +258,18 @@ mod tests {
         );
 
         assert_eq!(
+            "ALTER TABLE Foo DROP COLUMN something",
+            Statement::AlterTable {
+                name: ObjectName(vec!["Foo".to_string()]),
+                operation: AlterTableOperation::DropColumn {
+                    column_name: "something".to_string(),
+                    if_exists: false
+                }
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
             "ALTER TABLE Foo DROP COLUMN IF EXISTS something",
             Statement::AlterTable {
                 name: ObjectName(vec!["Foo".to_string()]),
