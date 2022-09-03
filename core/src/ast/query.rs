@@ -1,5 +1,7 @@
 use {
     super::{Expr, IndexOperator, ObjectName},
+    crate::ast::ToSql,
+    itertools::Itertools,
     serde::{Deserialize, Serialize},
 };
 
@@ -115,3 +117,68 @@ pub struct OrderByExpr {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Values(pub Vec<Vec<Expr>>);
+
+impl ToSql for OrderByExpr {
+    fn to_sql(&self) -> String {
+        match self {
+            OrderByExpr { expr, asc } => {
+                let asc = asc.unwrap();
+                let result = match asc {
+                    true => "ASC".to_string(),
+                    false => "DESC".to_string(),
+                };
+
+                format!("{} {}", expr.to_sql(), result)
+            }
+        }
+    }
+}
+
+impl ToSql for Values {
+    fn to_sql(&self) -> String {
+        match self {
+            Values(exprs) => exprs
+                .iter()
+                .map(|expr| expr.iter().map(|item| item.to_sql()).join("."))
+                .join("."),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{Expr, OrderByExpr, ToSql, Values};
+
+    #[test]
+    fn to_sql_order_by_expr() {
+        let actual = "foo ASC".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: Some(true),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "foo DESC".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: Some(false),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_values() {
+        let value = vec![vec![
+            Expr::Identifier("foo".to_string()),
+            Expr::Identifier("bar".to_string()),
+            Expr::Identifier("oh".to_string()),
+        ]];
+
+        let actual = "foo.bar.oh".to_string();
+        let expected = Values(value).to_sql();
+
+        assert_eq!(actual, expected);
+    }
+}
