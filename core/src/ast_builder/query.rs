@@ -1,7 +1,7 @@
 use {
     super::{
-        select::NodeData, select::Prebuild, GroupByNode, HavingNode, LimitNode, LimitOffsetNode,
-        OffsetLimitNode, OffsetNode, SelectNode,
+        select::NodeData, select::Prebuild, FilterNode, GroupByNode, HavingNode, LimitNode,
+        LimitOffsetNode, OffsetLimitNode, OffsetNode, SelectNode,
     },
     crate::{
         ast::Query,
@@ -20,6 +20,7 @@ pub enum QueryNode {
     LimitOffset(LimitOffsetNode),
     Offset(OffsetNode),
     OffsetLimit(OffsetLimitNode),
+    Filter(FilterNode),
     Text(String),
 }
 
@@ -71,6 +72,12 @@ impl From<&str> for QueryNode {
     }
 }
 
+impl From<FilterNode> for QueryNode {
+    fn from(node: FilterNode) -> Self {
+        QueryNode::Filter(node)
+    }
+}
+
 impl TryFrom<QueryNode> for Query {
     type Error = Error;
 
@@ -86,6 +93,7 @@ impl TryFrom<QueryNode> for Query {
             QueryNode::Text(query_node) => {
                 parse_query(query_node).and_then(|item| translate_query(&item))
             }
+            QueryNode::Filter(query_node) => query_node.prebuild().map(NodeData::build_query),
         }
     }
 }
