@@ -1,6 +1,6 @@
-use crate::ast::ToSql;
 use {
     super::{DataType, Expr, ObjectName},
+    crate::ast::ToSql,
     serde::{Deserialize, Serialize},
 };
 
