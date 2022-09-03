@@ -56,7 +56,7 @@ impl NodeData {
             filters,
         } = self;
 
-        let selection = filters.map(Expr::try_from).transpose().unwrap();
+        let selection = filters.map(Expr::try_from).and_then(|expr| expr.ok());
         let from = TableWithJoins { relation, joins };
 
         let select = Select {
