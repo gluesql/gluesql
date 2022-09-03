@@ -116,7 +116,9 @@ impl<'a> Sort<'a> {
                 ));
                 let aggregated = aggregated.map(Rc::new);
                 async move {
-                    let label_context = BlendContext::new(table_alias, labels, Some(row), None);
+                    let row = Rc::new(row);
+                    let label_context =
+                        BlendContext::new2(table_alias, labels, Some(Rc::clone(&row)), None);
                     let label_context = Rc::from(label_context);
                     let filter_context = Rc::new(FilterContext::concat(
                         Some(filter_context),
@@ -145,8 +147,9 @@ impl<'a> Sort<'a> {
                         })
                         .try_collect::<Vec<_>>()
                         .await?;
+                    drop(label_context);
                     drop(filter_context);
-                    let row = Rc::try_unwrap(label_context).unwrap().row.unwrap();
+                    let row = Rc::try_unwrap(row).unwrap();
 
                     Ok((values, row))
                 }

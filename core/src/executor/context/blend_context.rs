@@ -3,11 +3,17 @@ use {
     std::{fmt::Debug, rc::Rc},
 };
 
+// #[derive(Debug)]
+// enum BlendContextRow {
+//     Row(Option<Row>),
+//     Shared(Rc<Row>),
+// }
+
 #[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
     columns: Rc<[String]>,
-    pub row: Option<Row>,
+    row: Option<Rc<Row>>,
     next: Option<Rc<BlendContext<'a>>>,
 }
 
@@ -21,11 +27,24 @@ impl<'a> BlendContext<'a> {
         Self {
             table_alias,
             columns,
-            row,
+            row: row.map(|v| Rc::new(v)),
             next,
         }
     }
 
+    pub fn new2(
+        table_alias: &'a str,
+        columns: Rc<[String]>,
+        row: Option<Rc<Row>>,
+        next: Option<Rc<BlendContext<'a>>>,
+    ) -> Self {
+        Self {
+            table_alias,
+            columns,
+            row,
+            next,
+        }
+    }
     // pub fn get_table_alias(&'a self) -> &'a str {
     //     self.table_alias
     // }
@@ -77,7 +96,7 @@ impl<'a> BlendContext<'a> {
     pub fn get_alias_values(&self, alias: &str) -> Option<Vec<Value>> {
         if self.table_alias == alias {
             let values = match &self.row {
-                Some(Row(values)) => values.clone(),
+                Some(row) => row.as_ref().0.clone(),
                 None => self.columns.iter().map(|_| Value::Null).collect(),
             };
 
@@ -91,7 +110,7 @@ impl<'a> BlendContext<'a> {
 
     pub fn get_all_values(&'a self) -> Vec<Value> {
         let values: Vec<Value> = match &self.row {
-            Some(Row(values)) => values.clone(),
+            Some(row) => row.as_ref().0.clone(),
             None => self.columns.iter().map(|_| Value::Null).collect(),
         };
 
