@@ -13,8 +13,8 @@ use {
     },
     sqlparser::ast::{
         Expr as SqlExpr, FunctionArg as SqlFunctionArg, Join as SqlJoin,
-        JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator, OrderByExpr,
-        Query as SqlQuery, Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
+        JoinConstraint as SqlJoinConstraint, JoinOperator as SqlJoinOperator, Query as SqlQuery,
+        Select as SqlSelect, SelectItem as SqlSelectItem, SetExpr as SqlSetExpr,
         TableAlias as SqlTableAlias, TableFactor as SqlTableFactor,
         TableWithJoins as SqlTableWithJoins,
     },
@@ -29,7 +29,11 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
         ..
     } = sql_query;
 
-    let body = translate_set_expr(body, order_by)?;
+    let body = translate_set_expr(body)?;
+    let order_by = order_by
+        .iter()
+        .map(translate_order_by_expr)
+        .collect::<Result<_>>()?;
 
     let limit = limit.as_ref().map(translate_expr).transpose()?;
     let offset = offset
@@ -39,16 +43,15 @@ pub fn translate_query(sql_query: &SqlQuery) -> Result<Query> {
 
     Ok(Query {
         body,
+        order_by,
         limit,
         offset,
     })
 }
 
-fn translate_set_expr(sql_set_expr: &SqlSetExpr, order_by: &[OrderByExpr]) -> Result<SetExpr> {
+fn translate_set_expr(sql_set_expr: &SqlSetExpr) -> Result<SetExpr> {
     match sql_set_expr {
-        SqlSetExpr::Select(select) => translate_select(select, order_by)
-            .map(Box::new)
-            .map(SetExpr::Select),
+        SqlSetExpr::Select(select) => translate_select(select).map(Box::new).map(SetExpr::Select),
         SqlSetExpr::Values(values) => values
             .0
             .iter()
@@ -60,11 +63,7 @@ fn translate_set_expr(sql_set_expr: &SqlSetExpr, order_by: &[OrderByExpr]) -> Re
     }
 }
 
-fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<Select> {
-    let order_by = order_by
-        .iter()
-        .map(translate_order_by_expr)
-        .collect::<Result<_>>()?;
+fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
     let SqlSelect {
         projection,
         from,
@@ -99,7 +98,6 @@ fn translate_select(sql_select: &SqlSelect, order_by: &[OrderByExpr]) -> Result<
         selection: selection.as_ref().map(translate_expr).transpose()?,
         group_by: group_by.iter().map(translate_expr).collect::<Result<_>>()?,
         having: having.as_ref().map(translate_expr).transpose()?,
-        order_by,
     })
 }
 
