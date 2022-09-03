@@ -1,16 +1,18 @@
+use crate::ast::UnaryOperator;
+
 use {
     super::{
         context::{AggregateContext, FilterContext},
         evaluate::evaluate,
     },
     crate::{
-        ast::{AstLiteral, Expr, OrderByExpr, UnaryOperator},
+        ast::{AstLiteral, Expr, OrderByExpr},
         data::{Row, Value},
-        executor::{context::BlendContext, evaluate_stateless},
+        executor::context::BlendContext,
         result::{Error, Result},
         store::GStore,
     },
-    // bigdecimal::ToPrimitive,
+    bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     serde::Serialize,
     std::fmt::Debug,
@@ -83,52 +85,40 @@ impl<'a> Sort<'a> {
                             let aggregated = aggregated.as_ref().map(Rc::clone);
                             let row = row.clone();
                             async move {
-                                // if let Expr::Literal(AstLiteral::Number(big_decimal)) = expr {
-                                //     let value =
-                                //         row.get_value(big_decimal.to_usize().unwrap() - 1).unwrap();
-
-                                //     return Ok((value.clone(), *asc));
-                                // }
-                                match expr {
-                                    Expr::Literal(AstLiteral::Number(_))
-                                    | Expr::UnaryOp {
+                                let big_decimal = match expr {
+                                    Expr::Literal(AstLiteral::Number(n)) => Some(n),
+                                    Expr::UnaryOp {
                                         op: UnaryOperator::Plus,
-                                        ..
-                                    } => {
-                                        let value: Value =
-                                            evaluate_stateless(None, expr)?.try_into()?;
+                                        expr,
+                                    } => match expr.as_ref() {
+                                        Expr::Literal(AstLiteral::Number(n)) => Some(n),
+                                        _ => None,
+                                    },
+                                    _ => None,
+                                };
+                                if let Some(n) = big_decimal {
+                                    let index = n.to_usize().ok_or_else(|| {
+                                        crate::result::Error::from(SortError::Unreachable)
+                                    })?;
+                                    let zero_based = index.checked_sub(1).ok_or_else(|| {
+                                        crate::result::Error::from(
+                                            SortError::ColumnIndexOutOfRange(index),
+                                        )
+                                    })?;
+                                    let value = row.get_value(zero_based).ok_or_else(|| {
+                                        crate::result::Error::from(
+                                            SortError::ColumnIndexOutOfRange(index),
+                                        )
+                                    })?;
 
-                                        match value {
-                                            Value::I64(_) => {
-                                                let index: usize = value.try_into()?;
-                                                let zero_based =
-                                                    index.checked_sub(1).ok_or_else(|| {
-                                                        crate::result::Error::from(
-                                                            SortError::ColumnIndexOutOfRange(index),
-                                                        )
-                                                    })?;
-
-                                                let value =
-                                                    row.get_value(zero_based).ok_or_else(|| {
-                                                        crate::result::Error::from(
-                                                            SortError::ColumnIndexOutOfRange(index),
-                                                        )
-                                                    })?;
-
-                                                Ok::<_, Error>((value.clone(), *asc))
-                                            }
-                                            _ => Err(SortError::Unreachable.into()),
-                                        }
-                                    }
-                                    _ => {
-                                        let value: Value =
-                                            evaluate(self.storage, context, aggregated, expr)
-                                                .await?
-                                                .try_into()?;
-
-                                        Ok::<_, Error>((value, *asc))
-                                    }
+                                    return Ok((value.clone(), *asc));
                                 }
+                                let value: Value =
+                                    evaluate(self.storage, context, aggregated, expr)
+                                        .await?
+                                        .try_into()?;
+
+                                Ok::<_, Error>((value, *asc))
                             }
                         })
                         .try_collect::<Vec<_>>()
