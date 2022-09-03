@@ -1,5 +1,5 @@
 use {
-    super::{root::JoinType, NodeData, Prebuild},
+    super::{join::JoinType, NodeData, Prebuild},
     crate::{
         ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, Statement, TableFactor},
         ast_builder::{

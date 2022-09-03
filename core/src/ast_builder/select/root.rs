@@ -1,7 +1,5 @@
-use std::vec;
-
 use {
-    super::{NodeData, Prebuild},
+    super::{join::JoinType, NodeData, Prebuild},
     crate::{
         ast::{ObjectName, SelectItem, Statement, TableFactor},
         ast_builder::{
@@ -10,12 +8,8 @@ use {
         },
         result::Result,
     },
+    std::vec,
 };
-
-pub enum JoinType {
-    Inner,
-    Left,
-}
 
 #[derive(Clone)]
 pub struct SelectNode {

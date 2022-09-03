@@ -1,5 +1,5 @@
 use {
-    super::{root::JoinType, NodeData, Prebuild},
+    super::{NodeData, Prebuild},
     crate::{
         ast::{
             Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, Statement, TableAlias,
@@ -12,6 +12,11 @@ use {
         result::Result,
     },
 };
+
+pub enum JoinType {
+    Inner,
+    Left,
+}
 
 #[derive(Clone)]
 pub enum PrevNode {
