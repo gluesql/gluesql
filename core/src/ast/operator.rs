@@ -281,7 +281,7 @@ mod tests {
         assert_eq!(
             "column_0 NOT ILIKE num",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
+                left: Box::new(Expr::Identifier("column_0".to_string())),
                 op: BinaryOperator::NotILike,
                 right: Box::new(Expr::Identifier("num".to_string()))
             }
