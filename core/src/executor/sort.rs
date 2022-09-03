@@ -66,18 +66,6 @@ impl<'a> Sort<'a> {
         }
         let rows = rows
             .and_then(|(AggregateContext { aggregated, next }, row)| {
-                // let table_alias = next.get_table_alias();
-                let labels = Rc::from(labels.as_slice());
-                let filter_context = Rc::new(FilterContext::concat(
-                    self.context.as_ref().map(Rc::clone),
-                    Some(Rc::clone(&next)),
-                ));
-                let label_context = BlendContext::new(table_alias, labels, Some(row.clone()), None);
-                let filter_context = Rc::new(FilterContext::concat(
-                    Some(filter_context),
-                    Some(Rc::from(label_context)),
-                ));
-                let aggregated = aggregated.map(Rc::new);
                 enum SortType<'a> {
                     Value(Value),
                     Expr(&'a Expr),
@@ -120,14 +108,26 @@ impl<'a> Sort<'a> {
                         }
                     })
                     .collect::<Result<Vec<_>>>();
+                // let table_alias = next.get_table_alias();
+                let labels = Rc::from(labels.as_slice());
+                let filter_context = Rc::new(FilterContext::concat(
+                    self.context.as_ref().map(Rc::clone),
+                    Some(Rc::clone(&next)),
+                ));
+                let aggregated = aggregated.map(Rc::new);
                 async move {
-                    let order_by = order_by?;
-                    let context = Some(Rc::clone(&filter_context));
+                    let label_context = BlendContext::new(table_alias, labels, Some(row), None);
+                    let label_context = Rc::from(label_context);
+                    let filter_context = Rc::new(FilterContext::concat(
+                        Some(filter_context),
+                        Some(Rc::clone(&label_context)),
+                    ));
 
-                    // panic!();
+                    let order_by = order_by?;
+
                     let values = stream::iter(order_by.into_iter())
                         .then(|(sort_type, asc)| {
-                            let context = context.as_ref().map(Rc::clone);
+                            let context = Some(Rc::clone(&filter_context));
                             let aggregated = aggregated.as_ref().map(Rc::clone);
 
                             async move {
@@ -145,6 +145,8 @@ impl<'a> Sort<'a> {
                         })
                         .try_collect::<Vec<_>>()
                         .await?;
+                    drop(filter_context);
+                    let row = Rc::try_unwrap(label_context).unwrap().row.unwrap();
 
                     Ok((values, row))
                 }

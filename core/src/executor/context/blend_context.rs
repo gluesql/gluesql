@@ -7,7 +7,7 @@ use {
 pub struct BlendContext<'a> {
     table_alias: &'a str,
     columns: Rc<[String]>,
-    row: Option<Row>,
+    pub row: Option<Row>,
     next: Option<Rc<BlendContext<'a>>>,
 }
 
