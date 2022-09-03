@@ -1,4 +1,6 @@
 mod assignment;
+mod column_def;
+mod create_table;
 mod data_type;
 mod delete;
 mod drop_table;
@@ -19,6 +21,8 @@ mod update;
 
 pub use {
     assignment::AssignmentNode,
+    column_def::ColumnDefNode,
+    create_table::CreateTableNode,
     data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
