@@ -132,8 +132,40 @@ mod tests {
 
     #[test]
     fn join_constraint() {
-        let actual = table("Bar").select().join("b").on("a.id = b.id").build();
-        let expected = "SELECT * FROM Bar INNER JOIN b ON a.id = b.id";
+        // join node ->  join constarint node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .build();
+        let expected = "SELECT * FROM Foo INNER JOIN Bar ON Foo.id = Bar.id";
+        test(actual, expected);
+
+        // join node ->  join constraint node -> build
+        let actual = table("Foo")
+            .select()
+            .join_as("Bar", "B")
+            .on("Foo.id = B.id")
+            .build();
+        let expected = "SELECT * FROM Foo INNER JOIN Bar B ON Foo.id = B.id";
+        test(actual, expected);
+
+        // join node -> join constraint node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .on("Foo.id = Bar.id")
+            .build();
+        let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar ON Foo.id = Bar.id";
+        test(actual, expected);
+
+        // join node -> join constraint node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "b")
+            .on("Foo.id = b.id")
+            .build();
+        let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar b ON Foo.id = b.id";
         test(actual, expected);
     }
 }

@@ -1,14 +1,12 @@
 use std::vec;
 
-use crate::ast::Expr;
-
 use {
     super::{NodeData, Prebuild},
     crate::{
         ast::{ObjectName, SelectItem, Statement, TableFactor},
         ast_builder::{
-            ExprList, ExprNode, GroupByNode, JoinNode, LimitNode, OffsetNode, ProjectNode,
-            SelectItemList,
+            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
+            ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -22,25 +20,15 @@ pub enum JoinType {
 #[derive(Clone)]
 pub struct SelectNode {
     table_name: String,
-    filter_expr: Option<ExprNode>,
 }
 
 impl SelectNode {
     pub fn new(table_name: String) -> Self {
-        Self {
-            table_name,
-            filter_expr: None,
-        }
+        Self { table_name }
     }
 
-    pub fn filter<T: Into<ExprNode>>(mut self, expr: T) -> Self {
-        if let Some(exprs) = self.filter_expr {
-            self.filter_expr = Some(exprs.and(expr));
-        } else {
-            self.filter_expr = Some(expr.into());
-        }
-
-        self
+    pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
+        FilterNode::new(self, expr)
     }
 
     pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
@@ -98,12 +86,10 @@ impl Prebuild for SelectNode {
             index: None,
         };
 
-        let selection = self.filter_expr.map(Expr::try_from).transpose()?;
-
         Ok(NodeData {
             projection: vec![SelectItem::Wildcard],
             relation,
-            selection,
+            filters: None,
             group_by: vec![],
             having: None,
             offset: None,

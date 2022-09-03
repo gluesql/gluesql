@@ -1,3 +1,5 @@
+use super::SelectNode;
+
 use {
     super::{NodeData, Prebuild},
     crate::{
@@ -13,39 +15,38 @@ use {
 #[derive(Clone)]
 #[warn(clippy::large_enum_variant)]
 pub enum PrevNode {
-    Join(JoinNode),
-    JoinConstraint(JoinConstraintNode),
-    Filter(Box<FilterNode>),
+    Select(SelectNode),
+    Join(Box<JoinNode>),
+    JoinConstraint(Box<JoinConstraintNode>),
 }
 
 impl Prebuild for PrevNode {
     fn prebuild(self) -> Result<NodeData> {
         match self {
+            Self::Select(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
-            Self::Filter(node) => node.prebuild(),
         }
     }
 }
 
 impl From<JoinNode> for PrevNode {
     fn from(node: JoinNode) -> Self {
-        PrevNode::Join(node)
+        PrevNode::Join(Box::new(node))
     }
 }
 
 impl From<JoinConstraintNode> for PrevNode {
     fn from(node: JoinConstraintNode) -> Self {
-        PrevNode::JoinConstraint(node)
+        PrevNode::JoinConstraint(Box::new(node))
     }
 }
 
-impl From<FilterNode> for PrevNode {
-    fn from(node: FilterNode) -> Self {
-        PrevNode::Filter(Box::new(node))
+impl From<SelectNode> for PrevNode {
+    fn from(node: SelectNode) -> Self {
+        PrevNode::Select(node)
     }
 }
-
 #[derive(Clone)]
 pub struct FilterNode {
     prev_node: PrevNode,
@@ -60,8 +61,10 @@ impl FilterNode {
         }
     }
 
-    pub fn filter<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
-        FilterNode::new(prev_node, expr)
+    pub fn filter<T: Into<ExprNode>>(mut self, expr: T) -> Self {
+        let exprs = self.filter_expr;
+        self.filter_expr = exprs.and(expr);
+        self
     }
 
     pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
@@ -88,7 +91,7 @@ impl FilterNode {
 impl Prebuild for FilterNode {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.selection = Some(self.filter_expr.try_into()?);
+        select_data.filters = Some(self.filter_expr.try_into()?);
         Ok(select_data)
     }
 }
@@ -102,19 +105,12 @@ mod tests {
 
     #[test]
     fn filter() {
+        // select node -> filter node -> build
         let actual = table("Bar").select().filter("id IS NULL").build();
         let expected = "SELECT * FROM Bar WHERE id IS NULL";
         test(actual, expected);
 
-        let actual = table("Bar")
-            .select()
-            .filter("id IS NULL")
-            .filter("id > 10")
-            .filter("id < 20")
-            .build();
-        let expected = "SELECT * FROM Bar WHERE id IS NULL AND id > 10 AND id < 20";
-        test(actual, expected);
-
+        // select node -> filter node -> build
         let actual = table("Foo")
             .select()
             .filter(Expr::BinaryOp {
@@ -124,6 +120,62 @@ mod tests {
             })
             .build();
         let expected = "SELECT * FROM Foo WHERE col1 > col2";
+        test(actual, expected);
+
+        // filter node -> filter node -> build
+        let actual = table("Bar")
+            .select()
+            .filter("id IS NULL")
+            .filter("id > 10")
+            .filter("id < 20")
+            .build();
+        let expected = "SELECT * FROM Bar WHERE id IS NULL AND id > 10 AND id < 20";
+        test(actual, expected);
+
+        // join node -> filter node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .filter("id IS NULL")
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar WHERE id IS NULL";
+        test(actual, expected);
+
+        // join node -> filter node -> build
+        let actual = table("Foo")
+            .select()
+            .join_as("Bar", "b")
+            .filter("id IS NULL")
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar AS b WHERE id IS NULL";
+        test(actual, expected);
+
+        // join node -> filter node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .filter("id IS NULL")
+            .build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar WHERE id IS NULL";
+        test(actual, expected);
+
+        // join node -> filter node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "b")
+            .filter("id IS NULL")
+            .build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar AS b WHERE id IS NULL";
+        test(actual, expected);
+
+        // join constraint node -> filter node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .filter("id IS NULL")
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id WHERE id IS NULL";
         test(actual, expected);
     }
 }

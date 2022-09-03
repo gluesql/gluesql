@@ -19,8 +19,8 @@ pub enum PrevNode {
     LimitOffset(LimitOffsetNode),
     Offset(OffsetNode),
     OffsetLimit(OffsetLimitNode),
-    Join(JoinNode),
-    JoinConstraint(JoinConstraintNode),
+    Join(Box<JoinNode>),
+    JoinConstraint(Box<JoinConstraintNode>),
     Filter(FilterNode),
 }
 
@@ -85,13 +85,13 @@ impl From<OffsetLimitNode> for PrevNode {
 
 impl From<JoinNode> for PrevNode {
     fn from(node: JoinNode) -> Self {
-        PrevNode::Join(node)
+        PrevNode::Join(Box::new(node))
     }
 }
 
 impl From<JoinConstraintNode> for PrevNode {
     fn from(node: JoinConstraintNode) -> Self {
-        PrevNode::JoinConstraint(node)
+        PrevNode::JoinConstraint(Box::new(node))
     }
 }
 
@@ -148,14 +148,17 @@ mod tests {
 
     #[test]
     fn project() {
+        // select node -> project node -> build
         let actual = table("Good").select().project("id").build();
         let expected = "SELECT id FROM Good";
         test(actual, expected);
 
+        // select node -> project node -> build
         let actual = table("Group").select().project("*, Group.*, name").build();
         let expected = "SELECT *, Group.*, name FROM Group";
         test(actual, expected);
 
+        // project node -> project node -> build
         let actual = table("Foo")
             .select()
             .project(vec!["col1", "col2"])

@@ -13,8 +13,8 @@ use {
 #[derive(Clone)]
 pub enum PrevNode {
     Select(SelectNode),
-    Join(JoinNode),
-    JoinConstraint(JoinConstraintNode),
+    Join(Box<JoinNode>),
+    JoinConstraint(Box<JoinConstraintNode>),
     Filter(FilterNode),
 }
 
@@ -37,13 +37,13 @@ impl From<SelectNode> for PrevNode {
 
 impl From<JoinNode> for PrevNode {
     fn from(node: JoinNode) -> Self {
-        PrevNode::Join(node)
+        PrevNode::Join(Box::new(node))
     }
 }
 
 impl From<JoinConstraintNode> for PrevNode {
     fn from(node: JoinConstraintNode) -> Self {
-        PrevNode::JoinConstraint(node)
+        PrevNode::JoinConstraint(Box::new(node))
     }
 }
 
@@ -103,126 +103,37 @@ mod tests {
 
     #[test]
     fn group_by() {
-        // select node -> group by node -> having node
-        let actual = table("Foo")
-            .select()
-            .group_by("a")
-            .having("COUNT(id) > 10")
-            .build();
-        let expected = "SELECT * FROM Foo GROUP BY a HAVING COUNT(id) > 10";
-        test(actual, expected);
-
-        // select node -> group by node -> offset node
-        let actual = table("Foo").select().group_by("a").offset(10).build();
-        let expected = "SELECT * FROM Foo GROUP BY a OFFSET 10";
-        test(actual, expected);
-
-        // select node -> group by node -> limit node
-        let actual = table("Foo").select().group_by("a").limit(10).build();
-        let expected = "SELECT * FROM Foo GROUP BY a LIMIT 10";
-        test(actual, expected);
-
-        // select node -> group by node -> project node
-        let actual = table("Foo")
-            .select()
-            .group_by("a")
-            .project(col("b"))
-            .build();
-        let expected = "SELECT b FROM Foo GROUP BY a";
-        test(actual, expected);
-
         // select node -> group by node -> build
         let acutal = table("Foo").select().group_by("a").build();
         let expected = "SELECT * FROM Foo GROUP BY a";
         test(acutal, expected);
-
-        // join node -> group by node -> having node
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .group_by("b")
-            .having("COUNT(id) > 10")
-            .build();
-        let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b HAVING COUNT(id) > 10";
-        test(actual, expected);
-
-        // join node -> group by node -> offset node
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .group_by("b")
-            .offset(10)
-            .build();
-        let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b OFFSET 10";
-        test(actual, expected);
-
-        // join node -> group by node -> limit node
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .group_by("b")
-            .limit(10)
-            .build();
-        let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b LIMIT 10";
-        test(actual, expected);
-
-        // join node -> group by node -> project node
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .group_by("b")
-            .project(col("c"))
-            .build();
-        let expected = "SELECT c FROM Foo JOIN Bar GROUP BY b";
-        test(actual, expected);
 
         // join node -> group by node -> build
         let actual = table("Foo").select().join("Bar").group_by("b").build();
         let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b";
         test(actual, expected);
 
-        // join constraint node -> group by node -> having node
+        // join node -> group by node -> build
         let actual = table("Foo")
             .select()
-            .join("Bar")
-            .on("Foo.id = Bar.id")
+            .join_as("Bar", "B")
             .group_by("b")
-            .having("id > 10")
             .build();
-        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b HAVING id > 10";
+        let expected = "SELECT * FROM Foo JOIN Bar AS B GROUP BY b";
         test(actual, expected);
 
-        // join constraint node -> group by node -> offset node
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .on("Foo.id = Bar.id")
-            .group_by("b")
-            .offset(10)
-            .build();
-        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b OFFSET 10";
+        // join node -> group by node -> build
+        let actual = table("Foo").select().left_join("Bar").group_by("b").build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar GROUP BY b";
         test(actual, expected);
 
-        // join constraint node -> group by node -> limit node
+        // join node -> group by node -> build
         let actual = table("Foo")
             .select()
-            .join("Bar")
-            .on("Foo.id = Bar.id")
+            .left_join_as("Bar", "B")
             .group_by("b")
-            .limit(10)
             .build();
-        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b LIMIT 10";
-        test(actual, expected);
-
-        // join constraint node -> group by node -> project node
-        let actual = table("Foo")
-            .select()
-            .join("Bar")
-            .on("Foo.id = Bar.id")
-            .group_by("b")
-            .project(col("c"))
-            .build();
-        let expected = "SELECT c FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b";
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B GROUP BY b";
         test(actual, expected);
 
         // join constraint node -> group by node -> build
@@ -235,34 +146,6 @@ mod tests {
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b";
         test(actual, expected);
 
-        // filter node -> group by node -> having node
-        let actual = table("Foo")
-            .select()
-            .group_by("a")
-            .having("COUNT(id) > 10")
-            .build();
-        let expected = "SELECT * FROM Foo GROUP BY a HAVING COUNT(id) > 10";
-        test(actual, expected);
-
-        // filter node -> group by node -> offset node
-        let actual = table("Foo").select().group_by("a").offset(10).build();
-        let expected = "SELECT * FROM Foo GROUP BY a OFFSET 10";
-        test(actual, expected);
-
-        // filter node -> group by node -> limit node
-        let actual = table("Foo").select().group_by("a").limit(10).build();
-        let expected = "SELECT * FROM Foo GROUP BY a LIMIT 10";
-        test(actual, expected);
-
-        // filter node -> group by node -> project node
-        let actual = table("Foo")
-            .select()
-            .group_by("a")
-            .project(col("c"))
-            .build();
-        let expected = "SELECT c FROM Foo GROUP BY a";
-        test(actual, expected);
-
         // filter node -> group by node -> build
         let actual = table("Bar")
             .select()
@@ -273,30 +156,6 @@ mod tests {
                 SELECT * FROM Bar
                 WHERE id IS NULL
                 GROUP BY id, (a + name)
-            ";
-        test(actual, expected);
-
-        // filter node -> group by node -> build
-        let actual = table("Foo")
-            .select()
-            .filter("name IS NOT NULL")
-            .group_by(vec![col("id"), col("a").add(col("name"))])
-            .build();
-        let expected = "
-                SELECT * FROM Foo
-                WHERE name IS NOT NULL
-                GROUP BY id, a + name
-            ";
-        test(actual, expected);
-
-        // filter node -> group by node -> build
-        let actual = table("Foo")
-            .select()
-            .group_by(vec!["id", "a + name"])
-            .build();
-        let expected = "
-                SELECT * FROM Foo
-                GROUP BY id, a + name
             ";
         test(actual, expected);
     }

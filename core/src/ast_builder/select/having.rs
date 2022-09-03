@@ -112,7 +112,7 @@ mod tests {
             .filter("id IS NULL")
             .group_by("id, (a + name)")
             .having("COUNT(id) > 10")
-            .project(vec!["id", "a + name AS b", "COUNT(id) AS c"])
+            .project(vec!["id", "(a + name) AS b", "COUNT(id) AS c"])
             .build();
         let expected = "
             SELECT id, (a + name) AS b, COUNT(id) AS c

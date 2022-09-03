@@ -164,6 +164,7 @@ mod tests {
 
     #[test]
     fn inner_join() {
+        // select node -> join node -> join constraint node
         let actual = table("Item")
             .select()
             .join_as("Player", "p")
@@ -175,6 +176,7 @@ mod tests {
         ";
         test(actual, expected);
 
+        // select node -> join node ->  join constraint node
         let actual = table("Item")
             .select()
             .join_as("Player", "p")
@@ -187,6 +189,16 @@ mod tests {
         ";
         test(actual, expected);
 
+        // select node -> join node ->  build
+        let actual = table("Item").select().join_as("Player", "p").build();
+        let expected = "
+        SELECT * FROM Item INNER JOIN Player AS p;
+        ";
+        test(actual, expected);
+
+        // join node -> join node ->
+
+        // join constraint node -> join node -> join constraint node
         let actual = table("students")
             .select()
             .join("marks")
@@ -210,6 +222,7 @@ mod tests {
         ";
         test(actual, expected);
 
+        // select node -> join node -> project node
         let acutal = table("Orders")
             .select()
             .join("Customers")
@@ -224,6 +237,8 @@ mod tests {
             FROM Orders INNER JOIN Customers
         ";
         test(acutal, expected);
+
+        // join nod
     }
 
     #[test]
