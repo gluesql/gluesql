@@ -81,7 +81,7 @@ impl ToSql for ColumnDef {
         {
             let options = options
                 .iter()
-                .map(|op| op.option.to_sql()) // TODO name..
+                .map(|ColumnOptionDef { option, .. }| option.to_sql())
                 .collect::<Vec<_>>()
                 .join(" ");
             format!("{name} {data_type} {options}")
