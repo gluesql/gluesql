@@ -10,7 +10,6 @@ pub mod cast;
 pub mod extract;
 pub mod function;
 pub mod in_list;
-pub mod in_subquery;
 
 pub use exists::exists;
 pub use nested::nested;
@@ -66,11 +65,6 @@ pub enum ExprNode {
     InList {
         expr: Box<ExprNode>,
         list: Box<InListNode>,
-        negated: bool,
-    },
-    InSubquery {
-        expr: Box<ExprNode>,
-        subquery: Box<QueryNode>,
         negated: bool,
     },
     Nested(Box<ExprNode>),
@@ -187,20 +181,6 @@ impl TryFrom<ExprNode> for Expr {
                             })
                     }
                 }
-            }
-            ExprNode::InSubquery {
-                expr,
-                subquery,
-                negated,
-            } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
-                let subquery = Query::try_from(*subquery).map(Box::new)?;
-
-                Ok(Expr::InSubquery {
-                    expr,
-                    subquery,
-                    negated,
-                })
             }
             ExprNode::Nested(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::Nested),
             ExprNode::Function(func_expr) => Function::try_from(*func_expr)
