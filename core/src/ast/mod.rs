@@ -170,7 +170,7 @@ mod tests {
     use {
         crate::ast::{
             AlterTableOperation, AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef, DataType,
-            Expr, ObjectName, Statement, ToSql,
+            Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -233,6 +233,44 @@ mod tests {
             }
             .to_sql()
         );
+
+        fn to_sql_create_table_as() {
+            assert_eq!(
+                "CREATE TABLE Foo AS (..query..)",
+                Statement::CreateTable {
+                    if_not_exists: false,
+                    name: ObjectName(vec!["Foo".to_string()]),
+                    columns: vec![],
+                    source: Some(Box::new(Query {
+                        body: SetExpr::Values(Values(vec![vec![Expr::Literal(
+                            AstLiteral::Boolean(false)
+                        )]])),
+                        order_by: vec![],
+                        limit: None,
+                        offset: None
+                    }))
+                }
+                .to_sql()
+            );
+
+            assert_eq!(
+                "CREATE TABLE IF NOT EXISTS Foo AS (..query..)",
+                Statement::CreateTable {
+                    if_not_exists: true,
+                    name: ObjectName(vec!["Foo".to_string()]),
+                    columns: vec![],
+                    source: Some(Box::new(Query {
+                        body: SetExpr::Values(Values(vec![vec![Expr::Literal(
+                            AstLiteral::Boolean(true)
+                        )]])),
+                        order_by: vec![],
+                        limit: None,
+                        offset: None
+                    }))
+                }
+                .to_sql()
+            );
+        }
     }
 
     #[test]
