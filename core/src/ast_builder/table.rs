@@ -1,4 +1,5 @@
 use super::{CreateTableNode, DeleteNode, DropTableNode, SelectNode, ShowColumnsNode, UpdateNode};
+use crate::ast_builder::alter_table::AlterTableNode;
 
 #[cfg(feature = "index")]
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
@@ -29,6 +30,11 @@ impl TableNode {
 
     pub fn show_columns(self) -> ShowColumnsNode {
         ShowColumnsNode::new(self.table_name)
+    }
+
+    #[cfg(feature = "alter-table")]
+    pub fn alter_table(self) -> AlterTableNode {
+        AlterTableNode::new(self.table_name)
     }
 
     pub fn create_table(self) -> CreateTableNode {

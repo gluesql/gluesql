@@ -1,3 +1,5 @@
+#[cfg(feature = "alter-table")]
+mod alter_table;
 mod assignment;
 mod column_def;
 mod create_table;
@@ -20,6 +22,9 @@ mod transaction;
 mod update;
 
 pub use {
+    alter_table::{
+        AddColumnNode, AlterTableNode, DropColumnNode, RenameColumnNode, RenameTableNode,
+    },
     assignment::AssignmentNode,
     column_def::ColumnDefNode,
     create_table::CreateTableNode,
