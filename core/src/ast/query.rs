@@ -120,17 +120,15 @@ pub struct Values(pub Vec<Vec<Expr>>);
 
 impl ToSql for OrderByExpr {
     fn to_sql(&self) -> String {
-        match self {
-            OrderByExpr { expr, asc } => {
-                let asc = asc.unwrap();
-                let result = match asc {
-                    true => "ASC".to_string(),
-                    false => "DESC".to_string(),
-                };
+        let OrderByExpr { expr, asc } = self;
 
-                format!("{} {}", expr.to_sql(), result)
-            }
-        }
+        let result = match asc {
+            Some(true) => " ASC".to_string(),
+            Some(false) => " DESC".to_string(),
+            None => "".to_string(),
+        };
+
+        format!("{}{}", expr.to_sql(), result)
     }
 }
 
@@ -163,6 +161,14 @@ mod tests {
         let expected = OrderByExpr {
             expr: Expr::Identifier("foo".to_string()),
             asc: Some(false),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "foo".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: None,
         }
         .to_sql();
         assert_eq!(actual, expected);
