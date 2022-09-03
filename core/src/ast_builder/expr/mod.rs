@@ -15,8 +15,6 @@ pub mod in_subquery;
 pub use exists::exists;
 pub use nested::nested;
 
-use crate::{data::ValueError, parse_sql::parse_comma_separated_exprs};
-
 use {
     super::DataTypeNode,
     crate::{
@@ -25,7 +23,7 @@ use {
             UnaryOperator,
         },
         ast_builder::QueryNode,
-        parse_sql::{parse_expr, parse_query},
+        parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
         result::{Error, Result},
         translate::{translate_expr, translate_query},
     },
@@ -178,20 +176,15 @@ impl TryFrom<ExprNode> for Expr {
                             });
                         }
 
-                        let list = parse_comma_separated_exprs(&*value)?
+                        parse_comma_separated_exprs(&*value)?
                             .iter()
                             .map(translate_expr)
-                            .collect::<Result<Vec<_>>>();
-
-                        if let Ok(list) = list {
-                            Ok(Expr::InList {
+                            .collect::<Result<Vec<_>>>()
+                            .map(|list| Expr::InList {
                                 expr,
                                 list,
                                 negated,
                             })
-                        } else {
-                            Err(Error::Value(ValueError::SelectorRequiresMapOrListTypes))
-                        }
                     }
                 }
             }
