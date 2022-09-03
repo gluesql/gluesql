@@ -158,7 +158,7 @@ impl TryFrom<ExprNode> for Expr {
                         })
                     }
                     InListNode::Query(subquery) => {
-                        let subquery = Query::try_from(subquery).map(Box::new)?;
+                        let subquery = Query::try_from(*subquery).map(Box::new)?;
                         Ok(Expr::InSubquery {
                             expr,
                             subquery,
@@ -178,21 +178,19 @@ impl TryFrom<ExprNode> for Expr {
                             });
                         }
 
-                        let list = parse_comma_separated_exprs(&*value.clone())?
+                        let list = parse_comma_separated_exprs(&*value)?
                             .iter()
                             .map(translate_expr)
                             .collect::<Result<Vec<_>>>();
 
                         if let Ok(list) = list {
-                            return Ok(Expr::InList {
+                            Ok(Expr::InList {
                                 expr,
                                 list,
                                 negated,
-                            });
+                            })
                         } else {
-                            return Err(Error::Value(
-                                ValueError::SelectorRequiresMapOrListTypes.into(),
-                            ));
+                            Err(Error::Value(ValueError::SelectorRequiresMapOrListTypes))
                         }
                     }
                 }
