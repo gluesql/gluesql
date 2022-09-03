@@ -78,47 +78,69 @@ impl<'a> Sort<'a> {
                     Some(Rc::from(label_context)),
                 ));
                 let aggregated = aggregated.map(Rc::new);
+                enum SortType<'a> {
+                    Value(Value),
+                    Expr(&'a Expr),
+                }
+
+                let order_by = self
+                    .order_by
+                    .iter()
+                    .map(|OrderByExpr { expr, asc }| -> Result<_> {
+                        let big_decimal = match expr {
+                            Expr::Literal(AstLiteral::Number(n)) => Some(n),
+                            Expr::UnaryOp {
+                                op: UnaryOperator::Plus,
+                                expr,
+                            } => match expr.as_ref() {
+                                Expr::Literal(AstLiteral::Number(n)) => Some(n),
+                                _ => None,
+                            },
+                            _ => None,
+                        };
+                        match big_decimal {
+                            Some(n) => {
+                                let index = n.to_usize().ok_or_else(|| {
+                                    crate::result::Error::from(SortError::Unreachable)
+                                })?;
+                                let zero_based = index.checked_sub(1).ok_or_else(|| {
+                                    crate::result::Error::from(SortError::ColumnIndexOutOfRange(
+                                        index,
+                                    ))
+                                })?;
+                                let value = row.get_value(zero_based).ok_or_else(|| {
+                                    crate::result::Error::from(SortError::ColumnIndexOutOfRange(
+                                        index,
+                                    ))
+                                })?;
+
+                                Ok((SortType::Value(value.clone()), *asc))
+                            }
+                            None => Ok((SortType::Expr(expr), *asc)),
+                        }
+                    })
+                    .collect::<Result<Vec<_>>>();
                 async move {
-                    let values = stream::iter(self.order_by.iter())
-                        .then(|OrderByExpr { expr, asc }| {
-                            let context = Some(Rc::clone(&filter_context));
+                    let order_by = order_by?;
+                    let context = Some(Rc::clone(&filter_context));
+
+                    // panic!();
+                    let values = stream::iter(order_by.into_iter())
+                        .then(|(sort_type, asc)| {
+                            let context = context.as_ref().map(Rc::clone);
                             let aggregated = aggregated.as_ref().map(Rc::clone);
-                            let row = row.clone();
+
                             async move {
-                                let big_decimal = match expr {
-                                    Expr::Literal(AstLiteral::Number(n)) => Some(n),
-                                    Expr::UnaryOp {
-                                        op: UnaryOperator::Plus,
-                                        expr,
-                                    } => match expr.as_ref() {
-                                        Expr::Literal(AstLiteral::Number(n)) => Some(n),
-                                        _ => None,
-                                    },
-                                    _ => None,
+                                let value: Value = match sort_type {
+                                    SortType::Value(value) => value,
+                                    SortType::Expr(expr) => {
+                                        evaluate(self.storage, context, aggregated, expr)
+                                            .await?
+                                            .try_into()?
+                                    }
                                 };
-                                if let Some(n) = big_decimal {
-                                    let index = n.to_usize().ok_or_else(|| {
-                                        crate::result::Error::from(SortError::Unreachable)
-                                    })?;
-                                    let zero_based = index.checked_sub(1).ok_or_else(|| {
-                                        crate::result::Error::from(
-                                            SortError::ColumnIndexOutOfRange(index),
-                                        )
-                                    })?;
-                                    let value = row.get_value(zero_based).ok_or_else(|| {
-                                        crate::result::Error::from(
-                                            SortError::ColumnIndexOutOfRange(index),
-                                        )
-                                    })?;
 
-                                    return Ok((value.clone(), *asc));
-                                }
-                                let value: Value =
-                                    evaluate(self.storage, context, aggregated, expr)
-                                        .await?
-                                        .try_into()?;
-
-                                Ok::<_, Error>((value, *asc))
+                                Ok::<_, Error>((value, asc))
                             }
                         })
                         .try_collect::<Vec<_>>()
@@ -127,7 +149,7 @@ impl<'a> Sort<'a> {
                     Ok((values, row))
                 }
             })
-            .try_collect::<Vec<_>>()
+            .try_collect::<Vec<(Vec<(Value, Option<bool>)>, Row)>>()
             .await
             .map(Vector::from)?
             .sort_by(|(values_a, ..), (values_b, ..)| Self::sort_by(values_a, values_b))
