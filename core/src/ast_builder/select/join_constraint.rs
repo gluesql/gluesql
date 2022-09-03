@@ -133,5 +133,6 @@ mod tests {
             .build();
         let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar b ON Foo.id = b.id";
         test(actual, expected);
+
     }
 }

@@ -244,12 +244,11 @@ mod tests {
             FROM Orders INNER JOIN Customers
         ";
         test(acutal, expected);
-
-        // join nod
     }
 
     #[test]
     fn left_join() {
+        // select node -> left join node -> join constraint node
         let actual = table("player")
             .select()
             .left_join("item")
@@ -264,6 +263,7 @@ mod tests {
         ";
         test(actual, expected);
 
+        // select node -> left join node -> join constraint node -> left join node
         let actual = table("Item")
             .select()
             .left_join("Player")
@@ -304,6 +304,20 @@ mod tests {
         ";
         test(actual, expected);
 
+        // select node -> left join node -> join constraint node -> left join node
+        let actual = table("Item")
+            .select()
+            .left_join("Player")
+            .on("Player.id = Item.player_id")
+            .left_join("Player")
+            .on("p1.id = Item.player_id")
+            .build();
+        let expected = "
+            SELECT * FROM Item
+            LEFT JOIN Player ON Player.id = Item.player_id
+            LEFT JOIN Player ON p1.id = Item.player_id";
+        test(actual, expected);
+
         let actual = table("Item")
             .select()
             .left_join("Player")
@@ -327,6 +341,205 @@ mod tests {
             INNER JOIN Player p4 ON p4.id = Item.player_id AND Item.id > 101
             WHERE Player.id = 1;
         ";
+        test(actual, expected);
+    }
+
+    #[test]
+    fn join_join() {
+        // join - join
+        let actual = table("Foo").select().join("Bar").join("Baz").build();
+        let expected = "
+            SELECT * FROM Foo
+            INNER JOIN Bar
+            INNER JOIN Baz
+            ";
+        test(actual, expected);
+
+        // join - join as
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .join_as("Baz", "B")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            INNER JOIN Bar
+            INNER JOIN Baz B
+            ";
+        test(actual, expected);
+
+        // join - left join
+        let actual = table("Foo").select().join("Bar").left_join("Baz").build();
+        let expected = "
+            SELECT * FROM Foo
+            INNER JOIN Bar
+            LEFT JOIN Baz
+            ";
+        test(actual, expected);
+
+        // join - left join as
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .left_join_as("Baz", "B")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            INNER JOIN Bar
+            LEFT JOIN Baz B
+            ";
+        test(actual, expected);
+
+        // join as - join
+        let actual = table("Foo")
+            .select()
+            .join_as("Bar", "B")
+            .join("Baz")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            INNER JOIN Bar B
+            INNER JOIN Baz
+            ";
+        test(actual, expected);
+
+        // join as - join as
+        let actual = table("Foo")
+            .select()
+            .join_as("Bar", "B")
+            .join_as("Baz", "C")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            INNER JOIN Bar B
+            INNER JOIN Baz C
+            ";
+        test(actual, expected);
+
+        // join as - left join
+        let actual = table("Foo")
+            .select()
+            .join_as("Bar", "B")
+            .left_join("Baz")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            INNER JOIN Bar B
+            LEFT JOIN Baz
+            ";
+        test(actual, expected);
+
+        // join as - left join as
+        let actual = table("Foo")
+            .select()
+            .join_as("Bar", "B")
+            .left_join_as("Baz", "C")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            INNER JOIN Bar B
+            LEFT JOIN Baz C
+            ";
+        test(actual, expected);
+
+        // left join - join
+        let actual = table("Foo").select().left_join("Bar").join("Baz").build();
+        let expected = "
+            SELECT * FROM Foo
+            LEFT JOIN Bar
+            INNER JOIN Baz
+            ";
+        test(actual, expected);
+
+        // left join - join as
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .join_as("Baz", "B")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            LEFT JOIN Bar
+            INNER JOIN Baz B
+            ";
+        test(actual, expected);
+
+        // left join - left join
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .left_join("Baz")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            LEFT JOIN Bar
+            LEFT JOIN Baz
+            ";
+        test(actual, expected);
+
+        // left join - left join as
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .left_join_as("Baz", "B")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            LEFT JOIN Bar
+            LEFT JOIN Baz B
+            ";
+        test(actual, expected);
+
+        // left join as - join
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "B")
+            .join("Baz")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            LEFT JOIN Bar B
+            INNER JOIN Baz
+            ";
+        test(actual, expected);
+
+        // left join as - join as
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "B")
+            .join_as("Baz", "C")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            LEFT JOIN Bar B
+            INNER JOIN Baz C
+            ";
+        test(actual, expected);
+
+        // left join as - left join
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "B")
+            .left_join("Baz")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            LEFT JOIN Bar B
+            LEFT JOIN Baz
+            ";
+        test(actual, expected);
+
+        // left join as - left join as
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "B")
+            .left_join_as("Baz", "C")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            LEFT JOIN Bar B
+            LEFT JOIN Baz C
+            ";
         test(actual, expected);
     }
 }
