@@ -156,7 +156,7 @@ mod tests {
             &Expr::BinaryOp {
                 left: Box::new(Expr::Identifier(1024.to_string())),
                 op: BinaryOperator::Modulo,
-                right: Box::new(Expr::Identifier(8.to_string()))
+                right: Box::new(Expr::Identifier(4.to_string()))
             }
             .to_sql()
         );
