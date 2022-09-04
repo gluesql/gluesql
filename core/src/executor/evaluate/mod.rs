@@ -153,11 +153,11 @@ pub async fn evaluate<'a>(
 
             expr::between(target, *negated, low, high)
         }
-        Expr::Exists(query) => select(storage, query, context)
+        Expr::Exists { subquery, negated } => select(storage, subquery, context)
             .await?
             .try_next()
             .await
-            .map(|v| v.is_some())
+            .map(|v| v.is_some() ^ negated)
             .map(Value::Bool)
             .map(Evaluated::from),
         Expr::IsNull(expr) => {

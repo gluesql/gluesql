@@ -156,7 +156,9 @@ fn find_indexes(statement: &Statement) -> Vec<&IndexItem> {
     fn find_expr_indexes(expr: &Expr) -> Vec<&IndexItem> {
         match expr {
             Expr::Subquery(query)
-            | Expr::Exists(query)
+            | Expr::Exists {
+                subquery: query, ..
+            }
             | Expr::InSubquery {
                 subquery: query, ..
             } => find_query_indexes(query),

@@ -56,7 +56,10 @@ pub enum Expr {
     },
     Function(Box<Function>),
     Aggregate(Box<Aggregate>),
-    Exists(Box<Query>),
+    Exists {
+        subquery: Box<Query>,
+        negated: bool,
+    },
     Subquery(Box<Query>),
     Case {
         operand: Option<Box<Expr>>,
@@ -149,7 +152,10 @@ impl ToSql for Expr {
                 true => format!("{} NOT IN (..query..)", expr.to_sql()),
                 false => format!("{} IN (..query..)", expr.to_sql()),
             },
-            Expr::Exists(_) => "EXISTS(..query..)".to_string(),
+            Expr::Exists { negated, .. } => match negated {
+                true => "NOT EXISTS(..query..)".to_string(),
+                false => "EXISTS(..query..)".to_string(),
+            },
             Expr::Subquery(_) => "(..query..)".to_string(),
         }
     }
@@ -160,7 +166,8 @@ mod tests {
     use {
         crate::ast::{
             Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Expr,
-            Function, ToSql, UnaryOperator,
+            Function, ObjectName, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins,
+            ToSql, UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -357,6 +364,60 @@ mod tests {
                 negated: true
             }
             .to_sql()
+        );
+
+        assert_eq!(
+            "EXISTS(..query..)",
+            Expr::Exists {
+                subquery: Box::new(Query {
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![SelectItem::Wildcard],
+                        from: TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: ObjectName(vec!["Foo".to_owned()]),
+                                alias: None,
+                                index: None,
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                }),
+                negated: false,
+            }
+            .to_sql(),
+        );
+
+        assert_eq!(
+            "NOT EXISTS(..query..)",
+            Expr::Exists {
+                subquery: Box::new(Query {
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![SelectItem::Wildcard],
+                        from: TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: ObjectName(vec!["Foo".to_owned()]),
+                                alias: None,
+                                index: None,
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                }),
+                negated: true,
+            }
+            .to_sql(),
         );
 
         assert_eq!(
