@@ -118,6 +118,7 @@ where
                     self.print.spool_off();
                 }
                 Command::Set(name, value) => self.print.set_option(name, value),
+                Command::Show(name) => self.print.show_option(name),
             }
         }
 

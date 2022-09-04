@@ -9,6 +9,7 @@ pub enum Command {
     SpoolOn(String),
     SpoolOff,
     Set(String, String),
+    Show(String),
 }
 
 #[derive(ThisError, Debug, PartialEq)]
@@ -54,6 +55,11 @@ impl Command {
                     (None, Some(_)) => Err(CommandError::LackOfOption),
                     (None, None) => Err(CommandError::LackOfOption),
                 },
+                ".show" => match params.get(1) {
+                    Some(name) => Ok(Self::Show(name.to_string())),
+                    None => Err(CommandError::LackOfOption),
+                },
+
                 _ => Err(CommandError::NotSupported),
             }
         } else {
