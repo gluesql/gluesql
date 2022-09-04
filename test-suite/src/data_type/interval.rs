@@ -128,7 +128,7 @@ INSERT INTO IntervalLog VALUES
     );
 
     test!(
-        Err(TranslateError::UnsupportedIntervalValue("a + b".to_owned()).into()),
-        "SELECT INTERVAL a + b DAY TO MINUTE;"
+        "SELECT INTERVAL a + b DAY TO MINUTE;",
+        Err(TranslateError::UnsupportedIntervalValue("a + b".to_owned()).into())
     );
 });
