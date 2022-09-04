@@ -7,7 +7,7 @@ use {
     self::blend::Blend,
     super::{
         aggregate::Aggregator,
-        context::{AggregateContext, BlendContext, FilterContext},
+        context::{AggregateContext, BlendContext, BlendContextRow::Single, FilterContext},
         evaluate_stateless,
         fetch::{fetch_join_columns, fetch_relation_columns, fetch_relation_rows},
         filter::Filter,
@@ -225,7 +225,7 @@ pub async fn select_with_labels<'a>(
                 let row = Some(row?);
                 let columns = Rc::clone(&columns);
                 let alias = get_alias(relation)?;
-                Ok(BlendContext::new(alias, columns, row, None))
+                Ok(BlendContext::new(alias, columns, Single(row), None))
             })
     };
 

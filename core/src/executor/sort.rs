@@ -1,14 +1,12 @@
-use crate::ast::UnaryOperator;
-
 use {
     super::{
         context::{AggregateContext, FilterContext},
         evaluate::evaluate,
     },
     crate::{
-        ast::{AstLiteral, Expr, OrderByExpr},
+        ast::{AstLiteral, Expr, OrderByExpr, UnaryOperator},
         data::{Row, Value},
-        executor::context::BlendContext,
+        executor::context::{BlendContext, BlendContextRow::Shared},
         result::{Error, Result},
         store::GStore,
     },
@@ -59,6 +57,7 @@ impl<'a> Sort<'a> {
             NonOrderBy(I1),
             OrderBy(I2),
         }
+
         if self.order_by.is_empty() {
             let rows = rows.map_ok(|(_, row)| row);
 
@@ -118,20 +117,17 @@ impl<'a> Sort<'a> {
                 async move {
                     let row = Rc::new(row);
                     let label_context =
-                        BlendContext::new2(table_alias, labels, Some(Rc::clone(&row)), None);
+                        BlendContext::new(table_alias, labels, Shared(Some(Rc::clone(&row))), None);
                     let label_context = Rc::from(label_context);
                     let filter_context = Rc::new(FilterContext::concat(
                         Some(filter_context),
                         Some(Rc::clone(&label_context)),
                     ));
-
                     let order_by = order_by?;
-
                     let values = stream::iter(order_by.into_iter())
                         .then(|(sort_type, asc)| {
                             let context = Some(Rc::clone(&filter_context));
                             let aggregated = aggregated.as_ref().map(Rc::clone);
-
                             async move {
                                 let value: Value = match sort_type {
                                     SortType::Value(value) => value,

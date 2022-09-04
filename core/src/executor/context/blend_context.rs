@@ -3,17 +3,17 @@ use {
     std::{fmt::Debug, rc::Rc},
 };
 
-// #[derive(Debug)]
-// enum BlendContextRow {
-//     Row(Option<Row>),
-//     Shared(Rc<Row>),
-// }
+#[derive(Debug)]
+pub enum BlendContextRow {
+    Single(Option<Row>),
+    Shared(Option<Rc<Row>>),
+}
 
 #[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
     columns: Rc<[String]>,
-    row: Option<Rc<Row>>,
+    row: BlendContextRow,
     next: Option<Rc<BlendContext<'a>>>,
 }
 
@@ -21,21 +21,7 @@ impl<'a> BlendContext<'a> {
     pub fn new(
         table_alias: &'a str,
         columns: Rc<[String]>,
-        row: Option<Row>,
-        next: Option<Rc<BlendContext<'a>>>,
-    ) -> Self {
-        Self {
-            table_alias,
-            columns,
-            row: row.map(|v| Rc::new(v)),
-            next,
-        }
-    }
-
-    pub fn new2(
-        table_alias: &'a str,
-        columns: Rc<[String]>,
-        row: Option<Rc<Row>>,
+        row: BlendContextRow,
         next: Option<Rc<BlendContext<'a>>>,
     ) -> Self {
         Self {
@@ -55,8 +41,11 @@ impl<'a> BlendContext<'a> {
                 .iter()
                 .position(|column| column == target)
                 .map(|index| match &self.row {
-                    Some(row) => row.get_value(index),
-                    None => Some(&Value::Null),
+                    BlendContextRow::Single(Some(row)) => row.get_value(index),
+                    BlendContextRow::Shared(Some(row)) => row.get_value(index),
+                    BlendContextRow::Single(None) | BlendContextRow::Shared(None) => {
+                        Some(&Value::Null)
+                    }
                 })
         };
 
@@ -79,8 +68,11 @@ impl<'a> BlendContext<'a> {
                 .iter()
                 .position(|column| column == target)
                 .map(|index| match &self.row {
-                    Some(row) => row.get_value(index),
-                    None => Some(&Value::Null),
+                    BlendContextRow::Single(Some(row)) => row.get_value(index),
+                    BlendContextRow::Shared(Some(row)) => row.get_value(index),
+                    BlendContextRow::Single(None) | BlendContextRow::Shared(None) => {
+                        Some(&Value::Null)
+                    }
                 })
         };
 
@@ -96,8 +88,11 @@ impl<'a> BlendContext<'a> {
     pub fn get_alias_values(&self, alias: &str) -> Option<Vec<Value>> {
         if self.table_alias == alias {
             let values = match &self.row {
-                Some(row) => row.as_ref().0.clone(),
-                None => self.columns.iter().map(|_| Value::Null).collect(),
+                BlendContextRow::Single(Some(row)) => row.0.clone(),
+                BlendContextRow::Shared(Some(row)) => row.as_ref().0.clone(),
+                BlendContextRow::Single(None) | BlendContextRow::Shared(None) => {
+                    self.columns.iter().map(|_| Value::Null).collect()
+                }
             };
 
             Some(values)
@@ -110,8 +105,11 @@ impl<'a> BlendContext<'a> {
 
     pub fn get_all_values(&'a self) -> Vec<Value> {
         let values: Vec<Value> = match &self.row {
-            Some(row) => row.as_ref().0.clone(),
-            None => self.columns.iter().map(|_| Value::Null).collect(),
+            BlendContextRow::Single(Some(row)) => row.0.clone(),
+            BlendContextRow::Shared(Some(row)) => row.as_ref().0.clone(),
+            BlendContextRow::Single(None) | BlendContextRow::Shared(None) => {
+                self.columns.iter().map(|_| Value::Null).collect()
+            }
         };
 
         match &self.next {
