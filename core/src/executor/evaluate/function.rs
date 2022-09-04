@@ -1,6 +1,7 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
+    chrono::NaiveDate,
     std::cmp::{max, min},
     uuid::Uuid,
 };
@@ -412,21 +413,19 @@ pub fn generate_uuid() -> Value {
 }
 
 pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
-    match expr.try_into()?{
-        Value::Date(expr)=>{
-            let expr = expr.to_string();
-            let format = eval_to_str!(name,format);
-            Ok(Value::Str(format_date(expr,format)))
+    match expr.try_into()? {
+        Value::Date(expr) => {
+            let format = eval_to_str!(name, format);
+            Ok(Value::Str(format_date(expr, format)))
         }
         // Value::Timestamp()=>Ok()
-        _=>{
+        _ => {
             return Err(EvaluateError::FunctionRequiresFormattableValue(name).into());
         }
     }
-   }
+}
 
-fn format_date(a: String, b: String )-> String {
-    let a=a.as_str();
-    let b=b.as_str();
-    chrono::NaiveDate::parse_from_str(a, b).unwrap().to_string()
+fn format_date(a: NaiveDate, b: String) -> String {
+    let b = b.as_str();
+    chrono::NaiveDate::format(&a, b).to_string()
 }
