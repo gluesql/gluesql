@@ -1,9 +1,7 @@
-use crate::ast::Aggregate;
-
 use {
     super::{context::FilterContext, evaluate::evaluate},
     crate::{
-        ast::{AstLiteral, Expr, OrderByExpr, UnaryOperator},
+        ast::{Aggregate, AstLiteral, Expr, OrderByExpr, UnaryOperator},
         data::{Row, Value},
         executor::context::{BlendContext, BlendContextRow::Shared},
         result::{Error, Result},
