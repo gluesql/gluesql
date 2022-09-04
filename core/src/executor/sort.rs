@@ -13,8 +13,7 @@ use {
     bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     serde::Serialize,
-    std::fmt::Debug,
-    std::{cmp::Ordering, rc::Rc},
+    std::{cmp::Ordering, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
     utils::Vector,
 };
