@@ -113,22 +113,23 @@ test_case!(filter, async move {
 
     let error_sqls = [
         (
-            LiteralError::UnaryOperationOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE +'abcd' > 1.0",
-        ),
-        (
             LiteralError::UnaryOperationOnNonNumeric.into(),
+        ),
+        (
             "SELECT id FROM Hunter WHERE -'abcd' < 1.0",
+            LiteralError::UnaryOperationOnNonNumeric.into(),
         ),
         (
-            ValueError::UnaryPlusOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE +name > 1.0",
+            ValueError::UnaryPlusOnNonNumeric.into(),
         ),
         (
-            ValueError::UnaryMinusOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE -name < 1.0",
+            ValueError::UnaryMinusOnNonNumeric.into(),
         ),
         (
+            "SELECT name FROM Boss WHERE 'ABC' LIKE 10",
             LiteralError::LikeOnNonString(
                 format!("{:?}", Literal::Text(Cow::Owned("ABC".to_string()))),
                 format!(
@@ -137,19 +138,18 @@ test_case!(filter, async move {
                 ),
             )
             .into(),
-            "SELECT name FROM Boss WHERE 'ABC' LIKE 10",
         ),
         (
-            ValueError::LikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
             "SELECT name FROM Boss WHERE name = 'Amelia' AND name LIKE 10",
+            ValueError::LikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
         ),
         (
-            ValueError::ILikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
             "SELECT name FROM Boss WHERE name = 'Amelia' AND name ILIKE 10",
+            ValueError::ILikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
         ),
     ];
 
-    for (error, sql) in error_sqls {
-        test!(Err(error), sql);
+    for (sql, error) in error_sqls {
+        test!(sql, Err(error));
     }
 });

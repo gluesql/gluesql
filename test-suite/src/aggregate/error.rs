@@ -27,21 +27,21 @@ test_case!(error, async move {
 
     let test_cases = [
         (
-            EvaluateError::ValueNotFound("num".to_owned()).into(),
             "SELECT SUM(num) FROM Item;",
+            EvaluateError::ValueNotFound("num".to_owned()).into(),
         ),
         (
-            TranslateError::QualifiedWildcardInCountNotSupported("Foo.*".to_owned()).into(),
             "SELECT COUNT(Foo.*) FROM Item;",
+            TranslateError::QualifiedWildcardInCountNotSupported("Foo.*".to_owned()).into(),
         ),
         (
-            TranslateError::WildcardFunctionArgNotAccepted.into(),
             "SELECT SUM(*) FROM Item;",
+            TranslateError::WildcardFunctionArgNotAccepted.into(),
         ),
     ];
 
-    for (error, sql) in test_cases {
-        test!(Err(error), sql);
+    for (sql, error) in test_cases {
+        test!(sql, Err(error));
     }
 });
 
@@ -68,7 +68,7 @@ test_case!(error_group_by, async move {
     "
     );
     test!(
-        Err(KeyError::FloatTypeKeyNotSupported.into()),
-        "SELECT * FROM Item GROUP BY ratio;"
+        "SELECT * FROM Item GROUP BY ratio;",
+        Err(KeyError::FloatTypeKeyNotSupported.into())
     );
 });

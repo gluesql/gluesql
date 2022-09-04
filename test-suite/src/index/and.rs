@@ -24,12 +24,12 @@ CREATE TABLE NullIdx (
     );
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_id ON NullIdx (id)"
+        "CREATE INDEX idx_id ON NullIdx (id)",
+        Ok(Payload::CreateIndex)
     );
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_date ON NullIdx (date)"
+        "CREATE INDEX idx_date ON NullIdx (date)",
+        Ok(Payload::CreateIndex)
     );
 
     macro_rules! date {

@@ -142,6 +142,6 @@ CREATE TABLE DropTable (
     ];
 
     for (sql, expected) in sqls {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

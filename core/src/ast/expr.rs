@@ -183,78 +183,10 @@ mod tests {
             }
             .to_sql()
         );
-
-        assert_eq!(
-            "id - num",
-            Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
-                op: BinaryOperator::Minus,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "id * num",
-            Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
-                op: BinaryOperator::Multiply,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "id / num",
-            Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
-                op: BinaryOperator::Divide,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "id % num",
-            &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
-                op: BinaryOperator::Modulo,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "+id",
-            Expr::UnaryOp {
-                op: UnaryOperator::Plus,
-                expr: Box::new(Expr::Identifier("id".to_owned())),
-            }
-            .to_sql(),
-        );
-
         assert_eq!(
             "-id",
             Expr::UnaryOp {
                 op: UnaryOperator::Minus,
-                expr: Box::new(Expr::Identifier("id".to_owned())),
-            }
-            .to_sql(),
-        );
-
-        assert_eq!(
-            "NOT id",
-            Expr::UnaryOp {
-                op: UnaryOperator::Not,
-                expr: Box::new(Expr::Identifier("id".to_owned())),
-            }
-            .to_sql(),
-        );
-
-        assert_eq!(
-            "id!",
-            Expr::UnaryOp {
-                op: UnaryOperator::Factorial,
                 expr: Box::new(Expr::Identifier("id".to_owned())),
             }
             .to_sql(),
