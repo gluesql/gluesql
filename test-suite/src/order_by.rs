@@ -150,10 +150,10 @@ CREATE TABLE Test (
         "SELECT * FROM Test ORDER BY id NULLS FIRST",
         Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into())
     );
-    test!(
-        // ORDER BY aliases
-        "SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC",
-        Ok(select!(
+    test! {
+        name: "ORDER BY aliases",
+        sql:"SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC",
+        expected:Ok(select!(
             C1  | C2
             I64 | I64;
             1     9;
@@ -161,11 +161,11 @@ CREATE TABLE Test (
             3     4;
             4     7
         ))
-    );
-    test!(
-        // original column_names still work even if aliases were used at SELECT clause
-        "SELECT id AS C1, num AS C2 FROM Test ORDER BY id ASC, num DESC",
-        Ok(select!(
+    };
+    test! {
+        name: "original column_names still work even if aliases were used at SELECT clause",
+        sql: "SELECT id AS C1, num AS C2 FROM Test ORDER BY id ASC, num DESC",
+        expected: Ok(select!(
             C1  | C2
             I64 | I64;
             1     9;
@@ -173,11 +173,11 @@ CREATE TABLE Test (
             3     4;
             4     7
         ))
-    );
-    test!(
-        // ORDER BY I64 and UnaryOperator::PLUS work as COLUMN_INDEX
-        "SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC",
-        Ok(select!(
+    };
+    test! {
+        name: "ORDER BY I64 and UnaryOperator::PLUS work as COLUMN_INDEX",
+        sql: "SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC",
+        expected: Ok(select!(
             id  | num
             I64 | I64;
             1     9;
@@ -185,11 +185,11 @@ CREATE TABLE Test (
             3     4;
             4     7
         ))
-    );
-    test!(
-        // ORDER BY UnaryOperator::MINUS works as a normal integer;
-        "SELECT id, num FROM Test ORDER BY -1",
-        Ok(select!(
+    };
+    test! {
+        name: "ORDER BY UnaryOperator::MINUS works as a normal integer",
+        sql: "SELECT id, num FROM Test ORDER BY -1",
+        expected: Ok(select!(
             id  | num
             I64 | I64;
             1     2;
@@ -197,13 +197,15 @@ CREATE TABLE Test (
             3     4;
             4     7
         ))
-    );
-    test!(
-        "SELECT id, num FROM Test ORDER BY 0",
-        Err(SortError::ColumnIndexOutOfRange(0).into())
-    );
-    test!(
-        "SELECT id, num FROM Test ORDER BY 3",
-        Err(SortError::ColumnIndexOutOfRange(3).into())
-    );
+    };
+    test! {
+        name: "ORDER BY COLUMN_INDEX should be larger than 0",
+        sql: "SELECT id, num FROM Test ORDER BY 0",
+        expected: Err(SortError::ColumnIndexOutOfRange(0).into())
+    };
+    test! {
+        name: "ORDER BY COLUMN_INDEX should be less than the number of columns",
+        sql: "SELECT id, num FROM Test ORDER BY 3",
+        expected: Err(SortError::ColumnIndexOutOfRange(3).into())
+    };
 });
