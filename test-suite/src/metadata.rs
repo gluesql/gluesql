@@ -20,25 +20,25 @@ test_case!(metadata, async move {
         ShowVariable(PayloadVariable::Version(_))
     ));
 
-    test!(tables(Vec::new()), "SHOW TABLES");
+    test!("SHOW TABLES", tables(Vec::new()));
 
     run!("CREATE TABLE Foo (id INTEGER);");
-    test!(tables(vec!["Foo"]), "SHOW TABLES");
+    test!("SHOW TABLES", tables(vec!["Foo"]));
 
     run!("CREATE TABLE Zoo (id INTEGER);");
     run!("CREATE TABLE Bar (id INTEGER);");
-    test!(tables(vec!["Bar", "Foo", "Zoo"]), "SHOW TABLES");
+    test!("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]));
 
     test!(
-        Err(TranslateError::UnsupportedShowVariableKeyword("WHATEVER".to_owned()).into()),
-        "SHOW WHATEVER"
+        "SHOW WHATEVER",
+        Err(TranslateError::UnsupportedShowVariableKeyword("WHATEVER".to_owned()).into())
     );
 
     test!(
+        "SHOW ME THE CHICKEN",
         Err(
             TranslateError::UnsupportedShowVariableStatement("SHOW ME THE CHICKEN".to_owned())
                 .into()
-        ),
-        "SHOW ME THE CHICKEN"
+        )
     );
 });

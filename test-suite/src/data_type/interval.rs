@@ -31,6 +31,7 @@ INSERT INTO IntervalLog VALUES
     );
 
     test!(
+        "SELECT * FROM IntervalLog;",
         Ok(select!(
             id  | interval1           | interval2
             I64 | Interval            | Interval;
@@ -41,90 +42,89 @@ INSERT INTO IntervalLog VALUES
             5     I::minutes(86 * 60)   I::microseconds((((84 * 60) + 30) * 60 + 12) * 1_000_000 + 132_400);
             6     I::hours(12)          I::seconds(-(12 * 3600 + 30 * 60 + 12));
             7     I::months(-12_011)    I::seconds(-(30 * 60 + 11))
-        )),
-        "SELECT * FROM IntervalLog;"
+        ))
     );
 
     test!(
-        Ok(select!(
-            id  | i1            | i2
-            I64 | Interval      | Interval;
-            1     I::months(28)   I::months(66)
-        )),
         r#"SELECT
             id,
             interval1 * 2 AS i1,
             interval2 - INTERVAL "-3" YEAR AS i2
-        FROM IntervalLog WHERE id = 1"#
+        FROM IntervalLog WHERE id = 1"#,
+        Ok(select!(
+            id  | i1            | i2
+            I64 | Interval      | Interval;
+            1     I::months(28)   I::months(66)
+        ))
     );
 
     test!(
-        Ok(select!(
-            id  | i1         | i2           | i3
-            I64 | Interval   | Interval     | Interval;
-            2     I::days(4)   I::hours(34)   I::minutes(1)
-        )),
         r#"SELECT
             id,
             interval1 / 3 AS i1,
             interval2 - INTERVAL 3600 SECOND AS i2,
             INTERVAL 30 SECOND + INTERVAL 10 SECOND * 3 AS i3
-        FROM IntervalLog WHERE id = 2;"#
+        FROM IntervalLog WHERE id = 2;"#,
+        Ok(select!(
+            id  | i1         | i2           | i3
+            I64 | Interval   | Interval     | Interval;
+            2     I::days(4)   I::hours(34)   I::minutes(1)
+        ))
     );
 
     test!(
-        Err(IntervalError::UnsupportedRange("Minute".to_owned(), "Hour".to_owned()).into()),
-        r#"INSERT INTO IntervalLog VALUES (1, INTERVAL "20:00" MINUTE TO HOUR, INTERVAL "1-2" YEAR TO MONTH)"#
+        r#"INSERT INTO IntervalLog VALUES (1, INTERVAL "20:00" MINUTE TO HOUR, INTERVAL "1-2" YEAR TO MONTH)"#,
+        Err(IntervalError::UnsupportedRange("Minute".to_owned(), "Hour".to_owned()).into())
     );
 
     test!(
-        Err(IntervalError::AddBetweenYearToMonthAndHourToSecond.into()),
-        r#"SELECT INTERVAL "1" YEAR + INTERVAL "1" HOUR FROM IntervalLog;"#
+        r#"SELECT INTERVAL "1" YEAR + INTERVAL "1" HOUR FROM IntervalLog;"#,
+        Err(IntervalError::AddBetweenYearToMonthAndHourToSecond.into())
     );
 
     test!(
-        Err(IntervalError::SubtractBetweenYearToMonthAndHourToSecond.into()),
-        r#"SELECT INTERVAL "1" YEAR - INTERVAL "1" HOUR FROM IntervalLog;"#
+        r#"SELECT INTERVAL "1" YEAR - INTERVAL "1" HOUR FROM IntervalLog;"#,
+        Err(IntervalError::SubtractBetweenYearToMonthAndHourToSecond.into())
     );
 
     test!(
-        Err(IntervalError::FailedToParseInteger("1.4".to_owned()).into()),
-        r#"SELECT INTERVAL "1.4" YEAR FROM IntervalLog;"#
+        r#"SELECT INTERVAL "1.4" YEAR FROM IntervalLog;"#,
+        Err(IntervalError::FailedToParseInteger("1.4".to_owned()).into())
     );
 
     test!(
-        Err(IntervalError::FailedToParseDecimal("1.4ab".to_owned()).into()),
-        r#"SELECT INTERVAL "1.4ab" HOUR FROM IntervalLog;"#
+        r#"SELECT INTERVAL "1.4ab" HOUR FROM IntervalLog;"#,
+        Err(IntervalError::FailedToParseDecimal("1.4ab".to_owned()).into())
     );
 
     test!(
-        Err(IntervalError::FailedToParseTime("111:34".to_owned()).into()),
-        r#"SELECT INTERVAL "111:34" HOUR TO MINUTE FROM IntervalLog;"#
+        r#"SELECT INTERVAL "111:34" HOUR TO MINUTE FROM IntervalLog;"#,
+        Err(IntervalError::FailedToParseTime("111:34".to_owned()).into())
     );
 
     test!(
-        Err(IntervalError::FailedToParseYearToMonth("111".to_owned()).into()),
-        r#"SELECT INTERVAL "111" YEAR TO MONTH FROM IntervalLog;"#
+        r#"SELECT INTERVAL "111" YEAR TO MONTH FROM IntervalLog;"#,
+        Err(IntervalError::FailedToParseYearToMonth("111".to_owned()).into())
     );
 
     test!(
-        Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into()),
-        r#"SELECT INTERVAL "111" DAY TO HOUR FROM IntervalLog;"#
+        r#"SELECT INTERVAL "111" DAY TO HOUR FROM IntervalLog;"#,
+        Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into())
     );
 
     test!(
-        Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into()),
-        r#"SELECT INTERVAL "111" DAY TO HOUR FROM IntervalLog;"#
+        r#"SELECT INTERVAL "111" DAY TO HOUR FROM IntervalLog;"#,
+        Err(IntervalError::FailedToParseDayToHour("111".to_owned()).into())
     );
 
     test!(
-        Err(IntervalError::FailedToParseDayToMinute("111".to_owned()).into()),
-        r#"SELECT INTERVAL "111" DAY TO MINUTE FROM IntervalLog;"#
+        r#"SELECT INTERVAL "111" DAY TO MINUTE FROM IntervalLog;"#,
+        Err(IntervalError::FailedToParseDayToMinute("111".to_owned()).into())
     );
 
     test!(
-        Err(IntervalError::FailedToParseDayToSecond("111".to_owned()).into()),
-        r#"SELECT INTERVAL "111" DAY TO Second FROM IntervalLog;"#
+        r#"SELECT INTERVAL "111" DAY TO Second FROM IntervalLog;"#,
+        Err(IntervalError::FailedToParseDayToSecond("111".to_owned()).into())
     );
 
     test!(

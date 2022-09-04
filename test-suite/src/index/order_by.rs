@@ -21,16 +21,16 @@ CREATE TABLE Test (
     );
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_name ON Test (name)"
+        "CREATE INDEX idx_name ON Test (name)",
+        Ok(Payload::CreateIndex)
     );
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_id_num_asc ON Test (id + num ASC)"
+        "CREATE INDEX idx_id_num_asc ON Test (id + num ASC)",
+        Ok(Payload::CreateIndex)
     );
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_num_desc ON Test (num DESC)"
+        "CREATE INDEX idx_num_desc ON Test (num DESC)",
+        Ok(Payload::CreateIndex)
     );
 
     macro_rules! s {
@@ -108,8 +108,8 @@ CREATE TABLE Multi (
     );
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_id_num ON Multi (id + num DESC)"
+        "CREATE INDEX idx_id_num ON Multi (id + num DESC)",
+        Ok(Payload::CreateIndex)
     );
 
     test_idx!(
@@ -125,8 +125,8 @@ CREATE TABLE Multi (
     );
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_num ON Multi (num ASC)"
+        "CREATE INDEX idx_num ON Multi (num ASC)",
+        Ok(Payload::CreateIndex)
     );
 
     test_idx!(
