@@ -86,9 +86,9 @@ impl<'a> Sort<'a> {
                         };
                         match big_decimal {
                             Some(n) => {
-                                let index = n.to_usize().ok_or_else(|| {
-                                    crate::result::Error::from(SortError::Unreachable)
-                                })?;
+                                let index = n
+                                    .to_usize()
+                                    .ok_or_else(|| -> Error { SortError::Unreachable.into() })?;
                                 let zero_based = index.checked_sub(1).ok_or_else(|| -> Error {
                                     SortError::ColumnIndexOutOfRange(index).into()
                                 })?;
