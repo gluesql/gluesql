@@ -117,7 +117,7 @@ impl<'a> Sort<'a> {
                 async move {
                     let row = Rc::new(row);
                     let label_context =
-                        BlendContext::new(table_alias, labels, Shared(Some(Rc::clone(&row))), None);
+                        BlendContext::new(table_alias, labels, Shared(Rc::clone(&row)), None);
                     let label_context = Rc::from(label_context);
                     let filter_context = Rc::new(FilterContext::concat(
                         Some(filter_context),
