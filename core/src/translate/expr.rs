@@ -84,7 +84,10 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         }),
         SqlExpr::Function(function) => translate_function(function),
         SqlExpr::Trim { expr, trim_where } => translate_trim(expr, trim_where),
-        SqlExpr::Exists(query) => translate_query(query).map(Box::new).map(Expr::Exists),
+        SqlExpr::Exists { subquery, negated } => Ok(Expr::Exists {
+            subquery: translate_query(subquery).map(Box::new)?,
+            negated: *negated,
+        }),
         SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
         SqlExpr::Case {
             operand,

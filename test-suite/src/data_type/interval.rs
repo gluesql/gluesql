@@ -3,6 +3,7 @@ use {
     gluesql_core::{
         data::{Interval as I, IntervalError},
         prelude::Value::*,
+        translate::TranslateError,
     },
 };
 
@@ -19,9 +20,9 @@ CREATE TABLE IntervalLog (
     run!(
         r#"
 INSERT INTO IntervalLog VALUES
-    (1, INTERVAL "1-2" YEAR TO MONTH,         INTERVAL "30" MONTH),
-    (2, INTERVAL "12" DAY,                    INTERVAL "35" HOUR),
-    (3, INTERVAL "12" MINUTE,                 INTERVAL "300" SECOND),
+    (1, INTERVAL "1-2" YEAR TO MONTH,         INTERVAL 30 MONTH),
+    (2, INTERVAL 12 DAY,                      INTERVAL "35" HOUR),
+    (3, INTERVAL "12" MINUTE,                 INTERVAL 300 SECOND),
     (4, INTERVAL "-3 14" DAY TO HOUR,         INTERVAL "3 12:30" DAY TO MINUTE),
     (5, INTERVAL "3 14:00:00" DAY TO SECOND,  INTERVAL "3 12:30:12.1324" DAY TO SECOND),
     (6, INTERVAL "12:00" HOUR TO MINUTE,      INTERVAL "-12:30:12" HOUR TO SECOND),
@@ -61,8 +62,8 @@ INSERT INTO IntervalLog VALUES
         r#"SELECT
             id,
             interval1 / 3 AS i1,
-            interval2 - INTERVAL "3600" SECOND AS i2,
-            INTERVAL "30" SECOND + INTERVAL "10" SECOND * 3 AS i3
+            interval2 - INTERVAL 3600 SECOND AS i2,
+            INTERVAL 30 SECOND + INTERVAL 10 SECOND * 3 AS i3
         FROM IntervalLog WHERE id = 2;"#,
         Ok(select!(
             id  | i1         | i2           | i3
@@ -124,5 +125,10 @@ INSERT INTO IntervalLog VALUES
     test!(
         r#"SELECT INTERVAL "111" DAY TO Second FROM IntervalLog;"#,
         Err(IntervalError::FailedToParseDayToSecond("111".to_owned()).into())
+    );
+
+    test!(
+        "SELECT INTERVAL a + b DAY TO MINUTE;",
+        Err(TranslateError::UnsupportedIntervalValue("a + b".to_owned()).into())
     );
 });

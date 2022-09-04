@@ -43,7 +43,7 @@ pub use {
 };
 
 /// Available expression builder functions
-pub use expr::{col, exists, expr, nested, num, text, ExprNode};
+pub use expr::{col, exists, expr, nested, not_exists, num, text, ExprNode};
 
 #[cfg(feature = "alter-table")]
 pub use alter_table::{

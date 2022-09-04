@@ -60,8 +60,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             selection: selection.as_ref().map(translate_expr).transpose()?,
         }),
         SqlStatement::Delete {
-            table_name,
+            table_name: TableFactor::Table {
+                name: table_name, ..
+            },
             selection,
+            ..
         } => Ok(Statement::Delete {
             table_name: translate_object_name(table_name),
             selection: selection.as_ref().map(translate_expr).transpose()?,
