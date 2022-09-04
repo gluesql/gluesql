@@ -15,40 +15,41 @@ test_case!(int32, async move {
     let parse_i32 = |text: &str| -> i32 { text.parse().unwrap() };
 
     test!(
-        Err(ValueError::FailedToParseNumber.into()),
         &format!(
-            "INSERT INTO Item VALUES ({}, {})",
+            "INSERT INTO Item VALUES ({}, {i64})",
             i32::MAX as i64 + 1_i64,
             i64 = i32::MIN as i64 - 1_i64
-        )
+        ),
+        Err(ValueError::FailedToParseNumber.into())
     );
 
     test!(
+        &format!(
+            "select cast({} as INT(32)) from Item",
+            i32::MAX as i64 + 1_i64
+        ),
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int32,
             (i32::MAX as i64 + 1_i64).to_string()
         )
-        .into()),
-        &format!(
-            "select cast({} as INT(32)) from Item",
-            i32::MAX as i64 + 1_i64
-        )
+        .into())
     );
 
     test!(
+        &format!(
+            "select cast({} as INT(32)) from Item",
+            i32::MIN as i64 - 1_i64
+        ),
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int32,
             (i32::MIN as i64 - 1_i64).to_string()
         )
-        .into()),
-        &format!(
-            "select cast({} as INT(32)) from Item",
-            i32::MIN as i64 - 1_i64
-        )
+        .into())
     );
 
     // lets try some valid SQL
     test!(
+        "SELECT field_one, field_two FROM Item",
         Ok(select!(
             field_one          | field_two
             I32                |    I32;
@@ -56,69 +57,68 @@ test_case!(int32, async move {
             parse_i32("-2")    2;
             3                  3;
             parse_i32("-4")    parse_i32("-4")
-        )),
-        "SELECT field_one, field_two FROM Item"
+        ))
     );
 
     test!(
-        Ok(select!(field_one I32; 1)),
-        "SELECT field_one FROM Item WHERE field_one = 1"
+        "SELECT field_one FROM Item WHERE field_one = 1",
+        Ok(select!(field_one I32; 1))
     );
 
     test!(
-        Ok(select!(field_one I32; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one > 0"
+        "SELECT field_one FROM Item WHERE field_one > 0",
+        Ok(select!(field_one I32; 1; 3))
     );
 
     test!(
-        Ok(select!(field_one I32; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one >= 0"
+        "SELECT field_one FROM Item WHERE field_one >= 0",
+        Ok(select!(field_one I32; 1; 3))
     );
 
     test!(
-        Ok(select!(field_one I32; -2)),
-        "SELECT field_one FROM Item WHERE field_one = -2"
+        "SELECT field_one FROM Item WHERE field_one = -2",
+        Ok(select!(field_one I32; -2))
     );
 
     test!(
-        Ok(select!(field_one I32; -2; -4)),
-        "SELECT field_one FROM Item WHERE field_one < 0"
+        "SELECT field_one FROM Item WHERE field_one < 0",
+        Ok(select!(field_one I32; -2; -4))
     );
 
     test!(
-        Ok(select!(field_one I32; -2; -4)),
-        "SELECT field_one FROM Item WHERE field_one <= 0"
+        "SELECT field_one FROM Item WHERE field_one <= 0",
+        Ok(select!(field_one I32; -2; -4))
     );
 
     test!(
-        Ok(select!(plus I32; 0; 0; 6; -8)),
-        "SELECT field_one + field_two AS plus FROM Item;"
+        "SELECT field_one + field_two AS plus FROM Item;",
+        Ok(select!(plus I32; 0; 0; 6; -8))
     );
 
     test!(
-        Ok(select!(sub I32; 2; -4; 0; 0)),
-        "SELECT field_one - field_two AS sub FROM Item;"
+        "SELECT field_one - field_two AS sub FROM Item;",
+        Ok(select!(sub I32; 2; -4; 0; 0))
     );
 
     test!(
-        Ok(select!(mul I32; -1; -4; 9; 16)),
-        "SELECT field_one * field_two AS mul FROM Item;"
+        "SELECT field_one * field_two AS mul FROM Item;",
+        Ok(select!(mul I32; -1; -4; 9; 16))
     );
 
     test!(
-        Ok(select!(div I32; -1; -1; 1; 1)),
-        "SELECT field_one / field_two AS div FROM Item;"
+        "SELECT field_one / field_two AS div FROM Item;",
+        Ok(select!(div I32; -1; -1; 1; 1))
     );
 
     test!(
-        Ok(select!(modulo I32; 0; 0; 0; 0)),
-        "SELECT field_one % field_two AS modulo FROM Item;"
+        "SELECT field_one % field_two AS modulo FROM Item;",
+        Ok(select!(modulo I32; 0; 0; 0; 0))
     );
 
     // try inserting i32 max and i32 min
     test!(
-        Ok(Payload::Insert(1)),
-        &format!("INSERT INTO Item VALUES ({}, {})", i32::MAX, i32::MIN)
+        &format!("INSERT INTO Item VALUES ({}, {})", i32::MAX, i32::MIN),
+        Ok(Payload::Insert(1))
     );
 
     run!("DELETE FROM Item");

@@ -41,7 +41,7 @@ test_case!(error, async move {
     ];
 
     for (error, sql) in test_cases {
-        test!(Err(error), sql);
+        test!(sql, Err(error));
     }
 });
 
@@ -68,7 +68,7 @@ test_case!(error_group_by, async move {
     "
     );
     test!(
-        Err(KeyError::FloatTypeKeyNotSupported.into()),
-        "SELECT * FROM Item GROUP BY ratio;"
+        "SELECT * FROM Item GROUP BY ratio;",
+        Err(KeyError::FloatTypeKeyNotSupported.into())
     );
 });

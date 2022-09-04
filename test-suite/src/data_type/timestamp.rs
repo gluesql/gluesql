@@ -29,92 +29,91 @@ INSERT INTO TimestampLog VALUES
     }
 
     test!(
+        "SELECT id, t1, t2 FROM TimestampLog",
         Ok(select!(
             id  | t1                             | t2
             I64 | Timestamp                      | Timestamp;
             1     t!("2020-06-11T11:23:11")        t!("2021-03-01T00:00:00");
             2     t!("2020-09-30T19:00:00")        t!("1988-12-31T15:01:00");
             3     t!("2021-05-01T00:00:00.1234")   t!("2021-05-01T00:00:00.1234")
-        )),
-        "SELECT id, t1, t2 FROM TimestampLog"
+        ))
     );
 
     test!(
+        "SELECT * FROM TimestampLog WHERE t1 > t2",
         Ok(select!(
             id  | t1                        | t2
             I64 | Timestamp                 | Timestamp;
             2     t!("2020-09-30T19:00:00")   t!("1988-12-31T15:01:00")
-        )),
-        "SELECT * FROM TimestampLog WHERE t1 > t2"
+        ))
     );
 
     test!(
+        "SELECT * FROM TimestampLog WHERE t1 = t2",
         Ok(select!(
             id  | t1                             | t2
             I64 | Timestamp                      | Timestamp;
             3     t!("2021-05-01T00:00:00.1234")   t!("2021-05-01T00:00:00.1234")
-        )),
-        "SELECT * FROM TimestampLog WHERE t1 = t2"
+        ))
     );
 
     test!(
+        r#"SELECT * FROM TimestampLog WHERE t1 = "2020-06-11T14:23:11+0300";"#,
         Ok(select!(
             id  | t1                        | t2
             I64 | Timestamp                 | Timestamp;
             1     t!("2020-06-11T11:23:11")   t!("2021-03-01T00:00:00")
-
-        )),
-        r#"SELECT * FROM TimestampLog WHERE t1 = "2020-06-11T14:23:11+0300";"#
+        ))
     );
 
     test!(
+        r#"SELECT * FROM TimestampLog WHERE t2 < TIMESTAMP "2000-01-01";"#,
         Ok(select!(
             id  | t1                        | t2
             I64 | Timestamp                 | Timestamp;
             2     t!("2020-09-30T19:00:00")   t!("1988-12-31T15:01:00")
-        )),
-        r#"SELECT * FROM TimestampLog WHERE t2 < TIMESTAMP "2000-01-01";"#
+        ))
     );
 
     test!(
+        r#"SELECT * FROM TimestampLog WHERE TIMESTAMP "1999-01-03" < "2000-01-01";"#,
         Ok(select!(
             id  | t1                             | t2
             I64 | Timestamp                      | Timestamp;
             1     t!("2020-06-11T11:23:11")        t!("2021-03-01T00:00:00");
             2     t!("2020-09-30T19:00:00")        t!("1988-12-31T15:01:00");
             3     t!("2021-05-01T00:00:00.1234")   t!("2021-05-01T00:00:00.1234")
-        )),
-        r#"SELECT * FROM TimestampLog WHERE TIMESTAMP "1999-01-03" < "2000-01-01";"#
+        ))
     );
 
     test!(
+        "SELECT id, t1 - t2 AS timestamp_sub FROM TimestampLog;",
         Ok(select!(
             id  | timestamp_sub
             I64 | Interval;
             1     gluesql_core::data::Interval::seconds(-22_682_209);
             2     gluesql_core::data::Interval::seconds(1_001_908_740);
             3     gluesql_core::data::Interval::seconds(0)
-        )),
-        "SELECT id, t1 - t2 AS timestamp_sub FROM TimestampLog;"
+        ))
     );
 
     test!(
+        r#"SELECT
+            id,
+            t1 - INTERVAL "1" DAY AS sub,
+            t2 + INTERVAL "1" MONTH AS add
+        FROM TimestampLog;"#,
         Ok(select!(
             id  | sub                            | add
             I64 | Timestamp                      | Timestamp;
             1     t!("2020-06-10T11:23:11")        t!("2021-04-01T00:00:00");
             2     t!("2020-09-29T19:00:00")        t!("1989-01-31T15:01:00");
             3     t!("2021-04-30T00:00:00.1234")   t!("2021-06-01T00:00:00.1234")
-        )),
-        r#"SELECT
-            id,
-            t1 - INTERVAL "1" DAY AS sub,
-            t2 + INTERVAL "1" MONTH AS add
-        FROM TimestampLog;"#
+        ))
     );
 
     test!(
-        Err(ValueError::FailedToParseTimestamp("12345-678".to_owned()).into()),
-        r#"INSERT INTO TimestampLog VALUES (1, "12345-678", "2021-05-01")"#
+        r#"INSERT INTO TimestampLog VALUES (1, "12345-678", "2021-05-01")"#,
+        Err(ValueError::FailedToParseTimestamp("12345-678".to_owned()).into())
     );
 });

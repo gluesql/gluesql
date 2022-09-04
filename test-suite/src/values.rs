@@ -179,6 +179,6 @@ test_case!(values, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

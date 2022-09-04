@@ -19,8 +19,8 @@ pub fn expr(sql: &str) -> Expr {
     translate_expr(&parsed).unwrap()
 }
 
-pub fn test(expected: Result<Payload>, found: Result<Payload>) {
-    let (expected, found): (Payload, Payload) = match (expected, found) {
+pub fn test(found: Result<Payload>, expected: Result<Payload>) {
+    let (found, expected): (Payload, Payload) = match (found, expected) {
         (Ok(a), Ok(b)) => (a, b),
         (a, b) => {
             assert_eq!(a, b);
@@ -29,14 +29,14 @@ pub fn test(expected: Result<Payload>, found: Result<Payload>) {
         }
     };
 
-    let (expected, found) = match (expected, found) {
+    let (found, expected) = match (found, expected) {
         (
             Payload::Select {
-                labels: expected_labels,
+                labels: found_labels,
                 rows: a,
             },
             Payload::Select {
-                labels: found_labels,
+                labels: expected_labels,
                 rows: b,
             },
         ) => {
@@ -52,45 +52,45 @@ pub fn test(expected: Result<Payload>, found: Result<Payload>) {
     };
 
     assert_eq!(
-        expected.len(),
         found.len(),
+        expected.len(),
         "\n[err: number of rows]\nexpected: {:?}\n   found: {:?}",
-        expected,
-        found
+        found,
+        expected
     );
 
     let rows = expected.into_iter().zip(found.into_iter()).enumerate();
 
-    for (i, (expected, found)) in rows {
+    for (i, (found, expected)) in rows {
         assert_eq!(
-            expected.len(),
             found.len(),
+            expected.len(),
             "\n[err: size of row] row index: {}\nexpected: {:?}\n   found: {:?}",
             i,
-            expected,
-            found
+            found,
+            expected
         );
 
         expected
             .iter()
             .zip(found.iter())
-            .for_each(|(expected_val, found_val)| {
-                if matches!((expected_val, found_val), (&Value::Null, &Value::Null)) {
+            .for_each(|(found_val, expected_val)| {
+                if matches!((found_val, expected_val), (&Value::Null, &Value::Null)) {
                     return;
                 }
 
                 assert_eq!(
-                    expected_val, found_val,
+                    found_val, expected_val,
                     "\n[err: value] row index: {}\nexpected: {:?}\n   found: {:?}",
-                    i, expected, found
+                    i, found, expected
                 );
             });
     }
 }
 
 pub async fn run<T: GStore + GStoreMut>(
-    cell: Rc<RefCell<Option<T>>>,
     sql: &str,
+    cell: Rc<RefCell<Option<T>>>,
     indexes: Option<Vec<IndexItem>>,
 ) -> Result<Payload> {
     let storage = cell.replace(None).unwrap();
@@ -276,14 +276,14 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! run {
                 ($sql: expr) => {
-                    $crate::run(Rc::clone(&cell), $sql, None).await.unwrap()
+                    $crate::run($sql, Rc::clone(&cell), None).await.unwrap()
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! count {
                 ($count: expr, $sql: expr) => {
-                    match $crate::run(Rc::clone(&cell), $sql, None).await.unwrap() {
+                    match $crate::run($sql, Rc::clone(&cell), None).await.unwrap() {
                         gluesql_core::prelude::Payload::Select { rows, .. } => {
                             assert_eq!($count, rows.len())
                         }
@@ -297,7 +297,7 @@ macro_rules! test_case {
             #[allow(unused_macros)]
             macro_rules! type_match {
                 ($expected: expr, $sql: expr) => {
-                    let found = run(Rc::clone(&cell), $sql, None).await;
+                    let found = run($sql, Rc::clone(&cell), None).await;
 
                     $crate::type_match($expected, found);
                 };
@@ -305,17 +305,29 @@ macro_rules! test_case {
 
             #[allow(unused_macros)]
             macro_rules! test {
-                ($expected: expr, $sql: expr) => {
-                    let found = run(Rc::clone(&cell), $sql, None).await;
+                (name: $test_name: literal, sql: $sql: expr, expected: $expected: expr) => {
+                    let found = run($sql, Rc::clone(&cell), None).await;
 
-                    $crate::test($expected, found);
+                    $crate::test(found, $expected);
+                };
+
+                (sql: $sql: expr, expected: $expected: expr) => {
+                    let found = run($sql, Rc::clone(&cell), None).await;
+
+                    $crate::test(found, $expected);
+                };
+
+                ($sql: expr, $expected: expr) => {
+                    let found = run($sql, Rc::clone(&cell), None).await;
+
+                    $crate::test(found, $expected);
                 };
             }
 
             #[allow(unused_macros)]
             macro_rules! test_idx {
                 ($expected: expr, $indexes: expr, $sql: expr) => {
-                    let found = $crate::run(Rc::clone(&cell), $sql, Some($indexes)).await;
+                    let found = $crate::run($sql, Rc::clone(&cell), Some($indexes)).await;
 
                     $crate::test($expected, found);
                 };

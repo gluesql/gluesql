@@ -70,17 +70,17 @@ test_case!(synthesize, async move {
 
     let test_cases = [
         (
-            select!(id | test; I64 | I64; 1 100),
             "SELECT id, test FROM TableA LIMIT 1;",
+            select!(id | test; I64 | I64; 1 100),
         ),
-        (select!(id; I64; 1), "SELECT id FROM TableA LIMIT 1;"),
+        ("SELECT id FROM TableA LIMIT 1;", select!(id; I64; 1)),
         (
-            select!(id | test | target_id; I64 | I64 | I64; 1 100 2),
             "SELECT * FROM TableA LIMIT 1;",
+            select!(id | test | target_id; I64 | I64 | I64; 1 100 2),
         ),
     ];
 
-    for (expected, sql) in test_cases {
-        test!(Ok(expected), sql);
+    for (sql, expected) in test_cases {
+        test!(sql, Ok(expected));
     }
 });
