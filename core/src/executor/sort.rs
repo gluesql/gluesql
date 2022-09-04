@@ -1,8 +1,7 @@
+use crate::ast::Aggregate;
+
 use {
-    super::{
-        context::{AggregateContext, FilterContext},
-        evaluate::evaluate,
-    },
+    super::{context::FilterContext, evaluate::evaluate},
     crate::{
         ast::{AstLiteral, Expr, OrderByExpr, UnaryOperator},
         data::{Row, Value},
@@ -12,6 +11,7 @@ use {
     },
     bigdecimal::ToPrimitive,
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
+    im_rc::HashMap,
     serde::Serialize,
     std::{cmp::Ordering, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -47,7 +47,13 @@ impl<'a> Sort<'a> {
 
     pub async fn apply(
         &self,
-        rows: impl Stream<Item = Result<(AggregateContext<'a>, Row)>> + 'a,
+        rows: impl Stream<
+                Item = Result<(
+                    Option<Rc<HashMap<&'a Aggregate, Value>>>,
+                    Rc<BlendContext<'a>>,
+                    Row,
+                )>,
+            > + 'a,
         labels: Rc<Vec<String>>,
         table_alias: &'a str,
     ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
@@ -58,13 +64,13 @@ impl<'a> Sort<'a> {
         }
 
         if self.order_by.is_empty() {
-            let rows = rows.map_ok(|(_, row)| row);
+            let rows = rows.map_ok(|(.., row)| row);
 
             return Ok(Rows::NonOrderBy(Box::pin(rows)));
         }
 
         let rows = rows
-            .and_then(|(AggregateContext { aggregated, next }, row)| {
+            .and_then(|(aggregated, next, row)| {
                 enum SortType<'a> {
                     Value(Value),
                     Expr(&'a Expr),
@@ -110,7 +116,6 @@ impl<'a> Sort<'a> {
                     self.context.as_ref().map(Rc::clone),
                     Some(Rc::clone(&next)),
                 ));
-                let aggregated = aggregated.map(Rc::new);
 
                 async move {
                     let row = Rc::new(row);

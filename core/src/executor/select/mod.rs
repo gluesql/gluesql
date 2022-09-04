@@ -287,22 +287,28 @@ pub async fn select_with_labels<'a>(
     });
 
     let rows = aggregate.apply(rows).await?;
+
     let rows = rows.and_then(move |aggregate_context| {
         let blend = Rc::clone(&blend);
         let AggregateContext { aggregated, next } = aggregate_context;
-        let rc_aggregated = aggregated.clone().map(Rc::new);
+        let aggregated = aggregated.map(Rc::new);
 
         async move {
-            let row = blend.apply(rc_aggregated.clone(), Rc::clone(&next)).await?;
+            let row = blend
+                .apply(aggregated.as_ref().map(Rc::clone), Rc::clone(&next))
+                .await?;
 
-            Ok((AggregateContext { aggregated, next }, row))
+            Ok((aggregated, next, row))
         }
     });
+
     let labels = Rc::new(labels);
     let rows = sort
         .apply(rows, Rc::clone(&labels), get_alias(relation)?)
         .await?;
+
     let rows = limit.apply(rows);
+
     let labels = Rc::try_unwrap(labels).map_err(|_| SelectError::Unreachable)?;
 
     Ok((labels, rows))
