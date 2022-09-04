@@ -31,9 +31,6 @@ impl<'a> BlendContext<'a> {
             next,
         }
     }
-    // pub fn get_table_alias(&'a self) -> &'a str {
-    //     self.table_alias
-    // }
 
     pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
         let get_value = || {

@@ -107,7 +107,6 @@ impl<'a> Sort<'a> {
                         }
                     })
                     .collect::<Result<Vec<_>>>();
-                // let table_alias = next.get_table_alias();
                 let labels = Rc::from(labels.as_slice());
                 let filter_context = Rc::new(FilterContext::concat(
                     self.context.as_ref().map(Rc::clone),
