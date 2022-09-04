@@ -145,7 +145,7 @@ impl<'a> Sort<'a> {
                         .await?;
                     drop(label_context);
                     drop(filter_context);
-                    let row = Rc::try_unwrap(row).unwrap();
+                    let row = Rc::try_unwrap(row).map_err(|_| SortError::Unreachable)?;
 
                     Ok((values, row))
                 }
