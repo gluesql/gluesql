@@ -1,4 +1,8 @@
+#[cfg(feature = "alter-table")]
+mod alter_table;
 mod assignment;
+mod column_def;
+mod create_table;
 mod data_type;
 mod delete;
 mod drop_table;
@@ -19,6 +23,8 @@ mod update;
 
 pub use {
     assignment::AssignmentNode,
+    column_def::ColumnDefNode,
+    create_table::CreateTableNode,
     data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
@@ -38,6 +44,12 @@ pub use {
 
 /// Available expression builder functions
 pub use expr::{col, exists, expr, nested, num, text, ExprNode};
+
+#[cfg(feature = "alter-table")]
+pub use alter_table::{
+    AddColumnNode, AlterTableNode, DropColumnNode, RenameColumnNode, RenameTableNode,
+};
+
 #[cfg(feature = "index")]
 pub use {index::CreateIndexNode, index::DropIndexNode};
 
