@@ -62,6 +62,7 @@ impl<'a> Sort<'a> {
 
             return Ok(Rows::NonOrderBy(Box::pin(rows)));
         }
+
         let rows = rows
             .and_then(|(AggregateContext { aggregated, next }, row)| {
                 enum SortType<'a> {
@@ -84,6 +85,7 @@ impl<'a> Sort<'a> {
                             },
                             _ => None,
                         };
+
                         match big_decimal {
                             Some(n) => {
                                 let index = n
@@ -102,12 +104,14 @@ impl<'a> Sort<'a> {
                         }
                     })
                     .collect::<Result<Vec<_>>>();
+
                 let labels = Rc::from(labels.as_slice());
                 let filter_context = Rc::new(FilterContext::concat(
                     self.context.as_ref().map(Rc::clone),
                     Some(Rc::clone(&next)),
                 ));
                 let aggregated = aggregated.map(Rc::new);
+
                 async move {
                     let row = Rc::new(row);
                     let label_context =
@@ -118,6 +122,7 @@ impl<'a> Sort<'a> {
                         Some(Rc::clone(&label_context)),
                     ));
                     let order_by = order_by?;
+
                     let values = stream::iter(order_by.into_iter())
                         .then(|(sort_type, asc)| {
                             let context = Some(Rc::clone(&filter_context));
@@ -137,8 +142,10 @@ impl<'a> Sort<'a> {
                         })
                         .try_collect::<Vec<_>>()
                         .await?;
+
                     drop(label_context);
                     drop(filter_context);
+
                     let row = Rc::try_unwrap(row).map_err(|_| SortError::Unreachable)?;
 
                     Ok((values, row))
