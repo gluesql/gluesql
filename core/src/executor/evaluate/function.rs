@@ -1,3 +1,5 @@
+use chrono::NaiveDateTime;
+
 use {
     super::{EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
@@ -418,7 +420,10 @@ pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>)
             let format = eval_to_str!(name, format);
             return Ok(Value::Str(format_date(expr, format)));
         }
-        // Value::Timestamp()=>Ok()
+        Value::Timestamp(expr) => {
+            let format = eval_to_str!(name, format);
+            return Ok(Value::Str(format_timestmap(expr, format)));
+        }
         _ => {
             return Err(EvaluateError::FunctionRequiresFormattableValue(name).into());
         }
@@ -427,9 +432,10 @@ pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>)
 
 fn format_date(a: NaiveDate, b: String) -> String {
     let b = b.as_str();
-    println!(
-        "{:?}",
-        Value::Str(chrono::NaiveDate::format(&a, b).to_string())
-    );
     chrono::NaiveDate::format(&a, b).to_string()
+}
+
+fn format_timestmap(a: NaiveDateTime, b: String) -> String {
+    let b = b.as_str();
+    chrono::NaiveDateTime::format(&a, b).to_string()
 }
