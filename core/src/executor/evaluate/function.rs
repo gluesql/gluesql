@@ -418,15 +418,13 @@ pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>)
     match expr.try_into()? {
         Value::Date(expr) => {
             let format = eval_to_str!(name, format);
-            return Ok(Value::Str(format_date(expr, format)));
+            Ok(Value::Str(format_date(expr, format)))
         }
         Value::Timestamp(expr) => {
             let format = eval_to_str!(name, format);
-            return Ok(Value::Str(format_timestmap(expr, format)));
+            Ok(Value::Str(format_timestmap(expr, format)))
         }
-        _ => {
-            return Err(EvaluateError::FunctionRequiresFormattableValue(name).into());
-        }
+        _ => Err(EvaluateError::FunctionRequiresFormattableValue(name).into()),
     }
 }
 
