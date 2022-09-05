@@ -416,7 +416,7 @@ pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>)
     match expr.try_into()? {
         Value::Date(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(format_date(expr, format)))
+            return Ok(Value::Str(format_date(expr, format)));
         }
         // Value::Timestamp()=>Ok()
         _ => {
@@ -427,5 +427,9 @@ pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>)
 
 fn format_date(a: NaiveDate, b: String) -> String {
     let b = b.as_str();
+    println!(
+        "{:?}",
+        Value::Str(chrono::NaiveDate::format(&a, b).to_string())
+    );
     chrono::NaiveDate::format(&a, b).to_string()
 }

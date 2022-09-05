@@ -7,12 +7,8 @@ test_case!(format, async move {
     };
 
     let test_cases = vec![(
-        r#"SELECT FORMAT(DATE "2017-06-15", "%Y")"#,
-        Ok(select!(
-            date
-            Str;
-           "2017".to_owned()
-        )),
+        r#"SELECT FORMAT(DATE "2017-06-15", "%Y-%m")"#,
+        Ok(select!("2017-06")),
     )];
     for (sql, expected) in test_cases {
         test!(expected, sql);
