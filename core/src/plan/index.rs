@@ -251,9 +251,9 @@ fn plan_index(
             .map(Box::new)
             .map(Expr::Subquery)
             .map(Planned::Expr),
-        Expr::Exists(query) => plan_query(schema_map, *query)
+        Expr::Exists { subquery, negated } => plan_query(schema_map, *subquery)
             .map(Box::new)
-            .map(Expr::Exists)
+            .map(|subquery| Expr::Exists { subquery, negated })
             .map(Planned::Expr),
         Expr::InSubquery {
             expr,

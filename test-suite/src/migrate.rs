@@ -27,48 +27,48 @@ test_case!(migrate, async move {
 
     let error_cases = [
         (
-            ValueError::FailedToParseNumber.into(),
             r#"INSERT INTO Test (id, num, name) VALUES (1.1, 1, "good");"#,
+            ValueError::FailedToParseNumber.into(),
         ),
         (
-            EvaluateError::UnsupportedStatelessExpr(expr!("a.b")).into(),
             "INSERT INTO Test (id, num, name) VALUES (1, 1, a.b);",
+            EvaluateError::UnsupportedStatelessExpr(expr!("a.b")).into(),
         ),
         (
-            TranslateError::UnsupportedExpr("Here.User.id".to_owned()).into(),
             "SELECT * FROM Test WHERE Here.User.id = 1",
+            TranslateError::UnsupportedExpr("Here.User.id".to_owned()).into(),
         ),
         (
-            TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into(),
             "SELECT * FROM Test NATURAL JOIN Test",
+            TranslateError::UnsupportedJoinConstraint("NATURAL".to_owned()).into(),
         ),
         (
-            TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
             "SELECT 1 ^ 2 FROM Test;",
+            TranslateError::UnsupportedBinaryOperator("^".to_owned()).into(),
         ),
         (
+            "SELECT * FROM Test UNION SELECT * FROM Test;",
             TranslateError::UnsupportedQuerySetExpr(
                 "SELECT * FROM Test UNION SELECT * FROM Test".to_owned(),
             )
             .into(),
-            "SELECT * FROM Test UNION SELECT * FROM Test;",
         ),
         (
-            EvaluateError::ValueNotFound("noname".to_owned()).into(),
             "SELECT * FROM Test WHERE noname = 1;",
+            EvaluateError::ValueNotFound("noname".to_owned()).into(),
         ),
         (
-            FetchError::TableNotFound("Nothing".to_owned()).into(),
             "SELECT * FROM Nothing;",
+            FetchError::TableNotFound("Nothing".to_owned()).into(),
         ),
         (
-            TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
             "TRUNCATE TABLE BlendUser;",
+            TranslateError::UnsupportedStatement("TRUNCATE TABLE BlendUser".to_owned()).into(),
         ),
     ];
 
-    for (error, sql) in error_cases {
-        test!(Err(error), sql);
+    for (sql, error) in error_cases {
+        test!(sql, Err(error));
     }
 
     let found = run!("SELECT id, num, name FROM Test");

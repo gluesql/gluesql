@@ -213,7 +213,7 @@ CREATE TABLE Test (
     ];
 
     for (sql, expected) in test_cases {
-        test!(Ok(expected), sql);
+        test!(sql, Ok(expected));
     }
 
     run!("UPDATE Test SET id = 2");
@@ -237,7 +237,7 @@ CREATE TABLE Test (
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -266,10 +266,10 @@ test_case!(nullable_implicit_insert, async move {
 
     run!("INSERT INTO Foo (id) VALUES (1)");
     test!(
+        "SELECT id, name FROM Foo",
         Ok(select_with_null!(
             id   | name;
             I64(1)  Null
-        )),
-        "SELECT id, name FROM Foo"
+        ))
     );
 });

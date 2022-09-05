@@ -40,7 +40,10 @@ pub trait Planner<'a> {
                 }
             }
             Expr::Subquery(query) => Expr::Subquery(Box::new(self.query(outer_context, *query))),
-            Expr::Exists(query) => Expr::Exists(Box::new(self.query(outer_context, *query))),
+            Expr::Exists { subquery, negated } => Expr::Exists {
+                subquery: Box::new(self.query(outer_context, *subquery)),
+                negated,
+            },
             Expr::InSubquery {
                 expr,
                 subquery,

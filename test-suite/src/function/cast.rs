@@ -303,7 +303,7 @@ test_case!(cast_literal, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -384,6 +384,6 @@ test_case!(cast_value, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
