@@ -10,6 +10,7 @@ use {
     },
     rustyline::{error::ReadlineError, Editor},
     std::{
+        error::Error,
         fs::File,
         io::{Read, Result, Write},
         path::Path,
@@ -37,7 +38,7 @@ where
         Self { glue, print }
     }
 
-    pub fn run(&mut self) -> Result<()> {
+    pub fn run(&mut self) -> std::result::Result<(), Box<dyn Error>> {
         macro_rules! println {
             ($($p:tt),*) => ( writeln!(&mut self.print.output, $($p),*)?; )
         }
@@ -89,6 +90,10 @@ where
                     println!("[error] should specify value.\n");
                     continue;
                 }
+                Err(CommandError::WrongOption(e)) => {
+                    println!("cannot support option: {e}");
+                    continue;
+                }
             };
 
             match command {
@@ -117,8 +122,8 @@ where
                 Command::SpoolOff => {
                     self.print.spool_off();
                 }
-                Command::Set(name, value) => self.print.set_option(name, value),
-                Command::Show(name) => self.print.show_option(name),
+                Command::Set(name, value) => self.print.set_option(name, value)?,
+                Command::Show(name) => self.print.show_option(name)?,
             }
         }
 

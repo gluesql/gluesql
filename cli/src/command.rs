@@ -22,6 +22,8 @@ pub enum CommandError {
     LackOfValue,
     #[error("should specify option")]
     LackOfOption,
+    #[error("cannot support option: {0}")]
+    WrongOption(String),
     #[error("command not supported")]
     NotSupported,
 }
@@ -56,7 +58,7 @@ impl Command {
                     (None, None) => Err(CommandError::LackOfOption),
                 },
                 ".show" => match params.get(1) {
-                    Some(name) => Ok(Self::Show(name.to_string())),
+                    Some(option) => Ok(Self::Show(option.to_string())),
                     None => Err(CommandError::LackOfOption),
                 },
 
