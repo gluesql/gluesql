@@ -11,6 +11,7 @@ pub use data_type::DataType;
 pub use ddl::*;
 pub use expr::Expr;
 pub use function::{Aggregate, CountArgExpr, Function};
+use itertools::Itertools;
 pub use operator::*;
 pub use query::*;
 
@@ -131,6 +132,41 @@ impl ToSql for ObjectName {
 impl ToSql for Statement {
     fn to_sql(&self) -> String {
         match self {
+            Statement::Insert {
+                table_name,
+                columns,
+                source,
+            } => {
+                let columns = columns.iter().join(", ");
+                format!("INSERT INTO {table_name} ({columns}) (..query..)")
+            }
+            Statement::Update {
+                table_name,
+                assignments,
+                selection,
+            } => {
+                let assignments = assignments
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                match selection {
+                    Some(expr) => {
+                        format!(
+                            "UPDATE {table_name} SET {assignments} WHERE {}",
+                            expr.to_sql()
+                        )
+                    }
+                    None => format!("UPDATE {table_name} SET {assignments}"),
+                }
+            }
+            Statement::Delete {
+                table_name,
+                selection,
+            } => match selection {
+                Some(expr) => format!("DELETE FROM {table_name} WHERE {}", expr.to_sql()),
+                None => format!("DELETE FROM {table_name}"),
+            },
             Statement::CreateTable {
                 if_not_exists,
                 name,
@@ -162,6 +198,12 @@ impl ToSql for Statement {
             }
             _ => "(..statement..)".to_string(),
         }
+    }
+}
+
+impl ToSql for Assignment {
+    fn to_sql(&self) -> String {
+        format!("{} = {}", self.id, self.value.to_sql())
     }
 }
 
