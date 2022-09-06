@@ -91,6 +91,34 @@ pub fn evaluate_stateless<'a>(
 
             expr::between(target, *negated, low, high)
         }
+        Expr::Like {
+            expr,
+            negated,
+            pattern,
+        } => {
+            let target = eval(expr)?;
+            let pattern = eval(pattern)?;
+            let evaluated = target.like(pattern, true)?;
+
+            match negated {
+                true => evaluated.unary_minus(),
+                false => Ok(evaluated),
+            }
+        }
+        Expr::ILike {
+            expr,
+            negated,
+            pattern,
+        } => {
+            let target = eval(expr)?;
+            let pattern = eval(pattern)?;
+            let evaluated = target.like(pattern, false)?;
+
+            match negated {
+                true => evaluated.unary_minus(),
+                false => Ok(evaluated),
+            }
+        }
         Expr::IsNull(expr) => {
             let v = eval(expr)?.is_null();
 

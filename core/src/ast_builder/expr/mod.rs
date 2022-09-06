@@ -1,6 +1,7 @@
 mod binary_op;
 mod exists;
 mod is_null;
+mod like;
 mod nested;
 mod unary_op;
 
@@ -46,6 +47,16 @@ pub enum ExprNode {
         negated: bool,
         low: Box<ExprNode>,
         high: Box<ExprNode>,
+    },
+    Like {
+        expr: Box<ExprNode>,
+        negated: bool,
+        pattern: Box<ExprNode>,
+    },
+    ILike {
+        expr: Box<ExprNode>,
+        negated: bool,
+        pattern: Box<ExprNode>,
     },
     BinaryOp {
         left: Box<ExprNode>,
@@ -110,6 +121,34 @@ impl TryFrom<ExprNode> for Expr {
                     negated,
                     low,
                     high,
+                })
+            }
+            ExprNode::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let pattern = Expr::try_from(*pattern).map(Box::new)?;
+
+                Ok(Expr::Like {
+                    expr,
+                    negated,
+                    pattern,
+                })
+            }
+            ExprNode::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let pattern = Expr::try_from(*pattern).map(Box::new)?;
+
+                Ok(Expr::ILike {
+                    expr,
+                    negated,
+                    pattern,
                 })
             }
             ExprNode::BinaryOp { left, op, right } => {

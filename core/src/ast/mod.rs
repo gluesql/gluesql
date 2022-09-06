@@ -167,13 +167,12 @@ impl ToSql for Statement {
 
 #[cfg(test)]
 mod tests {
-    use {
-        crate::ast::{
-            AlterTableOperation, AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef, DataType,
-            Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
-        },
-        bigdecimal::BigDecimal,
-        std::str::FromStr,
+    #[cfg(feature = "alter-table")]
+    use {crate::ast::AlterTableOperation, bigdecimal::BigDecimal, std::str::FromStr};
+
+    use crate::ast::{
+        AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef, DataType, Expr, ObjectName, Query,
+        SetExpr, Statement, ToSql, Values,
     };
 
     #[test]
