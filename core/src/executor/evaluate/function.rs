@@ -414,7 +414,7 @@ pub fn generate_uuid() -> Value {
     Value::Uuid(Uuid::new_v4().as_u128())
 }
 
-pub fn function_format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
     match expr.try_into()? {
         Value::Date(expr) => {
             let format = eval_to_str!(name, format);

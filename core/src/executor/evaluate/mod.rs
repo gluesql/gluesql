@@ -363,7 +363,7 @@ async fn evaluate_function<'a>(
             let expr = eval(expr).await?;
             let format = eval(format).await?;
 
-            f::function_format(name(), expr, format)
+            f::format(name(), expr, format)
         }
     }
     .map(Evaluated::from)
