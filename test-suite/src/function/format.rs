@@ -5,19 +5,19 @@ test_case!(format, async move {
 
     let test_cases = vec![
         (
-            r#"SELECT FORMAT(DATE "2017-06-15", "%Y") AS DATE"#,
+            r#"SELECT FORMAT(DATE "2017-06-15", "%Y-%m") AS DATE"#,
             Ok(select!(
                 "DATE"
                 Str;
-                "2017".to_owned()
+                "2017-06".to_owned()
             )),
         ),
         (
-            r#"SELECT FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y-%m-%d %H") AS TIMESTAMP"#,
+            r#"SELECT FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%S") AS TIMESTAMP"#,
             Ok(select!(
                 "TIMESTAMP"
                 Str;
-                "2015-09-05 23".to_owned()
+                "2015-09-05 23:56:04".to_owned()
             )),
         ),
         (
