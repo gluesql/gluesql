@@ -169,8 +169,8 @@ impl ToSql for Statement {
 mod tests {
     use {
         crate::ast::{
-            AlterTableOperation, AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef, DataType,
-            Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
+            AlterTableOperation, Assignment, AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef,
+            DataType, Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -187,6 +187,56 @@ mod tests {
                 "bar".to_string(),
                 "bax".to_string()
             ])
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_insert() {
+        assert_eq!(
+            "INSERT INTO Test (id, num, name) (..query..)",
+            Statement::Insert {
+                table_name: ObjectName(vec!["Test".to_string()]),
+                columns: vec!["id".to_string(), "num".to_string(), "name".to_string()],
+                source: Query {
+                    body: SetExpr::Values(Values(vec![vec![
+                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                        Expr::Literal(AstLiteral::QuotedString("Hello".to_string()))
+                    ]])),
+                    order_by: vec![],
+                    limit: None,
+                    offset: None
+                }
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_update() {
+        assert_eq!(
+            "UPDATE Foo SET id = 4",
+            Statement::Update {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                assignments: vec![Assignment {
+                    id: "id".to_string(),
+                    value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("4").unwrap()))
+                }],
+                selection: None
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_delete() {
+        assert_eq!(
+            "DELETE FROM Foo",
+            Statement::Delete {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                selection: None
+            }
             .to_sql()
         );
     }
