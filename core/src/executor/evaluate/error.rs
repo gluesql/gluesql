@@ -60,4 +60,7 @@ pub enum EvaluateError {
 
     #[error("function requires formattable value: {0}")]
     FunctionRequiresFormattableValue(String),
+
+    #[error("given specifier is not supported: {0}")]
+    InvalidSpecifierGiven(String),
 }

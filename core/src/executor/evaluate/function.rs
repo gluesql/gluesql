@@ -416,22 +416,33 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
     match expr.try_into()? {
         Value::Date(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(format_date(expr, format)))
+            format_date(expr, format)
         }
         Value::Timestamp(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(format_timestamp(expr, format)))
+            format_timestamp(expr, format)
         }
         _ => Err(EvaluateError::FunctionRequiresFormattableValue(name).into()),
     }
 }
 
-fn format_date(a: NaiveDate, b: String) -> String {
+fn format_date(a: NaiveDate, b: String) -> Result<Value> {
     let b = b.as_str();
-    chrono::NaiveDate::format(&a, b).to_string()
+    let date = chrono::NaiveDate::format(&a, b).to_string();
+    check_valid_specifier(b, date)
 }
 
-fn format_timestamp(a: NaiveDateTime, b: String) -> String {
+fn format_timestamp(a: NaiveDateTime, b: String) -> Result<Value> {
     let b = b.as_str();
-    chrono::NaiveDateTime::format(&a, b).to_string()
+    let date = chrono::NaiveDateTime::format(&a, b).to_string();
+    check_valid_specifier(b, date)
+}
+
+fn check_valid_specifier(a: &str, b: String) -> Result<Value> {
+    let a = a.to_string();
+    if a == b {
+        Err(EvaluateError::InvalidSpecifierGiven(a).into())
+    } else {
+        Ok(Value::Str(b))
+    }
 }
