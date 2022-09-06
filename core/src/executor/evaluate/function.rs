@@ -1,9 +1,7 @@
-use chrono::NaiveDateTime;
-
 use {
     super::{EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
-    chrono::NaiveDate,
+    chrono::{NaiveDate, NaiveDateTime},
     std::cmp::{max, min},
     uuid::Uuid,
 };
