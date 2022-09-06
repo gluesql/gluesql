@@ -422,7 +422,7 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
         }
         Value::Timestamp(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(format_timestmap(expr, format)))
+            Ok(Value::Str(format_timestamp(expr, format)))
         }
         _ => Err(EvaluateError::FunctionRequiresFormattableValue(name).into()),
     }
@@ -433,7 +433,7 @@ fn format_date(a: NaiveDate, b: String) -> String {
     chrono::NaiveDate::format(&a, b).to_string()
 }
 
-fn format_timestmap(a: NaiveDateTime, b: String) -> String {
+fn format_timestamp(a: NaiveDateTime, b: String) -> String {
     let b = b.as_str();
     chrono::NaiveDateTime::format(&a, b).to_string()
 }
