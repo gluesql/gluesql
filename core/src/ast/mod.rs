@@ -11,7 +11,6 @@ pub use data_type::DataType;
 pub use ddl::*;
 pub use expr::Expr;
 pub use function::{Aggregate, CountArgExpr, Function};
-use itertools::Itertools;
 pub use operator::*;
 pub use query::*;
 
@@ -135,10 +134,13 @@ impl ToSql for Statement {
             Statement::Insert {
                 table_name,
                 columns,
-                source,
+                source: _,
             } => {
-                let columns = columns.iter().join(", ");
-                format!("INSERT INTO {table_name} ({columns}) (..query..)")
+                let columns = columns.join(", ");
+                format!(
+                    "INSERT INTO {} ({columns}) (..query..)",
+                    table_name.to_sql()
+                )
             }
             Statement::Update {
                 table_name,
@@ -153,19 +155,24 @@ impl ToSql for Statement {
                 match selection {
                     Some(expr) => {
                         format!(
-                            "UPDATE {table_name} SET {assignments} WHERE {}",
+                            "UPDATE {} SET {assignments} WHERE {}",
+                            table_name.to_sql(),
                             expr.to_sql()
                         )
                     }
-                    None => format!("UPDATE {table_name} SET {assignments}"),
+                    None => format!("UPDATE {} SET {assignments}", table_name.to_sql()),
                 }
             }
             Statement::Delete {
                 table_name,
                 selection,
             } => match selection {
-                Some(expr) => format!("DELETE FROM {table_name} WHERE {}", expr.to_sql()),
-                None => format!("DELETE FROM {table_name}"),
+                Some(expr) => format!(
+                    "DELETE FROM {} WHERE {}",
+                    table_name.to_sql(),
+                    expr.to_sql()
+                ),
+                None => format!("DELETE FROM {}", table_name.to_sql()),
             },
             Statement::CreateTable {
                 if_not_exists,
@@ -211,8 +218,8 @@ impl ToSql for Assignment {
 mod tests {
     use {
         crate::ast::{
-            AlterTableOperation, Assignment, AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef,
-            DataType, Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
+            AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption,
+            ColumnOptionDef, DataType, Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -258,17 +265,42 @@ mod tests {
     #[test]
     fn to_sql_update() {
         assert_eq!(
-            "UPDATE Foo SET id = 4",
+            r#"UPDATE Foo SET id = 4, color = "blue""#,
             Statement::Update {
                 table_name: ObjectName(vec!["Foo".to_string()]),
-                assignments: vec![Assignment {
-                    id: "id".to_string(),
-                    value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("4").unwrap()))
-                }],
+                assignments: vec![
+                    Assignment {
+                        id: "id".to_string(),
+                        value: Expr::Literal(AstLiteral::Number(
+                            BigDecimal::from_str("4").unwrap()
+                        ))
+                    },
+                    Assignment {
+                        id: "color".to_string(),
+                        value: Expr::Literal(AstLiteral::QuotedString("blue".to_string()))
+                    }
+                ],
                 selection: None
             }
             .to_sql()
         );
+
+        assert_eq!(
+            r#"UPDATE Foo SET name = "first" WHERE a > b"#,
+            Statement::Update {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                assignments: vec![Assignment {
+                    id: "name".to_string(),
+                    value: Expr::Literal(AstLiteral::QuotedString("first".to_string()))
+                }],
+                selection: Some(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("a".to_string())),
+                    op: BinaryOperator::Gt,
+                    right: Box::new(Expr::Identifier("b".to_string()))
+                })
+            }
+            .to_sql()
+        )
     }
 
     #[test]
@@ -278,6 +310,19 @@ mod tests {
             Statement::Delete {
                 table_name: ObjectName(vec!["Foo".to_string()]),
                 selection: None
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"DELETE FROM Foo WHERE item = "glue""#,
+            Statement::Delete {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                selection: Some(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("item".to_string())),
+                    op: BinaryOperator::Eq,
+                    right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string())))
+                })
             }
             .to_sql()
         );
@@ -435,5 +480,17 @@ mod tests {
             }
             .to_sql()
         );
+    }
+
+    #[test]
+    fn to_sql_assignment() {
+        assert_eq!(
+            "count = 5",
+            Assignment {
+                id: "count".to_string(),
+                value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("5").unwrap()))
+            }
+            .to_sql()
+        )
     }
 }
