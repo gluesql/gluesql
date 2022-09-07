@@ -131,6 +131,49 @@ impl ToSql for ObjectName {
 impl ToSql for Statement {
     fn to_sql(&self) -> String {
         match self {
+            Statement::Insert {
+                table_name,
+                columns,
+                source: _,
+            } => {
+                let columns = columns.join(", ");
+                format!(
+                    "INSERT INTO {} ({columns}) (..query..)",
+                    table_name.to_sql()
+                )
+            }
+            Statement::Update {
+                table_name,
+                assignments,
+                selection,
+            } => {
+                let assignments = assignments
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                match selection {
+                    Some(expr) => {
+                        format!(
+                            "UPDATE {} SET {assignments} WHERE {}",
+                            table_name.to_sql(),
+                            expr.to_sql()
+                        )
+                    }
+                    None => format!("UPDATE {} SET {assignments}", table_name.to_sql()),
+                }
+            }
+            Statement::Delete {
+                table_name,
+                selection,
+            } => match selection {
+                Some(expr) => format!(
+                    "DELETE FROM {} WHERE {}",
+                    table_name.to_sql(),
+                    expr.to_sql()
+                ),
+                None => format!("DELETE FROM {}", table_name.to_sql()),
+            },
             Statement::CreateTable {
                 if_not_exists,
                 name,
@@ -165,12 +208,18 @@ impl ToSql for Statement {
     }
 }
 
+impl ToSql for Assignment {
+    fn to_sql(&self) -> String {
+        format!("{} = {}", self.id, self.value.to_sql())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
         crate::ast::{
-            AlterTableOperation, AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef, DataType,
-            Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
+            AlterTableOperation, Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption,
+            ColumnOptionDef, DataType, Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -187,6 +236,94 @@ mod tests {
                 "bar".to_string(),
                 "bax".to_string()
             ])
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_insert() {
+        assert_eq!(
+            "INSERT INTO Test (id, num, name) (..query..)",
+            Statement::Insert {
+                table_name: ObjectName(vec!["Test".to_string()]),
+                columns: vec!["id".to_string(), "num".to_string(), "name".to_string()],
+                source: Query {
+                    body: SetExpr::Values(Values(vec![vec![
+                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                        Expr::Literal(AstLiteral::QuotedString("Hello".to_string()))
+                    ]])),
+                    order_by: vec![],
+                    limit: None,
+                    offset: None
+                }
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_update() {
+        assert_eq!(
+            r#"UPDATE Foo SET id = 4, color = "blue""#,
+            Statement::Update {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                assignments: vec![
+                    Assignment {
+                        id: "id".to_string(),
+                        value: Expr::Literal(AstLiteral::Number(
+                            BigDecimal::from_str("4").unwrap()
+                        ))
+                    },
+                    Assignment {
+                        id: "color".to_string(),
+                        value: Expr::Literal(AstLiteral::QuotedString("blue".to_string()))
+                    }
+                ],
+                selection: None
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"UPDATE Foo SET name = "first" WHERE a > b"#,
+            Statement::Update {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                assignments: vec![Assignment {
+                    id: "name".to_string(),
+                    value: Expr::Literal(AstLiteral::QuotedString("first".to_string()))
+                }],
+                selection: Some(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("a".to_string())),
+                    op: BinaryOperator::Gt,
+                    right: Box::new(Expr::Identifier("b".to_string()))
+                })
+            }
+            .to_sql()
+        )
+    }
+
+    #[test]
+    fn to_sql_delete() {
+        assert_eq!(
+            "DELETE FROM Foo",
+            Statement::Delete {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                selection: None
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"DELETE FROM Foo WHERE item = "glue""#,
+            Statement::Delete {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                selection: Some(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("item".to_string())),
+                    op: BinaryOperator::Eq,
+                    right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string())))
+                })
+            }
             .to_sql()
         );
     }
@@ -343,5 +480,17 @@ mod tests {
             }
             .to_sql()
         );
+    }
+
+    #[test]
+    fn to_sql_assignment() {
+        assert_eq!(
+            "count = 5",
+            Assignment {
+                id: "count".to_string(),
+                value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("5").unwrap()))
+            }
+            .to_sql()
+        )
     }
 }
