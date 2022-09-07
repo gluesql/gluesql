@@ -2,7 +2,7 @@ use {
     super::{expr, function, EvaluateError, Evaluated},
     crate::{
         ast::{Expr, Function},
-        data::{Row, Value},
+        data::{Literal, Row, Value},
         result::Result,
     },
     chrono::prelude::Utc,
@@ -100,10 +100,12 @@ pub fn evaluate_stateless<'a>(
             let pattern = eval(pattern)?;
             let evaluated = target.like(pattern, true)?;
 
-            match negated {
-                true => evaluated.unary_minus(),
-                false => Ok(evaluated),
-            }
+            Ok(match negated {
+                true => Evaluated::from(Value::Bool(
+                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                )),
+                false => evaluated,
+            })
         }
         Expr::ILike {
             expr,
@@ -114,10 +116,12 @@ pub fn evaluate_stateless<'a>(
             let pattern = eval(pattern)?;
             let evaluated = target.like(pattern, false)?;
 
-            match negated {
-                true => evaluated.unary_minus(),
-                false => Ok(evaluated),
-            }
+            Ok(match negated {
+                true => Evaluated::from(Value::Bool(
+                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                )),
+                false => evaluated,
+            })
         }
         Expr::IsNull(expr) => {
             let v = eval(expr)?.is_null();
