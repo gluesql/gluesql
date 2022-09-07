@@ -37,6 +37,17 @@ pub enum PrintOption {
     Heading(bool),
 }
 
+impl PrintOption {
+    fn get_value(&self) -> String {
+        match self {
+            PrintOption::Colsep(v) => v.to_string(),
+            PrintOption::Colwrap(v) => v.to_string(),
+            PrintOption::Tabular(v) => string_from(&v),
+            PrintOption::Heading(v) => string_from(&v),
+        }
+    }
+}
+
 impl Display for PrintOptions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // todo: refactor with Object.values like
@@ -48,15 +59,15 @@ impl Display for PrintOptions {
     }
 }
 
+fn string_from(value: &bool) -> String {
+    match value {
+        true => "ON".into(),
+        false => "OFF".into(),
+    }
+}
+
 impl Display for PrintOption {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let string_from = |value: &bool| -> String {
-            match value {
-                true => "ON".into(),
-                false => "OFF".into(),
-            }
-        };
-
         let target = match self {
             PrintOption::Colsep(v) => format!("colsep \"{v}\""),
             PrintOption::Colwrap(v) => format!("colwrap \"{v}\""),
@@ -104,7 +115,7 @@ impl<W: Write> Print<W> {
             Payload::Update(n) => affected(*n, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => self.write(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
-                let mut table = get_table(["tables"]);
+                let mut table = self.get_table(["tables"]);
                 for name in names {
                     table.add_record([name]);
                 }
@@ -112,7 +123,7 @@ impl<W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::ShowColumns(columns) => {
-                let mut table = get_table(["Field", "Type"]);
+                let mut table = self.get_table(vec!["Field", "Type"]);
                 for (field, field_type) in columns {
                     table.add_record([field, &field_type.to_string()]);
                 }
@@ -120,7 +131,7 @@ impl<W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::ShowIndexes(indexes) => {
-                let mut table = get_table(["Index Name", "Order", "Description"]);
+                let mut table = self.get_table(vec!["Index Name", "Order", "Description"]);
                 for index in indexes {
                     table.add_record([
                         index.name.to_string(),
@@ -133,7 +144,7 @@ impl<W: Write> Print<W> {
             }
             Payload::Select { labels, rows } => {
                 let labels = labels.iter().map(AsRef::as_ref);
-                let mut table = get_table(labels);
+                let mut table = self.get_table(labels);
                 for values in rows {
                     let values: Vec<String> = values.iter().map(Into::into).collect();
 
@@ -167,7 +178,7 @@ impl<W: Write> Print<W> {
             [".spool FILE|off", "spool to file or off"],
         ];
 
-        let mut table = get_table(HEADER);
+        let mut table = self.get_table(HEADER);
         for row in CONTENT {
             table.add_record(row);
         }
@@ -186,16 +197,6 @@ impl<W: Write> Print<W> {
     pub fn spool_off(&mut self) {
         self.spool_file = None;
     }
-
-    // pub fn get_option(self, name: String) -> String {
-    //     match name.as_str() {
-    //         "colsep" => self.option.colsep,
-    //         "colwrap" => self.option.colwrap,
-    //         "tabular" => self.option.tabular,
-    //         "heading" => self.option.heading,
-    //         _ => todo!(),
-    //     }
-    // }
 
     pub fn set_option(&mut self, name: String, value: String) -> Result<(), CommandError> {
         let bool_from = |value: String| -> Result<bool, CommandError> {
@@ -235,13 +236,13 @@ impl<W: Write> Print<W> {
 
         Ok(())
     }
-}
 
-fn get_table<'a, T: IntoIterator<Item = &'a str>>(header: T) -> Builder {
-    let mut table = Builder::default();
-    table.set_columns(header);
+    fn get_table<'a, T: IntoIterator<Item = &'a str>>(&self, header: T) -> Builder {
+        let mut table = Builder::default();
+        table.set_columns(header);
 
-    table
+        table
+    }
 }
 
 fn build_table(builder: Builder) -> Table {
