@@ -315,12 +315,30 @@ mod tests {
             }
             .to_sql()
         );
+        assert_eq!(
+            r#"id NOT LIKE "%abc""#,
+            Expr::Like {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: true,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+            }
+            .to_sql()
+        );
 
         assert_eq!(
             r#"id ILIKE "%abc_""#,
             Expr::ILike {
                 expr: Box::new(Expr::Identifier("id".to_string())),
                 negated: false,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            r#"id NOT ILIKE "%abc_""#,
+            Expr::ILike {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: true,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
             }
             .to_sql()
