@@ -1,12 +1,11 @@
-use crate::command::CommandError;
-
 use {
+    crate::command::CommandError,
     gluesql_core::{
         ast::ToSql,
         prelude::{Payload, PayloadVariable},
     },
     std::{
-        fmt::{self, Display},
+        fmt::Display,
         fs::File,
         io::{Result as IOResult, Write},
         path::Path,
@@ -23,39 +22,28 @@ pub struct Print<W: Write> {
 
 #[derive(Clone)]
 pub struct PrintOptions {
-    colsep: PrintOption,
-    colwrap: PrintOption,
-    tabular: PrintOption,
-    heading: PrintOption,
+    colsep: String,
+    colwrap: String,
+    tabular: bool,
+    heading: bool,
 }
 
-#[derive(Clone)]
-pub enum PrintOption {
-    Colsep(String),
-    Colwrap(String),
-    Tabular(bool),
-    Heading(bool),
-}
-
-impl PrintOption {
-    fn get_value(&self) -> String {
-        match self {
-            PrintOption::Colsep(v) => v.to_string(),
-            PrintOption::Colwrap(v) => v.to_string(),
-            PrintOption::Tabular(v) => string_from(&v),
-            PrintOption::Heading(v) => string_from(&v),
+impl PrintOptions {
+    fn to_show(&self, name: String) -> String {
+        match name.to_lowercase().as_str() {
+            "colsep" => format!("colsep \"{}\"", self.colsep),
+            "colwrap" => format!("colwrap \"{}\"", self.colwrap),
+            "tabular" => format!("tabular {}", string_from(&self.tabular)),
+            "heading" => format!("heading {}", string_from(&self.heading)),
+            "all" => format!(
+                "{}\n{}\n{}\n{}",
+                self.to_show("colsep".into()),
+                self.to_show("colwrap".into()),
+                self.to_show("tabular".into()),
+                self.to_show("heading".into())
+            ),
+            _ => todo!(),
         }
-    }
-}
-
-impl Display for PrintOptions {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // todo: refactor with Object.values like
-        write!(
-            f,
-            "{}\n{}\n{}\n{}",
-            self.colsep, self.colwrap, self.tabular, self.heading
-        )
     }
 }
 
@@ -66,26 +54,13 @@ fn string_from(value: &bool) -> String {
     }
 }
 
-impl Display for PrintOption {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let target = match self {
-            PrintOption::Colsep(v) => format!("colsep \"{v}\""),
-            PrintOption::Colwrap(v) => format!("colwrap \"{v}\""),
-            PrintOption::Tabular(v) => format!("tabular {}", string_from(v)),
-            PrintOption::Heading(v) => format!("heading {}", string_from(v)),
-        };
-
-        write!(f, "{target}")
-    }
-}
-
 impl Default for PrintOptions {
     fn default() -> Self {
         Self {
-            colsep: PrintOption::Colsep(" ".into()),
-            colwrap: PrintOption::Colwrap("".into()),
-            tabular: PrintOption::Tabular(true),
-            heading: PrintOption::Heading(true),
+            colsep: " ".into(),
+            colwrap: "".into(),
+            tabular: true,
+            heading: true,
         }
     }
 }
@@ -208,10 +183,10 @@ impl<W: Write> Print<W> {
         };
 
         match name.to_lowercase().as_str() {
-            "colsep" => self.options.colsep = PrintOption::Colsep(value),
-            "colwrap" => self.options.colwrap = PrintOption::Colwrap(value),
-            "tabular" => self.options.tabular = PrintOption::Tabular(bool_from(value)?),
-            "heading" => self.options.heading = PrintOption::Heading(bool_from(value)?),
+            "colsep" => self.options.colsep = value,
+            "colwrap" => self.options.colwrap = value,
+            "tabular" => self.options.tabular = bool_from(value)?,
+            "heading" => self.options.heading = bool_from(value)?,
             _ => return Err(CommandError::WrongOption(name)),
         };
 
@@ -219,19 +194,7 @@ impl<W: Write> Print<W> {
     }
 
     pub fn show_option(&mut self, name: String) -> IOResult<()> {
-        let payload = match name.as_str() {
-            // "all" => PrintOptions,
-            "colsep" => self.options.colsep.clone(),
-            "colwrap" => self.options.colwrap.clone(),
-            "tabular" => self.options.tabular.clone(),
-            "heading" => self.options.heading.clone(),
-            "all" => {
-                self.write(self.options.clone())?;
-
-                return Ok(());
-            }
-            _ => todo!(),
-        };
+        let payload = self.options.to_show(name);
         self.write(payload)?;
 
         Ok(())
