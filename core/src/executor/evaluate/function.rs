@@ -416,7 +416,7 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
     match expr.try_into()? {
         Value::Date(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(format_date(expr, format)))
+            format_date(expr, format)
         }
         Value::Timestamp(expr) => {
             let format = eval_to_str!(name, format);
@@ -426,14 +426,18 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
     }
 }
 
-fn format_date(a: NaiveDate, b: String) -> String {
+fn format_date(a: NaiveDate, b: String) -> Result<Value> {
     let b = b.as_str();
     let naive_date_vec = vec![
         "Y", "C", "y", "m", "b", "B", "h", "d", "e", "a", "A", "w", "u", "U", "W", "G", "g", "V",
         "j", "D", "x", "F", "v",
     ];
-    println!("{}", check_specifier(naive_date_vec, b));
-    chrono::NaiveDate::format(&a, b).to_string()
+
+    if check_specifier(naive_date_vec, b) {
+        Ok(Value::Str(chrono::NaiveDate::format(&a, b).to_string()))
+    } else {
+        Err(EvaluateError::InvalidSpecifierGiven(b.to_string()).into())
+    }
 }
 
 fn format_timestamp(a: NaiveDateTime, b: String) -> String {
