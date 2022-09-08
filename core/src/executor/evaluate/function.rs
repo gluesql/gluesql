@@ -416,33 +416,48 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
     match expr.try_into()? {
         Value::Date(expr) => {
             let format = eval_to_str!(name, format);
-            format_date(expr, format)
+            Ok(Value::Str(format_date(expr, format)))
         }
         Value::Timestamp(expr) => {
             let format = eval_to_str!(name, format);
-            format_timestamp(expr, format)
+            Ok(Value::Str(format_timestamp(expr, format)))
         }
         _ => Err(EvaluateError::FunctionRequiresFormattableValue(name).into()),
     }
 }
 
-fn format_date(a: NaiveDate, b: String) -> Result<Value> {
+fn format_date(a: NaiveDate, b: String) -> String {
     let b = b.as_str();
-    let date = chrono::NaiveDate::format(&a, b).to_string();
-    check_valid_specifier(b, date)
+    let naive_date_vec = vec![
+        "Y", "C", "y", "m", "b", "B", "h", "d", "e", "a", "A", "w", "u", "U", "W", "G", "g", "V",
+        "j", "D", "x", "F", "v",
+    ];
+    println!("{}", check_specifier(naive_date_vec, b));
+    chrono::NaiveDate::format(&a, b).to_string()
 }
 
-fn format_timestamp(a: NaiveDateTime, b: String) -> Result<Value> {
+fn format_timestamp(a: NaiveDateTime, b: String) -> String {
     let b = b.as_str();
-    let date = chrono::NaiveDateTime::format(&a, b).to_string();
-    check_valid_specifier(b, date)
+    chrono::NaiveDateTime::format(&a, b).to_string()
 }
 
-fn check_valid_specifier(a: &str, b: String) -> Result<Value> {
-    let a = a.to_string();
-    if a == b {
-        Err(EvaluateError::InvalidSpecifierGiven(a).into())
-    } else {
-        Ok(Value::Str(b))
+fn check_specifier(a: Vec<&str>, b: &str) -> bool {
+    let mut overall_valid = true;
+    let mut specifiers: Vec<&str> = b.split("%").collect();
+    specifiers.remove(0);
+    for specifier in specifiers {
+        let mut is_valid = false;
+        for valid in &a {
+            if specifier.starts_with(valid) {
+                is_valid = true;
+                continue;
+            }
+        }
+        if is_valid == true {
+            continue;
+        } else {
+            overall_valid = false;
+        }
     }
+    overall_valid
 }
