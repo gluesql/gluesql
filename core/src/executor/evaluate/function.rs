@@ -420,7 +420,7 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
         }
         Value::Timestamp(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(format_timestamp(expr, format)))
+            format_timestamp(expr, format)
         }
         _ => Err(EvaluateError::FunctionRequiresFormattableValue(name).into()),
     }
@@ -440,9 +440,18 @@ fn format_date(a: NaiveDate, b: String) -> Result<Value> {
     }
 }
 
-fn format_timestamp(a: NaiveDateTime, b: String) -> String {
+fn format_timestamp(a: NaiveDateTime, b: String) -> Result<Value> {
     let b = b.as_str();
-    chrono::NaiveDateTime::format(&a, b).to_string()
+    let naive_date_time_vec = vec![
+        "Y", "C", "y", "m", "b", "B", "h", "d", "e", "a", "A", "w", "u", "U", "W", "G", "g", "V",
+        "j", "D", "x", "F", "v", "H", "k", "I", "l", "p", "P", "M", "S", "f", ".f", ".3f", ".6f",
+        ".9f", "3f", "6f", "9f", "R", "T", "X", "r", "Z", "z", ":z", "#z", "c", "+", "s",
+    ];
+    if check_specifier(naive_date_time_vec, b) {
+        Ok(Value::Str(chrono::NaiveDateTime::format(&a, b).to_string()))
+    } else {
+        Err(EvaluateError::InvalidSpecifierGiven(b.to_string()).into())
+    }
 }
 
 fn check_specifier(a: Vec<&str>, b: &str) -> bool {
