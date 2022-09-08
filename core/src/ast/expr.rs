@@ -31,6 +31,16 @@ pub enum Expr {
         low: Box<Expr>,
         high: Box<Expr>,
     },
+    Like {
+        expr: Box<Expr>,
+        negated: bool,
+        pattern: Box<Expr>,
+    },
+    ILike {
+        expr: Box<Expr>,
+        negated: bool,
+        pattern: Box<Expr>,
+    },
     BinaryOp {
         left: Box<Expr>,
         op: BinaryOperator,
@@ -108,6 +118,32 @@ impl ToSql for Expr {
                 match negated {
                     true => format!("{expr} NOT BETWEEN {low} AND {high}"),
                     false => format!("{expr} BETWEEN {low} AND {high}"),
+                }
+            }
+            Expr::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = expr.to_sql();
+                let pattern = pattern.to_sql();
+
+                match negated {
+                    true => format!("{expr} NOT LIKE {pattern}"),
+                    false => format!("{expr} LIKE {pattern}"),
+                }
+            }
+            Expr::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = expr.to_sql();
+                let pattern = pattern.to_sql();
+
+                match negated {
+                    true => format!("{expr} NOT ILIKE {pattern}"),
+                    false => format!("{expr} ILIKE {pattern}"),
                 }
             }
             Expr::UnaryOp { op, expr } => match op {
@@ -266,6 +302,44 @@ mod tests {
                 negated: true,
                 low: Box::new(Expr::Identifier("low".to_string())),
                 high: Box::new(Expr::Identifier("high".to_string()))
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"id LIKE "%abc""#,
+            Expr::Like {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: false,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            r#"id NOT LIKE "%abc""#,
+            Expr::Like {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: true,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"id ILIKE "%abc_""#,
+            Expr::ILike {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: false,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            r#"id NOT ILIKE "%abc_""#,
+            Expr::ILike {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: true,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
             }
             .to_sql()
         );

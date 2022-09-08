@@ -38,6 +38,9 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
                 None => PlanExpr::None,
             },
             Expr::BinaryOp { left, right, .. } => PlanExpr::TwoExprs(left, right),
+            Expr::Like { expr, pattern, .. } | Expr::ILike { expr, pattern, .. } => {
+                PlanExpr::TwoExprs(expr, pattern)
+            }
             Expr::Between {
                 expr, low, high, ..
             } => PlanExpr::ThreeExprs(expr, low, high),
@@ -165,6 +168,18 @@ mod tests {
         let left = expr("100");
         let right = expr("rate");
         let expected = PlanExpr::TwoExprs(&left, &right);
+        test!(actual, expected);
+
+        let actual = expr("name LIKE '_foo%'");
+        let target = expr("name");
+        let pattern = expr(r#""_foo%""#);
+        let expected = PlanExpr::TwoExprs(&target, &pattern);
+        test!(actual, expected);
+
+        let actual = expr("name ILIKE '_foo%'");
+        let target = expr("name");
+        let pattern = expr(r#""_foo%""#);
+        let expected = PlanExpr::TwoExprs(&target, &pattern);
         test!(actual, expected);
 
         // PlanExpr::ThreeExprs
