@@ -447,7 +447,7 @@ fn format_timestamp(a: NaiveDateTime, b: String) -> String {
 
 fn check_specifier(a: Vec<&str>, b: &str) -> bool {
     let mut overall_valid = true;
-    let mut specifiers: Vec<&str> = b.split("%").collect();
+    let mut specifiers: Vec<&str> = b.split('%').collect();
     specifiers.remove(0);
     for specifier in specifiers {
         let mut is_valid = false;
@@ -457,7 +457,7 @@ fn check_specifier(a: Vec<&str>, b: &str) -> bool {
                 continue;
             }
         }
-        if is_valid == true {
+        if is_valid {
             continue;
         } else {
             overall_valid = false;
