@@ -217,11 +217,15 @@ impl ToSql for Assignment {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "alter-table")]
-    use {crate::ast::AlterTableOperation, bigdecimal::BigDecimal, std::str::FromStr};
+    use crate::ast::AlterTableOperation;
 
-    use crate::ast::{
-        Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef, DataType,
-        Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
+    use {
+        crate::ast::{
+            Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
+            DataType, Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
+        },
+        bigdecimal::BigDecimal,
+        std::str::FromStr,
     };
 
     #[test]
