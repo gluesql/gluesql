@@ -131,6 +131,9 @@ impl ToSql for ObjectName {
 impl ToSql for Statement {
     fn to_sql(&self) -> String {
         match self {
+            Statement::ShowColumns { table_name } => {
+                format!("SHOW COLUMNS FROM {}", table_name.to_sql())
+            }
             Statement::Insert {
                 table_name,
                 columns,
@@ -203,6 +206,48 @@ impl ToSql for Statement {
             Statement::AlterTable { name, operation } => {
                 format!("ALTER TABLE {} {}", name.to_sql(), operation.to_sql())
             }
+            Statement::DropTable { if_exists, names } => {
+                let names = names
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                match if_exists {
+                    true => format!("DROP TABLE IF EXISTS {}", names),
+                    false => format!("DROP TABLE {}", names),
+                }
+            }
+            #[cfg(feature = "index")]
+            Statement::CreateIndex {
+                name,
+                table_name,
+                column: _column,
+            } => {
+                format!(
+                    "CREATE INDEX {} ON {} (..order_by_expr..)",
+                    name.to_sql(),
+                    table_name.to_sql()
+                )
+            }
+            #[cfg(feature = "index")]
+            Statement::DropIndex { name, table_name } => {
+                format!("DROP INDEX {}.{}", table_name.to_sql(), name.to_sql())
+            }
+            #[cfg(feature = "transaction")]
+            Statement::StartTransaction => "START TRANSACTION".to_string(),
+            #[cfg(feature = "transaction")]
+            Statement::Commit => "COMMIT".to_string(),
+            #[cfg(feature = "transaction")]
+            Statement::Rollback => "ROLLBACK".to_string(),
+            #[cfg(feature = "metadata")]
+            Statement::ShowVariable(variable) => match variable {
+                Variable::Tables => "SHOW TABLES".to_string(),
+                Variable::Version => "SHOW VERSIONS".to_string(),
+            },
+            #[cfg(feature = "index")]
+            Statement::ShowIndexes(object_name) => {
+                format!("SHOW INDEXES FROM {}", object_name.to_sql())
+            }
             _ => "(..statement..)".to_string(),
         }
     }
@@ -218,6 +263,12 @@ impl ToSql for Assignment {
 mod tests {
     #[cfg(feature = "alter-table")]
     use crate::ast::AlterTableOperation;
+
+    #[cfg(feature = "index")]
+    use crate::ast::OrderByExpr;
+
+    #[cfg(feature = "metadata")]
+    use crate::ast::Variable;
 
     use {
         crate::ast::{
@@ -241,6 +292,17 @@ mod tests {
             ])
             .to_sql()
         );
+    }
+
+    #[test]
+    fn to_sql_show_columns() {
+        assert_eq!(
+            "SHOW COLUMNS FROM Bar",
+            Statement::ShowColumns {
+                table_name: ObjectName(vec!["Bar".to_string()])
+            }
+            .to_sql()
+        )
     }
 
     #[test]
@@ -482,6 +544,99 @@ mod tests {
                 }
             }
             .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_drop_table() {
+        assert_eq!(
+            "DROP TABLE Test",
+            Statement::DropTable {
+                if_exists: false,
+                names: vec![ObjectName(vec!["Test".to_string()])]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP TABLE IF EXISTS Test",
+            Statement::DropTable {
+                if_exists: true,
+                names: vec![ObjectName(vec!["Test".to_string()])]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP TABLE Foo, Bar",
+            Statement::DropTable {
+                if_exists: false,
+                names: vec![
+                    ObjectName(vec!["Foo".to_string()]),
+                    ObjectName(vec!["Bar".to_string()])
+                ]
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "index")]
+    fn to_sql_create_index() {
+        assert_eq!(
+            "CREATE INDEX idx_name ON Test (..order_by_expr..)",
+            Statement::CreateIndex {
+                name: ObjectName(vec!["idx_name".to_string()]),
+                table_name: ObjectName(vec!["Test".to_string()]),
+                column: OrderByExpr {
+                    expr: Expr::Identifier("LastName".to_string()),
+                    asc: None
+                }
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "index")]
+    fn to_sql_drop_index() {
+        assert_eq!(
+            "DROP INDEX Test.idx_id",
+            Statement::DropIndex {
+                name: ObjectName(vec!["idx_id".to_string()]),
+                table_name: ObjectName(vec!["Test".to_string()])
+            }
+            .to_sql()
+        )
+    }
+
+    #[test]
+    #[cfg(feature = "transaction")]
+    fn to_sql_transaction() {
+        assert_eq!("START TRANSACTION", Statement::StartTransaction.to_sql());
+        assert_eq!("COMMIT", Statement::Commit.to_sql());
+        assert_eq!("ROLLBACK", Statement::Rollback.to_sql());
+    }
+
+    #[test]
+    #[cfg(feature = "metadata")]
+    fn to_sql_show_variable() {
+        assert_eq!(
+            "SHOW TABLES",
+            Statement::ShowVariable(Variable::Tables).to_sql()
+        );
+        assert_eq!(
+            "SHOW VERSIONS",
+            Statement::ShowVariable(Variable::Version).to_sql()
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "index")]
+    fn to_sql_show_indexes() {
+        assert_eq!(
+            "SHOW INDEXES FROM Test",
+            Statement::ShowIndexes(ObjectName(vec!["Test".to_string()])).to_sql()
         );
     }
 
