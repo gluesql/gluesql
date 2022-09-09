@@ -132,7 +132,7 @@ impl ToSql for Statement {
     fn to_sql(&self) -> String {
         match self {
             Statement::ShowColumns { table_name } => {
-                format!("SHOW COLUMNS from {}", table_name.to_sql())
+                format!("SHOW COLUMNS FROM {}", table_name.to_sql())
             }
             Statement::Insert {
                 table_name,
@@ -246,7 +246,7 @@ impl ToSql for Statement {
             },
             #[cfg(feature = "index")]
             Statement::ShowIndexes(object_name) => {
-                format!("SHOW INDEXES from {}", object_name.to_sql())
+                format!("SHOW INDEXES FROM {}", object_name.to_sql())
             }
             _ => "(..statement..)".to_string(),
         }
@@ -297,7 +297,7 @@ mod tests {
     #[test]
     fn to_sql_show_columns() {
         assert_eq!(
-            "SHOW COLUMNS from Bar",
+            "SHOW COLUMNS FROM Bar",
             Statement::ShowColumns {
                 table_name: ObjectName(vec!["Bar".to_string()])
             }
@@ -635,7 +635,7 @@ mod tests {
     #[cfg(feature = "index")]
     fn to_sql_show_indexes() {
         assert_eq!(
-            "SHOW INDEXES from Test",
+            "SHOW INDEXES FROM Test",
             Statement::ShowIndexes(ObjectName(vec!["Test".to_string()])).to_sql()
         );
     }
