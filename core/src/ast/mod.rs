@@ -219,10 +219,11 @@ mod tests {
     #[cfg(feature = "alter-table")]
     use crate::ast::AlterTableOperation;
 
+    use crate::ast::Variable::{Tables, Version};
     use {
         crate::ast::{
             Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
-            DataType, Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
+            DataType, Expr, ObjectName, OrderByExpr, Query, SetExpr, Statement, ToSql, Values,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -241,6 +242,17 @@ mod tests {
             ])
             .to_sql()
         );
+    }
+
+    #[test]
+    fn to_sql_show_columns() {
+        assert_eq!(
+            "SHOW COLUMNS from Bar",
+            Statement::ShowColumns {
+                table_name: ObjectName(vec!["Bar".to_string()])
+            }
+            .to_sql()
+        )
     }
 
     #[test]
@@ -482,6 +494,79 @@ mod tests {
                 }
             }
             .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_drop_table() {
+        assert_eq!(
+            "DROP TABLE Test",
+            Statement::DropTable {
+                if_exists: false,
+                names: vec![ObjectName(vec!["Test".to_string()])]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP TABLE IF EXISTS Test",
+            Statement::DropTable {
+                if_exists: true,
+                names: vec![ObjectName(vec!["Test".to_string()])]
+            }
+            .to_sql()
+        )
+    }
+
+    #[test]
+    fn to_sql_create_index() {
+        assert_eq!(
+            "CREATE INDEX idx_name ON Test (name)",
+            Statement::CreateIndex {
+                name: ObjectName(vec!["idx_name".to_string()]),
+                table_name: ObjectName(vec!["Test".to_string()]),
+                column: OrderByExpr {
+                    expr: Expr::Identifier("LastName".to_string()),
+                    asc: None
+                }
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_drop_index() {
+        assert_eq!(
+            "DROP INDEX Test.idx_id",
+            Statement::DropIndex {
+                name: ObjectName(vec!["idx_id".to_string()]),
+                table_name: ObjectName(vec!["Test".to_string()])
+            }
+            .to_sql()
+        )
+    }
+
+    #[test]
+    #[cfg(feature = "transaction")]
+    fn to_sql_transaction() {
+        assert_eq!("START TRANSACTION", Statement::StartTransaction.to_sql());
+        assert_eq!("COMMIT", Statement::Commit.to_sql());
+        assert_eq!("ROLLBACK", Statement::Rollback.to_sql());
+    }
+
+    #[test]
+    #[cfg(feature = "metadata")]
+    fn to_sql_show_variable() {
+        assert_eq!("SHOW TABLES", Statement::ShowVariable(Tables).to_sql());
+        assert_eq!("SHOW VERSIONS", Statement::ShowVariable(Version).to_sql());
+    }
+
+    #[test]
+    #[cfg(feature = "index")]
+    fn to_sql_show_indexes() {
+        assert_eq!(
+            "SHOW INDEXES from Test",
+            Statement::ShowIndexes(ObjectName(vec!["Test".to_string()])).to_sql()
         );
     }
 
