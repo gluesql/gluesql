@@ -1,8 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        prelude::{Payload, Value::*},
-    },
+    gluesql_core::prelude::{Payload, Value::*},
 };
 
 test_case!(insert, async move {
@@ -44,7 +42,7 @@ CREATE TABLE Test (
 
     test! {
         sql: r#"INSERT INTO Test (name) VALUES ("The end");"#,
-        expected: Ok(Payload:: Insert(1)) 
+        expected: Ok(Payload:: Insert(1))
     };
 
     test! {
