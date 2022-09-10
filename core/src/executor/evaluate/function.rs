@@ -422,7 +422,7 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
             let format = eval_to_str!(name, format);
             Ok(Value::Str(format_timestamp(expr, format)))
         }
-        _ => Err(EvaluateError::UnsupportedDataType("test".to_string()).into()),
+        value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
     }
 }
 
