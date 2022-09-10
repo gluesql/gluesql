@@ -31,7 +31,7 @@ CREATE TABLE Test (
     };
 
     test! {
-        sql:r#"INSERT INTO Test VALUES(17, 30, "Sullivan");"#,
+        sql: r#"INSERT INTO Test VALUES(17, 30, "Sullivan");"#,
         expected: Ok(Payload::Insert(1))
     };
 
@@ -48,12 +48,12 @@ CREATE TABLE Test (
     test! {
         sql: "SELECT * FROM Test",
         expected: Ok(select_with_null!(
-            id  | num | name;
-            I64(1)   I64(2)     Str("Hi boo".to_owned());
-            I64(3)   I64(9)     Str("Kitty!".to_owned());
-            I64(2)   I64(7)     Str("Monsters".to_owned());
-            I64(17)  I64(30)    Str("Sullivan".to_owned());
-            I64(1)   I64(28)    Str("Wazowski".to_owned());
+            id     | num     | name;
+            I64(1)   I64(2)    Str("Hi boo".to_owned());
+            I64(3)   I64(9)    Str("Kitty!".to_owned());
+            I64(2)   I64(7)    Str("Monsters".to_owned());
+            I64(17)  I64(30)   Str("Sullivan".to_owned());
+            I64(1)   I64(28)   Str("Wazowski".to_owned());
             I64(1)   Null      Str("The end".to_owned())
         ))
     };
