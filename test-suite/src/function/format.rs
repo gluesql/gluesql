@@ -5,35 +5,35 @@ test_case!(format, async move {
 
     let test_cases = vec![
         (
-            r#"SELECT FORMAT(DATE "2017-06-15", "%Y-%m") AS DATE"#,
+            r#"SELECT FORMAT(DATE "2017-06-15", "%Y-%m") AS date"#,
             Ok(select!(
-                "DATE"
+                date
                 Str;
                 "2017-06".to_owned()
             )),
         ),
         (
-            r#"SELECT FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%S") AS TIMESTAMP"#,
+            r#"SELECT FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%S") AS timestamp"#,
             Ok(select!(
-                "TIMESTAMP"
+                timestamp
                 Str;
                 "2015-09-05 23:56:04".to_owned()
             )),
         ),
         (
             r#"SELECT 
-         FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y") AS YEAR
-        ,FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%m") AS MONTH
-        ,FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%d") AS DAY
-        "#,
+                FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y") AS year
+               ,FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%m") AS month
+               ,FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%d") AS day
+            "#,
             Ok(select!(
-            "YEAR" | "MONTH" | "DAY";
-            Str | Str |Str;
-            "2015".to_owned() "09".to_owned() "05".to_owned()
+            year              | month           | day;
+            Str               | Str             | Str;
+            "2015".to_owned()   "09".to_owned()   "05".to_owned()
             )),
         ),
         (
-            r#"SELECT FORMAT("2015-09-05 23:56:04", "%Y-%m-%d %H") AS TIMESTAMP"#,
+            r#"SELECT FORMAT("2015-09-05 23:56:04", "%Y-%m-%d %H") AS timestamp"#,
             Err(
                 EvaluateError::UnsupportedExprForFormatFunction("2015-09-05 23:56:04".to_string())
                     .into(),
