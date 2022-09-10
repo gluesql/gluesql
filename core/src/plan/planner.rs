@@ -77,6 +77,38 @@ pub trait Planner<'a> {
                     high,
                 }
             }
+            Expr::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
+                let pattern =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *pattern));
+
+                Expr::Like {
+                    expr,
+                    negated,
+                    pattern,
+                }
+            }
+            Expr::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
+                let pattern =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *pattern));
+
+                Expr::ILike {
+                    expr,
+                    negated,
+                    pattern,
+                }
+            }
             Expr::BinaryOp { left, op, right } => Expr::BinaryOp {
                 left: Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *left)),
                 op,

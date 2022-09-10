@@ -12,6 +12,7 @@ pub mod function;
 pub mod index;
 pub mod inline_view;
 pub mod join;
+pub mod like_ilike;
 pub mod limit;
 pub mod metadata;
 pub mod migrate;
@@ -76,6 +77,7 @@ macro_rules! generate_store_tests {
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
         glue!(limit, limit::limit);
+        glue!(like_ilike, like_ilike::like_ilike);
         glue!(filter, filter::filter);
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);

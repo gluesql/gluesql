@@ -39,10 +39,6 @@ pub enum BinaryOperator {
     And,
     Or,
     Xor,
-    Like,
-    ILike,
-    NotLike,
-    NotILike,
 }
 
 impl ToSql for BinaryOperator {
@@ -63,10 +59,6 @@ impl ToSql for BinaryOperator {
             BinaryOperator::And => "AND".to_string(),
             BinaryOperator::Or => "OR".to_string(),
             BinaryOperator::Xor => "XOR".to_string(),
-            BinaryOperator::Like => "LIKE".to_string(),
-            BinaryOperator::ILike => "ILIKE".to_string(),
-            BinaryOperator::NotLike => "NOT LIKE".to_string(),
-            BinaryOperator::NotILike => "NOT ILIKE".to_string(),
         }
     }
 }
@@ -251,42 +243,7 @@ mod tests {
             }
             .to_sql()
         );
-        assert_eq!(
-            "column_0 LIKE pattern",
-            &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("column_0".to_string())),
-                op: BinaryOperator::Like,
-                right: Box::new(Expr::Identifier("pattern".to_string()))
-            }
-            .to_sql()
-        );
-        assert_eq!(
-            "column_0 ILIKE pattern",
-            &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("column_0".to_string())),
-                op: BinaryOperator::ILike,
-                right: Box::new(Expr::Identifier("pattern".to_string()))
-            }
-            .to_sql()
-        );
-        assert_eq!(
-            "column_0 NOT LIKE pattern",
-            &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("column_0".to_string())),
-                op: BinaryOperator::NotLike,
-                right: Box::new(Expr::Identifier("pattern".to_string()))
-            }
-            .to_sql()
-        );
-        assert_eq!(
-            "column_0 NOT ILIKE num",
-            &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("column_0".to_string())),
-                op: BinaryOperator::NotILike,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
+
         assert_eq!(
             "+8",
             Expr::UnaryOp {

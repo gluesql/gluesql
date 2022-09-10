@@ -147,9 +147,14 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         #[cfg(feature = "transaction")]
         SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
         #[cfg(feature = "metadata")]
+        SqlStatement::ShowTables {
+            filter: None,
+            db_name: None,
+            ..
+        } => Ok(Statement::ShowVariable(Variable::Tables)),
+        #[cfg(feature = "metadata")]
         SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
-                "TABLES" => Ok(Statement::ShowVariable(Variable::Tables)),
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_string()).into()),
             },

@@ -8,7 +8,7 @@ use {
     super::{context::FilterContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::Value,
+        data::{Literal, Value},
         result::Result,
         store::GStore,
     },
@@ -152,6 +152,38 @@ pub async fn evaluate<'a>(
             let high = eval(high).await?;
 
             expr::between(target, *negated, low, high)
+        }
+        Expr::Like {
+            expr,
+            negated,
+            pattern,
+        } => {
+            let target = eval(expr).await?;
+            let pattern = eval(pattern).await?;
+            let evaluated = target.like(pattern, true)?;
+
+            Ok(match negated {
+                true => Evaluated::from(Value::Bool(
+                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                )),
+                false => evaluated,
+            })
+        }
+        Expr::ILike {
+            expr,
+            negated,
+            pattern,
+        } => {
+            let target = eval(expr).await?;
+            let pattern = eval(pattern).await?;
+            let evaluated = target.like(pattern, false)?;
+
+            Ok(match negated {
+                true => Evaluated::from(Value::Bool(
+                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                )),
+                false => evaluated,
+            })
         }
         Expr::Exists { subquery, negated } => select(storage, subquery, context)
             .await?
