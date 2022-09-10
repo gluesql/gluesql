@@ -5,7 +5,15 @@ test_case!(format, async move {
 
     let test_cases = vec![
         (
-            r#"SELECT FORMAT(DATE "2017-06-15", "%Y-%m") AS date"#,
+            r#"VALUES(FORMAT(DATE "2017-06-15", "%Y-%m"))"#,
+            Ok(select!(
+                column1
+                Str;
+                "2017-06".to_owned()
+            )),
+        ),
+        (
+            r#"SELECT FORMAT(DATE "2017-06-15","%Y-%m") AS date"#,
             Ok(select!(
                 date
                 Str;
