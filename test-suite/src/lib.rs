@@ -105,6 +105,7 @@ macro_rules! generate_store_tests {
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
         glue!(function_floor, function::floor::floor);
+        glue!(function_format, function::format::format);
         glue!(function_ln, function::exp_log::ln);
         glue!(function_log, function::exp_log::log);
         glue!(function_log2, function::exp_log::log2);

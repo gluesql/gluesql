@@ -285,6 +285,12 @@ fn evaluate_function<'a>(
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
         Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
+        Function::Format { expr, format } => {
+            let expr = eval(expr)?;
+            let format = eval(format)?;
+
+            f::format(name(), expr, format)
+        }
     }
     .map(Evaluated::from)
 }

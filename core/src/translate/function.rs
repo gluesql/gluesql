@@ -375,6 +375,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "ABS" => translate_function_one_arg(Function::Abs, args, name),
         "SIGN" => translate_function_one_arg(Function::Sign, args, name),
         "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
+        "FORMAT" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Format { expr, format })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

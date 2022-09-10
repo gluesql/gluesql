@@ -81,6 +81,10 @@ impl Function {
                 left: expr,
                 right: expr2,
             }
+            | Self::Format {
+                expr,
+                format: expr2,
+            }
             | Self::Power { expr, power: expr2 }
             | Self::Ltrim {
                 expr,

@@ -391,6 +391,12 @@ async fn evaluate_function<'a>(
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
         Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
+        Function::Format { expr, format } => {
+            let expr = eval(expr).await?;
+            let format = eval(format).await?;
+
+            f::format(name(), expr, format)
+        }
     }
     .map(Evaluated::from)
 }
