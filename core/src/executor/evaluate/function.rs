@@ -1,7 +1,6 @@
 use {
     super::{EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
-    chrono::{NaiveDate, NaiveDateTime},
     std::cmp::{max, min},
     uuid::Uuid,
 };
@@ -416,22 +415,17 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
     match expr.try_into()? {
         Value::Date(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(format_date(expr, format)))
+
+            Ok(Value::Str(
+                chrono::NaiveDate::format(&expr, &format).to_string(),
+            ))
         }
         Value::Timestamp(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(format_timestamp(expr, format)))
+            Ok(Value::Str(
+                chrono::NaiveDateTime::format(&expr, &format).to_string(),
+            ))
         }
         value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
     }
-}
-
-fn format_date(a: NaiveDate, b: String) -> String {
-    let b = b.as_str();
-    chrono::NaiveDate::format(&a, b).to_string()
-}
-
-fn format_timestamp(a: NaiveDateTime, b: String) -> String {
-    let b = b.as_str();
-    chrono::NaiveDateTime::format(&a, b).to_string()
 }
