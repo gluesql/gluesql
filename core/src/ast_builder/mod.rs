@@ -18,7 +18,6 @@ mod select_item;
 mod select_item_list;
 mod show_columns;
 mod table;
-mod create_table;
 #[cfg(feature = "transaction")]
 mod transaction;
 mod update;
@@ -26,11 +25,11 @@ mod update;
 
 pub use {
     assignment::AssignmentNode,
+    create_table::CreateTableNode,
+    column_def::ColumnDefNode,
     data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
-    create_table::CreateTableNode,
-    column_def::ColumnDefNode,
     expr_list::ExprList,
     order_by_expr::OrderByExprNode,
     query::QueryNode,
