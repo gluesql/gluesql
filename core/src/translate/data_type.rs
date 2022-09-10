@@ -11,6 +11,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Int(Some(16)) => Ok(DataType::Int16),
         SqlDataType::Int(Some(32)) => Ok(DataType::Int32),
         SqlDataType::Int(Some(128)) => Ok(DataType::Int128),
+        SqlDataType::UnsignedInteger(Some(8)) => Ok(DataType::Uint8),
         SqlDataType::Int(None) | SqlDataType::Int(Some(64)) | SqlDataType::Integer(None) => {
             Ok(DataType::Int)
         }

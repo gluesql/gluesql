@@ -23,6 +23,7 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::I32(l), Literal::Number(r)) => r.to_i32().map(|r| *l == r).unwrap_or(false),
             (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
             (Value::I128(l), Literal::Number(r)) => r.to_i128().map(|r| *l == r).unwrap_or(false),
+            (Value::U8(l), Literal::Number(r)) => r.to_u8().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Bytea(l), Literal::Bytea(r)) => l == r,
@@ -62,6 +63,9 @@ impl PartialOrd<Literal<'_>> for Value {
             }
             (Value::I128(l), Literal::Number(r)) => {
                 r.to_i128().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::U8(l), Literal::Number(r)) => {
+                r.to_u8().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
@@ -141,6 +145,10 @@ impl Value {
             (DataType::Int128, Literal::Number(v)) => v
                 .to_i128()
                 .map(Value::I128)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint8, Literal::Number(v)) => v
+                .to_u8()
+                .map(Value::U8)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
@@ -268,6 +276,18 @@ impl Value {
 
                 Ok(Value::I128(v))
             }
+            (DataType::Uint8, Literal::Text(v)) => v.parse::<u8>().map(Value::U8).map_err(|_| {
+                ValueError::LiteralCastFromTextToUnsignedIntegerFailed(v.to_string()).into()
+            }),
+            (DataType::Uint8, Literal::Number(v)) => match v.to_u8() {
+                Some(x) => Ok(Value::U8(x)),
+                None => Err(ValueError::LiteralCastToUnsignedInt8Failed(v.to_string()).into()),
+            },
+            (DataType::Uint8, Literal::Boolean(v)) => {
+                let v = if *v { 1 } else { 0 };
+
+                Ok(Value::U8(v))
+            }
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
@@ -312,6 +332,7 @@ impl Value {
             | (DataType::Int32, Literal::Null)
             | (DataType::Int, Literal::Null)
             | (DataType::Int128, Literal::Null)
+            | (DataType::Uint8, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Decimal, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
@@ -376,6 +397,7 @@ mod tests {
         assert_eq!(Value::I64(64), num!("64"));
         assert_eq!(Value::I128(128), num!("128"));
         assert_eq!(Value::F64(7.123), num!("7.123"));
+        assert_eq!(Value::U8(7), num!("7"));
         assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
         assert_eq!(Value::Bytea(bytea()), Literal::Bytea(bytea()));
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));

@@ -29,6 +29,7 @@ pub enum Key {
     I32(i32),
     I64(i64),
     I128(i128),
+    U8(u8),
     Bool(bool),
     Str(String),
     Bytea(Vec<u8>),
@@ -75,6 +76,7 @@ impl TryFrom<Value> for Key {
             I32(v) => Ok(Key::I32(v)),
             I64(v) => Ok(Key::I64(v)),
             I128(v) => Ok(Key::I128(v)),
+            U8(v) => Ok(Key::U8(v)),
             Str(v) => Ok(Key::Str(v)),
             Bytea(v) => Ok(Key::Bytea(v)),
             Date(v) => Ok(Key::Date(v)),
@@ -158,6 +160,11 @@ impl Key {
                     .copied()
                     .collect::<Vec<_>>()
             }
+            Key::U8(v) => [VALUE, 0]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
             Key::Str(v) => [VALUE]
                 .iter()
                 .chain(v.as_bytes().iter())
