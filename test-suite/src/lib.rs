@@ -11,6 +11,7 @@ pub mod filter;
 pub mod function;
 pub mod index;
 pub mod inline_view;
+pub mod insert;
 pub mod join;
 pub mod like_ilike;
 pub mod limit;
@@ -57,6 +58,7 @@ macro_rules! generate_store_tests {
             };
         }
         glue!(update, update::update);
+        glue!(insert, insert::insert);
         glue!(basic, basic::basic);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
