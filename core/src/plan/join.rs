@@ -30,16 +30,28 @@ struct JoinPlanner<'a> {
 
 impl<'a> Planner<'a> for JoinPlanner<'a> {
     fn query(&self, outer_context: Option<Rc<Context<'a>>>, query: Query) -> Query {
-        let body = match query.body {
+        let Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        } = query;
+
+        let body = match body {
             SetExpr::Select(select) => {
                 let select = self.select(outer_context, *select);
 
                 SetExpr::Select(Box::new(select))
             }
-            SetExpr::Values(_) => query.body,
+            SetExpr::Values(_) => body,
         };
 
-        Query { body, ..query }
+        Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        }
     }
 
     fn get_schema(&self, name: &str) -> Option<&'a Schema> {
@@ -55,7 +67,6 @@ impl<'a> JoinPlanner<'a> {
             selection,
             group_by,
             having,
-            order_by,
         } = select;
 
         let (outer_context, from) = self.table_with_joins(outer_context, from);
@@ -67,7 +78,6 @@ impl<'a> JoinPlanner<'a> {
             selection,
             group_by,
             having,
-            order_by,
         }
     }
 
@@ -448,6 +458,7 @@ mod tests {
     fn select(select: Select) -> Statement {
         Statement::Query(Query {
             body: SetExpr::Select(Box::new(select)),
+            order_by: vec![],
             limit: None,
             offset: None,
         })
@@ -456,97 +467,94 @@ mod tests {
     #[test]
     fn basic() {
         let storage = run("
-            CREATE TABLE User (
+            CREATE TABLE Player (
                 id INTEGER,
                 name TEXT
             );
-            CREATE TABLE UserItem (
+            CREATE TABLE PlayerItem (
                 user_id INTEGER,
                 item_id INTEGER,
                 amount INTEGER
             );
         ");
 
-        let sql = "SELECT * FROM User;";
+        let sql = "SELECT * FROM Player;";
         let actual = plan_join(&storage, sql);
         let expected = select(Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
-                relation: table_factor("User", None),
+                relation: table_factor("Player", None),
                 joins: Vec::new(),
             },
             selection: None,
             group_by: Vec::new(),
             having: None,
-            order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "basic select:\n{sql}");
 
-        let sql = "DELETE FROM User WHERE id = 1;";
+        let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan_join(&storage, sql);
         let expected = Statement::Delete {
-            table_name: ObjectName(vec!["User".to_owned()]),
+            table_name: ObjectName(vec!["Player".to_owned()]),
             selection: Some(expr("id = 1")),
         };
         assert_eq!(actual, expected, "plan not covered:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User
-            JOIN UserItem ON UserItem.user_id != User.id
+            FROM Player
+            JOIN PlayerItem ON PlayerItem.user_id != Player.id
         ";
         let actual = plan_join(&storage, sql);
         let expected = select(Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
-                relation: table_factor("User", None),
+                relation: table_factor("Player", None),
                 joins: vec![Join {
-                    relation: table_factor("UserItem", None),
-                    join_operator: inner(Some("UserItem.user_id != User.id")),
+                    relation: table_factor("PlayerItem", None),
+                    join_operator: inner(Some("PlayerItem.user_id != Player.id")),
                     join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: None,
             group_by: Vec::new(),
             having: None,
-            order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "basic nested loop join:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User
-            LEFT JOIN UserItem ON UserItem.amount > 2
+            FROM Player
+            LEFT JOIN PlayerItem ON PlayerItem.amount > 2
         ";
         let actual = plan_join(&storage, sql);
         let expected = select(Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
-                relation: table_factor("User", None),
+                relation: table_factor("Player", None),
                 joins: vec![Join {
-                    relation: table_factor("UserItem", None),
-                    join_operator: left_outer(Some("UserItem.amount > 2")),
+                    relation: table_factor("PlayerItem", None),
+                    join_operator: left_outer(Some("PlayerItem.amount > 2")),
                     join_executor: JoinExecutor::NestedLoop,
                 }],
             },
             selection: None,
             group_by: Vec::new(),
             having: None,
-            order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "basic nested loop join 2:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User
+            FROM Player
             JOIN Empty u2
-            LEFT JOIN User u3;
+            LEFT JOIN Player u3;
         ";
         let actual = plan_join(&storage, sql);
         let expected = select(Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
-                relation: table_factor("User", None),
+                relation: table_factor("Player", None),
                 joins: vec![
                     Join {
                         relation: table_factor("Empty", Some("u2")),
@@ -554,7 +562,7 @@ mod tests {
                         join_executor: JoinExecutor::NestedLoop,
                     },
                     Join {
-                        relation: table_factor("User", Some("u3")),
+                        relation: table_factor("Player", Some("u3")),
                         join_operator: left_outer(None),
                         join_executor: JoinExecutor::NestedLoop,
                     },
@@ -563,29 +571,28 @@ mod tests {
             selection: None,
             group_by: Vec::new(),
             having: None,
-            order_by: Vec::new(),
         });
         assert_eq!(actual, expected, "self multiple joins:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User
-            JOIN UserItem ON UserItem.user_id = User.id
+            FROM Player
+            JOIN PlayerItem ON PlayerItem.user_id = Player.id
         ";
         let actual = plan_join(&storage, sql);
         let expected = {
             let join_executor = JoinExecutor::Hash {
-                key_expr: expr("UserItem.user_id"),
-                value_expr: expr("User.id"),
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
                 where_clause: None,
             };
 
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
+                        relation: table_factor("PlayerItem", None),
                         join_operator: inner(None),
                         join_executor,
                     }],
@@ -593,15 +600,14 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "basic hash join query:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User
-            JOIN UserItem ON UserItem.user_id = User.id
+            FROM Player
+            JOIN PlayerItem ON PlayerItem.user_id = Player.id
         ";
         let actual = plan_join(&storage, sql);
         let actual = {
@@ -611,17 +617,17 @@ mod tests {
         };
         let expected = {
             let join_executor = JoinExecutor::Hash {
-                key_expr: expr("UserItem.user_id"),
-                value_expr: expr("User.id"),
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
                 where_clause: None,
             };
 
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
+                        relation: table_factor("PlayerItem", None),
                         join_operator: inner(None),
                         join_executor,
                     }],
@@ -629,7 +635,6 @@ mod tests {
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(
@@ -638,25 +643,24 @@ mod tests {
         );
 
         let sql = "
-            SELECT * FROM User
-            JOIN UserItem ON (SELECT * FROM User u2)
+            SELECT * FROM Player
+            JOIN PlayerItem ON (SELECT * FROM Player u2)
         ";
         let actual = plan_join(&storage, sql);
         let expected = {
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
-                        join_operator: inner(Some("(SELECT * FROM User u2)")),
+                        relation: table_factor("PlayerItem", None),
+                        join_operator: inner(Some("(SELECT * FROM Player u2)")),
                         join_executor: JoinExecutor::NestedLoop,
                     }],
                 },
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "subquery in join_constraint:\n{sql}");
@@ -665,7 +669,7 @@ mod tests {
     #[test]
     fn hash_join() {
         let storage = run("
-            CREATE TABLE User (
+            CREATE TABLE Player (
                 id INTEGER,
                 name TEXT
             );
@@ -673,7 +677,7 @@ mod tests {
                 id INTEGER,
                 name TEXT
             );
-            CREATE TABLE UserItem (
+            CREATE TABLE PlayerItem (
                 user_id INTEGER,
                 item_id INTEGER,
                 amount INTEGER
@@ -682,26 +686,26 @@ mod tests {
 
         let sql = "
             SELECT *
-            FROM User
-            LEFT JOIN UserItem ON
-                UserItem.amount > 10 AND
-                UserItem.user_id = User.id
+            FROM Player
+            LEFT JOIN PlayerItem ON
+                PlayerItem.amount > 10 AND
+                PlayerItem.user_id = Player.id
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
         let expected = {
             let join_executor = JoinExecutor::Hash {
-                key_expr: expr("UserItem.user_id"),
-                value_expr: expr("User.id"),
-                where_clause: Some(expr("UserItem.amount > 10")),
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
+                where_clause: Some(expr("PlayerItem.amount > 10")),
             };
 
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
+                        relation: table_factor("PlayerItem", None),
                         join_operator: left_outer(None),
                         join_executor,
                     }],
@@ -709,41 +713,41 @@ mod tests {
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "where_clause AND hash_join expr:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User
-            JOIN UserItem ON
-                (UserItem.user_id = User.id) AND
-                User.name = 'abcd' AND
-                User.name != 'barcode'
+            FROM Player
+            JOIN PlayerItem ON
+                (PlayerItem.user_id = Player.id) AND
+                Player.name = 'abcd' AND
+                Player.name != 'barcode'
         ";
         let actual = plan_join(&storage, sql);
         let expected = {
             let join_executor = JoinExecutor::Hash {
-                key_expr: expr("UserItem.user_id"),
-                value_expr: expr("User.id"),
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
                 where_clause: None,
             };
 
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
-                        join_operator: inner(Some("User.name = 'abcd' AND User.name != 'barcode'")),
+                        relation: table_factor("PlayerItem", None),
+                        join_operator: inner(Some(
+                            "Player.name = 'abcd' AND Player.name != 'barcode'",
+                        )),
                         join_executor,
                     }],
                 },
                 selection: None,
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(
@@ -753,27 +757,29 @@ mod tests {
 
         let sql = "
             SELECT *
-            FROM User
-            LEFT JOIN UserItem ON
-                UserItem.amount > 10 AND
-                UserItem.amount * 3 <= 2 AND
-                UserItem.user_id = User.id
+            FROM Player
+            LEFT JOIN PlayerItem ON
+                PlayerItem.amount > 10 AND
+                PlayerItem.amount * 3 <= 2 AND
+                PlayerItem.user_id = Player.id
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
         let expected = {
             let join_executor = JoinExecutor::Hash {
-                key_expr: expr("UserItem.user_id"),
-                value_expr: expr("User.id"),
-                where_clause: Some(expr("UserItem.amount > 10 AND UserItem.amount * 3 <= 2")),
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
+                where_clause: Some(expr(
+                    "PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
+                )),
             };
 
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
+                        relation: table_factor("PlayerItem", None),
                         join_operator: left_outer(None),
                         join_executor,
                     }],
@@ -781,33 +787,32 @@ mod tests {
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "complex where_clause:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User
-            JOIN UserItem ON
-                User.id = UserItem.user_id AND
-                UserItem.amount > 10
+            FROM Player
+            JOIN PlayerItem ON
+                Player.id = PlayerItem.user_id AND
+                PlayerItem.amount > 10
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
         let expected = {
             let join_executor = JoinExecutor::Hash {
-                key_expr: expr("UserItem.user_id"),
-                value_expr: expr("User.id"),
-                where_clause: Some(expr("UserItem.amount > 10")),
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
+                where_clause: Some(expr("PlayerItem.amount > 10")),
             };
 
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
+                        relation: table_factor("PlayerItem", None),
                         join_operator: inner(None),
                         join_executor,
                     }],
@@ -815,19 +820,18 @@ mod tests {
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "hash_join expr AND where_clause:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User u1
-            LEFT OUTER JOIN User u2
+            FROM Player u1
+            LEFT OUTER JOIN Player u2
             WHERE u2.id = (
                 SELECT u3.id
-                FROM User u3
-                JOIN User u4 ON
+                FROM Player u3
+                JOIN Player u4 ON
                     u4.id = u3.id AND
                     u4.id = u1.id
             );
@@ -841,9 +845,9 @@ mod tests {
                         label: "id".to_owned(),
                     }],
                     from: TableWithJoins {
-                        relation: table_factor("User", Some("u3")),
+                        relation: table_factor("Player", Some("u3")),
                         joins: vec![Join {
-                            relation: table_factor("User", Some("u4")),
+                            relation: table_factor("Player", Some("u4")),
                             join_operator: inner(None),
                             join_executor: JoinExecutor::Hash {
                                 key_expr: expr("u4.id"),
@@ -855,8 +859,8 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    order_by: Vec::new(),
                 })),
+                order_by: vec![],
                 limit: None,
                 offset: None,
             };
@@ -864,9 +868,9 @@ mod tests {
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", Some("u1")),
+                    relation: table_factor("Player", Some("u1")),
                     joins: vec![Join {
-                        relation: table_factor("User", Some("u2")),
+                        relation: table_factor("Player", Some("u2")),
                         join_operator: left_outer(None),
                         join_executor: JoinExecutor::NestedLoop,
                     }],
@@ -878,18 +882,17 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "hash join in subquery:\n{sql}");
 
         let sql = "
-            SELECT * FROM User u1
+            SELECT * FROM Player u1
             WHERE u1.id = (
-                SELECT * FROM User u2
+                SELECT * FROM Player u2
                 WHERE u2.id = (
-                    SELECT * FROM User u3
-                    JOIN User u4 ON
+                    SELECT * FROM Player u3
+                    JOIN Player u4 ON
                         u4.id = u3.id + u1.id
                 )
             );
@@ -906,9 +909,9 @@ mod tests {
                 body: SetExpr::Select(Box::new(Select {
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
-                        relation: table_factor("User", Some("u3")),
+                        relation: table_factor("Player", Some("u3")),
                         joins: vec![Join {
-                            relation: table_factor("User", Some("u4")),
+                            relation: table_factor("Player", Some("u4")),
                             join_operator: inner(None),
                             join_executor,
                         }],
@@ -916,8 +919,8 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    order_by: Vec::new(),
                 })),
+                order_by: vec![],
                 limit: None,
                 offset: None,
             };
@@ -926,7 +929,7 @@ mod tests {
                 body: SetExpr::Select(Box::new(Select {
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
-                        relation: table_factor("User", Some("u2")),
+                        relation: table_factor("Player", Some("u2")),
                         joins: Vec::new(),
                     },
                     selection: Some(Expr::BinaryOp {
@@ -936,8 +939,8 @@ mod tests {
                     }),
                     group_by: Vec::new(),
                     having: None,
-                    order_by: Vec::new(),
                 })),
+                order_by: vec![],
                 limit: None,
                 offset: None,
             };
@@ -945,7 +948,7 @@ mod tests {
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", Some("u1")),
+                    relation: table_factor("Player", Some("u1")),
                     joins: Vec::new(),
                 },
                 selection: Some(Expr::BinaryOp {
@@ -955,45 +958,43 @@ mod tests {
                 }),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(actual, expected, "hash join in nested subquery:\n{sql}");
 
         let sql = "
             SELECT *
-            FROM User
-            JOIN UserItem ON
-                User.id = UserItem.user_id AND
-                User.id > 10 AND
-                UserItem.item_id IS NOT NULL AND
-                UserItem.amount > 10
+            FROM Player
+            JOIN PlayerItem ON
+                Player.id = PlayerItem.user_id AND
+                Player.id > 10 AND
+                PlayerItem.item_id IS NOT NULL AND
+                PlayerItem.amount > 10
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
         let expected = {
             let join_executor = JoinExecutor::Hash {
-                key_expr: expr("UserItem.user_id"),
-                value_expr: expr("User.id"),
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
                 where_clause: Some(expr(
-                    "UserItem.item_id IS NOT NULL AND UserItem.amount > 10",
+                    "PlayerItem.item_id IS NOT NULL AND PlayerItem.amount > 10",
                 )),
             };
 
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
-                        join_operator: inner(Some("User.id > 10")),
+                        relation: table_factor("PlayerItem", None),
+                        join_operator: inner(Some("Player.id > 10")),
                         join_executor,
                     }],
                 },
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(
@@ -1003,38 +1004,37 @@ mod tests {
 
         let sql = "
             SELECT *
-            FROM User
-            JOIN UserItem ON
-                User.id > User.id + UserItem.user_id AND
-                User.id = UserItem.user_id AND
-                UserItem.item_id IS NOT NULL AND
-                UserItem.amount > 10
+            FROM Player
+            JOIN PlayerItem ON
+                Player.id > Player.id + PlayerItem.user_id AND
+                Player.id = PlayerItem.user_id AND
+                PlayerItem.item_id IS NOT NULL AND
+                PlayerItem.amount > 10
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
         let expected = {
             let join_executor = JoinExecutor::Hash {
-                key_expr: expr("UserItem.user_id"),
-                value_expr: expr("User.id"),
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
                 where_clause: Some(expr(
-                    "UserItem.item_id IS NOT NULL AND UserItem.amount > 10",
+                    "PlayerItem.item_id IS NOT NULL AND PlayerItem.amount > 10",
                 )),
             };
 
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: vec![Join {
-                        relation: table_factor("UserItem", None),
-                        join_operator: inner(Some("User.id > User.id + UserItem.user_id")),
+                        relation: table_factor("PlayerItem", None),
+                        join_operator: inner(Some("Player.id > Player.id + PlayerItem.user_id")),
                         join_executor,
                     }],
                 },
                 selection: Some(expr("True")),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
         assert_eq!(
@@ -1046,7 +1046,7 @@ mod tests {
     #[test]
     fn hash_join_in_subquery() {
         let storage = run("
-            CREATE TABLE User (
+            CREATE TABLE Player (
                 id INTEGER,
                 name TEXT
             );
@@ -1059,7 +1059,7 @@ mod tests {
 
         let subquery_sql = "
             SELECT u.id
-            FROM User u
+            FROM Player u
             JOIN Flag f ON f.user_id = u.id
         ";
         let subquery = || {
@@ -1076,7 +1076,7 @@ mod tests {
                         label: "id".to_owned(),
                     }],
                     from: TableWithJoins {
-                        relation: table_factor("User", Some("u")),
+                        relation: table_factor("Player", Some("u")),
                         joins: vec![Join {
                             relation: table_factor("Flag", Some("f")),
                             join_operator: inner(None),
@@ -1086,8 +1086,8 @@ mod tests {
                     selection: None,
                     group_by: Vec::new(),
                     having: None,
-                    order_by: Vec::new(),
                 })),
+                order_by: vec![],
                 limit: None,
                 offset: None,
             })
@@ -1098,17 +1098,16 @@ mod tests {
             select(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
-                    relation: table_factor("User", None),
+                    relation: table_factor("Player", None),
                     joins: Vec::new(),
                 },
                 selection: Some(selection),
                 group_by: Vec::new(),
                 having: None,
-                order_by: Vec::new(),
             })
         };
 
-        let sql = format!("SELECT * FROM User WHERE id = ({subquery_sql})");
+        let sql = format!("SELECT * FROM Player WHERE id = ({subquery_sql})");
         let actual = plan_join(&storage, &sql);
         let expected = gen_expected(Expr::BinaryOp {
             left: Box::new(expr("id")),
@@ -1117,7 +1116,7 @@ mod tests {
         });
         assert_eq!(actual, expected, "binary operator:\n{sql}");
 
-        let sql = format!("SELECT * FROM User WHERE -({subquery_sql}) IN ({subquery_sql})");
+        let sql = format!("SELECT * FROM Player WHERE -({subquery_sql}) IN ({subquery_sql})");
         let actual = plan_join(&storage, &sql);
         let expected = gen_expected(Expr::InSubquery {
             expr: Box::new(Expr::UnaryOp {
@@ -1131,7 +1130,7 @@ mod tests {
 
         let sql = format!(
             "
-            SELECT * FROM User
+            SELECT * FROM Player
             WHERE -({subquery_sql}) IN ({subquery_sql})
         "
         );
@@ -1148,7 +1147,7 @@ mod tests {
 
         let sql = format!(
             "
-            SELECT * FROM User
+            SELECT * FROM Player
             WHERE
                 CAST(({subquery_sql}) AS INTEGER) IN (1, 2, 3)
         "
@@ -1166,7 +1165,7 @@ mod tests {
 
         let sql = format!(
             "
-            SELECT * FROM User
+            SELECT * FROM Player
             WHERE 
                 ({subquery_sql}) IS NULL
                 OR
@@ -1181,14 +1180,17 @@ mod tests {
         });
         assert_eq!(actual, expected, "is null and is not null:\n{sql}");
 
-        let sql = format!("SELECT * FROM User WHERE EXISTS({subquery_sql})");
+        let sql = format!("SELECT * FROM Player WHERE EXISTS({subquery_sql})");
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::Exists(subquery()));
+        let expected = gen_expected(Expr::Exists {
+            subquery: subquery(),
+            negated: false,
+        });
         assert_eq!(actual, expected, "exists:\n{sql}");
 
         let sql = format!(
             "
-            SELECT * FROM User
+            SELECT * FROM Player
             WHERE ({subquery_sql}) BETWEEN ({subquery_sql}) AND 100;
         "
         );
@@ -1203,7 +1205,7 @@ mod tests {
 
         let sql = format!(
             "
-            SELECT * FROM User
+            SELECT * FROM Player
             WHERE EXTRACT(HOUR FROM (({subquery_sql}))) IS NULL
         "
         );
@@ -1216,7 +1218,7 @@ mod tests {
 
         let sql = format!(
             "
-            SELECT * FROM User
+            SELECT * FROM Player
             WHERE
                 CASE ({subquery_sql})
                     WHEN 10 THEN True

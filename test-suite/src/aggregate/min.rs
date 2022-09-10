@@ -38,12 +38,20 @@ test_case!(min, async move {
             ),
         ),
         (
+            "SELECT MIN(id + quantity) FROM Item;",
+            select!(
+                "MIN(id + quantity)"
+                I64;
+                2
+            ),
+        ),
+        (
             "SELECT SUM(quantity) * 2 + MIN(quantity) - 3 / 1 FROM Item",
             select!("SUM(quantity) * 2 + MIN(quantity) - 3 / 1"; I64; 91),
         ),
     ];
 
     for (sql, expected) in test_cases {
-        test!(Ok(expected), sql);
+        test!(sql, Ok(expected));
     }
 });

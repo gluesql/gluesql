@@ -44,6 +44,7 @@ pub fn check_expr(context: Option<Rc<Context<'_>>>, expr: &Expr) -> bool {
 fn check_query(context: Option<Rc<Context<'_>>>, query: &Query) -> bool {
     let Query {
         body,
+        order_by,
         limit,
         offset,
     } = query;
@@ -61,6 +62,15 @@ fn check_query(context: Option<Rc<Context<'_>>>, query: &Query) -> bool {
         return false;
     }
 
+    let order_by = order_by
+        .iter()
+        .map(|order_by| &order_by.expr)
+        .map(|expr| check_expr(context.as_ref().map(Rc::clone), expr))
+        .all(identity);
+    if !order_by {
+        return false;
+    }
+
     limit
         .iter()
         .chain(offset.iter())
@@ -75,7 +85,6 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
         selection,
         group_by,
         having,
-        order_by,
     } = select;
 
     if !projection
@@ -126,7 +135,6 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
         .iter()
         .chain(group_by.iter())
         .chain(having.iter())
-        .chain(order_by.iter().map(|order_by| &order_by.expr))
         .map(|expr| check_expr(context.as_ref().map(Rc::clone), expr))
         .all(identity)
 }

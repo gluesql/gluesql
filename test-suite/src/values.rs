@@ -36,6 +36,15 @@ test_case!(values, async move {
             )),
         ),
         (
+            "VALUES (1, 'a'), (2, 'b') ORDER BY column1 DESC",
+            Ok(select!(
+                column1 | column2;
+                I64     | Str;
+                2         "b".to_owned();
+                1         "a".to_owned()
+            )),
+        ),
+        (
             "VALUES (1), (2) limit 1",
             Ok(select!(
                 column1;
@@ -170,6 +179,6 @@ test_case!(values, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

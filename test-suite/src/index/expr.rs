@@ -26,46 +26,46 @@ CREATE TABLE Test (
     "#
     );
 
-    test!(Ok(Payload::CreateIndex), "CREATE INDEX idx_id ON Test (id)");
+    test!("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex));
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_typed_string ON Test ((id))"
+        "CREATE INDEX idx_typed_string ON Test ((id))",
+        Ok(Payload::CreateIndex)
     );
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_binary_op ON Test (num || name);"
+        "CREATE INDEX idx_binary_op ON Test (num || name);",
+        Ok(Payload::CreateIndex)
     );
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_unary_op ON Test (-num);"
+        "CREATE INDEX idx_unary_op ON Test (-num);",
+        Ok(Payload::CreateIndex)
     );
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));"
+        "CREATE INDEX idx_cast ON Test (CAST(id AS TEXT));",
+        Ok(Payload::CreateIndex)
     );
 
     test!(
-        Err(AlterError::IdentifierNotFound(expr!("100")).into()),
-        "CREATE INDEX idx_literal ON Test (100)"
+        "CREATE INDEX idx_literal ON Test (100)",
+        Err(AlterError::IdentifierNotFound(expr!("100")).into())
     );
 
     test!(
-        Ok(Payload::Insert(1)),
-        r#"INSERT INTO Test VALUES (4, 7, "Well");"#
+        r#"INSERT INTO Test VALUES (4, 7, "Well");"#,
+        Ok(Payload::Insert(1))
     );
 
     test!(
+        "SELECT id, num, name FROM Test",
         Ok(select!(
             id  | num | name
             I64 | I64 | Str;
             1     2     "Hello".to_owned();
             4     7     "Well".to_owned()
-        )),
-        "SELECT id, num, name FROM Test"
+        ))
     );
 
     test_idx!(

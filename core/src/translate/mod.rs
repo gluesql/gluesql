@@ -9,6 +9,7 @@ mod query;
 
 pub use self::{
     data_type::translate_data_type,
+    ddl::translate_column_def,
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
     query::{translate_query, translate_select_item},
@@ -22,7 +23,6 @@ use sqlparser::ast::{TableFactor, TableWithJoins};
 use crate::ast::Variable;
 
 use {
-    self::ddl::translate_column_def,
     crate::{
         ast::{Assignment, ObjectName, Statement},
         result::Result,
@@ -60,8 +60,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             selection: selection.as_ref().map(translate_expr).transpose()?,
         }),
         SqlStatement::Delete {
-            table_name,
+            table_name: TableFactor::Table {
+                name: table_name, ..
+            },
             selection,
+            ..
         } => Ok(Statement::Delete {
             table_name: translate_object_name(table_name),
             selection: selection.as_ref().map(translate_expr).transpose()?,
@@ -144,9 +147,14 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         #[cfg(feature = "transaction")]
         SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
         #[cfg(feature = "metadata")]
+        SqlStatement::ShowTables {
+            filter: None,
+            db_name: None,
+            ..
+        } => Ok(Statement::ShowVariable(Variable::Tables)),
+        #[cfg(feature = "metadata")]
         SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
-                "TABLES" => Ok(Statement::ShowVariable(Variable::Tables)),
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
                 v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_string()).into()),
             },

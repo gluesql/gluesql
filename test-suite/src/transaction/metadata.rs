@@ -10,22 +10,22 @@ test_case!(metadata, async move {
     };
 
     run!("CREATE TABLE Garlic (id INTEGER);");
-    test!(tables(vec!["Garlic"]), "SHOW TABLES;");
+    test!("SHOW TABLES;", tables(vec!["Garlic"]));
 
     run!("BEGIN;");
-    test!(tables(vec!["Garlic"]), "SHOW TABLES;");
+    test!("SHOW TABLES;", tables(vec!["Garlic"]));
 
     run!("CREATE TABLE Noodle (id INTEGER);");
-    test!(tables(vec!["Garlic", "Noodle"]), "SHOW TABLES;");
+    test!("SHOW TABLES;", tables(vec!["Garlic", "Noodle"]));
 
     run!("ROLLBACK;");
-    test!(tables(vec!["Garlic"]), "SHOW TABLES;");
+    test!("SHOW TABLES;", tables(vec!["Garlic"]));
 
     run!("BEGIN;");
     run!("CREATE TABLE Apple (id INTEGER);");
     run!("CREATE TABLE Rice (id INTEGER);");
-    test!(tables(vec!["Apple", "Garlic", "Rice"]), "SHOW TABLES;");
+    test!("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]));
 
     run!("COMMIT;");
-    test!(tables(vec!["Apple", "Garlic", "Rice"]), "SHOW TABLES;");
+    test!("SHOW TABLES;", tables(vec!["Apple", "Garlic", "Rice"]));
 });

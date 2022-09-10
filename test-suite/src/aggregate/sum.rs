@@ -38,9 +38,41 @@ test_case!(sum, async move {
                 15                47
             ),
         ),
+        (
+            "SELECT SUM(ifnull(age, 0)) from Item;",
+            select!(
+                "SUM(ifnull(age, 0))"
+                I64;
+                104
+            ),
+        ),
+        (
+            "SELECT SUM(1 + 2) FROM Item;",
+            select!(
+                "SUM(1 + 2)"
+                I64;
+                15
+            ),
+        ),
+        (
+            "SELECT SUM(id + 1) FROM Item;",
+            select!(
+                "SUM(id + 1)"
+                I64;
+                20
+            ),
+        ),
+        (
+            "SELECT SUM(id * quantity) FROM Item;",
+            select!(
+                "SUM(id * quantity)"
+                I64;
+                174
+            ),
+        ),
     ];
 
     for (sql, expected) in test_cases {
-        test!(Ok(expected), sql);
+        test!(sql, Ok(expected));
     }
 });

@@ -32,101 +32,101 @@ test_case!(error, async move {
 
     let test_cases = [
         (
+            "SELECT * FROM Arith WHERE name + id < 1",
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
                 operator: NumericBinaryOperator::Add,
                 rhs: Value::I64(1),
             }
             .into(),
-            "SELECT * FROM Arith WHERE name + id < 1",
         ),
         (
+            "SELECT * FROM Arith WHERE name - id < 1",
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
                 operator: NumericBinaryOperator::Subtract,
                 rhs: Value::I64(1),
             }
             .into(),
-            "SELECT * FROM Arith WHERE name - id < 1",
         ),
         (
+            "SELECT * FROM Arith WHERE name * id < 1",
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
                 operator: NumericBinaryOperator::Multiply,
                 rhs: Value::I64(1),
             }
             .into(),
-            "SELECT * FROM Arith WHERE name * id < 1",
         ),
         (
+            "SELECT * FROM Arith WHERE name / id < 1",
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
                 operator: NumericBinaryOperator::Divide,
                 rhs: Value::I64(1),
             }
             .into(),
-            "SELECT * FROM Arith WHERE name / id < 1",
         ),
         (
+            "SELECT * FROM Arith WHERE name % id < 1",
             ValueError::NonNumericMathOperation {
                 lhs: Value::Str("A".to_owned()),
                 operator: NumericBinaryOperator::Modulo,
                 rhs: Value::I64(1),
             }
             .into(),
-            "SELECT * FROM Arith WHERE name % id < 1",
         ),
         (
-            UpdateError::ColumnNotFound("aaa".to_owned()).into(),
             "UPDATE Arith SET aaa = 1",
+            UpdateError::ColumnNotFound("aaa".to_owned()).into(),
         ),
         (
+            "SELECT * FROM Arith WHERE TRUE + 1 = 1",
             LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", Literal::Boolean(true)),
                 format!("{:?}", Literal::Number(Cow::Owned(BigDecimal::from(1)))),
             )
             .into(),
-            "SELECT * FROM Arith WHERE TRUE + 1 = 1",
         ),
         (
-            LiteralError::DivisorShouldNotBeZero.into(),
             "SELECT * FROM Arith WHERE id = 2 / 0",
+            LiteralError::DivisorShouldNotBeZero.into(),
         ),
         (
-            LiteralError::DivisorShouldNotBeZero.into(),
             "SELECT * FROM Arith WHERE id = 2 / 0.0",
+            LiteralError::DivisorShouldNotBeZero.into(),
         ),
         (
-            LiteralError::DivisorShouldNotBeZero.into(),
             "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0",
+            LiteralError::DivisorShouldNotBeZero.into(),
         ),
         (
-            LiteralError::DivisorShouldNotBeZero.into(),
             "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0.0",
+            LiteralError::DivisorShouldNotBeZero.into(),
         ),
         (
-            LiteralError::DivisorShouldNotBeZero.into(),
             "SELECT * FROM Arith WHERE id = 2 % 0",
-        ),
-        (
             LiteralError::DivisorShouldNotBeZero.into(),
-            "SELECT * FROM Arith WHERE id = 2 % 0.0",
         ),
         (
+            "SELECT * FROM Arith WHERE id = 2 % 0.0",
+            LiteralError::DivisorShouldNotBeZero.into(),
+        ),
+        (
+            r#"SELECT * FROM Arith WHERE TRUE AND "hello""#,
             EvaluateError::BooleanTypeRequired(format!(
                 "{:?}",
                 Literal::Text(Cow::Owned("hello".to_owned()))
             ))
             .into(),
-            r#"SELECT * FROM Arith WHERE TRUE AND "hello""#,
         ),
         (
-            EvaluateError::BooleanTypeRequired(format!("{:?}", Value::Str("A".to_owned()))).into(),
             "SELECT * FROM Arith WHERE name AND id",
+            EvaluateError::BooleanTypeRequired(format!("{:?}", Value::Str("A".to_owned()))).into(),
         ),
     ];
 
-    for (error, sql) in test_cases {
-        test!(Err(error), sql);
+    for (sql, error) in test_cases {
+        test!(sql, Err(error));
     }
 });

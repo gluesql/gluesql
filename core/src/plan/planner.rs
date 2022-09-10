@@ -40,7 +40,10 @@ pub trait Planner<'a> {
                 }
             }
             Expr::Subquery(query) => Expr::Subquery(Box::new(self.query(outer_context, *query))),
-            Expr::Exists(query) => Expr::Exists(Box::new(self.query(outer_context, *query))),
+            Expr::Exists { subquery, negated } => Expr::Exists {
+                subquery: Box::new(self.query(outer_context, *subquery)),
+                negated,
+            },
             Expr::InSubquery {
                 expr,
                 subquery,
@@ -72,6 +75,38 @@ pub trait Planner<'a> {
                     negated,
                     low,
                     high,
+                }
+            }
+            Expr::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
+                let pattern =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *pattern));
+
+                Expr::Like {
+                    expr,
+                    negated,
+                    pattern,
+                }
+            }
+            Expr::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *expr));
+                let pattern =
+                    Box::new(self.subquery_expr(outer_context.as_ref().map(Rc::clone), *pattern));
+
+                Expr::ILike {
+                    expr,
+                    negated,
+                    pattern,
                 }
             }
             Expr::BinaryOp { left, op, right } => Expr::BinaryOp {

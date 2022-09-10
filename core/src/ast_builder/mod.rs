@@ -1,4 +1,8 @@
+#[cfg(feature = "alter-table")]
+mod alter_table;
 mod assignment;
+mod column_def;
+mod create_table;
 mod column_list;
 mod data_type;
 mod delete;
@@ -17,6 +21,7 @@ mod table;
 #[cfg(feature = "transaction")]
 mod transaction;
 mod update;
+pub mod insert;
 
 pub use {
     assignment::AssignmentNode,

@@ -3,7 +3,7 @@ use {crate::*, gluesql_core::executor::EvaluateError};
 test_case!(nested_select, async move {
     let create_sqls: [&str; 2] = [
         "
-        CREATE TABLE User (
+        CREATE TABLE Player (
             id INTEGER,
             name TEXT
         );
@@ -23,7 +23,7 @@ test_case!(nested_select, async move {
 
     let insert_sqls = [
         "
-        INSERT INTO User (id, name) VALUES
+        INSERT INTO Player (id, name) VALUES
             (1, \"Taehoon\"),
             (2,    \"Mike\"),
             (3,   \"Jorno\"),
@@ -59,30 +59,30 @@ test_case!(nested_select, async move {
         (9, "SELECT * FROM Request WHERE quantity NOT IN (5, 1);"),
         (
             4,
-            "SELECT * FROM Request WHERE user_id IN (SELECT id FROM User WHERE id = 3);",
+            "SELECT * FROM Request WHERE user_id IN (SELECT id FROM Player WHERE id = 3);",
         ),
         (
             4,
-            "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request);",
+            "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request);",
         ),
         (
             4,
-            "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id = User.id);",
+            "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE user_id = Player.id);",
         ),
-        (4, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE user_id IN (User.id));"),
-        (2, "SELECT * FROM User WHERE id IN (SELECT user_id FROM Request WHERE quantity IN (6, 7, 8, 9));"),
-        (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM User WHERE name IN (\"Taehoon\", \"Hwan\"));"),
+        (4, "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE user_id IN (Player.id));"),
+        (2, "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE quantity IN (6, 7, 8, 9));"),
+        (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM Player WHERE name IN (\"Taehoon\", \"Hwan\"));"),
     ];
     for (num, sql) in select_sqls {
         count!(num, sql);
     }
 
     let error_cases = [(
+        "SELECT * FROM Player WHERE id = (SELECT id FROM Player WHERE id = 9);",
         EvaluateError::NestedSelectRowNotFound.into(),
-        "SELECT * FROM User WHERE id = (SELECT id FROM User WHERE id = 9);",
     )];
 
-    for (error, sql) in error_cases {
-        test!(Err(error), sql);
+    for (sql, error) in error_cases {
+        test!(sql, Err(error));
     }
 });

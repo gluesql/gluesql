@@ -41,7 +41,7 @@ test_case!(default, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(Ok(expected), sql);
+        test!(sql, Ok(expected));
     }
 
     let stateless_function_test_cases = [
@@ -63,11 +63,10 @@ test_case!(default, async move {
     ];
 
     for (sql, expected) in stateless_function_test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 
     test!(
-        Ok(Payload::Create),
         r#"
         CREATE TABLE TestExpr (
             id INTEGER,
@@ -77,7 +76,8 @@ test_case!(default, async move {
             flag2 BOOLEAN DEFAULT 1 IN (1, 2, 3),
             flag3 BOOLEAN DEFAULT 10 BETWEEN 1 AND 2,
             flag4 BOOLEAN DEFAULT (1 IS NULL OR NULL IS NOT NULL)
-        )"#
+        )"#,
+        Ok(Payload::Create)
     );
 
     run!("INSERT INTO TestExpr (id) VALUES (1);");
@@ -85,11 +85,11 @@ test_case!(default, async move {
     let d = NaiveDate::from_ymd;
 
     test!(
+        "SELECT * FROM TestExpr",
         Ok(select!(
             id  | date          | num | flag | flag2 | flag3 | flag4;
             I64 | Date          | I64 | Bool | Bool  | Bool  | Bool;
             1     d(2020, 1, 1)   2     true   true    false   false
-        )),
-        "SELECT * FROM TestExpr"
+        ))
     );
 });

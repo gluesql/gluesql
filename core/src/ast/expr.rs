@@ -31,6 +31,16 @@ pub enum Expr {
         low: Box<Expr>,
         high: Box<Expr>,
     },
+    Like {
+        expr: Box<Expr>,
+        negated: bool,
+        pattern: Box<Expr>,
+    },
+    ILike {
+        expr: Box<Expr>,
+        negated: bool,
+        pattern: Box<Expr>,
+    },
     BinaryOp {
         left: Box<Expr>,
         op: BinaryOperator,
@@ -56,7 +66,10 @@ pub enum Expr {
     },
     Function(Box<Function>),
     Aggregate(Box<Aggregate>),
-    Exists(Box<Query>),
+    Exists {
+        subquery: Box<Query>,
+        negated: bool,
+    },
     Subquery(Box<Query>),
     Case {
         operand: Option<Box<Expr>>,
@@ -107,6 +120,32 @@ impl ToSql for Expr {
                     false => format!("{expr} BETWEEN {low} AND {high}"),
                 }
             }
+            Expr::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = expr.to_sql();
+                let pattern = pattern.to_sql();
+
+                match negated {
+                    true => format!("{expr} NOT LIKE {pattern}"),
+                    false => format!("{expr} LIKE {pattern}"),
+                }
+            }
+            Expr::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = expr.to_sql();
+                let pattern = pattern.to_sql();
+
+                match negated {
+                    true => format!("{expr} NOT ILIKE {pattern}"),
+                    false => format!("{expr} ILIKE {pattern}"),
+                }
+            }
             Expr::UnaryOp { op, expr } => match op {
                 UnaryOperator::Factorial => format!("{}{}", expr.to_sql(), op.to_sql()),
                 _ => format!("{}{}", op.to_sql(), expr.to_sql()),
@@ -149,7 +188,10 @@ impl ToSql for Expr {
                 true => format!("{} NOT IN (..query..)", expr.to_sql()),
                 false => format!("{} IN (..query..)", expr.to_sql()),
             },
-            Expr::Exists(_) => "EXISTS(..query..)".to_string(),
+            Expr::Exists { negated, .. } => match negated {
+                true => "NOT EXISTS(..query..)".to_string(),
+                false => "EXISTS(..query..)".to_string(),
+            },
             Expr::Subquery(_) => "(..query..)".to_string(),
         }
     }
@@ -160,7 +202,8 @@ mod tests {
     use {
         crate::ast::{
             Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Expr,
-            Function, ToSql, UnaryOperator,
+            Function, ObjectName, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins,
+            ToSql, UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -183,78 +226,10 @@ mod tests {
             }
             .to_sql()
         );
-
-        assert_eq!(
-            "id - num",
-            Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
-                op: BinaryOperator::Minus,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "id * num",
-            Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
-                op: BinaryOperator::Multiply,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "id / num",
-            Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
-                op: BinaryOperator::Divide,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "id % num",
-            &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
-                op: BinaryOperator::Modulo,
-                right: Box::new(Expr::Identifier("num".to_string()))
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "+id",
-            Expr::UnaryOp {
-                op: UnaryOperator::Plus,
-                expr: Box::new(Expr::Identifier("id".to_owned())),
-            }
-            .to_sql(),
-        );
-
         assert_eq!(
             "-id",
             Expr::UnaryOp {
                 op: UnaryOperator::Minus,
-                expr: Box::new(Expr::Identifier("id".to_owned())),
-            }
-            .to_sql(),
-        );
-
-        assert_eq!(
-            "NOT id",
-            Expr::UnaryOp {
-                op: UnaryOperator::Not,
-                expr: Box::new(Expr::Identifier("id".to_owned())),
-            }
-            .to_sql(),
-        );
-
-        assert_eq!(
-            "id!",
-            Expr::UnaryOp {
-                op: UnaryOperator::Factorial,
                 expr: Box::new(Expr::Identifier("id".to_owned())),
             }
             .to_sql(),
@@ -332,6 +307,44 @@ mod tests {
         );
 
         assert_eq!(
+            r#"id LIKE "%abc""#,
+            Expr::Like {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: false,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            r#"id NOT LIKE "%abc""#,
+            Expr::Like {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: true,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"id ILIKE "%abc_""#,
+            Expr::ILike {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: false,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            r#"id NOT ILIKE "%abc_""#,
+            Expr::ILike {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                negated: true,
+                pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
             r#"id IN ("a", "b", "c")"#,
             Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_string())),
@@ -357,6 +370,60 @@ mod tests {
                 negated: true
             }
             .to_sql()
+        );
+
+        assert_eq!(
+            "EXISTS(..query..)",
+            Expr::Exists {
+                subquery: Box::new(Query {
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![SelectItem::Wildcard],
+                        from: TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: ObjectName(vec!["Foo".to_owned()]),
+                                alias: None,
+                                index: None,
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                }),
+                negated: false,
+            }
+            .to_sql(),
+        );
+
+        assert_eq!(
+            "NOT EXISTS(..query..)",
+            Expr::Exists {
+                subquery: Box::new(Query {
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![SelectItem::Wildcard],
+                        from: TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: ObjectName(vec!["Foo".to_owned()]),
+                                alias: None,
+                                index: None,
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                }),
+                negated: true,
+            }
+            .to_sql(),
         );
 
         assert_eq!(

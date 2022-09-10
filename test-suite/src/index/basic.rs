@@ -31,14 +31,14 @@ CREATE TABLE Test (
     "#
     );
 
-    test!(Ok(Payload::CreateIndex), "CREATE INDEX idx_id ON Test (id)");
+    test!("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex));
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_name ON Test (name)"
+        "CREATE INDEX idx_name ON Test (name)",
+        Ok(Payload::CreateIndex)
     );
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_id2 ON Test (id + num)"
+        "CREATE INDEX idx_id2 ON Test (id + num)",
+        Ok(Payload::CreateIndex)
     );
 
     test_idx!(
@@ -161,8 +161,8 @@ CREATE TABLE Test (
     );
 
     test!(
-        Ok(Payload::Insert(1)),
-        "INSERT INTO Test (id, num, name) VALUES (1, 30, \"New one\")"
+        "INSERT INTO Test (id, num, name) VALUES (1, 30, \"New one\")",
+        Ok(Payload::Insert(1))
     );
 
     test_idx!(
@@ -227,7 +227,7 @@ CREATE TABLE Test (
         "SELECT id, num, name FROM Test WHERE id + num = 18"
     );
 
-    test!(Ok(Payload::Delete(1)), "DELETE FROM Test WHERE id = 11");
+    test!("DELETE FROM Test WHERE id = 11", Ok(Payload::Delete(1)));
     test_idx!(
         Ok(select!(
             id  | num | name
@@ -239,8 +239,8 @@ CREATE TABLE Test (
     );
 
     test!(
-        Ok(Payload::Update(3)),
-        "UPDATE Test SET id = id + 1 WHERE id = 1;"
+        "UPDATE Test SET id = id + 1 WHERE id = 1;",
+        Ok(Payload::Update(3))
     );
 
     test_idx!(
@@ -253,7 +253,7 @@ CREATE TABLE Test (
         "SELECT * FROM Test WHERE 19 = id + num"
     );
 
-    test!(Ok(Payload::DropIndex), "DROP INDEX Test.idx_id2;");
+    test!("DROP INDEX Test.idx_id2;", Ok(Payload::DropIndex));
     test_idx!(
         Ok(select!(
             id  | num | name
@@ -287,37 +287,37 @@ CREATE TABLE Test (
     );
 
     test!(
-        Err(TranslateError::CompositeIndexNotSupported.into()),
-        "CREATE INDEX idx_com ON Test (id, num)"
+        "CREATE INDEX idx_com ON Test (id, num)",
+        Err(TranslateError::CompositeIndexNotSupported.into())
     );
 
     test!(
-        Err(TranslateError::TooManyParamsInDropIndex.into()),
-        "DROP INDEX Test.idx_id, Test.idx_id2"
+        "DROP INDEX Test.idx_id, Test.idx_id2",
+        Err(TranslateError::TooManyParamsInDropIndex.into())
     );
 
     test!(
-        Err(AlterError::UnsupportedIndexExpr(expr!("a.b")).into()),
-        "CREATE INDEX idx_wow On Test (a.b)"
+        "CREATE INDEX idx_wow On Test (a.b)",
+        Err(AlterError::UnsupportedIndexExpr(expr!("a.b")).into())
     );
 
     test!(
-        Err(AlterError::TableNotFound("Abc".to_owned()).into()),
-        "CREATE INDEX idx_wow ON Abc (name)"
+        "CREATE INDEX idx_wow ON Abc (name)",
+        Err(AlterError::TableNotFound("Abc".to_owned()).into())
     );
 
     test!(
-        Err(IndexError::TableNotFound("NoNameTable".to_owned()).into()),
-        "DROP INDEX NoNameTable.idx_id"
+        "DROP INDEX NoNameTable.idx_id",
+        Err(IndexError::TableNotFound("NoNameTable".to_owned()).into())
     );
 
     test!(
-        Err(IndexError::IndexNameAlreadyExists("idx_name".to_owned()).into()),
-        "CREATE INDEX idx_name ON Test (name || id)"
+        "CREATE INDEX idx_name ON Test (name || id)",
+        Err(IndexError::IndexNameAlreadyExists("idx_name".to_owned()).into())
     );
 
     test!(
-        Err(IndexError::IndexNameDoesNotExist("idx_aaa".to_owned()).into()),
-        "DROP INDEX Test.idx_aaa"
+        "DROP INDEX Test.idx_aaa",
+        Err(IndexError::IndexNameDoesNotExist("idx_aaa".to_owned()).into())
     );
 });
