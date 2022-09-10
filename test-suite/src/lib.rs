@@ -4,6 +4,7 @@ pub mod arithmetic;
 pub mod basic;
 pub mod blend;
 pub mod case;
+pub mod insert;
 pub mod concat;
 pub mod data_type;
 pub mod default;
@@ -57,6 +58,7 @@ macro_rules! generate_store_tests {
             };
         }
         glue!(update, update::update);
+        glue!(insert, insert::insert);
         glue!(basic, basic::basic);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
