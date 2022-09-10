@@ -18,16 +18,19 @@ mod select_item;
 mod select_item_list;
 mod show_columns;
 mod table;
+mod create_table;
 #[cfg(feature = "transaction")]
 mod transaction;
 mod update;
-pub mod insert;
+//pub mod insert;
 
 pub use {
     assignment::AssignmentNode,
     data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
+    create_table::CreateTableNode,
+    column_def::ColumnDefNode,
     expr_list::ExprList,
     order_by_expr::OrderByExprNode,
     query::QueryNode,
@@ -44,6 +47,12 @@ pub use {
 
 /// Available expression builder functions
 pub use expr::{col, exists, expr, nested, not_exists, num, text, ExprNode};
+
+#[cfg(feature = "alter-table")]
+pub use alter_table::{
+    AddColumnNode, AlterTableNode, DropColumnNode, RenameColumnNode, RenameTableNode,
+};
+
 #[cfg(feature = "index")]
 pub use {index::CreateIndexNode, index::DropIndexNode};
 
