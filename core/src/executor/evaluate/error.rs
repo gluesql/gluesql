@@ -58,6 +58,6 @@ pub enum EvaluateError {
     #[error("subquery returns more than one row")]
     MoreThanOneRowReturned,
 
-    #[error("Format function does not support following DataType: {0}")]
+    #[error("format function does not support following data_type: {0}")]
     UnsupportedExprForFormatFunction(String),
 }
