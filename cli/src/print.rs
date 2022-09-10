@@ -10,6 +10,7 @@ use {
         io::{Result, Write},
         path::Path,
     },
+    tabled::{builder::Builder, Table as Table2, Tabled},
 };
 
 pub struct Print<W: Write> {
@@ -65,13 +66,13 @@ impl<W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::Select { labels, rows } => {
-                let mut table = get_table(labels);
+                let mut table = get_table2(labels);
                 for values in rows {
                     let values: Vec<String> = values.iter().map(Into::into).collect();
 
-                    table.add_row(values);
+                    table.add_record(values);
                 }
-                self.write(table)?;
+                self.write(table.build())?;
             }
             _ => {}
         };
@@ -124,6 +125,13 @@ fn get_table<T: Into<Row>>(header: T) -> Table {
         .load_preset(UTF8_BORDERS_ONLY)
         .apply_modifier(UTF8_ROUND_CORNERS)
         .set_header(header);
+
+    table
+}
+
+fn get_table2(header: &Vec<String>) -> Builder {
+    let mut table = Builder::default();
+    table.set_columns(header);
 
     table
 }
