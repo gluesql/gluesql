@@ -160,7 +160,7 @@ impl Key {
                     .copied()
                     .collect::<Vec<_>>()
             }
-            Key::U8(v) => [VALUE, 0]
+            Key::U8(v) => [VALUE, 1]
                 .iter()
                 .chain(v.to_be_bytes().iter())
                 .copied()
@@ -254,6 +254,7 @@ mod tests {
         assert_eq!(convert("CAST(11 AS INT(16))"), Ok(Key::I16(11)));
         assert_eq!(convert("CAST(11 AS INT(32))"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
+        assert_eq!(convert("CAST(UNSIGNED INT(32)"), Ok(Key::U8(255)));
         assert_eq!(
             convert(r#""Hello World""#),
             Ok(Key::Str("Hello World".to_owned()))
