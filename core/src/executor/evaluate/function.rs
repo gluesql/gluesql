@@ -445,7 +445,7 @@ pub fn to_date(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resu
                 }
             }
         }
-        _ => Err(EvaluateError::UnsupportedExprForFormatFunction(name.into()).into()),
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
 
@@ -462,6 +462,6 @@ pub fn to_timestamp(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) ->
                 }
             }
         }
-        _ => Err(EvaluateError::UnsupportedExprForFormatFunction(name.into()).into()),
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
