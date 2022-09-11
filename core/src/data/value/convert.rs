@@ -701,6 +701,7 @@ mod tests {
         test!(Value::I32(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U8(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
     }
 
