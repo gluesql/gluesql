@@ -513,6 +513,7 @@ mod tests {
         test!(DataType::Int32, num!("64"), Value::I32(64));
         test!(DataType::Int, num!("64"), Value::I64(64));
         test!(DataType::Int128, num!("64"), Value::I128(64));
+        test!(DataType::Uint8, num!("8"), Value::U8(8));
 
         test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
         test!(
@@ -722,6 +723,11 @@ mod tests {
         test!(DataType::Int128, Literal::Boolean(true), Value::I128(1));
         test!(DataType::Int128, Literal::Boolean(false), Value::I128(0));
 
+        test!(DataType::Uint8, text!("127"), Value::U8(127));
+        test!(DataType::Uint8, num!("125"), Value::U8(125));
+        test!(DataType::Uint8, Literal::Boolean(true), Value::U8(1));
+        test!(DataType::Uint8, Literal::Boolean(false), Value::U8(0));
+
         test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
         test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
         test!(DataType::Float, Literal::Boolean(true), Value::F64(1.0));
@@ -755,6 +761,7 @@ mod tests {
         test_null!(DataType::Boolean, Literal::Null);
         test_null!(DataType::Int, Literal::Null);
         test_null!(DataType::Int8, Literal::Null);
+        test_null!(DataType::Uint8, Literal::Null);
         test_null!(DataType::Float, Literal::Null);
         test_null!(DataType::Text, Literal::Null);
         test!(
