@@ -254,7 +254,8 @@ mod tests {
         assert_eq!(convert("CAST(11 AS INT(16))"), Ok(Key::I16(11)));
         assert_eq!(convert("CAST(11 AS INT(32))"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
-        assert_eq!(convert("CAST(UNSIGNED INT(32)"), Ok(Key::U8(255)));
+        assert_eq!(convert("CAST(11 AS INT(8) UNSIGNED)"), Ok(Key::U8(11)));
+
         assert_eq!(
             convert(r#""Hello World""#),
             Ok(Key::Str("Hello World".to_owned()))
@@ -398,6 +399,15 @@ mod tests {
         assert_eq!(cmp(&n4, &n5), Ordering::Less);
         assert_eq!(cmp(&n6, &n4), Ordering::Greater);
         assert_eq!(cmp(&n4, &null), Ordering::Less);
+
+        let n1 = U8(0).to_cmp_be_bytes();
+        let n2 = U8(3).to_cmp_be_bytes();
+        let n3 = U8(20).to_cmp_be_bytes();
+        let n4 = U8(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
 
         let n1 = Str("a".to_owned()).to_cmp_be_bytes();
         let n2 = Str("ab".to_owned()).to_cmp_be_bytes();
