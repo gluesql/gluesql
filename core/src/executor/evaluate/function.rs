@@ -429,3 +429,27 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
         value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
     }
 }
+
+pub fn to_date(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()? {
+        Value::Str(expr) => {
+            let format = eval_to_str!(name, format);
+            Ok(Value::Date(
+                chrono::NaiveDate::parse_from_str(&expr, &format).unwrap(),
+            ))
+        }
+        _ => Err(EvaluateError::UnsupportedExprForFormatFunction(name.into()).into()),
+    }
+}
+
+pub fn to_timestamp(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()? {
+        Value::Str(expr) => {
+            let format = eval_to_str!(name, format);
+            Ok(Value::Timestamp(
+                chrono::NaiveDateTime::parse_from_str(&expr, &format).unwrap(),
+            ))
+        }
+        _ => Err(EvaluateError::UnsupportedExprForFormatFunction(name.into()).into()),
+    }
+}

@@ -85,6 +85,14 @@ impl Function {
                 expr,
                 format: expr2,
             }
+            | Self::ToDate {
+                expr,
+                format: expr2,
+            }
+            | Self::ToTimestamp {
+                expr,
+                format: expr2,
+            }
             | Self::Power { expr, power: expr2 }
             | Self::Ltrim {
                 expr,
