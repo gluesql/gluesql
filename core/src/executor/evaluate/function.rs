@@ -434,9 +434,12 @@ pub fn to_date(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resu
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Date(
-                chrono::NaiveDate::parse_from_str(&expr, &format).unwrap(),
-            ))
+            match chrono::NaiveDate::parse_from_str(&expr, &format) {
+                Ok(a) => Ok(Value::Date(a)),
+                Err(_) => {
+                    Err(EvaluateError::UnsupportedExprForFormatFunction("test".to_string()).into())
+                }
+            }
         }
         _ => Err(EvaluateError::UnsupportedExprForFormatFunction(name.into()).into()),
     }
@@ -446,9 +449,12 @@ pub fn to_timestamp(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) ->
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Timestamp(
-                chrono::NaiveDateTime::parse_from_str(&expr, &format).unwrap(),
-            ))
+            match chrono::NaiveDateTime::parse_from_str(&expr, &format) {
+                Ok(a) => Ok(Value::Timestamp(a)),
+                Err(_) => {
+                    Err(EvaluateError::UnsupportedExprForFormatFunction("test".to_string()).into())
+                }
+            }
         }
         _ => Err(EvaluateError::UnsupportedExprForFormatFunction(name.into()).into()),
     }
