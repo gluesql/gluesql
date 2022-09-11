@@ -1,3 +1,5 @@
+use super::ChronoFormatError;
+
 use {
     super::{EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
@@ -436,8 +438,10 @@ pub fn to_date(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resu
             let format = eval_to_str!(name, format);
             match chrono::NaiveDate::parse_from_str(&expr, &format) {
                 Ok(a) => Ok(Value::Date(a)),
-                Err(_) => {
-                    Err(EvaluateError::UnsupportedExprForFormatFunction("test".to_string()).into())
+                Err(error) => {
+                    let error: ChronoFormatError = error.into();
+                    let error: EvaluateError = error.into();
+                    Err(error.into())
                 }
             }
         }
@@ -451,8 +455,10 @@ pub fn to_timestamp(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) ->
             let format = eval_to_str!(name, format);
             match chrono::NaiveDateTime::parse_from_str(&expr, &format) {
                 Ok(a) => Ok(Value::Timestamp(a)),
-                Err(_) => {
-                    Err(EvaluateError::UnsupportedExprForFormatFunction("test".to_string()).into())
+                Err(error) => {
+                    let error: ChronoFormatError = error.into();
+                    let error: EvaluateError = error.into();
+                    Err(error.into())
                 }
             }
         }
