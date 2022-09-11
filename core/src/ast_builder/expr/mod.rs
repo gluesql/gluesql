@@ -288,3 +288,10 @@ pub fn date(date: &str) -> ExprNode {
         value: (date.to_string()),
     })
 }
+
+pub fn timestamp(timestamp: &str) -> ExprNode {
+    ExprNode::Expr(Expr::TypedString {
+        data_type: (DataType::Timestamp),
+        value: (timestamp.to_string()),
+    })
+}
