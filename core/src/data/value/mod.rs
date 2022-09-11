@@ -697,7 +697,7 @@ mod tests {
             assert_eq!(Decimal(i.into()).is_zero(), i == 0);
         }
         assert!(U8(0).is_zero());
-        assert!(U8(1).is_zero() == false);
+        assert!(!U8(1).is_zero());
     }
 
     #[test]
@@ -1436,6 +1436,12 @@ mod tests {
             Str("abc".to_string()).unary_minus(),
             Err(ValueError::UnaryMinusOnNonNumeric.into())
         );
+    }
+
+    #[test]
+    fn unary_plus() {
+        assert_eq!(U8(1).unary_plus(), Ok(U8(1)));
+        assert!(Null.unary_plus().unwrap().is_null());
     }
 
     #[test]
