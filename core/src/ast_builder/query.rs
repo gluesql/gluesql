@@ -1,10 +1,10 @@
 use {
     super::{
-        select::NodeData, select::Prebuild, GroupByNode, HavingNode, LimitNode, LimitOffsetNode,
-        OffsetLimitNode, OffsetNode, SelectNode,
+        select::NodeData, select::Prebuild, ExprList, GroupByNode, HavingNode, LimitNode,
+        LimitOffsetNode, OffsetLimitNode, OffsetNode, SelectNode,
     },
     crate::{
-        ast::Query,
+        ast::{Expr, Query, SetExpr, Values},
         parse_sql::parse_query,
         result::{Error, Result},
         translate::translate_query,
@@ -21,6 +21,7 @@ pub enum QueryNode {
     Offset(OffsetNode),
     OffsetLimit(OffsetLimitNode),
     Text(String),
+    Values(Vec<ExprList>),
 }
 
 impl From<SelectNode> for QueryNode {
@@ -85,6 +86,22 @@ impl TryFrom<QueryNode> for Query {
             QueryNode::OffsetLimit(query_node) => query_node.prebuild().map(NodeData::build_query),
             QueryNode::Text(query_node) => {
                 parse_query(query_node).and_then(|item| translate_query(&item))
+            }
+            QueryNode::Values(values) => {
+                // let values: Vec<ExprList> = values;
+                let values: Vec<Vec<Expr>> = values
+                    .into_iter()
+                    // .map(|expr_list: ExprList| expr_list.try_into()) // Vec<Expr>
+                    .map(TryInto::try_into)
+                    // .collect::<Result<Vec<Vec<Expr>>>>()?;
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(Query {
+                    body: SetExpr::Values(Values(values)),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                })
             }
         }
     }

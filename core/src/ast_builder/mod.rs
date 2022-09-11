@@ -2,8 +2,8 @@
 mod alter_table;
 mod assignment;
 mod column_def;
-mod create_table;
 mod column_list;
+mod create_table;
 mod data_type;
 mod delete;
 mod drop_table;
@@ -11,6 +11,7 @@ mod expr;
 mod expr_list;
 #[cfg(feature = "index")]
 mod index;
+mod insert;
 mod order_by_expr;
 mod query;
 mod select;
@@ -21,12 +22,12 @@ mod table;
 #[cfg(feature = "transaction")]
 mod transaction;
 mod update;
-//pub mod insert;
 
 pub use {
     assignment::AssignmentNode,
-    create_table::CreateTableNode,
     column_def::ColumnDefNode,
+    column_list::ColumnList,
+    create_table::CreateTableNode,
     data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,

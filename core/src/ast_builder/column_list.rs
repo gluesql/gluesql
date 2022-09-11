@@ -1,11 +1,8 @@
-use {
-    crate::{
-        parse_sql::parse_identifiers,
-        result::{Error, Result},
-        translate::translate_idents,
-    },
+use crate::{
+    parse_sql::parse_identifiers,
+    result::{Error, Result},
+    translate::translate_idents,
 };
-
 
 #[derive(Clone)]
 pub enum ColumnList {
@@ -38,4 +35,3 @@ impl TryFrom<ColumnList> for Vec<String> {
         }
     }
 }
-

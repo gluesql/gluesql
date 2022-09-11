@@ -3,8 +3,8 @@ use {
     sqlparser::{
         ast::{
             Assignment as SqlAssignment, ColumnDef as SqlColumnDef, DataType as SqlDataType,
-            Expr as SqlExpr, OrderByExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
-            Statement as SqlStatement,
+            Expr as SqlExpr, Ident as SqlIdent, OrderByExpr, Query as SqlQuery,
+            SelectItem as SqlSelectItem, Statement as SqlStatement,
         },
         dialect::GenericDialect,
         parser::Parser,
