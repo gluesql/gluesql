@@ -15,6 +15,8 @@ pub mod in_list;
 pub use exists::{exists, not_exists};
 pub use nested::nested;
 
+use crate::prelude::DataType;
+
 use {
     super::DataTypeNode,
     crate::{
@@ -278,4 +280,11 @@ pub fn num(value: i64) -> ExprNode {
 
 pub fn text(value: &str) -> ExprNode {
     ExprNode::Expr(Expr::Literal(AstLiteral::QuotedString(value.to_owned())))
+}
+
+pub fn date(date: &str) -> ExprNode {
+    ExprNode::Expr(Expr::TypedString {
+        data_type: (DataType::Date),
+        value: (date.to_string()),
+    })
 }
