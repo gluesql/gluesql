@@ -62,6 +62,22 @@ test_case!(to_date, async move {
             Err(EvaluateError::ChronoFormat(ChronoFormatError::NotEnough).into()),
         ),
         (
+            r#"SELECT TO_TIMESTAMP("2015-14-05 23:56:12","%Y-%m-%d %H:%M:%S") AS timestamp;"#,
+            Err(EvaluateError::ChronoFormat(ChronoFormatError::OutOfRange).into()),
+        ),
+        (
+            r#"SELECT TO_TIMESTAMP("2015-14-05 23:56:12","%Y-%m-%d %H:%M:%%S") AS timestamp;"#,
+            Err(EvaluateError::ChronoFormat(ChronoFormatError::Invalid).into()),
+        ),
+        (
+            r#"SELECT TO_TIMESTAMP("2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%M") AS timestamp"#,
+            Err(EvaluateError::ChronoFormat(ChronoFormatError::Impossible).into()),
+        ),
+        (
+            r#"SELECT TO_TIMESTAMP("2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%") AS timestamp"#,
+            Err(EvaluateError::ChronoFormat(ChronoFormatError::BadFormat).into()),
+        ),
+        (
             r#"SELECT TO_DATE(DATE "2017-06-15","%Y-%m-%d") AS date"#,
             Err(EvaluateError::FunctionRequiresStringValue("TO_DATE".to_owned()).into()),
         ),
