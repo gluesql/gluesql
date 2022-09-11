@@ -22,7 +22,10 @@ use {
     std::{borrow::Cow, rc::Rc},
 };
 
-pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
+pub use {
+    error::ChronoFormatError, error::EvaluateError, evaluated::Evaluated,
+    stateless::evaluate_stateless,
+};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a>(
