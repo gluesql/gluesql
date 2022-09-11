@@ -271,7 +271,6 @@ impl TryBinaryOperator for u8 {
                     .into()
                 })
                 .map(Decimal),
-            Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: U8(lhs),
@@ -834,7 +833,6 @@ mod tests {
         assert_eq!(base, U8(1));
         assert_eq!(base, F64(1.0));
         assert_eq!(base, Decimal(Decimal::ONE));
-
         assert_ne!(base, Bool(true));
     }
 
@@ -877,7 +875,7 @@ mod tests {
     #[test]
     fn try_add() {
         let base = 1_u8;
-
+        assert!(base.try_add(&Null) != Ok(Null));
         assert_eq!(base.try_add(&I8(1)), Ok(U8(2)));
         assert_eq!(base.try_add(&I16(1)), Ok(I16(2)));
         assert_eq!(base.try_add(&I32(1)), Ok(I32(2)));
@@ -905,7 +903,7 @@ mod tests {
     #[test]
     fn try_subtract() {
         let base = 1_u8;
-
+        assert!(base.try_subtract(&Null) != Ok(Null));
         assert_eq!(base.try_subtract(&I8(1)), Ok(U8(0)));
         assert_eq!(base.try_subtract(&I16(1)), Ok(I16(0)));
         assert_eq!(base.try_subtract(&I32(1)), Ok(I32(0)));
@@ -936,7 +934,7 @@ mod tests {
     #[test]
     fn try_multiply() {
         let base = 3_u8;
-
+        assert!(base.try_multiply(&Null) != Ok(Null));
         // 3 * 2 = 6
         assert_eq!(base.try_multiply(&I8(2)), Ok(U8(6)));
         assert_eq!(base.try_multiply(&I16(2)), Ok(I16(6)));
@@ -974,7 +972,7 @@ mod tests {
     #[test]
     fn try_divide() {
         let base = 6_u8;
-
+        assert!(base.try_divide(&Null) != Ok(Null));
         assert_eq!(base.try_divide(&I8(2)), Ok(U8(3)));
         assert_eq!(base.try_divide(&I16(2)), Ok(I16(3)));
         assert_eq!(base.try_divide(&I32(2)), Ok(I32(3)));
@@ -1011,7 +1009,7 @@ mod tests {
     #[test]
     fn try_modulo() {
         let base = 9_u8;
-
+        assert!(base.try_modulo(&Null) != Ok(Null));
         assert_eq!(base.try_modulo(&I8(1)), Ok(I8(0)));
         assert_eq!(base.try_modulo(&I16(1)), Ok(I16(0)));
         assert_eq!(base.try_modulo(&I32(1)), Ok(I32(0)));
