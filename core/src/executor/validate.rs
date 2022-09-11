@@ -129,10 +129,9 @@ pub async fn validate_unique(
 
     match columns {
         Columns::PrimaryKeyOnly(primary_key_index) => {
-            for primary_key in row_iter.filter_map(|row| match row.0.get(primary_key_index) {
-                Some(value) => Key::try_from(value).map(Some).transpose(),
-                None => None,
-            }) {
+            for primary_key in
+                row_iter.filter_map(|row| row.0.get(primary_key_index).map(Key::try_from))
+            {
                 let key = primary_key?;
 
                 if storage.fetch_data(table_name, &key).await?.is_some() {
