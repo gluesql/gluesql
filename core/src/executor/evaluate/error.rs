@@ -1,6 +1,5 @@
 use {
     crate::ast::{Aggregate, Expr},
-    chrono::format::ParseErrorKind::*,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -118,6 +117,7 @@ impl ChronoFormatError {
 
 impl From<chrono::format::ParseError> for ChronoFormatError {
     fn from(error: chrono::format::ParseError) -> ChronoFormatError {
+        use chrono::format::ParseErrorKind::*;
         match error.kind() {
             OutOfRange => ChronoFormatError::OutOfRange,
             Impossible => ChronoFormatError::Impossible,
