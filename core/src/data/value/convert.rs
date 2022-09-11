@@ -423,7 +423,6 @@ impl TryFrom<&Value> for Decimal {
             Value::I32(value) => Decimal::from_i32(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I64(value) => Decimal::from_i64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => Decimal::from_i128(*value).ok_or(ValueError::ImpossibleCast)?,
-            Value::U8(value) => Decimal::from_u8(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => Decimal::from_f64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => {
                 Decimal::from_str(value).map_err(|_| ValueError::ImpossibleCast)?
@@ -957,6 +956,11 @@ mod tests {
         test!(Value::F64(122.9), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
         test!(Value::Decimal(Decimal::new(123, 0)), Ok(123));
+
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
         test!(
             Value::Date(date(2021, 11, 20)),
             Err(ValueError::ImpossibleCast.into())
