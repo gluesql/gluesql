@@ -1,5 +1,4 @@
 use {
-    comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_BORDERS_ONLY, Row, Table},
     gluesql_core::{
         ast::ToSql,
         prelude::{Payload, PayloadVariable},
@@ -10,7 +9,7 @@ use {
         io::{Result, Write},
         path::Path,
     },
-    tabled::{builder::Builder, Table as Table2, Tabled},
+    tabled::{builder::Builder, Style},
 };
 
 pub struct Print<W: Write> {
@@ -39,40 +38,43 @@ impl<W: Write> Print<W> {
             Payload::Update(n) => affected(*n, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => self.write(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
-                let mut table = get_table(["tables"]);
+                let mut table = get_table(&["tables"]);
                 for name in names {
-                    table.add_row([name]);
+                    table.add_record([name]);
                 }
-
+                let table = table.build().with(Style::markdown());
                 self.write(table)?;
             }
             Payload::ShowColumns(columns) => {
-                let mut table = get_table(vec!["Field", "Type"]);
+                let mut table = get_table(&["Field", "Type"]);
                 for (field, field_type) in columns {
-                    table.add_row([field, &field_type.to_string()]);
+                    table.add_record([field, &field_type.to_string()]);
                 }
-
+                let table = table.build().with(Style::markdown());
                 self.write(table)?;
             }
             Payload::ShowIndexes(indexes) => {
-                let mut table = get_table(vec!["Index Name", "Order", "Description"]);
+                let mut table = get_table(&["Index Name", "Order", "Description"]);
                 for index in indexes {
-                    table.add_row([
+                    table.add_record([
                         index.name.to_string(),
                         index.order.to_string(),
                         index.expr.to_sql(),
                     ]);
                 }
+                let table = table.build().with(Style::markdown());
                 self.write(table)?;
             }
             Payload::Select { labels, rows } => {
-                let mut table = get_table2(labels);
+                let labels = &labels.iter().map(AsRef::as_ref).collect::<Vec<&str>>();
+                let mut table = get_table(labels);
                 for values in rows {
                     let values: Vec<String> = values.iter().map(Into::into).collect();
 
                     table.add_record(values);
                 }
-                self.write(table.build())?;
+                let table = table.build().with(Style::markdown());
+                self.write(table)?;
             }
             _ => {}
         };
@@ -99,10 +101,11 @@ impl<W: Write> Print<W> {
             [".spool FILE|off", "spool to file or off"],
         ];
 
-        let mut table = get_table(HEADER);
+        let mut table = get_table(&HEADER);
         for row in CONTENT {
-            table.add_row(row);
+            table.add_record(row);
         }
+        let table = table.build().with(Style::markdown());
 
         writeln!(self.output, "{}\n", table)
     }
@@ -119,17 +122,7 @@ impl<W: Write> Print<W> {
     }
 }
 
-fn get_table<T: Into<Row>>(header: T) -> Table {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_BORDERS_ONLY)
-        .apply_modifier(UTF8_ROUND_CORNERS)
-        .set_header(header);
-
-    table
-}
-
-fn get_table2(header: &Vec<String>) -> Builder {
+fn get_table(header: &[&str]) -> Builder {
     let mut table = Builder::default();
     table.set_columns(header);
 
@@ -147,17 +140,15 @@ mod tests {
         let mut print = Print::new(Vec::new(), None);
 
         let expected = "
-╭───────────────────────────────────────────╮
-│ command           description             │
-╞═══════════════════════════════════════════╡
-│ .help             show help               │
-│ .quit             quit program            │
-│ .tables           show table names        │
-│ .columns TABLE    show columns from TABLE │
-│ .version          show version            │
-│ .execute FILE     execute SQL from a file │
-│ .spool FILE|off   spool to file or off    │
-╰───────────────────────────────────────────╯";
+| command         | description             |
+|-----------------|-------------------------|
+| .help           | show help               |
+| .quit           | quit program            |
+| .tables         | show table names        |
+| .columns TABLE  | show columns from TABLE |
+| .version        | show version            |
+| .execute FILE   | execute SQL from a file |
+| .spool FILE|off | spool to file or off    |";
         let found = {
             print.help().unwrap();
 
@@ -206,23 +197,18 @@ mod tests {
         );
         test!(
             "
-╭────────╮
-│ tables │
-╞════════╡
-╰────────╯",
+| tables |",
             &Payload::ShowVariable(PayloadVariable::Tables(Vec::new()))
         );
         test!(
             "
-╭──────────────────╮
-│ tables           │
-╞══════════════════╡
-│ Allocator        │
-│ ExtendFromWithin │
-│ IntoRawParts     │
-│ Reserve          │
-│ Splice           │
-╰──────────────────╯",
+| tables           |
+|------------------|
+| Allocator        |
+| ExtendFromWithin |
+| IntoRawParts     |
+| Reserve          |
+| Splice           |",
             &Payload::ShowVariable(PayloadVariable::Tables(
                 [
                     "Allocator",
@@ -238,15 +224,13 @@ mod tests {
         );
         test!(
             "
-╭──────╮
-│ id   │
-╞══════╡
-│ 101  │
-│ 202  │
-│ 301  │
-│ 505  │
-│ 1001 │
-╰──────╯",
+| id   |
+|------|
+| 101  |
+| 202  |
+| 301  |
+| 505  |
+| 1001 |",
             &Payload::Select {
                 labels: vec!["id".to_owned()],
                 rows: [101, 202, 301, 505, 1001]
@@ -258,15 +242,13 @@ mod tests {
         );
         test!(
             "
-╭────────────────────╮
-│ id   title   valid │
-╞════════════════════╡
-│ 1    foo     TRUE  │
-│ 2    bar     FALSE │
-│ 3    bas     FALSE │
-│ 4    lim     TRUE  │
-│ 5    kim     TRUE  │
-╰────────────────────╯",
+| id | title | valid |
+|----|-------|-------|
+| 1  | foo   | TRUE  |
+| 2  | bar   | FALSE |
+| 3  | bas   | FALSE |
+| 4  | lim   | TRUE  |
+| 5  | kim   | TRUE  |",
             &Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
@@ -304,13 +286,11 @@ mod tests {
 
         test!(
             "
-╭────────────────────────────────────╮
-│ Index Name   Order   Description   │
-╞════════════════════════════════════╡
-│ id_ndx       ASC     id            │
-│ name_ndx     DESC    name          │
-│ expr_ndx     BOTH    expr1 - expr2 │
-╰────────────────────────────────────╯",
+| Index Name | Order | Description   |
+|------------|-------|---------------|
+| id_ndx     | ASC   | id            |
+| name_ndx   | DESC  | name          |
+| expr_ndx   | BOTH  | expr1 - expr2 |",
             &Payload::ShowIndexes(vec![
                 SchemaIndex {
                     name: "id_ndx".to_string(),
@@ -336,13 +316,11 @@ mod tests {
 
         test!(
             "
-╭───────────────────╮
-│ Field     Type    │
-╞═══════════════════╡
-│ id        INT     │
-│ name      TEXT    │
-│ isabear   BOOLEAN │
-╰───────────────────╯",
+| Field   | Type    |
+|---------|---------|
+| id      | INT     |
+| name    | TEXT    |
+| isabear | BOOLEAN |",
             &Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int),
                 ("name".to_string(), DataType::Text),
@@ -352,20 +330,18 @@ mod tests {
 
         test!(
             "
-╭────────────────────╮
-│ Field    Type      │
-╞════════════════════╡
-│ id       INT8      │
-│ calc1    FLOAT     │
-│ cost     DECIMAL   │
-│ DOB      DATE      │
-│ clock    TIME      │
-│ tstamp   TIMESTAMP │
-│ ival     INTERVAL  │
-│ uuid     UUID      │
-│ hash     MAP       │
-│ mylist   LIST      │
-╰────────────────────╯",
+| Field  | Type      |
+|--------|-----------|
+| id     | INT8      |
+| calc1  | FLOAT     |
+| cost   | DECIMAL   |
+| DOB    | DATE      |
+| clock  | TIME      |
+| tstamp | TIMESTAMP |
+| ival   | INTERVAL  |
+| uuid   | UUID      |
+| hash   | MAP       |
+| mylist | LIST      |",
             &Payload::ShowColumns(vec![
                 ("id".to_string(), DataType::Int8),
                 ("calc1".to_string(), DataType::Float),
