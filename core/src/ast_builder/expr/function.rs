@@ -519,10 +519,10 @@ pub fn format<D: Into<ExprNode>, T: Into<ExprNode>>(expr: D, format: T) -> ExprN
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, concat, cos, degrees, divide, exp, expr, floor, format,
-        gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo, now, num,
-        pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr,
-        tan, test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
+        format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo,
+        now, num, pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt,
+        substr, tan, test_expr, text, timestamp, upper,
     };
 
     #[test]
