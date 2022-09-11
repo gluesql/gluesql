@@ -1,5 +1,6 @@
 use {
     crate::ast::{Aggregate, Expr},
+    chrono::format::ParseErrorKind::*,
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -107,17 +108,25 @@ pub enum ChronoFormatError {
     Unreachable,
 }
 
+impl ChronoFormatError {
+    pub fn err_into(error: chrono::format::ParseError) -> crate::result::Error {
+        let error: ChronoFormatError = error.into();
+        let error: EvaluateError = error.into();
+        error.into()
+    }
+}
+
 impl From<chrono::format::ParseError> for ChronoFormatError {
     fn from(error: chrono::format::ParseError) -> ChronoFormatError {
         match error.kind() {
-            chrono::format::ParseErrorKind::OutOfRange => ChronoFormatError::OutOfRange,
-            chrono::format::ParseErrorKind::Impossible => ChronoFormatError::Impossible,
-            chrono::format::ParseErrorKind::NotEnough => ChronoFormatError::NotEnough,
-            chrono::format::ParseErrorKind::Invalid => ChronoFormatError::Invalid,
-            chrono::format::ParseErrorKind::TooShort => ChronoFormatError::TooShort,
-            chrono::format::ParseErrorKind::TooLong => ChronoFormatError::TooLong,
-            chrono::format::ParseErrorKind::BadFormat => ChronoFormatError::BadFormat,
-            chrono::format::ParseErrorKind::__Nonexhaustive => ChronoFormatError::Unreachable,
+            OutOfRange => ChronoFormatError::OutOfRange,
+            Impossible => ChronoFormatError::Impossible,
+            NotEnough => ChronoFormatError::NotEnough,
+            Invalid => ChronoFormatError::Invalid,
+            TooShort => ChronoFormatError::TooShort,
+            TooLong => ChronoFormatError::TooLong,
+            BadFormat => ChronoFormatError::BadFormat,
+            __Nonexhaustive => ChronoFormatError::Unreachable,
         }
     }
 }

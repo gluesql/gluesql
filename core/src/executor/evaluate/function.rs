@@ -1,7 +1,5 @@
-use super::ChronoFormatError;
-
 use {
-    super::{EvaluateError, Evaluated},
+    super::{ChronoFormatError, EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
     std::cmp::{max, min},
     uuid::Uuid,
@@ -436,14 +434,9 @@ pub fn to_date(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resu
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
-            match chrono::NaiveDate::parse_from_str(&expr, &format) {
-                Ok(a) => Ok(Value::Date(a)),
-                Err(error) => {
-                    let error: ChronoFormatError = error.into();
-                    let error: EvaluateError = error.into();
-                    Err(error.into())
-                }
-            }
+            chrono::NaiveDate::parse_from_str(&expr, &format)
+                .map(Value::Date)
+                .map_err(ChronoFormatError::err_into)
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
@@ -453,14 +446,9 @@ pub fn to_timestamp(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) ->
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
-            match chrono::NaiveDateTime::parse_from_str(&expr, &format) {
-                Ok(a) => Ok(Value::Timestamp(a)),
-                Err(error) => {
-                    let error: ChronoFormatError = error.into();
-                    let error: EvaluateError = error.into();
-                    Err(error.into())
-                }
-            }
+            chrono::NaiveDateTime::parse_from_str(&expr, &format)
+                .map(Value::Timestamp)
+                .map_err(ChronoFormatError::err_into)
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
