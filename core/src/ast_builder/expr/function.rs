@@ -96,6 +96,10 @@ pub enum FunctionNode {
         dividend: ExprNode,
         divisor: ExprNode,
     },
+    Format {
+        expr: ExprNode,
+        format: ExprNode,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -205,6 +209,11 @@ impl TryFrom<FunctionNode> for Function {
                 let divisor = divisor.try_into()?;
                 Ok(Function::Mod { dividend, divisor })
             }
+            FunctionNode::Format { expr, format } => {
+                let expr = expr.try_into()?;
+                let format = format.try_into()?;
+                Ok(Function::Format { expr, format })
+            }
         }
     }
 }
@@ -312,6 +321,9 @@ impl ExprNode {
     }
     pub fn ltrim(self, chars: Option<ExprNode>) -> ExprNode {
         ltrim(self, chars)
+    }
+    pub fn format(self, fmt: ExprNode) -> ExprNode {
+        format(self, fmt)
     }
 }
 
@@ -497,13 +509,20 @@ pub fn modulo<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
     }))
 }
 
+pub fn format<D: Into<ExprNode>, T: Into<ExprNode>>(expr: D, format: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Format {
+        expr: expr.into(),
+        format: format.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, concat, cos, degrees, divide, exp, expr, floor, gcd,
-        generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo, now, num, pi,
-        power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan,
-        test_expr, text, upper,
+        abs, acos, asin, atan, ceil, col, concat, cos, degrees, divide, exp, expr, floor, format,
+        gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo, now, num,
+        pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr,
+        tan, test_expr, text, upper,
     };
 
     #[test]
