@@ -941,4 +941,23 @@ mod tests {
         let expected = "div(64,8)";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_format() {
+        let actual = format(date("2017-06-15"), text("%Y-%m"));
+        let expected = "FORMAT(DATE'2017-06-15','%Y-%m')";
+        test_expr(actual, expected);
+
+        let actual = date("2017-06-15").format(text("%Y-%m"));
+        let expected = "FORMAT(DATE '2017-06-15','%Y-%m')";
+        test_expr(actual, expected);
+
+        let actual = format(timestamp("2015-09-05 23:56:04"), text("%Y-%m-%d %H:%M:%S"));
+        let expected = "FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = timestamp("2015-09-05 23:56:04").format(text("%Y-%m-%d %H:%M:%S"));
+        let expected = "FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S')";
+        test_expr(actual, expected);
+    }
 }
