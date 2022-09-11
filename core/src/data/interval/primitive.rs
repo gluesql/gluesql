@@ -313,6 +313,9 @@ mod tests {
         assert_eq!(Month(2) * 3_i128, Month(6));
         assert_eq!(2_i128 * Month(3), Month(6));
 
+        assert_eq!(Month(2) * 3_u8, Month(6));
+        assert_eq!(2_u8 * Month(3), Month(6));
+
         assert_eq!(Month(2) * 3.0, Month(6));
         assert_eq!(2.0 * Month(3), Month(6));
 
@@ -330,6 +333,9 @@ mod tests {
 
         assert_eq!(Month(6) / 3_i128, Month(2));
         assert_eq!(6_i128 / Month(2), Month(3));
+
+        assert_eq!(Month(6) / 3_u8, Month(2));
+        assert_eq!(6_u8 / Month(2), Month(3));
 
         assert_eq!(Month(8) / 4.0, Month(2));
         assert_eq!(8.0 / Month(4), Month(2));
@@ -349,6 +355,9 @@ mod tests {
         assert_eq!(Microsecond(2) * 3_i128, Microsecond(6));
         assert_eq!(2_i128 * Microsecond(3), Microsecond(6));
 
+        assert_eq!(Microsecond(2) * 3_u8, Microsecond(6));
+        assert_eq!(2_u8 * Microsecond(3), Microsecond(6));
+
         assert_eq!(Microsecond(6) / 3_i8, Microsecond(2));
         assert_eq!(6_i8 / Microsecond(2), Microsecond(3));
 
@@ -363,5 +372,8 @@ mod tests {
 
         assert_eq!(Microsecond(6) / 3_i128, Microsecond(2));
         assert_eq!(6_i128 / Microsecond(2), Microsecond(3));
+
+        assert_eq!(Microsecond(6) / 3_u8, Microsecond(2));
+        assert_eq!(6_u8 / Microsecond(2), Microsecond(3));
     }
 }
