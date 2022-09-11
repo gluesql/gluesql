@@ -1045,6 +1045,7 @@ mod tests {
         test!(divide mon!(6),  I32(2)    => mon!(3));
         test!(divide mon!(6),  I64(2)   => mon!(3));
         test!(divide mon!(6),  I128(2)    => mon!(3));
+        test!(divide mon!(6),  U8(2)    => mon!(3));
         test!(divide mon!(6),  F64(2.0) => mon!(3));
 
         test!(modulo I8(6),    I8(4)    => I8(2));
