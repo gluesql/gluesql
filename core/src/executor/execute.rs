@@ -243,12 +243,11 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = match primary_key {
                     Some(i) => rows
                         .into_iter()
-                        .filter_map(|row| match row.0.get(i) {
-                            Some(value) => Key::try_from(value)
-                                .map(|key| (key, row))
-                                .map(Some)
-                                .transpose(),
-                            None => None,
+                        .filter_map(|row| {
+                            row.0
+                                .get(i)
+                                .map(Key::try_from)
+                                .map(|result| result.map(|key| (key, row)))
                         })
                         .collect::<Result<Vec<_>>>()
                         .map(RowsData::Insert)?,
