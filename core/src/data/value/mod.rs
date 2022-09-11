@@ -697,7 +697,7 @@ mod tests {
             assert_eq!(Decimal(i.into()).is_zero(), i == 0);
         }
         assert!(U8(0).is_zero());
-        assert_eq!(U8(1).is_zero(), false);
+        assert!(U8(1).is_zero() == false);
     }
 
     #[test]
