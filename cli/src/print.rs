@@ -38,7 +38,7 @@ impl<W: Write> Print<W> {
             Payload::Update(n) => affected(*n, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => self.write(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
-                let mut table = get_table(&["tables"]);
+                let mut table = get_table(["tables"]);
                 for name in names {
                     table.add_record([name]);
                 }
@@ -46,7 +46,7 @@ impl<W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::ShowColumns(columns) => {
-                let mut table = get_table(&["Field", "Type"]);
+                let mut table = get_table(["Field", "Type"]);
                 for (field, field_type) in columns {
                     table.add_record([field, &field_type.to_string()]);
                 }
@@ -54,7 +54,7 @@ impl<W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::ShowIndexes(indexes) => {
-                let mut table = get_table(&["Index Name", "Order", "Description"]);
+                let mut table = get_table(["Index Name", "Order", "Description"]);
                 for index in indexes {
                     table.add_record([
                         index.name.to_string(),
@@ -66,7 +66,7 @@ impl<W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::Select { labels, rows } => {
-                let labels = &labels.iter().map(AsRef::as_ref).collect::<Vec<&str>>();
+                let labels = labels.iter().map(AsRef::as_ref);
                 let mut table = get_table(labels);
                 for values in rows {
                     let values: Vec<String> = values.iter().map(Into::into).collect();
@@ -101,7 +101,7 @@ impl<W: Write> Print<W> {
             [".spool FILE|off", "spool to file or off"],
         ];
 
-        let mut table = get_table(&HEADER);
+        let mut table = get_table(HEADER);
         for row in CONTENT {
             table.add_record(row);
         }
@@ -122,7 +122,7 @@ impl<W: Write> Print<W> {
     }
 }
 
-fn get_table(header: &[&str]) -> Builder {
+fn get_table<'a, T: IntoIterator<Item = &'a str>>(header: T) -> Builder {
     let mut table = Builder::default();
     table.set_columns(header);
 
