@@ -15,8 +15,6 @@ pub mod in_list;
 pub use exists::{exists, not_exists};
 pub use nested::nested;
 
-use crate::prelude::DataType;
-
 use {
     super::DataTypeNode,
     crate::{
@@ -26,6 +24,7 @@ use {
         },
         ast_builder::QueryNode,
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
+        prelude::DataType,
         result::{Error, Result},
         translate::{translate_expr, translate_query},
     },
