@@ -1,8 +1,11 @@
 use crate::*;
 test_case!(to_date, async move {
     use {
-        chrono::{format::ParseErrorKind, NaiveDate, NaiveDateTime},
-        gluesql_core::prelude::Value::*,
+        chrono::NaiveDate,
+        gluesql_core::{
+            executor::{ChronoFormatError, EvaluateError},
+            prelude::Value::*,
+        },
     };
 
     let test_cases = vec![
@@ -31,6 +34,14 @@ test_case!(to_date, async move {
             )),
         ),
         (
+            r#"SELECT TO_DATE("2017-jun-15","%Y-%b-%d") AS date"#,
+            Ok(select!(
+                date
+                Date;
+                NaiveDate::from_ymd(2017, 6, 15)
+            )),
+        ),
+        (
             r#"SELECT TO_TIMESTAMP("2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%S") AS timestamp"#,
             Ok(select!(
                 timestamp
@@ -40,15 +51,15 @@ test_case!(to_date, async move {
         ),
         (
             r#"SELECT TO_TIMESTAMP("2015-09-05 23:56:04", "%Y-%m-%d %H:%M") AS timestamp"#,
-            Err(ParseErrorKind::TooLong),
+            Err(EvaluateError::ChronoFormat(ChronoFormatError::TooLong).into()),
         ),
         (
             r#"SELECT TO_TIMESTAMP("2015-09-05 23:56", "%Y-%m-%d %H:%M:%S") AS timestamp"#,
-            Err(ParseErrorKind::TooShort),
+            Err(EvaluateError::ChronoFormat(ChronoFormatError::TooShort).into()),
         ),
         (
-            r#"SELECT TO_TIMESTAMP("2015-05 23:56", "%Y-%d %H:%M:%S") AS timestamp"#,
-            Err(ParseErrorKind::NotEnough),
+            r#"SELECT TO_TIMESTAMP("2015-05 23", "%Y-%d %H") AS timestamp"#,
+            Err(EvaluateError::ChronoFormat(ChronoFormatError::NotEnough).into()),
         ),
     ];
     for (sql, expected) in test_cases {
