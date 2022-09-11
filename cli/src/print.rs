@@ -9,7 +9,7 @@ use {
         io::{Result, Write},
         path::Path,
     },
-    tabled::{builder::Builder, Style},
+    tabled::{builder::Builder, Style, Table},
 };
 
 pub struct Print<W: Write> {
@@ -42,7 +42,7 @@ impl<W: Write> Print<W> {
                 for name in names {
                     table.add_record([name]);
                 }
-                let table = table.build().with(Style::markdown());
+                let table = build_table(table);
                 self.write(table)?;
             }
             Payload::ShowColumns(columns) => {
@@ -50,7 +50,7 @@ impl<W: Write> Print<W> {
                 for (field, field_type) in columns {
                     table.add_record([field, &field_type.to_string()]);
                 }
-                let table = table.build().with(Style::markdown());
+                let table = build_table(table);
                 self.write(table)?;
             }
             Payload::ShowIndexes(indexes) => {
@@ -62,7 +62,7 @@ impl<W: Write> Print<W> {
                         index.expr.to_sql(),
                     ]);
                 }
-                let table = table.build().with(Style::markdown());
+                let table = build_table(table);
                 self.write(table)?;
             }
             Payload::Select { labels, rows } => {
@@ -73,7 +73,7 @@ impl<W: Write> Print<W> {
 
                     table.add_record(values);
                 }
-                let table = table.build().with(Style::markdown());
+                let table = build_table(table);
                 self.write(table)?;
             }
             _ => {}
@@ -105,7 +105,7 @@ impl<W: Write> Print<W> {
         for row in CONTENT {
             table.add_record(row);
         }
-        let table = table.build().with(Style::markdown());
+        let table = build_table(table);
 
         writeln!(self.output, "{}\n", table)
     }
@@ -127,6 +127,10 @@ fn get_table(header: &[&str]) -> Builder {
     table.set_columns(header);
 
     table
+}
+
+fn build_table(builder: Builder) -> Table {
+    builder.build().with(Style::markdown())
 }
 
 #[cfg(test)]
