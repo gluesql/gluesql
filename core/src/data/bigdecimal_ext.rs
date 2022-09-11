@@ -36,10 +36,8 @@ impl BigDecimalExt for BigDecimal {
         }
     }
     fn to_u8(&self) -> Option<u8> {
-        match self.is_integer() {
-            true => bigdecimal::ToPrimitive::to_u8(self),
-            false => None,
-        }
+        self.is_integer()
+            .then(|| bigdecimal::ToPrimitive::to_u8(self))?
     }
     fn to_f64(&self) -> Option<f64> {
         bigdecimal::ToPrimitive::to_f64(self)
