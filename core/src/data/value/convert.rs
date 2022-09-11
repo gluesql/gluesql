@@ -423,6 +423,7 @@ impl TryFrom<&Value> for Decimal {
             Value::I32(value) => Decimal::from_i32(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I64(value) => Decimal::from_i64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => Decimal::from_i128(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::U8(value) => Decimal::from_u8(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => Decimal::from_f64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => {
                 Decimal::from_str(value).map_err(|_| ValueError::ImpossibleCast)?
