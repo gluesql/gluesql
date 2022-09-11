@@ -429,15 +429,15 @@ impl TryBinaryOperator for Decimal {
                 }),
             U8(rhs) => lhs
                 .checked_rem(Decimal::from(rhs))
-                .map(|x| Ok(Decimal(x)))
-                .unwrap_or_else(|| {
-                    Err(ValueError::BinaryOperationOverflow {
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
-                        operator: NumericBinaryOperator::Modulo,
                         rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Modulo,
                     }
-                    .into())
-                }),
+                    .into()
+                })
+                .map(Decimal),
             F64(rhs) => match Decimal::from_f64_retain(rhs) {
                 Some(x) => lhs
                     .checked_rem(x)

@@ -535,7 +535,7 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I16(i16::MAX),
                 rhs: U8(u8::MAX),
-                operator: (NumericBinaryOperator::Add)
+                operator: NumericBinaryOperator::Add
             }
             .into())
         );
@@ -584,7 +584,7 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I16(i16::MIN),
                 rhs: U8(1),
-                operator: (NumericBinaryOperator::Subtract)
+                operator: NumericBinaryOperator::Subtract
             }
             .into())
         );
@@ -621,7 +621,7 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I16(i16::MIN),
                 rhs: U8(u8::MAX),
-                operator: (NumericBinaryOperator::Subtract)
+                operator: NumericBinaryOperator::Subtract
             }
             .into())
         );
@@ -689,7 +689,7 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I16(i16::MAX),
                 rhs: U8(2),
-                operator: (NumericBinaryOperator::Multiply)
+                operator: NumericBinaryOperator::Multiply
             }
             .into())
         );
@@ -855,7 +855,7 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I16(i16::MAX),
                 rhs: U8(0),
-                operator: (NumericBinaryOperator::Modulo)
+                operator: NumericBinaryOperator::Modulo
             }
             .into())
         );
