@@ -1,3 +1,5 @@
+use tabled::{object::Segment, Format, Modify, ModifyList, Padding};
+
 use {
     crate::command::CommandError,
     gluesql_core::{
@@ -29,14 +31,14 @@ pub struct PrintOption {
 #[derive(Clone)]
 enum Tabular {
     On,
-    Off { colsep: String, colwrap: String },
+    Off { colsep: char, colwrap: String },
 }
 
 impl Tabular {
-    fn get_option(&self) -> (&str, &str) {
+    fn get_option(&self) -> (char, &str) {
         match self {
-            Tabular::On => (" | ", ""),
-            Tabular::Off { colsep, colwrap } => (colsep, colwrap),
+            Tabular::On => ('|', ""),
+            Tabular::Off { colsep, colwrap } => (*colsep, colwrap),
         }
     }
 
@@ -48,11 +50,18 @@ impl Tabular {
     }
 
     fn update_option(self, name: &str, value: &str) -> Result<Tabular, CommandError> {
+        let get_char = |v: &str| match v.len() {
+            1 => v.chars().next().ok_or_else(|| -> CommandError {
+                CommandError::WrongOption("colsep length should be 1".into())
+            }),
+            _ => Err(CommandError::WrongOption("colsep length should 1".into())),
+        };
+
         let result = match self {
-            Tabular::On => return Err(CommandError::WrongOption("run .set TABULAR OFF".into())),
+            Tabular::On => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
             Tabular::Off { colsep, colwrap } => match name {
                 "colsep" => Tabular::Off {
-                    colsep: value.into(),
+                    colsep: get_char(value)?,
                     colwrap,
                 },
                 "colwrap" => Tabular::Off {
@@ -90,7 +99,7 @@ impl<'a> PrintOption {
             "ON" => self.tabular = Tabular::On,
             "OFF" => {
                 self.tabular = Tabular::Off {
-                    colsep: " | ".into(),
+                    colsep: '|',
                     colwrap: "".into(),
                 }
             }
@@ -146,7 +155,7 @@ impl<'a, W: Write> Print<W> {
                 for name in names {
                     table.add_record([name]);
                 }
-                let table = build_table(table);
+                let table = self.build_table(table);
                 self.write(table)?;
             }
             Payload::ShowColumns(columns) => {
@@ -154,7 +163,7 @@ impl<'a, W: Write> Print<W> {
                 for (field, field_type) in columns {
                     table.add_record([field, &field_type.to_string()]);
                 }
-                let table = build_table(table);
+                let table = self.build_table(table);
                 self.write(table)?;
             }
             Payload::ShowIndexes(indexes) => {
@@ -166,7 +175,7 @@ impl<'a, W: Write> Print<W> {
                         index.expr.to_sql(),
                     ]);
                 }
-                let table = build_table(table);
+                let table = self.build_table(table);
                 self.write(table)?;
             }
             Payload::Select { labels, rows } => {
@@ -177,7 +186,7 @@ impl<'a, W: Write> Print<W> {
 
                     table.add_record(values);
                 }
-                let table = build_table(table);
+                let table = self.build_table(table);
                 self.write(table)?;
             }
             _ => {}
@@ -209,7 +218,7 @@ impl<'a, W: Write> Print<W> {
         for row in CONTENT {
             table.add_record(row);
         }
-        let table = build_table(table);
+        let table = self.build_table(table);
 
         writeln!(self.output, "{}\n", table)
     }
@@ -279,10 +288,22 @@ impl<'a, W: Write> Print<W> {
 
         table
     }
-}
 
-fn build_table(builder: Builder) -> Table {
-    builder.build().with(Style::markdown())
+    fn build_table(&self, builder: Builder) -> Table {
+        let builder = builder.build().with(Style::markdown());
+
+        match self.option.tabular.clone() {
+            Tabular::On => builder,
+            Tabular::Off { colsep, colwrap } => {
+                let colsep = Style::empty().vertical(colsep);
+                let padding_zero = Modify::new(Segment::all()).with(Padding::new(0, 0, 0, 0));
+                let wrapped_data = Modify::new(Segment::all())
+                    .with(Format::new(|data| format!("{colwrap}{data}{colwrap}")));
+
+                builder.with(padding_zero).with(colsep).with(wrapped_data)
+            }
+        }
+    }
 }
 
 #[cfg(test)]
