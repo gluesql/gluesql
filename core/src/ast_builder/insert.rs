@@ -71,7 +71,7 @@ mod tests {
     fn insert() {
         let actual = table("Foo")
             .insert()
-            .values(vec![vec![num(1), num(5)], vec![num(2), num(3)]])
+            .values(vec!["1, 5", "2, 3"])
             .build();
         let expected = r#"INSERT INTO Foo VALUES (1, 5), (2, 3)"#;
         test(actual, expected);

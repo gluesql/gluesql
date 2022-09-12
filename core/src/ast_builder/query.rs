@@ -96,12 +96,9 @@ impl TryFrom<QueryNode> for Query {
                 parse_query(query_node).and_then(|item| translate_query(&item))
             }
             QueryNode::Values(values) => {
-                // let values: Vec<ExprList> = values;
                 let values: Vec<Vec<Expr>> = values
                     .into_iter()
-                    // .map(|expr_list: ExprList| expr_list.try_into()) // Vec<Expr>
                     .map(TryInto::try_into)
-                    // .collect::<Result<Vec<Vec<Expr>>>>()?;
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(Query {
