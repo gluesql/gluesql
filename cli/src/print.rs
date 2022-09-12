@@ -1,4 +1,4 @@
-use tabled::{object::Segment, Format, Modify, ModifyList, Padding};
+use tabled::{object::Segment, Format, Modify, Padding};
 
 use {
     crate::command::CommandError,
@@ -284,9 +284,11 @@ impl<'a, W: Write> Print<W> {
 
     fn get_table<T: IntoIterator<Item = &'a str>>(&self, header: T) -> Builder {
         let mut table = Builder::default();
-        table.set_columns(header);
 
-        table
+        match self.option.heading {
+            true => table.set_columns(header).clone(),
+            false => table,
+        }
     }
 
     fn build_table(&self, builder: Builder) -> Table {
