@@ -130,6 +130,7 @@ macro_rules! generate_store_tests {
         glue!(sql_types, data_type::sql_types::sql_types);
         glue!(showcolumns, showcolumns::showcolumns);
         glue!(int8, data_type::int8::int8);
+        glue!(uint8, data_type::int8::int8);
         glue!(int16, data_type::int16::int16);
         glue!(int32, data_type::int32::int32);
         glue!(int64, data_type::int64::int64);
