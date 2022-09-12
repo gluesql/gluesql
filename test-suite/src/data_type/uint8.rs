@@ -6,11 +6,11 @@ use {
 test_case!(uint8, async move {
     run!(
         "CREATE TABLE Item (
-        field_one INT(8) UNSIGNED,
-        field_two INT(8) UNSIGNED,
+            field_one INT(8) UNSIGNED,
+            field_two INT(8) UNSIGNED,
         );"
     );
-    run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
+    run!(r#"INSERT INTO Item VALUES (1, 2), (1, 3), (2, 4), (2, 5);"#);
 
     let parse_u8 = |text: &str| -> u8 { text.parse().unwrap() };
 
@@ -18,11 +18,11 @@ test_case!(uint8, async move {
         "INSERT INTO Item VALUES (128, 128);",
         Err(ValueError::FailedToParseNumber.into())
     );
+
     test!(
         "INSERT INTO Item VALUES (-129, -129);",
         Err(ValueError::FailedToParseNumber.into())
     );
-
     test!(
         "SELECT field_one, field_two FROM Item",
         Ok(select!(
@@ -34,5 +34,16 @@ test_case!(uint8, async move {
             parse_u8("-4")      parse_u8("-4")
         ))
     );
-
+    test!(
+        "SELECT field_one FROM Item WHERE field_one > 0",
+        Ok(select!(field_one U8; 1; 3))
+    );
+    test!(
+        "SELECT field_one FROM Item WHERE field_one >= 0",
+        Ok(select!(field_one U8; 1; 3))
+    );
+    test!(
+        "SELECT field_one FROM Item WHERE field_one = 2",
+        Ok(select!(field_one U8; 2))
+    );
 });
