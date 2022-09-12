@@ -83,7 +83,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(-1 AS INT(8) UNSIGNED) AS cast FROM Item"#,
-            Err(ValueError::LiteralCastToUnsignedInt8Failed("foo".to_owned()).into()),
+            Err(ValueError::LiteralCastToUnsignedInt8Failed("-1".to_owned()).into()),
         ),
         (
             r#"SELECT CAST("1.1" AS FLOAT) AS cast FROM Item"#,
