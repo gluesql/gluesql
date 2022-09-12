@@ -80,15 +80,16 @@ impl InsertSourceNode {
 mod tests{
     use crate::ast_builder::{table, test};
 
-    #[test]
-    fn insert(){
+  fn insert(){
         let actual = table("Foo")
-            .insert()
-            .values(vec![
-                "'hello', 'world'",
-                "NULL, NULL",
-            ])
-            .build();
+                    .insert()
+                    .values(vec![
+                        vec![1, "Hello"],
+                        vec![2, "World"],
+                    ])
+                    .build();
+        let expected = r#"INSERT INTO Foo VALUES (1, "Hello"), (2, "World");"#;
+
 
         let actual = table("Foo")
                     .insert()
@@ -100,8 +101,9 @@ mod tests{
         let expected = r#"INSERT INTO Foo VALUES (1, 5), (2, 3)"#;
         test(actual, expected);
 
-
         let actual = table("Foo")
+                    .insert()
+                    .columns("id, name")
                     .values(vec![
                         vec![1, 5],
                         vec![2, 3],
@@ -110,7 +112,7 @@ mod tests{
         let expected = r#"INSERT INTO Foo (id, name) VALUES (1, 5), (2, 3))"#;
         test(actual, expected);
 
-        let actual = table!("Foo")
+        let actual = table("Foo")
                     .insert()
                     .as_select(table("Bar").project("id, name").limit(10))
                     .build();
