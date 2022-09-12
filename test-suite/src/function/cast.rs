@@ -22,7 +22,7 @@ test_case!(cast_literal, async move {
             Ok(Payload::Create),
         ),
         (
-            "CREATE TABLE a (mytext Text, myint8 Int(8) Unsigned, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
+            "CREATE TABLE a (mytext Text, myuint8 Int(8) Unsigned, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
             Ok(Payload::Create),
         ),
         (
@@ -170,7 +170,7 @@ test_case!(cast_literal, async move {
             Ok(select!(cast Decimal; Decimal::new(-2,0))),
         ),
         (
-            r#"SELECT CAST(myint8 AS Decimal) AS cast FROM a"#,
+            r#"SELECT CAST(myuint8 AS Decimal) AS cast FROM a"#,
             Ok(select!(cast Decimal; Decimal::new(2,0))),
         ),
         (
