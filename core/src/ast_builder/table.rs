@@ -1,4 +1,6 @@
-use super::{CreateTableNode, DeleteNode, DropTableNode, SelectNode, ShowColumnsNode, UpdateNode};
+use super::{
+    CreateTableNode, DeleteNode, DropTableNode, InsertNode, SelectNode, ShowColumnsNode, UpdateNode,
+};
 
 #[cfg(feature = "alter-table")]
 use super::AlterTableNode;
@@ -57,5 +59,9 @@ impl TableNode {
 
     pub fn update(self) -> UpdateNode {
         UpdateNode::new(self.table_name)
+    }
+
+    pub fn insert(self) -> InsertNode {
+        InsertNode::new(self.table_name)
     }
 }

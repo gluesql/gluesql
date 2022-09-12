@@ -32,6 +32,7 @@ pub use {
     delete::DeleteNode,
     drop_table::DropTableNode,
     expr_list::ExprList,
+    insert::InsertNode,
     order_by_expr::OrderByExprNode,
     query::QueryNode,
     select::{
