@@ -1,11 +1,12 @@
 // Insert {
-/// TABLE
+        /// TABLE
 //        table_name: ObjectName,
-/// COLUMNS
+        /// COLUMNS
 //       columnList: string, Vec<String>,
-/// A SQL query that specifies what to insert
+        /// A SQL query that specifies what to insert
 //        source: Query,
 //    },
+
 pub use {
     super::{ColumnList, ExprList, QueryNode},
     crate::{
@@ -18,13 +19,15 @@ pub use {
 pub struct InsertNode {
     table_name: String,
     columns: Option<ColumnList>,
+    // source: Option<QueryNode>,
 }
 
-impl InsertNode {
+impl InsertNode{
     pub fn new(table_name: String) -> Self {
         Self {
             table_name,
             columns: None,
+            source: None,
         }
     }
 
@@ -34,8 +37,12 @@ impl InsertNode {
     }
 
     pub fn values<T: Into<ExprList>>(mut self, values: Vec<T>) -> InsertSourceNode {
-        let values: Vec<ExprList> = values.into_iter().map(Into::into).collect();
-
+        let values: Vec<ExprList> = values
+            .into_iter()
+            .map(Into::into)
+            .collect();
+        
+        // self.source = Some(QueryNode::Values(values));
         InsertSourceNode {
             insert_node: self,
             source: QueryNode::Values(values),
@@ -43,6 +50,10 @@ impl InsertNode {
     }
 
     pub fn as_select<T: Into<QueryNode>>(mut self, query: T) -> InsertSourceNode {
+        /*
+        self.source = Some(query.into());
+        self
+        */
         InsertSourceNode {
             insert_node: self,
             source: query.into(),
@@ -58,11 +69,13 @@ pub struct InsertSourceNode {
 
 impl InsertSourceNode {
     pub fn build(self) -> Result<Statement> {
-        panic!();
+        let table_name = ObjectName(vec![self.table_node.table_name])
+        let 
+
     }
 }
 
-/*
+
 #[cfg(test)]
 mod tests{
     use crate::ast_builder::{table, test};
@@ -89,8 +102,6 @@ mod tests{
 
 
         let actual = table("Foo")
-                    .insert()
-                    .columns("id, name")
                     .values(vec![
                         vec![1, 5],
                         vec![2, 3],
@@ -107,4 +118,3 @@ mod tests{
         test(actual, expected);
     }
 }
-*/
