@@ -17,23 +17,62 @@ use {
 pub struct Print<W: Write> {
     pub output: W,
     spool_file: Option<File>,
-    options: PrintOptions,
+    option: PrintOption,
 }
 
 #[derive(Clone)]
-pub struct PrintOptions {
-    colsep: String,
-    colwrap: String,
-    tabular: bool,
+pub struct PrintOption {
+    tabular: Tabular,
     heading: bool,
 }
 
-impl PrintOptions {
+#[derive(Clone)]
+enum Tabular {
+    On,
+    Off { colsep: String, colwrap: String },
+}
+
+impl Tabular {
+    fn get_option(&self) -> (&str, &str) {
+        match self {
+            Tabular::On => (" | ", ""),
+            Tabular::Off { colsep, colwrap } => (colsep, colwrap),
+        }
+    }
+
+    fn get_string(&self) -> &str {
+        match self {
+            Tabular::On => "ON",
+            Tabular::Off { .. } => "OFF",
+        }
+    }
+
+    fn update_option(self, name: &str, value: &str) -> Result<Tabular, CommandError> {
+        let result = match self {
+            Tabular::On => return Err(CommandError::WrongOption("run .set TABULAR OFF".into())),
+            Tabular::Off { colsep, colwrap } => match name {
+                "colsep" => Tabular::Off {
+                    colsep: value.into(),
+                    colwrap,
+                },
+                "colwrap" => Tabular::Off {
+                    colsep,
+                    colwrap: value.into(),
+                },
+                _ => todo!(),
+            },
+        };
+
+        Ok(result)
+    }
+}
+
+impl<'a> PrintOption {
     fn to_show(&self, name: String) -> String {
         match name.to_lowercase().as_str() {
-            "colsep" => format!("colsep \"{}\"", self.colsep),
-            "colwrap" => format!("colwrap \"{}\"", self.colwrap),
-            "tabular" => format!("tabular {}", string_from(&self.tabular)),
+            "colsep" => format!("colsep \"{}\"", self.tabular.get_option().0),
+            "colwrap" => format!("colwrap \"{}\"", self.tabular.get_option().1),
+            "tabular" => format!("tabular {}", &self.tabular.get_string()),
             "heading" => format!("heading {}", string_from(&self.heading)),
             "all" => format!(
                 "{}\n{}\n{}\n{}",
@@ -45,32 +84,45 @@ impl PrintOptions {
             _ => todo!(),
         }
     }
-}
 
-fn string_from(value: &bool) -> String {
-    match value {
-        true => "ON".into(),
-        false => "OFF".into(),
+    fn set_tabular(&mut self, value: String) -> Result<(), CommandError> {
+        match value.to_uppercase().as_ref() {
+            "ON" => self.tabular = Tabular::On,
+            "OFF" => {
+                self.tabular = Tabular::Off {
+                    colsep: " | ".into(),
+                    colwrap: "".into(),
+                }
+            }
+            _ => todo!(),
+        }
+
+        Ok(())
     }
 }
 
-impl Default for PrintOptions {
+fn string_from(value: &bool) -> &str {
+    match value {
+        true => "ON",
+        false => "OFF",
+    }
+}
+
+impl<'a> Default for PrintOption {
     fn default() -> Self {
         Self {
-            colsep: " ".into(),
-            colwrap: "".into(),
-            tabular: true,
+            tabular: Tabular::On,
             heading: true,
         }
     }
 }
 
-impl<W: Write> Print<W> {
-    pub fn new(output: W, spool_file: Option<File>, option: PrintOptions) -> Self {
+impl<'a, W: Write> Print<W> {
+    pub fn new(output: W, spool_file: Option<File>, option: PrintOption) -> Self {
         Print {
             output,
             spool_file,
-            options: option,
+            option,
         }
     }
 
@@ -183,24 +235,45 @@ impl<W: Write> Print<W> {
         };
 
         match name.to_lowercase().as_str() {
-            "colsep" => self.options.colsep = value,
-            "colwrap" => self.options.colwrap = value,
-            "tabular" => self.options.tabular = bool_from(value)?,
-            "heading" => self.options.heading = bool_from(value)?,
+            "tabular" => self.option.set_tabular(value),
+            "colsep" => {
+                self.option.tabular = self
+                    .option
+                    .tabular
+                    .clone()
+                    .update_option(name.as_ref(), value.as_ref())?;
+
+                Ok(())
+            }
+
+            "colwrap" => {
+                self.option.tabular = self
+                    .option
+                    .tabular
+                    .clone()
+                    .update_option(name.as_ref(), value.as_ref())?;
+
+                Ok(())
+            }
+            "heading" => {
+                self.option.heading = bool_from(value)?;
+
+                Ok(())
+            }
             _ => return Err(CommandError::WrongOption(name)),
-        };
+        }?;
 
         Ok(())
     }
 
     pub fn show_option(&mut self, name: String) -> IOResult<()> {
-        let payload = self.options.to_show(name);
+        let payload = self.option.to_show(name);
         self.write(payload)?;
 
         Ok(())
     }
 
-    fn get_table<'a, T: IntoIterator<Item = &'a str>>(&self, header: T) -> Builder {
+    fn get_table<T: IntoIterator<Item = &'a str>>(&self, header: T) -> Builder {
         let mut table = Builder::default();
         table.set_columns(header);
 

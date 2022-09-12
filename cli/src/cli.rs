@@ -26,7 +26,7 @@ where
     print: Print<W>,
 }
 
-impl<T, W> Cli<T, W>
+impl<'a, T, W> Cli<T, W>
 where
     T: GStore + GStoreMut,
     W: Write,
@@ -122,7 +122,12 @@ where
                 Command::SpoolOff => {
                     self.print.spool_off();
                 }
-                Command::Set(name, value) => self.print.set_option(name, value)?,
+                Command::Set(name, value) => match self.print.set_option(name, value) {
+                    Err(e) => {
+                        println!("[error] {}\n", e);
+                    }
+                    _ => {}
+                },
                 Command::Show(name) => self.print.show_option(name)?,
             }
         }
