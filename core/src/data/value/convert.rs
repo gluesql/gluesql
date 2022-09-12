@@ -592,7 +592,7 @@ mod tests {
         test!(Value::I128(0), Ok(false));
         test!(Value::U8(1), Ok(true));
         test!(Value::U8(0), Ok(false));
-
+        test!(Value::U8(2), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(1.0), Ok(true));
         test!(Value::F64(0.0), Ok(false));
         test!(Value::Str("true".to_owned()), Ok(true));
