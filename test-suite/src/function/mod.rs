@@ -24,5 +24,6 @@ pub mod round;
 pub mod sign;
 pub mod sqrt_power;
 pub mod substr;
+pub mod to_date;
 pub mod trim;
 pub mod upper_lower;

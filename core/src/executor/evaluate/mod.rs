@@ -22,7 +22,10 @@ use {
     std::{borrow::Cow, rc::Rc},
 };
 
-pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
+pub use {
+    error::ChronoFormatError, error::EvaluateError, evaluated::Evaluated,
+    stateless::evaluate_stateless,
+};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a>(
@@ -396,6 +399,17 @@ async fn evaluate_function<'a>(
             let format = eval(format).await?;
 
             f::format(name(), expr, format)
+        }
+        Function::ToDate { expr, format } => {
+            let expr = eval(expr).await?;
+            let format = eval(format).await?;
+            f::to_date(name(), expr, format)
+        }
+
+        Function::ToTimestamp { expr, format } => {
+            let expr = eval(expr).await?;
+            let format = eval(format).await?;
+            f::to_timestamp(name(), expr, format)
         }
     }
     .map(Evaluated::from)

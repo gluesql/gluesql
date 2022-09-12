@@ -291,6 +291,20 @@ fn evaluate_function<'a>(
 
             f::format(name(), expr, format)
         }
+
+        Function::ToDate { expr, format } => {
+            let expr = eval(expr)?;
+            let format = eval(format)?;
+
+            f::to_date(name(), expr, format)
+        }
+
+        Function::ToTimestamp { expr, format } => {
+            let expr = eval(expr)?;
+            let format = eval(format)?;
+
+            f::to_timestamp(name(), expr, format)
+        }
     }
     .map(Evaluated::from)
 }

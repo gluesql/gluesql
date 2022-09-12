@@ -383,6 +383,26 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::Format { expr, format })))
         }
+        "TO_DATE" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::ToDate { expr, format })))
+        }
+
+        "TO_TIMESTAMP" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::ToTimestamp {
+                expr,
+                format,
+            })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }
