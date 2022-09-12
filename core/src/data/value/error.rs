@@ -86,8 +86,8 @@ pub enum ValueError {
     #[error("literal cast failed from text to integer: {0}")]
     LiteralCastFromTextToIntegerFailed(String),
 
-    #[error("literal cast failed from text to unsigned integer: {0}")]
-    LiteralCastFromTextToUnsignedIntegerFailed(String),
+    #[error("literal cast failed from text to Unsigned Integer(8): {0}")]
+    LiteralCastFromTextToUnsignedInteger8Failed(String),
 
     #[error("literal cast failed from text to float: {0}")]
     LiteralCastFromTextToFloatFailed(String),
