@@ -22,6 +22,14 @@ test_case!(cast_literal, async move {
             Ok(Payload::Create),
         ),
         (
+            "CREATE TABLE a (mytext Text, myint8 Int(8) Unsigned, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
+            Ok(Payload::Create),
+        ),
+        (
+            r#"INSERT INTO a VALUES ("foobar", 2, 2, 2.0, 2.0, true, "2001-09-11")"#,
+            Ok(Payload::Insert(1)),
+        ),
+        (
             r#"INSERT INTO test VALUES ("foobar", -2, 2, 2.0, 2.0, true, "2001-09-11")"#,
             Ok(Payload::Insert(1)),
         ),
@@ -53,7 +61,6 @@ test_case!(cast_literal, async move {
             r#"SELECT CAST("foo" AS INTEGER) AS cast FROM Item"#,
             Err(ValueError::LiteralCastFromTextToIntegerFailed("foo".to_owned()).into()),
         ),
-
         (
             r#"SELECT CAST(1.1 AS INTEGER) AS cast FROM Item"#,
             Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_string()).into()),
@@ -161,6 +168,10 @@ test_case!(cast_literal, async move {
         (
             r#"SELECT CAST(myint8 AS Decimal) AS cast FROM test"#,
             Ok(select!(cast Decimal; Decimal::new(-2,0))),
+        ),
+        (
+            r#"SELECT CAST(myint8 AS Decimal) AS cast FROM a"#,
+            Ok(select!(cast Decimal; Decimal::new(2,0))),
         ),
         (
             r#"SELECT CAST(myint AS Decimal) AS cast FROM test"#,
