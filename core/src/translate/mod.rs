@@ -220,6 +220,6 @@ fn translate_object_name(sql_object_name: &SqlObjectName) -> ObjectName {
     ObjectName(translate_idents(&sql_object_name.0))
 }
 
-fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
+pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
 }
