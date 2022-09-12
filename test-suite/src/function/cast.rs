@@ -22,11 +22,11 @@ test_case!(cast_literal, async move {
             Ok(Payload::Create),
         ),
         (
-            "CREATE TABLE a (mytext Text, myuint8 Int(8) Unsigned, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
+            "CREATE TABLE utest (mytext Text, myuint8 Int(8) Unsigned, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO a VALUES ("foobar", 2, 2, 2.0, 2.0, true, "2001-09-11")"#,
+            r#"INSERT INTO utest VALUES ("foobar", 2, 2, 2.0, 2.0, true, "2001-09-11")"#,
             Ok(Payload::Insert(1)),
         ),
         (
@@ -76,6 +76,14 @@ test_case!(cast_literal, async move {
         (
             r#"SELECT CAST(255 AS INT(8)) AS cast FROM Item"#,
             Err(ValueError::LiteralCastToInt8Failed("255".to_owned()).into()),
+        ),
+        (
+            r#"SELECT CAST("foo" AS INT(8) UNSIGNED) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastFromTextToUnsignedInt8Failed("foo".to_owned()).into()),
+        ),
+        (
+            r#"SELECT CAST(-1 AS INT(8) UNSIGNED) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastToUnsignedInt8Failed("foo".to_owned()).into()),
         ),
         (
             r#"SELECT CAST("1.1" AS FLOAT) AS cast FROM Item"#,
@@ -170,7 +178,7 @@ test_case!(cast_literal, async move {
             Ok(select!(cast Decimal; Decimal::new(-2,0))),
         ),
         (
-            r#"SELECT CAST(myuint8 AS Decimal) AS cast FROM a"#,
+            r#"SELECT CAST(myuint8 AS Decimal) AS cast FROM utest"#,
             Ok(select!(cast Decimal; Decimal::new(2,0))),
         ),
         (

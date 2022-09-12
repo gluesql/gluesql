@@ -277,7 +277,7 @@ impl Value {
                 Ok(Value::I128(v))
             }
             (DataType::Uint8, Literal::Text(v)) => v.parse::<u8>().map(Value::U8).map_err(|_| {
-                ValueError::LiteralCastFromTextToUnsignedInteger8Failed(v.to_string()).into()
+                ValueError::LiteralCastFromTextToUnsignedInt8Failed(v.to_string()).into()
             }),
             (DataType::Uint8, Literal::Number(v)) => match v.to_u8() {
                 Some(x) => Ok(Value::U8(x)),
