@@ -86,6 +86,14 @@ mod tests {
 
         let actual = table("Foo")
             .insert()
+            .columns(vec!["hi"])
+            .values(vec![vec![num(7)]])
+            .build();
+        let expected = r#"INSERT INTO Foo (hi) VALUES (7)"#;
+        test(actual, expected);
+
+        let actual = table("Foo")
+            .insert()
             .as_select(table("Bar").select().limit(10).project("id, name"))
             .build();
         let expected = r#"INSERT INTO Foo SELECT id, name FROM Bar LIMIT 10"#;
