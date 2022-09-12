@@ -49,6 +49,7 @@ impl PartialOrd for Key {
             (Key::I16(l), Key::I16(r)) => Some(l.cmp(r)),
             (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
             (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
+            (Key::U8(l), Key::U8(r)) => Some(l.cmp(r)),
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
             (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
             (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
