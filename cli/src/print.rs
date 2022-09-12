@@ -310,7 +310,6 @@ impl<'a, W: Write> Print<W> {
 
 #[cfg(test)]
 mod tests {
-
     use super::Print;
     use gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd};
 
@@ -534,5 +533,83 @@ mod tests {
                 ("mylist".to_string(), DataType::List),
             ],)
         );
+
+        print.set_option("tabular".into(), "off".into()).unwrap();
+        test!(
+            "
+id|title|valid
+1 |foo  |TRUE 
+2 |bar  |FALSE",
+            &Payload::Select {
+                labels: ["id", "title", "valid"]
+                    .into_iter()
+                    .map(ToOwned::to_owned)
+                    .collect(),
+                rows: vec![
+                    vec![
+                        Value::I64(1),
+                        Value::Str("foo".to_owned()),
+                        Value::Bool(true)
+                    ],
+                    vec![
+                        Value::I64(2),
+                        Value::Str("bar".to_owned()),
+                        Value::Bool(false)
+                    ],
+                ],
+            }
+        );
+
+        print.set_option("colsep".into(), ",".into()).unwrap();
+        test!(
+            "
+id,title,valid
+1,foo,TRUE 
+2,bar,FALSE",
+            &Payload::Select {
+                labels: ["id", "title", "valid"]
+                    .into_iter()
+                    .map(ToOwned::to_owned)
+                    .collect(),
+                rows: vec![
+                    vec![
+                        Value::I64(1),
+                        Value::Str("foo".to_owned()),
+                        Value::Bool(true)
+                    ],
+                    vec![
+                        Value::I64(2),
+                        Value::Str("bar".to_owned()),
+                        Value::Bool(false)
+                    ],
+                ],
+            }
+        );
+
+        //         print.set_option("colwrap".into(), "'".into()).unwrap();
+        //         test!(
+        //             "
+        // 'id','title','valid'
+        // '1','foo','TRUE'
+        // '2','bar','FALSE'",
+        //             &Payload::Select {
+        //                 labels: ["id", "title", "valid"]
+        //                     .into_iter()
+        //                     .map(ToOwned::to_owned)
+        //                     .collect(),
+        //                 rows: vec![
+        //                     vec![
+        //                         Value::I64(1),
+        //                         Value::Str("foo".to_owned()),
+        //                         Value::Bool(true)
+        //                     ],
+        //                     vec![
+        //                         Value::I64(2),
+        //                         Value::Str("bar".to_owned()),
+        //                         Value::Bool(false)
+        //                     ],
+        //                 ],
+        //             }
+        //         );
     }
 }
