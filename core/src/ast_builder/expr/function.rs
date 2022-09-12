@@ -979,4 +979,26 @@ mod tests {
         let expected = "FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_to_date() {
+        let actual = to_date(text("2017-06-15"), text("%Y-%m-%d"));
+        let expected = "TO_DATE('2017-06-15','%Y-%m-%d')";
+        test_expr(actual, expected);
+
+        let actual = text("2017-06-15").to_date(text("%Y-%m-%d"));
+        let expected = "TO_DATE('2017-06-15','%Y-%m-%d')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_to_timestamp() {
+        let actual = to_timestamp(text("2015-09-05 23:56:04"), text("%Y-%m-%d %H:%M:%S"));
+        let expected = "TO_TIMESTAMP('2015-09-05 23:56:04','%Y-%m-%d %H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = text("2015-09-05 23:56:04").to_timestamp(text("%Y-%m-%d %H:%M:%S"));
+        let expected = "TO_TIMESTAMP('2015-09-05 23:56:04','%Y-%m-%d %H:%M:%S')";
+        test_expr(actual, expected);
+    }
 }
