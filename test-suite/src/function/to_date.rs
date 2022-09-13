@@ -70,7 +70,7 @@ test_case!(to_date, async move {
             Err(EvaluateError::ChronoFormat(ChronoFormatError::TooLong).into()),
         ),
         (
-            r#"SELECT TO_TIME("23:56", "%H-%M-%S") AS time"#,
+            r#"SELECT TO_TIME("23:56", "%H:%M:%S") AS time"#,
             Err(EvaluateError::ChronoFormat(ChronoFormatError::TooShort).into()),
         ),
         (
