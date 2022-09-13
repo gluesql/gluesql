@@ -426,6 +426,12 @@ pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resul
                 chrono::NaiveDateTime::format(&expr, &format).to_string(),
             ))
         }
+        Value::Time(expr) => {
+            let format = eval_to_str!(name, format);
+            Ok(Value::Str(
+                chrono::NaiveTime::format(&expr, &format).to_string(),
+            ))
+        }
         value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
     }
 }
