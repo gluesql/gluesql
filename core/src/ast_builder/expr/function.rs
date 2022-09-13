@@ -100,6 +100,14 @@ pub enum FunctionNode {
         expr: ExprNode,
         format: ExprNode,
     },
+    ToDate {
+        expr: ExprNode,
+        format: ExprNode,
+    },
+    ToTimestamp {
+        expr: ExprNode,
+        format: ExprNode,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -214,6 +222,16 @@ impl TryFrom<FunctionNode> for Function {
                 let format = format.try_into()?;
                 Ok(Function::Format { expr, format })
             }
+            FunctionNode::ToDate { expr, format } => {
+                let expr = expr.try_into()?;
+                let format = format.try_into()?;
+                Ok(Function::ToDate { expr, format })
+            }
+            FunctionNode::ToTimestamp { expr, format } => {
+                let expr = expr.try_into()?;
+                let format = format.try_into()?;
+                Ok(Function::ToTimestamp { expr, format })
+            }
         }
     }
 }
@@ -324,6 +342,12 @@ impl ExprNode {
     }
     pub fn format(self, fmt: ExprNode) -> ExprNode {
         format(self, fmt)
+    }
+    pub fn to_date(self, format: ExprNode) -> ExprNode {
+        to_date(self, format)
+    }
+    pub fn to_timestamp(self, format: ExprNode) -> ExprNode {
+        to_timestamp(self, format)
     }
 }
 
@@ -516,13 +540,27 @@ pub fn format<D: Into<ExprNode>, T: Into<ExprNode>>(expr: D, format: T) -> ExprN
     }))
 }
 
+pub fn to_date<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::ToDate {
+        expr: expr.into(),
+        format: format.into(),
+    }))
+}
+
+pub fn to_timestamp<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::ToTimestamp {
+        expr: expr.into(),
+        format: format.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
         format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo,
         now, num, pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt,
-        substr, tan, test_expr, text, timestamp, upper,
+        substr, tan, test_expr, text, timestamp, to_date, to_timestamp, upper,
     };
 
     #[test]
@@ -977,6 +1015,28 @@ mod tests {
 
         let actual = timestamp("2015-09-05 23:56:04").format(text("%Y-%m-%d %H:%M:%S"));
         let expected = "FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_to_date() {
+        let actual = to_date(text("2017-06-15"), text("%Y-%m-%d"));
+        let expected = "TO_DATE('2017-06-15','%Y-%m-%d')";
+        test_expr(actual, expected);
+
+        let actual = text("2017-06-15").to_date(text("%Y-%m-%d"));
+        let expected = "TO_DATE('2017-06-15','%Y-%m-%d')";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_to_timestamp() {
+        let actual = to_timestamp(text("2015-09-05 23:56:04"), text("%Y-%m-%d %H:%M:%S"));
+        let expected = "TO_TIMESTAMP('2015-09-05 23:56:04','%Y-%m-%d %H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = text("2015-09-05 23:56:04").to_timestamp(text("%Y-%m-%d %H:%M:%S"));
+        let expected = "TO_TIMESTAMP('2015-09-05 23:56:04','%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
     }
 }
