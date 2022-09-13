@@ -17,7 +17,7 @@ async-recursion = "1"
 cfg-if = "1"
 futures-enum = "0.1.17"
 futures = "0.3"
-chrono = { version = "0.4", features = ["serde", "wasmbind"] }
+chrono = { version = "0.4.22", features = ["serde", "wasmbind"] }
 rust_decimal = { version = "1", features = ["serde-str"] }
 im-rc = "15"
 iter-enum = "1"
