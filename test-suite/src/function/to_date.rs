@@ -1,7 +1,7 @@
 use crate::*;
 test_case!(to_date, async move {
     use {
-        chrono::NaiveDate,
+        chrono::{NaiveDate, NaiveTime},
         gluesql_core::{
             executor::{ChronoFormatError, EvaluateError},
             prelude::Value::*,
@@ -26,6 +26,14 @@ test_case!(to_date, async move {
             )),
         ),
         (
+            r#"VALUES(TO_TIME("23:56:04", "%H:%M:%S"))"#,
+            Ok(select!(
+                column1
+                Time;
+                NaiveTime::from_hms(23, 56, 4)
+            )),
+        ),
+        (
             r#"SELECT TO_DATE("2017-06-15","%Y-%m-%d") AS date"#,
             Ok(select!(
                 date
@@ -39,6 +47,14 @@ test_case!(to_date, async move {
                 date
                 Date;
                 NaiveDate::from_ymd(2017, 6, 15)
+            )),
+        ),
+        (
+            r#"SELECT TO_TIME("23:56:04","%H:%M:%S") AS time"#,
+            Ok(select!(
+                time
+                Time;
+                NaiveTime::from_hms(23, 56, 4)
             )),
         ),
         (
