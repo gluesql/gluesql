@@ -2,7 +2,7 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast::Statement,
-        ast_builder::{GroupByNode, HavingNode, OrderByExprList, SelectNode},
+        ast_builder::{ExprNode, GroupByNode, HavingNode, LimitNode, OrderByExprList, SelectNode},
         result::Result,
     },
 };
@@ -56,6 +56,10 @@ impl OrderByNode {
         }
     }
 
+    pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
+        LimitNode::new(self, expr)
+    }
+
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
     }
@@ -72,7 +76,7 @@ impl Prebuild for OrderByNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, ExprNode};
 
     #[test]
     fn order_by() {
@@ -80,6 +84,24 @@ mod tests {
         let expected = "
             SELECT * FROM Foo
             ORDER BY name DESC
+        ";
+        test(actual, expected);
+
+        let actual = table("Foo")
+            .select()
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .order_by(ExprNode::Identifier("name".to_owned()))
+            .limit(3)
+            .offset(2)
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            GROUP BY city
+            HAVING COUNT(name) < 100
+            ORDER BY name
+            LIMIT 3
+            OFFSET 2
         ";
         test(actual, expected);
     }
