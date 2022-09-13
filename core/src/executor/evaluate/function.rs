@@ -459,3 +459,15 @@ pub fn to_timestamp(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) ->
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
+
+pub fn to_time(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()? {
+        Value::Str(expr) => {
+            let format = eval_to_str!(name, format);
+            chrono::NaiveTime::parse_from_str(&expr, &format)
+                .map(Value::Time)
+                .map_err(ChronoFormatError::err_into)
+        }
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
+}

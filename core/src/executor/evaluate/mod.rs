@@ -411,6 +411,11 @@ async fn evaluate_function<'a>(
             let format = eval(format).await?;
             f::to_timestamp(name(), expr, format)
         }
+        Function::ToTime { expr, format } => {
+            let expr = eval(expr).await?;
+            let format = eval(format).await?;
+            f::to_time(name(), expr, format)
+        }
     }
     .map(Evaluated::from)
 }

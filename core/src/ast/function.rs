@@ -117,6 +117,10 @@ pub enum Function {
         expr: Expr,
         format: Expr,
     },
+    ToTime {
+        expr: Expr,
+        format: Expr,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
