@@ -66,11 +66,11 @@ test_case!(to_date, async move {
             )),
         ),
         (
-            r#"SELECT TO_DATE("2015-09-05", "%Y-%m") AS timestamp"#,
+            r#"SELECT TO_DATE("2015-09-05", "%Y-%m") AS date"#,
             Err(EvaluateError::ChronoFormat(ChronoFormatError::TooLong).into()),
         ),
         (
-            r#"SELECT TO_TIMESTAMP("2015-09-05 23:56", "%Y-%m-%d %H:%M:%S") AS timestamp"#,
+            r#"SELECT TO_TIME("23:56", "%H-%M-%S") AS time"#,
             Err(EvaluateError::ChronoFormat(ChronoFormatError::TooShort).into()),
         ),
         (
