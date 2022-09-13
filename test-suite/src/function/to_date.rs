@@ -101,6 +101,10 @@ test_case!(to_date, async move {
             r#"SELECT TO_TIMESTAMP(TIMESTAMP "2015-09-05 23:56:04","%Y-%m-%d") AS date"#,
             Err(EvaluateError::FunctionRequiresStringValue("TO_TIMESTAMP".to_owned()).into()),
         ),
+        (
+            r#"SELECT TO_TIME(TIME "23:56:04","%H:%M:%S") AS date"#,
+            Err(EvaluateError::FunctionRequiresStringValue("TO_TIME".to_owned()).into()),
+        ),
     ];
     for (sql, expected) in test_cases {
         test!(sql, expected);
