@@ -3,7 +3,8 @@ use {
     crate::{
         ast::Statement,
         ast_builder::{
-            ExprNode, GroupByNode, HavingNode, LimitNode, OffsetNode, OrderByExprList, SelectNode,
+            ExprNode, GroupByNode, HavingNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
+            SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -66,6 +67,10 @@ impl OrderByNode {
         LimitNode::new(self, expr)
     }
 
+    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+        ProjectNode::new(self, select_items)
+    }
+
     pub fn build(self) -> Result<Statement> {
         self.prebuild().map(NodeData::build_stmt)
     }
@@ -120,6 +125,17 @@ mod tests {
             SELECT * FROM Bar 
             ORDER BY name asc, id desc, country 
             OFFSET 10
+        ";
+        test(actual, expected);
+
+        let actual = table("Bar")
+            .select()
+            .order_by(vec!["id desc"])
+            .project("name, id")
+            .build();
+        let expected = "
+            SELECT name, id FROM Bar 
+            ORDER BY id DESC
         ";
         test(actual, expected);
     }
