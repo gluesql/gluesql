@@ -13,6 +13,7 @@ mod expr_list;
 mod index;
 mod insert;
 mod order_by_expr;
+mod order_by_expr_list;
 mod query;
 mod select;
 mod select_item;
@@ -34,10 +35,11 @@ pub use {
     expr_list::ExprList,
     insert::InsertNode,
     order_by_expr::OrderByExprNode,
+    order_by_expr_list::OrderByExprList,
     query::QueryNode,
     select::{
         GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
-        ProjectNode, SelectNode,
+        OrderByNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
