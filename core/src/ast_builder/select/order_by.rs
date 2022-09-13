@@ -118,7 +118,7 @@ mod tests {
 
         let actual = table("Bar")
             .select()
-            .order_by(vec!["name asc", "id desc", "country"])
+            .order_by("name asc, id desc, country")
             .offset(10)
             .build();
         let expected = "
