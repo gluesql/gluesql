@@ -3,8 +3,8 @@ use {
     crate::{
         ast::Statement,
         ast_builder::{
-            ExprList, ExprNode, HavingNode, LimitNode, OffsetNode, ProjectNode, SelectItemList,
-            SelectNode,
+            ExprList, ExprNode, HavingNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
+            ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -57,6 +57,10 @@ impl GroupByNode {
 
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
         ProjectNode::new(self, select_items)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList>>(self, expr_list: T) -> OrderByNode {
+        OrderByNode::new(self, expr_list)
     }
 
     pub fn build(self) -> Result<Statement> {

@@ -130,11 +130,13 @@ mod tests {
 
         let actual = table("Bar")
             .select()
+            .group_by("name")
             .order_by(vec!["id desc"])
             .project("name, id")
             .build();
         let expected = "
             SELECT name, id FROM Bar 
+            GROUP BY name
             ORDER BY id DESC
         ";
         test(actual, expected);
