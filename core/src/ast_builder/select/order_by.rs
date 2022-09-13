@@ -2,7 +2,9 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast::Statement,
-        ast_builder::{ExprNode, GroupByNode, HavingNode, LimitNode, OrderByExprList, SelectNode},
+        ast_builder::{
+            ExprNode, GroupByNode, HavingNode, LimitNode, OffsetNode, OrderByExprList, SelectNode,
+        },
         result::Result,
     },
 };
@@ -56,6 +58,10 @@ impl OrderByNode {
         }
     }
 
+    pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
+        OffsetNode::new(self, expr)
+    }
+
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
         LimitNode::new(self, expr)
     }
@@ -102,6 +108,18 @@ mod tests {
             ORDER BY name
             LIMIT 3
             OFFSET 2
+        ";
+        test(actual, expected);
+
+        let actual = table("Bar")
+            .select()
+            .order_by(vec!["name asc", "id desc", "country"])
+            .offset(10)
+            .build();
+        let expected = "
+            SELECT * FROM Bar 
+            ORDER BY name asc, id desc, country 
+            OFFSET 10
         ";
         test(actual, expected);
     }
