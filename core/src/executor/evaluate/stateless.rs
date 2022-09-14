@@ -2,7 +2,7 @@ use {
     super::{expr, function, EvaluateError, Evaluated},
     crate::{
         ast::{Expr, Function},
-        data::{Row, Value},
+        data::{Literal, Row, Value},
         result::Result,
     },
     chrono::prelude::Utc,
@@ -90,6 +90,38 @@ pub fn evaluate_stateless<'a>(
             let high = eval(high)?;
 
             expr::between(target, *negated, low, high)
+        }
+        Expr::Like {
+            expr,
+            negated,
+            pattern,
+        } => {
+            let target = eval(expr)?;
+            let pattern = eval(pattern)?;
+            let evaluated = target.like(pattern, true)?;
+
+            Ok(match negated {
+                true => Evaluated::from(Value::Bool(
+                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                )),
+                false => evaluated,
+            })
+        }
+        Expr::ILike {
+            expr,
+            negated,
+            pattern,
+        } => {
+            let target = eval(expr)?;
+            let pattern = eval(pattern)?;
+            let evaluated = target.like(pattern, false)?;
+
+            Ok(match negated {
+                true => Evaluated::from(Value::Bool(
+                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                )),
+                false => evaluated,
+            })
         }
         Expr::IsNull(expr) => {
             let v = eval(expr)?.is_null();
@@ -253,6 +285,26 @@ fn evaluate_function<'a>(
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
         Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
+        Function::Format { expr, format } => {
+            let expr = eval(expr)?;
+            let format = eval(format)?;
+
+            f::format(name(), expr, format)
+        }
+
+        Function::ToDate { expr, format } => {
+            let expr = eval(expr)?;
+            let format = eval(format)?;
+
+            f::to_date(name(), expr, format)
+        }
+
+        Function::ToTimestamp { expr, format } => {
+            let expr = eval(expr)?;
+            let format = eval(format)?;
+
+            f::to_timestamp(name(), expr, format)
+        }
     }
     .map(Evaluated::from)
 }

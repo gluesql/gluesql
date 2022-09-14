@@ -11,7 +11,9 @@ pub mod filter;
 pub mod function;
 pub mod index;
 pub mod inline_view;
+pub mod insert;
 pub mod join;
+pub mod like_ilike;
 pub mod limit;
 pub mod metadata;
 pub mod migrate;
@@ -56,6 +58,7 @@ macro_rules! generate_store_tests {
             };
         }
         glue!(update, update::update);
+        glue!(insert, insert::insert);
         glue!(basic, basic::basic);
         glue!(aggregate_avg, aggregate::avg::avg);
         glue!(aggregate_count, aggregate::count::count);
@@ -76,6 +79,7 @@ macro_rules! generate_store_tests {
         glue!(drop_table, alter::drop_table);
         glue!(default, default::default);
         glue!(limit, limit::limit);
+        glue!(like_ilike, like_ilike::like_ilike);
         glue!(filter, filter::filter);
         glue!(inline_view, inline_view::inline_view);
         glue!(values, values::values);
@@ -103,6 +107,7 @@ macro_rules! generate_store_tests {
         glue!(function_ceil, function::ceil::ceil);
         glue!(function_round, function::round::round);
         glue!(function_floor, function::floor::floor);
+        glue!(function_format, function::format::format);
         glue!(function_ln, function::exp_log::ln);
         glue!(function_log, function::exp_log::log);
         glue!(function_log2, function::exp_log::log2);
@@ -110,6 +115,7 @@ macro_rules! generate_store_tests {
         glue!(function_exp, function::exp_log::exp);
         glue!(function_now, function::now::now);
         glue!(function_sign, function::sign::sign);
+        glue!(function_to_date, function::to_date::to_date);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
@@ -124,6 +130,7 @@ macro_rules! generate_store_tests {
         glue!(sql_types, data_type::sql_types::sql_types);
         glue!(showcolumns, showcolumns::showcolumns);
         glue!(int8, data_type::int8::int8);
+        glue!(uint8, data_type::int8::int8);
         glue!(int16, data_type::int16::int16);
         glue!(int32, data_type::int32::int32);
         glue!(int64, data_type::int64::int64);

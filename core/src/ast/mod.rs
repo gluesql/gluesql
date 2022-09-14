@@ -131,6 +131,52 @@ impl ToSql for ObjectName {
 impl ToSql for Statement {
     fn to_sql(&self) -> String {
         match self {
+            Statement::ShowColumns { table_name } => {
+                format!("SHOW COLUMNS FROM {}", table_name.to_sql())
+            }
+            Statement::Insert {
+                table_name,
+                columns,
+                source: _,
+            } => {
+                let columns = columns.join(", ");
+                format!(
+                    "INSERT INTO {} ({columns}) (..query..)",
+                    table_name.to_sql()
+                )
+            }
+            Statement::Update {
+                table_name,
+                assignments,
+                selection,
+            } => {
+                let assignments = assignments
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                match selection {
+                    Some(expr) => {
+                        format!(
+                            "UPDATE {} SET {assignments} WHERE {}",
+                            table_name.to_sql(),
+                            expr.to_sql()
+                        )
+                    }
+                    None => format!("UPDATE {} SET {assignments}", table_name.to_sql()),
+                }
+            }
+            Statement::Delete {
+                table_name,
+                selection,
+            } => match selection {
+                Some(expr) => format!(
+                    "DELETE FROM {} WHERE {}",
+                    table_name.to_sql(),
+                    expr.to_sql()
+                ),
+                None => format!("DELETE FROM {}", table_name.to_sql()),
+            },
             Statement::CreateTable {
                 if_not_exists,
                 name,
@@ -160,17 +206,74 @@ impl ToSql for Statement {
             Statement::AlterTable { name, operation } => {
                 format!("ALTER TABLE {} {}", name.to_sql(), operation.to_sql())
             }
+            Statement::DropTable { if_exists, names } => {
+                let names = names
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                match if_exists {
+                    true => format!("DROP TABLE IF EXISTS {}", names),
+                    false => format!("DROP TABLE {}", names),
+                }
+            }
+            #[cfg(feature = "index")]
+            Statement::CreateIndex {
+                name,
+                table_name,
+                column: _column,
+            } => {
+                format!(
+                    "CREATE INDEX {} ON {} (..order_by_expr..)",
+                    name.to_sql(),
+                    table_name.to_sql()
+                )
+            }
+            #[cfg(feature = "index")]
+            Statement::DropIndex { name, table_name } => {
+                format!("DROP INDEX {}.{}", table_name.to_sql(), name.to_sql())
+            }
+            #[cfg(feature = "transaction")]
+            Statement::StartTransaction => "START TRANSACTION".to_string(),
+            #[cfg(feature = "transaction")]
+            Statement::Commit => "COMMIT".to_string(),
+            #[cfg(feature = "transaction")]
+            Statement::Rollback => "ROLLBACK".to_string(),
+            #[cfg(feature = "metadata")]
+            Statement::ShowVariable(variable) => match variable {
+                Variable::Tables => "SHOW TABLES".to_string(),
+                Variable::Version => "SHOW VERSIONS".to_string(),
+            },
+            #[cfg(feature = "index")]
+            Statement::ShowIndexes(object_name) => {
+                format!("SHOW INDEXES FROM {}", object_name.to_sql())
+            }
             _ => "(..statement..)".to_string(),
         }
     }
 }
 
+impl ToSql for Assignment {
+    fn to_sql(&self) -> String {
+        format!("{} = {}", self.id, self.value.to_sql())
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "alter-table")]
+    use crate::ast::AlterTableOperation;
+
+    #[cfg(feature = "index")]
+    use crate::ast::OrderByExpr;
+
+    #[cfg(feature = "metadata")]
+    use crate::ast::Variable;
+
     use {
         crate::ast::{
-            AlterTableOperation, AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef, DataType,
-            Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
+            Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
+            DataType, Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -187,6 +290,105 @@ mod tests {
                 "bar".to_string(),
                 "bax".to_string()
             ])
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_show_columns() {
+        assert_eq!(
+            "SHOW COLUMNS FROM Bar",
+            Statement::ShowColumns {
+                table_name: ObjectName(vec!["Bar".to_string()])
+            }
+            .to_sql()
+        )
+    }
+
+    #[test]
+    fn to_sql_insert() {
+        assert_eq!(
+            "INSERT INTO Test (id, num, name) (..query..)",
+            Statement::Insert {
+                table_name: ObjectName(vec!["Test".to_string()]),
+                columns: vec!["id".to_string(), "num".to_string(), "name".to_string()],
+                source: Query {
+                    body: SetExpr::Values(Values(vec![vec![
+                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                        Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+                        Expr::Literal(AstLiteral::QuotedString("Hello".to_string()))
+                    ]])),
+                    order_by: vec![],
+                    limit: None,
+                    offset: None
+                }
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_update() {
+        assert_eq!(
+            r#"UPDATE Foo SET id = 4, color = "blue""#,
+            Statement::Update {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                assignments: vec![
+                    Assignment {
+                        id: "id".to_string(),
+                        value: Expr::Literal(AstLiteral::Number(
+                            BigDecimal::from_str("4").unwrap()
+                        ))
+                    },
+                    Assignment {
+                        id: "color".to_string(),
+                        value: Expr::Literal(AstLiteral::QuotedString("blue".to_string()))
+                    }
+                ],
+                selection: None
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"UPDATE Foo SET name = "first" WHERE a > b"#,
+            Statement::Update {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                assignments: vec![Assignment {
+                    id: "name".to_string(),
+                    value: Expr::Literal(AstLiteral::QuotedString("first".to_string()))
+                }],
+                selection: Some(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("a".to_string())),
+                    op: BinaryOperator::Gt,
+                    right: Box::new(Expr::Identifier("b".to_string()))
+                })
+            }
+            .to_sql()
+        )
+    }
+
+    #[test]
+    fn to_sql_delete() {
+        assert_eq!(
+            "DELETE FROM Foo",
+            Statement::Delete {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                selection: None
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"DELETE FROM Foo WHERE item = "glue""#,
+            Statement::Delete {
+                table_name: ObjectName(vec!["Foo".to_string()]),
+                selection: Some(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("item".to_string())),
+                    op: BinaryOperator::Eq,
+                    right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string())))
+                })
+            }
             .to_sql()
         );
     }
@@ -343,5 +545,110 @@ mod tests {
             }
             .to_sql()
         );
+    }
+
+    #[test]
+    fn to_sql_drop_table() {
+        assert_eq!(
+            "DROP TABLE Test",
+            Statement::DropTable {
+                if_exists: false,
+                names: vec![ObjectName(vec!["Test".to_string()])]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP TABLE IF EXISTS Test",
+            Statement::DropTable {
+                if_exists: true,
+                names: vec![ObjectName(vec!["Test".to_string()])]
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "DROP TABLE Foo, Bar",
+            Statement::DropTable {
+                if_exists: false,
+                names: vec![
+                    ObjectName(vec!["Foo".to_string()]),
+                    ObjectName(vec!["Bar".to_string()])
+                ]
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "index")]
+    fn to_sql_create_index() {
+        assert_eq!(
+            "CREATE INDEX idx_name ON Test (..order_by_expr..)",
+            Statement::CreateIndex {
+                name: ObjectName(vec!["idx_name".to_string()]),
+                table_name: ObjectName(vec!["Test".to_string()]),
+                column: OrderByExpr {
+                    expr: Expr::Identifier("LastName".to_string()),
+                    asc: None
+                }
+            }
+            .to_sql()
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "index")]
+    fn to_sql_drop_index() {
+        assert_eq!(
+            "DROP INDEX Test.idx_id",
+            Statement::DropIndex {
+                name: ObjectName(vec!["idx_id".to_string()]),
+                table_name: ObjectName(vec!["Test".to_string()])
+            }
+            .to_sql()
+        )
+    }
+
+    #[test]
+    #[cfg(feature = "transaction")]
+    fn to_sql_transaction() {
+        assert_eq!("START TRANSACTION", Statement::StartTransaction.to_sql());
+        assert_eq!("COMMIT", Statement::Commit.to_sql());
+        assert_eq!("ROLLBACK", Statement::Rollback.to_sql());
+    }
+
+    #[test]
+    #[cfg(feature = "metadata")]
+    fn to_sql_show_variable() {
+        assert_eq!(
+            "SHOW TABLES",
+            Statement::ShowVariable(Variable::Tables).to_sql()
+        );
+        assert_eq!(
+            "SHOW VERSIONS",
+            Statement::ShowVariable(Variable::Version).to_sql()
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "index")]
+    fn to_sql_show_indexes() {
+        assert_eq!(
+            "SHOW INDEXES FROM Test",
+            Statement::ShowIndexes(ObjectName(vec!["Test".to_string()])).to_sql()
+        );
+    }
+
+    #[test]
+    fn to_sql_assignment() {
+        assert_eq!(
+            "count = 5",
+            Assignment {
+                id: "count".to_string(),
+                value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("5").unwrap()))
+            }
+            .to_sql()
+        )
     }
 }

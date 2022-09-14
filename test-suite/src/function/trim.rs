@@ -117,6 +117,18 @@ test_case!(trim, async move {
                 "xxxyzblankxyz  ".to_owned()
             )),
         ),
+        (
+            "SELECT
+                TRIM(BOTH '  hello  ') AS both,
+                TRIM(LEADING '  hello  ') AS leading,
+                TRIM(TRAILING '  hello  ') AS trailing
+            ",
+            Ok(select!(
+                both               | leading              | trailing
+                Value::Str         | Value::Str           | Value::Str;
+                "hello".to_owned()   "hello  ".to_owned()   "  hello".to_owned()
+            )),
+        ),
     ];
 
     for (sql, expected) in test_cases {

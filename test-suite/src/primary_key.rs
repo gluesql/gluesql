@@ -3,7 +3,7 @@ use {
     gluesql_core::{
         data::{Value::*, ValueError},
         executor::{UpdateError, ValidateError},
-        prelude::Payload,
+        prelude::{Key, Payload},
     },
 };
 
@@ -111,7 +111,7 @@ test_case!(primary_key, async move {
     // PRIMARY KEY includes UNIQUE constraint
     test!(
         "INSERT INTO Allegro VALUES (1, 'another hello');",
-        Err(ValidateError::DuplicateEntryOnUniqueField(I64(1), "id".to_owned()).into())
+        Err(ValidateError::DuplicateEntryOnPrimaryKeyField(Key::I64(1)).into())
     );
 
     // PRIMARY KEY includes NOT NULL constraint

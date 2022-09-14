@@ -4,7 +4,7 @@ use {
         TranslateError,
     },
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr, Function, ObjectName, TrimWhereField},
+        ast::{Aggregate, CountArgExpr, Expr, Function, ObjectName},
         result::Result,
     },
     sqlparser::ast::{
@@ -15,24 +15,15 @@ use {
 
 pub fn translate_trim(
     expr: &SqlExpr,
-    trim_where: &Option<(SqlTrimWhereField, Box<SqlExpr>)>,
+    trim_where: &Option<SqlTrimWhereField>,
+    trim_what: &Option<Box<SqlExpr>>,
 ) -> Result<Expr> {
     let expr = translate_expr(expr)?;
-    let trim_where = trim_where
+    let trim_where_field = trim_where.as_ref().map(translate_trim_where_field);
+    let filter_chars = trim_what
         .as_ref()
-        .map(
-            |(trim_where_field, expr)| -> Result<(TrimWhereField, Expr)> {
-                Ok((
-                    translate_trim_where_field(trim_where_field),
-                    translate_expr(expr)?,
-                ))
-            },
-        )
+        .map(|expr| translate_expr(expr.as_ref()))
         .transpose()?;
-    let (filter_chars, trim_where_field) = match trim_where {
-        Some((trim_where_field, filter_chars)) => (Some(filter_chars), Some(trim_where_field)),
-        None => (None, None),
-    };
 
     Ok(Expr::Function(Box::new(Function::Trim {
         expr,
@@ -384,6 +375,34 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "ABS" => translate_function_one_arg(Function::Abs, args, name),
         "SIGN" => translate_function_one_arg(Function::Sign, args, name),
         "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
+        "FORMAT" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Format { expr, format })))
+        }
+        "TO_DATE" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::ToDate { expr, format })))
+        }
+
+        "TO_TIMESTAMP" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::ToTimestamp {
+                expr,
+                format,
+            })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

@@ -3,8 +3,8 @@ use {
     sqlparser::{
         ast::{
             Assignment as SqlAssignment, ColumnDef as SqlColumnDef, DataType as SqlDataType,
-            Expr as SqlExpr, OrderByExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
-            Statement as SqlStatement,
+            Expr as SqlExpr, Ident as SqlIdent, OrderByExpr, Query as SqlQuery,
+            SelectItem as SqlSelectItem, Statement as SqlStatement,
         },
         dialect::GenericDialect,
         parser::Parser,
@@ -115,5 +115,15 @@ pub fn parse_sql_assignment<Sql: AsRef<str>>(sql_assignment: Sql) -> Result<SqlA
 
     Parser::new(tokens, &DIALECT)
         .parse_assignment()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_identifiers<Sql: AsRef<str>>(sql_identifiers: Sql) -> Result<Vec<SqlIdent>> {
+    let tokens = Tokenizer::new(&DIALECT, sql_identifiers.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_identifiers()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }

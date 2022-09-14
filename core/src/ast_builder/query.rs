@@ -1,10 +1,10 @@
 use {
     super::{
-        select::NodeData, select::Prebuild, FilterNode, GroupByNode, HavingNode, LimitNode,
-        LimitOffsetNode, OffsetLimitNode, OffsetNode, SelectNode,
+        select::NodeData, select::Prebuild, ExprList, FilterNode, GroupByNode, HavingNode,
+        LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode, ProjectNode, SelectNode,
     },
     crate::{
-        ast::Query,
+        ast::{Expr, Query, SetExpr, Values},
         parse_sql::parse_query,
         result::{Error, Result},
         translate::translate_query,
@@ -22,6 +22,8 @@ pub enum QueryNode {
     OffsetLimit(OffsetLimitNode),
     Filter(FilterNode),
     Text(String),
+    Values(Vec<ExprList>),
+    Project(ProjectNode),
 }
 
 impl From<SelectNode> for QueryNode {
@@ -78,6 +80,12 @@ impl From<FilterNode> for QueryNode {
     }
 }
 
+impl From<ProjectNode> for QueryNode {
+    fn from(node: ProjectNode) -> Self {
+        QueryNode::Project(node)
+    }
+}
+
 impl TryFrom<QueryNode> for Query {
     type Error = Error;
 
@@ -90,8 +98,22 @@ impl TryFrom<QueryNode> for Query {
             QueryNode::LimitOffset(query_node) => query_node.prebuild().map(NodeData::build_query),
             QueryNode::Offset(query_node) => query_node.prebuild().map(NodeData::build_query),
             QueryNode::OffsetLimit(query_node) => query_node.prebuild().map(NodeData::build_query),
+            QueryNode::Project(query_node) => query_node.prebuild().map(NodeData::build_query),
             QueryNode::Text(query_node) => {
                 parse_query(query_node).and_then(|item| translate_query(&item))
+            }
+            QueryNode::Values(values) => {
+                let values: Vec<Vec<Expr>> = values
+                    .into_iter()
+                    .map(TryInto::try_into)
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(Query {
+                    body: SetExpr::Values(Values(values)),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                })
             }
             QueryNode::Filter(query_node) => query_node.prebuild().map(NodeData::build_query),
         }
@@ -151,6 +173,10 @@ mod test {
             .limit(3)
             .into();
         let expected = "SELECT * FROM FOO GROUP BY city HAVING COUNT(name) < 100 OFFSET 1 LIMIT 3";
+        test_query(actual, expected);
+
+        let actual = table("FOO").select().limit(10).project("id, name").into();
+        let expected = r#"SELECT id, name FROM FOO LIMIT 10"#;
         test_query(actual, expected);
     }
 }

@@ -105,6 +105,18 @@ pub enum Function {
         selector: Expr,
     },
     GenerateUuid(),
+    Format {
+        expr: Expr,
+        format: Expr,
+    },
+    ToDate {
+        expr: Expr,
+        format: Expr,
+    },
+    ToTimestamp {
+        expr: Expr,
+        format: Expr,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

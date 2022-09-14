@@ -1,6 +1,7 @@
 mod binary_op;
 mod exists;
 mod is_null;
+mod like;
 mod nested;
 mod unary_op;
 
@@ -23,6 +24,7 @@ use {
         },
         ast_builder::QueryNode,
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
+        prelude::DataType,
         result::{Error, Result},
         translate::{translate_expr, translate_query},
     },
@@ -46,6 +48,16 @@ pub enum ExprNode {
         negated: bool,
         low: Box<ExprNode>,
         high: Box<ExprNode>,
+    },
+    Like {
+        expr: Box<ExprNode>,
+        negated: bool,
+        pattern: Box<ExprNode>,
+    },
+    ILike {
+        expr: Box<ExprNode>,
+        negated: bool,
+        pattern: Box<ExprNode>,
     },
     BinaryOp {
         left: Box<ExprNode>,
@@ -110,6 +122,34 @@ impl TryFrom<ExprNode> for Expr {
                     negated,
                     low,
                     high,
+                })
+            }
+            ExprNode::Like {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let pattern = Expr::try_from(*pattern).map(Box::new)?;
+
+                Ok(Expr::Like {
+                    expr,
+                    negated,
+                    pattern,
+                })
+            }
+            ExprNode::ILike {
+                expr,
+                negated,
+                pattern,
+            } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let pattern = Expr::try_from(*pattern).map(Box::new)?;
+
+                Ok(Expr::ILike {
+                    expr,
+                    negated,
+                    pattern,
                 })
             }
             ExprNode::BinaryOp { left, op, right } => {
@@ -239,4 +279,18 @@ pub fn num(value: i64) -> ExprNode {
 
 pub fn text(value: &str) -> ExprNode {
     ExprNode::Expr(Expr::Literal(AstLiteral::QuotedString(value.to_owned())))
+}
+
+pub fn date(date: &str) -> ExprNode {
+    ExprNode::Expr(Expr::TypedString {
+        data_type: (DataType::Date),
+        value: (date.to_string()),
+    })
+}
+
+pub fn timestamp(timestamp: &str) -> ExprNode {
+    ExprNode::Expr(Expr::TypedString {
+        data_type: (DataType::Timestamp),
+        value: (timestamp.to_string()),
+    })
 }
