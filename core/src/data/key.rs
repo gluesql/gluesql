@@ -30,6 +30,7 @@ pub enum Key {
     I64(i64),
     I128(i128),
     U8(u8),
+    U16(u16),
     Bool(bool),
     Str(String),
     Bytea(Vec<u8>),
@@ -50,6 +51,7 @@ impl PartialOrd for Key {
             (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
             (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
             (Key::U8(l), Key::U8(r)) => Some(l.cmp(r)),
+            (Key::U16(l), Key::U16(r)) => Some(l.cmp(r)),
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
             (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
             (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
@@ -78,6 +80,7 @@ impl TryFrom<Value> for Key {
             I64(v) => Ok(Key::I64(v)),
             I128(v) => Ok(Key::I128(v)),
             U8(v) => Ok(Key::U8(v)),
+            U16(v) => Ok(Key::U16(v)),
             Str(v) => Ok(Key::Str(v)),
             Bytea(v) => Ok(Key::Bytea(v)),
             Date(v) => Ok(Key::Date(v)),
@@ -162,6 +165,11 @@ impl Key {
                     .collect::<Vec<_>>()
             }
             Key::U8(v) => [VALUE, 1]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Key::U16(v) => [VALUE, 1]
                 .iter()
                 .chain(v.to_be_bytes().iter())
                 .copied()
