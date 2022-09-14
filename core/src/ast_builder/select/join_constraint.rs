@@ -1,5 +1,5 @@
 use {
-    super::{join::JoinType, NodeData, Prebuild},
+    super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
         ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, Statement},
         ast_builder::{
@@ -25,7 +25,7 @@ impl JoinConstraintNode {
     }
 
     pub fn join(self, table_name: &str) -> JoinNode {
-        JoinNode::new(self, table_name.to_string(), None, JoinType::Inner)
+        JoinNode::new(self, table_name.to_string(), None, JoinOperatorType::Inner)
     }
 
     pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
@@ -33,12 +33,12 @@ impl JoinConstraintNode {
             self,
             table_name.to_string(),
             Some(alias.to_string()),
-            JoinType::Inner,
+            JoinOperatorType::Inner,
         )
     }
 
     pub fn left_join(self, table_name: &str) -> JoinNode {
-        JoinNode::new(self, table_name.to_string(), None, JoinType::Left)
+        JoinNode::new(self, table_name.to_string(), None, JoinOperatorType::Left)
     }
 
     pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
@@ -46,7 +46,7 @@ impl JoinConstraintNode {
             self,
             table_name.to_string(),
             Some(alias.to_string()),
-            JoinType::Left,
+            JoinOperatorType::Left,
         )
     }
 
@@ -81,8 +81,10 @@ impl Prebuild for JoinConstraintNode {
         select_data.joins.push(Join {
             relation,
             join_operator: match join_operator_type {
-                JoinType::Inner => JoinOperator::Inner(JoinConstraint::On(self.expr.try_into()?)),
-                JoinType::Left => {
+                JoinOperatorType::Inner => {
+                    JoinOperator::Inner(JoinConstraint::On(self.expr.try_into()?))
+                }
+                JoinOperatorType::Left => {
                     JoinOperator::LeftOuter(JoinConstraint::On(self.expr.try_into()?))
                 }
             },

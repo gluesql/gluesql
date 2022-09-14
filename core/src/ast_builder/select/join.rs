@@ -13,8 +13,8 @@ use {
     },
 };
 
-#[derive(Clone)]
-pub enum JoinType {
+#[derive(Clone, Copy)]
+pub enum JoinOperatorType {
     Inner,
     Left,
 }
@@ -58,8 +58,7 @@ impl From<JoinConstraintNode> for PrevNode {
 pub struct JoinNode {
     prev_node: PrevNode,
     relation: TableFactor,
-    join_operator: JoinOperator,
-    join_operator_type: JoinType,
+    join_operator_type: JoinOperatorType,
 }
 
 impl JoinNode {
@@ -67,11 +66,11 @@ impl JoinNode {
         prev_node: N,
         table_name: String,
         alias: Option<String>,
-        join_operator_type: JoinType,
+        join_operator_type: JoinOperatorType,
     ) -> Self {
         Self {
             prev_node: prev_node.into(),
-            join_operator_type: join_operator_type.clone(),
+            join_operator_type,
             relation: match alias {
                 Some(alias) => TableFactor::Table {
                     name: ObjectName(vec![table_name]),
@@ -87,10 +86,6 @@ impl JoinNode {
                     index: None,
                 },
             },
-            join_operator: match join_operator_type {
-                JoinType::Inner => JoinOperator::Inner(JoinConstraint::None),
-                JoinType::Left => JoinOperator::LeftOuter(JoinConstraint::None),
-            },
         }
     }
 
@@ -99,7 +94,7 @@ impl JoinNode {
     }
 
     pub fn join(self, table_name: &str) -> JoinNode {
-        JoinNode::new(self, table_name.to_string(), None, JoinType::Inner)
+        JoinNode::new(self, table_name.to_string(), None, JoinOperatorType::Inner)
     }
 
     pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
@@ -107,12 +102,12 @@ impl JoinNode {
             self,
             table_name.to_string(),
             Some(alias.to_string()),
-            JoinType::Inner,
+            JoinOperatorType::Inner,
         )
     }
 
     pub fn left_join(self, table_name: &str) -> JoinNode {
-        JoinNode::new(self, table_name.to_string(), None, JoinType::Left)
+        JoinNode::new(self, table_name.to_string(), None, JoinOperatorType::Left)
     }
 
     pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
@@ -120,7 +115,7 @@ impl JoinNode {
             self,
             table_name.to_string(),
             Some(alias.to_string()),
-            JoinType::Left,
+            JoinOperatorType::Left,
         )
     }
 
@@ -148,7 +143,7 @@ impl JoinNode {
         self.prebuild().map(NodeData::build_stmt)
     }
 
-    pub fn prebuild_for_constraint(self) -> Result<(NodeData, TableFactor, JoinType)> {
+    pub fn prebuild_for_constraint(self) -> Result<(NodeData, TableFactor, JoinOperatorType)> {
         let select_data = self.prev_node.prebuild()?;
         Ok((select_data, self.relation, self.join_operator_type))
     }
@@ -159,7 +154,10 @@ impl Prebuild for JoinNode {
         let mut select_data = self.prev_node.prebuild()?;
         select_data.joins.push(Join {
             relation: self.relation,
-            join_operator: self.join_operator,
+            join_operator: match self.join_operator_type {
+                JoinOperatorType::Inner => JoinOperator::Inner(JoinConstraint::None),
+                JoinOperatorType::Left => JoinOperator::LeftOuter(JoinConstraint::None),
+            },
             join_executor: JoinExecutor::NestedLoop,
         });
         Ok(select_data)
