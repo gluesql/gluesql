@@ -201,7 +201,7 @@ test_case!(blend, async move {
         I64(4)   I64(103);
         I64(5)   Null
     );
-    test!(Ok(expected), sql);
+    test!(sql, Ok(expected));
 
     let sql = "
         SELECT p.id, player_id
@@ -217,7 +217,7 @@ test_case!(blend, async move {
         I64(4)   I64(4);
         I64(5)   Null
     );
-    test!(Ok(expected), sql);
+    test!(sql, Ok(expected));
 
     let sql = "
         SELECT Item.*
@@ -233,7 +233,7 @@ test_case!(blend, async move {
         I64(103)   I64(9)     I64(4);
         Null       Null       Null
     );
-    test!(Ok(expected), sql);
+    test!(sql, Ok(expected));
 
     let sql = "
         SELECT *
@@ -249,7 +249,7 @@ test_case!(blend, async move {
         I64(4)   Str("Berry".to_owned())     I64(103)   I64(9)     I64(4);
         I64(5)   Str("Hwan".to_owned())      Null       Null       Null
     );
-    test!(Ok(expected), sql);
+    test!(sql, Ok(expected));
 
     // To test `PlanError` while using `JOIN`
     run!("CREATE TABLE users (id INTEGER, name TEXT);");
@@ -259,24 +259,24 @@ test_case!(blend, async move {
 
     let error_cases = [
         (
-            TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into(),
             "SELECT * FROM TableA JOIN TableA USING (id);",
+            TranslateError::UnsupportedJoinConstraint("USING".to_owned()).into(),
         ),
         (
-            TranslateError::UnsupportedJoinOperator("CrossJoin".to_owned()).into(),
             "SELECT * FROM TableA CROSS JOIN TableA as A;",
+            TranslateError::UnsupportedJoinOperator("CrossJoin".to_owned()).into(),
         ),
         (
-            PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
             "SELECT id FROM users JOIN testers ON users.id = testers.id;",
+            PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
         ),
         (
-            TranslateError::TooManyTables.into(),
             "SELECT * FROM BlendUser, BlendItem",
+            TranslateError::TooManyTables.into(),
         ),
     ];
 
-    for (error, sql) in error_cases {
-        test!(Err(error), sql);
+    for (sql, error) in error_cases {
+        test!(sql, Err(error));
     }
 });

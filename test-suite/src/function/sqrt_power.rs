@@ -55,7 +55,7 @@ test_case!(sqrt, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -126,6 +126,6 @@ test_case!(power, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

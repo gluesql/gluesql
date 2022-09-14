@@ -26,16 +26,16 @@ CREATE TABLE IdxValue (
     );
 
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_id ON IdxValue (id)"
+        "CREATE INDEX idx_id ON IdxValue (id)",
+        Ok(Payload::CreateIndex)
     );
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_time ON IdxValue (time)"
+        "CREATE INDEX idx_time ON IdxValue (time)",
+        Ok(Payload::CreateIndex)
     );
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_flag ON IdxValue (flag)"
+        "CREATE INDEX idx_flag ON IdxValue (flag)",
+        Ok(Payload::CreateIndex)
     );
 
     let t = |h, m| NaiveTime::from_hms(h, m, 0);

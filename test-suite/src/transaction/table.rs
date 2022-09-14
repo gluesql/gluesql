@@ -8,11 +8,11 @@ test_case!(create_drop_table, async move {
     run!("BEGIN;");
     run!("CREATE TABLE Test (id INTEGER);");
     run!("INSERT INTO Test VALUES (1);");
-    test!(Ok(select!(id I64; 1)), "SELECT * FROM Test;");
+    test!("SELECT * FROM Test;", Ok(select!(id I64; 1)));
     run!("ROLLBACK;");
     test!(
-        Err(FetchError::TableNotFound("Test".to_owned()).into()),
-        "SELECT * FROM Test;"
+        "SELECT * FROM Test;",
+        Err(FetchError::TableNotFound("Test".to_owned()).into())
     );
 
     // CREATE && COMMIT
@@ -20,24 +20,24 @@ test_case!(create_drop_table, async move {
     run!("CREATE TABLE Test (id INTEGER);");
     run!("INSERT INTO Test VALUES (3);");
     run!("COMMIT;");
-    test!(Ok(select!(id I64; 3)), "SELECT * FROM Test;");
+    test!("SELECT * FROM Test;", Ok(select!(id I64; 3)));
 
     // DROP && ROLLBACK
     run!("BEGIN;");
     run!("DROP TABLE Test;");
     test!(
-        Err(FetchError::TableNotFound("Test".to_owned()).into()),
-        "SELECT * FROM Test;"
+        "SELECT * FROM Test;",
+        Err(FetchError::TableNotFound("Test".to_owned()).into())
     );
     run!("ROLLBACK;");
-    test!(Ok(select!(id I64; 3)), "SELECT * FROM Test;");
+    test!("SELECT * FROM Test;", Ok(select!(id I64; 3)));
 
     // DROP && COMMIT
     run!("BEGIN;");
     run!("DROP TABLE Test;");
     run!("COMMIT;");
     test!(
-        Err(FetchError::TableNotFound("Test".to_owned()).into()),
-        "SELECT * FROM Test;"
+        "SELECT * FROM Test;",
+        Err(FetchError::TableNotFound("Test".to_owned()).into())
     );
 });

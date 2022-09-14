@@ -1,12 +1,22 @@
 use {super::ExprNode, crate::ast_builder::QueryNode};
 
 pub fn exists<T: Into<QueryNode>>(query: T) -> ExprNode {
-    ExprNode::Exists(Box::new(query.into()))
+    ExprNode::Exists {
+        subquery: Box::new(query.into()),
+        negated: false,
+    }
+}
+
+pub fn not_exists<T: Into<QueryNode>>(query: T) -> ExprNode {
+    ExprNode::Exists {
+        subquery: Box::new(query.into()),
+        negated: true,
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::ast_builder::{col, exists, table, test, test_expr};
+    use crate::ast_builder::{col, exists, not_exists, table, test, test_expr};
 
     #[test]
     fn exist() {
@@ -25,7 +35,7 @@ mod test {
 
         let actual = table("FOO")
             .select()
-            .filter(exists(table("BAR").select().filter("id IS NOT NULL")).not())
+            .filter(not_exists(table("BAR").select().filter("id IS NOT NULL")))
             .build();
         let expected =
             "SELECT * FROM FOO WHERE NOT EXISTS (SELECT * FROM BAR WHERE id IS NOT NULL)";
@@ -35,7 +45,7 @@ mod test {
         let expected = "EXISTS (SELECT * FROM FOO WHERE id > 2)";
         test_expr(actual, expected);
 
-        let actual = exists(table("FOO").select().filter(col("id").gt(2))).not();
+        let actual = not_exists(table("FOO").select().filter(col("id").gt(2)));
         let expected = "NOT EXISTS (SELECT * FROM FOO WHERE id > 2)";
         test_expr(actual, expected);
 
@@ -43,7 +53,7 @@ mod test {
         let expected = "EXISTS (SELECT * FROM FOO)";
         test_expr(actual, expected);
 
-        let actual = exists("SELECT * FROM FOO").not();
+        let actual = not_exists("SELECT * FROM FOO");
         let expected = "NOT EXISTS (SELECT * FROM FOO)";
         test_expr(actual, expected);
     }

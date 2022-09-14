@@ -30,17 +30,18 @@ CREATE TABLE Test (
     "#
     );
 
-    test!(Ok(Payload::CreateIndex), "CREATE INDEX idx_id ON Test (id)");
+    test!("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex));
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_name ON Test (name)"
+        "CREATE INDEX idx_name ON Test (name)",
+        Ok(Payload::CreateIndex)
     );
     test!(
-        Ok(Payload::CreateIndex),
-        "CREATE INDEX idx_id2 ON Test (id + num)"
+        "CREATE INDEX idx_id2 ON Test (id + num)",
+        Ok(Payload::CreateIndex)
     );
 
     test!(
+        "show indexes from Test",
         Ok(Payload::ShowIndexes(vec![
             SchemaIndex {
                 name: "idx_id".to_string(),
@@ -61,12 +62,11 @@ CREATE TABLE Test (
                     right: Box::new(Expr::Identifier("num".to_string()))
                 }
             }
-        ])),
-        "show indexes from Test"
+        ]))
     );
 
     test!(
-        Err(ExecuteError::TableNotFound("NoTable".to_string()).into()),
-        "show indexes from NoTable"
+        "show indexes from NoTable",
+        Err(ExecuteError::TableNotFound("NoTable".to_string()).into())
     );
 });

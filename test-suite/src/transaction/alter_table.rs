@@ -11,16 +11,16 @@ test_case!(alter_table_rename_table, async move {
     run!("BEGIN;");
     run!("ALTER TABLE RenameTable RENAME TO NewName;");
     test!(
-        Err(FetchError::TableNotFound("RenameTable".to_owned()).into()),
-        "SELECT * FROM RenameTable"
+        "SELECT * FROM RenameTable",
+        Err(FetchError::TableNotFound("RenameTable".to_owned()).into())
     );
-    test!(Ok(select!(id I64; 1)), "SELECT * FROM NewName");
+    test!("SELECT * FROM NewName", Ok(select!(id I64; 1)));
     run!("ROLLBACK;");
     test!(
-        Err(FetchError::TableNotFound("NewName".to_owned()).into()),
-        "SELECT * FROM NewName"
+        "SELECT * FROM NewName",
+        Err(FetchError::TableNotFound("NewName".to_owned()).into())
     );
-    test!(Ok(select!(id I64; 1)), "SELECT * FROM RenameTable");
+    test!("SELECT * FROM RenameTable", Ok(select!(id I64; 1)));
 });
 
 test_case!(alter_table_rename_column, async move {
@@ -30,15 +30,15 @@ test_case!(alter_table_rename_column, async move {
     // ROLLBACK
     run!("BEGIN;");
     run!("ALTER TABLE RenameCol RENAME COLUMN id TO new_id;");
-    test!(Ok(select!(new_id I64; 1)), "SELECT * FROM RenameCol");
+    test!("SELECT * FROM RenameCol", Ok(select!(new_id I64; 1)));
     run!("ROLLBACK;");
-    test!(Ok(select!(id I64; 1)), "SELECT * FROM RenameCol");
+    test!("SELECT * FROM RenameCol", Ok(select!(id I64; 1)));
 
     // COMMIT
     run!("BEGIN;");
     run!("ALTER TABLE RenameCol RENAME COLUMN id TO new_id;");
     run!("COMMIT;");
-    test!(Ok(select!(new_id I64; 1)), "SELECT * FROM RenameCol");
+    test!("SELECT * FROM RenameCol", Ok(select!(new_id I64; 1)));
 });
 
 test_case!(alter_table_add_column, async move {
@@ -49,27 +49,27 @@ test_case!(alter_table_add_column, async move {
     run!("BEGIN;");
     run!("ALTER TABLE AddCol ADD COLUMN new_col INTEGER DEFAULT 3;");
     test!(
+        "SELECT * FROM AddCol",
         Ok(select!(
             id  | new_col
             I64 | I64;
             1     3
-        )),
-        "SELECT * FROM AddCol"
+        ))
     );
     run!("ROLLBACK;");
-    test!(Ok(select!(id I64; 1)), "SELECT * FROM AddCol");
+    test!("SELECT * FROM AddCol", Ok(select!(id I64; 1)));
 
     // COMMIT
     run!("BEGIN;");
     run!("ALTER TABLE AddCol ADD COLUMN new_col INTEGER DEFAULT 3;");
     run!("COMMIT;");
     test!(
+        "SELECT * FROM AddCol",
         Ok(select!(
             id  | new_col
             I64 | I64;
             1     3
-        )),
-        "SELECT * FROM AddCol"
+        ))
     );
 });
 
@@ -80,20 +80,20 @@ test_case!(alter_table_drop_column, async move {
     // ROLLBACK
     run!("BEGIN;");
     run!("ALTER TABLE DropCol DROP COLUMN num;");
-    test!(Ok(select!(id I64; 1)), "SELECT * FROM DropCol");
+    test!("SELECT * FROM DropCol", Ok(select!(id I64; 1)));
     run!("ROLLBACK;");
     test!(
+        "SELECT * FROM DropCol",
         Ok(select!(
             id  | num
             I64 | I64;
             1     2
-        )),
-        "SELECT * FROM DropCol"
+        ))
     );
 
     // COMMIT
     run!("BEGIN;");
     run!("ALTER TABLE DropCol DROP COLUMN num;");
     run!("COMMIT;");
-    test!(Ok(select!(id I64; 1)), "SELECT * FROM DropCol");
+    test!("SELECT * FROM DropCol", Ok(select!(id I64; 1)));
 });

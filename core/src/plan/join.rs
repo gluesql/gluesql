@@ -1178,7 +1178,10 @@ mod tests {
 
         let sql = format!("SELECT * FROM User WHERE EXISTS({subquery_sql})");
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::Exists(subquery()));
+        let expected = gen_expected(Expr::Exists {
+            subquery: subquery(),
+            negated: false,
+        });
         assert_eq!(actual, expected, "exists:\n{sql}");
 
         let sql = format!(

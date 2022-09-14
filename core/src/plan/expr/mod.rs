@@ -64,7 +64,7 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
                 PlanExpr::MultiExprs(exprs)
             }
             Expr::Function(function) => PlanExpr::MultiExprs(function.as_exprs().collect()),
-            Expr::Subquery(query) | Expr::Exists(query) => PlanExpr::Query(query),
+            Expr::Subquery(subquery) | Expr::Exists { subquery, .. } => PlanExpr::Query(subquery),
             Expr::InSubquery {
                 expr,
                 subquery: query,
