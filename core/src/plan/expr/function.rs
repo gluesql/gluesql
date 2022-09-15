@@ -93,6 +93,10 @@ impl Function {
                 expr,
                 format: expr2,
             }
+            | Self::ToTime {
+                expr,
+                format: expr2,
+            }
             | Self::Power { expr, power: expr2 }
             | Self::Ltrim {
                 expr,

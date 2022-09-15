@@ -305,6 +305,11 @@ fn evaluate_function<'a>(
 
             f::to_timestamp(name(), expr, format)
         }
+        Function::ToTime { expr, format } => {
+            let expr = eval(expr)?;
+            let format = eval(format)?;
+            f::to_time(name(), expr, format)
+        }
     }
     .map(Evaluated::from)
 }

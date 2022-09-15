@@ -1,7 +1,7 @@
 use crate::*;
 test_case!(to_date, async move {
     use {
-        chrono::NaiveDate,
+        chrono::{NaiveDate, NaiveTime},
         gluesql_core::{
             executor::{ChronoFormatError, EvaluateError},
             prelude::Value::*,
@@ -26,6 +26,14 @@ test_case!(to_date, async move {
             )),
         ),
         (
+            r#"VALUES(TO_TIME("23:56:04", "%H:%M:%S"))"#,
+            Ok(select!(
+                column1
+                Time;
+                NaiveTime::from_hms(23, 56, 4)
+            )),
+        ),
+        (
             r#"SELECT TO_DATE("2017-06-15","%Y-%m-%d") AS date"#,
             Ok(select!(
                 date
@@ -42,6 +50,14 @@ test_case!(to_date, async move {
             )),
         ),
         (
+            r#"SELECT TO_TIME("23:56:04","%H:%M:%S") AS time"#,
+            Ok(select!(
+                time
+                Time;
+                NaiveTime::from_hms(23, 56, 4)
+            )),
+        ),
+        (
             r#"SELECT TO_TIMESTAMP("2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%S") AS timestamp"#,
             Ok(select!(
                 timestamp
@@ -50,11 +66,11 @@ test_case!(to_date, async move {
             )),
         ),
         (
-            r#"SELECT TO_DATE("2015-09-05", "%Y-%m") AS timestamp"#,
+            r#"SELECT TO_DATE("2015-09-05", "%Y-%m") AS date"#,
             Err(EvaluateError::ChronoFormat(ChronoFormatError::TooLong).into()),
         ),
         (
-            r#"SELECT TO_TIMESTAMP("2015-09-05 23:56", "%Y-%m-%d %H:%M:%S") AS timestamp"#,
+            r#"SELECT TO_TIME("23:56", "%H:%M:%S") AS time"#,
             Err(EvaluateError::ChronoFormat(ChronoFormatError::TooShort).into()),
         ),
         (
@@ -84,6 +100,10 @@ test_case!(to_date, async move {
         (
             r#"SELECT TO_TIMESTAMP(TIMESTAMP "2015-09-05 23:56:04","%Y-%m-%d") AS date"#,
             Err(EvaluateError::FunctionRequiresStringValue("TO_TIMESTAMP".to_owned()).into()),
+        ),
+        (
+            r#"SELECT TO_TIME(TIME "23:56:04","%H:%M:%S") AS date"#,
+            Err(EvaluateError::FunctionRequiresStringValue("TO_TIME".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {
