@@ -11,9 +11,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Int(Some(16)) => Ok(DataType::Int16),
         SqlDataType::Int(Some(32)) => Ok(DataType::Int32),
         SqlDataType::Int(Some(128)) => Ok(DataType::Int128),
-        SqlDataType::UnsignedInt(Some(8)) | SqlDataType::UnsignedInteger(Some(8)) => {
-            Ok(DataType::Uint8)
-        }
+        SqlDataType::UnsignedInteger(Some(8)) => Ok(DataType::Uint8),
         SqlDataType::Int(None) | SqlDataType::Int(Some(64)) | SqlDataType::Integer(None) => {
             Ok(DataType::Int)
         }
@@ -32,6 +30,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
             match name.as_deref() {
                 Some("MAP") => Ok(DataType::Map),
                 Some("LIST") => Ok(DataType::List),
+                Some("INT8 UNSIGNED") => Ok(DataType::Uint8),
                 _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
             }
         }
