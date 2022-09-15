@@ -3,7 +3,7 @@ use {
     gluesql_core::{data::ValueError, prelude::Value::*},
 };
 
-test_case!(uint8, async move {
+test_case!(uint16, async move {
     run!(
         "CREATE TABLE Item (
             field_one INT(16) UNSIGNED,
@@ -26,12 +26,12 @@ test_case!(uint8, async move {
     test!(
         "SELECT field_one, field_two FROM Item",
         Ok(select!(
-            field_one        | field_two
-            U16               |    U16;
-            1                   parse_u8("-1");
-            parse_u8("-2")         2;
-            3                      3;
-            parse_u8("-4")      parse_u8("-4")
+            field_one         | field_two
+            U16               | U16;
+            1                   parse_u16("-1");
+            parse_u16("-2")     2;
+            3                   3;
+            parse_u16("-4")     parse_u16("-4")
         ))
     );
     test!(
