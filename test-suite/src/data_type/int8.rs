@@ -6,8 +6,8 @@ use {
 test_case!(int8, async move {
     run!(
         "CREATE TABLE Item (
-        field_one INT(8),
-        field_two INT(8),
+        field_one INT8,
+        field_two INT8,
     );"
     );
     run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");

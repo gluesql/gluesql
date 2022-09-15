@@ -7,7 +7,7 @@ test_case!(showcolumns, async move {
     run!(
         "
         CREATE TABLE mytable (
-            id8 INT(8),
+            id8 INT8,
             id INTEGER,
             rate FLOAT,
             dec  decimal,
