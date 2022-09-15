@@ -8,7 +8,7 @@ use {
 test_case!(ifnull, async move {
     let test_cases = [
         (
-            r#"CREATE TABLE SingleItem (id integer null, int8 int(8) null, dec decimal null, 
+            r#"CREATE TABLE SingleItem (id integer null, int8 int8 null, dec decimal null, 
                                         dt date null, mystring Text null,
                                         mybool Boolean null, myfloat float null,
                                         mytime time null, mytimestamp timestamp null)"#,
