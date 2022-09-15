@@ -6,8 +6,8 @@ use {
 test_case!(int128, async move {
     run!(
         "CREATE TABLE Item (
-        field_one INT(128),
-        field_two INT(128),
+        field_one INT128,
+        field_two INT128,
     );"
     );
     run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
@@ -24,13 +24,13 @@ test_case!(int128, async move {
 
     // cast i128::MAX+1
     test!(
-        &format!("select cast({} as INT(128)) from Item", max_str),
+        &format!("select cast({} as INT128) from Item", max_str),
         Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, max_str.to_string()).into())
     );
 
     // cast i128::MIN-1
     test!(
-        &format!("select cast({} as INT(128)) from Item", min_str),
+        &format!("select cast({} as INT128) from Item", min_str),
         Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_string()).into())
     );
 

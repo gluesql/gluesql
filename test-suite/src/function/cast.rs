@@ -18,7 +18,7 @@ test_case!(cast_literal, async move {
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
         (
-            "CREATE TABLE test (mytext Text, myint8 Int(8), myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
+            "CREATE TABLE test (mytext Text, myint8 Int8, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
             Ok(Payload::Create),
         ),
         (
@@ -74,7 +74,7 @@ test_case!(cast_literal, async move {
             Ok(select_with_null!(cast; Null)),
         ),
         (
-            r#"SELECT CAST(255 AS INT(8)) AS cast FROM Item"#,
+            r#"SELECT CAST(255 AS INT8) AS cast FROM Item"#,
             Err(ValueError::LiteralCastToInt8Failed("255".to_owned()).into()),
         ),
         (
