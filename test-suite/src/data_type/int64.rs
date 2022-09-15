@@ -14,25 +14,8 @@ test_case!(int64, async move {
     );"
     );
     run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
-    run!(
-        "CREATE TABLE Menu (
-        sushi INT64,
-        curry INT64,
-    );"
-    );
-    run!("INSERT INTO Menu VALUES (1, -1), (-2, 2)");
 
     let parse_i64 = |text: &str| -> i64 { text.parse().unwrap() };
-
-    test!(
-        "SELECT sushi, curry FROM Menu",
-        Ok(select!(
-            sushi            | curry
-            I64              | I64;
-            1                  parse_i64("-1");
-            parse_i64("-2")    2
-        ))
-    );
 
     test!(
         &format!(
