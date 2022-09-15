@@ -253,7 +253,7 @@ mod tests {
         assert_eq!(convert("True"), Ok(Key::Bool(true)));
         assert_eq!(convert("CAST(11 AS INT(8))"), Ok(Key::I8(11)));
         assert_eq!(convert("CAST(11 AS INT(16))"), Ok(Key::I16(11)));
-        assert_eq!(convert("CAST(11 AS INT(32))"), Ok(Key::I32(11)));
+        assert_eq!(convert("CAST(11 AS INT32)"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
         assert_eq!(convert("CAST(11 AS INT(8) UNSIGNED)"), Ok(Key::U8(11)));
 
