@@ -22,7 +22,7 @@ test_case!(cast_literal, async move {
             Ok(Payload::Create),
         ),
         (
-            "CREATE TABLE utest (mytext Text, myuint8 Int8 Unsigned, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
+            "CREATE TABLE utest (mytext Text, myuint8 UINT8, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
             Ok(Payload::Create),
         ),
         (
@@ -78,11 +78,11 @@ test_case!(cast_literal, async move {
             Err(ValueError::LiteralCastToInt8Failed("255".to_owned()).into()),
         ),
         (
-            r#"SELECT CAST("foo" AS INT8 UNSIGNED) AS cast FROM Item"#,
+            r#"SELECT CAST("foo" AS UINT8) AS cast FROM Item"#,
             Err(ValueError::LiteralCastFromTextToUnsignedInt8Failed("foo".to_owned()).into()),
         ),
         (
-            r#"SELECT CAST(-1 AS INT8 UNSIGNED) AS cast FROM Item"#,
+            r#"SELECT CAST(-1 AS UINT8) AS cast FROM Item"#,
             Err(ValueError::LiteralCastToUnsignedInt8Failed("-1".to_owned()).into()),
         ),
         (

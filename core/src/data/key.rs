@@ -255,7 +255,7 @@ mod tests {
         assert_eq!(convert("CAST(11 AS INT16)"), Ok(Key::I16(11)));
         assert_eq!(convert("CAST(11 AS INT32)"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
-        assert_eq!(convert("CAST(11 AS INT8 UNSIGNED)"), Ok(Key::U8(11)));
+        assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
 
         assert_eq!(
             convert(r#""Hello World""#),

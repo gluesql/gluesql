@@ -6,8 +6,8 @@ use {
 test_case!(uint8, async move {
     run!(
         "CREATE TABLE Item (
-            field_one INT8 UNSIGNED,
-            field_two INT8 UNSIGNED,
+            field_one UINT8,
+            field_two UINT8,
         );"
     );
     run!(r#"INSERT INTO Item VALUES (1, 2), (1, 3), (2, 4), (2, 5);"#);
