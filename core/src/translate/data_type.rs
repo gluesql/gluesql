@@ -7,7 +7,6 @@ use {
 pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
     match sql_data_type {
         SqlDataType::Boolean => Ok(DataType::Boolean),
-        SqlDataType::Int(Some(32)) => Ok(DataType::Int32),
         SqlDataType::Int(Some(128)) => Ok(DataType::Int128),
         SqlDataType::UnsignedInt(Some(8)) | SqlDataType::UnsignedInteger(Some(8)) => {
             Ok(DataType::Uint8)
@@ -32,6 +31,7 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
                 Some("LIST") => Ok(DataType::List),
                 Some("INT8") => Ok(DataType::Int8),
                 Some("INT16") => Ok(DataType::Int16),
+                Some("INT32") => Ok(DataType::Int32),
 
                 _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
             }
