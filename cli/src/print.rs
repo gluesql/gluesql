@@ -1,4 +1,10 @@
-use tabled::{object::Segment, Format, Modify, Padding};
+use std::error::Error;
+
+use gluesql_core::prelude::Value;
+use tabled::{
+    object::{Rows, Segment},
+    Disable, Format, Header, Modify, Padding, Panel, TableIteratorExt,
+};
 
 use {
     crate::command::CommandError,
@@ -31,14 +37,14 @@ pub struct PrintOption {
 #[derive(Clone)]
 enum Tabular {
     On,
-    Off { colsep: char, colwrap: String },
+    Off { colsep: String, colwrap: String },
 }
 
 impl Tabular {
-    fn get_option(&self) -> (char, &str) {
+    fn get_option(&self) -> (&str, &str) {
         match self {
-            Tabular::On => ('|', ""),
-            Tabular::Off { colsep, colwrap } => (*colsep, colwrap),
+            Tabular::On => ("|", ""),
+            Tabular::Off { colsep, colwrap } => (colsep, colwrap),
         }
     }
 
@@ -61,7 +67,7 @@ impl Tabular {
             Tabular::On => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
             Tabular::Off { colsep, colwrap } => match name {
                 "colsep" => Tabular::Off {
-                    colsep: get_char(value)?,
+                    colsep: value.to_string(),
                     colwrap,
                 },
                 "colwrap" => Tabular::Off {
@@ -77,21 +83,23 @@ impl Tabular {
 }
 
 impl<'a> PrintOption {
-    fn to_show(&self, name: String) -> String {
-        match name.to_lowercase().as_str() {
+    fn to_show(&self, name: String) -> Result<String, CommandError> {
+        let payload = match name.to_lowercase().as_str() {
             "colsep" => format!("colsep \"{}\"", self.tabular.get_option().0),
             "colwrap" => format!("colwrap \"{}\"", self.tabular.get_option().1),
             "tabular" => format!("tabular {}", &self.tabular.get_string()),
             "heading" => format!("heading {}", string_from(&self.heading)),
             "all" => format!(
                 "{}\n{}\n{}\n{}",
-                self.to_show("colsep".into()),
-                self.to_show("colwrap".into()),
-                self.to_show("tabular".into()),
-                self.to_show("heading".into())
+                self.to_show("colsep".into())?,
+                self.to_show("colwrap".into())?,
+                self.to_show("tabular".into())?,
+                self.to_show("heading".into())?
             ),
-            _ => todo!(),
-        }
+            option => return Err(CommandError::WrongOption(option.into()).into()),
+        };
+
+        Ok(payload)
     }
 
     fn set_tabular(&mut self, value: String) -> Result<(), CommandError> {
@@ -99,7 +107,7 @@ impl<'a> PrintOption {
             "ON" => self.tabular = Tabular::On,
             "OFF" => {
                 self.tabular = Tabular::Off {
-                    colsep: '|',
+                    colsep: "|".into(),
                     colwrap: "".into(),
                 }
             }
@@ -151,6 +159,11 @@ impl<'a, W: Write> Print<W> {
             Payload::Update(n) => affected(*n, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => self.write(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
+                // // let table = names.table().with(Disable::Row(..1)).with(Header("tables"));
+                // let headers = ["tables"];
+                // let table = self.get_table(headers);
+
+                // self.write(table)?;
                 let mut table = self.get_table(["tables"]);
                 for name in names {
                     table.add_record([name]);
@@ -159,6 +172,11 @@ impl<'a, W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::ShowColumns(columns) => {
+                // let data = columns
+                //     .iter()
+                //     .map(|(field, field_type)| [field, &field_type.to_string()])
+                //     .collect::<Vec<_>>();
+
                 let mut table = self.get_table(vec!["Field", "Type"]);
                 for (field, field_type) in columns {
                     table.add_record([field, &field_type.to_string()]);
@@ -178,17 +196,37 @@ impl<'a, W: Write> Print<W> {
                 let table = self.build_table(table);
                 self.write(table)?;
             }
-            Payload::Select { labels, rows } => {
-                let labels = labels.iter().map(AsRef::as_ref);
-                let mut table = self.get_table(labels);
-                for values in rows {
-                    let values: Vec<String> = values.iter().map(Into::into).collect();
+            Payload::Select { labels, rows } => match &self.option.tabular {
+                Tabular::On => {
+                    let labels = labels.iter().map(AsRef::as_ref);
+                    let mut table = self.get_table(labels);
+                    for row in rows {
+                        let row: Vec<String> = row.iter().map(Into::into).collect();
 
-                    table.add_record(values);
+                        table.add_record(row);
+                    }
+                    let table = self.build_table(table);
+                    self.write(table)?;
                 }
-                let table = self.build_table(table);
-                self.write(table)?;
-            }
+                Tabular::Off { colsep, colwrap } => {
+                    let labels = labels
+                        .iter()
+                        .map(|v| format!("{colwrap}{v}{colwrap}"))
+                        .collect::<Vec<_>>()
+                        .join(&colsep.to_string());
+                    writeln!(self.output, "{}", labels);
+
+                    rows.iter().for_each(|row| {
+                        let row = row
+                            .iter()
+                            .map(Into::into)
+                            .map(|v: String| format!("{colwrap}{v}{colwrap}"))
+                            .collect::<Vec<_>>()
+                            .join(&colsep.to_string());
+                        writeln!(self.output, "{}", row);
+                    });
+                }
+            },
             _ => {}
         };
 
@@ -199,6 +237,7 @@ impl<'a, W: Write> Print<W> {
         if let Some(file) = &self.spool_file {
             writeln!(file.to_owned(), "{}\n", payload)?;
         };
+
         writeln!(self.output, "{}\n", payload)
     }
 
@@ -275,18 +314,18 @@ impl<'a, W: Write> Print<W> {
         Ok(())
     }
 
-    pub fn show_option(&mut self, name: String) -> IOResult<()> {
+    pub fn show_option(&mut self, name: String) -> Result<(), Box<dyn Error>> {
         let payload = self.option.to_show(name);
-        self.write(payload)?;
+        self.write(payload?)?;
 
         Ok(())
     }
 
-    fn get_table<T: IntoIterator<Item = &'a str>>(&self, header: T) -> Builder {
+    fn get_table<T: IntoIterator<Item = &'a str>>(&self, headers: T) -> Builder {
         let mut table = Builder::default();
 
         match self.option.heading {
-            true => table.set_columns(header).clone(),
+            true => table.set_columns(headers).clone(),
             false => table,
         }
     }
@@ -294,18 +333,25 @@ impl<'a, W: Write> Print<W> {
     fn build_table(&self, builder: Builder) -> Table {
         let builder = builder.build().with(Style::markdown());
 
-        match self.option.tabular.clone() {
-            Tabular::On => builder,
-            Tabular::Off { colsep, colwrap } => {
-                let colsep = Style::empty().vertical(colsep);
-                let padding_zero = Modify::new(Segment::all()).with(Padding::new(0, 0, 0, 0));
-                let wrapped_data = Modify::new(Segment::all())
-                    .with(Format::new(|data| format!("{colwrap}{data}{colwrap}")));
+        builder
+        // match self.option.tabular.clone() {
+        //     Tabular::On => builder,
+        //     Tabular::Off { colsep, colwrap } => {
+        //         let colsep = Style::empty().vertical(colsep);
+        //         let padding_zero = Modify::new(Segment::all()).with(Padding::new(0, 0, 0, 0));
+        //         let wrapped_data = Modify::new(Segment::all())
+        //             .with(Format::new(|data| format!("{colwrap}{data}{colwrap}")));
 
-                builder.with(padding_zero).with(colsep).with(wrapped_data)
-            }
-        }
+        //         builder.with(padding_zero).with(colsep).with(wrapped_data)
+        //     }
+        // }
     }
+
+    // fn get_table2<T: IntoIterator<Item = &'a str>>(&self, headers: T, names: &[String]) -> Table {
+    //     let table = names.table().with(Disable::Row(..1)).with(Header(names));
+
+    //     table
+    // }
 }
 
 #[cfg(test)]
