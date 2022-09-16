@@ -24,20 +24,27 @@ pub struct Print<W: Write> {
 #[derive(Clone)]
 pub struct PrintOption {
     tabular: Tabular,
-    heading: bool,
 }
 
 #[derive(Clone)]
 enum Tabular {
     On,
-    Off { colsep: String, colwrap: String },
+    Off {
+        colsep: String,
+        colwrap: String,
+        heading: bool,
+    },
 }
 
 impl Tabular {
-    fn get_option(&self) -> (&str, &str) {
+    fn get_option(&self) -> (&str, &str, bool) {
         match self {
-            Tabular::On => ("|", ""),
-            Tabular::Off { colsep, colwrap } => (colsep, colwrap),
+            Tabular::On => ("|", "", true),
+            Tabular::Off {
+                colsep,
+                colwrap,
+                heading,
+            } => (colsep, colwrap, *heading),
         }
     }
 
@@ -51,14 +58,25 @@ impl Tabular {
     fn update_option(self, name: &str, value: &str) -> Result<Tabular, CommandError> {
         let result = match self {
             Tabular::On => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
-            Tabular::Off { colsep, colwrap } => match name {
+            Tabular::Off {
+                colsep,
+                colwrap,
+                heading,
+            } => match name {
                 "colsep" => Tabular::Off {
                     colsep: value.to_string(),
                     colwrap,
+                    heading,
                 },
                 "colwrap" => Tabular::Off {
                     colsep,
                     colwrap: value.into(),
+                    heading,
+                },
+                "heading" => Tabular::Off {
+                    colsep,
+                    colwrap,
+                    heading: bool_from(value.into())?,
                 },
                 option => return Err(CommandError::WrongOption(option.into())),
             },
@@ -74,7 +92,7 @@ impl PrintOption {
             "colsep" => format!("colsep \"{}\"", self.tabular.get_option().0),
             "colwrap" => format!("colwrap \"{}\"", self.tabular.get_option().1),
             "tabular" => format!("tabular {}", &self.tabular.get_string()),
-            "heading" => format!("heading {}", string_from(&self.heading)),
+            "heading" => format!("heading {}", string_from(&self.tabular.get_option().2)),
             "all" => format!(
                 "{}\n{}\n{}\n{}",
                 self.to_show("colsep".into())?,
@@ -95,6 +113,7 @@ impl PrintOption {
                 self.tabular = Tabular::Off {
                     colsep: "|".into(),
                     colwrap: "".into(),
+                    heading: true,
                 }
             }
             option => return Err(CommandError::WrongOption(option.into())),
@@ -115,7 +134,6 @@ impl Default for PrintOption {
     fn default() -> Self {
         Self {
             tabular: Tabular::On,
-            heading: true,
         }
     }
 }
@@ -184,13 +202,19 @@ impl<'a, W: Write> Print<W> {
                     let table = self.build_table(table);
                     self.write(table)?;
                 }
-                Tabular::Off { colsep, colwrap } => {
+                Tabular::Off {
+                    colsep,
+                    colwrap,
+                    heading,
+                } => {
                     let labels = labels
                         .iter()
                         .map(|v| format!("{colwrap}{v}{colwrap}"))
                         .collect::<Vec<_>>()
                         .join(colsep);
-                    writeln!(self.output, "{}", labels)?;
+                    if *heading {
+                        writeln!(self.output, "{}", labels)?;
+                    }
 
                     for row in rows {
                         let row = row
@@ -250,14 +274,6 @@ impl<'a, W: Write> Print<W> {
     }
 
     pub fn set_option(&mut self, name: String, value: String) -> Result<(), CommandError> {
-        let bool_from = |value: String| -> Result<bool, CommandError> {
-            match value.to_uppercase().as_str() {
-                "ON" => Ok(true),
-                "OFF" => Ok(false),
-                _ => Err(CommandError::WrongOption(value)),
-            }
-        };
-
         match name.to_lowercase().as_str() {
             "tabular" => self.option.set_tabular(value),
             "colsep" => {
@@ -269,7 +285,6 @@ impl<'a, W: Write> Print<W> {
 
                 Ok(())
             }
-
             "colwrap" => {
                 self.option.tabular = self
                     .option
@@ -280,7 +295,11 @@ impl<'a, W: Write> Print<W> {
                 Ok(())
             }
             "heading" => {
-                self.option.heading = bool_from(value)?;
+                self.option.tabular = self
+                    .option
+                    .tabular
+                    .clone()
+                    .update_option(name.as_ref(), value.as_ref())?;
 
                 Ok(())
             }
@@ -300,14 +319,24 @@ impl<'a, W: Write> Print<W> {
     fn get_table<T: IntoIterator<Item = &'a str>>(&self, headers: T) -> Builder {
         let mut table = Builder::default();
 
-        match self.option.heading {
-            true => table.set_columns(headers).clone(),
-            false => table,
-        }
+        table.set_columns(headers).clone()
+
+        // match self.option.heading {
+        //     true => table.set_columns(headers).clone(),
+        //     false => table,
+        // }
     }
 
     fn build_table(&self, builder: Builder) -> Table {
         builder.build().with(Style::markdown())
+    }
+}
+
+fn bool_from(value: String) -> Result<bool, CommandError> {
+    match value.to_uppercase().as_str() {
+        "ON" => Ok(true),
+        "OFF" => Ok(false),
+        _ => Err(CommandError::WrongOption(value)),
     }
 }
 
@@ -548,6 +577,10 @@ mod tests {
             print.set_option("colwrap".into(), "'".into()),
             Err(CommandError::WrongOption("run .set tabular OFF".into()))
         );
+        assert_eq!(
+            print.set_option("heading".into(), "OFF".into()),
+            Err(CommandError::WrongOption("run .set tabular OFF".into()))
+        );
 
         // ".set tabular OFF" should print SELECTED payload without tabular option
         print.set_option("tabular".into(), "OFF".into()).unwrap();
@@ -635,6 +668,32 @@ id,title,valid
             },
             "
 'id','title','valid'
+'1','foo','TRUE'
+'2','bar','FALSE'"
+        );
+
+        // ".set header OFF should print without column name"
+        print.set_option("heading".into(), "OFF".into()).unwrap();
+        test!(
+            &Payload::Select {
+                labels: ["id", "title", "valid"]
+                    .into_iter()
+                    .map(ToOwned::to_owned)
+                    .collect(),
+                rows: vec![
+                    vec![
+                        Value::I64(1),
+                        Value::Str("foo".to_owned()),
+                        Value::Bool(true)
+                    ],
+                    vec![
+                        Value::I64(2),
+                        Value::Str("bar".to_owned()),
+                        Value::Bool(false)
+                    ],
+                ],
+            },
+            "
 '1','foo','TRUE'
 '2','bar','FALSE'"
         );
