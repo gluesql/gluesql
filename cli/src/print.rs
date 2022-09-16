@@ -320,11 +320,6 @@ impl<'a, W: Write> Print<W> {
         let mut table = Builder::default();
 
         table.set_columns(headers).clone()
-
-        // match self.option.heading {
-        //     true => table.set_columns(headers).clone(),
-        //     false => table,
-        // }
     }
 
     fn build_table(&self, builder: Builder) -> Table {
