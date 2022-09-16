@@ -317,27 +317,8 @@ impl<'a, W: Write> Print<W> {
     }
 
     fn build_table(&self, builder: Builder) -> Table {
-        let builder = builder.build().with(Style::markdown());
-
-        builder
-        // match self.option.tabular.clone() {
-        //     Tabular::On => builder,
-        //     Tabular::Off { colsep, colwrap } => {
-        //         let colsep = Style::empty().vertical(colsep);
-        //         let padding_zero = Modify::new(Segment::all()).with(Padding::new(0, 0, 0, 0));
-        //         let wrapped_data = Modify::new(Segment::all())
-        //             .with(Format::new(|data| format!("{colwrap}{data}{colwrap}")));
-
-        //         builder.with(padding_zero).with(colsep).with(wrapped_data)
-        //     }
-        // }
+        builder.build().with(Style::markdown())
     }
-
-    // fn get_table2<T: IntoIterator<Item = &'a str>>(&self, headers: T, names: &[String]) -> Table {
-    //     let table = names.table().with(Disable::Row(..1)).with(Header(names));
-
-    //     table
-    // }
 }
 
 #[cfg(test)]
