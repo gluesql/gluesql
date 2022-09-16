@@ -108,6 +108,7 @@ pub enum FunctionNode {
         expr: ExprNode,
         format: ExprNode,
     },
+    Lower(ExprNode),
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -117,6 +118,7 @@ impl TryFrom<FunctionNode> for Function {
         match func_node {
             FunctionNode::Abs(expr_node) => expr_node.try_into().map(Function::Abs),
             FunctionNode::Upper(expr_node) => expr_node.try_into().map(Function::Upper),
+            FunctionNode::Lower(expr_node) => expr_node.try_into().map(Function::Lower),
             FunctionNode::IfNull { expr, then } => {
                 let expr = expr.try_into()?;
                 let then = then.try_into()?;
@@ -243,6 +245,9 @@ impl ExprNode {
     pub fn upper(self) -> ExprNode {
         upper(self)
     }
+    pub fn lower(self) -> ExprNode {
+        lower(self)
+    }
     pub fn ifnull(self, another: ExprNode) -> ExprNode {
         ifnull(self, another)
     }
@@ -356,6 +361,9 @@ pub fn abs<T: Into<ExprNode>>(expr: T) -> ExprNode {
 }
 pub fn upper<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Upper(expr.into())))
+}
+pub fn lower<T: Into<ExprNode>>(expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Lower(expr.into())))
 }
 pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, then: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::IfNull {
@@ -558,9 +566,9 @@ pub fn to_timestamp<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
-        format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lpad, ltrim, modulo,
-        now, num, pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt,
-        substr, tan, test_expr, text, timestamp, to_date, to_timestamp, upper,
+        format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad, ltrim,
+        modulo, now, num, pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign,
+        sin, sqrt, substr, tan, test_expr, text, timestamp, to_date, to_timestamp, upper,
     };
 
     #[test]
