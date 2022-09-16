@@ -1039,4 +1039,15 @@ mod tests {
         let expected = "TO_TIMESTAMP('2015-09-05 23:56:04','%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
     }
+    #[test]
+    fn function_lower() {
+        // Lower
+        let actual = lower(text("ABC"));
+        let expected = "LOWER('ABC')";
+        test_expr(actual, expected);
+
+        let actual = expr("HoHo").lower();
+        let expected = "LOWER(HoHo)";
+        test_expr(actual, expected);
+    }
 }
