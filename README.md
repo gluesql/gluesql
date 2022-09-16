@@ -148,7 +148,7 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 #### Data Types
 | Category | Type                                                                      |
 |----------|---------------------------------------------------------------------------|
-| Numeric  | `INT(8)`, `INT(16)`, `INT(32)`, `INTEGER`, `INT(128)`, `FLOAT`, `DECIMAL` |
+| Numeric  | `INT8`, `INT16`, `INT32`, `INTEGER`, `INT128`, `UINT8`, `FLOAT`, `DECIMAL`|
 | Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                   |
 | Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                         |
 

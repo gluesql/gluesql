@@ -29,6 +29,14 @@ test_case!(format, async move {
             )),
         ),
         (
+            r#"SELECT FORMAT(TIME "23:56:04","%H:%M") AS time"#,
+            Ok(select!(
+                time
+                Str;
+                "23:56".to_owned()
+            )),
+        ),
+        (
             r#"SELECT 
                 FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y") AS year
                ,FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%m") AS month
