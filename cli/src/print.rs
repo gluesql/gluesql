@@ -68,7 +68,7 @@ impl Tabular {
     }
 }
 
-impl<'a> PrintOption {
+impl PrintOption {
     fn to_show(&self, name: String) -> Result<String, CommandError> {
         let payload = match name.to_lowercase().as_str() {
             "colsep" => format!("colsep \"{}\"", self.tabular.get_option().0),
@@ -82,7 +82,7 @@ impl<'a> PrintOption {
                 self.to_show("tabular".into())?,
                 self.to_show("heading".into())?
             ),
-            option => return Err(CommandError::WrongOption(option.into()).into()),
+            option => return Err(CommandError::WrongOption(option.into())),
         };
 
         Ok(payload)
@@ -111,7 +111,7 @@ fn string_from(value: &bool) -> &str {
     }
 }
 
-impl<'a> Default for PrintOption {
+impl Default for PrintOption {
     fn default() -> Self {
         Self {
             tabular: Tabular::On,
@@ -145,11 +145,6 @@ impl<'a, W: Write> Print<W> {
             Payload::Update(n) => affected(*n, "updated")?,
             Payload::ShowVariable(PayloadVariable::Version(v)) => self.write(format!("v{v}"))?,
             Payload::ShowVariable(PayloadVariable::Tables(names)) => {
-                // // let table = names.table().with(Disable::Row(..1)).with(Header("tables"));
-                // let headers = ["tables"];
-                // let table = self.get_table(headers);
-
-                // self.write(table)?;
                 let mut table = self.get_table(["tables"]);
                 for name in names {
                     table.add_record([name]);
@@ -158,11 +153,6 @@ impl<'a, W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::ShowColumns(columns) => {
-                // let data = columns
-                //     .iter()
-                //     .map(|(field, field_type)| [field, &field_type.to_string()])
-                //     .collect::<Vec<_>>();
-
                 let mut table = self.get_table(vec!["Field", "Type"]);
                 for (field, field_type) in columns {
                     table.add_record([field, &field_type.to_string()]);
@@ -199,7 +189,7 @@ impl<'a, W: Write> Print<W> {
                         .iter()
                         .map(|v| format!("{colwrap}{v}{colwrap}"))
                         .collect::<Vec<_>>()
-                        .join(&colsep.to_string());
+                        .join(colsep);
                     writeln!(self.output, "{}", labels)?;
 
                     for row in rows {
@@ -208,7 +198,7 @@ impl<'a, W: Write> Print<W> {
                             .map(Into::into)
                             .map(|v: String| format!("{colwrap}{v}{colwrap}"))
                             .collect::<Vec<_>>()
-                            .join(&colsep.to_string());
+                            .join(colsep);
                         writeln!(self.output, "{}", row)?
                     }
                 }
