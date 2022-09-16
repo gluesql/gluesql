@@ -332,6 +332,11 @@ mod tests {
     fn print_help() {
         let mut print = Print::new(Vec::new(), None, Default::default());
 
+        let actual = {
+            print.help().unwrap();
+
+            String::from_utf8(print.output).unwrap()
+        };
         let expected = "
 | command         | description             |
 |-----------------|-------------------------|
@@ -342,15 +347,10 @@ mod tests {
 | .version        | show version            |
 | .execute FILE   | execute SQL from a file |
 | .spool FILE|off | spool to file or off    |";
-        let found = {
-            print.help().unwrap();
-
-            String::from_utf8(print.output).unwrap()
-        };
 
         assert_eq!(
-            expected.trim_matches('\n'),
-            found.as_str().trim_matches('\n')
+            actual.as_str().trim_matches('\n'),
+            expected.trim_matches('\n')
         );
     }
 
@@ -364,44 +364,36 @@ mod tests {
         let mut print = Print::new(Vec::new(), None, Default::default());
 
         macro_rules! test {
-            ($expected: literal, $payload: expr) => {
+            ($payload: expr, $expected: literal ) => {
                 print.payload($payload).unwrap();
 
                 assert_eq!(
-                    $expected.trim_matches('\n'),
                     String::from_utf8(print.output.clone())
                         .unwrap()
                         .as_str()
-                        .trim_matches('\n')
+                        .trim_matches('\n'),
+                    $expected.trim_matches('\n')
                 );
 
                 print.output.clear();
             };
         }
 
-        test!("0 row inserted", &Payload::Insert(0));
-        test!("1 row inserted", &Payload::Insert(1));
-        test!("7 rows inserted", &Payload::Insert(7));
-        test!("300 rows deleted", &Payload::Delete(300));
-        test!("123 rows updated", &Payload::Update(123));
+        test!(&Payload::Insert(0), "0 row inserted");
+        test!(&Payload::Insert(1), "1 row inserted");
+        test!(&Payload::Insert(7), "7 rows inserted");
+        test!(&Payload::Delete(300), "300 rows deleted");
+        test!(&Payload::Update(123), "123 rows updated");
         test!(
-            "v11.6.1989",
-            &Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned()))
+            &Payload::ShowVariable(PayloadVariable::Version("11.6.1989".to_owned())),
+            "v11.6.1989"
         );
         test!(
+            &Payload::ShowVariable(PayloadVariable::Tables(Vec::new())),
             "
-| tables |",
-            &Payload::ShowVariable(PayloadVariable::Tables(Vec::new()))
+| tables |"
         );
         test!(
-            "
-| tables           |
-|------------------|
-| Allocator        |
-| ExtendFromWithin |
-| IntoRawParts     |
-| Reserve          |
-| Splice           |",
             &Payload::ShowVariable(PayloadVariable::Tables(
                 [
                     "Allocator",
@@ -413,17 +405,17 @@ mod tests {
                 .into_iter()
                 .map(ToOwned::to_owned)
                 .collect()
-            ))
+            )),
+            "
+| tables           |
+|------------------|
+| Allocator        |
+| ExtendFromWithin |
+| IntoRawParts     |
+| Reserve          |
+| Splice           |"
         );
         test!(
-            "
-| id   |
-|------|
-| 101  |
-| 202  |
-| 301  |
-| 505  |
-| 1001 |",
             &Payload::Select {
                 labels: vec!["id".to_owned()],
                 rows: [101, 202, 301, 505, 1001]
@@ -431,17 +423,17 @@ mod tests {
                     .map(Value::I64)
                     .map(|v| vec![v])
                     .collect::<Vec<Vec<Value>>>(),
-            }
+            },
+            "
+| id   |
+|------|
+| 101  |
+| 202  |
+| 301  |
+| 505  |
+| 1001 |"
         );
         test!(
-            "
-| id | title | valid |
-|----|-------|-------|
-| 1  | foo   | TRUE  |
-| 2  | bar   | FALSE |
-| 3  | bas   | FALSE |
-| 4  | lim   | TRUE  |
-| 5  | kim   | TRUE  |",
             &Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
@@ -474,16 +466,18 @@ mod tests {
                         Value::Bool(true)
                     ],
                 ],
-            }
+            },
+            "
+| id | title | valid |
+|----|-------|-------|
+| 1  | foo   | TRUE  |
+| 2  | bar   | FALSE |
+| 3  | bas   | FALSE |
+| 4  | lim   | TRUE  |
+| 5  | kim   | TRUE  |"
         );
 
         test!(
-            "
-| Index Name | Order | Description   |
-|------------|-------|---------------|
-| id_ndx     | ASC   | id            |
-| name_ndx   | DESC  | name          |
-| expr_ndx   | BOTH  | expr1 - expr2 |",
             &Payload::ShowIndexes(vec![
                 SchemaIndex {
                     name: "id_ndx".to_string(),
@@ -504,24 +498,42 @@ mod tests {
                         right: Box::new(Expr::Identifier("expr2".to_string()))
                     }
                 }
-            ],)
+            ],),
+            "
+| Index Name | Order | Description   |
+|------------|-------|---------------|
+| id_ndx     | ASC   | id            |
+| name_ndx   | DESC  | name          |
+| expr_ndx   | BOTH  | expr1 - expr2 |"
         );
 
         test!(
+            &Payload::ShowColumns(vec![
+                ("id".to_string(), DataType::Int),
+                ("name".to_string(), DataType::Text),
+                ("isabear".to_string(), DataType::Boolean),
+            ],),
             "
 | Field   | Type    |
 |---------|---------|
 | id      | INT     |
 | name    | TEXT    |
-| isabear | BOOLEAN |",
-            &Payload::ShowColumns(vec![
-                ("id".to_string(), DataType::Int),
-                ("name".to_string(), DataType::Text),
-                ("isabear".to_string(), DataType::Boolean),
-            ],)
+| isabear | BOOLEAN |"
         );
 
         test!(
+            &Payload::ShowColumns(vec![
+                ("id".to_string(), DataType::Int8),
+                ("calc1".to_string(), DataType::Float),
+                ("cost".to_string(), DataType::Decimal),
+                ("DOB".to_string(), DataType::Date),
+                ("clock".to_string(), DataType::Time),
+                ("tstamp".to_string(), DataType::Timestamp),
+                ("ival".to_string(), DataType::Interval),
+                ("uuid".to_string(), DataType::Uuid),
+                ("hash".to_string(), DataType::Map),
+                ("mylist".to_string(), DataType::List),
+            ],),
             "
 | Field  | Type      |
 |--------|-----------|
@@ -534,19 +546,7 @@ mod tests {
 | ival   | INTERVAL  |
 | uuid   | UUID      |
 | hash   | MAP       |
-| mylist | LIST      |",
-            &Payload::ShowColumns(vec![
-                ("id".to_string(), DataType::Int8),
-                ("calc1".to_string(), DataType::Float),
-                ("cost".to_string(), DataType::Decimal),
-                ("DOB".to_string(), DataType::Date),
-                ("clock".to_string(), DataType::Time),
-                ("tstamp".to_string(), DataType::Timestamp),
-                ("ival".to_string(), DataType::Interval),
-                ("uuid".to_string(), DataType::Uuid),
-                ("hash".to_string(), DataType::Map),
-                ("mylist".to_string(), DataType::List),
-            ],)
+| mylist | LIST      |"
         );
 
         // To set colsep or colwrap, should run ".set tabular off" first
@@ -562,10 +562,6 @@ mod tests {
         // ".set tabular OFF" should print SELECTED payload without tabular option
         print.set_option("tabular".into(), "OFF".into()).unwrap();
         test!(
-            "
-id|title|valid
-1|foo|TRUE
-2|bar|FALSE",
             &Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
@@ -583,21 +579,21 @@ id|title|valid
                         Value::Bool(false)
                     ],
                 ],
-            }
+            },
+            "
+id|title|valid
+1|foo|TRUE
+2|bar|FALSE"
         );
 
         // ".set colsep ," should set column separator as ","
         print.set_option("colsep".into(), ",".into()).unwrap();
         assert_eq!(
-            r#"colsep ",""#,
-            print.option.to_show("colsep".into()).unwrap()
+            print.option.to_show("colsep".into()).unwrap(),
+            r#"colsep ",""#
         );
 
         test!(
-            "
-id,title,valid
-1,foo,TRUE
-2,bar,FALSE",
             &Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
@@ -615,20 +611,20 @@ id,title,valid
                         Value::Bool(false)
                     ],
                 ],
-            }
+            },
+            "
+id,title,valid
+1,foo,TRUE
+2,bar,FALSE"
         );
 
         // ".set colwrap '" should set column separator as "'"
         print.set_option("colwrap".into(), "'".into()).unwrap();
         assert_eq!(
-            r#"colwrap "'""#,
-            print.option.to_show("colwrap".into()).unwrap()
+            print.option.to_show("colwrap".into()).unwrap(),
+            r#"colwrap "'""#
         );
         test!(
-            "
-'id','title','valid'
-'1','foo','TRUE'
-'2','bar','FALSE'",
             &Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
@@ -646,19 +642,23 @@ id,title,valid
                         Value::Bool(false)
                     ],
                 ],
-            }
+            },
+            "
+'id','title','valid'
+'1','foo','TRUE'
+'2','bar','FALSE'"
         );
 
         // ".set tabular ON" should recover default option: colsep("|"), colwrap("")
         print.set_option("tabular".into(), "ON".into()).unwrap();
         assert_eq!(
-            r#"colsep "|""#,
-            print.option.to_show("colsep".into()).unwrap()
+            print.option.to_show("colsep".into()).unwrap(),
+            r#"colsep "|""#
         );
 
         assert_eq!(
-            r#"colwrap """#,
-            print.option.to_show("colwrap".into()).unwrap()
+            print.option.to_show("colwrap".into()).unwrap(),
+            r#"colwrap """#
         );
     }
 }
