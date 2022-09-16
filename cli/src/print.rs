@@ -1,11 +1,3 @@
-use std::error::Error;
-
-use gluesql_core::prelude::Value;
-use tabled::{
-    object::{Rows, Segment},
-    Disable, Format, Header, Modify, Padding, Panel, TableIteratorExt,
-};
-
 use {
     crate::command::CommandError,
     gluesql_core::{
@@ -13,6 +5,7 @@ use {
         prelude::{Payload, PayloadVariable},
     },
     std::{
+        error::Error,
         fmt::Display,
         fs::File,
         io::{Result as IOResult, Write},
@@ -56,13 +49,6 @@ impl Tabular {
     }
 
     fn update_option(self, name: &str, value: &str) -> Result<Tabular, CommandError> {
-        let get_char = |v: &str| match v.len() {
-            1 => v.chars().next().ok_or_else(|| -> CommandError {
-                CommandError::WrongOption("colsep length should be 1".into())
-            }),
-            _ => Err(CommandError::WrongOption("colsep length should 1".into())),
-        };
-
         let result = match self {
             Tabular::On => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
             Tabular::Off { colsep, colwrap } => match name {
@@ -74,7 +60,7 @@ impl Tabular {
                     colsep,
                     colwrap: value.into(),
                 },
-                _ => todo!(),
+                option => return Err(CommandError::WrongOption(option.into())),
             },
         };
 
@@ -111,7 +97,7 @@ impl<'a> PrintOption {
                     colwrap: "".into(),
                 }
             }
-            _ => todo!(),
+            option => return Err(CommandError::WrongOption(option.into())),
         }
 
         Ok(())
@@ -214,17 +200,17 @@ impl<'a, W: Write> Print<W> {
                         .map(|v| format!("{colwrap}{v}{colwrap}"))
                         .collect::<Vec<_>>()
                         .join(&colsep.to_string());
-                    writeln!(self.output, "{}", labels);
+                    writeln!(self.output, "{}", labels)?;
 
-                    rows.iter().for_each(|row| {
+                    for row in rows {
                         let row = row
                             .iter()
                             .map(Into::into)
                             .map(|v: String| format!("{colwrap}{v}{colwrap}"))
                             .collect::<Vec<_>>()
                             .join(&colsep.to_string());
-                        writeln!(self.output, "{}", row);
-                    });
+                        writeln!(self.output, "{}", row)?
+                    }
                 }
             },
             _ => {}
@@ -356,6 +342,8 @@ impl<'a, W: Write> Print<W> {
 
 #[cfg(test)]
 mod tests {
+    use crate::command::CommandError;
+
     use super::Print;
     use gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd};
 
@@ -580,12 +568,23 @@ mod tests {
             ],)
         );
 
-        print.set_option("tabular".into(), "off".into()).unwrap();
+        // To set colsep or colwrap, should run ".set tabular off" first
+        assert_eq!(
+            print.set_option("colsep".into(), ",".into()),
+            Err(CommandError::WrongOption("run .set tabular OFF".into()))
+        );
+        assert_eq!(
+            print.set_option("colwrap".into(), "'".into()),
+            Err(CommandError::WrongOption("run .set tabular OFF".into()))
+        );
+
+        // ".set tabular OFF" should print SELECTED payload without tabular option
+        print.set_option("tabular".into(), "OFF".into()).unwrap();
         test!(
             "
 id|title|valid
-1 |foo  |TRUE 
-2 |bar  |FALSE",
+1|foo|TRUE
+2|bar|FALSE",
             &Payload::Select {
                 labels: ["id", "title", "valid"]
                     .into_iter()
@@ -606,11 +605,17 @@ id|title|valid
             }
         );
 
+        // ".set colsep ," should set column separator as ","
         print.set_option("colsep".into(), ",".into()).unwrap();
+        assert_eq!(
+            r#"colsep ",""#,
+            print.option.to_show("colsep".into()).unwrap()
+        );
+
         test!(
             "
 id,title,valid
-1,foo,TRUE 
+1,foo,TRUE
 2,bar,FALSE",
             &Payload::Select {
                 labels: ["id", "title", "valid"]
@@ -632,30 +637,47 @@ id,title,valid
             }
         );
 
-        //         print.set_option("colwrap".into(), "'".into()).unwrap();
-        //         test!(
-        //             "
-        // 'id','title','valid'
-        // '1','foo','TRUE'
-        // '2','bar','FALSE'",
-        //             &Payload::Select {
-        //                 labels: ["id", "title", "valid"]
-        //                     .into_iter()
-        //                     .map(ToOwned::to_owned)
-        //                     .collect(),
-        //                 rows: vec![
-        //                     vec![
-        //                         Value::I64(1),
-        //                         Value::Str("foo".to_owned()),
-        //                         Value::Bool(true)
-        //                     ],
-        //                     vec![
-        //                         Value::I64(2),
-        //                         Value::Str("bar".to_owned()),
-        //                         Value::Bool(false)
-        //                     ],
-        //                 ],
-        //             }
-        //         );
+        // ".set colwrap '" should set column separator as "'"
+        print.set_option("colwrap".into(), "'".into()).unwrap();
+        assert_eq!(
+            r#"colwrap "'""#,
+            print.option.to_show("colwrap".into()).unwrap()
+        );
+        test!(
+            "
+'id','title','valid'
+'1','foo','TRUE'
+'2','bar','FALSE'",
+            &Payload::Select {
+                labels: ["id", "title", "valid"]
+                    .into_iter()
+                    .map(ToOwned::to_owned)
+                    .collect(),
+                rows: vec![
+                    vec![
+                        Value::I64(1),
+                        Value::Str("foo".to_owned()),
+                        Value::Bool(true)
+                    ],
+                    vec![
+                        Value::I64(2),
+                        Value::Str("bar".to_owned()),
+                        Value::Bool(false)
+                    ],
+                ],
+            }
+        );
+
+        // ".set tabular ON" should recover default option: colsep("|"), colwrap("")
+        print.set_option("tabular".into(), "ON".into()).unwrap();
+        assert_eq!(
+            r#"colsep "|""#,
+            print.option.to_show("colsep".into()).unwrap()
+        );
+
+        assert_eq!(
+            r#"colwrap """#,
+            print.option.to_show("colwrap".into()).unwrap()
+        );
     }
 }
