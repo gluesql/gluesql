@@ -297,7 +297,7 @@ pub fn timestamp(timestamp: &str) -> ExprNode {
 
 pub fn time(time: &str) -> ExprNode {
     ExprNode::Expr(Expr::TypedString {
-        data_type: (DataType::Time),
-        value: (time.to_string()),
+        data_type: DataType::Time,
+        value: time.to_string(),
     })
 }
