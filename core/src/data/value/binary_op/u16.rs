@@ -590,6 +590,15 @@ mod tests {
         assert_eq!(u16::MIN.try_add(&I128(1)), Ok(U16(u16::MIN + 1)));
 
         assert_eq!(
+            u16::MAX.try_add(&I8(i8::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U16(u16::MAX),
+                rhs: I8(i8::MAX),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
+        assert_eq!(
             u16::MAX.try_add(&I16(i16::MAX)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U16(u16::MAX),
@@ -629,6 +638,15 @@ mod tests {
             .into())
         );
         assert_eq!(
+            u16::MAX.try_add(&U8(u8::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U16(u16::MAX),
+                rhs: U8(u8::MAX),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
+        assert_eq!(
             u16::MAX.try_add(&U16(u16::MAX)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U16(u16::MAX),
@@ -643,6 +661,15 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U16(u16::MIN),
                 rhs: U8(1),
+                operator: (NumericBinaryOperator::Subtract)
+            }
+            .into())
+        );
+        assert_eq!(
+            u16::MAX.try_subtract(&I8(i8::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U16(u16::MAX),
+                rhs: I8(i8::MAX),
                 operator: (NumericBinaryOperator::Subtract)
             }
             .into())
@@ -716,6 +743,15 @@ mod tests {
         assert_eq!(u16::MAX.try_multiply(&I128(1)), Ok(U16(u16::MAX)));
         assert_eq!(u16::MAX.try_multiply(&U16(1)), Ok(U16(u16::MAX)));
 
+        assert_eq!(
+            u16::MAX.try_multiply(&I8(4)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U16(u16::MAX),
+                rhs: I8(4),
+                operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
         assert_eq!(
             u16::MAX.try_multiply(&U8(4)),
             Err(ValueError::BinaryOperationOverflow {
