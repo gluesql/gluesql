@@ -145,6 +145,13 @@ impl Mul<Interval> for u16 {
         rhs * self
     }
 }
+impl Mul<Interval> for u16 {
+    type Output = Interval;
+
+    fn mul(self, rhs: Interval) -> Interval {
+        rhs * self
+    }
+}
 impl Mul<Interval> for f64 {
     type Output = Interval;
 
@@ -307,6 +314,16 @@ impl Div<Interval> for u8 {
     }
 }
 
+impl Div<Interval> for u16 {
+    type Output = Interval;
+
+    fn div(self, rhs: Interval) -> Interval {
+        match rhs {
+            Interval::Month(v) => Interval::Month((self / (v as u16)) as i32),
+            Interval::Microsecond(v) => Interval::Microsecond((self / (v as u16)) as i64),
+        }
+    }
+}
 impl Div<Interval> for f64 {
     type Output = Interval;
 

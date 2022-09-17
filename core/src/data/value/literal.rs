@@ -24,6 +24,7 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
             (Value::I128(l), Literal::Number(r)) => r.to_i128().map(|r| *l == r).unwrap_or(false),
             (Value::U8(l), Literal::Number(r)) => r.to_u8().map(|r| *l == r).unwrap_or(false),
+            (Value::U16(l), Literal::Number(r)) => r.to_u16().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Bytea(l), Literal::Bytea(r)) => l == r,
@@ -66,6 +67,9 @@ impl PartialOrd<Literal<'_>> for Value {
             }
             (Value::U8(l), Literal::Number(r)) => {
                 r.to_u8().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
+            (Value::U16(l), Literal::Number(r)) => {
+                r.to_u16().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
@@ -149,6 +153,10 @@ impl Value {
             (DataType::Uint8, Literal::Number(v)) => v
                 .to_u8()
                 .map(Value::U8)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint16, Literal::Number(v)) => v
+                .to_u16()
+                .map(Value::U16)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
@@ -287,6 +295,19 @@ impl Value {
                 let v = if *v { 1 } else { 0 };
 
                 Ok(Value::U8(v))
+            }
+            (DataType::Uint16, Literal::Text(v)) => v
+                .parse::<u16>()
+                .map(Value::U16)
+                .map_err(|_| ValueError::LiteralCastFromTextToUint16Failed(v.to_string()).into()),
+            (DataType::Uint16, Literal::Number(v)) => match v.to_u16() {
+                Some(x) => Ok(Value::U16(x)),
+                None => Err(ValueError::LiteralCastToUint16Failed(v.to_string()).into()),
+            },
+            (DataType::Uint16, Literal::Boolean(v)) => {
+                let v = if *v { 1 } else { 0 };
+
+                Ok(Value::U16(v))
             }
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()

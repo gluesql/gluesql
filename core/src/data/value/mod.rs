@@ -30,6 +30,7 @@ pub enum Value {
     I64(i64),
     I128(i128),
     U8(u8),
+    U16(u16),
     F64(f64),
     Decimal(Decimal),
     Str(String),
@@ -53,6 +54,7 @@ impl PartialEq<Value> for Value {
             (Value::I64(l), _) => l == other,
             (Value::I128(l), _) => l == other,
             (Value::U8(l), _) => l == other,
+            (Value::U16(l), _) => l == other,
             (Value::F64(l), _) => l == other,
             (Value::Decimal(l), Value::Decimal(r)) => l == r,
             (Value::Bool(l), Value::Bool(r)) => l == r,
@@ -81,6 +83,7 @@ impl PartialOrd<Value> for Value {
             (Value::I64(l), _) => l.partial_cmp(other),
             (Value::I128(l), _) => l.partial_cmp(other),
             (Value::U8(l), _) => l.partial_cmp(other),
+            (Value::U16(l), _) => l.partial_cmp(other),
             (Value::F64(l), _) => l.partial_cmp(other),
             (Value::Decimal(l), Value::Decimal(r)) => Some(l.cmp(r)),
             (Value::Bool(l), Value::Bool(r)) => Some(l.cmp(r)),
@@ -107,6 +110,7 @@ impl Value {
             Value::I64(v) => *v == 0,
             Value::I128(v) => *v == 0,
             Value::U8(v) => *v == 0,
+            Value::U16(v) => *v == 0,
             Value::F64(v) => *v == 0.0,
             Value::Decimal(v) => *v == Decimal::ZERO,
             _ => false,
@@ -121,6 +125,7 @@ impl Value {
             Value::I64(_) => Some(DataType::Int),
             Value::I128(_) => Some(DataType::Int128),
             Value::U8(_) => Some(DataType::Uint8),
+            Value::U16(_) => Some(DataType::Uint16),
             Value::F64(_) => Some(DataType::Float),
             Value::Decimal(_) => Some(DataType::Decimal),
             Value::Bool(_) => Some(DataType::Boolean),
@@ -145,6 +150,7 @@ impl Value {
             Value::I64(_) => matches!(data_type, DataType::Int),
             Value::I128(_) => matches!(data_type, DataType::Int128),
             Value::U8(_) => matches!(data_type, DataType::Uint8),
+            Value::U16(_) => matches!(data_type, DataType::Uint16),
             Value::F64(_) => matches!(data_type, DataType::Float),
             Value::Decimal(_) => matches!(data_type, DataType::Decimal),
             Value::Bool(_) => matches!(data_type, DataType::Boolean),
@@ -187,6 +193,7 @@ impl Value {
             | (DataType::Int, Value::I64(_))
             | (DataType::Int128, Value::I128(_))
             | (DataType::Uint8, Value::U8(_))
+            | (DataType::Uint16, Value::U16(_))
             | (DataType::Float, Value::F64(_))
             | (DataType::Decimal, Value::Decimal(_))
             | (DataType::Boolean, Value::Bool(_))
@@ -206,6 +213,7 @@ impl Value {
             (DataType::Int, value) => value.try_into().map(Value::I64),
             (DataType::Int128, value) => value.try_into().map(Value::I128),
             (DataType::Uint8, value) => value.try_into().map(Value::U8),
+            (DataType::Uint16, value) => value.try_into().map(Value::U16),
             (DataType::Float, value) => value.try_into().map(Value::F64),
             (DataType::Decimal, value) => value.try_into().map(Value::Decimal),
             (DataType::Text, value) => Ok(Value::Str(value.into())),
@@ -236,6 +244,7 @@ impl Value {
             (I64(a), b) => a.try_add(b),
             (I128(a), b) => a.try_add(b),
             (U8(a), b) => a.try_add(b),
+            (U16(a), b) => a.try_add(b),
             (F64(a), b) => a.try_add(b),
             (Decimal(a), b) => a.try_add(b),
             (Date(a), Time(b)) => Ok(Timestamp(NaiveDateTime::new(*a, *b))),
@@ -249,6 +258,7 @@ impl Value {
             | (Null, I64(_))
             | (Null, I128(_))
             | (Null, U8(_))
+            | (Null, U16(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Date(_))
@@ -279,6 +289,7 @@ impl Value {
             (I64(a), _) => a.try_subtract(other),
             (I128(a), _) => a.try_subtract(other),
             (U8(a), _) => a.try_subtract(other),
+            (U16(a), _) => a.try_subtract(other),
             (F64(a), _) => a.try_subtract(other),
             (Decimal(a), _) => a.try_subtract(other),
             (Date(a), Date(b)) => Ok(Interval(I::days((*a - *b).num_days() as i32))),
@@ -306,6 +317,7 @@ impl Value {
             | (Null, I64(_))
             | (Null, I128(_))
             | (Null, U8(_))
+            | (Null, U16(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Date(_))
@@ -336,6 +348,7 @@ impl Value {
             (I64(a), _) => a.try_multiply(other),
             (I128(a), _) => a.try_multiply(other),
             (U8(a), _) => a.try_multiply(other),
+            (U16(a), _) => a.try_multiply(other),
             (F64(a), _) => a.try_multiply(other),
             (Decimal(a), _) => a.try_multiply(other),
             (Interval(a), I8(b)) => Ok(Interval(*a * *b)),
@@ -350,6 +363,7 @@ impl Value {
             | (Null, I64(_))
             | (Null, I128(_))
             | (Null, U8(_))
+            | (Null, U16(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Interval(_))
@@ -378,6 +392,7 @@ impl Value {
             (I64(a), _) => a.try_divide(other),
             (I128(a), _) => a.try_divide(other),
             (U8(a), _) => a.try_divide(other),
+            (U16(a), _) => a.try_divide(other),
             (F64(a), _) => a.try_divide(other),
             (Decimal(a), _) => a.try_divide(other),
             (Interval(a), I8(b)) => Ok(Interval(*a / *b)),
@@ -386,6 +401,7 @@ impl Value {
             (Interval(a), I64(b)) => Ok(Interval(*a / *b)),
             (Interval(a), I128(b)) => Ok(Interval(*a / *b)),
             (Interval(a), U8(b)) => Ok(Interval(*a / *b)),
+            (Interval(a), U16(b)) => Ok(Interval(*a / *b)),
             (Interval(a), F64(b)) => Ok(Interval(*a / *b)),
             (Null, I8(_))
             | (Null, I16(_))
@@ -393,6 +409,7 @@ impl Value {
             | (Null, I64(_))
             | (Null, I128(_))
             | (Null, U8(_))
+            | (Null, U16(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Interval(_), Null)
@@ -420,6 +437,7 @@ impl Value {
             (I64(a), _) => a.try_modulo(other),
             (I128(a), _) => a.try_modulo(other),
             (U8(a), _) => a.try_modulo(other),
+            (U16(a), _) => a.try_modulo(other),
             (F64(a), _) => a.try_modulo(other),
             (Decimal(a), _) => a.try_modulo(other),
             (Null, I8(_))
@@ -428,6 +446,7 @@ impl Value {
             | (Null, I64(_))
             | (Null, I128(_))
             | (Null, U8(_))
+            | (Null, U16(_))
             | (Null, F64(_))
             | (Null, Decimal(_))
             | (Null, Null) => Ok(Null),
@@ -448,7 +467,7 @@ impl Value {
         use Value::*;
 
         match self {
-            I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | F64(_) | Interval(_)
+            I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | F64(_) | Interval(_)
             | Decimal(_) => Ok(self.clone()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryPlusOnNonNumeric.into()),
@@ -492,6 +511,7 @@ impl Value {
             I64(a) => factorial_function(*a as i128).map(I128),
             I128(a) => factorial_function(*a).map(I128),
             U8(a) => factorial_function(*a as i128).map(I128),
+            U16(a) => factorial_function(*a as i128).map(I128),
             F64(_) => Err(ValueError::FactorialOnNonInteger.into()),
             Null => Ok(Null),
             _ => Err(ValueError::FactorialOnNonNumeric.into()),
@@ -542,7 +562,7 @@ impl Value {
     pub fn sqrt(&self) -> Result<Value> {
         use Value::*;
         match self {
-            I8(_) | I16(_) | I64(_) | I128(_) | U8(_) | F64(_) => {
+            I8(_) | I16(_) | I64(_) | I128(_) | U8(_) | U16(_) | F64(_) => {
                 let a: f64 = self.try_into()?;
                 Ok(Value::F64(a.sqrt()))
             }
@@ -581,6 +601,7 @@ mod tests {
         assert_eq!(I64(1), I64(1));
         assert_eq!(I128(1), I128(1));
         assert_eq!(U8(1), U8(1));
+        assert_eq!(U16(1), U16(1));
         assert_eq!(I64(1), F64(1.0));
         assert_eq!(F64(1.0), I64(1));
         assert_eq!(F64(6.11), F64(6.11));
@@ -683,6 +704,10 @@ mod tests {
         assert_eq!(U8(1).partial_cmp(&U8(0)), Some(Ordering::Greater));
         assert_eq!(U8(0).partial_cmp(&U8(0)), Some(Ordering::Equal));
         assert_eq!(U8(0).partial_cmp(&U8(1)), Some(Ordering::Less));
+
+        assert_eq!(U16(1).partial_cmp(&U16(0)), Some(Ordering::Greater));
+        assert_eq!(U16(0).partial_cmp(&U16(0)), Some(Ordering::Equal));
+        assert_eq!(U16(0).partial_cmp(&U16(1)), Some(Ordering::Less));
     }
 
     #[test]

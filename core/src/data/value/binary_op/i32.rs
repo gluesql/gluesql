@@ -19,6 +19,7 @@ impl PartialEq<Value> for i32 {
             I64(other) => (*self as i64) == *other,
             I128(other) => (*self as i128) == *other,
             U8(other) => self == &(*other as i32),
+            U16(other) => self == &(*other as i32),
             F64(other) => ((*self as f64) - other).abs() < f64::EPSILON,
             Decimal(other) => Decimal::from(*self) == *other,
             _ => false,
@@ -35,6 +36,7 @@ impl PartialOrd<Value> for i32 {
             I64(other) => PartialOrd::partial_cmp(&(*self as i64), other),
             I128(other) => PartialOrd::partial_cmp(&(*self as i128), other),
             U8(other) => PartialOrd::partial_cmp(self, &(*other as i32)),
+            U16(other) => PartialOrd::partial_cmp(self, &(*other as i32)),
             F64(other) => PartialOrd::partial_cmp(&(*self as f64), other),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
@@ -110,6 +112,17 @@ impl TryBinaryOperator for i32 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I32(lhs),
                         rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(I32),
+            U16(rhs) => lhs
+                .checked_add(rhs as i32)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I32(lhs),
+                        rhs: U16(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
                     .into()
@@ -197,6 +210,17 @@ impl TryBinaryOperator for i32 {
                     .into()
                 })
                 .map(I32),
+            U16(rhs) => lhs
+                .checked_sub(rhs as i32)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I32(lhs),
+                        rhs: U16(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(I32),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) - rhs)),
 
@@ -273,6 +297,17 @@ impl TryBinaryOperator for i32 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I32(lhs),
                         rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(I32),
+            U16(rhs) => lhs
+                .checked_mul(rhs as i32)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I32(lhs),
+                        rhs: U16(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
                     .into()
@@ -361,6 +396,17 @@ impl TryBinaryOperator for i32 {
                     .into()
                 })
                 .map(I32),
+            U16(rhs) => lhs
+                .checked_div(rhs as i32)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I32(lhs),
+                        rhs: U16(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I32),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) / rhs)),
             Null => Ok(Null),
@@ -437,6 +483,17 @@ impl TryBinaryOperator for i32 {
                     ValueError::BinaryOperationOverflow {
                         lhs: I32(lhs),
                         rhs: U8(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I32),
+            U16(rhs) => lhs
+                .checked_rem(rhs as i32)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I32(lhs),
+                        rhs: U16(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
                     .into()
