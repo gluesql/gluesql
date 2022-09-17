@@ -221,13 +221,13 @@ impl ToSql for Statement {
             Statement::CreateIndex {
                 name,
                 table_name,
-                column: _column,
+                column,
             } => {
                 format!(
                     "CREATE INDEX {} ON {} {}",
                     name.to_sql(),
                     table_name.to_sql(),
-                    _column.to_sql()
+                    column.to_sql()
                 )
             }
             #[cfg(feature = "index")]
