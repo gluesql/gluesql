@@ -1,5 +1,6 @@
 use {
     super::{Expr, IndexOperator, ObjectName},
+    crate::ast::ToSql,
     serde::{Deserialize, Serialize},
 };
 
@@ -115,3 +116,48 @@ pub struct OrderByExpr {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Values(pub Vec<Vec<Expr>>);
+
+impl ToSql for OrderByExpr {
+    fn to_sql(&self) -> String {
+        let OrderByExpr { expr, asc } = self;
+        let expr = expr.to_sql();
+
+        match asc {
+            Some(true) => format!("{} ASC", expr),
+            Some(false) => format!("{} DESC", expr),
+            None => expr,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{Expr, OrderByExpr, ToSql};
+
+    #[test]
+    fn to_sql_order_by_expr() {
+        let actual = "foo ASC".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: Some(true),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "foo DESC".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: Some(false),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "foo".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: None,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+}
