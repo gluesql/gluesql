@@ -1024,6 +1024,14 @@ mod tests {
         let actual = timestamp("2015-09-05 23:56:04").format(text("%Y-%m-%d %H:%M:%S"));
         let expected = "FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
+
+        let actual = format(time("23:56:04"), text("%H:%M:%S"));
+        let expected = "FORMAT(TIME '23:56:04', '%H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = time("23:56:04").format(text("%H:%M:%S"));
+        let expected = "FORMAT(TIME '23:56:04', '%H:%M:%S')";
+        test_expr(actual, expected);
     }
 
     #[test]
@@ -1047,6 +1055,18 @@ mod tests {
         let expected = "TO_TIMESTAMP('2015-09-05 23:56:04','%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_to_time() {
+        let actual = to_time(text("23:56:04"), text("%H:%M:%S"));
+        let expected = "TO_TIME('23:56:04','%H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = text("23:56:04").to_time(text("%H:%M:%S"));
+        let expected = "TO_TIME('23:56:04','%H:%M:%S')";
+        test_expr(actual, expected);
+    }
+
     #[test]
     fn function_lower() {
         // Lower
