@@ -318,8 +318,9 @@ impl<'a, W: Write> Print<W> {
 
     fn get_table<T: IntoIterator<Item = &'a str>>(&self, headers: T) -> Builder {
         let mut table = Builder::default();
+        table.set_columns(headers);
 
-        table.set_columns(headers).clone()
+        table
     }
 
     fn build_table(&self, builder: Builder) -> Table {
