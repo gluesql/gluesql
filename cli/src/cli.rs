@@ -91,7 +91,7 @@ where
                     continue;
                 }
                 Err(CommandError::WrongOption(e)) => {
-                    println!("[error] cannot support option: {e}");
+                    println!("[error] cannot support option: {e}\n");
                     continue;
                 }
             };
