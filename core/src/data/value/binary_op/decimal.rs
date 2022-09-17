@@ -654,6 +654,15 @@ mod tests {
             }
             .into())
         );
+        assert_eq!(
+            Decimal::MIN.try_subtract(&U16(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MIN),
+                rhs: U16(1),
+                operator: NumericBinaryOperator::Subtract,
+            }
+            .into())
+        );
 
         assert_eq!(
             Decimal::MIN.try_subtract(&Decimal(Decimal::ONE)),
@@ -706,6 +715,15 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: Decimal(Decimal::MAX),
                 rhs: U8(2),
+                operator: NumericBinaryOperator::Multiply,
+            }
+            .into())
+        );
+        assert_eq!(
+            Decimal::MAX.try_multiply(&U16(2)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: Decimal(Decimal::MAX),
+                rhs: U16(2),
                 operator: NumericBinaryOperator::Multiply,
             }
             .into())
