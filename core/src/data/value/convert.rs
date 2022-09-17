@@ -24,6 +24,7 @@ impl From<&Value> for String {
             Value::I64(value) => value.to_string(),
             Value::I128(value) => value.to_string(),
             Value::U8(value) => value.to_string(),
+            Value::U16(value) => value.to_string(),
             Value::F64(value) => value.to_string(),
             Value::Date(value) => value.to_string(),
             Value::Timestamp(value) => value.to_string(),
@@ -83,6 +84,11 @@ impl TryFrom<&Value> for bool {
                 0 => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
+            Value::U16(value) => match value {
+                1 => true,
+                0 => false,
+                _ => return Err(ValueError::ImpossibleCast.into()),
+            },
             Value::F64(value) => {
                 if value.eq(&1.0) {
                     true
@@ -137,6 +143,7 @@ impl TryFrom<&Value> for i8 {
             Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i8>()
@@ -173,6 +180,7 @@ impl TryFrom<&Value> for i16 {
             Value::I64(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i16>()
@@ -209,6 +217,7 @@ impl TryFrom<&Value> for i32 {
             Value::I64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i32>()
@@ -245,6 +254,7 @@ impl TryFrom<&Value> for i64 {
             Value::I64(value) => *value,
             Value::I128(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i64>()
@@ -281,6 +291,7 @@ impl TryFrom<&Value> for i128 {
             Value::I64(value) => *value as i128,
             Value::I128(value) => *value,
             Value::U8(value) => *value as i128,
+            Value::U16(value) => *value as i128,
             Value::F64(value) => value.to_i128().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i128>()
@@ -317,11 +328,48 @@ impl TryFrom<&Value> for u8 {
             Value::I64(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => *value,
+            Value::U16(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<u8>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
             Value::Decimal(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Bytea(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+impl TryFrom<&Value> for u16 {
+    type Error = Error;
+
+    fn try_from(v: &Value) -> Result<u16> {
+        Ok(match v {
+            Value::Bool(value) => {
+                if *value {
+                    1
+                } else {
+                    0
+                }
+            }
+            Value::I8(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I16(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I32(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I64(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I128(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::U8(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => *value,
+            Value::F64(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::Str(value) => value
+                .parse::<u16>()
+                .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -352,6 +400,7 @@ impl TryFrom<&Value> for f64 {
             Value::I64(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => *value as f64,
             Value::U8(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => *value,
             Value::Str(value) => value
                 .parse::<f64>()
@@ -388,6 +437,7 @@ impl TryFrom<&Value> for usize {
             Value::I64(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<usize>()
@@ -424,6 +474,7 @@ impl TryFrom<&Value> for Decimal {
             Value::I64(value) => Decimal::from_i64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => Decimal::from_i128(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => Decimal::from_u8(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => Decimal::from_u16(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => Decimal::from_f64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => {
                 Decimal::from_str(value).map_err(|_| ValueError::ImpossibleCast)?

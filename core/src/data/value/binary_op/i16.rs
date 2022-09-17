@@ -21,6 +21,7 @@ impl PartialEq<Value> for i16 {
             I64(rhs) => (lhs as i64) == *rhs,
             I128(rhs) => (lhs as i128) == *rhs,
             U8(rhs) => lhs == (*rhs as i16),
+            U16(other) => (*self as i64) == (*other as i64),
             F64(rhs) => ((lhs as f64) - rhs).abs() < f64::EPSILON,
             Decimal(rhs) => Decimal::from(lhs) == *rhs,
             _ => false,
@@ -37,6 +38,7 @@ impl PartialOrd<Value> for i16 {
             I64(rhs) => (*self as i64).partial_cmp(rhs),
             I128(rhs) => (*self as i128).partial_cmp(rhs),
             U8(rhs) => self.partial_cmp(&(*rhs as i16)),
+            U16(other) => (*self as i64).partial_cmp(&(*other as i64)),
             F64(rhs) => (*self as f64).partial_cmp(rhs),
             Decimal(rhs) => Decimal::from(*self).partial_cmp(rhs),
             _ => None,
@@ -117,6 +119,7 @@ impl TryBinaryOperator for i16 {
                     .into()
                 })
                 .map(I16),
+            U16(rhs) => Ok(I64(lhs as i64 + rhs as i64)),
             F64(rhs) => Ok(F64(lhs as f64 + rhs)),
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
@@ -199,6 +202,7 @@ impl TryBinaryOperator for i16 {
                     .into()
                 })
                 .map(I16),
+            U16(rhs) => Ok(I64(lhs as i64 - rhs as i64)),
             F64(rhs) => Ok(F64(lhs as f64 - rhs)),
             Decimal(rhs) => Decimal::from(lhs)
                 .checked_sub(rhs)
@@ -291,6 +295,7 @@ impl TryBinaryOperator for i16 {
                     .into()
                 })
                 .map(I16),
+            U16(rhs) => Ok(I64(lhs as i64 * rhs as i64)),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
             Decimal(rhs) => Decimal::from(lhs)
                 .checked_mul(rhs)
@@ -384,6 +389,17 @@ impl TryBinaryOperator for i16 {
                     .into()
                 })
                 .map(I16),
+            U16(rhs) => (lhs as i64)
+                .checked_div(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I16(lhs),
+                        rhs: U16(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(I64),
             F64(rhs) => Ok(F64(lhs as f64 / rhs)),
             Decimal(rhs) => Decimal::from(lhs)
                 .checked_div(rhs)
@@ -476,6 +492,17 @@ impl TryBinaryOperator for i16 {
                     .into()
                 })
                 .map(I16),
+            U16(rhs) => (lhs as i64)
+                .checked_rem(rhs as i64)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: I16(lhs),
+                        rhs: U16(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(I64),
             F64(rhs) => Ok(F64(lhs as f64 % rhs)),
             Decimal(rhs) => Decimal::from(lhs)
                 .checked_rem(rhs)
