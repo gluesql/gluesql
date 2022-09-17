@@ -547,6 +547,15 @@ mod tests {
         );
 
         assert_eq!(
+            i32::MAX.try_add(&U16(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(i32::MAX),
+                rhs: U16(1),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
+        assert_eq!(
             i32::MAX.try_add(&I8(1)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I32(i32::MAX),
@@ -576,6 +585,15 @@ mod tests {
             .into())
         );
 
+        assert_eq!(
+            i32::MAX.try_add(&U16(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(i32::MAX),
+                rhs: U16(1),
+                operator: (NumericBinaryOperator::Add)
+            }
+            .into())
+        );
         //try_subtract
         assert_eq!(
             i32::MIN.try_subtract(&I8(1)),
@@ -602,6 +620,15 @@ mod tests {
             .into())
         );
 
+        assert_eq!(
+            i32::MIN.try_subtract(&U16(1)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(i32::MIN),
+                rhs: U16(1),
+                operator: (NumericBinaryOperator::Subtract)
+            }
+            .into())
+        );
         //try multiply
         assert_eq!(i32::MAX.try_multiply(&I8(1)), Ok(I32(i32::MAX)));
         assert_eq!(i32::MAX.try_multiply(&I64(1)), Ok(I64(i32::MAX as i64)));
@@ -616,6 +643,15 @@ mod tests {
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I32(i32::MAX),
                 rhs: U8(2),
+                operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
+        assert_eq!(
+            i32::MAX.try_multiply(&U16(2)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(i32::MAX),
+                rhs: U16(2),
                 operator: (NumericBinaryOperator::Multiply)
             }
             .into())
@@ -639,6 +675,15 @@ mod tests {
             .into())
         );
 
+        assert_eq!(
+            i32::MAX.try_multiply(&U16(2)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(i32::MAX),
+                rhs: U16(2),
+                operator: (NumericBinaryOperator::Multiply)
+            }
+            .into())
+        );
         //try_divide
         assert_eq!(
             i32::MAX.try_divide(&I8(0)),
@@ -678,6 +723,15 @@ mod tests {
         );
 
         assert_eq!(
+            i32::MAX.try_divide(&U16(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(i32::MAX),
+                rhs: U16(0),
+                operator: (NumericBinaryOperator::Divide)
+            }
+            .into())
+        );
+        assert_eq!(
             i32::MAX.try_modulo(&I8(0)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I32(i32::MAX),
@@ -713,6 +767,15 @@ mod tests {
             }
             .into())
         );
+        assert_eq!(
+            i32::MAX.try_modulo(&U16(0)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I32(i32::MAX),
+                rhs: U16(0),
+                operator: (NumericBinaryOperator::Modulo)
+            }
+            .into())
+        );
     }
 
     #[test]
@@ -725,6 +788,7 @@ mod tests {
         assert_eq!(base, I64(1));
         assert_eq!(base, I128(1));
         assert_eq!(base, U8(1));
+        assert_eq!(base, U16(1));
         assert_eq!(base, F64(1.0));
         assert_eq!(base, Decimal(Decimal::ONE));
 
@@ -741,6 +805,7 @@ mod tests {
         assert_eq!(base.partial_cmp(&I64(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&I128(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&U8(0)), Some(Ordering::Greater));
+        assert_eq!(base.partial_cmp(&U16(0)), Some(Ordering::Greater));
         assert_eq!(base.partial_cmp(&F64(0.0)), Some(Ordering::Greater));
 
         assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
@@ -749,6 +814,7 @@ mod tests {
         assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&U8(1)), Some(Ordering::Equal));
+        assert_eq!(base.partial_cmp(&U16(1)), Some(Ordering::Equal));
         assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
 
         assert_eq!(base.partial_cmp(&I8(2)), Some(Ordering::Less));
@@ -757,6 +823,7 @@ mod tests {
         assert_eq!(base.partial_cmp(&I64(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&I128(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&U8(2)), Some(Ordering::Less));
+        assert_eq!(base.partial_cmp(&U16(2)), Some(Ordering::Less));
         assert_eq!(base.partial_cmp(&F64(2.0)), Some(Ordering::Less));
 
         assert_eq!(
@@ -777,6 +844,7 @@ mod tests {
         assert_eq!(base.try_add(&I64(1)), Ok(I64(2)));
         assert_eq!(base.try_add(&I128(1)), Ok(I128(2)));
         assert_eq!(base.try_add(&U8(1)), Ok(U8(2)));
+        assert_eq!(base.try_add(&U16(1)), Ok(U16(2)));
 
         assert!(matches!(base.try_add(&F64(1.0)), Ok(F64(x)) if (x - 2.0).abs() < f64::EPSILON));
         assert_eq!(
@@ -805,6 +873,7 @@ mod tests {
         assert_eq!(base.try_subtract(&I64(1)), Ok(I64(0)));
         assert_eq!(base.try_subtract(&I128(1)), Ok(I128(0)));
         assert_eq!(base.try_subtract(&U8(1)), Ok(U8(0)));
+        assert_eq!(base.try_subtract(&U16(1)), Ok(U16(0)));
 
         assert!(
             matches!(base.try_subtract(&F64(1.0)), Ok(F64(x)) if (x - 0.0).abs() < f64::EPSILON )
@@ -836,6 +905,7 @@ mod tests {
         assert_eq!(base.try_multiply(&I64(2)), Ok(I64(6)));
         assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
         assert_eq!(base.try_multiply(&U8(2)), Ok(U8(6)));
+        assert_eq!(base.try_multiply(&U16(2)), Ok(U16(6)));
 
         assert_eq!(base.try_multiply(&I8(-1)), Ok(I32(-3)));
         assert_eq!(base.try_multiply(&I16(-1)), Ok(I32(-3)));
@@ -874,6 +944,7 @@ mod tests {
         assert_eq!(base.try_divide(&I64(2)), Ok(I64(3)));
         assert_eq!(base.try_divide(&I128(2)), Ok(I128(3)));
         assert_eq!(base.try_divide(&U8(2)), Ok(U8(3)));
+        assert_eq!(base.try_divide(&U16(2)), Ok(U16(3)));
 
         assert_eq!(base.try_divide(&I8(-6)), Ok(I32(-1)));
         assert_eq!(base.try_divide(&I16(-6)), Ok(I32(-1)));
@@ -911,6 +982,7 @@ mod tests {
         assert_eq!(base.try_modulo(&I64(1)), Ok(I64(0)));
         assert_eq!(base.try_modulo(&I128(1)), Ok(I128(0)));
         assert_eq!(base.try_modulo(&U8(1)), Ok(U8(0)));
+        assert_eq!(base.try_modulo(&U16(1)), Ok(U16(0)));
 
         assert_eq!(base.try_modulo(&I8(2)), Ok(I32(1)));
         assert_eq!(base.try_modulo(&I16(2)), Ok(I32(1)));
@@ -918,6 +990,7 @@ mod tests {
         assert_eq!(base.try_modulo(&I64(2)), Ok(I64(1)));
         assert_eq!(base.try_modulo(&I128(2)), Ok(I128(1)));
         assert_eq!(base.try_modulo(&U8(2)), Ok(U8(1)));
+        assert_eq!(base.try_modulo(&U16(2)), Ok(U16(1)));
 
         assert!(matches!(base.try_modulo(&F64(1.0)), Ok(F64(x)) if (x).abs() < f64::EPSILON ));
         assert_eq!(
