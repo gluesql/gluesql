@@ -122,8 +122,8 @@ where
                 Command::SpoolOff => {
                     self.print.spool_off();
                 }
-                Command::Set(name, value) => {
-                    if let Err(e) = self.print.set_option(name, value) {
+                Command::Set { key, value } => {
+                    if let Err(e) = self.print.set_option(key, value) {
                         println!("[error] {}\n", e);
                     }
                 }

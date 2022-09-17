@@ -8,7 +8,7 @@ pub enum Command {
     ExecuteFromFile(String),
     SpoolOn(String),
     SpoolOff,
-    Set(String, String),
+    Set { key: String, value: String },
     Show(String),
 }
 
@@ -52,7 +52,10 @@ impl Command {
                     None => Err(CommandError::LackOfFile),
                 },
                 ".set" => match (params.get(1), params.get(2)) {
-                    (Some(name), Some(value)) => Ok(Self::Set(name.to_string(), value.to_string())),
+                    (Some(key), Some(value)) => Ok(Self::Set {
+                        key: key.to_string(),
+                        value: value.to_string(),
+                    }),
                     (Some(_), None) => Err(CommandError::LackOfValue),
                     (None, Some(_)) => Err(CommandError::LackOfOption),
                     (None, None) => Err(CommandError::LackOfOption),
