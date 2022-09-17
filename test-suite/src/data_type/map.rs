@@ -61,6 +61,22 @@ INSERT INTO MapType VALUES
         Ok(select_with_null!(id | foo | bar; I64(1) Null Null))
     );
 
+    // TODO add arrayindex test case
+    test!(
+        r#"SELECT
+            id,
+            nested[a][foo] AS foo,
+            nested[a][b][c][d] as good,
+            nested[a][b] AS b
+        FROM MapType"#,
+        Ok(select_with_null!(
+            id     | foo          | good    | b;
+            I64(1)   Null           Null      Null;
+            I64(2)   s("ok")        Null      s("steak");
+            I64(3)   Null           I64(10)   m(r#"{"c": { "d": 10 } }"#)
+        ))
+    );
+
     test!(
         r#"SELECT UNWRAP("abc", "a.b.c") FROM MapType"#,
         Err(EvaluateError::FunctionRequiresMapValue("UNWRAP".to_owned()).into())

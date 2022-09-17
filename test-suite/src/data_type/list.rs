@@ -53,6 +53,37 @@ INSERT INTO ListType VALUES
         ))
     );
 
+    // TODO add arrayindex test case
+    test!(
+        "SELECT id, items[1] AS second FROM ListType",
+        Ok(select_with_null!(
+            id     | second;
+            I64(1)   I64(2);
+            I64(2)   s("world");
+            I64(3)   I64(10)
+        ))
+    );
+
+    test!(
+        "SELECT id, items[4][1] AS a FROM ListType",
+        Ok(select_with_null!(
+            id     | a;
+            I64(1)   Null;
+            I64(2)   I64(8);
+            I64(3)   Null
+        ))
+    );
+
+    test!(
+        r#"SELECT id, items[0]["bar"][2] AS a FROM ListType"#,
+        Ok(select_with_null!(
+            id     | a;
+            I64(1)   Null;
+            I64(2)   Null;
+            I64(3)   F64(10.5)
+        ))
+    );
+
     test!(
         r#"SELECT id FROM ListType GROUP BY items"#,
         Err(KeyError::ListTypeKeyNotSupported.into())
