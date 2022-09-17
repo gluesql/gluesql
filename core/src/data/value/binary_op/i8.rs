@@ -646,6 +646,15 @@ mod tests {
             .into())
         );
         assert_eq!(
+            i8::MIN.try_subtract(&I16(i16::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: I8(i8::MIN),
+                rhs: I16(i16::MAX),
+                operator: (NumericBinaryOperator::Subtract)
+            }
+            .into())
+        );
+        assert_eq!(
             i8::MIN.try_subtract(&I32(i32::MAX)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: I8(i8::MIN),
