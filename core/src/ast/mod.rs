@@ -224,9 +224,10 @@ impl ToSql for Statement {
                 column: _column,
             } => {
                 format!(
-                    "CREATE INDEX {} ON {} (..order_by_expr..)",
+                    "CREATE INDEX {} ON {} {}",
                     name.to_sql(),
-                    table_name.to_sql()
+                    table_name.to_sql(),
+                    _column.to_sql()
                 )
             }
             #[cfg(feature = "index")]
@@ -584,7 +585,7 @@ mod tests {
     #[cfg(feature = "index")]
     fn to_sql_create_index() {
         assert_eq!(
-            "CREATE INDEX idx_name ON Test (..order_by_expr..)",
+            "CREATE INDEX idx_name ON Test LastName",
             Statement::CreateIndex {
                 name: ObjectName(vec!["idx_name".to_string()]),
                 table_name: ObjectName(vec!["Test".to_string()]),

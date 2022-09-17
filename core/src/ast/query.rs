@@ -1,7 +1,6 @@
 use {
     super::{Expr, IndexOperator, ObjectName},
     crate::ast::ToSql,
-    itertools::Itertools,
     serde::{Deserialize, Serialize},
 };
 
@@ -121,51 +120,19 @@ pub struct Values(pub Vec<Vec<Expr>>);
 impl ToSql for OrderByExpr {
     fn to_sql(&self) -> String {
         let OrderByExpr { expr, asc } = self;
+        let expr = expr.to_sql();
 
-        let result = match asc {
-            Some(true) => " ASC".to_string(),
-            Some(false) => " DESC".to_string(),
-            None => "".to_string(),
-        };
-
-        format!("{}{}", expr.to_sql(), result)
-    }
-}
-
-impl ToSql for Values {
-    fn to_sql(&self) -> String {
-        match self {
-            Values(exprs) => {
-                let expr = exprs
-                    .iter()
-                    .map(|expr| {
-                        expr.iter()
-                            .enumerate()
-                            .map(|(index, item)| check_sql(index, item))
-                            .join(", ")
-                    })
-                    .join("");
-
-                fn check_sql(index: usize, item: &Expr) -> String {
-                    let sql = item.to_sql();
-
-                    if sql.is_empty() {
-                        return format!("({}, NULL)", index + 1);
-                    }
-                    return format!("({}, '{}')", index + 1, sql);
-                }
-
-                let mut value = String::from("VALUES ");
-                value.push_str(&expr);
-                value
-            }
+        match asc {
+            Some(true) => format!("{} ASC", expr),
+            Some(false) => format!("{} DESC", expr),
+            None => expr,
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Expr, OrderByExpr, ToSql, Values};
+    use crate::ast::{Expr, OrderByExpr, ToSql};
 
     #[test]
     fn to_sql_order_by_expr() {
@@ -191,20 +158,6 @@ mod tests {
             asc: None,
         }
         .to_sql();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn to_sql_values() {
-        let value = vec![vec![
-            Expr::Identifier("foo".to_string()),
-            Expr::Identifier("bar".to_string()),
-            Expr::Identifier("oh".to_string()),
-        ]];
-
-        let actual = "VALUES (1, 'foo'), (2, 'bar'), (3, 'oh')".to_string();
-        let expected = Values(value).to_sql();
-
         assert_eq!(actual, expected);
     }
 }
