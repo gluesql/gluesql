@@ -264,6 +264,7 @@ mod tests {
         assert_eq!(convert("CAST(11 AS INT32)"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
         assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
+        assert_eq!(convert("CAST(11 AS UINT16)"), Ok(Key::U16(11)));
 
         assert_eq!(
             convert(r#""Hello World""#),
@@ -413,6 +414,15 @@ mod tests {
         let n2 = U8(3).to_cmp_be_bytes();
         let n3 = U8(20).to_cmp_be_bytes();
         let n4 = U8(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
+        let n1 = U16(0).to_cmp_be_bytes();
+        let n2 = U16(3).to_cmp_be_bytes();
+        let n3 = U16(20).to_cmp_be_bytes();
+        let n4 = U16(20).to_cmp_be_bytes();
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &n4), Ordering::Less);
