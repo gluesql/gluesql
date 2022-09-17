@@ -7,7 +7,7 @@ use {
     self::blend::Blend,
     super::{
         aggregate::Aggregator,
-        context::{BlendContext, FilterContext},
+        context::{AggregateContext, BlendContext, BlendContextRow::Single, FilterContext},
         evaluate_stateless,
         fetch::{fetch_join_columns, fetch_relation_columns, fetch_relation_rows},
         filter::Filter,
@@ -225,7 +225,7 @@ pub async fn select_with_labels<'a>(
                 let row = Some(row?);
                 let columns = Rc::clone(&columns);
                 let alias = get_alias(relation)?;
-                Ok(BlendContext::new(alias, columns, row, None))
+                Ok(BlendContext::new(alias, columns, Single(row), None))
             })
     };
 
@@ -287,15 +287,29 @@ pub async fn select_with_labels<'a>(
     });
 
     let rows = aggregate.apply(rows).await?;
-    let rows = sort
-        .apply(rows)
-        .await?
-        .and_then(move |(aggregated, context)| {
-            let blend = Rc::clone(&blend);
 
-            async move { blend.apply(aggregated, context).await }
-        });
+    let rows = rows.and_then(move |aggregate_context| {
+        let blend = Rc::clone(&blend);
+        let AggregateContext { aggregated, next } = aggregate_context;
+        let aggregated = aggregated.map(Rc::new);
+
+        async move {
+            let row = blend
+                .apply(aggregated.as_ref().map(Rc::clone), Rc::clone(&next))
+                .await?;
+
+            Ok((aggregated, next, row))
+        }
+    });
+
+    let labels = Rc::new(labels);
+    let rows = sort
+        .apply(rows, Rc::clone(&labels), get_alias(relation)?)
+        .await?;
+
     let rows = limit.apply(rows);
+
+    let labels = Rc::try_unwrap(labels).map_err(|_| SelectError::Unreachable)?;
 
     Ok((labels, rows))
 }

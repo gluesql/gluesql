@@ -7,7 +7,7 @@ use {
         },
         data::{get_alias, Key, Row},
         executor::{
-            context::{BlendContext, FilterContext},
+            context::{BlendContext, BlendContextRow::Single, FilterContext},
             evaluate::evaluate,
             filter::check_expr,
         },
@@ -119,7 +119,7 @@ async fn join<'a>(
         let init_context = Rc::new(BlendContext::new(
             table_alias,
             Rc::clone(&columns),
-            None,
+            Single(None),
             Some(Rc::clone(&blend_context)),
         ));
         let join_executor = Rc::clone(&join_executor);
@@ -301,7 +301,14 @@ async fn check_where_clause<'a, 'b>(
         Some(expr) => check_expr(storage, filter_context, None, expr).await?,
         None => true,
     }
-    .then(|| BlendContext::new(table_alias, columns, Some(row.into_owned()), blend_context))
+    .then(|| {
+        BlendContext::new(
+            table_alias,
+            columns,
+            Single(Some(row.into_owned())),
+            blend_context,
+        )
+    })
     .map(Rc::new)
     .map(Ok)
     .transpose()

@@ -7,11 +7,7 @@ use {
 pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
     match sql_data_type {
         SqlDataType::Boolean => Ok(DataType::Boolean),
-        SqlDataType::Int(Some(8)) => Ok(DataType::Int8),
-        SqlDataType::Int(Some(16)) => Ok(DataType::Int16),
-        SqlDataType::Int(Some(32)) => Ok(DataType::Int32),
-        SqlDataType::Int(Some(128)) => Ok(DataType::Int128),
-        SqlDataType::Int(_) => Ok(DataType::Int),
+        SqlDataType::Int(None) | SqlDataType::Integer(None) => Ok(DataType::Int),
         SqlDataType::Float(_) => Ok(DataType::Float),
         SqlDataType::Text => Ok(DataType::Text),
         SqlDataType::Bytea => Ok(DataType::Bytea),
@@ -27,6 +23,12 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
             match name.as_deref() {
                 Some("MAP") => Ok(DataType::Map),
                 Some("LIST") => Ok(DataType::List),
+                Some("INT8") => Ok(DataType::Int8),
+                Some("INT16") => Ok(DataType::Int16),
+                Some("INT32") => Ok(DataType::Int32),
+                Some("INT128") => Ok(DataType::Int128),
+                Some("UINT8") => Ok(DataType::Uint8),
+
                 _ => Err(TranslateError::UnsupportedDataType(sql_data_type.to_string()).into()),
             }
         }

@@ -28,41 +28,41 @@ INSERT INTO ListType VALUES
     let s = |v: &str| Str(v.to_owned());
 
     test!(
+        "SELECT id, items FROM ListType",
         Ok(select_with_null!(
             id     | items;
             I64(1)   l("[1,2,3]");
             I64(2)   l(r#"["hello","world",30,true,[9,8]]"#);
             I64(3)   l(r#"[{"foo":100, "bar": [true, 0, [10.5, false]]},10,20]"#)
-        )),
-        "SELECT id, items FROM ListType"
+        ))
     );
 
     test!(
-        Ok(select_with_null!(
-            id     | foo        | bar      | a             | b;
-            I64(1)   I64(2)       Null       Null            Null;
-            I64(2)   s("world")   Null       l(r#"[9,8]"#)   Null;
-            I64(3)   I64(10)      I64(200)   Null            F64(30.5)
-        )),
         r#"SELECT
             id,
             UNWRAP(items, "1") AS foo,
             UNWRAP(items, "0.foo") + 100 AS bar,
             UNWRAP(items, "4") AS a,
             UNWRAP(items, "0.bar.2.0") + UNWRAP(items, "2") AS b
-        FROM ListType"#
+        FROM ListType"#,
+        Ok(select_with_null!(
+            id     | foo        | bar      | a             | b;
+            I64(1)   I64(2)       Null       Null            Null;
+            I64(2)   s("world")   Null       l(r#"[9,8]"#)   Null;
+            I64(3)   I64(10)      I64(200)   Null            F64(30.5)
+        ))
     );
 
     test!(
-        Err(KeyError::ListTypeKeyNotSupported.into()),
-        r#"SELECT id FROM ListType GROUP BY items"#
+        r#"SELECT id FROM ListType GROUP BY items"#,
+        Err(KeyError::ListTypeKeyNotSupported.into())
     );
     test!(
-        Err(ValueError::JsonArrayTypeRequired.into()),
-        r#"INSERT INTO ListType VALUES (1, '{ "a": 10 }');"#
+        r#"INSERT INTO ListType VALUES (1, '{ "a": 10 }');"#,
+        Err(ValueError::JsonArrayTypeRequired.into())
     );
     test!(
-        Err(ValueError::InvalidJsonString.into()),
-        r#"INSERT INTO ListType VALUES (1, '{{ ok [1, 2, 3] }');"#
+        r#"INSERT INTO ListType VALUES (1, '{{ ok [1, 2, 3] }');"#,
+        Err(ValueError::InvalidJsonString.into())
     );
 });

@@ -3,8 +3,8 @@ use {
     crate::{
         ast::Statement,
         ast_builder::{
-            ExprNode, GroupByNode, HavingNode, OffsetLimitNode, ProjectNode, SelectItemList,
-            SelectNode,
+            ExprNode, GroupByNode, HavingNode, OffsetLimitNode, OrderByNode, ProjectNode,
+            SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -15,6 +15,7 @@ pub enum PrevNode {
     Select(SelectNode),
     GroupBy(GroupByNode),
     Having(HavingNode),
+    OrderBy(OrderByNode),
 }
 
 impl Prebuild for PrevNode {
@@ -23,6 +24,7 @@ impl Prebuild for PrevNode {
             Self::Select(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
+            Self::OrderBy(node) => node.prebuild(),
         }
     }
 }
@@ -42,6 +44,12 @@ impl From<GroupByNode> for PrevNode {
 impl From<HavingNode> for PrevNode {
     fn from(node: HavingNode) -> Self {
         PrevNode::Having(node)
+    }
+}
+
+impl From<OrderByNode> for PrevNode {
+    fn from(node: OrderByNode) -> Self {
+        PrevNode::OrderBy(node)
     }
 }
 

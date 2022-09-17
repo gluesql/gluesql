@@ -1,4 +1,9 @@
-use super::{CreateTableNode, DeleteNode, DropTableNode, SelectNode, ShowColumnsNode, UpdateNode};
+use super::{
+    CreateTableNode, DeleteNode, DropTableNode, InsertNode, SelectNode, ShowColumnsNode, UpdateNode,
+};
+
+#[cfg(feature = "alter-table")]
+use super::AlterTableNode;
 
 #[cfg(feature = "index")]
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
@@ -31,6 +36,11 @@ impl TableNode {
         ShowColumnsNode::new(self.table_name)
     }
 
+    #[cfg(feature = "alter-table")]
+    pub fn alter_table(self) -> AlterTableNode {
+        AlterTableNode::new(self.table_name)
+    }
+
     pub fn create_table(self) -> CreateTableNode {
         CreateTableNode::new(self.table_name, false)
     }
@@ -49,5 +59,9 @@ impl TableNode {
 
     pub fn update(self) -> UpdateNode {
         UpdateNode::new(self.table_name)
+    }
+
+    pub fn insert(self) -> InsertNode {
+        InsertNode::new(self.table_name)
     }
 }

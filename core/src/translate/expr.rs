@@ -59,6 +59,26 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             low: translate_expr(low).map(Box::new)?,
             high: translate_expr(high).map(Box::new)?,
         }),
+        SqlExpr::Like {
+            expr,
+            negated,
+            pattern,
+            escape_char: None,
+        } => Ok(Expr::Like {
+            expr: translate_expr(expr).map(Box::new)?,
+            negated: *negated,
+            pattern: translate_expr(pattern).map(Box::new)?,
+        }),
+        SqlExpr::ILike {
+            expr,
+            negated,
+            pattern,
+            escape_char: None,
+        } => Ok(Expr::ILike {
+            expr: translate_expr(expr).map(Box::new)?,
+            negated: *negated,
+            pattern: translate_expr(pattern).map(Box::new)?,
+        }),
         SqlExpr::BinaryOp { left, op, right } => Ok(Expr::BinaryOp {
             left: translate_expr(left).map(Box::new)?,
             op: translate_binary_operator(op)?,
@@ -83,8 +103,15 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             value: value.to_owned(),
         }),
         SqlExpr::Function(function) => translate_function(function),
-        SqlExpr::Trim { expr, trim_where } => translate_trim(expr, trim_where),
-        SqlExpr::Exists(query) => translate_query(query).map(Box::new).map(Expr::Exists),
+        SqlExpr::Trim {
+            expr,
+            trim_where,
+            trim_what,
+        } => translate_trim(expr, trim_where, trim_what),
+        SqlExpr::Exists { subquery, negated } => Ok(Expr::Exists {
+            subquery: translate_query(subquery).map(Box::new)?,
+            negated: *negated,
+        }),
         SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
         SqlExpr::Case {
             operand,

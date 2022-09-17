@@ -14,10 +14,11 @@ mod validate;
 
 pub use aggregate::AggregateError;
 pub use alter::AlterError;
-pub use evaluate::{evaluate_stateless, EvaluateError};
+pub use evaluate::{evaluate_stateless, ChronoFormatError, EvaluateError};
 pub use execute::{ExecuteError, Payload};
 pub use fetch::FetchError;
 pub use select::SelectError;
+pub use sort::SortError;
 pub use update::UpdateError;
 pub use validate::ValidateError;
 

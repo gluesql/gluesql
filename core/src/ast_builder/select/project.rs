@@ -4,7 +4,7 @@ use {
         ast::Statement,
         ast_builder::{
             GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
-            SelectItemList, SelectNode,
+            OrderByNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -19,6 +19,7 @@ pub enum PrevNode {
     LimitOffset(LimitOffsetNode),
     Offset(OffsetNode),
     OffsetLimit(OffsetLimitNode),
+    OrderBy(OrderByNode),
 }
 
 impl Prebuild for PrevNode {
@@ -31,6 +32,7 @@ impl Prebuild for PrevNode {
             Self::LimitOffset(node) => node.prebuild(),
             Self::Offset(node) => node.prebuild(),
             Self::OffsetLimit(node) => node.prebuild(),
+            Self::OrderBy(node) => node.prebuild(),
         }
     }
 }
@@ -74,6 +76,12 @@ impl From<OffsetNode> for PrevNode {
 impl From<OffsetLimitNode> for PrevNode {
     fn from(node: OffsetLimitNode) -> Self {
         PrevNode::OffsetLimit(node)
+    }
+}
+
+impl From<OrderByNode> for PrevNode {
+    fn from(node: OrderByNode) -> Self {
+        PrevNode::OrderBy(node)
     }
 }
 

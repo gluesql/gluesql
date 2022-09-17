@@ -1,5 +1,5 @@
 use {
-    super::{EvaluateError, Evaluated},
+    super::{ChronoFormatError, EvaluateError, Evaluated},
     crate::{ast::TrimWhereField, data::Value, result::Result},
     std::cmp::{max, min},
     uuid::Uuid,
@@ -409,4 +409,65 @@ pub fn unwrap(name: String, expr: Evaluated<'_>, selector: Evaluated<'_>) -> Res
 
 pub fn generate_uuid() -> Value {
     Value::Uuid(Uuid::new_v4().as_u128())
+}
+
+pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()? {
+        Value::Date(expr) => {
+            let format = eval_to_str!(name, format);
+
+            Ok(Value::Str(
+                chrono::NaiveDate::format(&expr, &format).to_string(),
+            ))
+        }
+        Value::Timestamp(expr) => {
+            let format = eval_to_str!(name, format);
+            Ok(Value::Str(
+                chrono::NaiveDateTime::format(&expr, &format).to_string(),
+            ))
+        }
+        Value::Time(expr) => {
+            let format = eval_to_str!(name, format);
+            Ok(Value::Str(
+                chrono::NaiveTime::format(&expr, &format).to_string(),
+            ))
+        }
+        value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
+    }
+}
+
+pub fn to_date(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()? {
+        Value::Str(expr) => {
+            let format = eval_to_str!(name, format);
+            chrono::NaiveDate::parse_from_str(&expr, &format)
+                .map(Value::Date)
+                .map_err(ChronoFormatError::err_into)
+        }
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
+}
+
+pub fn to_timestamp(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()? {
+        Value::Str(expr) => {
+            let format = eval_to_str!(name, format);
+            chrono::NaiveDateTime::parse_from_str(&expr, &format)
+                .map(Value::Timestamp)
+                .map_err(ChronoFormatError::err_into)
+        }
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
+}
+
+pub fn to_time(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()? {
+        Value::Str(expr) => {
+            let format = eval_to_str!(name, format);
+            chrono::NaiveTime::parse_from_str(&expr, &format)
+                .map(Value::Time)
+                .map_err(ChronoFormatError::err_into)
+        }
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
 }

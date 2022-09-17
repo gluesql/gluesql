@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{prelude::Value::*, translate::TranslateError},
+    gluesql_core::{executor::SortError, prelude::Value::*, translate::TranslateError},
 };
 
 test_case!(order_by, async move {
@@ -25,6 +25,7 @@ CREATE TABLE Test (
     );
 
     test!(
+        "SELECT id, num FROM Test",
         Ok(select!(
             id  | num
             I64 | I64;
@@ -32,8 +33,7 @@ CREATE TABLE Test (
             1     9;
             3     4;
             4     7
-        )),
-        "SELECT id, num FROM Test"
+        ))
     );
 
     macro_rules! s {
@@ -43,61 +43,62 @@ CREATE TABLE Test (
     }
 
     test!(
+        "SELECT id, num, name FROM Test ORDER BY id + num ASC",
         Ok(select_with_null!(
             id     | num    | name;
             I64(1)   I64(2)   s!("Hello");
             I64(3)   I64(4)   s!("World");
             I64(1)   I64(9)   Null;
             I64(4)   I64(7)   s!("Thursday")
-        )),
-        "SELECT id, num, name FROM Test ORDER BY id + num ASC"
+        ))
     );
 
     test!(
+        "SELECT id, num, name FROM Test ORDER BY num DESC",
         Ok(select_with_null!(
             id     | num    | name;
             I64(1)   I64(9)   Null;
             I64(4)   I64(7)   s!("Thursday");
             I64(3)   I64(4)   s!("World");
             I64(1)   I64(2)   s!("Hello")
-        )),
-        "SELECT id, num, name FROM Test ORDER BY num DESC"
+        ))
     );
 
     test!(
+        "SELECT id, num, name FROM Test ORDER BY name",
         Ok(select_with_null!(
             id     | num    | name;
             I64(1)   I64(2)   s!("Hello");
             I64(4)   I64(7)   s!("Thursday");
             I64(3)   I64(4)   s!("World");
             I64(1)   I64(9)   Null
-        )),
-        "SELECT id, num, name FROM Test ORDER BY name"
+        ))
     );
 
     test!(
+        "SELECT id, num, name FROM Test ORDER BY name DESC",
         Ok(select_with_null!(
             id     | num    | name;
             I64(1)   I64(9)   Null;
             I64(3)   I64(4)   s!("World");
             I64(4)   I64(7)   s!("Thursday");
             I64(1)   I64(2)   s!("Hello")
-        )),
-        "SELECT id, num, name FROM Test ORDER BY name DESC"
+        ))
     );
 
     test!(
+        "SELECT id, num, name, rate FROM Test ORDER BY rate DESC, id DESC",
         Ok(select_with_null!(
             id     | num    | name           | rate;
             I64(4)   I64(7)   s!("Thursday")   Null;
             I64(1)   I64(9)   Null             Null;
             I64(1)   I64(2)   s!("Hello")      F64(3.0);
             I64(3)   I64(4)   s!("World")      F64(1.0)
-        )),
-        "SELECT id, num, name, rate FROM Test ORDER BY rate DESC, id DESC"
+        ))
     );
 
     test!(
+        "SELECT id, num FROM Test ORDER BY id ASC, num DESC",
         Ok(select!(
             id  | num
             I64 | I64;
@@ -105,28 +106,16 @@ CREATE TABLE Test (
             1     2;
             3     4;
             4     7
-        )),
-        "SELECT id, num FROM Test ORDER BY id ASC, num DESC"
+        ))
     );
 
     test!(
-        Ok(select!(
-            id  | num
-            I64 | I64;
-            1     9;
-            1     2;
-            3     4;
-            4     7
-        )),
         "
         SELECT id, num FROM Test
         ORDER BY
             (SELECT id FROM Test t2 WHERE Test.id = t2.id LIMIT 1) ASC,
             num DESC
-        "
-    );
-
-    test!(
+        ",
         Ok(select!(
             id  | num
             I64 | I64;
@@ -134,7 +123,10 @@ CREATE TABLE Test (
             1     2;
             3     4;
             4     7
-        )),
+        ))
+    );
+
+    test!(
         "
         SELECT id, num FROM Test
         ORDER BY
@@ -143,11 +135,77 @@ CREATE TABLE Test (
                 ORDER BY (Test.id + t2.id) LIMIT 1
             ) ASC,
             num DESC;
-        "
+        ",
+        Ok(select!(
+            id  | num
+            I64 | I64;
+            1     9;
+            1     2;
+            3     4;
+            4     7
+        ))
     );
 
     test!(
-        Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into()),
-        "SELECT * FROM Test ORDER BY id NULLS FIRST"
+        "SELECT * FROM Test ORDER BY id NULLS FIRST",
+        Err(TranslateError::OrderByNullsFirstOrLastNotSupported.into())
     );
+    test! {
+        name: "ORDER BY aliases",
+        sql:"SELECT id AS C1, num AS C2 FROM Test ORDER BY C1 ASC, C2 DESC",
+        expected:Ok(select!(
+            C1  | C2
+            I64 | I64;
+            1     9;
+            1     2;
+            3     4;
+            4     7
+        ))
+    };
+    test! {
+        name: "original column_names still work even if aliases were used at SELECT clause",
+        sql: "SELECT id AS C1, num AS C2 FROM Test ORDER BY id ASC, num DESC",
+        expected: Ok(select!(
+            C1  | C2
+            I64 | I64;
+            1     9;
+            1     2;
+            3     4;
+            4     7
+        ))
+    };
+    test! {
+        name: "ORDER BY I64 and UnaryOperator::PLUS work as COLUMN_INDEX",
+        sql: "SELECT id, num FROM Test ORDER BY 1 ASC, +2 DESC",
+        expected: Ok(select!(
+            id  | num
+            I64 | I64;
+            1     9;
+            1     2;
+            3     4;
+            4     7
+        ))
+    };
+    test! {
+        name: "ORDER BY UnaryOperator::MINUS works as a normal integer",
+        sql: "SELECT id, num FROM Test ORDER BY -1",
+        expected: Ok(select!(
+            id  | num
+            I64 | I64;
+            1     2;
+            1     9;
+            3     4;
+            4     7
+        ))
+    };
+    test! {
+        name: "ORDER BY COLUMN_INDEX should be larger than 0",
+        sql: "SELECT id, num FROM Test ORDER BY 0",
+        expected: Err(SortError::ColumnIndexOutOfRange(0).into())
+    };
+    test! {
+        name: "ORDER BY COLUMN_INDEX should be less than the number of columns",
+        sql: "SELECT id, num FROM Test ORDER BY 3",
+        expected: Err(SortError::ColumnIndexOutOfRange(3).into())
+    };
 });

@@ -5,7 +5,7 @@ use {
         },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
-            UpdateError, ValidateError,
+            SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
         store::{GStore, GStoreMut},
@@ -60,6 +60,8 @@ pub enum Error {
     #[error(transparent)]
     Aggregate(#[from] AggregateError),
     #[error(transparent)]
+    Sort(#[from] SortError),
+    #[error(transparent)]
     Update(#[from] UpdateError),
     #[error(transparent)]
     Row(#[from] RowError),
@@ -102,6 +104,7 @@ impl PartialEq for Error {
             (Evaluate(e), Evaluate(e2)) => e == e2,
             (Select(e), Select(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
+            (Sort(e), Sort(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,

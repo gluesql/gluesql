@@ -6,8 +6,8 @@ use {
 test_case!(int8, async move {
     run!(
         "CREATE TABLE Item (
-        field_one INT(8),
-        field_two INT(8),
+        field_one INT8,
+        field_two INT8,
     );"
     );
     run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
@@ -15,15 +15,16 @@ test_case!(int8, async move {
     let parse_i8 = |text: &str| -> i8 { text.parse().unwrap() };
 
     test!(
-        Err(ValueError::FailedToParseNumber.into()),
-        "INSERT INTO Item VALUES (128, 128);"
+        "INSERT INTO Item VALUES (128, 128);",
+        Err(ValueError::FailedToParseNumber.into())
     );
     test!(
-        Err(ValueError::FailedToParseNumber.into()),
-        "INSERT INTO Item VALUES (-129, -129);"
+        "INSERT INTO Item VALUES (-129, -129);",
+        Err(ValueError::FailedToParseNumber.into())
     );
 
     test!(
+        "SELECT field_one, field_two FROM Item",
         Ok(select!(
             field_one        | field_two
             I8               |    I8;
@@ -31,57 +32,56 @@ test_case!(int8, async move {
             parse_i8("-2")         2;
             3                      3;
             parse_i8("-4")      parse_i8("-4")
-        )),
-        "SELECT field_one, field_two FROM Item"
+        ))
     );
 
     test!(
-        Ok(select!(field_one I8; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one > 0"
+        "SELECT field_one FROM Item WHERE field_one > 0",
+        Ok(select!(field_one I8; 1; 3))
     );
     test!(
-        Ok(select!(field_one I8; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one >= 0"
-    );
-
-    test!(
-        Ok(select!(field_one I8; -2)),
-        "SELECT field_one FROM Item WHERE field_one = -2"
+        "SELECT field_one FROM Item WHERE field_one >= 0",
+        Ok(select!(field_one I8; 1; 3))
     );
 
     test!(
-        Ok(select!(field_one I8; -2; -4)),
-        "SELECT field_one FROM Item WHERE field_one < 0"
+        "SELECT field_one FROM Item WHERE field_one = -2",
+        Ok(select!(field_one I8; -2))
     );
 
     test!(
-        Ok(select!(field_one I8; -2; -4)),
-        "SELECT field_one FROM Item WHERE field_one <= 0"
+        "SELECT field_one FROM Item WHERE field_one < 0",
+        Ok(select!(field_one I8; -2; -4))
     );
 
     test!(
-        Ok(select!(plus I8; 0; 0; 6; -8)),
-        "SELECT field_one + field_two AS plus FROM Item;"
+        "SELECT field_one FROM Item WHERE field_one <= 0",
+        Ok(select!(field_one I8; -2; -4))
     );
 
     test!(
-        Ok(select!(sub I8; 2; -4; 0; 0)),
-        "SELECT field_one - field_two AS sub FROM Item;"
+        "SELECT field_one + field_two AS plus FROM Item;",
+        Ok(select!(plus I8; 0; 0; 6; -8))
     );
 
     test!(
-        Ok(select!(mul I8; -1; -4; 9; 16)),
-        "SELECT field_one * field_two AS mul FROM Item;"
+        "SELECT field_one - field_two AS sub FROM Item;",
+        Ok(select!(sub I8; 2; -4; 0; 0))
     );
 
     test!(
-        Ok(select!(div I8; -1; -1; 1; 1)),
-        "SELECT field_one / field_two AS div FROM Item;"
+        "SELECT field_one * field_two AS mul FROM Item;",
+        Ok(select!(mul I8; -1; -4; 9; 16))
     );
 
     test!(
-        Ok(select!(modulo I8; 0; 0; 0; 0)),
-        "SELECT field_one % field_two AS modulo FROM Item;"
+        "SELECT field_one / field_two AS div FROM Item;",
+        Ok(select!(div I8; -1; -1; 1; 1))
+    );
+
+    test!(
+        "SELECT field_one % field_two AS modulo FROM Item;",
+        Ok(select!(modulo I8; 0; 0; 0; 0))
     );
 
     run!("DELETE FROM Item");

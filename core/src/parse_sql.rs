@@ -3,8 +3,8 @@ use {
     sqlparser::{
         ast::{
             Assignment as SqlAssignment, ColumnDef as SqlColumnDef, DataType as SqlDataType,
-            Expr as SqlExpr, OrderByExpr, Query as SqlQuery, SelectItem as SqlSelectItem,
-            Statement as SqlStatement,
+            Expr as SqlExpr, Ident as SqlIdent, OrderByExpr as SqlOrderByExpr, Query as SqlQuery,
+            SelectItem as SqlSelectItem, Statement as SqlStatement,
         },
         dialect::GenericDialect,
         parser::Parser,
@@ -78,13 +78,25 @@ pub fn parse_interval<Sql: AsRef<str>>(sql_interval: Sql) -> Result<SqlExpr> {
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
 
-pub fn parse_order_by_expr<Sql: AsRef<str>>(sql_order_by_expr: Sql) -> Result<OrderByExpr> {
+pub fn parse_order_by_expr<Sql: AsRef<str>>(sql_order_by_expr: Sql) -> Result<SqlOrderByExpr> {
     let tokens = Tokenizer::new(&DIALECT, sql_order_by_expr.as_ref())
         .tokenize()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 
     Parser::new(tokens, &DIALECT)
         .parse_order_by_expr()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_order_by_exprs<Sql: AsRef<str>>(
+    sql_orderby_exprs: Sql,
+) -> Result<Vec<SqlOrderByExpr>> {
+    let tokens = Tokenizer::new(&DIALECT, sql_orderby_exprs.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_comma_separated(Parser::parse_order_by_expr)
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
 
@@ -115,5 +127,15 @@ pub fn parse_sql_assignment<Sql: AsRef<str>>(sql_assignment: Sql) -> Result<SqlA
 
     Parser::new(tokens, &DIALECT)
         .parse_assignment()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))
+}
+
+pub fn parse_identifiers<Sql: AsRef<str>>(sql_identifiers: Sql) -> Result<Vec<SqlIdent>> {
+    let tokens = Tokenizer::new(&DIALECT, sql_identifiers.as_ref())
+        .tokenize()
+        .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
+
+    Parser::new(tokens, &DIALECT)
+        .parse_identifiers()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }

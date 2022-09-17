@@ -78,6 +78,9 @@ pub enum TranslateError {
     #[error("unsupported ast literal: {0}")]
     UnsupportedAstLiteral(String),
 
+    #[error("unsupported interval value: {0}")]
+    UnsupportedIntervalValue(String),
+
     #[error("unreachable unary operator: {0}")]
     UnreachableUnaryOperator(String),
 

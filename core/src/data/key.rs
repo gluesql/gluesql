@@ -29,6 +29,7 @@ pub enum Key {
     I32(i32),
     I64(i64),
     I128(i128),
+    U8(u8),
     Bool(bool),
     Str(String),
     Bytea(Vec<u8>),
@@ -48,6 +49,7 @@ impl PartialOrd for Key {
             (Key::I16(l), Key::I16(r)) => Some(l.cmp(r)),
             (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
             (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
+            (Key::U8(l), Key::U8(r)) => Some(l.cmp(r)),
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
             (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
             (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
@@ -75,6 +77,7 @@ impl TryFrom<Value> for Key {
             I32(v) => Ok(Key::I32(v)),
             I64(v) => Ok(Key::I64(v)),
             I128(v) => Ok(Key::I128(v)),
+            U8(v) => Ok(Key::U8(v)),
             Str(v) => Ok(Key::Str(v)),
             Bytea(v) => Ok(Key::Bytea(v)),
             Date(v) => Ok(Key::Date(v)),
@@ -158,6 +161,11 @@ impl Key {
                     .copied()
                     .collect::<Vec<_>>()
             }
+            Key::U8(v) => [VALUE, 1]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
             Key::Str(v) => [VALUE]
                 .iter()
                 .chain(v.as_bytes().iter())
@@ -243,10 +251,12 @@ mod tests {
     fn evaluated_to_key() {
         // Some
         assert_eq!(convert("True"), Ok(Key::Bool(true)));
-        assert_eq!(convert("CAST(11 AS INT(8))"), Ok(Key::I8(11)));
-        assert_eq!(convert("CAST(11 AS INT(16))"), Ok(Key::I16(11)));
-        assert_eq!(convert("CAST(11 AS INT(32))"), Ok(Key::I32(11)));
+        assert_eq!(convert("CAST(11 AS INT8)"), Ok(Key::I8(11)));
+        assert_eq!(convert("CAST(11 AS INT16)"), Ok(Key::I16(11)));
+        assert_eq!(convert("CAST(11 AS INT32)"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
+        assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
+
         assert_eq!(
             convert(r#""Hello World""#),
             Ok(Key::Str("Hello World".to_owned()))
@@ -390,6 +400,15 @@ mod tests {
         assert_eq!(cmp(&n4, &n5), Ordering::Less);
         assert_eq!(cmp(&n6, &n4), Ordering::Greater);
         assert_eq!(cmp(&n4, &null), Ordering::Less);
+
+        let n1 = U8(0).to_cmp_be_bytes();
+        let n2 = U8(3).to_cmp_be_bytes();
+        let n3 = U8(20).to_cmp_be_bytes();
+        let n4 = U8(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
 
         let n1 = Str("a".to_owned()).to_cmp_be_bytes();
         let n2 = Str("ab".to_owned()).to_cmp_be_bytes();

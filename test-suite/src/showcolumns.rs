@@ -7,7 +7,7 @@ test_case!(showcolumns, async move {
     run!(
         "
         CREATE TABLE mytable (
-            id8 INT(8),
+            id8 INT8,
             id INTEGER,
             rate FLOAT,
             dec  decimal,
@@ -25,6 +25,7 @@ test_case!(showcolumns, async move {
     );
 
     test!(
+        r#"Show columns from mytable"#,
         Ok(Payload::ShowColumns(vec![
             ("id8".to_owned(), DataType::Int8),
             ("id".to_owned(), DataType::Int),
@@ -39,12 +40,11 @@ test_case!(showcolumns, async move {
             ("uid".to_owned(), DataType::Uuid),
             ("hash".to_owned(), DataType::Map),
             ("glist".to_owned(), DataType::List)
-        ])),
-        r#"Show columns from mytable"#
+        ]))
     );
 
     test!(
-        Err(ExecuteError::TableNotFound("mytable1".to_owned()).into()),
-        r#"Show columns from mytable1"#
+        r#"Show columns from mytable1"#,
+        Err(ExecuteError::TableNotFound("mytable1".to_owned()).into())
     );
 });

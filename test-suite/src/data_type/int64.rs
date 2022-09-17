@@ -18,36 +18,37 @@ test_case!(int64, async move {
     let parse_i64 = |text: &str| -> i64 { text.parse().unwrap() };
 
     test!(
-        Err(ValueError::FailedToParseNumber.into()),
         &format!(
             "INSERT INTO Item VALUES ({:?}, {:?})",
             i64::MAX as i128 + 1,
             i64::MIN as i128 - 1
-        )
+        ),
+        Err(ValueError::FailedToParseNumber.into())
     );
 
     // cast i64::MAX+1
     test!(
+        &format!("select cast({} as INT) from Item", i64::MAX as i128 + 1),
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int,
             (i64::MAX as i128 + 1).to_string()
         )
-        .into()),
-        &format!("select cast({} as INT) from Item", i64::MAX as i128 + 1)
+        .into())
     );
 
     // cast i64::MIN-1
     test!(
+        &format!("select cast({} as INT) from Item", i64::MIN as i128 - 1),
         Err(ValueError::LiteralCastToDataTypeFailed(
             DataType::Int,
             (i64::MIN as i128 - 1).to_string()
         )
-        .into()),
-        &format!("select cast({} as INT) from Item", i64::MIN as i128 - 1)
+        .into())
     );
 
     // lets try some valid SQL
     test!(
+        "SELECT field_one, field_two FROM Item",
         Ok(select!(
             field_one          | field_two
             I64                |    I64;
@@ -55,69 +56,68 @@ test_case!(int64, async move {
             parse_i64("-2")    2;
             3                  3;
             parse_i64("-4")    parse_i64("-4")
-        )),
-        "SELECT field_one, field_two FROM Item"
+        ))
     );
 
     test!(
-        Ok(select!(field_one I64; 1)),
-        "SELECT field_one FROM Item WHERE field_one = 1"
+        "SELECT field_one FROM Item WHERE field_one = 1",
+        Ok(select!(field_one I64; 1))
     );
 
     test!(
-        Ok(select!(field_one I64; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one > 0"
+        "SELECT field_one FROM Item WHERE field_one > 0",
+        Ok(select!(field_one I64; 1; 3))
     );
 
     test!(
-        Ok(select!(field_one I64; 1; 3)),
-        "SELECT field_one FROM Item WHERE field_one >= 0"
+        "SELECT field_one FROM Item WHERE field_one >= 0",
+        Ok(select!(field_one I64; 1; 3))
     );
 
     test!(
-        Ok(select!(field_one I64; -2)),
-        "SELECT field_one FROM Item WHERE field_one = -2"
+        "SELECT field_one FROM Item WHERE field_one = -2",
+        Ok(select!(field_one I64; -2))
     );
 
     test!(
-        Ok(select!(field_one I64; -2; -4)),
-        "SELECT field_one FROM Item WHERE field_one < 0"
+        "SELECT field_one FROM Item WHERE field_one < 0",
+        Ok(select!(field_one I64; -2; -4))
     );
 
     test!(
-        Ok(select!(field_one I64; -2; -4)),
-        "SELECT field_one FROM Item WHERE field_one <= 0"
+        "SELECT field_one FROM Item WHERE field_one <= 0",
+        Ok(select!(field_one I64; -2; -4))
     );
 
     test!(
-        Ok(select!(plus I64; 0; 0; 6; -8)),
-        "SELECT field_one + field_two AS plus FROM Item;"
+        "SELECT field_one + field_two AS plus FROM Item;",
+        Ok(select!(plus I64; 0; 0; 6; -8))
     );
 
     test!(
-        Ok(select!(sub I64; 2; -4; 0; 0)),
-        "SELECT field_one - field_two AS sub FROM Item;"
+        "SELECT field_one - field_two AS sub FROM Item;",
+        Ok(select!(sub I64; 2; -4; 0; 0))
     );
 
     test!(
-        Ok(select!(mul I64; -1; -4; 9; 16)),
-        "SELECT field_one * field_two AS mul FROM Item;"
+        "SELECT field_one * field_two AS mul FROM Item;",
+        Ok(select!(mul I64; -1; -4; 9; 16))
     );
 
     test!(
-        Ok(select!(div I64; -1; -1; 1; 1)),
-        "SELECT field_one / field_two AS div FROM Item;"
+        "SELECT field_one / field_two AS div FROM Item;",
+        Ok(select!(div I64; -1; -1; 1; 1))
     );
 
     test!(
-        Ok(select!(modulo I64; 0; 0; 0; 0)),
-        "SELECT field_one % field_two AS modulo FROM Item;"
+        "SELECT field_one % field_two AS modulo FROM Item;",
+        Ok(select!(modulo I64; 0; 0; 0; 0))
     );
 
     // try inserting i64 max and i64 min
     test!(
-        Ok(Payload::Insert(1)),
-        &format!("INSERT INTO Item VALUES ({}, {})", i64::MAX, i64::MIN)
+        &format!("INSERT INTO Item VALUES ({}, {})", i64::MAX, i64::MIN),
+        Ok(Payload::Insert(1))
     );
 
     run!("DELETE FROM Item");

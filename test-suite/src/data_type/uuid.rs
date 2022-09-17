@@ -73,6 +73,6 @@ test_case!(uuid, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

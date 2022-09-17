@@ -8,7 +8,7 @@ use {
     super::{context::FilterContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::Value,
+        data::{Literal, Value},
         result::Result,
         store::GStore,
     },
@@ -22,7 +22,10 @@ use {
     std::{borrow::Cow, rc::Rc},
 };
 
-pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
+pub use {
+    error::ChronoFormatError, error::EvaluateError, evaluated::Evaluated,
+    stateless::evaluate_stateless,
+};
 
 #[async_recursion(?Send)]
 pub async fn evaluate<'a>(
@@ -153,11 +156,43 @@ pub async fn evaluate<'a>(
 
             expr::between(target, *negated, low, high)
         }
-        Expr::Exists(query) => select(storage, query, context)
+        Expr::Like {
+            expr,
+            negated,
+            pattern,
+        } => {
+            let target = eval(expr).await?;
+            let pattern = eval(pattern).await?;
+            let evaluated = target.like(pattern, true)?;
+
+            Ok(match negated {
+                true => Evaluated::from(Value::Bool(
+                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                )),
+                false => evaluated,
+            })
+        }
+        Expr::ILike {
+            expr,
+            negated,
+            pattern,
+        } => {
+            let target = eval(expr).await?;
+            let pattern = eval(pattern).await?;
+            let evaluated = target.like(pattern, false)?;
+
+            Ok(match negated {
+                true => Evaluated::from(Value::Bool(
+                    evaluated == Evaluated::Literal(Literal::Boolean(false)),
+                )),
+                false => evaluated,
+            })
+        }
+        Expr::Exists { subquery, negated } => select(storage, subquery, context)
             .await?
             .try_next()
             .await
-            .map(|v| v.is_some())
+            .map(|v| v.is_some() ^ negated)
             .map(Value::Bool)
             .map(Evaluated::from),
         Expr::IsNull(expr) => {
@@ -359,6 +394,28 @@ async fn evaluate_function<'a>(
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
         Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
+        Function::Format { expr, format } => {
+            let expr = eval(expr).await?;
+            let format = eval(format).await?;
+
+            f::format(name(), expr, format)
+        }
+        Function::ToDate { expr, format } => {
+            let expr = eval(expr).await?;
+            let format = eval(format).await?;
+            f::to_date(name(), expr, format)
+        }
+
+        Function::ToTimestamp { expr, format } => {
+            let expr = eval(expr).await?;
+            let format = eval(format).await?;
+            f::to_timestamp(name(), expr, format)
+        }
+        Function::ToTime { expr, format } => {
+            let expr = eval(expr).await?;
+            let format = eval(format).await?;
+            f::to_time(name(), expr, format)
+        }
     }
     .map(Evaluated::from)
 }
