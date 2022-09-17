@@ -29,11 +29,28 @@ pub struct PrintOption {
 #[derive(Clone)]
 enum Tabular {
     On,
-    Off {
-        colsep: String,
-        colwrap: String,
-        heading: bool,
-    },
+    Off { option: TabularOffOption },
+}
+
+#[derive(Clone)]
+struct TabularOffOption {
+    colsep: String,
+    colwrap: String,
+    heading: bool,
+}
+
+impl TabularOffOption {
+    fn colsep(self, colsep: String) -> Self {
+        Self { colsep, ..self }
+    }
+
+    fn colwrap(self, colwrap: String) -> Self {
+        Self { colwrap, ..self }
+    }
+
+    fn heading(self, heading: bool) -> Self {
+        Self { heading, ..self }
+    }
 }
 
 impl Tabular {
@@ -41,9 +58,12 @@ impl Tabular {
         match self {
             Tabular::On => ("|", "", true),
             Tabular::Off {
-                colsep,
-                colwrap,
-                heading,
+                option:
+                    TabularOffOption {
+                        colsep,
+                        colwrap,
+                        heading,
+                    },
             } => (colsep, colwrap, *heading),
         }
     }
@@ -58,31 +78,15 @@ impl Tabular {
     fn update_option(self, name: &str, value: &str) -> Result<Tabular, CommandError> {
         let result = match self {
             Tabular::On => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
-            Tabular::Off {
-                colsep,
-                colwrap,
-                heading,
-            } => match name {
-                "colsep" => Tabular::Off {
-                    colsep: value.to_string(),
-                    colwrap,
-                    heading,
-                },
-                "colwrap" => Tabular::Off {
-                    colsep,
-                    colwrap: value.into(),
-                    heading,
-                },
-                "heading" => Tabular::Off {
-                    colsep,
-                    colwrap,
-                    heading: bool_from(value.into())?,
-                },
+            Tabular::Off { option } => match name {
+                "colsep" => option.colsep(value.into()),
+                "colwrap" => option.colwrap(value.into()),
+                "heading" => option.heading(bool_from(value.into())?),
                 option => return Err(CommandError::WrongOption(option.into())),
             },
         };
 
-        Ok(result)
+        Ok(Tabular::Off { option: result })
     }
 }
 
@@ -106,20 +110,20 @@ impl PrintOption {
         Ok(payload)
     }
 
-    fn set_tabular(&mut self, value: String) -> Result<(), CommandError> {
-        match value.to_uppercase().as_ref() {
-            "ON" => self.tabular = Tabular::On,
-            "OFF" => {
-                self.tabular = Tabular::Off {
+    fn set_tabular(self, value: String) -> Result<Self, CommandError> {
+        let tabular = match value.to_uppercase().as_ref() {
+            "ON" => Tabular::On,
+            "OFF" => Tabular::Off {
+                option: TabularOffOption {
                     colsep: "|".into(),
                     colwrap: "".into(),
                     heading: true,
-                }
-            }
+                },
+            },
             option => return Err(CommandError::WrongOption(option.into())),
-        }
+        };
 
-        Ok(())
+        Ok(Self { tabular })
     }
 }
 
@@ -203,9 +207,12 @@ impl<'a, W: Write> Print<W> {
                     self.write(table)?;
                 }
                 Tabular::Off {
-                    colsep,
-                    colwrap,
-                    heading,
+                    option:
+                        TabularOffOption {
+                            colsep,
+                            colwrap,
+                            heading,
+                        },
                 } => {
                     let labels = labels
                         .iter()
@@ -273,40 +280,31 @@ impl<'a, W: Write> Print<W> {
         self.spool_file = None;
     }
 
-    pub fn set_option(&mut self, name: String, value: String) -> Result<(), CommandError> {
-        match name.to_lowercase().as_str() {
-            "tabular" => self.option.set_tabular(value),
-            "colsep" => {
-                self.option.tabular = self
+    pub fn set_option(self, name: String, value: String) -> Result<Self, CommandError> {
+        let option = match name.to_lowercase().as_str() {
+            "tabular" => self.option.set_tabular(value)?,
+            "colsep" => PrintOption {
+                tabular: self
                     .option
                     .tabular
-                    .clone()
-                    .update_option(name.as_ref(), value.as_ref())?;
-
-                Ok(())
-            }
-            "colwrap" => {
-                self.option.tabular = self
+                    .update_option(name.as_ref(), value.as_ref())?,
+            },
+            "colwrap" => PrintOption {
+                tabular: self
                     .option
                     .tabular
-                    .clone()
-                    .update_option(name.as_ref(), value.as_ref())?;
-
-                Ok(())
-            }
-            "heading" => {
-                self.option.tabular = self
+                    .update_option(name.as_ref(), value.as_ref())?,
+            },
+            "heading" => PrintOption {
+                tabular: self
                     .option
                     .tabular
-                    .clone()
-                    .update_option(name.as_ref(), value.as_ref())?;
-
-                Ok(())
-            }
+                    .update_option(name.as_ref(), value.as_ref())?,
+            },
             _ => return Err(CommandError::WrongOption(name)),
-        }?;
+        };
 
-        Ok(())
+        Ok(Self { option, ..self })
     }
 
     pub fn show_option(&mut self, name: String) -> Result<(), Box<dyn Error>> {
