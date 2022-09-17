@@ -599,6 +599,7 @@ mod tests {
         test!(Value::I64(1234567890), "1234567890");
         test!(Value::I128(1234567890), "1234567890");
         test!(Value::U8(122), "122");
+        test!(Value::U16(122), "122");
         test!(Value::F64(1234567890.0987), "1234567890.0987");
         test!(Value::Date(date(2021, 11, 20)), "2021-11-20");
         test!(
@@ -644,6 +645,8 @@ mod tests {
         test!(Value::U8(1), Ok(true));
         test!(Value::U8(0), Ok(false));
         test!(Value::U8(2), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U16(0), Ok(false));
+        test!(Value::U16(2), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(1.0), Ok(true));
         test!(Value::F64(0.0), Ok(false));
         test!(Value::Str("true".to_owned()), Ok(true));
@@ -713,6 +716,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
         test!(Value::F64(122.9), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
@@ -753,6 +757,7 @@ mod tests {
         test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::U8(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U16(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
     }
 
@@ -777,6 +782,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
         test!(Value::F64(122.1), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
@@ -833,6 +839,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));
@@ -890,6 +897,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));
@@ -947,6 +955,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.9), Ok(1234567890));
@@ -1004,6 +1013,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
         test!(Value::F64(122.9), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
@@ -1072,6 +1082,7 @@ mod tests {
         test!(Value::I64(122), Ok(122.0));
         test!(Value::I128(122), Ok(122.0));
         test!(Value::U8(122), Ok(122.0));
+        test!(Value::U16(122), Ok(122.0));
         test!(Value::I64(1234567890), Ok(1234567890.0));
         test!(Value::F64(1234567890.1), Ok(1234567890.1));
         test!(Value::Str("1234567890.1".to_owned()), Ok(1234567890.1));
@@ -1131,6 +1142,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));
