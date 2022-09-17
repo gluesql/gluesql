@@ -135,10 +135,30 @@ impl ToSql for OrderByExpr {
 impl ToSql for Values {
     fn to_sql(&self) -> String {
         match self {
-            Values(exprs) => exprs
-                .iter()
-                .map(|expr| expr.iter().map(|item| item.to_sql()).join("."))
-                .join("."),
+            Values(exprs) => {
+                let expr = exprs
+                    .iter()
+                    .map(|expr| {
+                        expr.iter()
+                            .enumerate()
+                            .map(|(index, item)| check_sql(index, item))
+                            .join(", ")
+                    })
+                    .join("");
+
+                fn check_sql(index: usize, item: &Expr) -> String {
+                    let sql = item.to_sql();
+
+                    if sql.is_empty() {
+                        return format!("({}, NULL)", index + 1);
+                    }
+                    return format!("({}, '{}')", index + 1, sql);
+                }
+
+                let mut value = String::from("VALUES ");
+                value.push_str(&expr);
+                value
+            }
         }
     }
 }
@@ -182,7 +202,7 @@ mod tests {
             Expr::Identifier("oh".to_string()),
         ]];
 
-        let actual = "foo.bar.oh".to_string();
+        let actual = "VALUES (1, 'foo'), (2, 'bar'), (3, 'oh')".to_string();
         let expected = Values(value).to_sql();
 
         assert_eq!(actual, expected);
