@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use {
     super::{Expr, IndexOperator, ObjectName},
     crate::ast::ToSql,
@@ -117,6 +119,20 @@ pub struct OrderByExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Values(pub Vec<Vec<Expr>>);
 
+impl ToSql for Query {
+    fn to_sql(&self) -> String {
+        let Query {
+            body: _body,
+            order_by,
+            limit: _limit,
+            offset: _offset,
+        } = self;
+        let order_by = order_by.iter().map(|expr| expr.to_sql()).join(" ");
+
+        format!("(..set_expr..) {}, (..limit..), (..offset..)", order_by)
+    }
+}
+
 impl ToSql for SelectItem {
     fn to_sql(&self) -> String {
         match self {
@@ -154,7 +170,26 @@ impl ToSql for OrderByExpr {
 #[cfg(test)]
 mod tests {
 
-    use crate::ast::{Expr, IndexItem, ObjectName, OrderByExpr, SelectItem, TableAlias, ToSql};
+    use crate::ast::{
+        Expr, ObjectName, OrderByExpr, Query, SelectItem, SetExpr, TableAlias, ToSql, Values,
+    };
+
+    #[test]
+    fn to_sql_query() {
+        let order_by = vec![OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: Some(true),
+        }];
+        let actual = "(..set_expr..) foo ASC, (..limit..), (..offset..)".to_string();
+        let expected = Query {
+            body: SetExpr::Values(Values(vec![vec![Expr::Identifier("name".to_string())]])),
+            order_by,
+            limit: Some(Expr::Identifier("name".to_string())),
+            offset: Some(Expr::Identifier("name".to_string())),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn to_sql_select_item() {
