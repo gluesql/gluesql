@@ -354,6 +354,7 @@ impl Value {
             | (DataType::Int, Literal::Null)
             | (DataType::Int128, Literal::Null)
             | (DataType::Uint8, Literal::Null)
+            | (DataType::Uint16, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Decimal, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
