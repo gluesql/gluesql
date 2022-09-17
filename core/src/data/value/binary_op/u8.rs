@@ -678,6 +678,15 @@ mod tests {
             .into())
         );
         assert_eq!(
+            u8::MIN.try_subtract(&U16(u16::MAX)),
+            Err(ValueError::BinaryOperationOverflow {
+                lhs: U8(u8::MIN),
+                rhs: U16(u16::MAX),
+                operator: (NumericBinaryOperator::Subtract)
+            }
+            .into())
+        );
+        assert_eq!(
             u8::MAX.try_subtract(&Decimal(Decimal::MIN)),
             Err(ValueError::BinaryOperationOverflow {
                 lhs: U8(u8::MAX),
