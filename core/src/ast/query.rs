@@ -117,6 +117,27 @@ pub struct OrderByExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Values(pub Vec<Vec<Expr>>);
 
+impl ToSql for SelectItem {
+    fn to_sql(&self) -> String {
+        match self {
+            SelectItem::Expr { expr, label } => {
+                let expr = expr.to_sql();
+                format!("{} AS {}", expr, label)
+            }
+            SelectItem::QualifiedWildcard(obj) => format!("{}.*", obj.to_sql()),
+            SelectItem::Wildcard => "*".to_string(),
+        }
+    }
+}
+
+impl ToSql for TableAlias {
+    fn to_sql(&self) -> String {
+        let TableAlias { name, .. } = self;
+
+        format!("AS {}", name)
+    }
+}
+
 impl ToSql for OrderByExpr {
     fn to_sql(&self) -> String {
         let OrderByExpr { expr, asc } = self;
@@ -132,7 +153,38 @@ impl ToSql for OrderByExpr {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Expr, OrderByExpr, ToSql};
+
+    use crate::ast::{Expr, IndexItem, ObjectName, OrderByExpr, SelectItem, TableAlias, ToSql};
+
+    #[test]
+    fn to_sql_select_item() {
+        let actual = "name AS n".to_string();
+        let expected = SelectItem::Expr {
+            expr: Expr::Identifier("name".to_string()),
+            label: "n".to_string(),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "foo.*".to_string();
+        let expected = SelectItem::QualifiedWildcard(ObjectName(vec!["foo".to_string()])).to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "*".to_string();
+        let expected = SelectItem::Wildcard.to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_table_alias() {
+        let actual = "AS F";
+        let expected = TableAlias {
+            name: "F".to_string(),
+            columns: Vec::new(),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn to_sql_order_by_expr() {
