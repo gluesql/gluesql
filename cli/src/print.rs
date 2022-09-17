@@ -21,18 +21,15 @@ pub struct Print<W: Write> {
     option: PrintOption,
 }
 
-#[derive(Clone)]
 pub struct PrintOption {
     tabular: Tabular,
 }
 
-#[derive(Clone)]
 enum Tabular {
     On,
     Off { option: TabularOffOption },
 }
 
-#[derive(Clone)]
 struct TabularOffOption {
     colsep: String,
     colwrap: String,
@@ -40,16 +37,16 @@ struct TabularOffOption {
 }
 
 impl TabularOffOption {
-    fn colsep(self, colsep: String) -> Self {
-        Self { colsep, ..self }
+    fn colsep(&mut self, colsep: String) {
+        self.colsep = colsep;
     }
 
-    fn colwrap(self, colwrap: String) -> Self {
-        Self { colwrap, ..self }
+    fn colwrap(&mut self, colwrap: String) {
+        self.colwrap = colwrap;
     }
 
-    fn heading(self, heading: bool) -> Self {
-        Self { heading, ..self }
+    fn heading(&mut self, heading: bool) {
+        self.heading = heading;
     }
 }
 
@@ -75,18 +72,18 @@ impl Tabular {
         }
     }
 
-    fn update_option(self, name: &str, value: &str) -> Result<Tabular, CommandError> {
-        let result = match self {
+    fn update_option(&mut self, name: String, value: String) -> Result<(), CommandError> {
+        match self {
             Tabular::On => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
-            Tabular::Off { option } => match name {
-                "colsep" => option.colsep(value.into()),
-                "colwrap" => option.colwrap(value.into()),
-                "heading" => option.heading(bool_from(value.into())?),
-                option => return Err(CommandError::WrongOption(option.into())),
+            Tabular::Off { option } => match name.as_ref() {
+                "colsep" => option.colsep(value),
+                "colwrap" => option.colwrap(value),
+                "heading" => option.heading(bool_from(value)?),
+                _ => return Err(CommandError::WrongOption(name)),
             },
         };
 
-        Ok(Tabular::Off { option: result })
+        Ok(())
     }
 }
 
@@ -110,7 +107,7 @@ impl PrintOption {
         Ok(payload)
     }
 
-    fn set_tabular(self, value: String) -> Result<Self, CommandError> {
+    fn set_tabular(&mut self, value: String) -> Result<(), CommandError> {
         let tabular = match value.to_uppercase().as_ref() {
             "ON" => Tabular::On,
             "OFF" => Tabular::Off {
@@ -122,8 +119,9 @@ impl PrintOption {
             },
             option => return Err(CommandError::WrongOption(option.into())),
         };
+        self.tabular = tabular;
 
-        Ok(Self { tabular })
+        Ok(())
     }
 }
 
@@ -280,31 +278,16 @@ impl<'a, W: Write> Print<W> {
         self.spool_file = None;
     }
 
-    pub fn set_option(self, name: String, value: String) -> Result<Self, CommandError> {
-        let option = match name.to_lowercase().as_str() {
+    pub fn set_option(&mut self, name: String, value: String) -> Result<(), CommandError> {
+        match name.to_lowercase().as_str() {
             "tabular" => self.option.set_tabular(value)?,
-            "colsep" => PrintOption {
-                tabular: self
-                    .option
-                    .tabular
-                    .update_option(name.as_ref(), value.as_ref())?,
-            },
-            "colwrap" => PrintOption {
-                tabular: self
-                    .option
-                    .tabular
-                    .update_option(name.as_ref(), value.as_ref())?,
-            },
-            "heading" => PrintOption {
-                tabular: self
-                    .option
-                    .tabular
-                    .update_option(name.as_ref(), value.as_ref())?,
-            },
+            "colsep" => self.option.tabular.update_option(name, value)?,
+            "colwrap" => self.option.tabular.update_option(name, value)?,
+            "heading" => self.option.tabular.update_option(name, value)?,
             _ => return Err(CommandError::WrongOption(name)),
         };
 
-        Ok(Self { option, ..self })
+        Ok(())
     }
 
     pub fn show_option(&mut self, name: String) -> Result<(), Box<dyn Error>> {
