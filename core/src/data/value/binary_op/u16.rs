@@ -20,7 +20,7 @@ impl PartialEq<Value> for u16 {
             I64(rhs) => (*rhs as u16) == lhs,
             I128(rhs) => (*rhs as u16) == lhs,
             U8(rhs) => (*rhs as u16) == lhs,
-            U16(rhs) => self == other,
+            U16(rhs) => *rhs == lhs,
             F64(rhs) => ((lhs as f64) - rhs).abs() < f64::EPSILON,
             Decimal(rhs) => Decimal::from(lhs) == *rhs,
             _ => false,
@@ -37,7 +37,7 @@ impl PartialOrd<Value> for u16 {
             I32(rhs) => lhs.partial_cmp(&(*rhs as u16)),
             I64(rhs) => lhs.partial_cmp(&(*rhs as u16)),
             I128(rhs) => lhs.partial_cmp(&(*rhs as u16)),
-            U8(rhs) => self.partial_cmp(&(*rhs as i16)),
+            U8(rhs) => self.partial_cmp(&(*rhs as u16)),
             U16(rhs) => self.partial_cmp(rhs),
             F64(rhs) => (*self as f64).partial_cmp(rhs),
             Decimal(rhs) => Decimal::from(*self).partial_cmp(rhs),
@@ -90,7 +90,7 @@ impl TryBinaryOperator for u16 {
                 .checked_add(rhs as u16)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -101,7 +101,7 @@ impl TryBinaryOperator for u16 {
                 .checked_add(rhs as u16)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -112,7 +112,7 @@ impl TryBinaryOperator for u16 {
                 .checked_add(rhs as u16)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: U8(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
@@ -124,7 +124,7 @@ impl TryBinaryOperator for u16 {
             Decimal(rhs) => Ok(Decimal(Decimal::from(lhs) + rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I16(lhs),
+                lhs: U16(lhs),
                 operator: NumericBinaryOperator::Add,
                 rhs: rhs.clone(),
             }
@@ -208,7 +208,7 @@ impl TryBinaryOperator for u16 {
                 .checked_sub(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: Decimal(rhs),
                         operator: NumericBinaryOperator::Subtract,
                     }
@@ -217,7 +217,7 @@ impl TryBinaryOperator for u16 {
                 .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I16(lhs),
+                lhs: U16(lhs),
                 operator: NumericBinaryOperator::Subtract,
                 rhs: rhs.clone(),
             }
@@ -295,13 +295,13 @@ impl TryBinaryOperator for u16 {
                     .into()
                 })
                 .map(U16),
-            U16(rhs) => Ok(I64(lhs * rhs)),
+            U16(rhs) => Ok(U16(lhs * rhs)),
             F64(rhs) => Ok(F64(lhs as f64 * rhs)),
             Decimal(rhs) => Decimal::from(lhs)
                 .checked_mul(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: Decimal(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
@@ -311,7 +311,7 @@ impl TryBinaryOperator for u16 {
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I16(lhs),
+                lhs: U16(lhs),
                 operator: NumericBinaryOperator::Multiply,
                 rhs: rhs.clone(),
             }
@@ -360,7 +360,7 @@ impl TryBinaryOperator for u16 {
                 .checked_div(rhs as u16)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: I64(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -371,7 +371,7 @@ impl TryBinaryOperator for u16 {
                 .checked_div(rhs as u16)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: I128(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -405,7 +405,7 @@ impl TryBinaryOperator for u16 {
                 .checked_div(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: Decimal(rhs),
                         operator: NumericBinaryOperator::Divide,
                     }
@@ -414,7 +414,7 @@ impl TryBinaryOperator for u16 {
                 .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I16(lhs),
+                lhs: U16(lhs),
                 operator: NumericBinaryOperator::Divide,
                 rhs: rhs.clone(),
             }
@@ -508,7 +508,7 @@ impl TryBinaryOperator for u16 {
                 .checked_rem(rhs)
                 .ok_or_else(|| {
                     ValueError::BinaryOperationOverflow {
-                        lhs: I16(lhs),
+                        lhs: U16(lhs),
                         rhs: Decimal(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
@@ -517,7 +517,7 @@ impl TryBinaryOperator for u16 {
                 .map(Decimal),
             Null => Ok(Null),
             _ => Err(ValueError::NonNumericMathOperation {
-                lhs: I16(lhs),
+                lhs: U16(lhs),
                 operator: NumericBinaryOperator::Modulo,
                 rhs: rhs.clone(),
             }

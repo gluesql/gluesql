@@ -145,13 +145,7 @@ impl Mul<Interval> for u16 {
         rhs * self
     }
 }
-impl Mul<Interval> for u16 {
-    type Output = Interval;
 
-    fn mul(self, rhs: Interval) -> Interval {
-        rhs * self
-    }
-}
 impl Mul<Interval> for f64 {
     type Output = Interval;
 
