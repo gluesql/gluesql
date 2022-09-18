@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use crate::print::bool_from;
 
 use {
@@ -15,7 +17,7 @@ pub enum Command {
     SpoolOn(String),
     SpoolOff,
     Set(SetOption),
-    Show(String),
+    Show(ShowOption),
 }
 
 #[derive(ThisError, Debug, PartialEq)]
@@ -44,7 +46,7 @@ pub enum SetOption {
 
 impl SetOption {
     fn parse(key: &str, value: String, option: &PrintOption) -> Result<Self, CommandError> {
-        let key = match (key.to_lowercase().as_str(), &option.tabular) {
+        let set_option = match (key.to_lowercase().as_str(), &option.tabular) {
             ("tabular", _) => Self::Tabular(bool_from(value)?),
             ("colsep", Tabular::Off { .. }) => Self::Colsep(value),
             ("colwrap", Tabular::Off { .. }) => Self::Colwrap(value),
@@ -56,10 +58,45 @@ impl SetOption {
             _ => return Err(CommandError::WrongOption(key.into())),
         };
 
-        Ok(key)
+        Ok(set_option)
     }
 }
 
+#[derive(Eq, Debug, PartialEq)]
+pub enum ShowOption {
+    Tabular,
+    Colsep,
+    Colwrap,
+    Heading,
+    All,
+}
+
+impl Display for ShowOption {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ShowOption::Tabular => write!(f, "sadf"),
+            ShowOption::Colsep => todo!(),
+            ShowOption::Colwrap => todo!(),
+            ShowOption::Heading => todo!(),
+            ShowOption::All => todo!(),
+        }
+        // write!(f, "({}, {})", self.x, self.y)
+    }
+}
+impl ShowOption {
+    fn parse(key: &str) -> Result<Self, CommandError> {
+        let show_option = match key.to_lowercase().as_str() {
+            "tabular" => Self::Tabular,
+            "colsep" => Self::Colsep,
+            "colwrap" => Self::Colwrap,
+            "heading" => Self::Heading,
+            "all" => Self::All,
+            _ => return Err(CommandError::WrongOption(key.into())),
+        };
+
+        Ok(show_option)
+    }
+}
 impl Command {
     pub fn parse(line: &str, option: &PrintOption) -> Result<Self, CommandError> {
         let line = line.trim_start().trim_end_matches(|c| c == ' ' || c == ';');
@@ -92,7 +129,7 @@ impl Command {
                     (None, None) => Err(CommandError::LackOfOption),
                 },
                 ".show" => match params.get(1) {
-                    Some(option) => Ok(Self::Show(option.to_string())),
+                    Some(key) => Ok(Self::Show(ShowOption::parse(key)?)),
                     None => Err(CommandError::LackOfOption),
                 },
 

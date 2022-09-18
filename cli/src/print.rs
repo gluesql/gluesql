@@ -1,4 +1,4 @@
-use crate::command::SetOption;
+use crate::command::{SetOption, ShowOption};
 
 use {
     crate::command::CommandError,
@@ -294,9 +294,32 @@ impl<'a, W: Write> Print<W> {
         };
     }
 
-    pub fn show_option(&mut self, name: String) -> Result<(), Box<dyn Error>> {
-        let payload = self.option.to_show(name);
-        self.write(payload?)?;
+    pub fn show_option(&mut self, option: ShowOption) -> IOResult<()> {
+        todo!();
+        // let payload = self.option.to_show(name);
+        // let payload = match option {
+        //     ShowOption::Tabular => todo!(),
+        //     ShowOption::Colsep => todo!(),
+        //     ShowOption::Colwrap => todo!(),
+        //     ShowOption::Heading => todo!(),
+        //     ShowOption::All => todo!(),
+        // };
+        // let payload = match name.to_lowercase().as_str() {
+        //     "colsep" => format!("colsep \"{}\"", self.tabular.get_option().0),
+        //     "colwrap" => format!("colwrap \"{}\"", self.tabular.get_option().1),
+        //     "tabular" => format!("tabular {}", &self.tabular.get_string()),
+        //     "heading" => format!("heading {}", string_from(&self.tabular.get_option().2)),
+        //     "all" => format!(
+        //         "{}\n{}\n{}\n{}",
+        //         self.to_show("colsep".into())?,
+        //         self.to_show("colwrap".into())?,
+        //         self.to_show("tabular".into())?,
+        //         self.to_show("heading".into())?
+        //     ),
+        //     option => return Err(CommandError::WrongOption(option.into())),
+        // };
+
+        // self.write(payload)?;
 
         Ok(())
     }
