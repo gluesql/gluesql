@@ -148,5 +148,17 @@ mod tests {
         );
         assert_eq!(Ok(Command::SpoolOff), parse(".spool off"));
         assert_eq!(Err(CommandError::LackOfFile), parse(".spool"));
+        assert_eq!(
+            Err(CommandError::WrongOption("run .set tabular OFF".into())),
+            parse(".set colsep ,")
+        );
+        assert_eq!(
+            Err(CommandError::WrongOption("run .set tabular OFF".into())),
+            parse(".set colwrap '")
+        );
+        assert_eq!(
+            Err(CommandError::WrongOption("run .set tabular OFF".into())),
+            parse(".set heading off")
+        );
     }
 }
