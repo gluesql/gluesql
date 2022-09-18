@@ -195,7 +195,7 @@ impl<'a, W: Write> Print<W> {
 
     pub fn help(&mut self) -> IOResult<()> {
         const HEADER: [&str; 2] = ["command", "description"];
-        const CONTENT: [[&str; 2]; 7] = [
+        const CONTENT: [[&str; 2]; 9] = [
             [".help", "show help"],
             [".quit", "quit program"],
             [".tables", "show table names"],
@@ -203,6 +203,8 @@ impl<'a, W: Write> Print<W> {
             [".version", "show version"],
             [".execute FILE", "execute SQL from a file"],
             [".spool FILE|off", "spool to file or off"],
+            [".show OPTION", "show print option eg).show all"],
+            [".set OPTION", "set print option eg).set tabular off"],
         ];
 
         let mut table = self.get_table(HEADER);
@@ -273,15 +275,17 @@ mod tests {
             String::from_utf8(print.output).unwrap()
         };
         let expected = "
-| command         | description             |
-|-----------------|-------------------------|
-| .help           | show help               |
-| .quit           | quit program            |
-| .tables         | show table names        |
-| .columns TABLE  | show columns from TABLE |
-| .version        | show version            |
-| .execute FILE   | execute SQL from a file |
-| .spool FILE|off | spool to file or off    |";
+| command         | description                          |
+|-----------------|--------------------------------------|
+| .help           | show help                            |
+| .quit           | quit program                         |
+| .tables         | show table names                     |
+| .columns TABLE  | show columns from TABLE              |
+| .version        | show version                         |
+| .execute FILE   | execute SQL from a file              |
+| .spool FILE|off | spool to file or off                 |
+| .show OPTION    | show print option eg).show all       |
+| .set OPTION     | set print option eg).set tabular off |";
 
         assert_eq!(
             actual.as_str().trim_matches('\n'),
