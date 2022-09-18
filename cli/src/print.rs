@@ -24,7 +24,52 @@ pub struct Print<W: Write> {
 }
 
 pub struct PrintOption {
-    pub tabular: Tabular,
+    // pub tabular: Tabular,
+    pub tabular: bool,
+    colsep: String,
+    colwrap: String,
+    heading: bool,
+}
+
+impl PrintOption {
+    fn tabular(&mut self, tabular: bool) {
+        self.tabular = tabular;
+    }
+
+    fn colsep(&mut self, colsep: String) {
+        self.colsep = colsep;
+    }
+
+    fn colwrap(&mut self, colwrap: String) {
+        self.colwrap = colwrap;
+    }
+
+    fn heading(&mut self, heading: bool) {
+        self.heading = heading;
+    }
+
+    // fn fmt_tabular(&self) -> String {
+    //     format!("tabular {}", Self::string_from(&self.tabular))
+    // }
+
+    // fn fmt_colsep(&self) -> String {
+    //     format!("colsep \"{}\"", self.colsep)
+    // }
+
+    // fn fmt_colwrap(&self) -> String {
+    //     format!("colwrap \"{}\"", self.colwrap)
+    // }
+
+    // fn fmt_heading(&self) -> String {
+    //     format!("heading {}", Self::string_from(&self.heading))
+    // }
+
+    fn string_from(value: &bool) -> String {
+        match value {
+            true => "ON".into(),
+            false => "OFF".into(),
+        }
+    }
 }
 
 pub enum Tabular {
@@ -94,51 +139,44 @@ impl Tabular {
 }
 
 impl PrintOption {
-    fn to_show(&self, name: String) -> Result<String, CommandError> {
-        let payload = match name.to_lowercase().as_str() {
-            "colsep" => format!("colsep \"{}\"", self.tabular.get_option().0),
-            "colwrap" => format!("colwrap \"{}\"", self.tabular.get_option().1),
-            "tabular" => format!("tabular {}", &self.tabular.get_string()),
-            "heading" => format!("heading {}", string_from(&self.tabular.get_option().2)),
-            "all" => format!(
+    fn format(&self, option: ShowOption) -> String {
+        match option {
+            ShowOption::Tabular => format!("tabular {}", Self::string_from(&self.tabular)),
+            ShowOption::Colsep => format!("colsep \"{}\"", self.colsep),
+            ShowOption::Colwrap => format!("colwrap \"{}\"", self.colwrap),
+            ShowOption::Heading => format!("heading {}", Self::string_from(&self.heading)),
+            ShowOption::All => format!(
                 "{}\n{}\n{}\n{}",
-                self.to_show("colsep".into())?,
-                self.to_show("colwrap".into())?,
-                self.to_show("tabular".into())?,
-                self.to_show("heading".into())?
+                self.format(ShowOption::Tabular),
+                self.format(ShowOption::Colsep),
+                self.format(ShowOption::Colwrap),
+                self.format(ShowOption::Heading),
             ),
-            option => return Err(CommandError::WrongOption(option.into())),
-        };
-
-        Ok(payload)
+        }
     }
 
     fn set_tabular(&mut self, value: bool) {
-        let tabular = match value {
-            true => Tabular::On,
-            false => Tabular::Off {
-                option: TabularOffOption {
-                    colsep: "|".into(),
-                    colwrap: "".into(),
-                    heading: true,
-                },
-            },
-        };
-        self.tabular = tabular;
-    }
-}
-
-fn string_from(value: &bool) -> &str {
-    match value {
-        true => "ON",
-        false => "OFF",
+        // let tabular = match value {
+        //     true => Tabular::On,
+        //     false => Tabular::Off {
+        //         option: TabularOffOption {
+        //             colsep: "|".into(),
+        //             colwrap: "".into(),
+        //             heading: true,
+        //         },
+        //     },
+        // };
+        // self.tabular = tabular;
     }
 }
 
 impl Default for PrintOption {
     fn default() -> Self {
         Self {
-            tabular: Tabular::On,
+            tabular: true,
+            colsep: "|".into(),
+            colwrap: "'".into(),
+            heading: false,
         }
     }
 }
@@ -195,46 +233,48 @@ impl<'a, W: Write> Print<W> {
                 let table = self.build_table(table);
                 self.write(table)?;
             }
-            Payload::Select { labels, rows } => match &self.option.tabular {
-                Tabular::On => {
-                    let labels = labels.iter().map(AsRef::as_ref);
-                    let mut table = self.get_table(labels);
-                    for row in rows {
-                        let row: Vec<String> = row.iter().map(Into::into).collect();
+            Payload::Select { labels, rows } => {
+                let PrintOption {
+                    tabular,
+                    colsep,
+                    colwrap,
+                    heading,
+                } = &self.option;
 
-                        table.add_record(row);
-                    }
-                    let table = self.build_table(table);
-                    self.write(table)?;
-                }
-                Tabular::Off {
-                    option:
-                        TabularOffOption {
-                            colsep,
-                            colwrap,
-                            heading,
-                        },
-                } => {
-                    let labels = labels
-                        .iter()
-                        .map(|v| format!("{colwrap}{v}{colwrap}"))
-                        .collect::<Vec<_>>()
-                        .join(colsep);
-                    if *heading {
-                        writeln!(self.output, "{}", labels)?;
-                    }
+                match tabular {
+                    true => {
+                        let labels = labels.iter().map(AsRef::as_ref);
+                        let mut table = self.get_table(labels);
+                        for row in rows {
+                            let row: Vec<String> = row.iter().map(Into::into).collect();
 
-                    for row in rows {
-                        let row = row
+                            table.add_record(row);
+                        }
+                        let table = self.build_table(table);
+                        self.write(table)?;
+                    }
+                    false => {
+                        let labels = labels
                             .iter()
-                            .map(Into::into)
-                            .map(|v: String| format!("{colwrap}{v}{colwrap}"))
+                            .map(|v| format!("{colwrap}{v}{colwrap}"))
                             .collect::<Vec<_>>()
-                            .join(colsep);
-                        writeln!(self.output, "{}", row)?
+                            .join(colsep.as_str());
+                        if *heading {
+                            writeln!(self.output, "{}", labels)?;
+                        }
+
+                        for row in rows {
+                            let row = row
+                                .iter()
+                                .map(Into::into)
+                                .map(|v: String| format!("{colwrap}{v}{colwrap}"))
+                                .collect::<Vec<_>>()
+                                .join(colsep.as_str());
+                            writeln!(self.output, "{}", row)?
+                        }
                     }
                 }
-            },
+            }
             _ => {}
         };
 
@@ -282,44 +322,17 @@ impl<'a, W: Write> Print<W> {
     }
 
     pub fn set_option(&mut self, option: SetOption) {
-        match (option, &mut self.option.tabular) {
-            (SetOption::Tabular(value), _) => self.option.set_tabular(value),
-            (SetOption::Colsep(value), Tabular::Off { option }) => option.colsep(value),
-            (SetOption::Colwrap(value), Tabular::Off { option }) => option.colwrap(value),
-            (SetOption::Heading(value), Tabular::Off { option }) => option.heading(value),
-            // (SetOption::Colsep(_), Tabular::On) => todo!(),
-            // (SetOption::Colwrap(_), Tabular::On) => todo!(),
-            // (SetOption::Heading(_), Tabular::On) => todo!(),
-            _ => todo!(),
-        };
+        match option {
+            SetOption::Tabular(value) => self.option.tabular(value),
+            SetOption::Colsep(value) => self.option.colsep(value),
+            SetOption::Colwrap(value) => self.option.colwrap(value),
+            SetOption::Heading(value) => self.option.heading(value),
+        }
     }
 
     pub fn show_option(&mut self, option: ShowOption) -> IOResult<()> {
-        todo!();
-        // let payload = self.option.to_show(name);
-        // let payload = match option {
-        //     ShowOption::Tabular => todo!(),
-        //     ShowOption::Colsep => todo!(),
-        //     ShowOption::Colwrap => todo!(),
-        //     ShowOption::Heading => todo!(),
-        //     ShowOption::All => todo!(),
-        // };
-        // let payload = match name.to_lowercase().as_str() {
-        //     "colsep" => format!("colsep \"{}\"", self.tabular.get_option().0),
-        //     "colwrap" => format!("colwrap \"{}\"", self.tabular.get_option().1),
-        //     "tabular" => format!("tabular {}", &self.tabular.get_string()),
-        //     "heading" => format!("heading {}", string_from(&self.tabular.get_option().2)),
-        //     "all" => format!(
-        //         "{}\n{}\n{}\n{}",
-        //         self.to_show("colsep".into())?,
-        //         self.to_show("colwrap".into())?,
-        //         self.to_show("tabular".into())?,
-        //         self.to_show("heading".into())?
-        //     ),
-        //     option => return Err(CommandError::WrongOption(option.into())),
-        // };
-
-        // self.write(payload)?;
+        let payload = self.option.format(option);
+        self.write(payload)?;
 
         Ok(())
     }
@@ -346,6 +359,8 @@ pub fn bool_from(value: String) -> Result<bool, CommandError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::command::ShowOption;
+
     use {
         super::Print,
         crate::command::SetOption,
@@ -616,10 +631,7 @@ id|title|valid
 
         // ".set colsep ," should set column separator as ","
         print.set_option(SetOption::Colsep(",".into()));
-        assert_eq!(
-            print.option.to_show("colsep".into()).unwrap(),
-            r#"colsep ",""#
-        );
+        assert_eq!(print.option.format(ShowOption::Colsep), r#"colsep ",""#);
 
         test!(
             &Payload::Select {
@@ -648,10 +660,7 @@ id,title,valid
 
         // ".set colwrap '" should set column separator as "'"
         print.set_option(SetOption::Colwrap("'".into()));
-        assert_eq!(
-            print.option.to_show("colwrap".into()).unwrap(),
-            r#"colwrap "'""#
-        );
+        assert_eq!(print.option.format(ShowOption::Colwrap), r#"colwrap "'""#);
         test!(
             &Payload::Select {
                 labels: ["id", "title", "valid"]
@@ -705,14 +714,8 @@ id,title,valid
 
         // ".set tabular ON" should recover default option: colsep("|"), colwrap("")
         print.set_option(SetOption::Tabular(true));
-        assert_eq!(
-            print.option.to_show("colsep".into()).unwrap(),
-            r#"colsep "|""#
-        );
+        assert_eq!(print.option.format(ShowOption::Colsep), r#"colsep "|""#);
 
-        assert_eq!(
-            print.option.to_show("colwrap".into()).unwrap(),
-            r#"colwrap """#
-        );
+        assert_eq!(print.option.format(ShowOption::Colwrap), r#"colwrap """#);
     }
 }

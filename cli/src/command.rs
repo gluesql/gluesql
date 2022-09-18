@@ -2,11 +2,7 @@ use std::fmt::{self, Display};
 
 use crate::print::bool_from;
 
-use {
-    crate::print::{PrintOption, Tabular},
-    std::fmt::Debug,
-    thiserror::Error as ThisError,
-};
+use {crate::print::PrintOption, std::fmt::Debug, thiserror::Error as ThisError};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
@@ -48,12 +44,10 @@ impl SetOption {
     fn parse(key: &str, value: String, option: &PrintOption) -> Result<Self, CommandError> {
         let set_option = match (key.to_lowercase().as_str(), &option.tabular) {
             ("tabular", _) => Self::Tabular(bool_from(value)?),
-            ("colsep", Tabular::Off { .. }) => Self::Colsep(value),
-            ("colwrap", Tabular::Off { .. }) => Self::Colwrap(value),
-            ("heading", Tabular::Off { .. }) => Self::Heading(bool_from(value)?),
-            (_, Tabular::On) => {
-                return Err(CommandError::WrongOption("run .set tabular OFF".into()))
-            }
+            ("colsep", false) => Self::Colsep(value),
+            ("colwrap", false) => Self::Colwrap(value),
+            ("heading", false) => Self::Heading(bool_from(value)?),
+            (_, true) => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
 
             _ => return Err(CommandError::WrongOption(key.into())),
         };
@@ -143,17 +137,19 @@ impl Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        command::CommandError,
-        print::{PrintOption, Tabular},
-    };
+    use crate::{command::CommandError, print::PrintOption};
 
     #[test]
     fn parse_command() {
         use super::Command;
-        let option = PrintOption {
-            tabular: Tabular::On,
-        };
+        let option = PrintOption::default();
+        // {
+        //     tabular: true,
+        //     colsep:
+        //     colwrap: todo!(),
+        //     heading: todo!(),
+        // };
+        // pk
         let parse = |command| Command::parse(command, &option);
 
         assert_eq!(parse(".help"), Ok(Command::Help));
