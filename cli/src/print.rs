@@ -33,6 +33,7 @@ impl PrintOption {
                 self.tabular = tabular;
                 self.colsep("|".into());
                 self.colwrap("".into());
+                self.heading(true);
             }
             false => self.tabular = tabular,
         }
@@ -595,7 +596,9 @@ id,title,valid
 
         // ".set tabular ON" should recover default option: colsep("|"), colwrap("")
         print.set_option(SetOption::Tabular(true));
+        assert_eq!(print.option.format(ShowOption::Tabular), "tabular ON");
         assert_eq!(print.option.format(ShowOption::Colsep), r#"colsep "|""#);
         assert_eq!(print.option.format(ShowOption::Colwrap), r#"colwrap """#);
+        assert_eq!(print.option.format(ShowOption::Heading), "heading ON");
     }
 }
