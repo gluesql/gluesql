@@ -225,6 +225,17 @@ impl<'a, W: Write> Print<W> {
         self.spool_file = None;
     }
 
+    fn get_table<T: IntoIterator<Item = &'a str>>(&self, headers: T) -> Builder {
+        let mut table = Builder::default();
+        table.set_columns(headers);
+
+        table
+    }
+
+    fn build_table(&self, builder: Builder) -> Table {
+        builder.build().with(Style::markdown())
+    }
+
     pub fn set_option(&mut self, option: SetOption) {
         match option {
             SetOption::Tabular(value) => self.option.tabular(value),
@@ -239,17 +250,6 @@ impl<'a, W: Write> Print<W> {
         self.write(payload)?;
 
         Ok(())
-    }
-
-    fn get_table<T: IntoIterator<Item = &'a str>>(&self, headers: T) -> Builder {
-        let mut table = Builder::default();
-        table.set_columns(headers);
-
-        table
-    }
-
-    fn build_table(&self, builder: Builder) -> Table {
-        builder.build().with(Style::markdown())
     }
 }
 
