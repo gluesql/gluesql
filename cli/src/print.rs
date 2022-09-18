@@ -28,7 +28,14 @@ pub struct PrintOption {
 
 impl PrintOption {
     fn tabular(&mut self, tabular: bool) {
-        self.tabular = tabular;
+        match tabular {
+            true => {
+                self.tabular = tabular;
+                self.colsep("|".into());
+                self.colwrap("".into());
+            }
+            false => self.tabular = tabular,
+        }
     }
 
     fn colsep(&mut self, colsep: String) {
@@ -71,8 +78,8 @@ impl Default for PrintOption {
         Self {
             tabular: true,
             colsep: "|".into(),
-            colwrap: "'".into(),
-            heading: false,
+            colwrap: "".into(),
+            heading: true,
         }
     }
 }
@@ -589,7 +596,6 @@ id,title,valid
         // ".set tabular ON" should recover default option: colsep("|"), colwrap("")
         print.set_option(SetOption::Tabular(true));
         assert_eq!(print.option.format(ShowOption::Colsep), r#"colsep "|""#);
-
         assert_eq!(print.option.format(ShowOption::Colwrap), r#"colwrap """#);
     }
 }
