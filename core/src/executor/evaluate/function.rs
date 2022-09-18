@@ -471,3 +471,14 @@ pub fn to_time(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resu
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
+
+pub fn position(name: String, expr: Evaluated<'_>, r#in: Evaluated<'_>) -> Result<Value> {
+    match expr.try_into()? {
+        Value::Str(_) => {
+            let r#in = eval_to_str!(name, r#in);
+            let num = r#in.parse::<i64>().unwrap();
+            Ok(Value::I64(num))
+        }
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
+}

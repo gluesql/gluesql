@@ -411,6 +411,14 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::ToTime { expr, format })))
         }
+        "POSITION" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let r#in = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Position { expr, r#in })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }
