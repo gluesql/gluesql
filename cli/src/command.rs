@@ -119,46 +119,46 @@ mod tests {
         };
         let parse = |command| Command::parse(command, &option);
 
-        assert_eq!(Ok(Command::Help), parse(".help"));
-        assert_eq!(Ok(Command::Help), parse("   .help;"));
-        assert_eq!(Ok(Command::Quit), parse(".quit"));
-        assert_eq!(Ok(Command::Quit), parse(".quit;"));
-        assert_eq!(Ok(Command::Quit), parse(" .quit; "));
+        assert_eq!(parse(".help"), Ok(Command::Help));
+        assert_eq!(parse("   .help;"), Ok(Command::Help));
+        assert_eq!(parse(".quit"), Ok(Command::Quit));
+        assert_eq!(parse(".quit;"), Ok(Command::Quit));
+        assert_eq!(parse(" .quit; "), Ok(Command::Quit));
         assert_eq!(
+            parse(".tables"),
             Ok(Command::Execute("SHOW TABLES".to_owned())),
-            parse(".tables")
         );
         assert_eq!(
+            parse(".columns Foo"),
             Ok(Command::Execute("SHOW COLUMNS FROM Foo".to_owned())),
-            parse(".columns Foo")
         );
-        assert_eq!(Err(CommandError::LackOfTable), parse(".columns"));
+        assert_eq!(parse(".columns"), Err(CommandError::LackOfTable));
         assert_eq!(
-            Ok(Command::Execute("SHOW VERSION".to_owned())),
-            parse(".version")
+            parse(".version"),
+            Ok(Command::Execute("SHOW VERSION".to_owned()))
         );
-        assert_eq!(Err(CommandError::NotSupported), parse(".foo"));
+        assert_eq!(parse(".foo"), Err(CommandError::NotSupported));
         assert_eq!(
+            parse("SELECT * FROM Foo;"),
             Ok(Command::Execute("SELECT * FROM Foo".to_owned())),
-            parse("SELECT * FROM Foo;")
         );
         assert_eq!(
-            Ok(Command::SpoolOn("query.log".into())),
-            parse(".spool query.log")
+            parse(".spool query.log"),
+            Ok(Command::SpoolOn("query.log".into()))
         );
-        assert_eq!(Ok(Command::SpoolOff), parse(".spool off"));
-        assert_eq!(Err(CommandError::LackOfFile), parse(".spool"));
+        assert_eq!(parse(".spool off"), Ok(Command::SpoolOff));
+        assert_eq!(parse(".spool"), Err(CommandError::LackOfFile));
         assert_eq!(
-            Err(CommandError::WrongOption("run .set tabular OFF".into())),
-            parse(".set colsep ,")
-        );
-        assert_eq!(
-            Err(CommandError::WrongOption("run .set tabular OFF".into())),
-            parse(".set colwrap '")
+            parse(".set colsep ,"),
+            Err(CommandError::WrongOption("run .set tabular OFF".into()))
         );
         assert_eq!(
-            Err(CommandError::WrongOption("run .set tabular OFF".into())),
-            parse(".set heading off")
+            parse(".set colwrap '"),
+            Err(CommandError::WrongOption("run .set tabular OFF".into()))
+        );
+        assert_eq!(
+            parse(".set heading off"),
+            Err(CommandError::WrongOption("run .set tabular OFF".into()))
         );
     }
 }
