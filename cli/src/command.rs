@@ -1,7 +1,3 @@
-use std::fmt::{self, Display};
-
-use crate::print::bool_from;
-
 use {crate::print::PrintOption, std::fmt::Debug, thiserror::Error as ThisError};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -42,6 +38,14 @@ pub enum SetOption {
 
 impl SetOption {
     fn parse(key: &str, value: String, option: &PrintOption) -> Result<Self, CommandError> {
+        fn bool_from(value: String) -> Result<bool, CommandError> {
+            match value.to_uppercase().as_str() {
+                "ON" => Ok(true),
+                "OFF" => Ok(false),
+                _ => Err(CommandError::WrongOption(value)),
+            }
+        }
+
         let set_option = match (key.to_lowercase().as_str(), &option.tabular) {
             ("tabular", _) => Self::Tabular(bool_from(value)?),
             ("colsep", false) => Self::Colsep(value),
@@ -65,18 +69,6 @@ pub enum ShowOption {
     All,
 }
 
-impl Display for ShowOption {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ShowOption::Tabular => write!(f, "sadf"),
-            ShowOption::Colsep => todo!(),
-            ShowOption::Colwrap => todo!(),
-            ShowOption::Heading => todo!(),
-            ShowOption::All => todo!(),
-        }
-        // write!(f, "({}, {})", self.x, self.y)
-    }
-}
 impl ShowOption {
     fn parse(key: &str) -> Result<Self, CommandError> {
         let show_option = match key.to_lowercase().as_str() {
@@ -91,6 +83,7 @@ impl ShowOption {
         Ok(show_option)
     }
 }
+
 impl Command {
     pub fn parse(line: &str, option: &PrintOption) -> Result<Self, CommandError> {
         let line = line.trim_start().trim_end_matches(|c| c == ' ' || c == ';');
@@ -143,13 +136,6 @@ mod tests {
     fn parse_command() {
         use super::Command;
         let option = PrintOption::default();
-        // {
-        //     tabular: true,
-        //     colsep:
-        //     colwrap: todo!(),
-        //     heading: todo!(),
-        // };
-        // pk
         let parse = |command| Command::parse(command, &option);
 
         assert_eq!(parse(".help"), Ok(Command::Help));

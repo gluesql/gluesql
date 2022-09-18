@@ -1,18 +1,14 @@
-use crate::command::{SetOption, ShowOption};
-
 use {
-    crate::command::CommandError,
+    crate::command::{SetOption, ShowOption},
     gluesql_core::{
         ast::ToSql,
         prelude::{Payload, PayloadVariable},
     },
     std::{
-        error::Error,
         fmt::Display,
         fs::File,
         io::{Result as IOResult, Write},
         path::Path,
-        result::Result,
     },
     tabled::{builder::Builder, Style, Table},
 };
@@ -24,7 +20,6 @@ pub struct Print<W: Write> {
 }
 
 pub struct PrintOption {
-    // pub tabular: Tabular,
     pub tabular: bool,
     colsep: String,
     colwrap: String,
@@ -48,103 +43,18 @@ impl PrintOption {
         self.heading = heading;
     }
 
-    // fn fmt_tabular(&self) -> String {
-    //     format!("tabular {}", Self::string_from(&self.tabular))
-    // }
-
-    // fn fmt_colsep(&self) -> String {
-    //     format!("colsep \"{}\"", self.colsep)
-    // }
-
-    // fn fmt_colwrap(&self) -> String {
-    //     format!("colwrap \"{}\"", self.colwrap)
-    // }
-
-    // fn fmt_heading(&self) -> String {
-    //     format!("heading {}", Self::string_from(&self.heading))
-    // }
-
-    fn string_from(value: &bool) -> String {
-        match value {
-            true => "ON".into(),
-            false => "OFF".into(),
-        }
-    }
-}
-
-pub enum Tabular {
-    On,
-    Off { option: TabularOffOption },
-}
-
-pub struct TabularOffOption {
-    colsep: String,
-    colwrap: String,
-    heading: bool,
-}
-
-impl TabularOffOption {
-    fn colsep(&mut self, colsep: String) {
-        self.colsep = colsep;
-    }
-
-    fn colwrap(&mut self, colwrap: String) {
-        self.colwrap = colwrap;
-    }
-
-    fn heading(&mut self, heading: bool) {
-        self.heading = heading;
-    }
-}
-
-impl Tabular {
-    fn get_option(&self) -> (&str, &str, bool) {
-        match self {
-            Tabular::On => ("|", "", true),
-            Tabular::Off {
-                option:
-                    TabularOffOption {
-                        colsep,
-                        colwrap,
-                        heading,
-                    },
-            } => (colsep, colwrap, *heading),
-        }
-    }
-
-    fn get_string(&self) -> &str {
-        match self {
-            Tabular::On => "ON",
-            Tabular::Off { .. } => "OFF",
-        }
-    }
-
-    // fn update_option(&mut self, key: SetOption, value: String) {
-    //     match self {
-    //         Tabular::On => todo!(),
-    //         Tabular::Off { option } => {
-    //             match key {
-    //                 SetOption::Colsep(value) => option.colsep(value),
-    //                 SetOption::Colwrap(value) => option.colwrap(value),
-    //                 SetOption::Heading(value) => option.heading(value),
-    //                 SetOption::Tabular(_) => todo!(),
-    //                 // "colsep" => option.colsep(value),
-    //                 // "colwrap" => option.colwrap(value),
-    //                 // "heading" => option.heading(bool_from(value)?),
-    //                 // _ => return Err(CommandError::WrongOption(key)),
-    //             };
-    //         }
-    //     }
-    // }
-}
-
-impl PrintOption {
     fn format(&self, option: ShowOption) -> String {
+        fn string_from(value: &bool) -> String {
+            match value {
+                true => "ON".into(),
+                false => "OFF".into(),
+            }
+        }
         match option {
-            ShowOption::Tabular => format!("tabular {}", Self::string_from(&self.tabular)),
+            ShowOption::Tabular => format!("tabular {}", string_from(&self.tabular)),
             ShowOption::Colsep => format!("colsep \"{}\"", self.colsep),
             ShowOption::Colwrap => format!("colwrap \"{}\"", self.colwrap),
-            ShowOption::Heading => format!("heading {}", Self::string_from(&self.heading)),
+            ShowOption::Heading => format!("heading {}", string_from(&self.heading)),
             ShowOption::All => format!(
                 "{}\n{}\n{}\n{}",
                 self.format(ShowOption::Tabular),
@@ -153,20 +63,6 @@ impl PrintOption {
                 self.format(ShowOption::Heading),
             ),
         }
-    }
-
-    fn set_tabular(&mut self, value: bool) {
-        // let tabular = match value {
-        //     true => Tabular::On,
-        //     false => Tabular::Off {
-        //         option: TabularOffOption {
-        //             colsep: "|".into(),
-        //             colwrap: "".into(),
-        //             heading: true,
-        //         },
-        //     },
-        // };
-        // self.tabular = tabular;
     }
 }
 
@@ -346,14 +242,6 @@ impl<'a, W: Write> Print<W> {
 
     fn build_table(&self, builder: Builder) -> Table {
         builder.build().with(Style::markdown())
-    }
-}
-
-pub fn bool_from(value: String) -> Result<bool, CommandError> {
-    match value.to_uppercase().as_str() {
-        "ON" => Ok(true),
-        "OFF" => Ok(false),
-        _ => Err(CommandError::WrongOption(value)),
     }
 }
 
@@ -587,20 +475,6 @@ mod tests {
 | hash   | MAP       |
 | mylist | LIST      |"
         );
-
-        // To set colsep or colwrap, should run ".set tabular off" first
-        // assert_eq!(
-        //     print.set_option(SetOption::Colsep(",".into())),
-        //     Err(CommandError::WrongOption("run .set tabular OFF".into()))
-        // );
-        // assert_eq!(
-        //     print.set_option("colwrap".into(), "'".into()),
-        //     Err(CommandError::WrongOption("run .set tabular OFF".into()))
-        // );
-        // assert_eq!(
-        //     print.set_option("heading".into(), "OFF".into()),
-        //     Err(CommandError::WrongOption("run .set tabular OFF".into()))
-        // );
 
         // ".set tabular OFF" should print SELECTED payload without tabular option
         print.set_option(SetOption::Tabular(false));
