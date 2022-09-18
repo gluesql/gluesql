@@ -49,7 +49,7 @@ pub use {
 };
 
 /// Available expression builder functions
-pub use expr::{col, date, exists, expr, nested, not_exists, num, text, timestamp, ExprNode};
+pub use expr::{col, date, exists, expr, nested, not_exists, num, text, time, timestamp, ExprNode};
 
 #[cfg(feature = "alter-table")]
 pub use alter_table::{
@@ -66,7 +66,7 @@ pub use expr::{
         abs, acos, asin, atan, ceil, concat, cos, degrees, divide, exp, floor, format, gcd,
         generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad, ltrim, modulo, now,
         pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr,
-        tan, to_date, to_timestamp, upper, FunctionNode,
+        tan, to_date, to_time, to_timestamp, upper, FunctionNode,
     },
 };
 

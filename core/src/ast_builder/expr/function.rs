@@ -108,6 +108,10 @@ pub enum FunctionNode {
         expr: ExprNode,
         format: ExprNode,
     },
+    ToTime {
+        expr: ExprNode,
+        format: ExprNode,
+    },
     Lower(ExprNode),
 }
 
@@ -234,6 +238,11 @@ impl TryFrom<FunctionNode> for Function {
                 let format = format.try_into()?;
                 Ok(Function::ToTimestamp { expr, format })
             }
+            FunctionNode::ToTime { expr, format } => {
+                let expr = expr.try_into()?;
+                let format = format.try_into()?;
+                Ok(Function::ToTime { expr, format })
+            }
         }
     }
 }
@@ -353,6 +362,9 @@ impl ExprNode {
     }
     pub fn to_timestamp(self, format: ExprNode) -> ExprNode {
         to_timestamp(self, format)
+    }
+    pub fn to_time(self, format: ExprNode) -> ExprNode {
+        to_time(self, format)
     }
 }
 
@@ -562,13 +574,21 @@ pub fn to_timestamp<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
     }))
 }
 
+pub fn to_time<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::ToTime {
+        expr: expr.into(),
+        format: format.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
         format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad, ltrim,
         modulo, now, num, pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign,
-        sin, sqrt, substr, tan, test_expr, text, timestamp, to_date, to_timestamp, upper,
+        sin, sqrt, substr, tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp,
+        upper,
     };
 
     #[test]
@@ -1024,6 +1044,14 @@ mod tests {
         let actual = timestamp("2015-09-05 23:56:04").format(text("%Y-%m-%d %H:%M:%S"));
         let expected = "FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
+
+        let actual = format(time("23:56:04"), text("%H:%M:%S"));
+        let expected = "FORMAT(TIME '23:56:04', '%H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = time("23:56:04").format(text("%H:%M:%S"));
+        let expected = "FORMAT(TIME '23:56:04', '%H:%M:%S')";
+        test_expr(actual, expected);
     }
 
     #[test]
@@ -1047,6 +1075,18 @@ mod tests {
         let expected = "TO_TIMESTAMP('2015-09-05 23:56:04','%Y-%m-%d %H:%M:%S')";
         test_expr(actual, expected);
     }
+
+    #[test]
+    fn function_to_time() {
+        let actual = to_time(text("23:56:04"), text("%H:%M:%S"));
+        let expected = "TO_TIME('23:56:04','%H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = text("23:56:04").to_time(text("%H:%M:%S"));
+        let expected = "TO_TIME('23:56:04','%H:%M:%S')";
+        test_expr(actual, expected);
+    }
+
     #[test]
     fn function_lower() {
         // Lower
