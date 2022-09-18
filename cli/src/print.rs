@@ -257,11 +257,9 @@ impl<'a, W: Write> Print<W> {
 
 #[cfg(test)]
 mod tests {
-    use crate::command::ShowOption;
-
     use {
         super::Print,
-        crate::command::SetOption,
+        crate::command::{SetOption, ShowOption},
         gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd},
     };
 
