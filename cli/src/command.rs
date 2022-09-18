@@ -1,4 +1,10 @@
-use {std::fmt::Debug, thiserror::Error as ThisError};
+use crate::print::bool_from;
+
+use {
+    crate::print::{PrintOption, Tabular},
+    std::fmt::Debug,
+    thiserror::Error as ThisError,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
@@ -8,7 +14,7 @@ pub enum Command {
     ExecuteFromFile(String),
     SpoolOn(String),
     SpoolOff,
-    Set { key: String, value: String },
+    Set(SetOption),
     Show(String),
 }
 
@@ -28,8 +34,34 @@ pub enum CommandError {
     NotSupported,
 }
 
+#[derive(Eq, Debug, PartialEq)]
+pub enum SetOption {
+    Tabular(bool),
+    Colsep(String),
+    Colwrap(String),
+    Heading(bool),
+}
+
+impl SetOption {
+    fn parse(key: &str, value: String, option: &PrintOption) -> Result<Self, CommandError> {
+        let key = match (key.to_lowercase().as_str(), &option.tabular) {
+            ("tabular", _) => Self::Tabular(bool_from(value)?),
+            ("colsep", Tabular::Off { .. }) => Self::Colsep(value),
+            ("colwrap", Tabular::Off { .. }) => Self::Colwrap(value),
+            ("heading", Tabular::Off { .. }) => Self::Heading(bool_from(value)?),
+            (_, Tabular::On) => {
+                return Err(CommandError::WrongOption("run .set tabular OFF".into()))
+            }
+
+            _ => return Err(CommandError::WrongOption(key.into())),
+        };
+
+        Ok(key)
+    }
+}
+
 impl Command {
-    pub fn parse(line: &str) -> Result<Self, CommandError> {
+    pub fn parse(line: &str, option: &PrintOption) -> Result<Self, CommandError> {
         let line = line.trim_start().trim_end_matches(|c| c == ' ' || c == ';');
         // We detect if the line is a command or not
         if line.starts_with('.') {
@@ -52,10 +84,9 @@ impl Command {
                     None => Err(CommandError::LackOfFile),
                 },
                 ".set" => match (params.get(1), params.get(2)) {
-                    (Some(key), Some(value)) => Ok(Self::Set {
-                        key: key.to_string(),
-                        value: value.to_string(),
-                    }),
+                    (Some(key), Some(value)) => {
+                        Ok(Self::Set(SetOption::parse(key, value.to_string(), option)?))
+                    }
                     (Some(_), None) => Err(CommandError::LackOfValue),
                     (None, Some(_)) => Err(CommandError::LackOfOption),
                     (None, None) => Err(CommandError::LackOfOption),
@@ -75,40 +106,47 @@ impl Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::command::CommandError;
+    use crate::{
+        command::CommandError,
+        print::{PrintOption, Tabular},
+    };
 
     #[test]
     fn parse_command() {
         use super::Command;
+        let option = PrintOption {
+            tabular: Tabular::On,
+        };
+        let parse = |command| Command::parse(command, &option);
 
-        assert_eq!(Ok(Command::Help), Command::parse(".help"));
-        assert_eq!(Ok(Command::Help), Command::parse("   .help;"));
-        assert_eq!(Ok(Command::Quit), Command::parse(".quit"));
-        assert_eq!(Ok(Command::Quit), Command::parse(".quit;"));
-        assert_eq!(Ok(Command::Quit), Command::parse(" .quit; "));
+        assert_eq!(Ok(Command::Help), parse(".help"));
+        assert_eq!(Ok(Command::Help), parse("   .help;"));
+        assert_eq!(Ok(Command::Quit), parse(".quit"));
+        assert_eq!(Ok(Command::Quit), parse(".quit;"));
+        assert_eq!(Ok(Command::Quit), parse(" .quit; "));
         assert_eq!(
             Ok(Command::Execute("SHOW TABLES".to_owned())),
-            Command::parse(".tables")
+            parse(".tables")
         );
         assert_eq!(
             Ok(Command::Execute("SHOW COLUMNS FROM Foo".to_owned())),
-            Command::parse(".columns Foo")
+            parse(".columns Foo")
         );
-        assert_eq!(Err(CommandError::LackOfTable), Command::parse(".columns"));
+        assert_eq!(Err(CommandError::LackOfTable), parse(".columns"));
         assert_eq!(
             Ok(Command::Execute("SHOW VERSION".to_owned())),
-            Command::parse(".version")
+            parse(".version")
         );
-        assert_eq!(Err(CommandError::NotSupported), Command::parse(".foo"));
+        assert_eq!(Err(CommandError::NotSupported), parse(".foo"));
         assert_eq!(
             Ok(Command::Execute("SELECT * FROM Foo".to_owned())),
-            Command::parse("SELECT * FROM Foo;")
+            parse("SELECT * FROM Foo;")
         );
         assert_eq!(
             Ok(Command::SpoolOn("query.log".into())),
-            Command::parse(".spool query.log")
+            parse(".spool query.log")
         );
-        assert_eq!(Ok(Command::SpoolOff), Command::parse(".spool off"));
-        assert_eq!(Err(CommandError::LackOfFile), Command::parse(".spool"));
+        assert_eq!(Ok(Command::SpoolOff), parse(".spool off"));
+        assert_eq!(Err(CommandError::LackOfFile), parse(".spool"));
     }
 }

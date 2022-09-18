@@ -67,7 +67,7 @@ where
 
             rl.add_history_entry(&line);
 
-            let command = match Command::parse(&line) {
+            let command = match Command::parse(&line, &self.print.option) {
                 Ok(command) => command,
                 Err(CommandError::LackOfTable) => {
                     println!("[error] should specify table. eg: .columns TableName\n");
@@ -122,11 +122,7 @@ where
                 Command::SpoolOff => {
                     self.print.spool_off();
                 }
-                Command::Set { key, value } => {
-                    if let Err(e) = self.print.set_option(key, value) {
-                        println!("[error] {}\n", e);
-                    }
-                }
+                Command::Set(option) => self.print.set_option(option),
                 Command::Show(name) => self.print.show_option(name)?,
             }
         }

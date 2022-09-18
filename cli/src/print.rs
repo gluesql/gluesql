@@ -1,3 +1,5 @@
+use crate::command::SetOption;
+
 use {
     crate::command::CommandError,
     gluesql_core::{
@@ -18,19 +20,19 @@ use {
 pub struct Print<W: Write> {
     pub output: W,
     spool_file: Option<File>,
-    option: PrintOption,
+    pub option: PrintOption,
 }
 
 pub struct PrintOption {
-    tabular: Tabular,
+    pub tabular: Tabular,
 }
 
-enum Tabular {
+pub enum Tabular {
     On,
     Off { option: TabularOffOption },
 }
 
-struct TabularOffOption {
+pub struct TabularOffOption {
     colsep: String,
     colwrap: String,
     heading: bool,
@@ -72,19 +74,23 @@ impl Tabular {
         }
     }
 
-    fn update_option(&mut self, name: String, value: String) -> Result<(), CommandError> {
-        match self {
-            Tabular::On => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
-            Tabular::Off { option } => match name.as_ref() {
-                "colsep" => option.colsep(value),
-                "colwrap" => option.colwrap(value),
-                "heading" => option.heading(bool_from(value)?),
-                _ => return Err(CommandError::WrongOption(name)),
-            },
-        };
-
-        Ok(())
-    }
+    // fn update_option(&mut self, key: SetOption, value: String) {
+    //     match self {
+    //         Tabular::On => todo!(),
+    //         Tabular::Off { option } => {
+    //             match key {
+    //                 SetOption::Colsep(value) => option.colsep(value),
+    //                 SetOption::Colwrap(value) => option.colwrap(value),
+    //                 SetOption::Heading(value) => option.heading(value),
+    //                 SetOption::Tabular(_) => todo!(),
+    //                 // "colsep" => option.colsep(value),
+    //                 // "colwrap" => option.colwrap(value),
+    //                 // "heading" => option.heading(bool_from(value)?),
+    //                 // _ => return Err(CommandError::WrongOption(key)),
+    //             };
+    //         }
+    //     }
+    // }
 }
 
 impl PrintOption {
@@ -107,21 +113,18 @@ impl PrintOption {
         Ok(payload)
     }
 
-    fn set_tabular(&mut self, value: String) -> Result<(), CommandError> {
-        let tabular = match value.to_uppercase().as_ref() {
-            "ON" => Tabular::On,
-            "OFF" => Tabular::Off {
+    fn set_tabular(&mut self, value: bool) {
+        let tabular = match value {
+            true => Tabular::On,
+            false => Tabular::Off {
                 option: TabularOffOption {
                     colsep: "|".into(),
                     colwrap: "".into(),
                     heading: true,
                 },
             },
-            option => return Err(CommandError::WrongOption(option.into())),
         };
         self.tabular = tabular;
-
-        Ok(())
     }
 }
 
@@ -278,16 +281,17 @@ impl<'a, W: Write> Print<W> {
         self.spool_file = None;
     }
 
-    pub fn set_option(&mut self, name: String, value: String) -> Result<(), CommandError> {
-        match name.to_lowercase().as_str() {
-            "tabular" => self.option.set_tabular(value)?,
-            "colsep" => self.option.tabular.update_option(name, value)?,
-            "colwrap" => self.option.tabular.update_option(name, value)?,
-            "heading" => self.option.tabular.update_option(name, value)?,
-            _ => return Err(CommandError::WrongOption(name)),
+    pub fn set_option(&mut self, option: SetOption) {
+        match (option, &mut self.option.tabular) {
+            (SetOption::Tabular(value), _) => self.option.set_tabular(value),
+            (SetOption::Colsep(value), Tabular::Off { option }) => option.colsep(value),
+            (SetOption::Colwrap(value), Tabular::Off { option }) => option.colwrap(value),
+            (SetOption::Heading(value), Tabular::Off { option }) => option.heading(value),
+            // (SetOption::Colsep(_), Tabular::On) => todo!(),
+            // (SetOption::Colwrap(_), Tabular::On) => todo!(),
+            // (SetOption::Heading(_), Tabular::On) => todo!(),
+            _ => todo!(),
         };
-
-        Ok(())
     }
 
     pub fn show_option(&mut self, name: String) -> Result<(), Box<dyn Error>> {
@@ -309,7 +313,7 @@ impl<'a, W: Write> Print<W> {
     }
 }
 
-fn bool_from(value: String) -> Result<bool, CommandError> {
+pub fn bool_from(value: String) -> Result<bool, CommandError> {
     match value.to_uppercase().as_str() {
         "ON" => Ok(true),
         "OFF" => Ok(false),
@@ -319,10 +323,11 @@ fn bool_from(value: String) -> Result<bool, CommandError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::command::CommandError;
-
-    use super::Print;
-    use gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd};
+    use {
+        super::Print,
+        crate::command::SetOption,
+        gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd},
+    };
 
     #[test]
     fn print_help() {
@@ -546,21 +551,21 @@ mod tests {
         );
 
         // To set colsep or colwrap, should run ".set tabular off" first
-        assert_eq!(
-            print.set_option("colsep".into(), ",".into()),
-            Err(CommandError::WrongOption("run .set tabular OFF".into()))
-        );
-        assert_eq!(
-            print.set_option("colwrap".into(), "'".into()),
-            Err(CommandError::WrongOption("run .set tabular OFF".into()))
-        );
-        assert_eq!(
-            print.set_option("heading".into(), "OFF".into()),
-            Err(CommandError::WrongOption("run .set tabular OFF".into()))
-        );
+        // assert_eq!(
+        //     print.set_option(SetOption::Colsep(",".into())),
+        //     Err(CommandError::WrongOption("run .set tabular OFF".into()))
+        // );
+        // assert_eq!(
+        //     print.set_option("colwrap".into(), "'".into()),
+        //     Err(CommandError::WrongOption("run .set tabular OFF".into()))
+        // );
+        // assert_eq!(
+        //     print.set_option("heading".into(), "OFF".into()),
+        //     Err(CommandError::WrongOption("run .set tabular OFF".into()))
+        // );
 
         // ".set tabular OFF" should print SELECTED payload without tabular option
-        print.set_option("tabular".into(), "OFF".into()).unwrap();
+        print.set_option(SetOption::Tabular(false));
         test!(
             &Payload::Select {
                 labels: ["id", "title", "valid"]
@@ -587,7 +592,7 @@ id|title|valid
         );
 
         // ".set colsep ," should set column separator as ","
-        print.set_option("colsep".into(), ",".into()).unwrap();
+        print.set_option(SetOption::Colsep(",".into()));
         assert_eq!(
             print.option.to_show("colsep".into()).unwrap(),
             r#"colsep ",""#
@@ -619,7 +624,7 @@ id,title,valid
         );
 
         // ".set colwrap '" should set column separator as "'"
-        print.set_option("colwrap".into(), "'".into()).unwrap();
+        print.set_option(SetOption::Colwrap("'".into()));
         assert_eq!(
             print.option.to_show("colwrap".into()).unwrap(),
             r#"colwrap "'""#
@@ -650,7 +655,7 @@ id,title,valid
         );
 
         // ".set header OFF should print without column name"
-        print.set_option("heading".into(), "OFF".into()).unwrap();
+        print.set_option(SetOption::Heading(false));
         test!(
             &Payload::Select {
                 labels: ["id", "title", "valid"]
@@ -676,7 +681,7 @@ id,title,valid
         );
 
         // ".set tabular ON" should recover default option: colsep("|"), colwrap("")
-        print.set_option("tabular".into(), "ON".into()).unwrap();
+        print.set_option(SetOption::Tabular(true));
         assert_eq!(
             print.option.to_show("colsep".into()).unwrap(),
             r#"colsep "|""#
