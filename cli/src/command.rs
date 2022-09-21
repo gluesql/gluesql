@@ -74,7 +74,7 @@ impl SetOption {
                 _ => return Err(CommandError::WrongOption(key.into())),
             };
 
-            return Err(CommandError::LackOfValue(payload.into()));
+            Err(CommandError::LackOfValue(payload.into()))
         }
     }
 }
@@ -127,7 +127,7 @@ impl Command {
                     None => Err(CommandError::LackOfFile),
                 },
                 ".set" => match (params.get(1), params.get(2)) {
-                    (Some(key), value) => Ok(Self::Set(SetOption::parse(key, value, &option)?)),
+                    (Some(key), value) => Ok(Self::Set(SetOption::parse(key, value, option)?)),
                     (None, Some(_)) => Err(CommandError::LackOfOption),
                     (None, None) => Err(CommandError::LackOfOption),
                 },
