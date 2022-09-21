@@ -10,6 +10,7 @@ use {
     },
     rustyline::{error::ReadlineError, Editor},
     std::{
+        error::Error,
         fs::File,
         io::{Read, Result, Write},
         path::Path,
@@ -32,12 +33,12 @@ where
 {
     pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
-        let print = Print::new(output, None);
+        let print = Print::new(output, None, Default::default());
 
         Self { glue, print }
     }
 
-    pub fn run(&mut self) -> Result<()> {
+    pub fn run(&mut self) -> std::result::Result<(), Box<dyn Error>> {
         macro_rules! println {
             ($($p:tt),*) => ( writeln!(&mut self.print.output, $($p),*)?; )
         }
@@ -66,7 +67,7 @@ where
 
             rl.add_history_entry(&line);
 
-            let command = match Command::parse(&line) {
+            let command = match Command::parse(&line, &self.print.option) {
                 Ok(command) => command,
                 Err(CommandError::LackOfTable) => {
                     println!("[error] should specify table. eg: .columns TableName\n");
@@ -79,6 +80,18 @@ where
                 Err(CommandError::NotSupported) => {
                     println!("[error] command not supported: {}", line);
                     println!("\n  type .help to list all available commands.\n");
+                    continue;
+                }
+                Err(CommandError::LackOfOption) => {
+                    println!("[error] should specify option.\n");
+                    continue;
+                }
+                Err(CommandError::LackOfValue(usage)) => {
+                    println!("[error] should specify value.\n{usage}\n");
+                    continue;
+                }
+                Err(CommandError::WrongOption(e)) => {
+                    println!("[error] cannot support option: {e}\n");
                     continue;
                 }
             };
@@ -109,6 +122,8 @@ where
                 Command::SpoolOff => {
                     self.print.spool_off();
                 }
+                Command::Set(option) => self.print.set_option(option),
+                Command::Show(option) => self.print.show_option(option)?,
             }
         }
 
