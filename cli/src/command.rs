@@ -96,7 +96,7 @@ impl ShowOption {
     fn parse(key: &str) -> Result<Self, CommandError> {
         let show_option = match key.to_lowercase().as_str() {
             "tabular" => Self::Tabular,
-            "time" => Self::Time, 
+            "time" => Self::Time,
             "colsep" => Self::Colsep,
             "colwrap" => Self::Colwrap,
             "heading" => Self::Heading,
@@ -212,7 +212,7 @@ mod tests {
             ))
         );
         assert_eq!(
-            parse(".set time"), 
+            parse(".set time"),
             Err(CommandError::LackOfValue(
                 "Usage: .set time {ON|OFF}".into()
             ))

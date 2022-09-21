@@ -21,6 +21,7 @@ pub struct Print<W: Write> {
 
 pub struct PrintOption {
     pub tabular: bool,
+    time: bool,
     colsep: String,
     colwrap: String,
     heading: bool,
@@ -37,6 +38,10 @@ impl PrintOption {
             }
             false => self.tabular = tabular,
         }
+    }
+
+    fn time(&mut self, time: bool) {
+        self.time = time;
     }
 
     fn colsep(&mut self, colsep: String) {
@@ -60,12 +65,14 @@ impl PrintOption {
         }
         match option {
             ShowOption::Tabular => format!("tabular {}", string_from(&self.tabular)),
+            ShowOption::Time => format!("time {}", string_from(&self.time)),
             ShowOption::Colsep => format!("colsep \"{}\"", self.colsep),
             ShowOption::Colwrap => format!("colwrap \"{}\"", self.colwrap),
             ShowOption::Heading => format!("heading {}", string_from(&self.heading)),
             ShowOption::All => format!(
-                "{}\n{}\n{}\n{}",
+                "{}\n{}\n{}\n{}\n{}",
                 self.format(ShowOption::Tabular),
+                self.format(ShowOption::Time),
                 self.format(ShowOption::Colsep),
                 self.format(ShowOption::Colwrap),
                 self.format(ShowOption::Heading),
@@ -78,6 +85,7 @@ impl Default for PrintOption {
     fn default() -> Self {
         Self {
             tabular: true,
+            time: false,
             colsep: "|".into(),
             colwrap: "".into(),
             heading: true,
@@ -143,6 +151,7 @@ impl<'a, W: Write> Print<W> {
                     colsep,
                     colwrap,
                     heading,
+                    ..
                 } = &self.option;
 
                 match tabular {
@@ -241,6 +250,7 @@ impl<'a, W: Write> Print<W> {
     pub fn set_option(&mut self, option: SetOption) {
         match option {
             SetOption::Tabular(value) => self.option.tabular(value),
+            SetOption::Time(value) => self.option.time(value),
             SetOption::Colsep(value) => self.option.colsep(value),
             SetOption::Colwrap(value) => self.option.colwrap(value),
             SetOption::Heading(value) => self.option.heading(value),
