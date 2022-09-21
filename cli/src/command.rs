@@ -19,7 +19,7 @@ pub enum CommandError {
     #[error("should specify file path")]
     LackOfFile,
     #[error("should specify value for option")]
-    LackOfValue,
+    LackOfValue(String),
     #[error("should specify option")]
     LackOfOption,
     #[error("cannot support option: {0}")]
@@ -37,7 +37,7 @@ pub enum SetOption {
 }
 
 impl SetOption {
-    fn parse(key: &str, value: String, option: &PrintOption) -> Result<Self, CommandError> {
+    fn parse(key: &str, value: Option<&&str>, option: &PrintOption) -> Result<Self, CommandError> {
         fn bool_from(value: String) -> Result<bool, CommandError> {
             match value.to_uppercase().as_str() {
                 "ON" => Ok(true),
@@ -46,17 +46,36 @@ impl SetOption {
             }
         }
 
-        let set_option = match (key.to_lowercase().as_str(), &option.tabular) {
-            ("tabular", _) => Self::Tabular(bool_from(value)?),
-            ("colsep", false) => Self::Colsep(value),
-            ("colwrap", false) => Self::Colwrap(value),
-            ("heading", false) => Self::Heading(bool_from(value)?),
-            (_, true) => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
+        if let Some(value) = value {
+            let value = match *value {
+                "\"\"" => "",
+                _ => value,
+            }
+            .to_string();
 
-            _ => return Err(CommandError::WrongOption(key.into())),
-        };
+            let set_option = match (key.to_lowercase().as_str(), &option.tabular) {
+                ("tabular", _) => Self::Tabular(bool_from(value)?),
+                ("colsep", false) => Self::Colsep(value),
+                ("colwrap", false) => Self::Colwrap(value),
+                ("heading", false) => Self::Heading(bool_from(value)?),
+                (_, true) => return Err(CommandError::WrongOption("run .set tabular OFF".into())),
 
-        Ok(set_option)
+                _ => return Err(CommandError::WrongOption(key.into())),
+            };
+
+            Ok(set_option)
+        } else {
+            let payload = match key.to_lowercase().as_str() {
+                "tabular" => "Usage: .set tabular {ON|OFF}",
+                "colsep" => "Usage: .set colsep {\"\"|TEXT}",
+                "colwrap" => "Usage: .set colwrap {\"\"|TEXT}",
+                "heading" => "Usage: .set heading {ON|OFF}",
+
+                _ => return Err(CommandError::WrongOption(key.into())),
+            };
+
+            return Err(CommandError::LackOfValue(payload.into()));
+        }
     }
 }
 
@@ -108,10 +127,7 @@ impl Command {
                     None => Err(CommandError::LackOfFile),
                 },
                 ".set" => match (params.get(1), params.get(2)) {
-                    (Some(key), Some(value)) => {
-                        Ok(Self::Set(SetOption::parse(key, value.to_string(), option)?))
-                    }
-                    (Some(_), None) => Err(CommandError::LackOfValue),
+                    (Some(key), value) => Ok(Self::Set(SetOption::parse(key, value, &option)?)),
                     (None, Some(_)) => Err(CommandError::LackOfOption),
                     (None, None) => Err(CommandError::LackOfOption),
                 },
@@ -178,6 +194,35 @@ mod tests {
         assert_eq!(
             parse(".set heading off"),
             Err(CommandError::WrongOption("run .set tabular OFF".into()))
+        );
+
+        let mut option = PrintOption::default();
+        option.tabular(false);
+        let parse = |command| Command::parse(command, &option);
+
+        assert_eq!(
+            parse(".set tabular"),
+            Err(CommandError::LackOfValue(
+                "Usage: .set tabular {ON|OFF}".into()
+            ))
+        );
+        assert_eq!(
+            parse(".set colsep"),
+            Err(CommandError::LackOfValue(
+                "Usage: .set colsep {\"\"|TEXT}".into()
+            ))
+        );
+        assert_eq!(
+            parse(".set colwrap"),
+            Err(CommandError::LackOfValue(
+                "Usage: .set colwrap {\"\"|TEXT}".into()
+            ))
+        );
+        assert_eq!(
+            parse(".set heading"),
+            Err(CommandError::LackOfValue(
+                "Usage: .set heading {ON|OFF}".into()
+            ))
         );
     }
 }

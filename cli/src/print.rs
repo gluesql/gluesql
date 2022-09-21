@@ -27,7 +27,7 @@ pub struct PrintOption {
 }
 
 impl PrintOption {
-    fn tabular(&mut self, tabular: bool) {
+    pub fn tabular(&mut self, tabular: bool) {
         match tabular {
             true => {
                 self.tabular = tabular;

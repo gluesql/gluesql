@@ -86,8 +86,8 @@ where
                     println!("[error] should specify option.\n");
                     continue;
                 }
-                Err(CommandError::LackOfValue) => {
-                    println!("[error] should specify value.\n");
+                Err(CommandError::LackOfValue(usage)) => {
+                    println!("[error] should specify value.\n{usage}\n");
                     continue;
                 }
                 Err(CommandError::WrongOption(e)) => {
