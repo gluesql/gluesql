@@ -31,6 +31,7 @@ pub enum CommandError {
 #[derive(Eq, Debug, PartialEq)]
 pub enum SetOption {
     Tabular(bool),
+    Time(bool),
     Colsep(String),
     Colwrap(String),
     Heading(bool),
@@ -55,6 +56,7 @@ impl SetOption {
 
             let set_option = match (key.to_lowercase().as_str(), &option.tabular) {
                 ("tabular", _) => Self::Tabular(bool_from(value)?),
+                ("time", _) => Self::Time(bool_from(value)?),
                 ("colsep", false) => Self::Colsep(value),
                 ("colwrap", false) => Self::Colwrap(value),
                 ("heading", false) => Self::Heading(bool_from(value)?),
@@ -67,6 +69,7 @@ impl SetOption {
         } else {
             let payload = match key.to_lowercase().as_str() {
                 "tabular" => "Usage: .set tabular {ON|OFF}",
+                "time" => "Usage: .set time {ON|OFF}",
                 "colsep" => "Usage: .set colsep {\"\"|TEXT}",
                 "colwrap" => "Usage: .set colwrap {\"\"|TEXT}",
                 "heading" => "Usage: .set heading {ON|OFF}",
@@ -82,6 +85,7 @@ impl SetOption {
 #[derive(Eq, Debug, PartialEq)]
 pub enum ShowOption {
     Tabular,
+    Time,
     Colsep,
     Colwrap,
     Heading,
@@ -92,6 +96,7 @@ impl ShowOption {
     fn parse(key: &str) -> Result<Self, CommandError> {
         let show_option = match key.to_lowercase().as_str() {
             "tabular" => Self::Tabular,
+            "time" => Self::Time, 
             "colsep" => Self::Colsep,
             "colwrap" => Self::Colwrap,
             "heading" => Self::Heading,
@@ -204,6 +209,12 @@ mod tests {
             parse(".set tabular"),
             Err(CommandError::LackOfValue(
                 "Usage: .set tabular {ON|OFF}".into()
+            ))
+        );
+        assert_eq!(
+            parse(".set time"), 
+            Err(CommandError::LackOfValue(
+                "Usage: .set time {ON|OFF}".into()
             ))
         );
         assert_eq!(
