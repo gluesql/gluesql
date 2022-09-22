@@ -3,7 +3,7 @@
 use {
     crate::*,
     gluesql_core::{
-        prelude::{Payload::ShowVariable, PayloadVariable},
+        prelude::{Payload::ShowVariable, PayloadVariable, Value::*},
         translate::TranslateError,
     },
 };
@@ -40,5 +40,10 @@ test_case!(metadata, async move {
             TranslateError::UnsupportedShowVariableStatement("SHOW ME THE CHICKEN".to_owned())
                 .into()
         )
+    );
+
+    test!(
+        "SELECT * FROM GLUE_TABLES",
+        Ok(select!(TABLE_NAME; Str; "a".into()))
     );
 });
