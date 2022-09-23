@@ -2,9 +2,9 @@
 
 [![crates.io](https://img.shields.io/crates/v/gluesql.svg)](https://crates.io/crates/gluesql)
 [![npm](https://img.shields.io/npm/v/gluesql?color=red)](https://www.npmjs.com/package/gluesql)
-[![docs.rs](https://docs.rs/gluesql/badge.svg)](https://docs.rs/gluesql)
 [![LICENSE](https://img.shields.io/crates/l/gluesql.svg)](https://github.com/gluesql/gluesql/blob/main/LICENSE)
 ![Rust](https://github.com/gluesql/gluesql/workflows/Rust/badge.svg)
+[![docs.rs](https://docs.rs/gluesql/badge.svg)](https://docs.rs/gluesql)
 [![Chat](https://img.shields.io/discord/780298017940176946)](https://discord.gg/C6TDEgzDzY)
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 
@@ -148,7 +148,7 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 #### Data Types
 | Category | Type                                                                      |
 |----------|---------------------------------------------------------------------------|
-| Numeric  | `INT(8)`, `INT(16)`, `INT(32)`, `INTEGER`, `INT(128)`, `FLOAT`, `DECIMAL` |
+| Numeric  | `INT8`, `INT16`, `INT32`, `INTEGER`, `INT128`, `UINT8`, `FLOAT`, `DECIMAL`|
 | Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                   |
 | Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                         |
 

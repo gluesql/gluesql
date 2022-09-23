@@ -4,7 +4,7 @@ use {
         ast::Statement,
         ast_builder::{
             FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-            LimitOffsetNode, OffsetLimitNode, OffsetNode, SelectItemList, SelectNode,
+            LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -22,6 +22,7 @@ pub enum PrevNode {
     Join(Box<JoinNode>),
     JoinConstraint(Box<JoinConstraintNode>),
     Filter(FilterNode),
+    OrderBy(OrderByNode),
 }
 
 impl Prebuild for PrevNode {
@@ -37,6 +38,7 @@ impl Prebuild for PrevNode {
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
+            Self::OrderBy(node) => node.prebuild(),
         }
     }
 }
@@ -98,6 +100,12 @@ impl From<JoinConstraintNode> for PrevNode {
 impl From<FilterNode> for PrevNode {
     fn from(node: FilterNode) -> Self {
         PrevNode::Filter(node)
+    }
+}
+
+impl From<OrderByNode> for PrevNode {
+    fn from(node: OrderByNode) -> Self {
+        PrevNode::OrderBy(node)
     }
 }
 

@@ -6,8 +6,8 @@ use {
 test_case!(int32, async move {
     run!(
         "CREATE TABLE Item (
-        field_one INT(32),
-        field_two INT(32),
+        field_one INT32,
+        field_two INT32,
     );"
     );
     run!("INSERT INTO Item VALUES (1, -1), (-2, 2), (3, 3), (-4, -4);");
@@ -25,7 +25,7 @@ test_case!(int32, async move {
 
     test!(
         &format!(
-            "select cast({} as INT(32)) from Item",
+            "select cast({} as INT32) from Item",
             i32::MAX as i64 + 1_i64
         ),
         Err(ValueError::LiteralCastToDataTypeFailed(
@@ -37,7 +37,7 @@ test_case!(int32, async move {
 
     test!(
         &format!(
-            "select cast({} as INT(32)) from Item",
+            "select cast({} as INT32) from Item",
             i32::MIN as i64 - 1_i64
         ),
         Err(ValueError::LiteralCastToDataTypeFailed(

@@ -4,7 +4,7 @@ use {
         ast::{ObjectName, SelectItem, Statement, TableFactor},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
-            ProjectNode, SelectItemList,
+            OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -38,6 +38,10 @@ impl SelectNode {
 
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
         ProjectNode::new(self, select_items)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+        OrderByNode::new(self, order_by_exprs)
     }
 
     pub fn build(self) -> Result<Statement> {
