@@ -1,3 +1,5 @@
+use edit::Builder;
+
 use {
     crate::{
         command::{Command, CommandError},
@@ -126,7 +128,12 @@ where
                 Command::Show(option) => self.print.show_option(option)?,
                 Command::Edit(file_name) => {
                     match file_name {
-                        Some(_) => edit::edit("prevSQL")?,
+                        Some(file_name) => {
+                            let mut builder = Builder::new();
+                            builder.prefix(&file_name).suffix(".sql");
+                            // builder.tempfile_in("./")?;
+                            edit::edit_with_builder("prevSQL", &builder)?
+                        }
                         None => edit::edit("prevSQL")?,
                     };
                 }
