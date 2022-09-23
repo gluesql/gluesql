@@ -10,6 +10,7 @@ pub enum Command {
     SpoolOff,
     Set(SetOption),
     Show(ShowOption),
+    Edit(Option<String>),
 }
 
 #[derive(ThisError, Debug, PartialEq)]
@@ -135,6 +136,7 @@ impl Command {
                     Some(key) => Ok(Self::Show(ShowOption::parse(key)?)),
                     None => Err(CommandError::LackOfOption),
                 },
+                ".edit" => Ok(Self::Edit(params.get(1).map(|v| v.to_string()))),
 
                 _ => Err(CommandError::NotSupported),
             }

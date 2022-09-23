@@ -124,6 +124,12 @@ where
                 }
                 Command::Set(option) => self.print.set_option(option),
                 Command::Show(option) => self.print.show_option(option)?,
+                Command::Edit(file_name) => {
+                    match file_name {
+                        Some(_) => edit::edit("prevSQL")?,
+                        None => edit::edit("prevSQL")?,
+                    };
+                }
             }
         }
 
