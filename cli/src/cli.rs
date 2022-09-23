@@ -1,4 +1,4 @@
-use edit::Builder;
+use edit::{edit_file, Builder};
 
 use {
     crate::{
@@ -129,12 +129,16 @@ where
                 Command::Edit(file_name) => {
                     match file_name {
                         Some(file_name) => {
-                            let mut builder = Builder::new();
-                            builder.prefix(&file_name).suffix(".sql");
-                            // builder.tempfile_in("./")?;
-                            edit::edit_with_builder("prevSQL", &builder)?
+                            let file = Path::new(&file_name);
+                            edit_file(file)?;
+                            // let mut builder = Builder::new();
+                            // builder.prefix(&file_name).suffix(".sql");
+                            // // builder.tempfile_in("./")?;
+                            // edit::edit_with_builder("prevSQL", &builder)?
                         }
-                        None => edit::edit("prevSQL")?,
+                        None => {
+                            edit::edit("prevSQL")?;
+                        }
                     };
                 }
             }
