@@ -2,8 +2,8 @@ use {
     super::{context::FilterContext, evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
-            ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias, TableFactor,
-            TableWithJoins, Values,
+            ColumnDef, Dictionary, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias,
+            TableFactor, TableWithJoins, Values,
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{
@@ -65,10 +65,11 @@ pub async fn fetch<'a>(
 }
 
 #[derive(futures_enum::Stream)]
-pub enum Rows<I1, I2, I3> {
+pub enum Rows<I1, I2, I3, I4> {
     Derived(I1),
     Table(I2),
     Series(I3),
+    Dictionary(I4),
 }
 
 pub async fn fetch_relation_rows<'a>(
@@ -159,6 +160,14 @@ pub async fn fetch_relation_rows<'a>(
 
             Ok(Rows::Series(stream::iter(rows)))
         }
+        TableFactor::Dictionary { name, .. } => match name {
+            Dictionary::GlueTables => {
+                let names = storage.schema_names().await?;
+                let rows = stream::iter(names).map(|v| Ok(Row(vec![Value::Str(v.to_string())])));
+
+                Ok(Rows::Dictionary(rows))
+            }
+        },
     }
 }
 
@@ -181,6 +190,9 @@ pub async fn fetch_relation_columns(
     match table_factor {
         TableFactor::Table { name, .. } => fetch_columns(storage, name).await,
         TableFactor::Series { .. } => Ok(vec!["N".to_string()]),
+        TableFactor::Dictionary { name, .. } => match name {
+            Dictionary::GlueTables => Ok(vec!["TABLE_NAME".to_string()]),
+        },
         TableFactor::Derived {
             subquery: Query { body, .. },
             alias: TableAlias { columns, name },

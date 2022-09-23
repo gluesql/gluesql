@@ -1,3 +1,5 @@
+use crate::ast::Dictionary;
+
 use {
     super::{
         function::translate_function_arg_exprs, translate_expr, translate_idents,
@@ -173,26 +175,35 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
     match sql_table_factor {
         SqlTableFactor::Table {
             name, alias, args, ..
-        } if translate_object_name(name)?.to_uppercase() == "SERIES" && args.is_some() => {
-            let name = match alias {
-                Some(SqlTableAlias { name, .. }) => name.value.to_owned(),
-                None => translate_object_name(name)?,
-            };
+        } => {
+            let object_name = translate_object_name(name)?.to_uppercase();
+            match object_name.as_str() {
+                "SERIES" if args.is_some() => {
+                    let name = match alias {
+                        Some(SqlTableAlias { name, .. }) => name.value.to_owned(),
+                        None => translate_object_name(name)?,
+                    };
 
-            Ok(TableFactor::Series {
-                alias: TableAlias {
-                    name,
-                    columns: Vec::new(),
-                },
-                size: translate_table_args(args)?,
-            })
-        }
-        SqlTableFactor::Table { name, alias, .. } => {
-            Ok(TableFactor::Table {
-                name: translate_object_name(name)?,
-                alias: translate_table_alias(alias),
-                index: None, // query execution plan
-            })
+                    Ok(TableFactor::Series {
+                        alias: TableAlias {
+                            name,
+                            columns: Vec::new(),
+                        },
+                        size: translate_table_args(args)?,
+                    })
+                }
+                "GLUE_TABLES" => Ok(TableFactor::Dictionary {
+                    name: translate_dictionary_name(object_name.as_str()),
+                    alias: translate_table_alias(alias),
+                }),
+                _ => {
+                    Ok(TableFactor::Table {
+                        name: translate_object_name(name)?,
+                        alias: translate_table_alias(alias),
+                        index: None, // query execution plan
+                    })
+                }
+            }
         }
         SqlTableFactor::Derived {
             subquery, alias, ..
@@ -210,6 +221,13 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
             }
         }
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
+    }
+}
+
+fn translate_dictionary_name(object_name: &str) -> Dictionary {
+    match object_name {
+        "GLUE_TABLES" => Dictionary::GlueTables,
+        _ => todo!(),
     }
 }
 

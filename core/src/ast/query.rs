@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use {
     super::{Expr, IndexOperator},
     crate::ast::ToSql,
@@ -70,7 +72,32 @@ pub enum TableFactor {
         alias: TableAlias,
         size: Expr,
     },
+    Dictionary {
+        name: Dictionary,
+        alias: Option<TableAlias>,
+    },
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Dictionary {
+    GlueTables,
+}
+
+impl Display for &Dictionary {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Dictionary::GlueTables => write!(f, "GLUE_TABLES"),
+        }
+    }
+}
+
+// impl From<&String> for &Dictionary {
+//     fn from(value: &String) -> Self {
+//         match value.as_str() {
+//             "GLUE_TABLES" => &Dictionary::GlueTables,
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TableAlias {
