@@ -185,6 +185,7 @@ mod tests {
         ";
         test(actual, expected);
 
+        // select node -> project node -> build
         let actual = table("Aliased")
             .select()
             .project("1 + 1 as col1, col2")
@@ -195,12 +196,12 @@ mod tests {
 
     #[test]
     fn prev_nodes() {
-        // Select
+        // select node -> project node -> build
         let actual = table("Foo").select().project("*").build();
         let expected = "SELECT * FROM Foo";
         test(actual, expected);
 
-        // GroupBy
+        // group by node -> project node -> build
         let actual = table("Bar")
             .select()
             .group_by("city")
@@ -214,7 +215,7 @@ mod tests {
         ";
         test(actual, expected);
 
-        // Having
+        // having node -> project node -> build
         let actual = table("Cat")
             .select()
             .filter(r#"type = "cute""#)
@@ -232,12 +233,12 @@ mod tests {
         "#;
         test(actual, expected);
 
-        // Limit
+        // limit node -> project node -> build
         let actual = table("Item").select().limit(10).project("*").build();
         let expected = "SELECT * FROM Item LIMIT 10";
         test(actual, expected);
 
-        // LimitOffset
+        // limit offset node -> project node -> build
         let actual = table("Operator")
             .select()
             .limit(100)
@@ -247,12 +248,12 @@ mod tests {
         let expected = "SELECT name FROM Operator LIMIT 100 OFFSET 50";
         test(actual, expected);
 
-        // Offset
+        // offset node -> project node -> build
         let actual = table("Item").select().offset(10).project("*").build();
         let expected = "SELECT * FROM Item OFFSET 10";
         test(actual, expected);
 
-        // OffsetLimit
+        // offset limit node -> project node -> build
         let actual = table("Operator")
             .select()
             .offset(3)
@@ -260,6 +261,15 @@ mod tests {
             .project("name")
             .build();
         let expected = "SELECT name FROM Operator LIMIT 10 OFFSET 3";
+        test(actual, expected);
+
+        // order by node -> project node -> build
+        let actual = table("Foo")
+            .select()
+            .order_by("id asc")
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM Foo ORDER BY id asc";
         test(actual, expected);
     }
 }

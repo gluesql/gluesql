@@ -4,7 +4,7 @@ use {
         ast::Statement,
         ast_builder::{
             ExprList, ExprNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode, OffsetNode,
-            ProjectNode, SelectItemList,
+            OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -78,6 +78,10 @@ impl FilterNode {
 
     pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
         GroupByNode::new(self, expr_list)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+        OrderByNode::new(self, order_by_exprs)
     }
 
     pub fn build(self) -> Result<Statement> {

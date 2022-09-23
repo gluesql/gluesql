@@ -4,7 +4,7 @@ use {
         ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, Statement},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
-            ProjectNode, SelectItemList,
+            OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -65,8 +65,13 @@ impl JoinConstraintNode {
     pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
         LimitNode::new(self, expr)
     }
+
     pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
         FilterNode::new(self, expr)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+        OrderByNode::new(self, order_by_exprs)
     }
 
     pub fn build(self) -> Result<Statement> {
