@@ -112,12 +112,7 @@ where
                     println!("bye\n");
                     break;
                 }
-                Command::Execute(sql) => match self.glue.execute(sql.as_str()) {
-                    Ok(payloads) => self.print.payloads(&payloads)?,
-                    Err(e) => {
-                        println!("[error] {}\n", e);
-                    }
-                },
+                Command::Execute(sql) => self.execute(sql)?,
                 Command::ExecuteFromFile(filename) => {
                     if let Err(e) = self.load(&filename) {
                         println!("[error] {}\n", e);
@@ -156,12 +151,9 @@ where
                         .map_or_else(|| Err(CommandError::LackOfSQLHistory), |v| Ok(v.to_owned()));
 
                     match sql {
-                        Ok(sql) => match self.glue.execute(sql.as_str()) {
-                            Ok(payloads) => self.print.payloads(&payloads)?,
-                            Err(e) => {
-                                println!("[error] {}\n", e);
-                            }
-                        },
+                        Ok(sql) => {
+                            self.execute(sql)?;
+                        }
                         Err(e) => {
                             println!("[error] {}\n", e);
                         }
@@ -169,6 +161,17 @@ where
                 }
             }
         }
+
+        Ok(())
+    }
+
+    fn execute(&mut self, sql: String) -> Result<()> {
+        match self.glue.execute(sql.as_str()) {
+            Ok(payloads) => self.print.payloads(&payloads)?,
+            Err(e) => {
+                println!("[error] {}\n", e);
+            }
+        };
 
         Ok(())
     }
