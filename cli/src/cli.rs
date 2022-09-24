@@ -71,7 +71,7 @@ where
                 rl.add_history_entry(line);
             }
 
-            let command = match Command::parse(&line, &self.print.option) {
+            let command = match Command::parse(line, &self.print.option) {
                 Ok(command) => command,
                 Err(CommandError::LackOfTable) => {
                     println!("[error] should specify table. eg: .columns TableName\n");
@@ -143,10 +143,7 @@ where
                     };
                 }
                 Command::Run => {
-                    let sql = rl
-                        .history()
-                        .last()
-                        .map_or_else(|| Err(CommandError::LackOfSQLHistory), |v| Ok(v.to_owned()));
+                    let sql = rl.history().last().ok_or(CommandError::LackOfSQLHistory);
 
                     match sql {
                         Ok(sql) => {
@@ -163,8 +160,8 @@ where
         Ok(())
     }
 
-    fn execute(&mut self, sql: String) -> Result<()> {
-        match self.glue.execute(sql.as_str()) {
+    fn execute(&mut self, sql: impl AsRef<str>) -> Result<()> {
+        match self.glue.execute(sql) {
             Ok(payloads) => self.print.payloads(&payloads)?,
             Err(e) => {
                 println!("[error] {}\n", e);
