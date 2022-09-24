@@ -1,11 +1,10 @@
-use edit::{edit, edit_file, Builder};
-
 use {
     crate::{
         command::{Command, CommandError},
         helper::CliHelper,
         print::Print,
     },
+    edit::{edit_file, edit_with_builder, Builder},
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
@@ -141,7 +140,7 @@ where
                                 .get(history_len - 2)
                                 .map_or_else(|| "", String::as_str);
 
-                            let edited = edit::edit_with_builder(last, &builder)?;
+                            let edited = edit_with_builder(last, &builder)?;
 
                             rl.add_history_entry(&edited);
                         }
