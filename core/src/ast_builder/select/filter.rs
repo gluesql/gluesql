@@ -92,7 +92,7 @@ impl FilterNode {
 impl Prebuild for FilterNode {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.filters = Some(self.filter_expr.try_into()?);
+        select_data.filter = Some(self.filter_expr.try_into()?);
         Ok(select_data)
     }
 }

@@ -86,7 +86,7 @@ impl Prebuild for SelectNode {
         Ok(NodeData {
             projection: vec![SelectItem::Wildcard],
             relation,
-            filters: None,
+            filter: None,
             group_by: vec![],
             having: None,
             order_by: vec![],

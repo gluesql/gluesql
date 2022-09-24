@@ -35,7 +35,7 @@ pub struct NodeData {
     pub projection: Vec<SelectItem>,
     pub relation: TableFactor,
     pub joins: Vec<Join>,
-    pub filters: Option<Expr>,
+    pub filter: Option<Expr>,
     /// WHERE
     pub group_by: Vec<Expr>,
     pub having: Option<Expr>,
@@ -55,10 +55,10 @@ impl NodeData {
             offset,
             limit,
             joins,
-            filters,
+            filter,
         } = self;
 
-        let selection = filters.map(Expr::try_from).and_then(|expr| expr.ok());
+        let selection = filter.map(Expr::try_from).and_then(|expr| expr.ok());
         let from = TableWithJoins { relation, joins };
 
         let select = Select {
