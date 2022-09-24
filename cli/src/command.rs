@@ -166,6 +166,11 @@ mod tests {
         assert_eq!(parse(".quit;"), Ok(Command::Quit));
         assert_eq!(parse(" .quit; "), Ok(Command::Quit));
         assert_eq!(parse(".run"), Ok(Command::Run));
+        assert_eq!(parse(".edit"), Ok(Command::Edit(None)));
+        assert_eq!(
+            parse(".edit foo.sql"),
+            Ok(Command::Edit(Some("foo.sql".into())))
+        );
         assert_eq!(
             parse(".tables"),
             Ok(Command::Execute("SHOW TABLES".to_owned())),
