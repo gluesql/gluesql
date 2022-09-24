@@ -24,7 +24,7 @@ use crate::ast::Variable;
 
 use {
     crate::{
-        ast::{Assignment, ObjectName, Statement},
+        ast::{Assignment, Statement},
         result::Result,
     },
     sqlparser::ast::{
@@ -135,8 +135,8 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 return Err(TranslateError::InvalidParamsInDropIndex.into());
             }
 
-            let table_name = ObjectName(vec![object_name[0].value.to_owned()]);
-            let name = ObjectName(vec![object_name[1].value.to_owned()]);
+            let table_name = object_name[0].value.to_owned();
+            let name = object_name[1].value.to_owned();
 
             Ok(Statement::DropIndex { name, table_name })
         }
@@ -161,11 +161,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             #[cfg(feature = "index")]
             (3, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "INDEXES" => match variable.get(2) {
-                    Some(tablename) => {
-                        Ok(Statement::ShowIndexes(ObjectName(Vec::from([tablename
-                            .value
-                            .to_string()]))))
-                    }
+                    Some(tablename) => Ok(Statement::ShowIndexes(tablename.value.to_owned())),
                     _ => Err(TranslateError::UnsupportedShowVariableStatement(
                         sql_statement.to_string(),
                     )
@@ -206,7 +202,7 @@ pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment
     })
 }
 
-fn translate_table_with_join(table: &TableWithJoins) -> Result<ObjectName> {
+fn translate_table_with_join(table: &TableWithJoins) -> Result<String> {
     if !table.joins.is_empty() {
         return Err(TranslateError::JoinOnUpdateNotSupported.into());
     }
@@ -216,8 +212,9 @@ fn translate_table_with_join(table: &TableWithJoins) -> Result<ObjectName> {
     }
 }
 
-fn translate_object_name(sql_object_name: &SqlObjectName) -> ObjectName {
-    ObjectName(translate_idents(&sql_object_name.0))
+fn translate_object_name(sql_object_name: &SqlObjectName) -> String {
+    // translate_idents(&sql_object_name.0)
+    sql_object_name.0[0].value.to_owned()
 }
 
 pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {

@@ -5,10 +5,9 @@ use {
     },
     crate::{
         ast::{
-            AstLiteral, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, Query,
-            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
+            AstLiteral, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select,
+            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
-        data::get_name,
         result::Result,
     },
     sqlparser::ast::{
@@ -81,7 +80,7 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
         None => TableWithJoins {
             relation: TableFactor::Series {
-                name: ObjectName(vec!["Series".into()]),
+                name: "Series".into(),
                 alias: None,
                 size: Expr::Literal(AstLiteral::Number(1.into())),
             },
@@ -172,9 +171,7 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
     match sql_table_factor {
         SqlTableFactor::Table {
             name, alias, args, ..
-        } if get_name(&translate_object_name(name))?.to_uppercase() == "SERIES"
-            && args.is_some() =>
-        {
+        } if translate_object_name(name).to_uppercase() == "SERIES" && args.is_some() => {
             Ok(TableFactor::Series {
                 name: translate_object_name(name),
                 alias: translate_table_alias(alias),

@@ -1,8 +1,4 @@
-use crate::{
-    ast::{ObjectName, Statement},
-    ast_builder::ColumnDefNode,
-    result::Result,
-};
+use crate::{ast::Statement, ast_builder::ColumnDefNode, result::Result};
 
 #[derive(Clone)]
 pub struct CreateTableNode {
@@ -21,7 +17,7 @@ impl CreateTableNode {
     }
 
     pub fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_name]);
+        let table_name = self.table_name;
         let columns = self
             .columns
             .into_iter()

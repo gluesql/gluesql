@@ -3,8 +3,8 @@
 use {
     super::AlterError,
     crate::{
-        ast::{ColumnDef, Expr, ObjectName, OrderByExpr},
-        data::{get_name, Schema},
+        ast::{ColumnDef, Expr, OrderByExpr},
+        data::Schema,
         result::MutResult,
         store::{GStore, GStoreMut},
     },
@@ -12,13 +12,11 @@ use {
 
 pub async fn create_index<T: GStore + GStoreMut>(
     storage: T,
-    table_name: &ObjectName,
-    index_name: &ObjectName,
+    table_name: &String,
+    index_name: &String,
     column: &OrderByExpr,
 ) -> MutResult<T, ()> {
     let names = (|| async {
-        let table_name = get_name(table_name)?;
-        let index_name = get_name(index_name)?;
         let expr = &column.expr;
         let Schema { column_defs, .. } = storage
             .fetch_schema(table_name)
@@ -67,26 +65,4 @@ fn validate_index_expr(columns: &[String], expr: &Expr) -> (bool, bool) {
         Expr::Cast { expr, .. } => validate(expr),
         _ => (false, false),
     }
-}
-
-pub async fn drop_index<T: GStore + GStoreMut>(
-    storage: T,
-    table_name: &ObjectName,
-    index_name: &ObjectName,
-) -> MutResult<T, ()> {
-    let names = (|| {
-        let table_name = get_name(table_name)?;
-        let index_name = get_name(index_name)?;
-
-        Ok((table_name, index_name))
-    })();
-
-    let (table_name, index_name) = match names {
-        Ok(s) => s,
-        Err(e) => {
-            return Err((storage, e));
-        }
-    };
-
-    storage.drop_index(table_name, index_name).await
 }

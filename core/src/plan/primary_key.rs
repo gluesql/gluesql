@@ -220,8 +220,8 @@ mod tests {
         crate::{
             ast::{
                 AstLiteral, BinaryOperator, Expr, IndexItem, Join, JoinConstraint, JoinExecutor,
-                JoinOperator, ObjectName, Query, Select, SelectItem, SetExpr, Statement,
-                TableFactor, TableWithJoins, Values,
+                JoinOperator, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+                TableWithJoins, Values,
             },
             parse_sql::{parse, parse_expr},
             plan::{
@@ -271,7 +271,7 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: ObjectName(vec!["Player".to_owned()]),
+                    name: "Player".into(),
                     alias: None,
                     index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
@@ -289,7 +289,7 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: ObjectName(vec!["Player".to_owned()]),
+                    name: "Player".into(),
                     alias: None,
                     index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
@@ -307,7 +307,7 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: ObjectName(vec!["Player".to_owned()]),
+                    name: "Player".into(),
                     alias: None,
                     index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
@@ -331,7 +331,7 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: ObjectName(vec!["Player".to_owned()]),
+                    name: "Player".into(),
                     alias: None,
                     index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
@@ -364,7 +364,7 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: ObjectName(vec!["Player".to_owned()]),
+                    name: "Player".into(),
                     alias: None,
                     index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
@@ -396,13 +396,13 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: ObjectName(vec!["Player".to_owned()]),
+                    name: "Player".into(),
                     alias: None,
                     index: Some(IndexItem::PrimaryKey(expr("1"))),
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
-                        name: ObjectName(vec!["Badge".to_owned()]),
+                        name: "Badge".into(),
                         alias: None,
                         index: None,
                     },
@@ -422,13 +422,13 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: ObjectName(vec!["Player".to_owned()]),
+                    name: "Player".into(),
                     alias: None,
                     index: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
-                        name: ObjectName(vec!["Badge".to_owned()]),
+                        name: "Badge".into(),
                         alias: None,
                         index: None,
                     },
@@ -454,7 +454,7 @@ mod tests {
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
                         relation: TableFactor::Table {
-                            name: ObjectName(vec!["Player".to_owned()]),
+                            name: "Player".into(),
                             alias: None,
                             index: Some(IndexItem::PrimaryKey(expr("1"))),
                         },
@@ -473,7 +473,7 @@ mod tests {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
-                        name: ObjectName(vec!["Player".to_owned()]),
+                        name: "Player".into(),
                         alias: None,
                         index: None,
                     },
@@ -511,7 +511,7 @@ mod tests {
                     }],
                     from: TableWithJoins {
                         relation: TableFactor::Table {
-                            name: ObjectName(vec!["Player".to_owned()]),
+                            name: "Player".into(),
                             alias: None,
                             index: None,
                         },
@@ -530,7 +530,7 @@ mod tests {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
-                        name: ObjectName(vec!["Player".to_owned()]),
+                        name: "Player".into(),
                         alias: None,
                         index: None,
                     },
@@ -562,7 +562,7 @@ mod tests {
                     }],
                     from: TableWithJoins {
                         relation: TableFactor::Table {
-                            name: ObjectName(vec!["Player".to_owned()]),
+                            name: "Player".into(),
                             alias: None,
                             index: None,
                         },
@@ -581,7 +581,7 @@ mod tests {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
-                        name: ObjectName(vec!["Player".to_owned()]),
+                        name: "Player".into(),
                         alias: None,
                         index: None,
                     },
@@ -601,7 +601,7 @@ mod tests {
         let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan(&storage, sql);
         let expected = Statement::Delete {
-            table_name: ObjectName(vec!["Player".to_owned()]),
+            table_name: "Player".into(),
             selection: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("id".to_owned())),
                 op: BinaryOperator::Eq,
@@ -629,7 +629,7 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: ObjectName(vec!["Player".to_owned()]),
+                    name: "Player".into(),
                     alias: None,
                     index: None,
                 },

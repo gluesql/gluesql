@@ -5,7 +5,7 @@ use {
             ColumnDef, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias, TableFactor,
             TableWithJoins, Values,
         },
-        data::{get_alias, get_index, get_name, Key, Row, Value},
+        data::{get_alias, get_index, Key, Row, Value},
         executor::{
             evaluate::evaluate,
             select::{get_labels, select},
@@ -84,7 +84,6 @@ pub async fn fetch_relation_rows<'a>(
             Ok(Rows::Derived(rows))
         }
         TableFactor::Table { name, .. } => {
-            let table_name = get_name(name)?;
             let rows = {
                 #[cfg(feature = "index")]
                 #[derive(Iterator)]
@@ -117,7 +116,7 @@ pub async fn fetch_relation_rows<'a>(
                         };
 
                         let rows = storage
-                            .scan_indexed_data(table_name, index_name, *asc, cmp_value)
+                            .scan_indexed_data(name, index_name, *asc, cmp_value)
                             .await?
                             .map_ok(|(_, row)| row);
 
@@ -131,7 +130,7 @@ pub async fn fetch_relation_rows<'a>(
                             .and_then(Key::try_from)?;
 
                         let rows = storage
-                            .fetch_data(table_name, &key)
+                            .fetch_data(name, &key)
                             .await
                             .transpose()
                             .map(|row| vec![row])
@@ -140,7 +139,7 @@ pub async fn fetch_relation_rows<'a>(
                         Rows::PrimaryKey(rows.into_iter())
                     }
                     _ => {
-                        let rows = storage.scan_data(table_name).await?.map_ok(|(_, row)| row);
+                        let rows = storage.scan_data(name).await?.map_ok(|(_, row)| row);
 
                         Rows::FullScan(rows)
                     }
@@ -180,11 +179,7 @@ pub async fn fetch_relation_columns(
     table_factor: &TableFactor,
 ) -> Result<Vec<String>> {
     match table_factor {
-        TableFactor::Table { name, .. } => {
-            let table_name = get_name(name)?;
-
-            fetch_columns(storage, table_name).await
-        }
+        TableFactor::Table { name, .. } => fetch_columns(storage, name).await,
         TableFactor::Series { .. } => Ok(vec!["N".to_string()]),
         TableFactor::Derived {
             subquery: Query { body, .. },

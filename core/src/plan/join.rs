@@ -399,8 +399,8 @@ mod tests {
         crate::{
             ast::{
                 BinaryOperator, DataType, DateTimeField, Expr, Join, JoinConstraint, JoinExecutor,
-                JoinOperator, ObjectName, Query, Select, SelectItem, SetExpr, Statement,
-                TableAlias, TableFactor, TableWithJoins, UnaryOperator,
+                JoinOperator, Query, Select, SelectItem, SetExpr, Statement, TableAlias,
+                TableFactor, TableWithJoins, UnaryOperator,
             },
             parse_sql::{parse, parse_expr},
             plan::{
@@ -446,7 +446,7 @@ mod tests {
 
     fn table_factor(name: &str, alias: Option<&str>) -> TableFactor {
         TableFactor::Table {
-            name: ObjectName(vec![name.to_owned()]),
+            name: name.to_string(),
             alias: alias.map(|alias| TableAlias {
                 name: alias.to_owned(),
                 columns: Vec::new(),
@@ -495,7 +495,7 @@ mod tests {
         let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan_join(&storage, sql);
         let expected = Statement::Delete {
-            table_name: ObjectName(vec!["Player".to_owned()]),
+            table_name: "Player".into(),
             selection: Some(expr("id = 1")),
         };
         assert_eq!(actual, expected, "plan not covered:\n{sql}");

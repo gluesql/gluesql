@@ -4,7 +4,7 @@ use {
         TranslateError,
     },
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr, Function, ObjectName},
+        ast::{Aggregate, CountArgExpr, Expr, Function},
         result::Result,
     },
     sqlparser::ast::{
@@ -144,11 +144,7 @@ pub fn translate_function_arg_exprs(
 
 pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     let SqlFunction { name, args, .. } = sql_function;
-    let name = {
-        let ObjectName(names) = translate_object_name(name);
-
-        names[0].to_uppercase()
-    };
+    let name = translate_object_name(name).to_uppercase();
 
     let function_arg_exprs = args
         .iter()
@@ -166,8 +162,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         let count_arg = match function_arg_exprs[0] {
             SqlFunctionArgExpr::Expr(expr) => CountArgExpr::Expr(translate_expr(expr)?),
             SqlFunctionArgExpr::QualifiedWildcard(idents) => {
-                let ObjectName(idents) = translate_object_name(idents);
-                let idents = format!("{}.*", idents.join("."));
+                let table_name = translate_object_name(idents);
+                let idents = format!("{}.*", table_name);
 
                 return Err(TranslateError::QualifiedWildcardInCountNotSupported(idents).into());
             }
