@@ -213,7 +213,6 @@ fn translate_table_with_join(table: &TableWithJoins) -> Result<String> {
 }
 
 fn translate_object_name(sql_object_name: &SqlObjectName) -> String {
-    // translate_idents(&sql_object_name.0)
     sql_object_name.0[0].value.to_owned()
 }
 
