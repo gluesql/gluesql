@@ -140,7 +140,10 @@ where
                                 .history()
                                 .get(history_len - 2)
                                 .map_or_else(|| "", String::as_str);
-                            edit::edit_with_builder(last, &builder)?;
+
+                            let edited = edit::edit_with_builder(last, &builder)?;
+
+                            rl.add_history_entry(&edited);
                         }
                     };
                 }
