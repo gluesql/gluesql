@@ -11,6 +11,7 @@ pub enum Command {
     Set(SetOption),
     Show(ShowOption),
     Edit(Option<String>),
+    Run,
 }
 
 #[derive(ThisError, Debug, PartialEq)]
@@ -137,6 +138,7 @@ impl Command {
                     None => Err(CommandError::LackOfOption),
                 },
                 ".edit" => Ok(Self::Edit(params.get(1).map(|v| v.to_string()))),
+                ".run" => Ok(Self::Run),
 
                 _ => Err(CommandError::NotSupported),
             }

@@ -66,7 +66,9 @@ where
                 }
             };
 
-            rl.add_history_entry(&line);
+            if !(line.starts_with(".edit") || line.starts_with(".run")) {
+                rl.add_history_entry(&line);
+            }
 
             let command = match Command::parse(&line, &self.print.option) {
                 Ok(command) => command,
@@ -134,17 +136,27 @@ where
                         None => {
                             let mut builder = Builder::new();
                             builder.prefix("Glue_").suffix(".sql");
-                            let history_len = rl.history().len();
-                            let last = rl
-                                .history()
-                                .get(history_len - 2)
-                                .map_or_else(|| "", String::as_str);
+                            let last = rl.history().last().map_or_else(|| "", String::as_str);
 
-                            let edited = edit_with_builder(last, &builder)?;
+                            let mut edited = edit_with_builder(last, &builder)?;
+                            edited.pop();
 
                             rl.add_history_entry(&edited);
                         }
                     };
+                }
+                Command::Run => {
+                    let sql = rl
+                        .history()
+                        .last()
+                        .map_or_else(|| Err(CommandError::NotSupported), |v| Ok(v.to_owned()))?;
+
+                    match self.glue.execute(sql.as_str()) {
+                        Ok(payloads) => self.print.payloads(&payloads)?,
+                        Err(e) => {
+                            println!("[error] {}\n", e);
+                        }
+                    }
                 }
             }
         }
