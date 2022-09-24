@@ -275,17 +275,19 @@ mod tests {
             String::from_utf8(print.output).unwrap()
         };
         let expected = "
-| command         | description                          |
-|-----------------|--------------------------------------|
-| .help           | show help                            |
-| .quit           | quit program                         |
-| .tables         | show table names                     |
-| .columns TABLE  | show columns from TABLE              |
-| .version        | show version                         |
-| .execute FILE   | execute SQL from a file              |
-| .spool FILE|off | spool to file or off                 |
-| .show OPTION    | show print option eg).show all       |
-| .set OPTION     | set print option eg).set tabular off |";
+| command         | description                           |
+|-----------------|---------------------------------------|
+| .help           | show help                             |
+| .quit           | quit program                          |
+| .tables         | show table names                      |
+| .columns TABLE  | show columns from TABLE               |
+| .version        | show version                          |
+| .execute PATH   | execute SQL from PATH                 |
+| .spool PATH|off | spool to PATH or off                  |
+| .show OPTION    | show print option eg).show all        |
+| .set OPTION     | set print option eg).set tabular off  |
+| .edit [PATH]    | open editor with last command or PATH |
+| .run            | execute last command                  |";
 
         assert_eq!(
             actual.as_str().trim_matches('\n'),
