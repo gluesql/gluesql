@@ -10,6 +10,8 @@ pub enum Command {
     SpoolOff,
     Set(SetOption),
     Show(ShowOption),
+    Edit(Option<String>),
+    Run,
 }
 
 #[derive(ThisError, Debug, PartialEq)]
@@ -26,6 +28,8 @@ pub enum CommandError {
     WrongOption(String),
     #[error("command not supported")]
     NotSupported,
+    #[error("Nothing in SQL history to run.")]
+    LackOfSQLHistory,
 }
 
 #[derive(Eq, Debug, PartialEq)]
@@ -135,6 +139,8 @@ impl Command {
                     Some(key) => Ok(Self::Show(ShowOption::parse(key)?)),
                     None => Err(CommandError::LackOfOption),
                 },
+                ".edit" => Ok(Self::Edit(params.get(1).map(|v| v.to_string()))),
+                ".run" => Ok(Self::Run),
 
                 _ => Err(CommandError::NotSupported),
             }
@@ -159,6 +165,12 @@ mod tests {
         assert_eq!(parse(".quit"), Ok(Command::Quit));
         assert_eq!(parse(".quit;"), Ok(Command::Quit));
         assert_eq!(parse(" .quit; "), Ok(Command::Quit));
+        assert_eq!(parse(".run"), Ok(Command::Run));
+        assert_eq!(parse(".edit"), Ok(Command::Edit(None)));
+        assert_eq!(
+            parse(".edit foo.sql"),
+            Ok(Command::Edit(Some("foo.sql".into())))
+        );
         assert_eq!(
             parse(".tables"),
             Ok(Command::Execute("SHOW TABLES".to_owned())),
