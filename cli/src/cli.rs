@@ -135,7 +135,12 @@ where
                         None => {
                             let mut builder = Builder::new();
                             builder.prefix("Glue_").suffix(".sql");
-                            edit::edit_with_builder("prevSQL", &builder)?;
+                            let history_len = rl.history().len();
+                            let last = rl
+                                .history()
+                                .get(history_len - 2)
+                                .map_or_else(|| "", String::as_str);
+                            edit::edit_with_builder(last, &builder)?;
                         }
                     };
                 }
