@@ -195,16 +195,18 @@ impl<'a, W: Write> Print<W> {
 
     pub fn help(&mut self) -> IOResult<()> {
         const HEADER: [&str; 2] = ["command", "description"];
-        const CONTENT: [[&str; 2]; 9] = [
+        const CONTENT: [[&str; 2]; 11] = [
             [".help", "show help"],
             [".quit", "quit program"],
             [".tables", "show table names"],
             [".columns TABLE", "show columns from TABLE"],
             [".version", "show version"],
-            [".execute FILE", "execute SQL from a file"],
-            [".spool FILE|off", "spool to file or off"],
+            [".execute PATH", "execute SQL from PATH"],
+            [".spool PATH|off", "spool to PATH or off"],
             [".show OPTION", "show print option eg).show all"],
             [".set OPTION", "set print option eg).set tabular off"],
+            [".edit [PATH]", "open editor with last command or PATH"],
+            [".run ", "execute last command"],
         ];
 
         let mut table = self.get_table(HEADER);

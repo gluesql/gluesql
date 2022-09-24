@@ -97,6 +97,10 @@ where
                     println!("[error] cannot support option: {e}\n");
                     continue;
                 }
+                Err(CommandError::LackOfSQLHistory) => {
+                    println!("[error] Nothing in SQL history to run.\n");
+                    continue;
+                }
             };
 
             match command {
@@ -149,14 +153,19 @@ where
                     let sql = rl
                         .history()
                         .last()
-                        .map_or_else(|| Err(CommandError::NotSupported), |v| Ok(v.to_owned()))?;
+                        .map_or_else(|| Err(CommandError::LackOfSQLHistory), |v| Ok(v.to_owned()));
 
-                    match self.glue.execute(sql.as_str()) {
-                        Ok(payloads) => self.print.payloads(&payloads)?,
+                    match sql {
+                        Ok(sql) => match self.glue.execute(sql.as_str()) {
+                            Ok(payloads) => self.print.payloads(&payloads)?,
+                            Err(e) => {
+                                println!("[error] {}\n", e);
+                            }
+                        },
                         Err(e) => {
                             println!("[error] {}\n", e);
                         }
-                    }
+                    };
                 }
             }
         }

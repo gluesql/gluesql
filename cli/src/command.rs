@@ -28,6 +28,8 @@ pub enum CommandError {
     WrongOption(String),
     #[error("command not supported")]
     NotSupported,
+    #[error("Nothing in SQL history to run.")]
+    LackOfSQLHistory,
 }
 
 #[derive(Eq, Debug, PartialEq)]
@@ -163,6 +165,7 @@ mod tests {
         assert_eq!(parse(".quit"), Ok(Command::Quit));
         assert_eq!(parse(".quit;"), Ok(Command::Quit));
         assert_eq!(parse(" .quit; "), Ok(Command::Quit));
+        assert_eq!(parse(".run"), Ok(Command::Run));
         assert_eq!(
             parse(".tables"),
             Ok(Command::Execute("SHOW TABLES".to_owned())),
