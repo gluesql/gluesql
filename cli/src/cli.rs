@@ -66,8 +66,9 @@ where
                 }
             };
 
+            let line = line.trim();
             if !(line.starts_with(".edit") || line.starts_with(".run")) {
-                rl.add_history_entry(&line);
+                rl.add_history_entry(line);
             }
 
             let command = match Command::parse(&line, &self.print.option) {
@@ -136,11 +137,8 @@ where
                             let mut builder = Builder::new();
                             builder.prefix("Glue_").suffix(".sql");
                             let last = rl.history().last().map_or_else(|| "", String::as_str);
-
-                            let mut edited = edit_with_builder(last, &builder)?;
-                            edited.pop();
-
-                            rl.add_history_entry(&edited);
+                            let edited = edit_with_builder(last, &builder)?;
+                            rl.add_history_entry(edited);
                         }
                     };
                 }
