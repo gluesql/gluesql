@@ -1,7 +1,7 @@
 use {
     super::{
-        select::NodeData, select::Prebuild, ExprList, GroupByNode, HavingNode, LimitNode,
-        LimitOffsetNode, OffsetLimitNode, OffsetNode, ProjectNode, SelectNode,
+        select::NodeData, select::Prebuild, ExprList, FilterNode, GroupByNode, HavingNode,
+        LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode, ProjectNode, SelectNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -20,6 +20,7 @@ pub enum QueryNode {
     LimitOffset(LimitOffsetNode),
     Offset(OffsetNode),
     OffsetLimit(OffsetLimitNode),
+    Filter(FilterNode),
     Text(String),
     Values(Vec<ExprList>),
     Project(ProjectNode),
@@ -73,6 +74,12 @@ impl From<&str> for QueryNode {
     }
 }
 
+impl From<FilterNode> for QueryNode {
+    fn from(node: FilterNode) -> Self {
+        QueryNode::Filter(node)
+    }
+}
+
 impl From<ProjectNode> for QueryNode {
     fn from(node: ProjectNode) -> Self {
         QueryNode::Project(node)
@@ -108,6 +115,7 @@ impl TryFrom<QueryNode> for Query {
                     offset: None,
                 })
             }
+            QueryNode::Filter(query_node) => query_node.prebuild().map(NodeData::build_query),
         }
     }
 }

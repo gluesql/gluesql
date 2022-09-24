@@ -64,6 +64,7 @@ mod tests {
 
     #[test]
     fn offset_limit() {
+        // offset node -> limit node -> build node
         let actual = table("Bar")
             .select()
             .group_by("city")
@@ -73,6 +74,24 @@ mod tests {
             .build();
         let expected = "
             SELECT * FROM Bar
+            GROUP BY city
+            HAVING COUNT(name) < 100
+            OFFSET 1
+            LIMIT 3;
+        ";
+        test(actual, expected);
+
+        // offset node -> limit node -> project node
+        let actual = table("Bar")
+            .select()
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .offset(1)
+            .limit(3)
+            .project("city")
+            .build();
+        let expected = "
+            SELECT city FROM Bar
             GROUP BY city
             HAVING COUNT(name) < 100
             OFFSET 1

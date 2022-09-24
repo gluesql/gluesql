@@ -3,8 +3,8 @@ use {
     crate::{
         ast::Statement,
         ast_builder::{
-            ExprNode, GroupByNode, HavingNode, OffsetLimitNode, OrderByNode, ProjectNode,
-            SelectItemList, SelectNode,
+            ExprNode, FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode,
+            OffsetLimitNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -15,6 +15,9 @@ pub enum PrevNode {
     Select(SelectNode),
     GroupBy(GroupByNode),
     Having(HavingNode),
+    Join(Box<JoinNode>),
+    JoinConstraint(Box<JoinConstraintNode>),
+    Filter(FilterNode),
     OrderBy(OrderByNode),
 }
 
@@ -24,6 +27,9 @@ impl Prebuild for PrevNode {
             Self::Select(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
+            Self::Join(node) => node.prebuild(),
+            Self::JoinConstraint(node) => node.prebuild(),
+            Self::Filter(node) => node.prebuild(),
             Self::OrderBy(node) => node.prebuild(),
         }
     }
@@ -44,6 +50,24 @@ impl From<GroupByNode> for PrevNode {
 impl From<HavingNode> for PrevNode {
     fn from(node: HavingNode) -> Self {
         PrevNode::Having(node)
+    }
+}
+
+impl From<JoinConstraintNode> for PrevNode {
+    fn from(node: JoinConstraintNode) -> Self {
+        PrevNode::JoinConstraint(Box::new(node))
+    }
+}
+
+impl From<JoinNode> for PrevNode {
+    fn from(node: JoinNode) -> Self {
+        PrevNode::Join(Box::new(node))
+    }
+}
+
+impl From<FilterNode> for PrevNode {
+    fn from(node: FilterNode) -> Self {
+        PrevNode::Filter(node)
     }
 }
 
@@ -95,30 +119,69 @@ mod tests {
 
     #[test]
     fn offset() {
-        let actual = table("Hello").select().offset(10).build();
-        let expected = "SELECT * FROM Hello OFFSET 10";
+        // select node -> offset node -> build
+        let actual = table("Foo").select().offset(10).build();
+        let expected = "SELECT * FROM Foo OFFSET 10";
         test(actual, expected);
 
-        let actual = table("World").select().filter("id > 2").offset(100).build();
-        let expected = "SELECT * FROM World WHERE id > 2 OFFSET 100";
+        // group by node -> offset node -> build
+        let actual = table("Foo").select().group_by("id").offset(10).build();
+        let expected = "SELECT * FROM Foo GROUP BY id OFFSET 10";
         test(actual, expected);
 
-        let actual = table("Foo").select().group_by("name").offset(5).build();
-        let expected = "SELECT * FROM Foo GROUP BY name OFFSET 5";
-        test(actual, expected);
-
-        let actual = table("Bar")
+        // having node -> offset node -> build
+        let actual = table("Foo")
             .select()
-            .group_by("city")
-            .having("COUNT(name) < 100")
-            .offset(3)
+            .group_by("id")
+            .having("id > 10")
+            .offset(10)
             .build();
-        let expected = "
-            SELECT * FROM Bar
-            GROUP BY city
-            HAVING COUNT(name) < 100
-            OFFSET 3;
-        ";
+        let expected = "SELECT * FROM Foo GROUP BY id HAVING id > 10 OFFSET 10";
+        test(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo").select().join("Bar").offset(10).build();
+        let expected = "SELECT * FROM Foo JOIN Bar OFFSET 10";
+        test(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo").select().join_as("Bar", "B").offset(10).build();
+        let expected = "SELECT * FROM Foo JOIN Bar AS B OFFSET 10";
+        test(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .on("Foo.id = Bar.id")
+            .offset(10)
+            .build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar ON Foo.id = Bar.id OFFSET 10";
+        test(actual, expected);
+
+        // join node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "B")
+            .on("Foo.id = B.id")
+            .offset(10)
+            .build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B ON Foo.id = B.id OFFSET 10";
+        test(actual, expected);
+
+        // join constraint node -> offset node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .offset(10)
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id OFFSET 10";
+        test(actual, expected);
+
+        // filter node -> offset node -> build
+        let actual = table("Bar").select().filter("id > 2").offset(100).build();
+        let expected = "SELECT * FROM Bar WHERE id > 2 OFFSET 100";
         test(actual, expected);
     }
 }
