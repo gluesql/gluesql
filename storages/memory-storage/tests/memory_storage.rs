@@ -1,23 +1,19 @@
-use {
-    gluesql_memory_storage::MemoryStorage,
-    std::{cell::RefCell, rc::Rc},
-    test_suite::*,
-};
+use {gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*};
 
 struct MemoryTester {
-    storage: Rc<RefCell<Option<MemoryStorage>>>,
+    glue: Glue<MemoryStorage>,
 }
 
 impl Tester<MemoryStorage> for MemoryTester {
     fn new(_: &str) -> Self {
-        let storage = Some(MemoryStorage::default());
-        let storage = Rc::new(RefCell::new(storage));
+        let storage = MemoryStorage::default();
+        let glue = Glue::new(storage);
 
-        MemoryTester { storage }
+        MemoryTester { glue }
     }
 
-    fn get_cell(&mut self) -> Rc<RefCell<Option<MemoryStorage>>> {
-        Rc::clone(&self.storage)
+    fn get_glue(&mut self) -> &mut Glue<MemoryStorage> {
+        &mut self.glue
     }
 }
 

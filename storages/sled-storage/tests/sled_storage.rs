@@ -1,11 +1,7 @@
-use {
-    gluesql_sled_storage::SledStorage,
-    std::{cell::RefCell, rc::Rc},
-    test_suite::*,
-};
+use {gluesql_core::prelude::Glue, gluesql_sled_storage::SledStorage, test_suite::*};
 
 struct SledTester {
-    storage: Rc<RefCell<Option<SledStorage>>>,
+    glue: Glue<SledStorage>,
 }
 
 impl Tester<SledStorage> for SledTester {
@@ -24,17 +20,14 @@ impl Tester<SledStorage> for SledTester {
             .temporary(true)
             .mode(sled::Mode::HighThroughput);
 
-        let storage = SledStorage::try_from(config)
-            .map(Some)
-            .map(RefCell::new)
-            .map(Rc::new)
-            .expect("SledStorage::new");
+        let storage = SledStorage::try_from(config).expect("SledStorage::new");
+        let glue = Glue::new(storage);
 
-        SledTester { storage }
+        SledTester { glue }
     }
 
-    fn get_cell(&mut self) -> Rc<RefCell<Option<SledStorage>>> {
-        Rc::clone(&self.storage)
+    fn get_glue(&mut self) -> &mut Glue<SledStorage> {
+        &mut self.glue
     }
 }
 
