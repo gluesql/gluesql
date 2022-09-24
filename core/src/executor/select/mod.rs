@@ -36,7 +36,7 @@ pub fn get_labels<'a>(
     projection: &[SelectItem],
     table_alias: &str,
     columns: &'a [String],
-    join_columns: Option<&'a [(&String, Vec<String>)]>,
+    join_columns: Option<&'a [(&str, Vec<String>)]>,
 ) -> Result<Vec<String>> {
     #[derive(Iterator)]
     enum Labeled<I1, I2, I3, I4, I5> {

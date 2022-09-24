@@ -242,7 +242,7 @@ pub async fn fetch_relation_columns(
 pub async fn fetch_join_columns<'a>(
     joins: &'a [Join],
     storage: &dyn GStore,
-) -> Result<Vec<(&'a String, Vec<String>)>> {
+) -> Result<Vec<(&'a str, Vec<String>)>> {
     stream::iter(joins.iter())
         .map(Ok::<_, Error>)
         .and_then(|join| async move {

@@ -83,6 +83,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             alias: TableAlias { name, .. },
             ..
         } => name,
+        TableFactor::Dictionary { name, .. } => name.get_name(),
     };
 
     let indexes = match schema_map.get(table_name) {
@@ -120,7 +121,9 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } | TableFactor::Series { .. } => {
+                TableFactor::Derived { .. }
+                | TableFactor::Series { .. }
+                | TableFactor::Dictionary { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
             };
@@ -203,7 +206,9 @@ fn plan_select(
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } | TableFactor::Series { .. } => {
+                TableFactor::Derived { .. }
+                | TableFactor::Series { .. }
+                | TableFactor::Dictionary { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
             };

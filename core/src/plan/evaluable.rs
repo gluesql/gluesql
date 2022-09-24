@@ -145,6 +145,15 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
         TableFactor::Derived { alias, .. } | TableFactor::Series { alias, .. } => {
             alias.to_owned().name
         }
+        TableFactor::Derived { alias, .. } => alias.to_owned().name,
+        TableFactor::Dictionary { name, alias } => {
+            let name = name.get_name();
+
+            alias
+                .as_ref()
+                .map(|TableAlias { name, .. }| name.clone())
+                .unwrap_or_else(|| name.to_string())
+        }
     };
 
     context
