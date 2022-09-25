@@ -556,13 +556,17 @@ impl Value {
         self.try_into().map(|key: Key| key.to_cmp_be_bytes())
     }
 
-    /// only Value::Str type allowed
-    /// returns positon of substring from string
-    /// if there are substring in string, returns the position where the first letter of the substring begins. The minimum value is 1
-    /// else returns 0 because there is no substring to find within the string
+    /// Support only [`Value::Str`] variant
+    ///
+    /// Returns the position where the first letter of the substring starts if the string contains a substring.
+    ///
+    /// Returns `0` if the string to be found is not found.
+    /// Returns minimum value `1` when the string is found.
+    ///
     /// # Examples
+    ///
     /// ```
-    /// use gluesql_core::data::{ValueError, value::Value::*};
+    /// use gluesql::core::data::{ValueError, value::Value::*};
     ///
     /// let str1 = Str("ramen".to_string());
     /// let str2 = Str("men".to_string());
@@ -582,13 +586,14 @@ impl Value {
         use Value::*;
         match (self, other) {
             (Str(from_str), Str(sub_str)) => {
-                if from_str == &"".to_string() || sub_str == &"".to_string() {
+                if from_str == "" || sub_str == "" {
                     return Ok(0);
                 }
-                match from_str.find(sub_str).map(|position| position + 1) {
-                    Some(pos) => Ok(pos),
-                    None => Ok(0),
-                }
+
+                Ok(from_str
+                    .find(sub_str)
+                    .map(|position| position + 1)
+                    .unwrap_or(0))
             }
             (Null, Str(_)) | (Str(_), Null) => Ok(0),
             _ => Err(ValueError::StrPositionOnNonString(self.clone(), other.clone()).into()),
