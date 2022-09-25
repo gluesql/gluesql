@@ -555,6 +555,45 @@ impl Value {
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
         self.try_into().map(|key: Key| key.to_cmp_be_bytes())
     }
+
+    /// only Value::Str type allowed
+    /// returns positon of substring from string
+    /// if there are substring in string, returns the position where the first letter of the substring begins. The minimum value is 1
+    /// else returns 0 because there is no substring to find within the string
+    /// # Examples
+    /// ```
+    /// use gluesql_core::data::{ValueError, value::Value::*};
+    ///
+    /// let str1 = Str("ramen".to_string());
+    /// let str2 = Str("men".to_string());
+    /// let empty_str = Str("".to_string());
+    /// assert_eq!(str1.str_position(&str2), Ok(3));
+    /// assert_eq!(str2.str_position(&str1), Ok(0));
+    /// assert_eq!(Null.str_position(&str2), Ok(0));
+    /// assert_eq!(str1.str_position(&Null), Ok(0));
+    /// assert_eq!(empty_str.str_position(&str2), Ok(0));
+    /// assert_eq!(str1.str_position(&empty_str), Ok(0));
+    /// assert_eq!(
+    ///     str1.str_position(&I8(1)),
+    ///     Err(ValueError::StrPositionOnNonString(str1, I8(1)).into())
+    /// );
+    /// ```
+    pub fn str_position(&self, other: &Value) -> Result<usize> {
+        use Value::*;
+        match (self, other) {
+            (Str(from_str), Str(sub_str)) => {
+                if from_str == &"".to_string() || sub_str == &"".to_string() {
+                    return Ok(0);
+                }
+                match from_str.find(sub_str).map(|position| position + 1) {
+                    Some(pos) => Ok(pos),
+                    None => Ok(0),
+                }
+            }
+            (Null, Str(_)) | (Str(_), Null) => Ok(0),
+            _ => Err(ValueError::StrPositionOnNonString(self.clone(), other.clone()).into()),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1476,6 +1515,23 @@ mod tests {
         assert_eq!(
             Str("9".to_string()).sqrt(),
             Err(ValueError::SqrtOnNonNumeric(Str("9".to_string())).into())
+        );
+    }
+
+    #[test]
+    fn str_position() {
+        let str1 = Str("ramen".to_string());
+        let str2 = Str("men".to_string());
+        let empty_str = Str("".to_string());
+        assert_eq!(str1.str_position(&str2), Ok(3));
+        assert_eq!(str2.str_position(&str1), Ok(0));
+        assert_eq!(Null.str_position(&str2), Ok(0));
+        assert_eq!(str1.str_position(&Null), Ok(0));
+        assert_eq!(empty_str.str_position(&str2), Ok(0));
+        assert_eq!(str1.str_position(&empty_str), Ok(0));
+        assert_eq!(
+            str1.str_position(&I8(1)),
+            Err(ValueError::StrPositionOnNonString(str1, I8(1)).into())
         );
     }
 
