@@ -199,7 +199,7 @@ pub async fn fetch_relation_columns(
                 let join_columns = fetch_join_columns(joins, storage).await?;
                 let labels = get_labels(
                     projection,
-                    get_alias(relation)?,
+                    get_alias(relation),
                     &columns,
                     Some(&join_columns),
                 )?;
@@ -235,7 +235,7 @@ pub async fn fetch_join_columns<'a>(
         .map(Ok::<_, Error>)
         .and_then(|join| async move {
             let relation = &join.relation;
-            let alias = get_alias(relation)?;
+            let alias = get_alias(relation);
             let columns = fetch_relation_columns(storage, relation).await?;
             Ok((alias, columns))
         })
