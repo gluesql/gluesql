@@ -222,7 +222,7 @@ pub async fn select_with_labels<'a>(
             .map(move |row| {
                 let row = Some(row?);
                 let columns = Rc::clone(&columns);
-                let alias = get_alias(relation)?;
+                let alias = get_alias(relation);
                 Ok(BlendContext::new(alias, columns, Single(row), None))
             })
     };
@@ -231,7 +231,7 @@ pub async fn select_with_labels<'a>(
     let labels = if with_labels {
         get_labels(
             projection,
-            get_alias(relation)?,
+            get_alias(relation),
             &columns,
             Some(&join_columns),
         )?
@@ -302,7 +302,7 @@ pub async fn select_with_labels<'a>(
 
     let labels = Rc::new(labels);
     let rows = sort
-        .apply(rows, Rc::clone(&labels), get_alias(relation)?)
+        .apply(rows, Rc::clone(&labels), get_alias(relation))
         .await?;
 
     let rows = limit.apply(rows);

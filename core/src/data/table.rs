@@ -1,8 +1,5 @@
 use {
-    crate::{
-        ast::{IndexItem, TableAlias, TableFactor},
-        result::Result,
-    },
+    crate::ast::{IndexItem, TableAlias, TableFactor},
     serde::Serialize,
     std::fmt::Debug,
     thiserror::Error,
@@ -14,26 +11,26 @@ pub enum TableError {
     Unreachable,
 }
 
-pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
+pub fn get_alias(table_factor: &TableFactor) -> &String {
     match table_factor {
         TableFactor::Table {
             name, alias: None, ..
-        } => Ok(name),
-        TableFactor::Table {
+        }
+        | TableFactor::Table {
             alias: Some(TableAlias { name, .. }),
             ..
         }
         | TableFactor::Derived {
             alias: TableAlias { name, .. },
             ..
-        } => Ok(name),
-        TableFactor::Series {
+        }
+        | TableFactor::Series {
             name, alias: None, ..
-        } => Ok(name),
-        TableFactor::Series {
+        }
+        | TableFactor::Series {
             alias: Some(TableAlias { name, .. }),
             ..
-        } => Ok(name),
+        } => name,
     }
 }
 
