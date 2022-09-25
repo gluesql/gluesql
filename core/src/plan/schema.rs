@@ -49,8 +49,6 @@ pub async fn fetch_schema_map(
             stream::iter(names)
                 .map(Ok)
                 .try_filter_map(|table_name| async move {
-                    // let table_name = get_name(table_name)?;
-
                     Ok(storage
                         .fetch_schema(table_name)
                         .await?

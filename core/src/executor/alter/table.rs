@@ -17,7 +17,7 @@ use {
 
 pub async fn create_table<T: GStore + GStoreMut>(
     storage: T,
-    target_table_name: &String,
+    target_table_name: &str,
     column_defs: &[ColumnDef],
     if_not_exists: bool,
     source: &Option<Box<Query>>,

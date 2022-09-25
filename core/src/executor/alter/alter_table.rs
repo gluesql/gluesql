@@ -21,7 +21,7 @@ use {
 
 pub async fn alter_table<T: GStore + GStoreMut>(
     storage: T,
-    table_name: &String,
+    table_name: &str,
     operation: &AlterTableOperation,
 ) -> MutResult<T, ()> {
     match operation {

@@ -12,8 +12,8 @@ use {
 
 pub async fn create_index<T: GStore + GStoreMut>(
     storage: T,
-    table_name: &String,
-    index_name: &String,
+    table_name: &str,
+    index_name: &str,
     column: &OrderByExpr,
 ) -> MutResult<T, ()> {
     let names = (|| async {

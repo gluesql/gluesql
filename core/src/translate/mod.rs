@@ -216,9 +216,9 @@ fn translate_table_with_join(table: &TableWithJoins) -> Result<String> {
 }
 
 fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
-    let sql_object_name = sql_object_name.0.to_owned();
+    let sql_object_name = &sql_object_name.0;
     if sql_object_name.len() > 1 {
-        let compound_object_name = translate_idents(&sql_object_name).join(".");
+        let compound_object_name = translate_idents(sql_object_name).join(".");
         return Err(TranslateError::CompoundObjectNotSupported(compound_object_name).into());
     }
 
