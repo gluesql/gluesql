@@ -560,42 +560,45 @@ impl Value {
     ///
     /// Returns the position where the first letter of the substring starts if the string contains a substring.
     ///
-    /// Returns `0` if the string to be found is not found.
-    /// Returns minimum value `1` when the string is found.
+    /// Returns `I64(0)` if the string to be found is not found.
+    /// Returns minimum value `I64(1)` when the string is found.
+    /// Returns Null if NULL parameter found.
     ///
     /// # Examples
     ///
     /// ```
-    /// use gluesql::core::data::{ValueError, value::Value::*};
+    /// use gluesql_core::{
+    ///     data::ValueError,
+    ///     prelude::Value::*
+    /// };
     ///
     /// let str1 = Str("ramen".to_string());
     /// let str2 = Str("men".to_string());
     /// let empty_str = Str("".to_string());
-    /// assert_eq!(str1.str_position(&str2), Ok(3));
-    /// assert_eq!(str2.str_position(&str1), Ok(0));
-    /// assert_eq!(Null.str_position(&str2), Ok(0));
-    /// assert_eq!(str1.str_position(&Null), Ok(0));
-    /// assert_eq!(empty_str.str_position(&str2), Ok(0));
-    /// assert_eq!(str1.str_position(&empty_str), Ok(0));
+    /// assert_eq!(str1.str_position(&str2), Ok(I64(3)));
+    /// assert_eq!(str2.str_position(&str1), Ok(I64(0)));
+    /// assert!(Null.str_position(&str2).unwrap().is_null());
+    /// assert!(str1.str_position(&Null).unwrap().is_null());
+    /// assert_eq!(empty_str.str_position(&str2), Ok(I64(0)));
+    /// assert_eq!(str1.str_position(&empty_str), Ok(I64(0)));
     /// assert_eq!(
-    ///     str1.str_position(&I8(1)),
-    ///     Err(ValueError::StrPositionOnNonString(str1, I8(1)).into())
+    ///     str1.str_position(&I64(1)),
+    ///     Err(ValueError::StrPositionOnNonString(str1, I64(1)).into())
     /// );
     /// ```
-    pub fn str_position(&self, other: &Value) -> Result<usize> {
+    pub fn str_position(&self, other: &Value) -> Result<Value> {
         use Value::*;
         match (self, other) {
             (Str(from_str), Str(sub_str)) => {
                 if from_str.is_empty() || sub_str.is_empty() {
-                    return Ok(0);
+                    return Ok(I64(0));
                 }
-
-                Ok(from_str
-                    .find(sub_str)
-                    .map(|position| position + 1)
-                    .unwrap_or(0))
+                match from_str.find(sub_str).map(|position| position + 1) {
+                    Some(pos) => Ok(I64(pos as i64)),
+                    None => Ok(I64(0)),
+                }
             }
-            (Null, Str(_)) | (Str(_), Null) => Ok(0),
+            (Null, _) | (_, Null) => Ok(Null),
             _ => Err(ValueError::StrPositionOnNonString(self.clone(), other.clone()).into()),
         }
     }
@@ -1528,15 +1531,15 @@ mod tests {
         let str1 = Str("ramen".to_string());
         let str2 = Str("men".to_string());
         let empty_str = Str("".to_string());
-        assert_eq!(str1.str_position(&str2), Ok(3));
-        assert_eq!(str2.str_position(&str1), Ok(0));
-        assert_eq!(Null.str_position(&str2), Ok(0));
-        assert_eq!(str1.str_position(&Null), Ok(0));
-        assert_eq!(empty_str.str_position(&str2), Ok(0));
-        assert_eq!(str1.str_position(&empty_str), Ok(0));
+        assert_eq!(str1.str_position(&str2), Ok(I64(3)));
+        assert_eq!(str2.str_position(&str1), Ok(I64(0)));
+        assert!(Null.str_position(&str2).unwrap().is_null());
+        assert!(str1.str_position(&Null).unwrap().is_null());
+        assert_eq!(empty_str.str_position(&str2), Ok(I64(0)));
+        assert_eq!(str1.str_position(&empty_str), Ok(I64(0)));
         assert_eq!(
-            str1.str_position(&I8(1)),
-            Err(ValueError::StrPositionOnNonString(str1, I8(1)).into())
+            str1.str_position(&I64(1)),
+            Err(ValueError::StrPositionOnNonString(str1, I64(1)).into())
         );
     }
 
