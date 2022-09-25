@@ -163,12 +163,12 @@ pub trait Planner<'a> {
         table_factor: &TableFactor,
     ) -> Option<Rc<Context<'a>>> {
         let (name, alias) = match table_factor {
-            TableFactor::Table { name, alias, .. } | TableFactor::Series { name, alias, .. } => {
+            TableFactor::Table { name, alias, .. } => {
                 let alias = alias.as_ref().map(|TableAlias { name, .. }| name.clone());
 
                 (name, alias)
             }
-            TableFactor::Derived { .. } => return next,
+            TableFactor::Derived { .. } | TableFactor::Series { .. } => return next,
         };
 
         let column_defs = match self.get_schema(name) {
