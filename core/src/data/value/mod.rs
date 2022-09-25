@@ -586,7 +586,7 @@ impl Value {
         use Value::*;
         match (self, other) {
             (Str(from_str), Str(sub_str)) => {
-                if from_str == "" || sub_str == "" {
+                if from_str.is_empty() || sub_str.is_empty() {
                     return Ok(0);
                 }
 
