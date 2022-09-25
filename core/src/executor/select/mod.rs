@@ -17,7 +17,7 @@ use {
     },
     crate::{
         ast::{Expr, OrderByExpr, Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
-        data::{get_alias, get_name, Row, RowError},
+        data::{get_alias, Row, RowError},
         prelude::{DataType, Value},
         result::{Error, Result},
         store::GStore,
@@ -82,9 +82,7 @@ pub fn get_labels<'a>(
                 let labels = labels.map(Ok);
                 Labeled::Wildcard(Wildcard::WithoutJoin(labels))
             }
-            SelectItem::QualifiedWildcard(target) => {
-                let target_table_alias = try_into!(get_name(target));
-
+            SelectItem::QualifiedWildcard(target_table_alias) => {
                 if table_alias == target_table_alias {
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));
                 }

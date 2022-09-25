@@ -2,7 +2,7 @@ use {
     super::context::Context,
     crate::{
         ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Query, TableAlias, TableFactor},
-        data::{get_name, Schema},
+        data::Schema,
     },
     std::rc::Rc,
 };
@@ -164,10 +164,6 @@ pub trait Planner<'a> {
     ) -> Option<Rc<Context<'a>>> {
         let (name, alias) = match table_factor {
             TableFactor::Table { name, alias, .. } | TableFactor::Series { name, alias, .. } => {
-                let name = match get_name(name) {
-                    Ok(name) => name.clone(),
-                    Err(_) => return next,
-                };
                 let alias = alias.as_ref().map(|TableAlias { name, .. }| name.clone());
 
                 (name, alias)
@@ -175,7 +171,7 @@ pub trait Planner<'a> {
             TableFactor::Derived { .. } => return next,
         };
 
-        let column_defs = match self.get_schema(&name) {
+        let column_defs = match self.get_schema(name) {
             Some(Schema { column_defs, .. }) => column_defs,
             None => return next,
         };
@@ -196,7 +192,13 @@ pub trait Planner<'a> {
                     .then(|| name.as_str())
             });
 
-        let context = Context::new(alias.unwrap_or(name), columns, primary_key, next, None);
+        let context = Context::new(
+            alias.unwrap_or_else(|| name.to_owned()),
+            columns,
+            primary_key,
+            next,
+            None,
+        );
         Some(Rc::new(context))
     }
 }

@@ -1,6 +1,6 @@
 #![cfg(feature = "alter-table")]
 use crate::{
-    ast::{AlterTableOperation, ObjectName, Statement},
+    ast::{AlterTableOperation, Statement},
     ast_builder::ColumnDefNode,
     result::Result,
 };
@@ -60,7 +60,7 @@ pub struct AddColumnNode {
 
 impl AddColumnNode {
     pub fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_node.table_name]);
+        let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::AddColumn {
             column_def: self.column_def.try_into()?,
         };
@@ -79,7 +79,7 @@ pub struct DropColumnNode {
 
 impl DropColumnNode {
     pub fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_node.table_name]);
+        let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::DropColumn {
             column_name: self.column_name,
             if_exists: self.if_exists,
@@ -99,7 +99,7 @@ pub struct RenameColumnNode {
 
 impl RenameColumnNode {
     pub fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_node.table_name]);
+        let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::RenameColumn {
             old_column_name: self.old_column_name,
             new_column_name: self.new_column_name,
@@ -118,9 +118,9 @@ pub struct RenameTableNode {
 
 impl RenameTableNode {
     pub fn build(self) -> Result<Statement> {
-        let old_table_name = ObjectName(vec![self.table_node.table_name]);
+        let old_table_name = self.table_node.table_name;
         let operation = AlterTableOperation::RenameTable {
-            table_name: ObjectName(vec![self.new_table_name]),
+            table_name: self.new_table_name,
         };
         Ok(Statement::AlterTable {
             name: old_table_name,

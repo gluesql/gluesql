@@ -4,7 +4,7 @@ use {
             AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
             SetExpr, Statement, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema, SchemaIndex, SchemaIndexOrd, TableError},
+        data::{Schema, SchemaIndex, SchemaIndexOrd, TableError},
         result::{Error, Result},
     },
     std::collections::HashMap,
@@ -70,7 +70,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
 
     let TableWithJoins { relation, .. } = &select.from;
     let table_name = match relation {
-        TableFactor::Table { name, .. } => get_name(name)?,
+        TableFactor::Table { name, .. } => name,
         TableFactor::Derived { .. } => {
             return Ok(Query {
                 body: SetExpr::Select(select),
@@ -79,7 +79,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 offset,
             });
         }
-        TableFactor::Series { name, .. } => get_name(name)?,
+        TableFactor::Series { name, .. } => name,
     };
 
     let indexes = match schema_map.get(table_name) {

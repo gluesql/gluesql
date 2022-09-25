@@ -1,7 +1,4 @@
-use crate::{
-    ast::{ObjectName, Statement},
-    result::Result,
-};
+use crate::{ast::Statement, result::Result};
 
 #[derive(Clone)]
 pub struct DropTableNode {
@@ -18,7 +15,7 @@ impl DropTableNode {
     }
 
     pub fn build(self) -> Result<Statement> {
-        let names = vec![ObjectName(vec![self.table_name])];
+        let names = vec![self.table_name];
         let if_exists = self.if_exists;
 
         Ok(Statement::DropTable { names, if_exists })

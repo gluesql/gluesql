@@ -1,7 +1,4 @@
-use crate::{
-    ast::{ObjectName, Statement},
-    result::Result,
-};
+use crate::{ast::Statement, result::Result};
 
 #[derive(Clone)]
 pub struct ShowColumnsNode {
@@ -13,7 +10,7 @@ impl ShowColumnsNode {
         Self { table_name }
     }
     pub fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_name]);
+        let table_name = self.table_name;
         Ok(Statement::ShowColumns { table_name })
     }
 }

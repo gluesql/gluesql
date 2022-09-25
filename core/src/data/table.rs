@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{IndexItem, ObjectName, TableAlias, TableFactor},
+        ast::{IndexItem, TableAlias, TableFactor},
         result::Result,
     },
     serde::Serialize,
@@ -14,16 +14,11 @@ pub enum TableError {
     Unreachable,
 }
 
-pub fn get_name(table_name: &ObjectName) -> Result<&String> {
-    let ObjectName(idents) = table_name;
-    idents.last().ok_or_else(|| TableError::Unreachable.into())
-}
-
 pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
     match table_factor {
         TableFactor::Table {
             name, alias: None, ..
-        } => get_name(name),
+        } => Ok(name),
         TableFactor::Table {
             alias: Some(TableAlias { name, .. }),
             ..
@@ -34,7 +29,7 @@ pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
         } => Ok(name),
         TableFactor::Series {
             name, alias: None, ..
-        } => get_name(name),
+        } => Ok(name),
         TableFactor::Series {
             alias: Some(TableAlias { name, .. }),
             ..
