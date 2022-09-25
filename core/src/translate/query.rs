@@ -123,7 +123,7 @@ pub fn translate_select_item(sql_select_item: &SqlSelectItem) -> Result<SelectIt
             })
         }
         SqlSelectItem::QualifiedWildcard(object_name) => Ok(SelectItem::QualifiedWildcard(
-            translate_object_name(object_name),
+            translate_object_name(object_name)?,
         )),
         SqlSelectItem::Wildcard => Ok(SelectItem::Wildcard),
     }
@@ -171,16 +171,16 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
     match sql_table_factor {
         SqlTableFactor::Table {
             name, alias, args, ..
-        } if translate_object_name(name).to_uppercase() == "SERIES" && args.is_some() => {
+        } if translate_object_name(name)?.to_uppercase() == "SERIES" && args.is_some() => {
             Ok(TableFactor::Series {
-                name: translate_object_name(name),
+                name: translate_object_name(name)?,
                 alias: translate_table_alias(alias),
                 size: translate_table_args(args)?,
             })
         }
         SqlTableFactor::Table { name, alias, .. } => {
             Ok(TableFactor::Table {
-                name: translate_object_name(name),
+                name: translate_object_name(name)?,
                 alias: translate_table_alias(alias),
                 index: None, // query execution plan
             })

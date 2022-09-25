@@ -117,14 +117,6 @@ pub enum Variable {
     Version,
 }
 
-// impl ToSql for ObjectName {
-//     fn to_sql(&self) -> String {
-//         match self {
-//             ObjectName(names) => names.join("."),
-//         }
-//     }
-// }
-
 impl ToSql for Statement {
     fn to_sql(&self) -> String {
         match self {

@@ -171,7 +171,7 @@ pub trait Planner<'a> {
             TableFactor::Derived { .. } => return next,
         };
 
-        let column_defs = match self.get_schema(&name) {
+        let column_defs = match self.get_schema(name) {
             Some(Schema { column_defs, .. }) => column_defs,
             None => return next,
         };
@@ -193,7 +193,7 @@ pub trait Planner<'a> {
             });
 
         let context = Context::new(
-            alias.unwrap_or(name.to_owned()),
+            alias.unwrap_or_else(|| name.to_owned()),
             columns,
             primary_key,
             next,
