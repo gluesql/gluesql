@@ -14,11 +14,6 @@ pub enum TableError {
     Unreachable,
 }
 
-// pub fn get_name(table_name: &String) -> Result<&String> {
-//     let ObjectName(idents) = table_name;
-//     idents.last().ok_or_else(|| TableError::Unreachable.into())
-// }
-
 pub fn get_alias(table_factor: &TableFactor) -> Result<&String> {
     match table_factor {
         TableFactor::Table {
