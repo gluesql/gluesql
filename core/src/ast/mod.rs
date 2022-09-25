@@ -249,21 +249,6 @@ mod tests {
         std::str::FromStr,
     };
 
-    // #[test]
-    // fn to_sql_object_name() {
-    //     assert_eq!("Foo", ObjectName(vec!["Foo".to_string()]).to_sql());
-
-    //     assert_eq!(
-    //         "Foo.bar.bax",
-    //         ObjectName(vec![
-    //             "Foo".to_string(),
-    //             "bar".to_string(),
-    //             "bax".to_string()
-    //         ])
-    //         .to_sql()
-    //     );
-    // }
-
     #[test]
     fn to_sql_show_columns() {
         assert_eq!(
