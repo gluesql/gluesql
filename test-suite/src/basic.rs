@@ -59,7 +59,7 @@ CREATE TABLE TestA (
         ),
         (
             "SELECT id FROM FOO.Test",
-            Err(TranslateError::CompoundObjectNotSupported("FOO.Test".into()).into()),
+            Err(TranslateError::CompoundObjectNotSupported("FOO.Test".to_owned()).into()),
         ),
     ];
 

@@ -80,7 +80,7 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
         None => TableWithJoins {
             relation: TableFactor::Series {
-                name: "Series".into(),
+                name: "Series".to_owned(),
                 alias: None,
                 size: Expr::Literal(AstLiteral::Number(1.into())),
             },

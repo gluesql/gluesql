@@ -446,7 +446,7 @@ mod tests {
 
     fn table_factor(name: &str, alias: Option<&str>) -> TableFactor {
         TableFactor::Table {
-            name: name.to_string(),
+            name: name.to_owned(),
             alias: alias.map(|alias| TableAlias {
                 name: alias.to_owned(),
                 columns: Vec::new(),
@@ -495,7 +495,7 @@ mod tests {
         let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan_join(&storage, sql);
         let expected = Statement::Delete {
-            table_name: "Player".into(),
+            table_name: "Player".to_owned(),
             selection: Some(expr("id = 1")),
         };
         assert_eq!(actual, expected, "plan not covered:\n{sql}");
