@@ -138,11 +138,13 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
 
 fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFactor) -> bool {
     let alias = match table_factor {
-        TableFactor::Table { name, alias, .. } | TableFactor::Series { name, alias, .. } => alias
+        TableFactor::Table { name, alias, .. } => alias
             .as_ref()
             .map(|TableAlias { name, .. }| name.clone())
             .unwrap_or_else(|| name.clone()),
-        TableFactor::Derived { alias, .. } => alias.to_owned().name,
+        TableFactor::Derived { alias, .. } | TableFactor::Series { alias, .. } => {
+            alias.to_owned().name
+        }
     };
 
     context

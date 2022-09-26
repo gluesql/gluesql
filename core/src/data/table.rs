@@ -25,10 +25,7 @@ pub fn get_alias(table_factor: &TableFactor) -> &String {
             ..
         }
         | TableFactor::Series {
-            name, alias: None, ..
-        }
-        | TableFactor::Series {
-            alias: Some(TableAlias { name, .. }),
+            alias: TableAlias { name, .. },
             ..
         } => name,
     }

@@ -80,8 +80,10 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         Some(sql_table_with_joins) => translate_table_with_joins(sql_table_with_joins)?,
         None => TableWithJoins {
             relation: TableFactor::Series {
-                name: "Series".to_owned(),
-                alias: None,
+                alias: TableAlias {
+                    name: "Seires".to_owned(),
+                    columns: Vec::new(),
+                },
                 size: Expr::Literal(AstLiteral::Number(1.into())),
             },
             joins: vec![],
@@ -172,9 +174,16 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         SqlTableFactor::Table {
             name, alias, args, ..
         } if translate_object_name(name)?.to_uppercase() == "SERIES" && args.is_some() => {
+            let name = match alias {
+                Some(SqlTableAlias { name, .. }) => name.value.to_owned(),
+                None => translate_object_name(name)?,
+            };
+
             Ok(TableFactor::Series {
-                name: translate_object_name(name)?,
-                alias: translate_table_alias(alias),
+                alias: TableAlias {
+                    name,
+                    columns: Vec::new(),
+                },
                 size: translate_table_args(args)?,
             })
         }

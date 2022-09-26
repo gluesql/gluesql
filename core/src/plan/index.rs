@@ -2,7 +2,7 @@ use {
     crate::{
         ast::{
             AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
-            SetExpr, Statement, TableFactor, TableWithJoins,
+            SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
         data::{Schema, SchemaIndex, SchemaIndexOrd, TableError},
         result::{Error, Result},
@@ -79,7 +79,10 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 offset,
             });
         }
-        TableFactor::Series { name, .. } => name,
+        TableFactor::Series {
+            alias: TableAlias { name, .. },
+            ..
+        } => name,
     };
 
     let indexes = match schema_map.get(table_name) {
@@ -117,10 +120,9 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } => {
+                TableFactor::Derived { .. } | TableFactor::Series { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
-                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let from = TableWithJoins {
@@ -201,10 +203,9 @@ fn plan_select(
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } => {
+                TableFactor::Derived { .. } | TableFactor::Series { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
-                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let index = Some(IndexItem::NonClustered {
