@@ -1,7 +1,7 @@
 use {
     super::Build,
     crate::{
-        ast::{ObjectName, Statement},
+        ast::Statement,
         ast_builder::ColumnDefNode,
         result::Result,
     },
@@ -31,7 +31,7 @@ impl CreateTableNode {
 
 impl Build for CreateTableNode {
     fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_name]);
+        let table_name = self.table_name;
         let columns = self
             .columns
             .into_iter()

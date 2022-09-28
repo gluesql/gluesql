@@ -2,7 +2,7 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, TableAlias, TableFactor,
+            Join, JoinConstraint, JoinExecutor, JoinOperator, TableAlias, TableFactor,
         },
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, LimitNode, OffsetNode,
@@ -63,7 +63,7 @@ pub struct JoinNode {
 impl JoinNode {
     pub fn new<N: Into<PrevNode>>(
         prev_node: N,
-        table_name: String,
+        name: String,
         alias: Option<String>,
         join_operator_type: JoinOperatorType,
     ) -> Self {
@@ -72,7 +72,7 @@ impl JoinNode {
             join_operator_type,
             relation: match alias {
                 Some(alias) => TableFactor::Table {
-                    name: ObjectName(vec![table_name]),
+                    name,
                     alias: Some(TableAlias {
                         name: alias,
                         columns: vec![],
@@ -80,7 +80,7 @@ impl JoinNode {
                     index: None,
                 },
                 None => TableFactor::Table {
-                    name: ObjectName(vec![table_name]),
+                    name,
                     alias: None,
                     index: None,
                 },

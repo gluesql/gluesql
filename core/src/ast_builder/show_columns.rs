@@ -1,7 +1,7 @@
 use {
     super::Build,
     crate::{
-        ast::{ObjectName, Statement},
+        ast::Statement,
         result::Result,
     },
 };
@@ -19,7 +19,7 @@ impl ShowColumnsNode {
 
 impl Build for ShowColumnsNode {
     fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_name]);
+        let table_name = self.table_name;
         Ok(Statement::ShowColumns { table_name })
     }
 }

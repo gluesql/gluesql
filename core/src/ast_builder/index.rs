@@ -3,7 +3,7 @@
 use {
     super::Build,
     crate::{
-        ast::{ObjectName, Statement},
+        ast::Statement,
         result::Result,
     },
 };
@@ -29,8 +29,8 @@ impl CreateIndexNode {
 
 impl Build for CreateIndexNode {
     fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_name]);
-        let name = ObjectName(vec![self.name]);
+        let table_name = self.table_name;
+        let name = self.name;
         let column = self.column.try_into()?;
 
         Ok(Statement::CreateIndex {
@@ -55,8 +55,8 @@ impl DropIndexNode {
 
 impl Build for DropIndexNode {
     fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_name]);
-        let name = ObjectName(vec![self.name]);
+        let table_name = self.table_name;
+        let name = self.name;
 
         Ok(Statement::DropIndex { name, table_name })
     }

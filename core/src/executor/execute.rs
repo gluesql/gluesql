@@ -23,12 +23,8 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use {
-    super::alter::{create_index, drop_index},
-    crate::data::SchemaIndex,
-};
+use {super::alter::create_index, crate::data::SchemaIndex};
 
-use crate::data::get_name;
 #[cfg(feature = "metadata")]
 use crate::{ast::Variable, result::TrySelf};
 
@@ -154,7 +150,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             .await
             .map(|(storage, _)| (storage, Payload::CreateIndex)),
         #[cfg(feature = "index")]
-        Statement::DropIndex { name, table_name } => drop_index(storage, table_name, name)
+        Statement::DropIndex { name, table_name } => storage
+            .drop_index(table_name, name)
             .await
             .map(|(storage, _)| (storage, Payload::DropIndex)),
         //- Transaction
@@ -186,7 +183,6 @@ pub async fn execute<T: GStore + GStoreMut>(
             }
 
             let (rows, num_rows, table_name) = try_block!(storage, {
-                let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
                     .await?
@@ -269,7 +265,6 @@ pub async fn execute<T: GStore + GStoreMut>(
             assignments,
         } => {
             let (table_name, rows) = try_block!(storage, {
-                let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
                     .await?
@@ -317,7 +312,6 @@ pub async fn execute<T: GStore + GStoreMut>(
             selection,
         } => {
             let (table_name, keys) = try_block!(storage, {
-                let table_name = get_name(table_name)?;
                 let columns = Rc::from(fetch_columns(&storage, table_name).await?);
 
                 let keys = fetch(&storage, table_name, columns, selection.as_ref())
@@ -351,7 +345,6 @@ pub async fn execute<T: GStore + GStoreMut>(
         }
         Statement::ShowColumns { table_name } => {
             let keys = try_block!(storage, {
-                let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
                     .await?
@@ -369,11 +362,6 @@ pub async fn execute<T: GStore + GStoreMut>(
         }
         #[cfg(feature = "index")]
         Statement::ShowIndexes(table_name) => {
-            let table_name = match get_name(table_name) {
-                Ok(table_name) => table_name,
-                Err(e) => return Err((storage, e)),
-            };
-
             let indexes = match storage.fetch_schema(table_name).await {
                 Ok(Some(Schema { indexes, .. })) => indexes,
                 Ok(None) => {

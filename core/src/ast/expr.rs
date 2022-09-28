@@ -202,8 +202,8 @@ mod tests {
     use {
         crate::ast::{
             Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Expr,
-            Function, ObjectName, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins,
-            ToSql, UnaryOperator,
+            Function, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins, ToSql,
+            UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -380,7 +380,7 @@ mod tests {
                         projection: vec![SelectItem::Wildcard],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
-                                name: ObjectName(vec!["Foo".to_owned()]),
+                                name: "Foo".to_owned(),
                                 alias: None,
                                 index: None,
                             },
@@ -407,7 +407,7 @@ mod tests {
                         projection: vec![SelectItem::Wildcard],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
-                                name: ObjectName(vec!["Foo".to_owned()]),
+                                name: "Foo".to_owned(),
                                 alias: None,
                                 index: None,
                             },

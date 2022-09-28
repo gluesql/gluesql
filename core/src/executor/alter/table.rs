@@ -1,11 +1,8 @@
 use {
     super::{validate, AlterError},
     crate::{
-        ast::{
-            ColumnDef, ColumnOption, ColumnOptionDef, ObjectName, Query, SetExpr, TableFactor,
-            Values,
-        },
-        data::{get_name, Schema, TableError},
+        ast::{ColumnDef, ColumnOption, ColumnOptionDef, Query, SetExpr, TableFactor, Values},
+        data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
         result::{Error, IntoControlFlow, MutResult, Result, TrySelf},
@@ -20,26 +17,22 @@ use {
 
 pub async fn create_table<T: GStore + GStoreMut>(
     storage: T,
-    name: &ObjectName,
+    target_table_name: &str,
     column_defs: &[ColumnDef],
     if_not_exists: bool,
     source: &Option<Box<Query>>,
 ) -> MutResult<T, ()> {
-    let (storage, target_table_name) = get_name(name).try_self(storage)?;
     let schema = (|| async {
         let target_columns_defs = match source.as_ref().map(AsRef::as_ref) {
             Some(Query { body, .. }) => match body {
                 SetExpr::Select(select_query) => match &select_query.from.relation {
-                    TableFactor::Table {
-                        name: source_name, ..
-                    } => {
-                        let table_name = get_name(source_name)?;
-                        let schema = storage.fetch_schema(table_name).await?;
+                    TableFactor::Table { name, .. } => {
+                        let schema = storage.fetch_schema(name).await?;
                         let Schema {
                             column_defs: source_column_defs,
                             ..
                         } = schema.ok_or_else(|| -> Error {
-                            AlterError::CtasSourceTableNotFound(table_name.to_owned()).into()
+                            AlterError::CtasSourceTableNotFound(name.to_owned()).into()
                         })?;
 
                         source_column_defs
@@ -155,13 +148,12 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
 pub async fn drop_table<T: GStore + GStoreMut>(
     storage: T,
-    table_names: &[ObjectName],
+    table_names: &[String],
     if_exists: bool,
 ) -> MutResult<T, ()> {
     stream::iter(table_names.iter().map(Ok))
         .try_fold((storage, ()), |(storage, _), table_name| async move {
             let schema = (|| async {
-                let table_name = get_name(table_name)?;
                 let schema = storage.fetch_schema(table_name).await?;
 
                 if !if_exists {

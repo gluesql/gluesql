@@ -1,7 +1,7 @@
 pub use {
     super::{Build, ColumnList, ExprList, QueryNode, SelectNode},
     crate::{
-        ast::{Expr, ObjectName, Statement},
+        ast::{Expr, Statement},
         result::Result,
     },
 };
@@ -50,7 +50,7 @@ pub struct InsertSourceNode {
 
 impl Build for InsertSourceNode {
     fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.insert_node.table_name]);
+        let table_name = self.insert_node.table_name;
         let columns = self.insert_node.columns;
         let columns = columns.map_or_else(|| Ok(vec![]), |v| v.try_into())?;
         let source = self.source.try_into()?;

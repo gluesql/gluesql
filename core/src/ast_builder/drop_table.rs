@@ -1,7 +1,7 @@
 use {
     super::Build,
     crate::{
-        ast::{ObjectName, Statement},
+        ast::Statement,
         result::Result,
     },
 };
@@ -23,7 +23,7 @@ impl DropTableNode {
 
 impl Build for DropTableNode {
     fn build(self) -> Result<Statement> {
-        let names = vec![ObjectName(vec![self.table_name])];
+        let names = vec![self.table_name];
         let if_exists = self.if_exists;
 
         Ok(Statement::DropTable { names, if_exists })

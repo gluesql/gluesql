@@ -1,7 +1,7 @@
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{ObjectName, SelectItem, TableFactor},
+        ast::{SelectItem, TableFactor},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
             OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
@@ -74,7 +74,7 @@ impl SelectNode {
 impl Prebuild for SelectNode {
     fn prebuild(self) -> Result<NodeData> {
         let relation = TableFactor::Table {
-            name: ObjectName(vec![self.table_name]),
+            name: self.table_name,
             alias: None,
             index: None,
         };

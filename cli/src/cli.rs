@@ -4,6 +4,7 @@ use {
         helper::CliHelper,
         print::Print,
     },
+    edit::{edit_file, edit_with_builder, Builder},
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
@@ -65,9 +66,12 @@ where
                 }
             };
 
-            rl.add_history_entry(&line);
+            let line = line.trim();
+            if !(line.starts_with(".edit") || line.starts_with(".run")) {
+                rl.add_history_entry(line);
+            }
 
-            let command = match Command::parse(&line, &self.print.option) {
+            let command = match Command::parse(line, &self.print.option) {
                 Ok(command) => command,
                 Err(CommandError::LackOfTable) => {
                     println!("[error] should specify table. eg: .columns TableName\n");
@@ -94,6 +98,10 @@ where
                     println!("[error] cannot support option: {e}\n");
                     continue;
                 }
+                Err(CommandError::LackOfSQLHistory) => {
+                    println!("[error] Nothing in SQL history to run.\n");
+                    continue;
+                }
             };
 
             match command {
@@ -105,12 +113,7 @@ where
                     println!("bye\n");
                     break;
                 }
-                Command::Execute(sql) => match self.glue.execute(sql.as_str()) {
-                    Ok(payloads) => self.print.payloads(&payloads)?,
-                    Err(e) => {
-                        println!("[error] {}\n", e);
-                    }
-                },
+                Command::Execute(sql) => self.execute(sql)?,
                 Command::ExecuteFromFile(filename) => {
                     if let Err(e) = self.load(&filename) {
                         println!("[error] {}\n", e);
@@ -124,8 +127,46 @@ where
                 }
                 Command::Set(option) => self.print.set_option(option),
                 Command::Show(option) => self.print.show_option(option)?,
+                Command::Edit(file_name) => {
+                    match file_name {
+                        Some(file_name) => {
+                            let file = Path::new(&file_name);
+                            edit_file(file)?;
+                        }
+                        None => {
+                            let mut builder = Builder::new();
+                            builder.prefix("Glue_").suffix(".sql");
+                            let last = rl.history().last().map_or_else(|| "", String::as_str);
+                            let edited = edit_with_builder(last, &builder)?;
+                            rl.add_history_entry(edited);
+                        }
+                    };
+                }
+                Command::Run => {
+                    let sql = rl.history().last().ok_or(CommandError::LackOfSQLHistory);
+
+                    match sql {
+                        Ok(sql) => {
+                            self.execute(sql)?;
+                        }
+                        Err(e) => {
+                            println!("[error] {}\n", e);
+                        }
+                    };
+                }
             }
         }
+
+        Ok(())
+    }
+
+    fn execute(&mut self, sql: impl AsRef<str>) -> Result<()> {
+        match self.glue.execute(sql) {
+            Ok(payloads) => self.print.payloads(&payloads)?,
+            Err(e) => {
+                println!("[error] {}\n", e);
+            }
+        };
 
         Ok(())
     }
