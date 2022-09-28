@@ -34,19 +34,6 @@ impl Store for SledStorage {
                 let schema = snapshot.extract(txid, lock_txid);
 
                 Ok(schema)
-                // if schema.is_none() {
-                //     return Ok(None);
-                // }
-
-                // str::from_utf8(key.as_ref())
-                //     .map_err(err_into)?
-                //     .strip_prefix(SCHEMA_PREFIX)
-                //     .map(|prefix| Some(prefix.to_owned()))
-                //     .ok_or_else(|| {
-                //         Error::StorageMsg(
-                //             "conflict - schema_names failed, strip_prefix not matched".to_owned(),
-                //         )
-                //     })
             })
             .filter_map(|result| result.transpose())
             .collect::<Result<Vec<_>>>()
