@@ -224,10 +224,6 @@ pub fn substr(
 }
 
 pub fn ascii(name: String, expr: Evaluated<'_>) -> Result<Value> {
-    if expr.is_null() {
-        return Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into());
-    }
-
     let string = eval_to_str!(name, expr);
 
     if string.len() != 1 {
