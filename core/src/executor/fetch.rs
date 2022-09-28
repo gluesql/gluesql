@@ -178,21 +178,18 @@ pub async fn fetch_relation_rows<'a>(
                     }
                     Dictionary::GlueTableColumns => {
                         let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas
-                            .into_iter()
-                            .map(|schema| {
-                                let table_name = schema.table_name;
-                                schema.column_defs.into_iter().enumerate().map(
-                                    move |(index, ColumnDef { name, .. })| -> Result<_> {
-                                        Ok(Row(vec![
-                                            Value::Str(table_name.clone()),
-                                            Value::Str(name),
-                                            Value::I64(index as i64 + 1),
-                                        ]))
-                                    },
-                                )
-                            })
-                            .flatten();
+                        let rows = schemas.into_iter().flat_map(|schema| {
+                            let table_name = schema.table_name;
+                            schema.column_defs.into_iter().enumerate().map(
+                                move |(index, ColumnDef { name, .. })| -> Result<_> {
+                                    Ok(Row(vec![
+                                        Value::Str(table_name.clone()),
+                                        Value::Str(name),
+                                        Value::I64(index as i64 + 1),
+                                    ]))
+                                },
+                            )
+                        });
 
                         Rows::GlueTabColumns(rows)
                     }
