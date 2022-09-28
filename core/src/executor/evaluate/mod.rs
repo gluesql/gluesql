@@ -230,18 +230,9 @@ pub async fn evaluate<'a>(
         }
         Expr::ArrayIndex { obj, indexes } => {
             let obj = eval(obj).await?;
-            let value = match obj {
-                Evaluated::Value(value) => value,
-                _ => return Err(EvaluateError::MapOrListTypeRequired.into()),
-                // TODO Q. 의미도 안맞고 실제로 map, list check는 selector
-            };
             let indexes: Vec<_> = indexes.iter().map(eval).collect();
             let indexes = try_join_all(indexes).await?;
-            let indexes = indexes
-                .into_iter()
-                .map(Value::try_from)
-                .collect::<Result<Vec<_>>>()?;
-            value.selector_by_index(indexes).map(Evaluated::from)
+            expr::array_index(obj, indexes)
         }
     }
 }

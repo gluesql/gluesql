@@ -135,18 +135,8 @@ pub fn evaluate_stateless<'a>(
         }
         Expr::ArrayIndex { obj, indexes } => {
             let obj = eval(obj)?;
-            let value = match obj {
-                Evaluated::Value(value) => value,
-                _ => return Err(EvaluateError::MapOrListTypeRequired.into()),
-                // TODO Q. 의미도 안맞고 실제로 map, list check는 selector
-            };
             let indexes = indexes.iter().map(eval).collect::<Result<Vec<_>>>()?;
-            // TODO split into another function in expr.rs
-            let indexes = indexes
-                .into_iter()
-                .map(Value::try_from)
-                .collect::<Result<Vec<_>>>()?;
-            value.selector_by_index(indexes).map(Evaluated::from)
+            expr::array_index(obj, indexes)
         }
         Expr::Function(func) => evaluate_function(context, func),
         _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),
