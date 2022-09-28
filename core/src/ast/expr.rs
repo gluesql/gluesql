@@ -76,6 +76,10 @@ pub enum Expr {
         when_then: Vec<(Expr, Expr)>,
         else_result: Option<Box<Expr>>,
     },
+    ArrayIndex {
+        obj: Box<Expr>,
+        indexes: Vec<Expr>,
+    },
 }
 
 impl ToSql for Expr {
@@ -193,6 +197,15 @@ impl ToSql for Expr {
                 false => "EXISTS(..query..)".to_string(),
             },
             Expr::Subquery(_) => "(..query..)".to_string(),
+            Expr::ArrayIndex { obj, indexes } => {
+                let obj = obj.to_sql();
+                let indexes = indexes
+                    .iter()
+                    .map(|index| format!("[{}]", index.to_sql()))
+                    .collect::<Vec<_>>()
+                    .join("");
+                format!("{obj}{indexes}")
+            }
         }
     }
 }
@@ -451,6 +464,18 @@ mod tests {
                 else_result: Some(Box::new(Expr::Literal(AstLiteral::QuotedString(
                     "c".to_string()
                 ))))
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "choco[1][2]",
+            Expr::ArrayIndex {
+                obj: Box::new(Expr::Identifier("choco".to_owned())),
+                indexes: vec![
+                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                    Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
+                ]
             }
             .to_sql()
         );
