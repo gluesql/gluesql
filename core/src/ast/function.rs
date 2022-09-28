@@ -121,6 +121,8 @@ pub enum Function {
         expr: Expr,
         format: Expr,
     },
+    Ascii(Expr),
+    Chr(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

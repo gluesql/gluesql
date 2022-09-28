@@ -63,6 +63,12 @@ pub enum EvaluateError {
 
     #[error("format function does not support following data_type: {0}")]
     UnsupportedExprForFormatFunction(String),
+
+    #[error("support single character only")]
+    AsciiFunctionRequiresSingleCharacterValue,
+
+    #[error("function requires integer value in range")]
+    ChrFunctionRequiresIntegerValueInRange0To255,
 }
 
 #[derive(Error, Serialize, Debug, PartialEq)]

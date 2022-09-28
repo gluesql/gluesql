@@ -223,6 +223,39 @@ pub fn substr(
     Ok(Value::Str(string))
 }
 
+pub fn ascii(name: String, expr: Evaluated<'_>) -> Result<Value> {
+    if expr.is_null() {
+        return Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into());
+    }
+
+    let string = eval_to_str!(name, expr);
+
+    if string.len() != 1 {
+        return Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into());
+    }
+
+    let char = string.chars().next();
+    match char {
+        Some(char) => {
+            let char = char as u8;
+            Ok(Value::U8(char as u8))
+        }
+        None => Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
+    }
+}
+
+pub fn chr(name: String, expr: Evaluated<'_>) -> Result<Value> {
+    let expr = eval_to_int!(name, expr);
+
+    match expr {
+        0..=255 => {
+            let expr = expr as u8;
+            Ok(Value::Str((expr as char).to_string()))
+        }
+        _ => Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into()),
+    }
+}
+
 // --- float ---
 
 pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {

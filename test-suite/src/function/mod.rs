@@ -1,6 +1,8 @@
 pub mod abs;
+pub mod ascii;
 pub mod cast;
 pub mod ceil;
+pub mod chr;
 pub mod concat;
 pub mod degrees;
 pub mod div_mod;
