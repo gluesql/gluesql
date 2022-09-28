@@ -53,14 +53,20 @@ test_case!(metadata, async move {
         ))
     );
 
+    run!("ALTER TABLE Bar ADD COLUMN name TEXT NULL");
+    run!("ALTER TABLE Foo ADD COLUMN name TEXT NULL");
+    run!("ALTER TABLE Foo ADD COLUMN type TEXT NULL");
     test!(
-        "SELECT * FROM GLUE_TAB_COLUMNS ORDER BY TABLE_NAME",
+        "SELECT * FROM GLUE_TABLE_COLUMNS ORDER BY TABLE_NAME",
         Ok(select!(
-            TABLE_NAME       | COLUMN_NAME;
-            Str              | Str;
-            "Bar".to_owned()   "id".to_owned();
-            "Foo".to_owned()   "id".to_owned();
-            "Zoo".to_owned()   "id".to_owned()
+            TABLE_NAME       | COLUMN_NAME      | COLUMN_ID;
+            Str              | Str              | I64;
+            "Bar".to_owned()   "id".to_owned()    1;
+            "Bar".to_owned()   "name".to_owned()  2;
+            "Foo".to_owned()   "id".to_owned()    1;
+            "Foo".to_owned()   "name".to_owned()  2;
+            "Foo".to_owned()   "type".to_owned()  3;
+            "Zoo".to_owned()   "id".to_owned()    1
         ))
     );
 });

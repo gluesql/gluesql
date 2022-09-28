@@ -176,17 +176,18 @@ pub async fn fetch_relation_rows<'a>(
 
                         Rows::GlueTables(rows)
                     }
-                    Dictionary::GlueTabColumns => {
+                    Dictionary::GlueTableColumns => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas
                             .into_iter()
                             .map(|schema| {
                                 let table_name = schema.table_name;
-                                schema.column_defs.into_iter().map(
-                                    move |ColumnDef { name, .. }| {
+                                schema.column_defs.into_iter().enumerate().map(
+                                    move |(index, ColumnDef { name, .. })| -> Result<_> {
                                         Ok(Row(vec![
                                             Value::Str(table_name.clone()),
                                             Value::Str(name),
+                                            Value::I64(index as i64 + 1),
                                         ]))
                                     },
                                 )
@@ -224,9 +225,11 @@ pub async fn fetch_relation_columns(
         TableFactor::Series { .. } => Ok(vec!["N".to_owned()]),
         TableFactor::Dictionary { dict, .. } => match dict {
             Dictionary::GlueTables => Ok(vec!["TABLE_NAME".to_owned()]),
-            Dictionary::GlueTabColumns => {
-                Ok(vec!["TABLE_NAME".to_owned(), "COLUMN_NAME".to_owned()])
-            }
+            Dictionary::GlueTableColumns => Ok(vec![
+                "TABLE_NAME".to_owned(),
+                "COLUMN_NAME".to_owned(),
+                "COLUMN_ID".to_owned(),
+            ]),
         },
         TableFactor::Derived {
             subquery: Query { body, .. },
