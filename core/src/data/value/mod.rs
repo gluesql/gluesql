@@ -560,9 +560,9 @@ impl Value {
     ///
     /// Returns the position where the first letter of the substring starts if the string contains a substring.
     ///
-    /// Returns `I64(0)` if the string to be found is not found.
-    /// Returns minimum value `I64(1)` when the string is found.
-    /// Returns Null if NULL parameter found.
+    /// Returns [`Value::I64(0)`] if the string to be found is not found.
+    /// Returns minimum value [`Value::I64(1)`] when the string is found.
+    /// Returns [`Value::Null`] if NULL parameter found.
     ///
     /// # Examples
     ///
