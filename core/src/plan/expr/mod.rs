@@ -66,6 +66,10 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
 
                 PlanExpr::MultiExprs(exprs)
             }
+            Expr::ArrayIndex { obj, indexes } => {
+                let exprs = indexes.iter().chain(once(obj.as_ref())).collect();
+                PlanExpr::MultiExprs(exprs)
+            }
             Expr::Function(function) => PlanExpr::MultiExprs(function.as_exprs().collect()),
             Expr::Subquery(subquery) | Expr::Exists { subquery, .. } => PlanExpr::Query(subquery),
             Expr::InSubquery {
