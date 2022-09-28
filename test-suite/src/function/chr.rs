@@ -4,6 +4,18 @@ use {
 };
 
 test_case!(chr, async move {
+    test!(
+        r#"VALUES(CHR(70))"#,
+        Ok(select!(
+            column1
+            Str;
+            "F".to_owned()
+        ))
+    );
+    test!(
+        r#"VALUES(CHR(7070))"#,
+        Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())
+    );
     run!(
         "
         CREATE TABLE Chr (
