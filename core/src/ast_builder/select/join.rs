@@ -2,8 +2,7 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, Statement, TableAlias,
-            TableFactor,
+            Join, JoinConstraint, JoinExecutor, JoinOperator, ObjectName, TableAlias, TableFactor,
         },
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, LimitNode, OffsetNode,
@@ -143,10 +142,6 @@ impl JoinNode {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
-
     pub fn prebuild_for_constraint(self) -> Result<(NodeData, TableFactor, JoinOperatorType)> {
         let select_data = self.prev_node.prebuild()?;
         Ok((select_data, self.relation, self.join_operator_type))
@@ -167,9 +162,10 @@ impl Prebuild for JoinNode {
         Ok(select_data)
     }
 }
+
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn inner_join() {

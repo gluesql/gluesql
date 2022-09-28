@@ -1,7 +1,10 @@
-use crate::{
-    ast::{ObjectName, Statement},
-    ast_builder::ColumnDefNode,
-    result::Result,
+use {
+    super::Build,
+    crate::{
+        ast::{ObjectName, Statement},
+        ast_builder::ColumnDefNode,
+        result::Result,
+    },
 };
 
 #[derive(Clone)]
@@ -20,13 +23,21 @@ impl CreateTableNode {
         }
     }
 
-    pub fn build(self) -> Result<Statement> {
+    pub fn add_column<T: Into<ColumnDefNode>>(mut self, column: T) -> Self {
+        self.columns.push(column.into());
+        self
+    }
+}
+
+impl Build for CreateTableNode {
+    fn build(self) -> Result<Statement> {
         let table_name = ObjectName(vec![self.table_name]);
         let columns = self
             .columns
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>>>()?;
+
         Ok(Statement::CreateTable {
             name: table_name,
             if_not_exists: self.if_not_exists,
@@ -34,16 +45,11 @@ impl CreateTableNode {
             source: None,
         })
     }
-
-    pub fn add_column<T: Into<ColumnDefNode>>(mut self, column: T) -> Self {
-        self.columns.push(column.into());
-        self
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn create_table() {

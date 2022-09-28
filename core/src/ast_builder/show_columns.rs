@@ -1,6 +1,9 @@
-use crate::{
-    ast::{ObjectName, Statement},
-    result::Result,
+use {
+    super::Build,
+    crate::{
+        ast::{ObjectName, Statement},
+        result::Result,
+    },
 };
 
 #[derive(Clone)]
@@ -12,14 +15,18 @@ impl ShowColumnsNode {
     pub fn new(table_name: String) -> Self {
         Self { table_name }
     }
-    pub fn build(self) -> Result<Statement> {
+}
+
+impl Build for ShowColumnsNode {
+    fn build(self) -> Result<Statement> {
         let table_name = ObjectName(vec![self.table_name]);
         Ok(Statement::ShowColumns { table_name })
     }
 }
+
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn show_columns() {

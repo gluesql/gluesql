@@ -1,7 +1,7 @@
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{ObjectName, SelectItem, Statement, TableFactor},
+        ast::{ObjectName, SelectItem, TableFactor},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
             OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
@@ -42,10 +42,6 @@ impl SelectNode {
 
     pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
         OrderByNode::new(self, order_by_exprs)
-    }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
     }
 
     pub fn join(self, table_name: &str) -> JoinNode {
@@ -99,7 +95,7 @@ impl Prebuild for SelectNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn select() {

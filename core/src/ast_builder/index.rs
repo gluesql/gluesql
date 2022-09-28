@@ -1,8 +1,11 @@
 #![cfg(feature = "index")]
 
-use crate::{
-    ast::{ObjectName, Statement},
-    result::Result,
+use {
+    super::Build,
+    crate::{
+        ast::{ObjectName, Statement},
+        result::Result,
+    },
 };
 
 use super::OrderByExprNode;
@@ -22,8 +25,10 @@ impl CreateIndexNode {
             column,
         }
     }
+}
 
-    pub fn build(self) -> Result<Statement> {
+impl Build for CreateIndexNode {
+    fn build(self) -> Result<Statement> {
         let table_name = ObjectName(vec![self.table_name]);
         let name = ObjectName(vec![self.name]);
         let column = self.column.try_into()?;
@@ -46,8 +51,10 @@ impl DropIndexNode {
     pub fn new(table_name: String, name: String) -> Self {
         Self { table_name, name }
     }
+}
 
-    pub fn build(self) -> Result<Statement> {
+impl Build for DropIndexNode {
+    fn build(self) -> Result<Statement> {
         let table_name = ObjectName(vec![self.table_name]);
         let name = ObjectName(vec![self.name]);
 
@@ -57,7 +64,7 @@ impl DropIndexNode {
 
 #[cfg(all(test, feature = "index"))]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn create_index() {

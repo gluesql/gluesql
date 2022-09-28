@@ -1,5 +1,6 @@
 #![cfg(any(feature = "memory-storage", feature = "sled-storage"))]
 use gluesql_core::{
+    ast_builder::*,
     executor::Payload,
     prelude::{Glue, Value},
     store::{GStore, GStoreMut},
@@ -63,6 +64,11 @@ async fn basic_async<T: GStore + GStoreMut>(mut glue: Glue<T>) {
         .await,
         Ok(vec![Payload::Create])
     );
+
+    let payload = table("api_test").delete().execute(&mut glue).await.unwrap();
+    println!("{:?}", payload);
+
+    panic!();
 }
 
 #[cfg(feature = "sled-storage")]
