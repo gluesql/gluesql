@@ -1,6 +1,7 @@
 # GlueSQL project files
 /data/
 /storages/**/data/
+/test-suite/data/
 /storages/**/tmp/
 /reports/
 
