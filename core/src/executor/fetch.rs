@@ -160,15 +160,46 @@ pub async fn fetch_relation_rows<'a>(
 
             Ok(Rows::Series(stream::iter(rows)))
         }
-        TableFactor::Dictionary { dict, .. } => match dict {
-            Dictionary::GlueTables => {
-                let schemas = storage.fetch_all_schemas().await?;
-                let rows = stream::iter(schemas).map(|v| Ok(Row(vec![Value::Str(v.table_name)])));
+        TableFactor::Dictionary { dict, .. } => {
+            let rows = {
+                #[derive(Iterator)]
+                enum Rows<I1, I2> {
+                    GlueTables(I1),
+                    GlueTabColumns(I2),
+                }
+                match dict {
+                    Dictionary::GlueTables => {
+                        let schemas = storage.fetch_all_schemas().await?;
+                        let rows = schemas
+                            .into_iter()
+                            .map(|schema| Ok(Row(vec![Value::Str(schema.table_name)])));
 
-                Ok(Rows::Dictionary(rows))
-            }
-            Dictionary::GlueTabColumns => todo!(),
-        },
+                        Rows::GlueTables(rows)
+                    }
+                    Dictionary::GlueTabColumns => {
+                        let schemas = storage.fetch_all_schemas().await?;
+                        let rows = schemas
+                            .into_iter()
+                            .map(|schema| {
+                                let table_name = schema.table_name;
+                                schema.column_defs.into_iter().map(
+                                    move |ColumnDef { name, .. }| {
+                                        Ok(Row(vec![
+                                            Value::Str(table_name.clone()),
+                                            Value::Str(name),
+                                        ]))
+                                    },
+                                )
+                            })
+                            .flatten();
+
+                        Rows::GlueTabColumns(rows)
+                    }
+                }
+            };
+
+            Ok(Rows::Dictionary(stream::iter(rows)))
+        }
     }
 }
 
@@ -191,7 +222,12 @@ pub async fn fetch_relation_columns(
     match table_factor {
         TableFactor::Table { name, .. } => fetch_columns(storage, name).await,
         TableFactor::Series { .. } => Ok(vec!["N".to_owned()]),
-        TableFactor::Dictionary { .. } => Ok(vec!["TABLE_NAME".to_owned()]),
+        TableFactor::Dictionary { dict, .. } => match dict {
+            Dictionary::GlueTables => Ok(vec!["TABLE_NAME".to_owned()]),
+            Dictionary::GlueTabColumns => {
+                Ok(vec!["TABLE_NAME".to_owned(), "COLUMN_NAME".to_owned()])
+            }
+        },
         TableFactor::Derived {
             subquery: Query { body, .. },
             alias: TableAlias { columns, name },
