@@ -27,8 +27,11 @@ pub fn get_alias(table_factor: &TableFactor) -> &String {
         | TableFactor::Series {
             alias: TableAlias { name, .. },
             ..
+        }
+        | TableFactor::Dictionary {
+            alias: TableAlias { name, .. },
+            ..
         } => name,
-        TableFactor::Dictionary { name, alias } => todo!(),
     }
 }
 

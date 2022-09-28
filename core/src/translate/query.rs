@@ -1,5 +1,3 @@
-use crate::ast::Dictionary;
-
 use {
     super::{
         function::translate_function_arg_exprs, translate_expr, translate_idents,
@@ -7,8 +5,8 @@ use {
     },
     crate::{
         ast::{
-            AstLiteral, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select,
-            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
+            AstLiteral, Dictionary, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query,
+            Select, SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, Values,
         },
         result::Result,
     },
@@ -177,29 +175,30 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
             name, alias, args, ..
         } => {
             let object_name = translate_object_name(name)?.to_uppercase();
-            match object_name.as_str() {
-                "SERIES" if args.is_some() => {
-                    let name = match alias {
-                        Some(SqlTableAlias { name, .. }) => name.value.to_owned(),
-                        None => translate_object_name(name)?,
-                    };
-
-                    Ok(TableFactor::Series {
-                        alias: TableAlias {
-                            name,
-                            columns: Vec::new(),
-                        },
-                        size: translate_table_args(args)?,
-                    })
+            let alias = translate_table_alias(alias);
+            let alias_or_name = || -> TableAlias {
+                match &alias {
+                    Some(alias) => alias.to_owned(),
+                    None => TableAlias {
+                        name: object_name.to_owned(),
+                        columns: Vec::new(),
+                    },
                 }
+            };
+
+            match object_name.as_str() {
+                "SERIES" if args.is_some() => Ok(TableFactor::Series {
+                    alias: alias_or_name(),
+                    size: translate_table_args(args)?,
+                }),
                 "GLUE_TABLES" => Ok(TableFactor::Dictionary {
-                    name: translate_dictionary_name(object_name.as_str()),
-                    alias: translate_table_alias(alias),
+                    dict: translate_dictionary_name(object_name.as_str()),
+                    alias: alias_or_name(),
                 }),
                 _ => {
                     Ok(TableFactor::Table {
                         name: translate_object_name(name)?,
-                        alias: translate_table_alias(alias),
+                        alias,
                         index: None, // query execution plan
                     })
                 }

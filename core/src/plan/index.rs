@@ -83,7 +83,10 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             alias: TableAlias { name, .. },
             ..
         } => name,
-        TableFactor::Dictionary { name, .. } => name.get_name(),
+        TableFactor::Dictionary {
+            alias: TableAlias { name, .. },
+            ..
+        } => name,
     };
 
     let indexes = match schema_map.get(table_name) {

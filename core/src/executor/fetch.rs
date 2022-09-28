@@ -160,7 +160,7 @@ pub async fn fetch_relation_rows<'a>(
 
             Ok(Rows::Series(stream::iter(rows)))
         }
-        TableFactor::Dictionary { name, .. } => match name {
+        TableFactor::Dictionary { dict, .. } => match dict {
             Dictionary::GlueTables => {
                 let names = storage.schema_names().await?;
                 let rows = stream::iter(names).map(|v| Ok(Row(vec![Value::Str(v.to_string())])));
@@ -190,9 +190,7 @@ pub async fn fetch_relation_columns(
     match table_factor {
         TableFactor::Table { name, .. } => fetch_columns(storage, name).await,
         TableFactor::Series { .. } => Ok(vec!["N".to_string()]),
-        TableFactor::Dictionary { name, .. } => match name {
-            Dictionary::GlueTables => Ok(vec!["TABLE_NAME".to_string()]),
-        },
+        TableFactor::Dictionary { .. } => todo!(),
         TableFactor::Derived {
             subquery: Query { body, .. },
             alias: TableAlias { columns, name },
@@ -239,10 +237,11 @@ pub async fn fetch_relation_columns(
         },
     }
 }
+
 pub async fn fetch_join_columns<'a>(
     joins: &'a [Join],
     storage: &dyn GStore,
-) -> Result<Vec<(&'a str, Vec<String>)>> {
+) -> Result<Vec<(&'a String, Vec<String>)>> {
     stream::iter(joins.iter())
         .map(Ok::<_, Error>)
         .and_then(|join| async move {

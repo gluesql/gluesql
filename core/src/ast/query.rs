@@ -71,8 +71,8 @@ pub enum TableFactor {
         size: Expr,
     },
     Dictionary {
-        name: Dictionary,
-        alias: Option<TableAlias>,
+        dict: Dictionary,
+        alias: TableAlias,
     },
 }
 
