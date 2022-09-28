@@ -61,13 +61,22 @@ INSERT INTO MapType VALUES
         Ok(select_with_null!(id | foo | bar; I64(1) Null Null))
     );
 
-    // TODO add arrayindex test case
+    test!(
+        r#"SELECT id, nested["b"] as b FROM MapType"#,
+        Ok(select_with_null!(
+            id     | b;
+            I64(1)   I64(2);
+            I64(2)   I64(30);
+            I64(3)   Null
+        ))
+    );
+
     test!(
         r#"SELECT
             id,
-            nested[a][foo] AS foo,
-            nested[a][b][c][d] as good,
-            nested[a][b] AS b
+            nested["a"]["foo"] AS foo,
+            nested["a"]["b"]["c"]["d"] as good,
+            nested["a"]["b"] AS b
         FROM MapType"#,
         Ok(select_with_null!(
             id     | foo          | good    | b;

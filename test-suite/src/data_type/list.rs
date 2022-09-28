@@ -53,7 +53,6 @@ INSERT INTO ListType VALUES
         ))
     );
 
-    // TODO add arrayindex test case
     test!(
         "SELECT id, items[1] AS second FROM ListType",
         Ok(select_with_null!(
@@ -75,7 +74,7 @@ INSERT INTO ListType VALUES
     );
 
     test!(
-        r#"SELECT id, items[0]["bar"][2] AS a FROM ListType"#,
+        r#"SELECT id, items[0]["bar"][2][0] AS a FROM ListType"#,
         Ok(select_with_null!(
             id     | a;
             I64(1)   Null;
