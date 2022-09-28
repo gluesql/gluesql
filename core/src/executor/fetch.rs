@@ -163,7 +163,7 @@ pub async fn fetch_relation_rows<'a>(
         TableFactor::Dictionary { dict, .. } => match dict {
             Dictionary::GlueTables => {
                 let names = storage.schema_names().await?;
-                let rows = stream::iter(names).map(|v| Ok(Row(vec![Value::Str(v.to_string())])));
+                let rows = stream::iter(names).map(|v| Ok(Row(vec![Value::Str(v)])));
 
                 Ok(Rows::Dictionary(rows))
             }
