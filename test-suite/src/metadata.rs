@@ -43,7 +43,7 @@ test_case!(metadata, async move {
     );
 
     test!(
-        "SELECT * FROM GLUE_TABLES",
+        "SELECT * FROM GLUE_TABLES ORDER BY TABLE_NAME",
         Ok(select!(
             TABLE_NAME;
             Str;
@@ -54,13 +54,13 @@ test_case!(metadata, async move {
     );
 
     test!(
-        "SELECT * FROM GLUE_TAB_COLUMNS",
+        "SELECT * FROM GLUE_TAB_COLUMNS ORDER BY TABLE_NAME",
         Ok(select!(
-            TABLE_NAME;
-            Str;
-            "Bar".to_owned();
-            "Foo".to_owned();
-            "Zoo".to_owned()
+            TABLE_NAME       | COLUMN_NAME;
+            Str              | Str;
+            "Bar".to_owned()   "id".to_owned();
+            "Foo".to_owned()   "id".to_owned();
+            "Zoo".to_owned()   "id".to_owned()
         ))
     );
 });
