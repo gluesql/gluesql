@@ -6,10 +6,52 @@ use {
         result::{Error, Result},
         store::{RowIter, Store},
     },
+    std::str,
 };
+
+const SCHEMA_PREFIX: &str = "schema/";
 
 #[async_trait(?Send)]
 impl Store for SledStorage {
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let (txid, created_at) = match self.state {
+            State::Transaction {
+                txid, created_at, ..
+            } => (txid, created_at),
+            State::Idle => {
+                return Err(Error::StorageMsg(
+                    "conflict - schema_names failed, lock does not exist".to_owned(),
+                ));
+            }
+        };
+        let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
+
+        self.tree
+            .scan_prefix(SCHEMA_PREFIX)
+            .map(move |item| {
+                let (_, value) = item.map_err(err_into)?;
+                let snapshot: Snapshot<Schema> = bincode::deserialize(&value).map_err(err_into)?;
+                let schema = snapshot.extract(txid, lock_txid);
+
+                Ok(schema)
+                // if schema.is_none() {
+                //     return Ok(None);
+                // }
+
+                // str::from_utf8(key.as_ref())
+                //     .map_err(err_into)?
+                //     .strip_prefix(SCHEMA_PREFIX)
+                //     .map(|prefix| Some(prefix.to_owned()))
+                //     .ok_or_else(|| {
+                //         Error::StorageMsg(
+                //             "conflict - schema_names failed, strip_prefix not matched".to_owned(),
+                //         )
+                //     })
+            })
+            .filter_map(|result| result.transpose())
+            .collect::<Result<Vec<_>>>()
+    }
+
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let (txid, created_at, temp) = match self.state {
             State::Transaction {

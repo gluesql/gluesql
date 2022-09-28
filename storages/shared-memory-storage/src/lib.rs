@@ -7,8 +7,8 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Row, Schema},
-        result::{MutResult, Result},
-        store::{RowIter, Store, StoreMut},
+        result::{Error, MutResult, Result},
+        store::{GStore, GStoreMut, RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,
@@ -44,6 +44,11 @@ impl From<MemoryStorage> for SharedMemoryStorage {
 
 #[async_trait(?Send)]
 impl Store for SharedMemoryStorage {
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let msg = "[Storage] fetch_all_schemas not supported".to_owned();
+
+        Err(Error::StorageMsg(msg))
+    }
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let database = Arc::clone(&self.database);
         let database = database.read().await;

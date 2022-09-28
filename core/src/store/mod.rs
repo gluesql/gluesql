@@ -88,6 +88,8 @@ pub type RowIter = Box<dyn Iterator<Item = Result<(Key, Row)>>>;
 pub trait Store {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
 
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
+
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>>;
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter>;

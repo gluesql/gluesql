@@ -47,6 +47,12 @@ pub struct MockStorage {
 
 #[async_trait(?Send)]
 impl Store for MockStorage {
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let msg = "[Storage] fetch_all_schemas not supported".to_owned();
+
+        Err(Error::StorageMsg(msg))
+    }
+
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         if table_name == "__Err__" {
             return Err(Error::StorageMsg(
