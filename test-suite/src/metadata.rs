@@ -44,6 +44,12 @@ test_case!(metadata, async move {
 
     test!(
         "SELECT * FROM GLUE_TABLES",
-        Ok(select!(TABLE_NAME; Str; "a".into()))
+        Ok(select!(
+            TABLE_NAME;
+            Str;
+            "Bar".to_owned();
+            "Foo".to_owned();
+            "Zoo".to_owned()
+        ))
     );
 });

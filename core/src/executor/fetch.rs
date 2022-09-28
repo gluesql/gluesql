@@ -189,8 +189,8 @@ pub async fn fetch_relation_columns(
 ) -> Result<Vec<String>> {
     match table_factor {
         TableFactor::Table { name, .. } => fetch_columns(storage, name).await,
-        TableFactor::Series { .. } => Ok(vec!["N".to_string()]),
-        TableFactor::Dictionary { .. } => todo!(),
+        TableFactor::Series { .. } => Ok(vec!["N".to_owned()]),
+        TableFactor::Dictionary { .. } => Ok(vec!["TABLE_NAME".to_owned()]),
         TableFactor::Derived {
             subquery: Query { body, .. },
             alias: TableAlias { columns, name },
