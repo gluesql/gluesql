@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use {
     super::{Value, ValueError},
     crate::result::Result,
@@ -48,7 +47,11 @@ impl Value {
     }
 
     pub fn selector_by_index(&self, selector: Vec<Value>) -> Result<Value> {
-        let keys = selector.iter().map(String::from).join(".");
+        let keys = selector
+            .iter()
+            .map(String::from)
+            .collect::<Vec<_>>()
+            .join(".");
         self.selector(&keys)
     }
 }
