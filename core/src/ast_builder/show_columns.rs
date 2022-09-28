@@ -1,9 +1,6 @@
 use {
     super::Build,
-    crate::{
-        ast::Statement,
-        result::Result,
-    },
+    crate::{ast::Statement, result::Result},
 };
 
 #[derive(Clone)]

@@ -1,10 +1,6 @@
 use {
     super::Build,
-    crate::{
-        ast::Statement,
-        ast_builder::ColumnDefNode,
-        result::Result,
-    },
+    crate::{ast::Statement, ast_builder::ColumnDefNode, result::Result},
 };
 
 #[derive(Clone)]

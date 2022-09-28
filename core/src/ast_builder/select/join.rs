@@ -1,9 +1,7 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::{
-            Join, JoinConstraint, JoinExecutor, JoinOperator, TableAlias, TableFactor,
-        },
+        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, TableAlias, TableFactor},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, LimitNode, OffsetNode,
             OrderByExprList, OrderByNode, ProjectNode, SelectItemList, SelectNode,
