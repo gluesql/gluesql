@@ -52,4 +52,15 @@ test_case!(metadata, async move {
             "Zoo".to_owned()
         ))
     );
+
+    test!(
+        "SELECT * FROM GLUE_TAB_COLUMNS",
+        Ok(select!(
+            TABLE_NAME;
+            Str;
+            "Bar".to_owned();
+            "Foo".to_owned();
+            "Zoo".to_owned()
+        ))
+    );
 });

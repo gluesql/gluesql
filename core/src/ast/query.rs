@@ -79,11 +79,13 @@ pub enum TableFactor {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Dictionary {
     GlueTables,
+    GlueTabColumns,
 }
 impl Dictionary {
     pub fn get_name(&self) -> &'static str {
         match self {
             Dictionary::GlueTables => "GLUE_TABLES",
+            Dictionary::GlueTabColumns => "GLUE_TAB_COLUMNS",
         }
     }
 }
