@@ -234,12 +234,10 @@ mod tests {
     #[cfg(feature = "index")]
     use crate::ast::OrderByExpr;
 
-    use crate::ast::Variable;
-
     use {
         crate::ast::{
             Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
-            DataType, Expr, Query, SetExpr, Statement, ToSql, Values,
+            DataType, Expr, Query, SetExpr, Statement, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,

@@ -19,11 +19,9 @@ pub use self::{
 use ddl::translate_alter_table_operation;
 use sqlparser::ast::{TableFactor, TableWithJoins};
 
-use crate::ast::Variable;
-
 use {
     crate::{
-        ast::{Assignment, Statement},
+        ast::{Assignment, Statement, Variable},
         result::Result,
     },
     sqlparser::ast::{

@@ -25,8 +25,9 @@ use super::alter::alter_table;
 #[cfg(feature = "index")]
 use {super::alter::create_index, crate::data::SchemaIndex};
 
-use crate::ast::Variable;
-use crate::ast::{Dictionary, Expr, Query, SelectItem, TableAlias, TableFactor, TableWithJoins};
+use crate::ast::{
+    Dictionary, Expr, Query, SelectItem, TableAlias, TableFactor, TableWithJoins, Variable,
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {

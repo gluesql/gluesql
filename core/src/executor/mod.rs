@@ -15,6 +15,7 @@ mod validate;
 pub use aggregate::AggregateError;
 pub use alter::AlterError;
 pub use evaluate::{evaluate_stateless, ChronoFormatError, EvaluateError};
+pub use execute::PayloadVariable;
 pub use execute::{ExecuteError, Payload};
 pub use fetch::FetchError;
 pub use select::SelectError;
@@ -26,5 +27,3 @@ pub use validate::ValidateError;
 pub use execute::execute;
 #[cfg(feature = "transaction")]
 pub use execute::execute_atomic as execute;
-
-pub use execute::PayloadVariable;
