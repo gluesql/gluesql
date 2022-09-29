@@ -400,13 +400,13 @@ pub async fn execute<T: GStore + GStoreMut>(
                     offset: None,
                 };
 
-                let (_, rows) = try_block!(storage, {
-                    let (labels, rows) = select_with_labels(&storage, &query, None, true).await?;
+                let rows = try_block!(storage, {
+                    let rows = select(&storage, &query, None).await?;
                     let rows = rows
                         .map_ok(|Row(values)| values)
                         .try_collect::<Vec<_>>()
                         .await?;
-                    Ok((labels, rows))
+                    Ok(rows)
                 });
 
                 let table_names = rows
