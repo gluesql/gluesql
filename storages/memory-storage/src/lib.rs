@@ -1,6 +1,5 @@
 mod alter_table;
 mod index;
-mod metadata;
 mod transaction;
 
 use {

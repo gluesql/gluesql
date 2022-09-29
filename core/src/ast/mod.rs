@@ -98,7 +98,6 @@ pub enum Statement {
     #[cfg(feature = "transaction")]
     Rollback,
     /// SHOW VARIABLE
-    #[cfg(feature = "metadata")]
     ShowVariable(Variable),
     #[cfg(feature = "index")]
     ShowIndexes(String),
@@ -110,7 +109,6 @@ pub struct Assignment {
     pub value: Expr,
 }
 
-#[cfg(feature = "metadata")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Variable {
     Tables,
@@ -209,7 +207,6 @@ impl ToSql for Statement {
             Statement::Commit => "COMMIT".to_string(),
             #[cfg(feature = "transaction")]
             Statement::Rollback => "ROLLBACK".to_string(),
-            #[cfg(feature = "metadata")]
             Statement::ShowVariable(variable) => match variable {
                 Variable::Tables => "SHOW TABLES".to_string(),
                 Variable::Version => "SHOW VERSIONS".to_string(),
@@ -237,7 +234,6 @@ mod tests {
     #[cfg(feature = "index")]
     use crate::ast::OrderByExpr;
 
-    #[cfg(feature = "metadata")]
     use crate::ast::Variable;
 
     use {
@@ -571,7 +567,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "metadata")]
     fn to_sql_show_variable() {
         assert_eq!(
             "SHOW TABLES",

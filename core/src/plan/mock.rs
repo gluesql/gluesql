@@ -2,8 +2,6 @@
 
 #[cfg(feature = "alter-table")]
 use crate::store::AlterTable;
-#[cfg(feature = "metadata")]
-use crate::store::Metadata;
 #[cfg(feature = "transaction")]
 use crate::store::Transaction;
 #[cfg(feature = "index")]
@@ -128,15 +126,10 @@ impl IndexMut for MockStorage {}
 #[cfg(feature = "transaction")]
 impl Transaction for MockStorage {}
 
-#[cfg(feature = "metadata")]
-impl Metadata for MockStorage {}
-
 #[cfg(test)]
 mod tests {
     #[cfg(any(feature = "alter-table", feature = "index"))]
     use crate::ast::DataType;
-    #[cfg(feature = "metadata")]
-    use crate::store::Metadata;
     #[cfg(feature = "transaction")]
     use crate::store::Transaction;
     #[cfg(feature = "alter-table")]
@@ -222,12 +215,6 @@ mod tests {
             let storage = test(storage.commit());
 
             storage
-        };
-
-        #[cfg(feature = "metadata")]
-        {
-            storage.version();
-            assert!(block_on(storage.schema_names()).is_err());
         };
 
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));

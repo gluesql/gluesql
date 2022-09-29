@@ -1,5 +1,3 @@
-#![cfg(feature = "metadata")]
-
 use {
     crate::*,
     gluesql_core::{
@@ -8,7 +6,7 @@ use {
     },
 };
 
-test_case!(metadata, async move {
+test_case!(dictionary, async move {
     let tables = |v: Vec<&str>| {
         Ok(ShowVariable(PayloadVariable::Tables(
             v.into_iter().map(ToOwned::to_owned).collect(),

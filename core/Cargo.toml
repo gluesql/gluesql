@@ -47,7 +47,3 @@ index = []
 
 # optional: TRANSACTION
 transaction = []
-
-# optional: METADATA
-# e.g. SHOW TABLES;
-metadata = []

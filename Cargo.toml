@@ -41,7 +41,6 @@ default = [
 	"gluesql-core/alter-table",
 	"gluesql-core/index",
 	"gluesql-core/transaction",
-	"gluesql-core/metadata",
 	"cli",
 	"test-suite",
 	"memory-storage",
@@ -60,10 +59,6 @@ index = ["gluesql-core/index", "test-suite/index"]
 
 # optional: TRANSACTION
 transaction = ["gluesql-core/transaction", "test-suite/transaction"]
-
-# optional: METADATA
-# e.g. SHOW TABLES;
-metadata = ["gluesql-core/metadata", "test-suite/metadata"]
 
 [workspace]
 members = [

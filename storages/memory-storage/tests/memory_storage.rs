@@ -19,7 +19,7 @@ impl Tester<MemoryStorage> for MemoryTester {
 
 generate_store_tests!(tokio::test, MemoryTester);
 
-generate_metadata_tests!(tokio::test, MemoryTester);
+generate_dictionary_tests!(tokio::test, MemoryTester);
 
 generate_alter_table_tests!(tokio::test, MemoryTester);
 

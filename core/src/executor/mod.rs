@@ -27,5 +27,4 @@ pub use execute::execute;
 #[cfg(feature = "transaction")]
 pub use execute::execute_atomic as execute;
 
-#[cfg(feature = "metadata")]
 pub use execute::PayloadVariable;

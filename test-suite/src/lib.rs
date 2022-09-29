@@ -8,6 +8,7 @@ pub mod case;
 pub mod concat;
 pub mod data_type;
 pub mod default;
+pub mod dictionary;
 pub mod filter;
 pub mod function;
 pub mod index;
@@ -16,7 +17,6 @@ pub mod insert;
 pub mod join;
 pub mod like_ilike;
 pub mod limit;
-pub mod metadata;
 pub mod migrate;
 pub mod nested_select;
 pub mod nullable;
@@ -222,9 +222,8 @@ macro_rules! generate_transaction_tests {
     };
 }
 
-#[cfg(feature = "metadata")]
 #[macro_export]
-macro_rules! generate_metadata_tests {
+macro_rules! generate_dictionary_tests {
     ($test: meta, $storage: ident) => {
         macro_rules! glue {
             ($title: ident, $func: path) => {
@@ -232,7 +231,7 @@ macro_rules! generate_metadata_tests {
             };
         }
 
-        glue!(metadata, metadata::metadata);
+        glue!(dictionary, dictionary::dictionary);
     };
 }
 
@@ -295,9 +294,9 @@ macro_rules! generate_transaction_index_tests {
     };
 }
 
-#[cfg(all(feature = "transaction", feature = "metadata"))]
+#[cfg(all(feature = "transaction"))]
 #[macro_export]
-macro_rules! generate_transaction_metadata_tests {
+macro_rules! generate_transaction_dictionary_tests {
     ($test: meta, $storage: ident) => {
         macro_rules! glue {
             ($title: ident, $func: path) => {
@@ -305,6 +304,6 @@ macro_rules! generate_transaction_metadata_tests {
             };
         }
 
-        glue!(transaction_metadata, transaction::metadata);
+        glue!(transaction_dictionary, transaction::dictionary);
     };
 }

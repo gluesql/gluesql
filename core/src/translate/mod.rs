@@ -19,7 +19,6 @@ pub use self::{
 use ddl::translate_alter_table_operation;
 use sqlparser::ast::{TableFactor, TableWithJoins};
 
-#[cfg(feature = "metadata")]
 use crate::ast::Variable;
 
 use {
@@ -149,13 +148,11 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::Commit { .. } => Ok(Statement::Commit),
         #[cfg(feature = "transaction")]
         SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
-        #[cfg(feature = "metadata")]
         SqlStatement::ShowTables {
             filter: None,
             db_name: None,
             ..
         } => Ok(Statement::ShowVariable(Variable::Tables)),
-        #[cfg(feature = "metadata")]
         SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),

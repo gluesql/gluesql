@@ -1,6 +1,5 @@
 mod alter_table;
 mod index;
-mod metadata;
 mod transaction;
 
 use {
@@ -8,7 +7,7 @@ use {
     gluesql_core::{
         data::{Key, Row, Schema},
         result::{MutResult, Result},
-        store::{GStore, GStoreMut, RowIter, Store, StoreMut},
+        store::{RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,

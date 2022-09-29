@@ -15,7 +15,6 @@ pub mod store;
 pub mod translate;
 
 pub mod prelude {
-    #[cfg(feature = "metadata")]
     pub use crate::executor::PayloadVariable;
 
     pub use crate::{

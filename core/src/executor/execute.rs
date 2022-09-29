@@ -25,7 +25,6 @@ use super::alter::alter_table;
 #[cfg(feature = "index")]
 use {super::alter::create_index, crate::data::SchemaIndex};
 
-#[cfg(feature = "metadata")]
 use crate::ast::Variable;
 use crate::ast::{Dictionary, Expr, Query, SelectItem, TableAlias, TableFactor, TableWithJoins};
 
@@ -62,14 +61,12 @@ pub enum Payload {
     #[cfg(feature = "transaction")]
     Rollback,
 
-    #[cfg(feature = "metadata")]
     ShowVariable(PayloadVariable),
 
     #[cfg(feature = "index")]
     ShowIndexes(Vec<SchemaIndex>),
 }
 
-#[cfg(feature = "metadata")]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum PayloadVariable {
     Tables(Vec<String>),
@@ -376,8 +373,6 @@ pub async fn execute<T: GStore + GStoreMut>(
 
             Ok((storage, Payload::ShowIndexes(indexes)))
         }
-        //- Metadata
-        #[cfg(feature = "metadata")]
         Statement::ShowVariable(variable) => match variable {
             Variable::Tables => {
                 let query = Query {
