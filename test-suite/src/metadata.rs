@@ -43,7 +43,7 @@ test_case!(metadata, async move {
     );
 
     test!(
-        "SELECT * FROM GLUE_TABLES ORDER BY TABLE_NAME",
+        "SELECT * FROM GLUE_TABLES",
         Ok(select!(
             TABLE_NAME;
             Str;
@@ -57,7 +57,7 @@ test_case!(metadata, async move {
     run!("ALTER TABLE Foo ADD COLUMN name TEXT NULL");
     run!("ALTER TABLE Foo ADD COLUMN type TEXT NULL");
     test!(
-        "SELECT * FROM GLUE_TABLE_COLUMNS ORDER BY TABLE_NAME",
+        "SELECT * FROM GLUE_TABLE_COLUMNS",
         Ok(select!(
             TABLE_NAME       | COLUMN_NAME      | COLUMN_ID;
             Str              | Str              | I64;

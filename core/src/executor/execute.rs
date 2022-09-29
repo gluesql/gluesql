@@ -27,9 +27,7 @@ use {super::alter::create_index, crate::data::SchemaIndex};
 
 #[cfg(feature = "metadata")]
 use crate::ast::Variable;
-use crate::ast::{
-    Dictionary, Expr, OrderByExpr, Query, SelectItem, TableAlias, TableFactor, TableWithJoins,
-};
+use crate::ast::{Dictionary, Expr, Query, SelectItem, TableAlias, TableFactor, TableWithJoins};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -402,10 +400,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                         group_by: Vec::new(),
                         having: None,
                     })),
-                    order_by: vec![OrderByExpr {
-                        expr: Expr::Identifier("TABLE_NAME".to_string()),
-                        asc: None,
-                    }],
+                    order_by: Vec::new(),
                     limit: None,
                     offset: None,
                 };

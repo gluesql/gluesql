@@ -30,11 +30,14 @@ pub struct MemoryStorage {
 #[async_trait(?Send)]
 impl Store for MemoryStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
-        Ok(self
+        let mut schemas = self
             .items
             .iter()
             .map(|(_, item)| item.schema.clone())
-            .collect())
+            .collect::<Vec<_>>();
+        schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
+
+        Ok(schemas)
     }
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.items
