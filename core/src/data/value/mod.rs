@@ -556,16 +556,18 @@ impl Value {
         self.try_into().map(|key: Key| key.to_cmp_be_bytes())
     }
 
-    /// Support only [`Value::Str`] variant
+    /// The operation method differs depending on the argument.
+    /// 1. If both arguments are String
+    ///     - Support only [`Value::Str`] variant
+    ///     - Returns the position where the first letter of the substring starts if the string contains a substring.
+    ///     - Returns [`Value::I64(0)`] if the string to be found is not found.
+    ///     - Returns minimum value [`Value::I64(1)`] when the string is found.
+    ///     - Returns [`Value::Null`] if NULL parameter found.
     ///
-    /// Returns the position where the first letter of the substring starts if the string contains a substring.
-    ///
-    /// Returns [`Value::I64(0)`] if the string to be found is not found.
-    /// Returns minimum value [`Value::I64(1)`] when the string is found.
-    /// Returns [`Value::Null`] if NULL parameter found.
+    /// 2. Other arguments
+    ///     - Not Supported Yet.
     ///
     /// # Examples
-    ///
     /// ```
     /// use gluesql_core::{
     ///     data::ValueError,
@@ -575,32 +577,38 @@ impl Value {
     /// let str1 = Str("ramen".to_string());
     /// let str2 = Str("men".to_string());
     /// let empty_str = Str("".to_string());
-    /// assert_eq!(str1.str_position(&str2), Ok(I64(3)));
-    /// assert_eq!(str2.str_position(&str1), Ok(I64(0)));
-    /// assert!(Null.str_position(&str2).unwrap().is_null());
-    /// assert!(str1.str_position(&Null).unwrap().is_null());
-    /// assert_eq!(empty_str.str_position(&str2), Ok(I64(0)));
-    /// assert_eq!(str1.str_position(&empty_str), Ok(I64(0)));
+    /// assert_eq!(str1.position(&str2), Ok(I64(3)));
+    /// assert_eq!(str2.position(&str1), Ok(I64(0)));
+    /// assert!(Null.position(&str2).unwrap().is_null());
+    /// assert!(str1.position(&Null).unwrap().is_null());
+    /// assert_eq!(empty_str.position(&str2), Ok(I64(0)));
+    /// assert_eq!(str1.position(&empty_str), Ok(I64(0)));
     /// assert_eq!(
-    ///     str1.str_position(&I64(1)),
-    ///     Err(ValueError::StrPositionOnNonString(str1, I64(1)).into())
+    ///     str1.position(&I64(1)),
+    ///     Err(ValueError::UnSupportedArgumentInFunctionPosition(str1, I64(1)).into())
     /// );
     /// ```
-    pub fn str_position(&self, other: &Value) -> Result<Value> {
+    pub fn position(&self, other: &Value) -> Result<Value> {
         use Value::*;
         match (self, other) {
-            (Str(from_str), Str(sub_str)) => {
-                if from_str.is_empty() || sub_str.is_empty() {
-                    return Ok(I64(0));
-                }
-                match from_str.find(sub_str).map(|position| position + 1) {
-                    Some(pos) => Ok(I64(pos as i64)),
-                    None => Ok(I64(0)),
-                }
-            }
+            (Str(from_str), Str(sub_str)) => Ok(I64(str_position(from_str, sub_str) as i64)),
             (Null, _) | (_, Null) => Ok(Null),
-            _ => Err(ValueError::StrPositionOnNonString(self.clone(), other.clone()).into()),
+            _ => Err(ValueError::UnSupportedArgumentInFunctionPosition(
+                self.clone(),
+                other.clone(),
+            )
+            .into()),
         }
+    }
+}
+
+fn str_position(from_str: &String, sub_str: &String) -> usize {
+    if from_str.is_empty() || sub_str.is_empty() {
+        return 0;
+    }
+    match from_str.find(sub_str).map(|position| position + 1) {
+        Some(pos) => pos,
+        None => 0,
     }
 }
 
@@ -1527,19 +1535,19 @@ mod tests {
     }
 
     #[test]
-    fn str_position() {
+    fn position() {
         let str1 = Str("ramen".to_string());
         let str2 = Str("men".to_string());
         let empty_str = Str("".to_string());
-        assert_eq!(str1.str_position(&str2), Ok(I64(3)));
-        assert_eq!(str2.str_position(&str1), Ok(I64(0)));
-        assert!(Null.str_position(&str2).unwrap().is_null());
-        assert!(str1.str_position(&Null).unwrap().is_null());
-        assert_eq!(empty_str.str_position(&str2), Ok(I64(0)));
-        assert_eq!(str1.str_position(&empty_str), Ok(I64(0)));
+        assert_eq!(str1.position(&str2), Ok(I64(3)));
+        assert_eq!(str2.position(&str1), Ok(I64(0)));
+        assert!(Null.position(&str2).unwrap().is_null());
+        assert!(str1.position(&Null).unwrap().is_null());
+        assert_eq!(empty_str.position(&str2), Ok(I64(0)));
+        assert_eq!(str1.position(&empty_str), Ok(I64(0)));
         assert_eq!(
-            str1.str_position(&I64(1)),
-            Err(ValueError::StrPositionOnNonString(str1, I64(1)).into())
+            str1.position(&I64(1)),
+            Err(ValueError::UnSupportedArgumentInFunctionPosition(str1, I64(1)).into())
         );
     }
 

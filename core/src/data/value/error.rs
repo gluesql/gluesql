@@ -169,7 +169,7 @@ pub enum ValueError {
     SqrtOnNonNumeric(Value),
 
     #[error("non string value found: from_string is {0:?}, sub_string is {1:?}")]
-    StrPositionOnNonString(Value, Value),
+    UnSupportedArgumentInFunctionPosition(Value, Value),
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]
