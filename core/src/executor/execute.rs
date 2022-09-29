@@ -425,7 +425,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                 ))
             }
             Variable::Version => {
-                let version = storage.version();
+                let version = env!("CARGO_PKG_VERSION").to_owned();
                 let payload = Payload::ShowVariable(PayloadVariable::Version(version));
 
                 Ok((storage, payload))
