@@ -26,7 +26,10 @@ use super::alter::alter_table;
 use {super::alter::create_index, crate::data::SchemaIndex};
 
 #[cfg(feature = "metadata")]
-use crate::{ast::Variable, result::TrySelf};
+use crate::ast::Variable;
+use crate::ast::{
+    Dictionary, Expr, OrderByExpr, Query, SelectItem, TableAlias, TableFactor, TableWithJoins,
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -378,11 +381,54 @@ pub async fn execute<T: GStore + GStoreMut>(
         //- Metadata
         #[cfg(feature = "metadata")]
         Statement::ShowVariable(variable) => match variable {
-            Variable::Tables => storage
-                .schema_names()
-                .await
-                .map(|table_names| Payload::ShowVariable(PayloadVariable::Tables(table_names)))
-                .try_self(storage),
+            Variable::Tables => {
+                let query = Query {
+                    body: SetExpr::Select(Box::new(crate::ast::Select {
+                        projection: vec![SelectItem::Expr {
+                            expr: Expr::Identifier("TABLE_NAME".to_string()),
+                            label: "TABLE_NAME".to_string(),
+                        }],
+                        from: TableWithJoins {
+                            relation: TableFactor::Dictionary {
+                                dict: Dictionary::GlueTables,
+                                alias: TableAlias {
+                                    name: "GLUE_TABLES".to_owned(),
+                                    columns: Vec::new(),
+                                },
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: vec![OrderByExpr {
+                        expr: Expr::Identifier("TABLE_NAME".to_string()),
+                        asc: None,
+                    }],
+                    limit: None,
+                    offset: None,
+                };
+
+                let (_, rows) = try_block!(storage, {
+                    let (labels, rows) = select_with_labels(&storage, &query, None, true).await?;
+                    let rows = rows
+                        .map_ok(|Row(values)| values)
+                        .try_collect::<Vec<_>>()
+                        .await?;
+                    Ok((labels, rows))
+                });
+
+                let table_names = rows
+                    .iter()
+                    .flat_map(|values| values.iter().map(|value| value.into()))
+                    .collect::<Vec<_>>();
+
+                Ok((
+                    storage,
+                    Payload::ShowVariable(PayloadVariable::Tables(table_names)),
+                ))
+            }
             Variable::Version => {
                 let version = storage.version();
                 let payload = Payload::ShowVariable(PayloadVariable::Version(version));
