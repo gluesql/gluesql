@@ -560,8 +560,8 @@ impl Value {
     /// 1. If both arguments are String
     ///     - Support only [`Value::Str`] variant
     ///     - Returns the position where the first letter of the substring starts if the string contains a substring.
-    ///     - Returns [`Value::I64(0)`] if the string to be found is not found.
-    ///     - Returns minimum value [`Value::I64(1)`] when the string is found.
+    ///     - Returns [`Value::I64`] 0 if the string to be found is not found.
+    ///     - Returns minimum value [`Value::I64`] 1 when the string is found.
     ///     - Returns [`Value::Null`] if NULL parameter found.
     ///
     /// 2. Other arguments
@@ -606,10 +606,10 @@ fn str_position(from_str: &String, sub_str: &String) -> usize {
     if from_str.is_empty() || sub_str.is_empty() {
         return 0;
     }
-    match from_str.find(sub_str).map(|position| position + 1) {
-        Some(pos) => pos,
-        None => 0,
-    }
+    from_str
+        .find(sub_str)
+        .map(|position| position + 1)
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
