@@ -64,6 +64,7 @@ mod tests {
 
     #[test]
     fn limit_offset() {
+        // limit node -> offset node -> build
         let actual = table("World")
             .select()
             .filter("id > 2")
@@ -71,6 +72,17 @@ mod tests {
             .offset(3)
             .build();
         let expected = "SELECT * FROM World WHERE id > 2 OFFSET 3 LIMIT 100";
+        test(actual, expected);
+
+        // limit node -> offset node -> project node
+        let actual = table("World")
+            .select()
+            .filter("id > 2")
+            .limit(100)
+            .offset(3)
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM World WHERE id > 2 OFFSET 3 LIMIT 100";
         test(actual, expected);
     }
 }

@@ -3,8 +3,8 @@ use {
     crate::{
         ast::Statement,
         ast_builder::{
-            ExprList, ExprNode, HavingNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
-            ProjectNode, SelectItemList, SelectNode,
+            ExprList, ExprNode, FilterNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -13,12 +13,18 @@ use {
 #[derive(Clone)]
 pub enum PrevNode {
     Select(SelectNode),
+    Join(Box<JoinNode>),
+    JoinConstraint(Box<JoinConstraintNode>),
+    Filter(FilterNode),
 }
 
 impl Prebuild for PrevNode {
     fn prebuild(self) -> Result<NodeData> {
         match self {
             Self::Select(node) => node.prebuild(),
+            Self::Join(node) => node.prebuild(),
+            Self::JoinConstraint(node) => node.prebuild(),
+            Self::Filter(node) => node.prebuild(),
         }
     }
 }
@@ -26,6 +32,24 @@ impl Prebuild for PrevNode {
 impl From<SelectNode> for PrevNode {
     fn from(node: SelectNode) -> Self {
         PrevNode::Select(node)
+    }
+}
+
+impl From<JoinNode> for PrevNode {
+    fn from(node: JoinNode) -> Self {
+        PrevNode::Join(Box::new(node))
+    }
+}
+
+impl From<JoinConstraintNode> for PrevNode {
+    fn from(node: JoinConstraintNode) -> Self {
+        PrevNode::JoinConstraint(Box::new(node))
+    }
+}
+
+impl From<FilterNode> for PrevNode {
+    fn from(node: FilterNode) -> Self {
+        PrevNode::Filter(node)
     }
 }
 
@@ -83,38 +107,60 @@ mod tests {
 
     #[test]
     fn group_by() {
+        // select node -> group by node -> build
+        let acutal = table("Foo").select().group_by("a").build();
+        let expected = "SELECT * FROM Foo GROUP BY a";
+        test(acutal, expected);
+
+        // join node -> group by node -> build
+        let actual = table("Foo").select().join("Bar").group_by("b").build();
+        let expected = "SELECT * FROM Foo JOIN Bar GROUP BY b";
+        test(actual, expected);
+
+        // join node -> group by node -> build
+        let actual = table("Foo")
+            .select()
+            .join_as("Bar", "B")
+            .group_by("b")
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar AS B GROUP BY b";
+        test(actual, expected);
+
+        // join node -> group by node -> build
+        let actual = table("Foo").select().left_join("Bar").group_by("b").build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar GROUP BY b";
+        test(actual, expected);
+
+        // join node -> group by node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "B")
+            .group_by("b")
+            .build();
+        let expected = "SELECT * FROM Foo LEFT JOIN Bar AS B GROUP BY b";
+        test(actual, expected);
+
+        // join constraint node -> group by node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .group_by("b")
+            .build();
+        let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id GROUP BY b";
+        test(actual, expected);
+
+        // filter node -> group by node -> build
         let actual = table("Bar")
             .select()
             .filter(col("id").is_null())
             .group_by("id, (a + name)")
             .build();
         let expected = "
-            SELECT * FROM Bar
-            WHERE id IS NULL
-            GROUP BY id, (a + name)
-        ";
-        test(actual, expected);
-
-        let actual = table("Foo")
-            .select()
-            .filter("name IS NOT NULL")
-            .group_by(vec![col("id"), col("a").add(col("name"))])
-            .build();
-        let expected = "
-            SELECT * FROM Foo
-            WHERE name IS NOT NULL
-            GROUP BY id, a + name
-        ";
-        test(actual, expected);
-
-        let actual = table("Foo")
-            .select()
-            .group_by(vec!["id", "a + name"])
-            .build();
-        let expected = "
-            SELECT * FROM Foo
-            GROUP BY id, a + name
-        ";
+                SELECT * FROM Bar
+                WHERE id IS NULL
+                GROUP BY id, (a + name)
+            ";
         test(actual, expected);
     }
 }
