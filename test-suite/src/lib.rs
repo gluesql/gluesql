@@ -135,6 +135,7 @@ macro_rules! generate_store_tests {
         glue!(int32, data_type::int32::int32);
         glue!(int64, data_type::int64::int64);
         glue!(int128, data_type::int128::int128);
+        glue!(uint16, data_type::uint16::uint16);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);
         glue!(time, data_type::time::time);
