@@ -12,8 +12,6 @@ test_case!(uint16, async move {
     );
     run!(r#"INSERT INTO Item VALUES (1, 1), (2, 2), (3, 3), (4, 4);"#);
 
-    let parse_u16 = |text: &str| -> u16 { text.parse().unwrap() };
-
     test!(
         "INSERT INTO Item VALUES (327689,327689);",
         Err(ValueError::FailedToParseNumber.into())
