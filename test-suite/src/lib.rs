@@ -161,6 +161,7 @@ macro_rules! generate_store_tests {
             function::generate_uuid::generate_uuid
         );
         glue!(type_match, type_match::type_match);
+        glue!(dictionary, dictionary::dictionary);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
@@ -219,19 +220,6 @@ macro_rules! generate_transaction_tests {
             transaction_create_drop_table,
             transaction::create_drop_table
         );
-    };
-}
-
-#[macro_export]
-macro_rules! generate_dictionary_tests {
-    ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
-            };
-        }
-
-        glue!(dictionary, dictionary::dictionary);
     };
 }
 
