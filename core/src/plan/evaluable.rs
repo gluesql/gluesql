@@ -144,7 +144,7 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
             .unwrap_or_else(|| name.clone()),
         TableFactor::Derived { alias, .. }
         | TableFactor::Series { alias, .. }
-        | TableFactor::Dictionary { alias, .. } => alias.to_owned().name,
+        | TableFactor::Dictionary { alias, .. } => alias.name.to_owned(),
     };
 
     context
