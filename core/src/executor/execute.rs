@@ -19,7 +19,7 @@ use {
     },
     futures::stream::{self, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{fmt::Debug, rc::Rc},
+    std::{env::var, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -421,7 +421,8 @@ pub async fn execute<T: GStore + GStoreMut>(
                 ))
             }
             Variable::Version => {
-                let version = env!("CARGO_PKG_VERSION").to_owned();
+                let version =
+                    var("CARGO_PKG_VERSION").unwrap_or(env!("CARGO_PKG_VERSION").to_owned());
                 let payload = Payload::ShowVariable(PayloadVariable::Version(version));
 
                 Ok((storage, payload))
