@@ -64,11 +64,6 @@ async fn basic_async<T: GStore + GStoreMut>(mut glue: Glue<T>) {
         .await,
         Ok(vec![Payload::Create])
     );
-
-    let payload = table("api_test").delete().execute(&mut glue).await.unwrap();
-    println!("{:?}", payload);
-
-    panic!();
 }
 
 #[cfg(feature = "sled-storage")]
