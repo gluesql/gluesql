@@ -7,7 +7,11 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnOption, ColumnOptionDef, DataType, SetExpr, Statement, Values},
+        ast::{
+            ColumnDef, ColumnOption, ColumnOptionDef, DataType, Dictionary, Expr, Query,
+            SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
+            Variable,
+        },
         data::{Key, Row, Schema, Value},
         executor::limit::Limit,
         result::{MutResult, Result},
@@ -24,10 +28,6 @@ use super::alter::alter_table;
 
 #[cfg(feature = "index")]
 use {super::alter::create_index, crate::data::SchemaIndex};
-
-use crate::ast::{
-    Dictionary, Expr, Query, SelectItem, TableAlias, TableFactor, TableWithJoins, Variable,
-};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
