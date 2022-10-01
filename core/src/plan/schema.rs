@@ -166,11 +166,16 @@ async fn scan_join(storage: &dyn Store, join: &Join) -> Result<Vec<Schema>> {
 }
 
 #[async_recursion(?Send)]
-async fn scan_table_factor(storage: &dyn Store, table_factor: &TableFactor) -> Result<Vec<Schema>> {
+async fn scan_table_factor(
+    storage: &dyn Store,
+    table_factor: &TableFactor,
+) -> Result<HashMap<String, Schema>> {
     match table_factor {
-        TableFactor::Table { name, .. } => {
+        TableFactor::Table { name, alias, .. } => {
             let schema = storage.fetch_schema(name).await?;
-            let schema_list = schema.map(|schema| vec![schema]).unwrap_or_else(Vec::new);
+            let schema_list = schema.map_or_else(|| HashMap::new, |schema| (alias, schema));
+            // .map(|schema| (alias, schema))
+            // .unwrap_or_else(HashMap::new);
 
             Ok(schema_list)
         }
