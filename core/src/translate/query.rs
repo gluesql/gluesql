@@ -191,8 +191,12 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                     alias: alias_or_name(),
                     size: translate_table_args(args)?,
                 }),
-                "GLUE_TABLES" | "GLUE_TABLE_COLUMNS" => Ok(TableFactor::Dictionary {
-                    dict: translate_dictionary_name(object_name.as_str())?,
+                "GLUE_TABLES" => Ok(TableFactor::Dictionary {
+                    dict: Dictionary::GlueTables,
+                    alias: alias_or_name(),
+                }),
+                "GLUE_TABLE_COLUMNS" => Ok(TableFactor::Dictionary {
+                    dict: Dictionary::GlueTableColumns,
                     alias: alias_or_name(),
                 }),
                 _ => {
@@ -220,14 +224,6 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
             }
         }
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
-    }
-}
-
-fn translate_dictionary_name(object_name: &str) -> Result<Dictionary> {
-    match object_name {
-        "GLUE_TABLES" => Ok(Dictionary::GlueTables),
-        "GLUE_TABLE_COLUMNS" => Ok(Dictionary::GlueTableColumns),
-        _ => Err(TranslateError::UnreachableDictionary.into()),
     }
 }
 
