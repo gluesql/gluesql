@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         data::{Key, Row, Schema},
         result::{MutResult, Result},
-        store::{GStore, GStoreMut, RowIter, Store, StoreMut},
+        store::{RowIter, Store, StoreMut},
     },
     indexmap::IndexMap,
     serde::{Deserialize, Serialize},
@@ -139,6 +139,3 @@ impl StoreMut for MemoryStorage {
         Ok((storage, ()))
     }
 }
-
-impl GStore for MemoryStorage {}
-impl GStoreMut for MemoryStorage {}
