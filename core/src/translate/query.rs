@@ -176,28 +176,26 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         } => {
             let object_name = translate_object_name(name)?.to_uppercase();
             let alias = translate_table_alias(alias);
-            let alias_or_name = || -> TableAlias {
-                match &alias {
-                    Some(alias) => alias.to_owned(),
-                    None => TableAlias {
-                        name: object_name.to_owned(),
-                        columns: Vec::new(),
-                    },
-                }
+            let alias_or_name = match &alias {
+                Some(alias) => alias.to_owned(),
+                None => TableAlias {
+                    name: object_name.to_owned(),
+                    columns: Vec::new(),
+                },
             };
 
             match object_name.as_str() {
                 "SERIES" if args.is_some() => Ok(TableFactor::Series {
-                    alias: alias_or_name(),
+                    alias: alias_or_name,
                     size: translate_table_args(args)?,
                 }),
                 "GLUE_TABLES" => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTables,
-                    alias: alias_or_name(),
+                    alias: alias_or_name,
                 }),
                 "GLUE_TABLE_COLUMNS" => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTableColumns,
-                    alias: alias_or_name(),
+                    alias: alias_or_name,
                 }),
                 _ => {
                     Ok(TableFactor::Table {
