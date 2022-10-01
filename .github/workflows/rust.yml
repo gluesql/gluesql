@@ -47,7 +47,7 @@ jobs:
           cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
           cargo clippy --all-features --all-targets -- -D warnings
           cd ../
-  
+
   rust_fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
           components: rustfmt
       - run: |
           cargo fmt -- --check
-  
+
   rust_build:
     name: Build
     runs-on: ubuntu-latest
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up node              
+      - name: Set up node
         uses: actions/setup-node@v3
         with:
           node-version: 16
@@ -85,7 +85,7 @@ jobs:
           yarn install
           yarn build
           cd ../../
-  
+
   run_tests:
     name: Run tests
     runs-on: ubuntu-latest
@@ -95,9 +95,9 @@ jobs:
           cargo test --all-features --lib --bins --tests --examples --verbose -- --skip sled_transaction_timeout
           cargo test sled_transaction_timeout --verbose -- --test-threads=1
           cargo test --benches
-  
+
   run_examples:
-    name: Run examples  
+    name: Run examples
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -106,5 +106,3 @@ jobs:
           cargo run --package gluesql --example api_usage
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
-
-
