@@ -57,7 +57,7 @@ cfg_if! {
     } else if #[cfg(feature = "transaction")] {
         pub trait GStoreMut: StoreMut + Transaction {}
     } else {
-        pub trait GStoreMut: Store + StoreMut {}
+        pub trait GStoreMut: StoreMut {}
     }
 }
 
