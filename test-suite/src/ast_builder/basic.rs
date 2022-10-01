@@ -53,6 +53,8 @@ test_case!(basic, async move {
         .select()
         .filter("name = 'Lemon'")
         .project("id, name")
+        .build()
+        .expect("build and execute")
         .execute(glue)
         .await;
     let expected = Ok(select!(
