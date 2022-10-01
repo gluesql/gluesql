@@ -1,6 +1,7 @@
 pub mod aggregate;
 pub mod alter;
 pub mod arithmetic;
+pub mod ast_builder;
 pub mod basic;
 pub mod blend;
 pub mod case;
@@ -160,6 +161,9 @@ macro_rules! generate_store_tests {
             function::generate_uuid::generate_uuid
         );
         glue!(type_match, type_match::type_match);
+
+        // ast-builder
+        glue!(ast_builder_basic, ast_builder::basic::basic);
     };
 }
 

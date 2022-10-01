@@ -1,7 +1,6 @@
 use {
     super::{NodeData, Prebuild, SelectNode},
     crate::{
-        ast::Statement,
         ast_builder::{
             ExprList, ExprNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode, OffsetNode,
             OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
@@ -83,10 +82,6 @@ impl FilterNode {
     pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
         OrderByNode::new(self, order_by_exprs)
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for FilterNode {
@@ -101,7 +96,7 @@ impl Prebuild for FilterNode {
 mod tests {
     use crate::{
         ast::{BinaryOperator, Expr},
-        ast_builder::{table, test},
+        ast_builder::{table, test, Build},
     };
 
     #[test]

@@ -229,6 +229,13 @@ macro_rules! test_case {
             let glue = tester.get_glue();
 
             #[allow(unused_macros)]
+            macro_rules! get_glue {
+                () => {
+                    glue
+                };
+            }
+
+            #[allow(unused_macros)]
             macro_rules! schema {
                 ($table_name: literal) => {
                     glue.storage

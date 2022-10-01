@@ -1,7 +1,6 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::Statement,
         ast_builder::{
             ExprList, ExprNode, FilterNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
             OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList, SelectNode,
@@ -86,10 +85,6 @@ impl GroupByNode {
     pub fn order_by<T: Into<OrderByExprList>>(self, expr_list: T) -> OrderByNode {
         OrderByNode::new(self, expr_list)
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for GroupByNode {
@@ -103,7 +98,7 @@ impl Prebuild for GroupByNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, table, test};
+    use crate::ast_builder::{col, table, test, Build};
 
     #[test]
     fn group_by() {

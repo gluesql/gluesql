@@ -1,7 +1,6 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::Statement,
         ast_builder::{ExprNode, OffsetNode, ProjectNode, SelectItemList},
         result::Result,
     },
@@ -43,10 +42,6 @@ impl OffsetLimitNode {
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
         ProjectNode::new(self, select_items)
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for OffsetLimitNode {
@@ -60,7 +55,7 @@ impl Prebuild for OffsetLimitNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn offset_limit() {

@@ -1,5 +1,6 @@
 #![cfg(any(feature = "memory-storage", feature = "sled-storage"))]
 use gluesql_core::{
+    ast_builder::*,
     executor::Payload,
     prelude::{Glue, Value},
     store::{GStore, GStoreMut},

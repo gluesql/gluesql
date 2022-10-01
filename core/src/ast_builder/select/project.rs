@@ -1,7 +1,6 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::Statement,
         ast_builder::{
             FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
             LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, SelectItemList, SelectNode,
@@ -128,10 +127,6 @@ impl ProjectNode {
 
         self
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for ProjectNode {
@@ -152,7 +147,7 @@ impl Prebuild for ProjectNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, table, test};
+    use crate::ast_builder::{col, table, test, Build};
 
     #[test]
     fn project() {
