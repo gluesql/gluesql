@@ -556,6 +556,7 @@ impl Value {
         self.try_into().map(|key: Key| key.to_cmp_be_bytes())
     }
 
+    /// # Description
     /// The operation method differs depending on the argument.
     /// 1. If both arguments are String
     ///     - Support only [`Value::Str`] variant
@@ -569,25 +570,16 @@ impl Value {
     ///
     /// # Examples
     /// ```
-    /// use gluesql_core::{
-    ///     data::ValueError,
-    ///     prelude::Value::*
-    /// };
+    /// use gluesql_core::prelude::Value;
     ///
-    /// let str1 = Str("ramen".to_string());
-    /// let str2 = Str("men".to_string());
-    /// let empty_str = Str("".to_string());
-    /// assert_eq!(str1.position(&str2), Ok(I64(3)));
-    /// assert_eq!(str2.position(&str1), Ok(I64(0)));
-    /// assert!(Null.position(&str2).unwrap().is_null());
-    /// assert!(str1.position(&Null).unwrap().is_null());
-    /// assert_eq!(empty_str.position(&str2), Ok(I64(0)));
-    /// assert_eq!(str1.position(&empty_str), Ok(I64(0)));
-    /// assert_eq!(
-    ///     str1.position(&I64(1)),
-    ///     Err(ValueError::UnSupportedArgumentInFunctionPosition(str1, I64(1)).into())
-    /// );
+    /// let str1 = Value::Str("ramen".to_string());
+    /// let str2 = Value::Str("men".to_string());
+    /// assert_eq!(str1.position(&str2), Ok(Value::I64(3)));
+    /// assert_eq!(str2.position(&str1), Ok(Value::I64(0)));
+    /// assert!(Value::Null.position(&str2).unwrap().is_null());
+    /// assert!(str1.position(&Value::Null).unwrap().is_null());
     /// ```
+
     pub fn position(&self, other: &Value) -> Result<Value> {
         use Value::*;
         match (self, other) {
