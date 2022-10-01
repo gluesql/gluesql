@@ -14,7 +14,7 @@ use {
         executor::execute,
         parse_sql::parse,
         result::{Error, MutResult, Result},
-        store::{GStore, GStoreMut, RowIter, Store, StoreMut},
+        store::{RowIter, Store, StoreMut},
         translate::translate,
     },
     async_trait::async_trait,
@@ -124,9 +124,6 @@ impl Transaction for MockStorage {}
 
 #[cfg(feature = "metadata")]
 impl Metadata for MockStorage {}
-
-impl GStore for MockStorage {}
-impl GStoreMut for MockStorage {}
 
 #[cfg(test)]
 mod tests {

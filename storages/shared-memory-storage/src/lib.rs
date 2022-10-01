@@ -8,7 +8,7 @@ use {
     gluesql_core::{
         data::{Key, Row, Schema},
         result::{MutResult, Result},
-        store::{GStore, GStoreMut, RowIter, Store, StoreMut},
+        store::{RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,
@@ -113,6 +113,3 @@ impl StoreMut for SharedMemoryStorage {
         Ok((self, ()))
     }
 }
-
-impl GStore for SharedMemoryStorage {}
-impl GStoreMut for SharedMemoryStorage {}
