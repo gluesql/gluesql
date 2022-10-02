@@ -20,7 +20,7 @@ impl Store for SledStorage {
             } => (txid, created_at),
             State::Idle => {
                 return Err(Error::StorageMsg(
-                    "conflict - schema_names failed, lock does not exist".to_owned(),
+                    "conflict - fetch_all_schemas failed, lock does not exist".to_owned(),
                 ));
             }
         };
