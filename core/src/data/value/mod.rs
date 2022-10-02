@@ -585,10 +585,10 @@ impl Value {
         match (self, other) {
             (Str(from_str), Str(sub_str)) => Ok(I64(str_position(from_str, sub_str) as i64)),
             (Null, _) | (_, Null) => Ok(Null),
-            _ => Err(ValueError::UnSupportedArgumentInFunctionPosition(
-                self.clone(),
-                other.clone(),
-            )
+            _ => Err(ValueError::UnSupportedValueByPositionFunction {
+                from_str: self.clone(),
+                sub_str: other.clone(),
+            }
             .into()),
         }
     }
@@ -1539,7 +1539,11 @@ mod tests {
         assert_eq!(str1.position(&empty_str), Ok(I64(0)));
         assert_eq!(
             str1.position(&I64(1)),
-            Err(ValueError::UnSupportedArgumentInFunctionPosition(str1, I64(1)).into())
+            Err(ValueError::UnSupportedValueByPositionFunction {
+                from_str: str1,
+                sub_str: I64(1)
+            }
+            .into())
         );
     }
 

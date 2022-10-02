@@ -168,8 +168,8 @@ pub enum ValueError {
     #[error("non numeric value in sqrt {0:?}")]
     SqrtOnNonNumeric(Value),
 
-    #[error("non string value found: from_string is {0:?}, sub_string is {1:?}")]
-    UnSupportedArgumentInFunctionPosition(Value, Value),
+    #[error("unsupported value by position function: from_str(from_str:?), sub_str(sub_str:?)")]
+    UnSupportedValueByPositionFunction { from_str: Value, sub_str: Value },
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]
