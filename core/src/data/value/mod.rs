@@ -555,6 +555,53 @@ impl Value {
     pub fn to_cmp_be_bytes(&self) -> Result<Vec<u8>> {
         self.try_into().map(|key: Key| key.to_cmp_be_bytes())
     }
+
+    /// # Description
+    /// The operation method differs depending on the argument.
+    /// 1. If both arguments are String
+    ///     - Support only [`Value::Str`] variant
+    ///     - Returns the position where the first letter of the substring starts if the string contains a substring.
+    ///     - Returns [`Value::I64`] 0 if the string to be found is not found.
+    ///     - Returns minimum value [`Value::I64`] 1 when the string is found.
+    ///     - Returns [`Value::Null`] if NULL parameter found.
+    ///
+    /// 2. Other arguments
+    ///     - Not Supported Yet.
+    ///
+    /// # Examples
+    /// ```
+    /// use gluesql_core::prelude::Value;
+    ///
+    /// let str1 = Value::Str("ramen".to_string());
+    /// let str2 = Value::Str("men".to_string());
+    /// assert_eq!(str1.position(&str2), Ok(Value::I64(3)));
+    /// assert_eq!(str2.position(&str1), Ok(Value::I64(0)));
+    /// assert!(Value::Null.position(&str2).unwrap().is_null());
+    /// assert!(str1.position(&Value::Null).unwrap().is_null());
+    /// ```
+
+    pub fn position(&self, other: &Value) -> Result<Value> {
+        use Value::*;
+        match (self, other) {
+            (Str(from_str), Str(sub_str)) => Ok(I64(str_position(from_str, sub_str) as i64)),
+            (Null, _) | (_, Null) => Ok(Null),
+            _ => Err(ValueError::UnSupportedValueByPositionFunction {
+                from_str: self.clone(),
+                sub_str: other.clone(),
+            }
+            .into()),
+        }
+    }
+}
+
+fn str_position(from_str: &String, sub_str: &String) -> usize {
+    if from_str.is_empty() || sub_str.is_empty() {
+        return 0;
+    }
+    from_str
+        .find(sub_str)
+        .map(|position| position + 1)
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -1476,6 +1523,27 @@ mod tests {
         assert_eq!(
             Str("9".to_string()).sqrt(),
             Err(ValueError::SqrtOnNonNumeric(Str("9".to_string())).into())
+        );
+    }
+
+    #[test]
+    fn position() {
+        let str1 = Str("ramen".to_string());
+        let str2 = Str("men".to_string());
+        let empty_str = Str("".to_string());
+        assert_eq!(str1.position(&str2), Ok(I64(3)));
+        assert_eq!(str2.position(&str1), Ok(I64(0)));
+        assert!(Null.position(&str2).unwrap().is_null());
+        assert!(str1.position(&Null).unwrap().is_null());
+        assert_eq!(empty_str.position(&str2), Ok(I64(0)));
+        assert_eq!(str1.position(&empty_str), Ok(I64(0)));
+        assert_eq!(
+            str1.position(&I64(1)),
+            Err(ValueError::UnSupportedValueByPositionFunction {
+                from_str: str1,
+                sub_str: I64(1)
+            }
+            .into())
         );
     }
 
