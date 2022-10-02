@@ -32,7 +32,7 @@ jobs:
         env:
           RUSTFLAGS: -Cinstrument-coverage
           LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
-        run: cargo test --all-features --examples --verbose
+        run: cargo test --all-features --lib --bins --tests --examples --verbose
       - name: Run grcov
         run: |
           mkdir coverage
