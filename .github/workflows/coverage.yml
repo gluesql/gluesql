@@ -32,7 +32,7 @@ jobs:
         env:
           RUSTFLAGS: -Cinstrument-coverage
           LLVM_PROFILE_FILE: gluesql-%p-%m.profraw
-        run: cargo test --all-features --lib --bins --tests --examples --verbose
+        run: cargo test --all-features --verbose
       - name: Run grcov
         run: |
           mkdir coverage
@@ -43,6 +43,7 @@ jobs:
             --branch \
             --ignore-not-existing \
             --ignore "/*" \
+            --ignore "examples/*.rs" \
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "#\\[derive\\(" \
             -o ./coverage/lcov.info
