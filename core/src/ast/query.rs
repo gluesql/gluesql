@@ -2,6 +2,7 @@ use {
     super::{Expr, IndexOperator},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
+    strum_macros::Display,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -76,18 +77,11 @@ pub enum TableFactor {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum Dictionary {
     GlueTables,
     GlueTableColumns,
-}
-impl Dictionary {
-    pub fn get_name(&self) -> &'static str {
-        match self {
-            Dictionary::GlueTables => "GLUE_TABLES",
-            Dictionary::GlueTableColumns => "GLUE_TABLE_COLUMNS",
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
