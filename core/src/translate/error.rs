@@ -122,7 +122,4 @@ pub enum TranslateError {
 
     #[error("unimplemented - compound object is supported: {0}")]
     CompoundObjectNotSupported(String),
-
-    #[error("unreachable dictionary")]
-    UnreachableDictionary,
 }
