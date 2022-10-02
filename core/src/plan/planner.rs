@@ -168,7 +168,9 @@ pub trait Planner<'a> {
 
                 (name, alias)
             }
-            TableFactor::Derived { .. } | TableFactor::Series { .. } => return next,
+            TableFactor::Derived { .. }
+            | TableFactor::Series { .. }
+            | TableFactor::Dictionary { .. } => return next,
         };
 
         let column_defs = match self.get_schema(name) {

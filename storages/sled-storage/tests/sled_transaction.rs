@@ -726,7 +726,7 @@ mod timeout_tests {
 }
 
 #[test]
-fn sled_transaction_metadata() {
+fn sled_transaction_dictionary() {
     macro_rules! test_tables {
         ($glue: ident $( $table_name: literal )*) => {
             let expected = Payload::ShowVariable(PayloadVariable::Tables(
@@ -737,7 +737,7 @@ fn sled_transaction_metadata() {
         };
     }
 
-    let path = &format!("{}/metadata", PATH_PREFIX);
+    let path = &format!("{}/dictionary", PATH_PREFIX);
     fs::remove_dir_all(path).unwrap_or(());
 
     let storage = SledStorage::new(path).unwrap();

@@ -1,6 +1,5 @@
 mod alter_table;
 mod index;
-mod metadata;
 mod transaction;
 
 use {
@@ -44,6 +43,12 @@ impl From<MemoryStorage> for SharedMemoryStorage {
 
 #[async_trait(?Send)]
 impl Store for SharedMemoryStorage {
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let database = Arc::clone(&self.database);
+        let database = database.read().await;
+
+        database.fetch_all_schemas().await
+    }
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         let database = Arc::clone(&self.database);
         let database = database.read().await;

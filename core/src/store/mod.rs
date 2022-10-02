@@ -22,21 +22,7 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(feature = "metadata")] {
-        mod metadata;
-        pub use metadata::Metadata;
-    }
-
-}
-
-cfg_if! {
-    if #[cfg(all(feature = "metadata", feature = "index"))] {
-        pub trait GStore: Store + Metadata + Index {}
-        impl<S: Store + Metadata + Index> GStore for S {}
-    } else if #[cfg(feature = "metadata")] {
-        pub trait GStore: Store + Metadata {}
-        impl<S: Store + Metadata> GStore for S {}
-    } else if #[cfg(feature = "index")] {
+    if #[cfg(feature = "index")] {
         pub trait GStore: Store + Index {}
         impl<S: Store + Index> GStore for S {}
     } else {
@@ -87,6 +73,8 @@ pub type RowIter = Box<dyn Iterator<Item = Result<(Key, Row)>>>;
 #[async_trait(?Send)]
 pub trait Store {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
+
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>>;
 

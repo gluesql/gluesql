@@ -8,6 +8,7 @@ pub mod case;
 pub mod concat;
 pub mod data_type;
 pub mod default;
+pub mod dictionary;
 pub mod filter;
 pub mod function;
 pub mod index;
@@ -16,7 +17,6 @@ pub mod insert;
 pub mod join;
 pub mod like_ilike;
 pub mod limit;
-pub mod metadata;
 pub mod migrate;
 pub mod nested_select;
 pub mod nullable;
@@ -161,6 +161,7 @@ macro_rules! generate_store_tests {
             function::generate_uuid::generate_uuid
         );
         glue!(type_match, type_match::type_match);
+        glue!(dictionary, dictionary::dictionary);
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
@@ -219,20 +220,6 @@ macro_rules! generate_transaction_tests {
             transaction_create_drop_table,
             transaction::create_drop_table
         );
-    };
-}
-
-#[cfg(feature = "metadata")]
-#[macro_export]
-macro_rules! generate_metadata_tests {
-    ($test: meta, $storage: ident) => {
-        macro_rules! glue {
-            ($title: ident, $func: path) => {
-                declare_test_fn!($test, $storage, $title, $func);
-            };
-        }
-
-        glue!(metadata, metadata::metadata);
     };
 }
 
@@ -295,9 +282,9 @@ macro_rules! generate_transaction_index_tests {
     };
 }
 
-#[cfg(all(feature = "transaction", feature = "metadata"))]
+#[cfg(all(feature = "transaction"))]
 #[macro_export]
-macro_rules! generate_transaction_metadata_tests {
+macro_rules! generate_transaction_dictionary_tests {
     ($test: meta, $storage: ident) => {
         macro_rules! glue {
             ($title: ident, $func: path) => {
@@ -305,6 +292,6 @@ macro_rules! generate_transaction_metadata_tests {
             };
         }
 
-        glue!(transaction_metadata, transaction::metadata);
+        glue!(transaction_dictionary, transaction::dictionary);
     };
 }

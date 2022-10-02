@@ -2,6 +2,7 @@ use {
     super::{Expr, IndexOperator},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
+    strum_macros::Display,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -70,6 +71,17 @@ pub enum TableFactor {
         alias: TableAlias,
         size: Expr,
     },
+    Dictionary {
+        dict: Dictionary,
+        alias: TableAlias,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum Dictionary {
+    GlueTables,
+    GlueTableColumns,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

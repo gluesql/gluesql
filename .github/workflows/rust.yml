@@ -37,7 +37,6 @@ jobs:
       - run: |
           cd core
           cargo clippy --no-default-features -- -D warnings
-          cargo clippy --no-default-features --features metadata -- -D warnings
           cargo clippy --no-default-features --features alter-table -- -D warnings
           cargo clippy --no-default-features --features index -- -D warnings
           cargo clippy --no-default-features --features transaction -- -D warnings
