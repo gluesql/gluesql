@@ -78,6 +78,11 @@ test_case!(ascii, async move {
     );
 
     test!(
+        r#"select ascii("ㄱ") as ascii from Ascii;"#,
+        Err(EvaluateError::NonAsciiCharacterNotAllowed.into())
+    );
+
+    test!(
         r#"select ascii() as ascii from Ascii;"#,
         Err(TranslateError::FunctionArgsLengthNotMatching {
             name: "ASCII".to_owned(),
