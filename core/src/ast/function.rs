@@ -122,8 +122,8 @@ pub enum Function {
         format: Expr,
     },
     Position {
-        sub_expr: Expr,
         from_expr: Expr,
+        sub_expr: Expr,
     },
 }
 
