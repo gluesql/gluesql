@@ -184,15 +184,19 @@ impl ToSql for Expr {
             }
             Expr::Aggregate(a) => a.to_sql(),
             Expr::Function(func) => format!("{func}(..)"),
-            Expr::InSubquery { expr, negated, .. } => match negated {
-                true => format!("{} NOT IN (..query..)", expr.to_sql()),
-                false => format!("{} IN (..query..)", expr.to_sql()),
+            Expr::InSubquery {
+                expr,
+                subquery,
+                negated,
+            } => match negated {
+                true => format!("{} NOT IN ({})", expr.to_sql(), subquery.to_sql()),
+                false => format!("{} IN ({})", expr.to_sql(), subquery.to_sql()),
             },
-            Expr::Exists { negated, .. } => match negated {
-                true => "NOT EXISTS(..query..)".to_string(),
-                false => "EXISTS(..query..)".to_string(),
+            Expr::Exists { subquery, negated } => match negated {
+                true => format!("NOT EXISTS({})", subquery.to_sql()),
+                false => format!("EXISTS({})", subquery.to_sql()),
             },
-            Expr::Subquery(_) => "(..query..)".to_string(),
+            Expr::Subquery(query) => format!("({})", query.to_sql()),
         }
     }
 }
@@ -373,14 +377,14 @@ mod tests {
         );
 
         assert_eq!(
-            "EXISTS(..query..)",
+            "EXISTS(SELECT * FROM FOO)",
             Expr::Exists {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         projection: vec![SelectItem::Wildcard],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
-                                name: "Foo".to_owned(),
+                                name: "FOO".to_owned(),
                                 alias: None,
                                 index: None,
                             },
@@ -400,14 +404,14 @@ mod tests {
         );
 
         assert_eq!(
-            "NOT EXISTS(..query..)",
+            "NOT EXISTS(SELECT * FROM FOO)",
             Expr::Exists {
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         projection: vec![SelectItem::Wildcard],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
-                                name: "Foo".to_owned(),
+                                name: "FOO".to_owned(),
                                 alias: None,
                                 index: None,
                             },
