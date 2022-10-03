@@ -1,8 +1,7 @@
-use itertools::Itertools;
-
 use {
     super::{Expr, IndexOperator},
     crate::ast::ToSql,
+    itertools::Itertools,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
