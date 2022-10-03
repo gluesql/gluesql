@@ -51,9 +51,6 @@ CREATE TABLE TestA (
 
     run!("UPDATE Test SET id = 2");
 
-    run!("CREATE TABLE Validate(no int)");
-    run!("INSERT INTO Validate VALUES(1)");
-
     let test_cases = [
         ("SELECT id FROM Test", Ok(select!(id; I64; 2; 2; 2; 2))),
         (
@@ -63,10 +60,6 @@ CREATE TABLE TestA (
         (
             "SELECT id FROM FOO.Test",
             Err(TranslateError::CompoundObjectNotSupported("FOO.Test".to_owned()).into()),
-        ),
-        (
-            "SELECT no FROM Validate a join Validate b on a.no = b.no",
-            Ok(select!(no; I64; 2)),
         ),
     ];
 
