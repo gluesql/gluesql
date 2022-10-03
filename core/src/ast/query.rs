@@ -434,21 +434,21 @@ mod tests {
 
     #[test]
     fn to_sql_set_expr() {
-        let actual = "SELECT * FROM FOO AS F INNER JOIN PlayerItem".to_string();
+        let actual = "SELECT * FROM FOO AS F INNER JOIN PlayerItem".to_owned();
         let expected = SetExpr::Select(Box::new(Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: "FOO".to_string(),
+                    name: "FOO".to_owned(),
                     alias: Some(TableAlias {
-                        name: "F".to_string(),
+                        name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
                     index: None,
                 },
                 joins: vec![Join {
                     relation: TableFactor::Table {
-                        name: "PlayerItem".to_string(),
+                        name: "PlayerItem".to_owned(),
                         alias: None,
                         index: None,
                     },
@@ -466,11 +466,11 @@ mod tests {
         let actual = r#"VALUES (1, "glue", 3), (2, "sql", 2)"#.to_owned();
         let expected = SetExpr::Values(Values(vec![
             vec![
-                Expr::Literal(AstLiteral::QuotedString("glue".to_string())),
+                Expr::Literal(AstLiteral::QuotedString("glue".to_owned())),
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
             ],
             vec![
-                Expr::Literal(AstLiteral::QuotedString("sql".to_string())),
+                Expr::Literal(AstLiteral::QuotedString("sql".to_owned())),
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
             ],
         ]))
@@ -495,7 +495,7 @@ mod tests {
                 joins: Vec::new(),
             },
             selection: None,
-            group_by: vec![Expr::Identifier("name".to_string())],
+            group_by: vec![Expr::Identifier("name".to_owned())],
             having: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("name".to_owned())),
                 op: BinaryOperator::Eq,
@@ -647,7 +647,7 @@ mod tests {
         let actual = "INNER JOIN PlayerItem";
         let expected = Join {
             relation: TableFactor::Table {
-                name: "PlayerItem".to_string(),
+                name: "PlayerItem".to_owned(),
                 alias: None,
                 index: None,
             },
@@ -660,7 +660,7 @@ mod tests {
         let actual = "INNER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
         let expected = Join {
             relation: TableFactor::Table {
-                name: "PlayerItem".to_string(),
+                name: "PlayerItem".to_owned(),
                 alias: None,
                 index: None,
             },
@@ -675,7 +675,7 @@ mod tests {
         let actual = "LEFT OUTER JOIN PlayerItem";
         let expected = Join {
             relation: TableFactor::Table {
-                name: "PlayerItem".to_string(),
+                name: "PlayerItem".to_owned(),
                 alias: None,
                 index: None,
             },
@@ -688,7 +688,7 @@ mod tests {
         let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
         let expected = Join {
             relation: TableFactor::Table {
-                name: "PlayerItem".to_string(),
+                name: "PlayerItem".to_owned(),
                 alias: None,
                 index: None,
             },
@@ -705,7 +705,7 @@ mod tests {
         let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id AND PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2";
         let expected = Join {
             relation: TableFactor::Table {
-                name: "PlayerItem".to_string(),
+                name: "PlayerItem".to_owned(),
                 alias: None,
                 index: None,
             },
