@@ -32,6 +32,15 @@ pub fn translate_trim(
     })))
 }
 
+pub fn translate_positon(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr> {
+    let sub_expr = translate_expr(sub_expr)?;
+    let from_expr = translate_expr(from_expr)?;
+    Ok(Expr::Function(Box::new(Function::Position {
+        sub_expr,
+        from_expr,
+    })))
+}
+
 fn check_len(name: String, found: usize, expected: usize) -> Result<()> {
     if found == expected {
         Ok(())
@@ -407,14 +416,7 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::ToTime { expr, format })))
         }
-        "POSITION" => {
-            check_len(name, args.len(), 2)?;
 
-            let expr = translate_expr(args[0])?;
-            let r#in = translate_expr(args[1])?;
-
-            Ok(Expr::Function(Box::new(Function::Position { expr, r#in })))
-        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }
