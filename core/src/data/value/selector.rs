@@ -47,13 +47,13 @@ impl Value {
     }
 
     pub fn selector_by_index(&self, selector: &[Value]) -> Result<Value> {
-        let str_keys = selector.iter().map(String::from).collect::<Vec<_>>();
-
-        let value = str_keys.iter().try_fold(self, |selectable, key| {
-            selectable.get_value_from_compound_type(key)
-        })?;
-
-        Ok(value.clone())
+        selector
+            .iter()
+            .map(String::from)
+            .try_fold(self, |selectable, key| {
+                selectable.get_value_from_compound_type(&key)
+            })
+            .map(Clone::clone)
     }
 
     fn get_value_from_compound_type(&self, key: &str) -> Result<&Value> {
@@ -62,9 +62,7 @@ impl Value {
             Value::List(list) => key.parse::<usize>().ok().and_then(|i| list.get(i)),
             _ => return Err(ValueError::SelectorRequiresMapOrListTypes.into()),
         };
-        match value {
-            None => Ok(&Value::Null),
-            Some(v) => Ok(v),
-        }
+
+        Ok(value.unwrap_or(&Value::Null))
     }
 }

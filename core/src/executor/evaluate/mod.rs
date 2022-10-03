@@ -230,8 +230,7 @@ pub async fn evaluate<'a>(
         }
         Expr::ArrayIndex { obj, indexes } => {
             let obj = eval(obj).await?;
-            let indexes: Vec<_> = indexes.iter().map(eval).collect();
-            let indexes = try_join_all(indexes).await?;
+            let indexes = try_join_all(indexes.iter().map(eval)).await?;
             expr::array_index(obj, indexes)
         }
     }
