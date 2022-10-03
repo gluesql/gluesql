@@ -46,12 +46,25 @@ impl Value {
         Ok(value)
     }
 
-    pub fn selector_by_index(&self, selector: Vec<Value>) -> Result<Value> {
-        let keys = selector
-            .iter()
-            .map(String::from)
-            .collect::<Vec<_>>()
-            .join(".");
-        self.selector(&keys)
+    pub fn selector_by_index(&self, selector: &[Value]) -> Result<Value> {
+        let str_keys = selector.iter().map(String::from).collect::<Vec<_>>();
+
+        let value = str_keys.iter().try_fold(self, |selectable, key| {
+            selectable.get_value_from_compound_type(key)
+        })?;
+
+        Ok(value.clone())
+    }
+
+    fn get_value_from_compound_type(&self, key: &str) -> Result<&Value> {
+        let value = match self {
+            Value::Map(map) => map.get(key),
+            Value::List(list) => key.parse::<usize>().ok().and_then(|i| list.get(i)),
+            _ => return Err(ValueError::SelectorRequiresMapOrListTypes.into()),
+        };
+        match value {
+            None => Ok(&Value::Null),
+            Some(v) => Ok(v),
+        }
     }
 }

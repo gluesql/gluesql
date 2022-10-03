@@ -43,7 +43,7 @@ pub enum EvaluateError {
     #[error("only boolean value is accepted: {0}")]
     BooleanTypeRequired(String),
 
-    #[error("map or list value")]
+    #[error("expr requires map or list value")]
     MapOrListTypeRequired,
 
     #[error("unsupported stateless expression: {0:#?}")]
