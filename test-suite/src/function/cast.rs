@@ -63,7 +63,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(1.1 AS INTEGER) AS cast FROM Item"#,
-            Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_string()).into()),
+            Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_owned()).into()),
         ),
         (
             r#"SELECT CAST(TRUE AS INTEGER) AS cast FROM Item"#,
@@ -209,15 +209,15 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(1 AS TEXT) AS cast FROM Item"#,
-            Ok(select!(cast Str; "1".to_string())),
+            Ok(select!(cast Str; "1".to_owned())),
         ),
         (
             r#"SELECT CAST(1.1 AS TEXT) AS cast FROM Item"#,
-            Ok(select!(cast Str; "1.1".to_string())),
+            Ok(select!(cast Str; "1.1".to_owned())),
         ),
         (
             r#"SELECT CAST(TRUE AS TEXT) AS cast FROM Item"#,
-            Ok(select!(cast Str; "TRUE".to_string())),
+            Ok(select!(cast Str; "TRUE".to_owned())),
         ),
         (
             r#"SELECT CAST(NULL AS TEXT) AS cast FROM Item"#,
@@ -277,7 +277,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST('2021-08-025' AS DATE) FROM Item"#,
-            Err(ValueError::LiteralCastToDateFailed("2021-08-025".to_string()).into()),
+            Err(ValueError::LiteralCastToDateFailed("2021-08-025".to_owned()).into()),
         ),
         (
             "SELECT CAST('AM 8:05' AS TIME) AS cast FROM Item",
@@ -301,7 +301,7 @@ test_case!(cast_literal, async move {
         ),
         (
             "SELECT CAST('25:08:05' AS TIME) AS cast FROM Item",
-            Err(ValueError::LiteralCastToTimeFailed("25:08:05".to_string()).into()),
+            Err(ValueError::LiteralCastToTimeFailed("25:08:05".to_owned()).into()),
         ),
         (
             "SELECT CAST('2021-08-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
@@ -317,7 +317,7 @@ test_case!(cast_literal, async move {
         ),
         (
             "SELECT CAST('2021-13-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
-            Err(ValueError::LiteralCastToTimestampFailed("2021-13-25 08:05:30".to_string()).into()),
+            Err(ValueError::LiteralCastToTimestampFailed("2021-13-25 08:05:30".to_owned()).into()),
         ),
     ];
 

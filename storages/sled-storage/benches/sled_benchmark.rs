@@ -71,7 +71,7 @@ pub fn bench_select(c: &mut Criterion) {
             field_two TEXT,
             field_three TEXT
         );"
-        .to_string();
+        .to_owned();
 
         for i in 0..ITEM_SIZE {
             sqls += &*format!(
@@ -148,7 +148,7 @@ pub fn bench_select_tainted(c: &mut Criterion) {
             field_three TEXT
         );
         "
-        .to_string();
+        .to_owned();
 
         for i in 0..ITEM_SIZE {
             sqls += &*format!(

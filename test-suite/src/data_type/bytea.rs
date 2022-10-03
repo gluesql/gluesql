@@ -43,7 +43,7 @@ test_case!(bytea, async move {
         ),
         (
             r#"INSERT INTO Bytea VALUES (X'123')"#,
-            Err(LiteralError::FailedToDecodeHexString("123".to_string()).into()),
+            Err(LiteralError::FailedToDecodeHexString("123".to_owned()).into()),
         ),
     ];
 
