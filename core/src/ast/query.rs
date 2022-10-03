@@ -672,6 +672,19 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
+        let actual = "LEFT OUTER JOIN PlayerItem";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_string(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
+            join_executor: JoinExecutor::NestedLoop,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
         let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
         let expected = Join {
             relation: TableFactor::Table {
