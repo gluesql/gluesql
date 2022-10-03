@@ -54,19 +54,19 @@ macro_rules! select {
         ];
 
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify_label!($c).to_string()),+],
+            labels: vec![$( stringify_label!($c).to_owned()),+],
             rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
         }
     });
     ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify_label!($c).to_string()),+],
+            labels: vec![$( stringify_label!($c).to_owned()),+],
             rows: vec![row!($( $t )+ ; $( $v )+ )],
         }
     );
     ( $( $c: tt )|+ $( ; )?) => (
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify_label!($c).to_string()),+],
+            labels: vec![$( stringify_label!($c).to_owned()),+],
             rows: vec![],
         }
     );
