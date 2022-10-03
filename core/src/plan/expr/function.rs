@@ -116,6 +116,10 @@ impl Function {
             | Self::Unwrap {
                 expr,
                 selector: expr2,
+            }
+            | Self::Position {
+                sub_expr: expr,
+                from_expr: expr2,
             } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
@@ -133,7 +137,6 @@ impl Function {
                 count: Some(expr3),
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
-            Self::Position { expr, r#in } => Exprs::Double([expr, r#in].into_iter()),
         }
     }
 }
@@ -253,5 +256,8 @@ mod tests {
             r#"CONCAT("gluesql", " ", "is", " ", "cool")"#,
             &[r#""gluesql""#, r#"" ""#, r#""is""#, r#"" ""#, r#""cool""#],
         );
+
+        test(r#"POSITION("men" IN "ramen")"#, &[r#""men""#, r#""ramen""#]);
+        test(r#"POSITION("men" IN ramen)"#, &[r#""men""#, "ramen"]);
     }
 }
