@@ -3,6 +3,7 @@ name = "gluesql"
 version = "0.12.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+default-run = "gluesql"
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
 license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
@@ -41,7 +42,6 @@ default = [
 	"gluesql-core/alter-table",
 	"gluesql-core/index",
 	"gluesql-core/transaction",
-	"gluesql-core/metadata",
 	"cli",
 	"test-suite",
 	"memory-storage",
@@ -61,12 +61,16 @@ index = ["gluesql-core/index", "test-suite/index"]
 # optional: TRANSACTION
 transaction = ["gluesql-core/transaction", "test-suite/transaction"]
 
-# optional: METADATA
-# e.g. SHOW TABLES;
-metadata = ["gluesql-core/metadata", "test-suite/metadata"]
-
 [workspace]
-members = ["core", "storages/*", "test-suite", "utils", "cli", "gluesql-js/web"]
+members = [
+	"core",
+	"storages/*",
+	"test-suite",
+	"utils",
+	"cli",
+	"gluesql-js/web",
+	".",
+]
 default-members = [
 	"core",
 	"storages/*",
@@ -74,4 +78,5 @@ default-members = [
 	"utils",
 	"cli",
 	"gluesql-js/web",
+	".",
 ]

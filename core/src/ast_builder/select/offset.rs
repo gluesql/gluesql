@@ -1,7 +1,6 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::Statement,
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode,
             OffsetLimitNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
@@ -98,10 +97,6 @@ impl OffsetNode {
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
         ProjectNode::new(self, select_items)
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for OffsetNode {
@@ -115,7 +110,7 @@ impl Prebuild for OffsetNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn offset() {

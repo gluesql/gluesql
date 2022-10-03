@@ -1,7 +1,7 @@
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, Statement},
+        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
             OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
@@ -73,10 +73,6 @@ impl JoinConstraintNode {
     pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
         OrderByNode::new(self, order_by_exprs)
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for JoinConstraintNode {
@@ -101,7 +97,7 @@ impl Prebuild for JoinConstraintNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn join_constraint() {

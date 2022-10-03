@@ -21,8 +21,6 @@ impl Tester<SharedMemoryStorage> for SharedMemoryTester {
 
 generate_store_tests!(tokio::test, SharedMemoryTester);
 
-generate_metadata_tests!(tokio::test, SharedMemoryTester);
-
 generate_alter_table_tests!(tokio::test, SharedMemoryTester);
 
 macro_rules! exec {

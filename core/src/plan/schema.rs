@@ -175,7 +175,7 @@ async fn scan_table_factor(storage: &dyn Store, table_factor: &TableFactor) -> R
             Ok(schema_list)
         }
         TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
-        TableFactor::Series { .. } => Ok(vec![]),
+        TableFactor::Series { .. } | TableFactor::Dictionary { .. } => Ok(vec![]),
     }
 }
 

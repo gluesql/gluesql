@@ -2,8 +2,6 @@
 
 #[cfg(feature = "alter-table")]
 use crate::store::AlterTable;
-#[cfg(feature = "metadata")]
-use crate::store::Metadata;
 #[cfg(feature = "transaction")]
 use crate::store::Transaction;
 #[cfg(feature = "index")]
@@ -14,7 +12,7 @@ use {
         executor::execute,
         parse_sql::parse,
         result::{Error, MutResult, Result},
-        store::{GStore, GStoreMut, RowIter, Store, StoreMut},
+        store::{RowIter, Store, StoreMut},
         translate::translate,
     },
     async_trait::async_trait,
@@ -47,6 +45,12 @@ pub struct MockStorage {
 
 #[async_trait(?Send)]
 impl Store for MockStorage {
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let msg = "[Storage] fetch_all_schemas not supported".to_owned();
+
+        Err(Error::StorageMsg(msg))
+    }
+
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         if table_name == "__Err__" {
             return Err(Error::StorageMsg(
@@ -122,18 +126,10 @@ impl IndexMut for MockStorage {}
 #[cfg(feature = "transaction")]
 impl Transaction for MockStorage {}
 
-#[cfg(feature = "metadata")]
-impl Metadata for MockStorage {}
-
-impl GStore for MockStorage {}
-impl GStoreMut for MockStorage {}
-
 #[cfg(test)]
 mod tests {
     #[cfg(any(feature = "alter-table", feature = "index"))]
     use crate::ast::DataType;
-    #[cfg(feature = "metadata")]
-    use crate::store::Metadata;
     #[cfg(feature = "transaction")]
     use crate::store::Transaction;
     #[cfg(feature = "alter-table")]
@@ -219,12 +215,6 @@ mod tests {
             let storage = test(storage.commit());
 
             storage
-        };
-
-        #[cfg(feature = "metadata")]
-        {
-            storage.version();
-            assert!(block_on(storage.schema_names()).is_err());
         };
 
         assert!(matches!(block_on(storage.fetch_schema("Foo")), Ok(None)));

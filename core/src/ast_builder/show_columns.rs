@@ -1,4 +1,7 @@
-use crate::{ast::Statement, result::Result};
+use {
+    super::Build,
+    crate::{ast::Statement, result::Result},
+};
 
 #[derive(Clone)]
 pub struct ShowColumnsNode {
@@ -9,14 +12,18 @@ impl ShowColumnsNode {
     pub fn new(table_name: String) -> Self {
         Self { table_name }
     }
-    pub fn build(self) -> Result<Statement> {
+}
+
+impl Build for ShowColumnsNode {
+    fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         Ok(Statement::ShowColumns { table_name })
     }
 }
+
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn show_columns() {

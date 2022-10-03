@@ -34,8 +34,6 @@ pub enum Error {
     #[error("parsing failed: {0}")]
     Parser(String),
 
-    //#[error("OverflowError: {0}")]
-    //OverflowError(String),
     #[error(transparent)]
     Translate(#[from] TranslateError),
 
