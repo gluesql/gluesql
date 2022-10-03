@@ -1,7 +1,7 @@
 pub use {
-    super::{ColumnList, ExprList, QueryNode, SelectNode},
+    super::{Build, ColumnList, ExprList, QueryNode, SelectNode},
     crate::{
-        ast::{Expr, ObjectName, Statement},
+        ast::{Expr, Statement},
         result::Result,
     },
 };
@@ -48,9 +48,9 @@ pub struct InsertSourceNode {
     source: QueryNode,
 }
 
-impl InsertSourceNode {
-    pub fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.insert_node.table_name]);
+impl Build for InsertSourceNode {
+    fn build(self) -> Result<Statement> {
+        let table_name = self.insert_node.table_name;
         let columns = self.insert_node.columns;
         let columns = columns.map_or_else(|| Ok(vec![]), |v| v.try_into())?;
         let source = self.source.try_into()?;
@@ -65,7 +65,7 @@ impl InsertSourceNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{num, table, test};
+    use crate::ast_builder::{num, table, test, Build};
 
     #[test]
     fn insert() {

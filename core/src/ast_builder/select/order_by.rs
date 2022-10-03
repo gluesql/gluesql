@@ -1,10 +1,9 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::Statement,
         ast_builder::{
-            ExprNode, GroupByNode, HavingNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode,
-            SelectItemList, SelectNode,
+            ExprNode, FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -15,6 +14,9 @@ pub enum PrevNode {
     Select(SelectNode),
     Having(HavingNode),
     GroupBy(GroupByNode),
+    Filter(FilterNode),
+    JoinNode(JoinNode),
+    JoinConstraint(JoinConstraintNode),
 }
 
 impl Prebuild for PrevNode {
@@ -23,6 +25,9 @@ impl Prebuild for PrevNode {
             Self::Select(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
+            Self::Filter(node) => node.prebuild(),
+            Self::JoinNode(node) => node.prebuild(),
+            Self::JoinConstraint(node) => node.prebuild(),
         }
     }
 }
@@ -42,6 +47,24 @@ impl From<HavingNode> for PrevNode {
 impl From<GroupByNode> for PrevNode {
     fn from(node: GroupByNode) -> Self {
         PrevNode::GroupBy(node)
+    }
+}
+
+impl From<FilterNode> for PrevNode {
+    fn from(node: FilterNode) -> Self {
+        PrevNode::Filter(node)
+    }
+}
+
+impl From<JoinNode> for PrevNode {
+    fn from(node: JoinNode) -> Self {
+        PrevNode::JoinNode(node)
+    }
+}
+
+impl From<JoinConstraintNode> for PrevNode {
+    fn from(node: JoinConstraintNode) -> Self {
+        PrevNode::JoinConstraint(node)
     }
 }
 
@@ -70,10 +93,6 @@ impl OrderByNode {
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
         ProjectNode::new(self, select_items)
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for OrderByNode {
@@ -87,10 +106,11 @@ impl Prebuild for OrderByNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, ExprNode};
+    use crate::ast_builder::{table, test, Build, ExprNode};
 
     #[test]
     fn order_by() {
+        // select node -> order by node(exprs vec) -> build
         let actual = table("Foo").select().order_by(vec!["name desc"]).build();
         let expected = "
             SELECT * FROM Foo
@@ -98,6 +118,33 @@ mod tests {
         ";
         test(actual, expected);
 
+        // select node -> order by node(exprs string) -> build
+        let actual = table("Bar")
+            .select()
+            .order_by("name asc, id desc, country")
+            .offset(10)
+            .build();
+        let expected = "
+                SELECT * FROM Bar 
+                ORDER BY name asc, id desc, country 
+                OFFSET 10
+            ";
+        test(actual, expected);
+
+        // group by node -> order by node -> build
+        let actual = table("Bar")
+            .select()
+            .group_by("name")
+            .order_by(vec!["id desc"])
+            .build();
+        let expected = "
+                SELECT * FROM Bar 
+                GROUP BY name 
+                ORDER BY id desc
+            ";
+        test(actual, expected);
+
+        // having node -> order by node -> build
         let actual = table("Foo")
             .select()
             .group_by("city")
@@ -116,28 +163,43 @@ mod tests {
         ";
         test(actual, expected);
 
-        let actual = table("Bar")
+        // filter node -> order by node -> build
+        let actaul = table("Foo")
             .select()
-            .order_by("name asc, id desc, country")
-            .offset(10)
+            .filter("id > 10")
+            .filter("id < 20")
+            .order_by("id asc")
             .build();
         let expected = "
-            SELECT * FROM Bar 
-            ORDER BY name asc, id desc, country 
-            OFFSET 10
+            SELECT * FROM Foo
+            WHERE id > 10 AND id < 20
+            ORDER BY id ASC";
+        test(actaul, expected);
+
+        // join node -> order by node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .order_by("Foo.id desc")
+            .build();
+        let expected = "
+            SELECT * FROM Foo
+            JOIN Bar
+            ORDER BY Foo.id desc
         ";
         test(actual, expected);
 
-        let actual = table("Bar")
+        // join constraint node -> order by node -> build
+        let actual = table("Foo")
             .select()
-            .group_by("name")
-            .order_by(vec!["id desc"])
-            .project("name, id")
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .order_by("Foo.id desc")
             .build();
         let expected = "
-            SELECT name, id FROM Bar 
-            GROUP BY name
-            ORDER BY id DESC
+            SELECT * FROM Foo
+            JOIN Bar ON Foo.id = Bar.id
+            ORDER BY Foo.id desc
         ";
         test(actual, expected);
     }

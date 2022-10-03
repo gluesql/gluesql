@@ -1,5 +1,5 @@
 use {
-    super::{DataType, Expr, ObjectName},
+    super::{DataType, Expr},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
 };
@@ -19,7 +19,7 @@ pub enum AlterTableOperation {
         new_column_name: String,
     },
     /// `RENAME TO <table_name>`
-    RenameTable { table_name: ObjectName },
+    RenameTable { table_name: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -65,7 +65,7 @@ impl ToSql for AlterTableOperation {
                 new_column_name,
             } => format!("RENAME COLUMN {old_column_name} TO {new_column_name}"),
             AlterTableOperation::RenameTable { table_name } => {
-                format!("RENAME TO {}", table_name.to_sql())
+                format!("RENAME TO {table_name}")
             }
         }
     }

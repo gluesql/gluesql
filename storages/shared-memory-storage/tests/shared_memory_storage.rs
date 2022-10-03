@@ -1,29 +1,25 @@
 use {
-    gluesql_shared_memory_storage::SharedMemoryStorage,
-    std::{cell::RefCell, rc::Rc},
-    test_suite::*,
+    gluesql_core::prelude::Glue, gluesql_shared_memory_storage::SharedMemoryStorage, test_suite::*,
 };
 
 struct SharedMemoryTester {
-    storage: Rc<RefCell<Option<SharedMemoryStorage>>>,
+    glue: Glue<SharedMemoryStorage>,
 }
 
 impl Tester<SharedMemoryStorage> for SharedMemoryTester {
     fn new(_: &str) -> Self {
-        let storage = Some(SharedMemoryStorage::new());
-        let storage = Rc::new(RefCell::new(storage));
+        let storage = SharedMemoryStorage::new();
+        let glue = Glue::new(storage);
 
-        SharedMemoryTester { storage }
+        SharedMemoryTester { glue }
     }
 
-    fn get_cell(&mut self) -> Rc<RefCell<Option<SharedMemoryStorage>>> {
-        Rc::clone(&self.storage)
+    fn get_glue(&mut self) -> &mut Glue<SharedMemoryStorage> {
+        &mut self.glue
     }
 }
 
 generate_store_tests!(tokio::test, SharedMemoryTester);
-
-generate_metadata_tests!(tokio::test, SharedMemoryTester);
 
 generate_alter_table_tests!(tokio::test, SharedMemoryTester);
 

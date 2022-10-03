@@ -41,7 +41,7 @@ pub fn translate_alter_table_operation(
         }),
         SqlAlterTableOperation::RenameTable { table_name } => {
             Ok(AlterTableOperation::RenameTable {
-                table_name: translate_object_name(table_name),
+                table_name: translate_object_name(table_name)?,
             })
         }
         _ => Err(TranslateError::UnsupportedAlterTableOperation(

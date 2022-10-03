@@ -7,7 +7,11 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnOption, ColumnOptionDef, DataType, SetExpr, Statement, Values},
+        ast::{
+            ColumnDef, ColumnOption, ColumnOptionDef, DataType, Dictionary, Expr, Query,
+            SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
+            Variable,
+        },
         data::{Key, Row, Schema, Value},
         executor::limit::Limit,
         result::{MutResult, Result},
@@ -15,7 +19,7 @@ use {
     },
     futures::stream::{self, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{fmt::Debug, rc::Rc},
+    std::{env::var, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -23,14 +27,7 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use {
-    super::alter::{create_index, drop_index},
-    crate::data::SchemaIndex,
-};
-
-use crate::data::get_name;
-#[cfg(feature = "metadata")]
-use crate::{ast::Variable, result::TrySelf};
+use {super::alter::create_index, crate::data::SchemaIndex};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -65,14 +62,12 @@ pub enum Payload {
     #[cfg(feature = "transaction")]
     Rollback,
 
-    #[cfg(feature = "metadata")]
     ShowVariable(PayloadVariable),
 
     #[cfg(feature = "index")]
     ShowIndexes(Vec<SchemaIndex>),
 }
 
-#[cfg(feature = "metadata")]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum PayloadVariable {
     Tables(Vec<String>),
@@ -154,7 +149,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             .await
             .map(|(storage, _)| (storage, Payload::CreateIndex)),
         #[cfg(feature = "index")]
-        Statement::DropIndex { name, table_name } => drop_index(storage, table_name, name)
+        Statement::DropIndex { name, table_name } => storage
+            .drop_index(table_name, name)
             .await
             .map(|(storage, _)| (storage, Payload::DropIndex)),
         //- Transaction
@@ -186,7 +182,6 @@ pub async fn execute<T: GStore + GStoreMut>(
             }
 
             let (rows, num_rows, table_name) = try_block!(storage, {
-                let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
                     .await?
@@ -269,7 +264,6 @@ pub async fn execute<T: GStore + GStoreMut>(
             assignments,
         } => {
             let (table_name, rows) = try_block!(storage, {
-                let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
                     .await?
@@ -317,7 +311,6 @@ pub async fn execute<T: GStore + GStoreMut>(
             selection,
         } => {
             let (table_name, keys) = try_block!(storage, {
-                let table_name = get_name(table_name)?;
                 let columns = Rc::from(fetch_columns(&storage, table_name).await?);
 
                 let keys = fetch(&storage, table_name, columns, selection.as_ref())
@@ -351,7 +344,6 @@ pub async fn execute<T: GStore + GStoreMut>(
         }
         Statement::ShowColumns { table_name } => {
             let keys = try_block!(storage, {
-                let table_name = get_name(table_name)?;
                 let Schema { column_defs, .. } = storage
                     .fetch_schema(table_name)
                     .await?
@@ -369,11 +361,6 @@ pub async fn execute<T: GStore + GStoreMut>(
         }
         #[cfg(feature = "index")]
         Statement::ShowIndexes(table_name) => {
-            let table_name = match get_name(table_name) {
-                Ok(table_name) => table_name,
-                Err(e) => return Err((storage, e)),
-            };
-
             let indexes = match storage.fetch_schema(table_name).await {
                 Ok(Some(Schema { indexes, .. })) => indexes,
                 Ok(None) => {
@@ -387,16 +374,55 @@ pub async fn execute<T: GStore + GStoreMut>(
 
             Ok((storage, Payload::ShowIndexes(indexes)))
         }
-        //- Metadata
-        #[cfg(feature = "metadata")]
         Statement::ShowVariable(variable) => match variable {
-            Variable::Tables => storage
-                .schema_names()
-                .await
-                .map(|table_names| Payload::ShowVariable(PayloadVariable::Tables(table_names)))
-                .try_self(storage),
+            Variable::Tables => {
+                let query = Query {
+                    body: SetExpr::Select(Box::new(crate::ast::Select {
+                        projection: vec![SelectItem::Expr {
+                            expr: Expr::Identifier("TABLE_NAME".to_string()),
+                            label: "TABLE_NAME".to_string(),
+                        }],
+                        from: TableWithJoins {
+                            relation: TableFactor::Dictionary {
+                                dict: Dictionary::GlueTables,
+                                alias: TableAlias {
+                                    name: "GLUE_TABLES".to_owned(),
+                                    columns: Vec::new(),
+                                },
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                };
+
+                let rows = try_block!(storage, {
+                    let rows = select(&storage, &query, None).await?;
+                    let rows = rows
+                        .map_ok(|Row(values)| values)
+                        .try_collect::<Vec<_>>()
+                        .await?;
+                    Ok(rows)
+                });
+
+                let table_names = rows
+                    .iter()
+                    .flat_map(|values| values.iter().map(|value| value.into()))
+                    .collect::<Vec<_>>();
+
+                Ok((
+                    storage,
+                    Payload::ShowVariable(PayloadVariable::Tables(table_names)),
+                ))
+            }
             Variable::Version => {
-                let version = storage.version();
+                let version = var("CARGO_PKG_VERSION")
+                    .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_owned());
                 let payload = Payload::ShowVariable(PayloadVariable::Version(version));
 
                 Ok((storage, payload))

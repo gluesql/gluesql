@@ -2,7 +2,7 @@ use {
     super::SelectError,
     crate::{
         ast::{Aggregate, SelectItem},
-        data::{get_name, Row, Value},
+        data::{Row, Value},
         executor::{
             context::{BlendContext, FilterContext},
             evaluate::evaluate,
@@ -55,9 +55,7 @@ impl<'a> Blend<'a> {
                 async move {
                     match item {
                         SelectItem::Wildcard => Ok(context.get_all_values()),
-                        SelectItem::QualifiedWildcard(alias) => {
-                            let table_alias = get_name(alias)?;
-
+                        SelectItem::QualifiedWildcard(table_alias) => {
                             match context.get_alias_values(table_alias) {
                                 Some(values) => Ok(values),
                                 None => Err(SelectError::BlendTableAliasNotFound(

@@ -283,14 +283,21 @@ pub fn text(value: &str) -> ExprNode {
 
 pub fn date(date: &str) -> ExprNode {
     ExprNode::Expr(Expr::TypedString {
-        data_type: (DataType::Date),
-        value: (date.to_string()),
+        data_type: DataType::Date,
+        value: date.to_string(),
     })
 }
 
 pub fn timestamp(timestamp: &str) -> ExprNode {
     ExprNode::Expr(Expr::TypedString {
-        data_type: (DataType::Timestamp),
-        value: (timestamp.to_string()),
+        data_type: DataType::Timestamp,
+        value: timestamp.to_string(),
+    })
+}
+
+pub fn time(time: &str) -> ExprNode {
+    ExprNode::Expr(Expr::TypedString {
+        data_type: DataType::Time,
+        value: time.to_string(),
     })
 }

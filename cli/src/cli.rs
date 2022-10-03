@@ -4,12 +4,14 @@ use {
         helper::CliHelper,
         print::Print,
     },
+    edit::{edit_file, edit_with_builder, Builder},
     gluesql_core::{
         prelude::Glue,
         store::{GStore, GStoreMut},
     },
     rustyline::{error::ReadlineError, Editor},
     std::{
+        error::Error,
         fs::File,
         io::{Read, Result, Write},
         path::Path,
@@ -32,12 +34,12 @@ where
 {
     pub fn new(storage: T, output: W) -> Self {
         let glue = Glue::new(storage);
-        let print = Print::new(output, None);
+        let print = Print::new(output, None, Default::default());
 
         Self { glue, print }
     }
 
-    pub fn run(&mut self) -> Result<()> {
+    pub fn run(&mut self) -> std::result::Result<(), Box<dyn Error>> {
         macro_rules! println {
             ($($p:tt),*) => ( writeln!(&mut self.print.output, $($p),*)?; )
         }
@@ -64,9 +66,12 @@ where
                 }
             };
 
-            rl.add_history_entry(&line);
+            let line = line.trim();
+            if !(line.starts_with(".edit") || line.starts_with(".run")) {
+                rl.add_history_entry(line);
+            }
 
-            let command = match Command::parse(&line) {
+            let command = match Command::parse(line, &self.print.option) {
                 Ok(command) => command,
                 Err(CommandError::LackOfTable) => {
                     println!("[error] should specify table. eg: .columns TableName\n");
@@ -81,6 +86,22 @@ where
                     println!("\n  type .help to list all available commands.\n");
                     continue;
                 }
+                Err(CommandError::LackOfOption) => {
+                    println!("[error] should specify option.\n");
+                    continue;
+                }
+                Err(CommandError::LackOfValue(usage)) => {
+                    println!("[error] should specify value.\n{usage}\n");
+                    continue;
+                }
+                Err(CommandError::WrongOption(e)) => {
+                    println!("[error] cannot support option: {e}\n");
+                    continue;
+                }
+                Err(CommandError::LackOfSQLHistory) => {
+                    println!("[error] Nothing in SQL history to run.\n");
+                    continue;
+                }
             };
 
             match command {
@@ -92,12 +113,7 @@ where
                     println!("bye\n");
                     break;
                 }
-                Command::Execute(sql) => match self.glue.execute(sql.as_str()) {
-                    Ok(payloads) => self.print.payloads(&payloads)?,
-                    Err(e) => {
-                        println!("[error] {}\n", e);
-                    }
-                },
+                Command::Execute(sql) => self.execute(sql)?,
                 Command::ExecuteFromFile(filename) => {
                     if let Err(e) = self.load(&filename) {
                         println!("[error] {}\n", e);
@@ -109,8 +125,48 @@ where
                 Command::SpoolOff => {
                     self.print.spool_off();
                 }
+                Command::Set(option) => self.print.set_option(option),
+                Command::Show(option) => self.print.show_option(option)?,
+                Command::Edit(file_name) => {
+                    match file_name {
+                        Some(file_name) => {
+                            let file = Path::new(&file_name);
+                            edit_file(file)?;
+                        }
+                        None => {
+                            let mut builder = Builder::new();
+                            builder.prefix("Glue_").suffix(".sql");
+                            let last = rl.history().last().map_or_else(|| "", String::as_str);
+                            let edited = edit_with_builder(last, &builder)?;
+                            rl.add_history_entry(edited);
+                        }
+                    };
+                }
+                Command::Run => {
+                    let sql = rl.history().last().ok_or(CommandError::LackOfSQLHistory);
+
+                    match sql {
+                        Ok(sql) => {
+                            self.execute(sql)?;
+                        }
+                        Err(e) => {
+                            println!("[error] {}\n", e);
+                        }
+                    };
+                }
             }
         }
+
+        Ok(())
+    }
+
+    fn execute(&mut self, sql: impl AsRef<str>) -> Result<()> {
+        match self.glue.execute(sql) {
+            Ok(payloads) => self.print.payloads(&payloads)?,
+            Err(e) => {
+                println!("[error] {}\n", e);
+            }
+        };
 
         Ok(())
     }

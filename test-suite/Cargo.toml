@@ -21,4 +21,3 @@ hex = "0.4"
 alter-table = ["gluesql-core/alter-table"]
 index = ["gluesql-core/index"]
 transaction = ["gluesql-core/transaction"]
-metadata = ["gluesql-core/metadata"]

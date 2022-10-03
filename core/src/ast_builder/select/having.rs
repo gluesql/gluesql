@@ -1,7 +1,6 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::Statement,
         ast_builder::{
             ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
             ProjectNode, SelectItemList,
@@ -58,10 +57,6 @@ impl HavingNode {
     pub fn order_by<T: Into<OrderByExprList>>(self, expr_list: T) -> OrderByNode {
         OrderByNode::new(self, expr_list)
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for HavingNode {
@@ -75,10 +70,62 @@ impl Prebuild for HavingNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn having() {
+        // group by node -> having node -> offset node
+        let actual = table("Bar")
+            .select()
+            .filter("id IS NULL")
+            .group_by("id, (a + name)")
+            .having("COUNT(id) > 10")
+            .offset(10)
+            .build();
+        let expected = "
+            SELECT * FROM Bar
+            WHERE id IS NULL
+            GROUP BY id, (a + name)
+            HAVING COUNT(id) > 10
+            OFFSET 10
+        ";
+        test(actual, expected);
+
+        // group by node -> having node -> limit node
+        let actual = table("Bar")
+            .select()
+            .filter("id IS NULL")
+            .group_by("id, (a + name)")
+            .having("COUNT(id) > 10")
+            .limit(10)
+            .build();
+        let expected = "
+            SELECT * FROM Bar
+            WHERE id IS NULL
+            GROUP BY id, (a + name)
+            HAVING COUNT(id) > 10
+            LIMIT 10
+            ";
+        test(actual, expected);
+
+        // group by node -> having node -> project node
+        let actual = table("Bar")
+            .select()
+            .filter("id IS NULL")
+            .group_by("id, (a + name)")
+            .having("COUNT(id) > 10")
+            .project(vec!["id", "(a + name) AS b", "COUNT(id) AS c"])
+            .build();
+        let expected = "
+            SELECT id, (a + name) AS b, COUNT(id) AS c
+            FROM Bar
+            WHERE id IS NULL
+            GROUP BY id, (a + name)
+            HAVING COUNT(id) > 10
+        ";
+        test(actual, expected);
+
+        // group by node -> having node -> build
         let actual = table("Bar")
             .select()
             .filter("id IS NULL")
@@ -86,11 +133,11 @@ mod tests {
             .having("COUNT(id) > 10")
             .build();
         let expected = "
-            SELECT * FROM Bar
-            WHERE id IS NULL
-            GROUP BY id, (a + name)
-            HAVING COUNT(id) > 10
-        ";
+                SELECT * FROM Bar
+                WHERE id IS NULL
+                GROUP BY id, (a + name)
+                HAVING COUNT(id) > 10
+            ";
         test(actual, expected);
     }
 }

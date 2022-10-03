@@ -32,7 +32,7 @@ import { gluesql } from 'gluesql';
 
 const db = await gluesql();
 
-db.query(`
+await db.query(`
   CREATE TABLE User (id INTEGER, name TEXT);
   INSERT INTO User VALUES (1, "Hello"), (2, "World");
 `);

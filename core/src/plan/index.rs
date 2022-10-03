@@ -2,9 +2,9 @@ use {
     crate::{
         ast::{
             AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
-            SetExpr, Statement, TableFactor, TableWithJoins,
+            SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema, SchemaIndex, SchemaIndexOrd, TableError},
+        data::{Schema, SchemaIndex, SchemaIndexOrd, TableError},
         result::{Error, Result},
     },
     std::collections::HashMap,
@@ -70,7 +70,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
 
     let TableWithJoins { relation, .. } = &select.from;
     let table_name = match relation {
-        TableFactor::Table { name, .. } => get_name(name)?,
+        TableFactor::Table { name, .. } => name,
         TableFactor::Derived { .. } => {
             return Ok(Query {
                 body: SetExpr::Select(select),
@@ -79,7 +79,14 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 offset,
             });
         }
-        TableFactor::Series { name, .. } => get_name(name)?,
+        TableFactor::Series {
+            alias: TableAlias { name, .. },
+            ..
+        } => name,
+        TableFactor::Dictionary {
+            alias: TableAlias { name, .. },
+            ..
+        } => name,
     };
 
     let indexes = match schema_map.get(table_name) {
@@ -117,10 +124,11 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } => {
+                TableFactor::Derived { .. }
+                | TableFactor::Series { .. }
+                | TableFactor::Dictionary { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
-                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let from = TableWithJoins {
@@ -201,10 +209,11 @@ fn plan_select(
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } => {
+                TableFactor::Derived { .. }
+                | TableFactor::Series { .. }
+                | TableFactor::Dictionary { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
-                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let index = Some(IndexItem::NonClustered {

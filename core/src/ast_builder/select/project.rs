@@ -1,10 +1,9 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::Statement,
         ast_builder::{
-            GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
-            OrderByNode, SelectItemList, SelectNode,
+            FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+            LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -19,6 +18,9 @@ pub enum PrevNode {
     LimitOffset(LimitOffsetNode),
     Offset(OffsetNode),
     OffsetLimit(OffsetLimitNode),
+    Join(Box<JoinNode>),
+    JoinConstraint(Box<JoinConstraintNode>),
+    Filter(FilterNode),
     OrderBy(OrderByNode),
 }
 
@@ -32,6 +34,9 @@ impl Prebuild for PrevNode {
             Self::LimitOffset(node) => node.prebuild(),
             Self::Offset(node) => node.prebuild(),
             Self::OffsetLimit(node) => node.prebuild(),
+            Self::Join(node) => node.prebuild(),
+            Self::JoinConstraint(node) => node.prebuild(),
+            Self::Filter(node) => node.prebuild(),
             Self::OrderBy(node) => node.prebuild(),
         }
     }
@@ -79,6 +84,24 @@ impl From<OffsetLimitNode> for PrevNode {
     }
 }
 
+impl From<JoinNode> for PrevNode {
+    fn from(node: JoinNode) -> Self {
+        PrevNode::Join(Box::new(node))
+    }
+}
+
+impl From<JoinConstraintNode> for PrevNode {
+    fn from(node: JoinConstraintNode) -> Self {
+        PrevNode::JoinConstraint(Box::new(node))
+    }
+}
+
+impl From<FilterNode> for PrevNode {
+    fn from(node: FilterNode) -> Self {
+        PrevNode::Filter(node)
+    }
+}
+
 impl From<OrderByNode> for PrevNode {
     fn from(node: OrderByNode) -> Self {
         PrevNode::OrderBy(node)
@@ -104,10 +127,6 @@ impl ProjectNode {
 
         self
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for ProjectNode {
@@ -128,18 +147,21 @@ impl Prebuild for ProjectNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, table, test};
+    use crate::ast_builder::{col, table, test, Build};
 
     #[test]
     fn project() {
+        // select node -> project node -> build
         let actual = table("Good").select().project("id").build();
         let expected = "SELECT id FROM Good";
         test(actual, expected);
 
+        // select node -> project node -> build
         let actual = table("Group").select().project("*, Group.*, name").build();
         let expected = "SELECT *, Group.*, name FROM Group";
         test(actual, expected);
 
+        // project node -> project node -> build
         let actual = table("Foo")
             .select()
             .project(vec!["col1", "col2"])
@@ -158,6 +180,7 @@ mod tests {
         ";
         test(actual, expected);
 
+        // select node -> project node -> build
         let actual = table("Aliased")
             .select()
             .project("1 + 1 as col1, col2")
@@ -168,12 +191,12 @@ mod tests {
 
     #[test]
     fn prev_nodes() {
-        // Select
+        // select node -> project node -> build
         let actual = table("Foo").select().project("*").build();
         let expected = "SELECT * FROM Foo";
         test(actual, expected);
 
-        // GroupBy
+        // group by node -> project node -> build
         let actual = table("Bar")
             .select()
             .group_by("city")
@@ -187,7 +210,7 @@ mod tests {
         ";
         test(actual, expected);
 
-        // Having
+        // having node -> project node -> build
         let actual = table("Cat")
             .select()
             .filter(r#"type = "cute""#)
@@ -205,12 +228,12 @@ mod tests {
         "#;
         test(actual, expected);
 
-        // Limit
+        // limit node -> project node -> build
         let actual = table("Item").select().limit(10).project("*").build();
         let expected = "SELECT * FROM Item LIMIT 10";
         test(actual, expected);
 
-        // LimitOffset
+        // limit offset node -> project node -> build
         let actual = table("Operator")
             .select()
             .limit(100)
@@ -220,12 +243,12 @@ mod tests {
         let expected = "SELECT name FROM Operator LIMIT 100 OFFSET 50";
         test(actual, expected);
 
-        // Offset
+        // offset node -> project node -> build
         let actual = table("Item").select().offset(10).project("*").build();
         let expected = "SELECT * FROM Item OFFSET 10";
         test(actual, expected);
 
-        // OffsetLimit
+        // offset limit node -> project node -> build
         let actual = table("Operator")
             .select()
             .offset(3)
@@ -233,6 +256,15 @@ mod tests {
             .project("name")
             .build();
         let expected = "SELECT name FROM Operator LIMIT 10 OFFSET 3";
+        test(actual, expected);
+
+        // order by node -> project node -> build
+        let actual = table("Foo")
+            .select()
+            .order_by("id asc")
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM Foo ORDER BY id asc";
         test(actual, expected);
     }
 }

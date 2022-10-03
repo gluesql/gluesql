@@ -6,7 +6,6 @@ mod index_mut;
 mod index_sync;
 mod key;
 mod lock;
-mod metadata;
 mod snapshot;
 mod store;
 mod store_mut;
@@ -21,7 +20,6 @@ use {
     gluesql_core::{
         data::Schema,
         result::{Error, Result},
-        store::{GStore, GStoreMut},
     },
     sled::{
         transaction::{
@@ -152,6 +150,3 @@ fn fetch_schema(
 
     Ok((key, schema_snapshot))
 }
-
-impl GStore for SledStorage {}
-impl GStoreMut for SledStorage {}
