@@ -56,8 +56,18 @@ pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Value> {
         .map(|expr| expr.try_into())
         .filter(|value| !matches!(value, Ok(Value::Null)))
         .try_fold(Value::Str("".to_owned()), |left, right| {
-            Ok(left.concat(&right?))
+            Ok(left.concat(&right))
         })
+
+    // .filter(|value| !matches!(value, Ok(Value::Null)))
+    // .reduce(|left, right| {
+    //     let left = left?;
+    //     let right = right?;
+
+    //     Ok(left.concat(&right))
+    // })
+    // .try_fold(Value::Str("".to_owned()), |left, right| {
+    //     Ok(left.concat(&right?))
 }
 
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {

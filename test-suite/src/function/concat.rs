@@ -37,11 +37,7 @@ test_case!(concat, async move {
 
     test!(
         r#"select concat("ab", "cd", NULL, "ef") as myconcat from Concat;"#,
-        Ok(select!(
-           myconcat
-           Str;
-           "abcdef".to_owned()
-        ))
+        Ok(select_with_null!(myconcat; Null))
     );
     // test with non string arguments
     test!(
