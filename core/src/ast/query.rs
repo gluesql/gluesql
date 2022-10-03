@@ -149,12 +149,12 @@ impl ToSql for Query {
         };
 
         let limit = match limit {
-            Some(expr) => expr.to_sql(),
+            Some(expr) => format!("LIMIT {}", expr.to_sql()),
             _ => "".to_string(),
         };
 
         let offset = match offset {
-            Some(expr) => expr.to_sql(),
+            Some(expr) => format!("OFFSET {}", expr.to_sql()),
             _ => "".to_string(),
         };
 
@@ -331,8 +331,9 @@ mod tests {
     use {
         crate::{
             ast::{
-                AstLiteral, Dictionary, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
-                SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql,
+                AstLiteral, BinaryOperator, Dictionary, Expr, IndexItem, IndexOperator,
+                OrderByExpr, Query, Select, SelectItem, SetExpr, TableAlias, TableFactor,
+                TableWithJoins, ToSql,
             },
             parse_sql::parse_expr,
             translate::translate_expr,
@@ -352,7 +353,7 @@ mod tests {
             expr: Expr::Identifier("name".to_string()),
             asc: Some(true),
         }];
-        let actual = "SELECT * FROM FOO AS F ORDER BY name ASC".to_string();
+        let actual = "SELECT * FROM FOO AS F ORDER BY name ASC LIMIT 10 OFFSET 3".to_string();
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
                 projection: vec![SelectItem::Wildcard],
@@ -372,8 +373,12 @@ mod tests {
                 having: None,
             })),
             order_by,
-            limit: None,
-            offset: None,
+            limit: Some(Expr::Literal(AstLiteral::Number(
+                bigdecimal::BigDecimal::from_str("10").unwrap(),
+            ))),
+            offset: Some(Expr::Literal(AstLiteral::Number(
+                bigdecimal::BigDecimal::from_str("3").unwrap(),
+            ))),
         }
         .to_sql();
         assert_eq!(actual, expected);
@@ -381,7 +386,7 @@ mod tests {
 
     #[test]
     fn to_sql_select() {
-        let actual = "SELECT * FROM FOO AS F GROUP BY \"name\"";
+        let actual = "SELECT * FROM FOO AS F GROUP BY \"name\" HAVING name = \"glue\"";
         let expected = Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
@@ -397,6 +402,32 @@ mod tests {
             },
             selection: None,
             group_by: vec![Expr::Literal(AstLiteral::QuotedString("name".to_string()))],
+            having: Some(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("name".to_string())),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string()))),
+            }),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "SELECT * FROM FOO WHERE name = \"glue\"";
+        let expected = Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "FOO".to_string(),
+                    alias: None,
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("name".to_string())),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string()))),
+            }),
+            group_by: Vec::new(),
             having: None,
         }
         .to_sql();
@@ -450,6 +481,15 @@ mod tests {
         let expected = IndexItem::NonClustered {
             name: "name".to_string(),
             asc: Some(true),
+            cmp_expr: None,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "name DESC";
+        let expected = IndexItem::NonClustered {
+            name: "name".to_string(),
+            asc: Some(false),
             cmp_expr: None,
         }
         .to_sql();

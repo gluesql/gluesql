@@ -377,6 +377,62 @@ mod tests {
         );
 
         assert_eq!(
+            "id IN (SELECT * FROM FOO)",
+            Expr::InSubquery {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                subquery: Box::new(Query {
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![SelectItem::Wildcard],
+                        from: TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: "FOO".to_owned(),
+                                alias: None,
+                                index: None,
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                }),
+                negated: false
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
+            "id NOT IN (SELECT * FROM FOO)",
+            Expr::InSubquery {
+                expr: Box::new(Expr::Identifier("id".to_string())),
+                subquery: Box::new(Query {
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![SelectItem::Wildcard],
+                        from: TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: "FOO".to_owned(),
+                                alias: None,
+                                index: None,
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                }),
+                negated: true
+            }
+            .to_sql()
+        );
+
+        assert_eq!(
             "EXISTS(SELECT * FROM FOO)",
             Expr::Exists {
                 subquery: Box::new(Query {
@@ -431,6 +487,30 @@ mod tests {
         );
 
         assert_eq!(
+            "(SELECT * FROM FOO)",
+            Expr::Subquery(Box::new(Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "FOO".to_owned(),
+                            alias: None,
+                            index: None,
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             trim(
                 r#"                                                                           
                 CASE id
@@ -438,7 +518,7 @@ mod tests {
                   WHEN 2 THEN "b"
                   ELSE "c"
                 END
-                "#
+                "#,
             ),
             Expr::Case {
                 operand: Some(Box::new(Expr::Identifier("id".to_string()))),
