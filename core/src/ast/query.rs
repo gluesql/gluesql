@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 use {
-    super::{BinaryOperator, Expr, IndexOperator},
+    super::{Expr, IndexOperator},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
@@ -243,43 +243,7 @@ impl ToSql for TableWithJoins {
         if joins.is_empty() {
             relation.to_sql()
         } else {
-            format!("{} (...join...)", relation.to_sql())
-        }
-    }
-}
-
-impl ToSql for IndexItem {
-    fn to_sql(&self) -> String {
-        match self {
-            IndexItem::PrimaryKey(expr) => format!("id = {}", expr.to_sql()),
-            IndexItem::NonClustered {
-                name,
-                asc,
-                cmp_expr,
-            } => {
-                let asc = match asc {
-                    Some(true) => "ASC".to_string(),
-                    Some(false) => "DESC".to_string(),
-                    _ => "".to_string(),
-                };
-
-                let cmp_expr = match cmp_expr {
-                    Some((index_op, expr)) => {
-                        let index_op = BinaryOperator::from(index_op.to_owned()).to_sql();
-                        let expr = expr.to_sql();
-
-                        format!("{} {}", index_op, expr)
-                    }
-                    _ => "".to_string(),
-                };
-
-                let string = vec![asc, cmp_expr]
-                    .iter()
-                    .filter(|sql| !sql.is_empty())
-                    .join(" ");
-
-                format!("{} {}", name, string)
-            }
+            format!("{} (..join..)", relation.to_sql())
         }
     }
 }
@@ -329,24 +293,13 @@ impl ToSql for OrderByExpr {
 mod tests {
 
     use {
-        crate::{
-            ast::{
-                AstLiteral, BinaryOperator, Dictionary, Expr, IndexItem, IndexOperator,
-                OrderByExpr, Query, Select, SelectItem, SetExpr, TableAlias, TableFactor,
-                TableWithJoins, ToSql,
-            },
-            parse_sql::parse_expr,
-            translate::translate_expr,
+        crate::ast::{
+            AstLiteral, BinaryOperator, Dictionary, Expr, OrderByExpr, Query, Select, SelectItem,
+            SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
     };
-
-    fn expr(sql: &str) -> Expr {
-        let parsed = parse_expr(sql).expect(sql);
-
-        translate_expr(&parsed).expect(sql)
-    }
 
     #[test]
     fn to_sql_query() {
@@ -467,43 +420,6 @@ mod tests {
                 index: None,
             },
             joins: Vec::new(),
-        }
-        .to_sql();
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn to_sql_index_item() {
-        let actual = "id = 1".to_string();
-        let expected = IndexItem::PrimaryKey(expr("1")).to_sql();
-        assert_eq!(actual, expected);
-
-        let actual = "name ASC";
-        let expected = IndexItem::NonClustered {
-            name: "name".to_string(),
-            asc: Some(true),
-            cmp_expr: None,
-        }
-        .to_sql();
-        assert_eq!(actual, expected);
-
-        let actual = "name DESC";
-        let expected = IndexItem::NonClustered {
-            name: "name".to_string(),
-            asc: Some(false),
-            cmp_expr: None,
-        }
-        .to_sql();
-        assert_eq!(actual, expected);
-
-        let actual = "name = \"hi\"";
-        let expected = IndexItem::NonClustered {
-            name: "name".to_string(),
-            asc: None,
-            cmp_expr: Some((
-                IndexOperator::Eq,
-                Expr::Literal(AstLiteral::QuotedString("hi".to_owned())),
-            )),
         }
         .to_sql();
         assert_eq!(actual, expected);
