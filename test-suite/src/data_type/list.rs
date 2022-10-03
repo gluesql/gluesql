@@ -63,24 +63,41 @@ INSERT INTO ListType VALUES
         ))
     );
 
+    run!(
+        r#"
+CREATE TABLE ListType2 (
+    id INTEGER,
+    items LIST
+)"#
+    );
+
+    run!(
+        r#"
+INSERT INTO ListType2 VALUES
+    (1, '[1, 2, 3, { "hi": "bye" }]'),
+    (2, '["one", "two", "three", [100, 200]]'),
+    (3, '["first", "second", "third", { "foo": true, "bar": false }]');
+"#
+    );
+
     test!(
-        "SELECT id, items[4][1] AS a FROM ListType",
+        r#"SELECT
+            id,
+            items["0"] AS foo,
+            items["1"] AS bar,
+            items["3"]["0"] AS hundred
+        FROM ListType2"#,
         Ok(select_with_null!(
-            id     | a;
-            I64(1)   Null;
-            I64(2)   I64(8);
-            I64(3)   Null
+            id     | foo        | bar        | hundred;
+            I64(1)   I64(1)       I64(2)       Null;
+            I64(2)   s("one")     s("two")     I64(100);
+            I64(3)   s("first")   s("second")  Null
         ))
     );
 
     test!(
-        r#"SELECT id, items[0]["bar"][2][0] AS a FROM ListType"#,
-        Ok(select_with_null!(
-            id     | a;
-            I64(1)   Null;
-            I64(2)   Null;
-            I64(3)   F64(10.5)
-        ))
+        r#"SELECT id, items["not"]["list"] AS foo FROM ListType2"#,
+        Err(ValueError::SelectorRequiresMapOrListTypes.into())
     );
 
     test!(

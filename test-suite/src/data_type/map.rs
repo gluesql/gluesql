@@ -61,28 +61,46 @@ INSERT INTO MapType VALUES
         Ok(select_with_null!(id | foo | bar; I64(1) Null Null))
     );
 
-    test!(
-        r#"SELECT id, nested["b"] as b FROM MapType"#,
-        Ok(select_with_null!(
-            id     | b;
-            I64(1)   I64(2);
-            I64(2)   I64(30);
-            I64(3)   Null
-        ))
+    run!(
+        r#"
+CREATE TABLE MapType2 (
+    id INTEGER,
+    nested MAP
+)"#
+    );
+
+    run!(
+        r#"
+INSERT INTO MapType2 VALUES
+    (1, '{"a": {"red": "apple", "blue": 1}, "b": 10}'),
+    (2, '{"a": {"red": "cherry", "blue": 2}, "b": 20}'),
+    (3, '{"a": {"red": "berry", "blue": 3}, "b": 30, "c": true}');
+"#
     );
 
     test!(
+        r#"SELECT id, nested["b"] as b FROM MapType2"#,
+        Ok(select_with_null!(
+            id     | b;
+            I64(1)   I64(10);
+            I64(2)   I64(20);
+            I64(3)   I64(30)
+        ))
+    );
+
+    // index expr with non-existent key from MapType Value returns Null
+    test!(
         r#"SELECT
             id,
-            nested["a"]["foo"] AS foo,
-            nested["a"]["b"]["c"]["d"] as good,
-            nested["a"]["b"] AS b
-        FROM MapType"#,
+            nested["a"]["red"] AS fruit,
+            nested["a"]["blue"] + nested["b"] as sum,
+            nested["c"] AS c
+        FROM MapType2"#,
         Ok(select_with_null!(
-            id     | foo          | good    | b;
-            I64(1)   Null           Null      Null;
-            I64(2)   s("ok")        Null      s("steak");
-            I64(3)   Null           I64(10)   m(r#"{"c": { "d": 10 } }"#)
+            id     | fruit        | sum      | c;
+            I64(1)   s("apple")     I64(11)    Null;
+            I64(2)   s("cherry")    I64(22)    Null;
+            I64(3)   s("berry")     I64(33)    Bool(true)
         ))
     );
 
@@ -92,6 +110,10 @@ INSERT INTO MapType VALUES
     );
     test!(
         r#"SELECT UNWRAP(id, "a.b.c") FROM MapType"#,
+        Err(ValueError::SelectorRequiresMapOrListTypes.into())
+    );
+    test!(
+        r#"SELECT id, nested["a"]["blue"]["first"] FROM MapType2"#,
         Err(ValueError::SelectorRequiresMapOrListTypes.into())
     );
     test!(
