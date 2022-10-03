@@ -338,6 +338,7 @@ mod tests {
             parse_sql::parse_expr,
             translate::translate_expr,
         },
+        bigdecimal::BigDecimal,
         std::str::FromStr,
     };
 
@@ -374,10 +375,10 @@ mod tests {
             })),
             order_by,
             limit: Some(Expr::Literal(AstLiteral::Number(
-                bigdecimal::BigDecimal::from_str("10").unwrap(),
+                BigDecimal::from_str("10").unwrap(),
             ))),
             offset: Some(Expr::Literal(AstLiteral::Number(
-                bigdecimal::BigDecimal::from_str("3").unwrap(),
+                BigDecimal::from_str("3").unwrap(),
             ))),
         }
         .to_sql();
@@ -557,9 +558,7 @@ mod tests {
                 name: "S".to_string(),
                 columns: Vec::new(),
             },
-            size: Expr::Literal(AstLiteral::Number(
-                bigdecimal::BigDecimal::from_str("3").unwrap(),
-            )),
+            size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
         }
         .to_sql();
         assert_eq!(actual, expected);
