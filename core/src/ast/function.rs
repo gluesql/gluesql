@@ -121,6 +121,10 @@ pub enum Function {
         expr: Expr,
         format: Expr,
     },
+    Position {
+        from_expr: Expr,
+        sub_expr: Expr,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

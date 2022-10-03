@@ -471,3 +471,9 @@ pub fn to_time(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Resu
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
+
+pub fn position(name: String, from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>) -> Result<Value> {
+    let from_expr = eval_to_str!(name, from_expr);
+    let sub_expr = eval_to_str!(name, sub_expr);
+    Value::position(&Value::Str(from_expr), &Value::Str(sub_expr))
+}

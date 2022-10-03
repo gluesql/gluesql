@@ -119,6 +119,7 @@ macro_rules! generate_store_tests {
         glue!(function_now, function::now::now);
         glue!(function_sign, function::sign::sign);
         glue!(function_to_date, function::to_date::to_date);
+        glue!(function_position, function::position::position);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
         glue!(migrate, migrate::migrate);
