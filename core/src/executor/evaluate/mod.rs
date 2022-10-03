@@ -51,7 +51,7 @@ pub async fn evaluate<'a>(
 
             match context.get_value(ident) {
                 Some(value) => Ok(value.clone()),
-                None => Err(EvaluateError::ValueNotFound(ident.to_string()).into()),
+                None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
             }
             .map(Evaluated::from)
         }

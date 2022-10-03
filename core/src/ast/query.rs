@@ -139,7 +139,7 @@ impl ToSql for Query {
         } = self;
 
         let order_by = if order_by.is_empty() {
-            "".to_string()
+            "".to_owned()
         } else {
             format!(
                 "ORDER BY {}",
@@ -149,12 +149,12 @@ impl ToSql for Query {
 
         let limit = match limit {
             Some(expr) => format!("LIMIT {}", expr.to_sql()),
-            _ => "".to_string(),
+            _ => "".to_owned(),
         };
 
         let offset = match offset {
             Some(expr) => format!("OFFSET {}", expr.to_sql()),
-            _ => "".to_string(),
+            _ => "".to_owned(),
         };
 
         let string = vec![order_by, limit, offset]
@@ -192,11 +192,11 @@ impl ToSql for Select {
 
         let selection = match selection {
             Some(expr) => format!("WHERE {}", expr.to_sql()),
-            None => "".to_string(),
+            None => "".to_owned(),
         };
 
         let group_by = if group_by.is_empty() {
-            "".to_string()
+            "".to_owned()
         } else {
             format!(
                 "GROUP BY {}",
@@ -206,7 +206,7 @@ impl ToSql for Select {
 
         let having = match having {
             Some(having) => format!("HAVING {}", having.to_sql()),
-            None => "".to_string(),
+            None => "".to_owned(),
         };
 
         let condition = vec![selection, group_by, having]
@@ -230,7 +230,7 @@ impl ToSql for SelectItem {
                 format!("{} AS {}", expr, label)
             }
             SelectItem::QualifiedWildcard(obj) => format!("{}.*", obj),
-            SelectItem::Wildcard => "*".to_string(),
+            SelectItem::Wildcard => "*".to_owned(),
         }
     }
 }
@@ -256,7 +256,7 @@ impl ToSql for TableFactor {
         match self {
             TableFactor::Table { name, alias, .. } => match alias {
                 Some(alias) => format!("{} {}", name, alias.to_sql()),
-                None => name.to_string(),
+                None => name.to_owned(),
             },
             TableFactor::Derived { subquery, alias } => {
                 format!("({}) {}", subquery.to_sql(), alias.to_sql())
@@ -398,18 +398,18 @@ mod tests {
     #[test]
     fn to_sql_query() {
         let order_by = vec![OrderByExpr {
-            expr: Expr::Identifier("name".to_string()),
+            expr: Expr::Identifier("name".to_owned()),
             asc: Some(true),
         }];
-        let actual = "SELECT * FROM FOO AS F ORDER BY name ASC LIMIT 10 OFFSET 3".to_string();
+        let actual = "SELECT * FROM FOO AS F ORDER BY name ASC LIMIT 10 OFFSET 3".to_owned();
         let expected = Query {
             body: SetExpr::Select(Box::new(Select {
                 projection: vec![SelectItem::Wildcard],
                 from: TableWithJoins {
                     relation: TableFactor::Table {
-                        name: "FOO".to_string(),
+                        name: "FOO".to_owned(),
                         alias: Some(TableAlias {
-                            name: "F".to_string(),
+                            name: "F".to_owned(),
                             columns: Vec::new(),
                         }),
                         index: None,
@@ -485,9 +485,9 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: "FOO".to_string(),
+                    name: "FOO".to_owned(),
                     alias: Some(TableAlias {
-                        name: "F".to_string(),
+                        name: "F".to_owned(),
                         columns: Vec::new(),
                     }),
                     index: None,
@@ -497,9 +497,9 @@ mod tests {
             selection: None,
             group_by: vec![Expr::Identifier("name".to_string())],
             having: Some(Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("name".to_string())),
+                left: Box::new(Expr::Identifier("name".to_owned())),
                 op: BinaryOperator::Eq,
-                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string()))),
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
             }),
         }
         .to_sql();
@@ -510,16 +510,16 @@ mod tests {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
                 relation: TableFactor::Table {
-                    name: "FOO".to_string(),
+                    name: "FOO".to_owned(),
                     alias: None,
                     index: None,
                 },
                 joins: Vec::new(),
             },
             selection: Some(Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("name".to_string())),
+                left: Box::new(Expr::Identifier("name".to_owned())),
                 op: BinaryOperator::Eq,
-                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string()))),
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
             }),
             group_by: Vec::new(),
             having: None,
@@ -530,19 +530,19 @@ mod tests {
 
     #[test]
     fn to_sql_select_item() {
-        let actual = "name AS n".to_string();
+        let actual = "name AS n".to_owned();
         let expected = SelectItem::Expr {
-            expr: Expr::Identifier("name".to_string()),
-            label: "n".to_string(),
+            expr: Expr::Identifier("name".to_owned()),
+            label: "n".to_owned(),
         }
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "foo.*".to_string();
-        let expected = SelectItem::QualifiedWildcard("foo".to_string()).to_sql();
+        let actual = "foo.*".to_owned();
+        let expected = SelectItem::QualifiedWildcard("foo".to_owned()).to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "*".to_string();
+        let actual = "*".to_owned();
         let expected = SelectItem::Wildcard.to_sql();
         assert_eq!(actual, expected);
     }
@@ -552,9 +552,9 @@ mod tests {
         let actual = "FOO AS F";
         let expected = TableWithJoins {
             relation: TableFactor::Table {
-                name: "FOO".to_string(),
+                name: "FOO".to_owned(),
                 alias: Some(TableAlias {
-                    name: "F".to_string(),
+                    name: "F".to_owned(),
                     columns: Vec::new(),
                 }),
                 index: None,
@@ -569,9 +569,9 @@ mod tests {
     fn to_sql_table_factor() {
         let actual = "FOO AS F";
         let expected = TableFactor::Table {
-            name: "FOO".to_string(),
+            name: "FOO".to_owned(),
             alias: Some(TableAlias {
-                name: "F".to_string(),
+                name: "F".to_owned(),
                 columns: Vec::new(),
             }),
             index: None,
@@ -586,7 +586,7 @@ mod tests {
                     projection: vec![SelectItem::Wildcard],
                     from: TableWithJoins {
                         relation: TableFactor::Table {
-                            name: "FOO".to_string(),
+                            name: "FOO".to_owned(),
                             alias: None,
                             index: None,
                         },
@@ -601,7 +601,7 @@ mod tests {
                 offset: None,
             },
             alias: TableAlias {
-                name: "F".to_string(),
+                name: "F".to_owned(),
                 columns: Vec::new(),
             },
         }
@@ -611,7 +611,7 @@ mod tests {
         let actual = "SERIES(3) AS S";
         let expected = TableFactor::Series {
             alias: TableAlias {
-                name: "S".to_string(),
+                name: "S".to_owned(),
                 columns: Vec::new(),
             },
             size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
@@ -623,7 +623,7 @@ mod tests {
         let expected = TableFactor::Dictionary {
             dict: Dictionary::GlueTables,
             alias: TableAlias {
-                name: "glue".to_string(),
+                name: "glue".to_owned(),
                 columns: Vec::new(),
             },
         }
@@ -635,7 +635,7 @@ mod tests {
     fn to_sql_table_alias() {
         let actual = "AS F";
         let expected = TableAlias {
-            name: "F".to_string(),
+            name: "F".to_owned(),
             columns: Vec::new(),
         }
         .to_sql();
@@ -726,25 +726,25 @@ mod tests {
 
     #[test]
     fn to_sql_order_by_expr() {
-        let actual = "foo ASC".to_string();
+        let actual = "foo ASC".to_owned();
         let expected = OrderByExpr {
-            expr: Expr::Identifier("foo".to_string()),
+            expr: Expr::Identifier("foo".to_owned()),
             asc: Some(true),
         }
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "foo DESC".to_string();
+        let actual = "foo DESC".to_owned();
         let expected = OrderByExpr {
-            expr: Expr::Identifier("foo".to_string()),
+            expr: Expr::Identifier("foo".to_owned()),
             asc: Some(false),
         }
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "foo".to_string();
+        let actual = "foo".to_owned();
         let expected = OrderByExpr {
-            expr: Expr::Identifier("foo".to_string()),
+            expr: Expr::Identifier("foo".to_owned()),
             asc: None,
         }
         .to_sql();

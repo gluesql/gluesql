@@ -154,7 +154,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
-                v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_string()).into()),
+                v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_owned()).into()),
             },
             #[cfg(feature = "index")]
             (3, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
