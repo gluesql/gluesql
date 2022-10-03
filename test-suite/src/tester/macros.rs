@@ -12,7 +12,7 @@ macro_rules! idx {
     };
     ($name: path, $op: path, $sql_expr: literal) => {
         vec![gluesql_core::ast::IndexItem::NonClustered {
-            name: stringify!($name).to_owned(),
+            name: stringify_label!($name).to_owned(),
             asc: None,
             cmp_expr: Some((
                 $op,
@@ -25,21 +25,21 @@ macro_rules! idx {
     };
     ($name: path) => {
         vec![gluesql_core::ast::IndexItem::NonClustered {
-            name: stringify!($name).to_owned(),
+            name: stringify_label!($name).to_owned(),
             asc: None,
             cmp_expr: None,
         }]
     };
     ($name: path, ASC) => {
         vec![gluesql_core::ast::IndexItem::NonClustered {
-            name: stringify!($name).to_owned(),
+            name: stringify_label!($name).to_owned(),
             asc: Some(true),
             cmp_expr: None,
         }]
     };
     ($name: path, DESC) => {
         vec![gluesql_core::ast::IndexItem::NonClustered {
-            name: stringify!($name).to_owned(),
+            name: stringify_label!($name).to_owned(),
             asc: Some(false),
             cmp_expr: None,
         }]
@@ -54,19 +54,19 @@ macro_rules! select {
         ];
 
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify_label!($c).to_string()),+],
             rows: concat_with!(rows ; $( $t )+ ; $( $( $v2 )+ );+)
         }
     });
     ( $( $c: tt )|+ $( ; )? $( $t: path )|+ ; $( $v: expr )+ ) => (
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify_label!($c).to_string()),+],
             rows: vec![row!($( $t )+ ; $( $v )+ )],
         }
     );
     ( $( $c: tt )|+ $( ; )?) => (
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify_label!($c).to_string()),+],
             rows: vec![],
         }
     );
@@ -87,10 +87,20 @@ macro_rules! concat_with {
 }
 
 #[macro_export]
+macro_rules! stringify_label {
+    ($label: literal) => {
+        $label
+    };
+    ($label: tt) => {
+        stringify!($label)
+    };
+}
+
+#[macro_export]
 macro_rules! select_with_null {
     ( $( $c: tt )|* ; $( $v: expr )* ) => (
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify_label!($c).to_owned().replace("\"", "")),+],
             rows: vec![vec![$( $v ),*]],
         }
     );
@@ -100,7 +110,7 @@ macro_rules! select_with_null {
         ];
 
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify_label!($c).to_owned().replace("\"", "")),+],
             rows: concat_with_null!(rows ; $( $( $v2 )* );*),
         }
     });
