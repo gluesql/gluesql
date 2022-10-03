@@ -113,6 +113,10 @@ pub enum FunctionNode {
         format: ExprNode,
     },
     Lower(ExprNode),
+    Position {
+        sub_expr: ExprNode,
+        from_expr: ExprNode,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -243,6 +247,17 @@ impl TryFrom<FunctionNode> for Function {
                 let format = format.try_into()?;
                 Ok(Function::ToTime { expr, format })
             }
+            FunctionNode::Position {
+                sub_expr,
+                from_expr,
+            } => {
+                let sub_expr = sub_expr.try_into()?;
+                let from_expr = from_expr.try_into()?;
+                Ok(Function::Position {
+                    sub_expr,
+                    from_expr,
+                })
+            }
         }
     }
 }
@@ -365,6 +380,9 @@ impl ExprNode {
     }
     pub fn to_time(self, format: ExprNode) -> ExprNode {
         to_time(self, format)
+    }
+    pub fn position(self, format: ExprNode) -> ExprNode {
+        position(self, format)
     }
 }
 
@@ -581,14 +599,21 @@ pub fn to_time<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
     }))
 }
 
+pub fn position<T: Into<ExprNode>>(sub_expr: T, from_expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Position {
+        sub_expr: sub_expr.into(),
+        from_expr: from_expr.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast_builder::{
         abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
         format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad, ltrim,
-        modulo, now, num, pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign,
-        sin, sqrt, substr, tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp,
-        upper,
+        modulo, now, num, pi, position, power, radians, repeat, reverse, right, round, rpad, rtrim,
+        sign, sin, sqrt, substr, tan, test_expr, text, time, timestamp, to_date, to_time,
+        to_timestamp, upper,
     };
 
     #[test]
@@ -1096,6 +1121,17 @@ mod tests {
 
         let actual = expr("HoHo").lower();
         let expected = "LOWER(HoHo)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_position() {
+        let actual = position(text("ke"), text("cake"));
+        let expected = r#"POSITION("ke" IN "cake")"#;
+        test_expr(actual, expected);
+
+        let actual = text("rice").position(text("cake"));
+        let expected = r#"POSITION("rice" IN "cake")"#;
         test_expr(actual, expected);
     }
 }
