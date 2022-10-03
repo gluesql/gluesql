@@ -174,7 +174,7 @@ impl ToSql for SetExpr {
     fn to_sql(&self) -> String {
         match self {
             SetExpr::Select(expr) => expr.to_sql(),
-            SetExpr::Values(_value) => "(..value..)".to_string(),
+            SetExpr::Values(value) => format!("VALUES {}", value.to_sql()),
         }
     }
 }
@@ -242,7 +242,11 @@ impl ToSql for TableWithJoins {
         if joins.is_empty() {
             relation.to_sql()
         } else {
-            format!("{} (..join..)", relation.to_sql())
+            format!(
+                "{} {}",
+                relation.to_sql(),
+                joins.iter().map(|join| join.to_sql()).join(" ")
+            )
         }
     }
 }
@@ -275,6 +279,69 @@ impl ToSql for TableAlias {
     }
 }
 
+impl ToSql for Join {
+    fn to_sql(&self) -> String {
+        let Join {
+            relation,
+            join_operator,
+            join_executor,
+        } = self;
+
+        match join_operator {
+            JoinOperator::Inner(constraint) => {
+                let constraint = vec![constraint.to_sql(), join_executor.to_sql()]
+                    .iter()
+                    .filter(|sql| !sql.is_empty())
+                    .join(" AND ");
+                if constraint.is_empty() {
+                    format!("INNER JOIN {}", relation.to_sql())
+                } else {
+                    format!("INNER JOIN {} ON {constraint}", relation.to_sql())
+                }
+            }
+            JoinOperator::LeftOuter(constraint) => {
+                let constraint = vec![constraint.to_sql(), join_executor.to_sql()]
+                    .iter()
+                    .filter(|sql| !sql.is_empty())
+                    .join(" AND ");
+                if constraint.is_empty() {
+                    format!("LEFT OUTER JOIN {}", relation.to_sql())
+                } else {
+                    format!("LEFT OUTER JOIN {} ON {constraint}", relation.to_sql())
+                }
+            }
+        }
+    }
+}
+
+impl ToSql for JoinExecutor {
+    fn to_sql(&self) -> String {
+        match self {
+            JoinExecutor::NestedLoop => "".to_string(),
+            JoinExecutor::Hash {
+                key_expr,
+                value_expr,
+                where_clause,
+            } => {
+                let key_value = format!("{} = {}", key_expr.to_sql(), value_expr.to_sql());
+                match where_clause {
+                    Some(expr) => format!("{key_value} AND {}", expr.to_sql()),
+                    None => key_value,
+                }
+            }
+        }
+    }
+}
+
+impl ToSql for JoinConstraint {
+    fn to_sql(&self) -> String {
+        match self {
+            JoinConstraint::On(expr) => expr.to_sql(),
+            JoinConstraint::None => "".to_string(),
+        }
+    }
+}
+
 impl ToSql for OrderByExpr {
     fn to_sql(&self) -> String {
         let OrderByExpr { expr, asc } = self;
@@ -288,17 +355,45 @@ impl ToSql for OrderByExpr {
     }
 }
 
+impl ToSql for Values {
+    fn to_sql(&self) -> String {
+        let Values(expr) = self;
+
+        expr.iter()
+            .enumerate()
+            .map(|(index, value)| {
+                format!(
+                    "({}, {})",
+                    index + 1,
+                    value.iter().map(|expr| expr.to_sql()).join(", ")
+                )
+            })
+            .join(", ")
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
     use {
-        crate::ast::{
-            AstLiteral, BinaryOperator, Dictionary, Expr, OrderByExpr, Query, Select, SelectItem,
-            SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql,
+        crate::{
+            ast::{
+                AstLiteral, BinaryOperator, Dictionary, Expr, Join, JoinConstraint, JoinExecutor,
+                JoinOperator, OrderByExpr, Query, Select, SelectItem, SetExpr, TableAlias,
+                TableFactor, TableWithJoins, ToSql, Values,
+            },
+            parse_sql::parse_expr,
+            translate::translate_expr,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
     };
+
+    fn expr(sql: &str) -> Expr {
+        let parsed = parse_expr(sql).expect(sql);
+
+        translate_expr(&parsed).expect(sql)
+    }
 
     #[test]
     fn to_sql_query() {
@@ -333,6 +428,44 @@ mod tests {
                 BigDecimal::from_str("3").unwrap(),
             ))),
         }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_set_expr() {
+        let actual = "SELECT * FROM FOO AS F".to_string();
+        let expected = SetExpr::Select(Box::new(Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "FOO".to_string(),
+                    alias: Some(TableAlias {
+                        name: "F".to_string(),
+                        columns: Vec::new(),
+                    }),
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: None,
+            group_by: Vec::new(),
+            having: None,
+        }))
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "VALUES (1, \"glue\", 3), (2, \"sql\", 2)".to_string();
+        let expected = SetExpr::Values(Values(vec![
+            vec![
+                Expr::Literal(AstLiteral::QuotedString("glue".to_string())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
+            ],
+            vec![
+                Expr::Literal(AstLiteral::QuotedString("sql".to_string())),
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
+            ],
+        ]))
         .to_sql();
         assert_eq!(actual, expected);
     }
@@ -496,6 +629,71 @@ mod tests {
         let expected = TableAlias {
             name: "F".to_string(),
             columns: Vec::new(),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_join() {
+        let actual = "INNER JOIN PlayerItem";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_string(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::Inner(JoinConstraint::None),
+            join_executor: JoinExecutor::NestedLoop,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "INNER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_string(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::Inner(JoinConstraint::On(expr(
+                "PlayerItem.user_id = Player.id",
+            ))),
+            join_executor: JoinExecutor::NestedLoop,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.user_id = Player.id";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_string(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
+                "PlayerItem.user_id = Player.id",
+            ))),
+            join_executor: JoinExecutor::NestedLoop,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id";
+        let expected = Join {
+            relation: TableFactor::Table {
+                name: "PlayerItem".to_string(),
+                alias: None,
+                index: None,
+            },
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
+                "PlayerItem.age > Player.age",
+            ))),
+            join_executor: JoinExecutor::Hash {
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
+                where_clause: None,
+            },
         }
         .to_sql();
         assert_eq!(actual, expected);
