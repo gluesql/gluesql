@@ -1,9 +1,10 @@
 use itertools::Itertools;
 
 use {
-    super::{Expr, IndexOperator, ObjectName},
+    super::{Expr, IndexOperator},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
+    strum_macros::Display,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -35,7 +36,7 @@ pub enum SelectItem {
     /// An expression
     Expr { expr: Expr, label: String },
     /// `alias.*` or even `schema.table.*`
-    QualifiedWildcard(ObjectName),
+    QualifiedWildcard(String),
     /// An unqualified `*`
     Wildcard,
 }
@@ -59,7 +60,7 @@ pub enum IndexItem {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TableFactor {
     Table {
-        name: ObjectName,
+        name: String,
         alias: Option<TableAlias>,
         /// Query planner result
         index: Option<IndexItem>,
@@ -69,10 +70,20 @@ pub enum TableFactor {
         alias: TableAlias,
     },
     Series {
-        name: ObjectName,
-        alias: Option<TableAlias>,
+        alias: TableAlias,
         size: Expr,
     },
+    Dictionary {
+        dict: Dictionary,
+        alias: TableAlias,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum Dictionary {
+    GlueTables,
+    GlueTableColumns,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

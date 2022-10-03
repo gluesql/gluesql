@@ -91,7 +91,7 @@ async fn join<'a>(
         join_executor,
     } = ast_join;
 
-    let table_alias = get_alias(relation)?;
+    let table_alias = get_alias(relation);
     let join_executor = JoinExecutor::new(
         storage,
         relation,
@@ -246,7 +246,7 @@ impl<'a> JoinExecutor<'a> {
 
                 async move {
                     let filter_context = Rc::new(FilterContext::new(
-                        get_alias(relation)?,
+                        get_alias(relation),
                         columns,
                         Some(&row),
                         filter_context,

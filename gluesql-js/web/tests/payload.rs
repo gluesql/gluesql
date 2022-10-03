@@ -3,7 +3,6 @@
 wasm_bindgen_test_configure!(run_in_browser);
 
 use {
-    gluesql_core::store::Metadata,
     gluesql_js::Glue,
     memory_storage::MemoryStorage,
     serde_json::{json, Value as Json},

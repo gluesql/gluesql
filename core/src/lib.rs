@@ -15,13 +15,10 @@ pub mod store;
 pub mod translate;
 
 pub mod prelude {
-    #[cfg(feature = "metadata")]
-    pub use crate::executor::PayloadVariable;
-
     pub use crate::{
         ast::DataType,
         data::{Key, Value},
-        executor::{execute, Payload},
+        executor::{execute, Payload, PayloadVariable},
         glue::Glue,
         parse_sql::parse,
         plan::plan,

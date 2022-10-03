@@ -1,7 +1,6 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast::Statement,
         ast_builder::{ExprNode, LimitNode, ProjectNode, SelectItemList},
         result::Result,
     },
@@ -43,10 +42,6 @@ impl LimitOffsetNode {
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
         ProjectNode::new(self, select_items)
     }
-
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
-    }
 }
 
 impl Prebuild for LimitOffsetNode {
@@ -60,10 +55,11 @@ impl Prebuild for LimitOffsetNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn limit_offset() {
+        // limit node -> offset node -> build
         let actual = table("World")
             .select()
             .filter("id > 2")
@@ -71,6 +67,17 @@ mod tests {
             .offset(3)
             .build();
         let expected = "SELECT * FROM World WHERE id > 2 OFFSET 3 LIMIT 100";
+        test(actual, expected);
+
+        // limit node -> offset node -> project node
+        let actual = table("World")
+            .select()
+            .filter("id > 2")
+            .limit(100)
+            .offset(3)
+            .project("id")
+            .build();
+        let expected = "SELECT id FROM World WHERE id > 2 OFFSET 3 LIMIT 100";
         test(actual, expected);
     }
 }

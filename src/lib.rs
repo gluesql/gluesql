@@ -49,7 +49,6 @@
 //! * [Index](core/store/trait.Index.html)
 //! * [IndexMut](core/store/trait.IndexMut.html)
 //! * [Transaction](core/store/trait.Transaction.html)
-//! * [Metadata](core/store/trait.Metadata.html)
 //!
 //! ### Trait to run integration tests
 //! * [Tester](test_suite/trait.Tester.html)

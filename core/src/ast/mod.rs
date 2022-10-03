@@ -16,9 +16,6 @@ pub use query::*;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ObjectName(pub Vec<String>);
-
 pub trait ToSql {
     fn to_sql(&self) -> String;
 }
@@ -26,14 +23,14 @@ pub trait ToSql {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Statement {
     ShowColumns {
-        table_name: ObjectName,
+        table_name: String,
     },
     /// SELECT, VALUES
     Query(Query),
     /// INSERT
     Insert {
         /// TABLE
-        table_name: ObjectName,
+        table_name: String,
         /// COLUMNS
         columns: Vec<String>,
         /// A SQL query that specifies what to insert
@@ -42,7 +39,7 @@ pub enum Statement {
     /// UPDATE
     Update {
         /// TABLE
-        table_name: ObjectName,
+        table_name: String,
         /// Column assignments
         assignments: Vec<Assignment>,
         /// WHERE
@@ -51,7 +48,7 @@ pub enum Statement {
     /// DELETE
     Delete {
         /// FROM
-        table_name: ObjectName,
+        table_name: String,
         /// WHERE
         selection: Option<Expr>,
     },
@@ -59,7 +56,7 @@ pub enum Statement {
     CreateTable {
         if_not_exists: bool,
         /// Table name
-        name: ObjectName,
+        name: String,
         /// Optional schema
         columns: Vec<ColumnDef>,
         source: Option<Box<Query>>,
@@ -68,7 +65,7 @@ pub enum Statement {
     #[cfg(feature = "alter-table")]
     AlterTable {
         /// Table name
-        name: ObjectName,
+        name: String,
         operation: AlterTableOperation,
     },
     /// DROP TABLE
@@ -76,20 +73,20 @@ pub enum Statement {
         /// An optional `IF EXISTS` clause. (Non-standard.)
         if_exists: bool,
         /// One or more objects to drop. (ANSI SQL requires exactly one.)
-        names: Vec<ObjectName>,
+        names: Vec<String>,
     },
     /// CREATE INDEX
     #[cfg(feature = "index")]
     CreateIndex {
-        name: ObjectName,
-        table_name: ObjectName,
+        name: String,
+        table_name: String,
         column: OrderByExpr,
     },
     /// DROP INDEX
     #[cfg(feature = "index")]
     DropIndex {
-        name: ObjectName,
-        table_name: ObjectName,
+        name: String,
+        table_name: String,
     },
     /// START TRANSACTION, BEGIN
     #[cfg(feature = "transaction")]
@@ -101,10 +98,9 @@ pub enum Statement {
     #[cfg(feature = "transaction")]
     Rollback,
     /// SHOW VARIABLE
-    #[cfg(feature = "metadata")]
     ShowVariable(Variable),
     #[cfg(feature = "index")]
-    ShowIndexes(ObjectName),
+    ShowIndexes(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -113,26 +109,17 @@ pub struct Assignment {
     pub value: Expr,
 }
 
-#[cfg(feature = "metadata")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Variable {
     Tables,
     Version,
 }
 
-impl ToSql for ObjectName {
-    fn to_sql(&self) -> String {
-        match self {
-            ObjectName(names) => names.join("."),
-        }
-    }
-}
-
 impl ToSql for Statement {
     fn to_sql(&self) -> String {
         match self {
             Statement::ShowColumns { table_name } => {
-                format!("SHOW COLUMNS FROM {}", table_name.to_sql())
+                format!("SHOW COLUMNS FROM {table_name}")
             }
             Statement::Insert {
                 table_name,
@@ -140,10 +127,7 @@ impl ToSql for Statement {
                 source: _,
             } => {
                 let columns = columns.join(", ");
-                format!(
-                    "INSERT INTO {} ({columns}) (..query..)",
-                    table_name.to_sql()
-                )
+                format!("INSERT INTO {table_name} ({columns}) (..query..)",)
             }
             Statement::Update {
                 table_name,
@@ -158,24 +142,19 @@ impl ToSql for Statement {
                 match selection {
                     Some(expr) => {
                         format!(
-                            "UPDATE {} SET {assignments} WHERE {}",
-                            table_name.to_sql(),
+                            "UPDATE {table_name} SET {assignments} WHERE {}",
                             expr.to_sql()
                         )
                     }
-                    None => format!("UPDATE {} SET {assignments}", table_name.to_sql()),
+                    None => format!("UPDATE {table_name} SET {assignments}"),
                 }
             }
             Statement::Delete {
                 table_name,
                 selection,
             } => match selection {
-                Some(expr) => format!(
-                    "DELETE FROM {} WHERE {}",
-                    table_name.to_sql(),
-                    expr.to_sql()
-                ),
-                None => format!("DELETE FROM {}", table_name.to_sql()),
+                Some(expr) => format!("DELETE FROM {table_name} WHERE {}", expr.to_sql()),
+                None => format!("DELETE FROM {table_name}"),
             },
             Statement::CreateTable {
                 if_not_exists,
@@ -184,11 +163,8 @@ impl ToSql for Statement {
                 source,
             } => match source {
                 Some(_query) => match if_not_exists {
-                    true => format!(
-                        "CREATE TABLE IF NOT EXISTS {} AS (..query..)",
-                        name.to_sql()
-                    ),
-                    false => format!("CREATE TABLE {} AS (..query..)", name.to_sql()),
+                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS (..query..)",),
+                    false => format!("CREATE TABLE {name} AS (..query..)"),
                 },
                 None => {
                     let columns = columns
@@ -197,21 +173,17 @@ impl ToSql for Statement {
                         .collect::<Vec<_>>()
                         .join(", ");
                     match if_not_exists {
-                        true => format!("CREATE TABLE IF NOT EXISTS {} ({columns})", name.to_sql()),
-                        false => format!("CREATE TABLE {} ({columns})", name.to_sql()),
+                        true => format!("CREATE TABLE IF NOT EXISTS {name} ({columns})"),
+                        false => format!("CREATE TABLE {name} ({columns})"),
                     }
                 }
             },
             #[cfg(feature = "alter-table")]
             Statement::AlterTable { name, operation } => {
-                format!("ALTER TABLE {} {}", name.to_sql(), operation.to_sql())
+                format!("ALTER TABLE {name} {}", operation.to_sql())
             }
             Statement::DropTable { if_exists, names } => {
-                let names = names
-                    .iter()
-                    .map(ToSql::to_sql)
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let names = names.join(", ");
                 match if_exists {
                     true => format!("DROP TABLE IF EXISTS {}", names),
                     false => format!("DROP TABLE {}", names),
@@ -223,16 +195,11 @@ impl ToSql for Statement {
                 table_name,
                 column,
             } => {
-                format!(
-                    "CREATE INDEX {} ON {} {}",
-                    name.to_sql(),
-                    table_name.to_sql(),
-                    column.to_sql()
-                )
+                format!("CREATE INDEX {name} ON {table_name} {}", column.to_sql())
             }
             #[cfg(feature = "index")]
             Statement::DropIndex { name, table_name } => {
-                format!("DROP INDEX {}.{}", table_name.to_sql(), name.to_sql())
+                format!("DROP INDEX {table_name}.{name}")
             }
             #[cfg(feature = "transaction")]
             Statement::StartTransaction => "START TRANSACTION".to_string(),
@@ -240,14 +207,13 @@ impl ToSql for Statement {
             Statement::Commit => "COMMIT".to_string(),
             #[cfg(feature = "transaction")]
             Statement::Rollback => "ROLLBACK".to_string(),
-            #[cfg(feature = "metadata")]
             Statement::ShowVariable(variable) => match variable {
                 Variable::Tables => "SHOW TABLES".to_string(),
                 Variable::Version => "SHOW VERSIONS".to_string(),
             },
             #[cfg(feature = "index")]
             Statement::ShowIndexes(object_name) => {
-                format!("SHOW INDEXES FROM {}", object_name.to_sql())
+                format!("SHOW INDEXES FROM {object_name}")
             }
             _ => "(..statement..)".to_string(),
         }
@@ -268,39 +234,21 @@ mod tests {
     #[cfg(feature = "index")]
     use crate::ast::OrderByExpr;
 
-    #[cfg(feature = "metadata")]
-    use crate::ast::Variable;
-
     use {
         crate::ast::{
             Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
-            DataType, Expr, ObjectName, Query, SetExpr, Statement, ToSql, Values,
+            DataType, Expr, Query, SetExpr, Statement, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
     };
 
     #[test]
-    fn to_sql_object_name() {
-        assert_eq!("Foo", ObjectName(vec!["Foo".to_string()]).to_sql());
-
-        assert_eq!(
-            "Foo.bar.bax",
-            ObjectName(vec![
-                "Foo".to_string(),
-                "bar".to_string(),
-                "bax".to_string()
-            ])
-            .to_sql()
-        );
-    }
-
-    #[test]
     fn to_sql_show_columns() {
         assert_eq!(
             "SHOW COLUMNS FROM Bar",
             Statement::ShowColumns {
-                table_name: ObjectName(vec!["Bar".to_string()])
+                table_name: "Bar".into()
             }
             .to_sql()
         )
@@ -311,7 +259,7 @@ mod tests {
         assert_eq!(
             "INSERT INTO Test (id, num, name) (..query..)",
             Statement::Insert {
-                table_name: ObjectName(vec!["Test".to_string()]),
+                table_name: "Test".into(),
                 columns: vec!["id".to_string(), "num".to_string(), "name".to_string()],
                 source: Query {
                     body: SetExpr::Values(Values(vec![vec![
@@ -333,7 +281,7 @@ mod tests {
         assert_eq!(
             r#"UPDATE Foo SET id = 4, color = "blue""#,
             Statement::Update {
-                table_name: ObjectName(vec!["Foo".to_string()]),
+                table_name: "Foo".into(),
                 assignments: vec![
                     Assignment {
                         id: "id".to_string(),
@@ -354,7 +302,7 @@ mod tests {
         assert_eq!(
             r#"UPDATE Foo SET name = "first" WHERE a > b"#,
             Statement::Update {
-                table_name: ObjectName(vec!["Foo".to_string()]),
+                table_name: "Foo".into(),
                 assignments: vec![Assignment {
                     id: "name".to_string(),
                     value: Expr::Literal(AstLiteral::QuotedString("first".to_string()))
@@ -374,7 +322,7 @@ mod tests {
         assert_eq!(
             "DELETE FROM Foo",
             Statement::Delete {
-                table_name: ObjectName(vec!["Foo".to_string()]),
+                table_name: "Foo".into(),
                 selection: None
             }
             .to_sql()
@@ -383,7 +331,7 @@ mod tests {
         assert_eq!(
             r#"DELETE FROM Foo WHERE item = "glue""#,
             Statement::Delete {
-                table_name: ObjectName(vec!["Foo".to_string()]),
+                table_name: "Foo".into(),
                 selection: Some(Expr::BinaryOp {
                     left: Box::new(Expr::Identifier("item".to_string())),
                     op: BinaryOperator::Eq,
@@ -400,7 +348,7 @@ mod tests {
             "CREATE TABLE IF NOT EXISTS Foo ()",
             Statement::CreateTable {
                 if_not_exists: true,
-                name: ObjectName(vec!["Foo".to_string()]),
+                name: "Foo".into(),
                 columns: vec![],
                 source: None
             }
@@ -411,7 +359,7 @@ mod tests {
             "CREATE TABLE Foo (id INT, num INT NULL, name TEXT)",
             Statement::CreateTable {
                 if_not_exists: false,
-                name: ObjectName(vec!["Foo".to_string()]),
+                name: "Foo".into(),
                 columns: vec![
                     ColumnDef {
                         name: "id".to_string(),
@@ -444,7 +392,7 @@ mod tests {
             "CREATE TABLE Foo AS (..query..)",
             Statement::CreateTable {
                 if_not_exists: false,
-                name: ObjectName(vec!["Foo".to_string()]),
+                name: "Foo".into(),
                 columns: vec![],
                 source: Some(Box::new(Query {
                     body: SetExpr::Values(Values(vec![vec![Expr::Literal(AstLiteral::Boolean(
@@ -462,7 +410,7 @@ mod tests {
             "CREATE TABLE IF NOT EXISTS Foo AS (..query..)",
             Statement::CreateTable {
                 if_not_exists: true,
-                name: ObjectName(vec!["Foo".to_string()]),
+                name: "Foo".into(),
                 columns: vec![],
                 source: Some(Box::new(Query {
                     body: SetExpr::Values(Values(vec![vec![Expr::Literal(AstLiteral::Boolean(
@@ -483,7 +431,7 @@ mod tests {
         assert_eq!(
             "ALTER TABLE Foo ADD COLUMN amount INT DEFAULT 10",
             Statement::AlterTable {
-                name: ObjectName(vec!["Foo".to_string()]),
+                name: "Foo".into(),
                 operation: AlterTableOperation::AddColumn {
                     column_def: ColumnDef {
                         name: "amount".to_string(),
@@ -503,7 +451,7 @@ mod tests {
         assert_eq!(
             "ALTER TABLE Foo DROP COLUMN something",
             Statement::AlterTable {
-                name: ObjectName(vec!["Foo".to_string()]),
+                name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
                     column_name: "something".to_string(),
                     if_exists: false
@@ -515,7 +463,7 @@ mod tests {
         assert_eq!(
             "ALTER TABLE Foo DROP COLUMN IF EXISTS something",
             Statement::AlterTable {
-                name: ObjectName(vec!["Foo".to_string()]),
+                name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
                     column_name: "something".to_string(),
                     if_exists: true
@@ -527,7 +475,7 @@ mod tests {
         assert_eq!(
             "ALTER TABLE Bar RENAME COLUMN id TO new_id",
             Statement::AlterTable {
-                name: ObjectName(vec!["Bar".to_string()]),
+                name: "Bar".into(),
                 operation: AlterTableOperation::RenameColumn {
                     old_column_name: "id".to_string(),
                     new_column_name: "new_id".to_string()
@@ -539,9 +487,9 @@ mod tests {
         assert_eq!(
             "ALTER TABLE Foo RENAME TO Bar",
             Statement::AlterTable {
-                name: ObjectName(vec!["Foo".to_string()]),
+                name: "Foo".to_owned(),
                 operation: AlterTableOperation::RenameTable {
-                    table_name: ObjectName(vec!["Bar".to_string()])
+                    table_name: "Bar".to_owned(),
                 }
             }
             .to_sql()
@@ -554,7 +502,7 @@ mod tests {
             "DROP TABLE Test",
             Statement::DropTable {
                 if_exists: false,
-                names: vec![ObjectName(vec!["Test".to_string()])]
+                names: vec!["Test".into()]
             }
             .to_sql()
         );
@@ -563,7 +511,7 @@ mod tests {
             "DROP TABLE IF EXISTS Test",
             Statement::DropTable {
                 if_exists: true,
-                names: vec![ObjectName(vec!["Test".to_string()])]
+                names: vec!["Test".into()]
             }
             .to_sql()
         );
@@ -572,10 +520,7 @@ mod tests {
             "DROP TABLE Foo, Bar",
             Statement::DropTable {
                 if_exists: false,
-                names: vec![
-                    ObjectName(vec!["Foo".to_string()]),
-                    ObjectName(vec!["Bar".to_string()])
-                ]
+                names: vec!["Foo".into(), "Bar".into(),]
             }
             .to_sql()
         );
@@ -587,8 +532,8 @@ mod tests {
         assert_eq!(
             "CREATE INDEX idx_name ON Test LastName",
             Statement::CreateIndex {
-                name: ObjectName(vec!["idx_name".to_string()]),
-                table_name: ObjectName(vec!["Test".to_string()]),
+                name: "idx_name".into(),
+                table_name: "Test".into(),
                 column: OrderByExpr {
                     expr: Expr::Identifier("LastName".to_string()),
                     asc: None
@@ -604,8 +549,8 @@ mod tests {
         assert_eq!(
             "DROP INDEX Test.idx_id",
             Statement::DropIndex {
-                name: ObjectName(vec!["idx_id".to_string()]),
-                table_name: ObjectName(vec!["Test".to_string()])
+                name: "idx_id".into(),
+                table_name: "Test".into(),
             }
             .to_sql()
         )
@@ -620,7 +565,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "metadata")]
     fn to_sql_show_variable() {
         assert_eq!(
             "SHOW TABLES",
@@ -637,7 +581,7 @@ mod tests {
     fn to_sql_show_indexes() {
         assert_eq!(
             "SHOW INDEXES FROM Test",
-            Statement::ShowIndexes(ObjectName(vec!["Test".to_string()])).to_sql()
+            Statement::ShowIndexes("Test".into()).to_sql()
         );
     }
 

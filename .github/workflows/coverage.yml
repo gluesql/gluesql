@@ -43,7 +43,8 @@ jobs:
             --branch \
             --ignore-not-existing \
             --ignore "/*" \
-            --ignore "cli/src/*" \
+            --ignore "examples/*.rs" \
+            --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "#\\[derive\\(" \
             -o ./coverage/lcov.info
       - name: Coveralls

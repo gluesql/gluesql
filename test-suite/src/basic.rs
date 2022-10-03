@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{prelude::Value::*, translate::TranslateError},
+};
 
 test_case!(basic, async move {
     run!(
@@ -53,6 +56,10 @@ CREATE TABLE TestA (
         (
             "SELECT id, num FROM Test",
             Ok(select!(id | num; I64 | I64; 2 2; 2 9; 2 4; 2 7)),
+        ),
+        (
+            "SELECT id FROM FOO.Test",
+            Err(TranslateError::CompoundObjectNotSupported("FOO.Test".to_owned()).into()),
         ),
     ];
 
