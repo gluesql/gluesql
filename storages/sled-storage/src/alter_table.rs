@@ -45,7 +45,7 @@ impl AlterTable for SledStorage {
 
             let (old_schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
-                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             // remove existing schema
@@ -55,11 +55,11 @@ impl AlterTable for SledStorage {
                 indexes,
                 ..
             } = old_schema
-                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let new_schema = Schema {
-                table_name: new_table_name.to_string(),
+                table_name: new_table_name.to_owned(),
                 column_defs,
                 indexes,
             };
@@ -152,7 +152,7 @@ impl AlterTable for SledStorage {
 
             let (schema_key, snapshot) = fetch_schema(tree, table_name)?;
             let snapshot = snapshot
-                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let Schema {
@@ -161,7 +161,7 @@ impl AlterTable for SledStorage {
                 ..
             } = snapshot
                 .get(txid, None)
-                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let i = column_defs
@@ -182,7 +182,7 @@ impl AlterTable for SledStorage {
             let column_defs = Vector::from(column_defs).update(i, column_def).into();
 
             let schema = Schema {
-                table_name: table_name.to_string(),
+                table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
             };
@@ -228,7 +228,7 @@ impl AlterTable for SledStorage {
 
             let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
-                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let Schema {
@@ -237,7 +237,7 @@ impl AlterTable for SledStorage {
                 indexes,
             } = schema_snapshot
                 .get(txid, None)
-                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             if column_defs
@@ -355,7 +355,7 @@ impl AlterTable for SledStorage {
 
             let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
-                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let Schema {
@@ -364,7 +364,7 @@ impl AlterTable for SledStorage {
                 indexes,
             } = schema_snapshot
                 .get(txid, None)
-                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let column_index = column_defs
@@ -377,7 +377,7 @@ impl AlterTable for SledStorage {
                 }
                 (None, false) => {
                     return Err(
-                        AlterTableError::DroppingColumnNotFound(column_name.to_string()).into(),
+                        AlterTableError::DroppingColumnNotFound(column_name.to_owned()).into(),
                     )
                     .map_err(ConflictableTransactionError::Abort);
                 }

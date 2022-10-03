@@ -81,7 +81,7 @@ pub enum Expr {
 impl ToSql for Expr {
     fn to_sql(&self) -> String {
         match self {
-            Expr::Identifier(s) => s.to_string(),
+            Expr::Identifier(s) => s.to_owned(),
             Expr::BinaryOp { left, op, right } => {
                 format!("{} {} {}", left.to_sql(), op.to_sql(), right.to_sql())
             }
@@ -219,14 +219,14 @@ mod tests {
         let re = Regex::new(r"\n\s+").unwrap();
         let trim = |s: &str| re.replace_all(s.trim(), "\n").into_owned();
 
-        assert_eq!("id", Expr::Identifier("id".to_string()).to_sql());
+        assert_eq!("id", Expr::Identifier("id".to_owned()).to_sql());
 
         assert_eq!(
             "id + num",
             Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("id".to_string())),
+                left: Box::new(Expr::Identifier("id".to_owned())),
                 op: BinaryOperator::Plus,
-                right: Box::new(Expr::Identifier("num".to_string()))
+                right: Box::new(Expr::Identifier("num".to_owned()))
             }
             .to_sql()
         );
@@ -248,10 +248,10 @@ mod tests {
             .to_sql()
         );
 
-        let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
+        let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_owned()));
         assert_eq!("id IS NULL", Expr::IsNull(id_expr).to_sql());
 
-        let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_string()));
+        let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_owned()));
         assert_eq!("id IS NOT NULL", Expr::IsNotNull(id_expr).to_sql());
 
         assert_eq!(
@@ -269,7 +269,7 @@ mod tests {
             r#"INT("1")"#,
             Expr::TypedString {
                 data_type: DataType::Int,
-                value: "1".to_string()
+                value: "1".to_owned()
             }
             .to_sql()
         );
@@ -278,7 +278,7 @@ mod tests {
             r#"EXTRACT(MINUTE FROM "2022-05-05 01:02:03")"#,
             Expr::Extract {
                 field: DateTimeField::Minute,
-                expr: Box::new(Expr::Identifier("2022-05-05 01:02:03".to_string()))
+                expr: Box::new(Expr::Identifier("2022-05-05 01:02:03".to_owned()))
             }
             .to_sql()
         );
@@ -291,10 +291,10 @@ mod tests {
         assert_eq!(
             "id BETWEEN low AND high",
             Expr::Between {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
-                low: Box::new(Expr::Identifier("low".to_string())),
-                high: Box::new(Expr::Identifier("high".to_string()))
+                low: Box::new(Expr::Identifier("low".to_owned())),
+                high: Box::new(Expr::Identifier("high".to_owned()))
             }
             .to_sql()
         );
@@ -302,10 +302,10 @@ mod tests {
         assert_eq!(
             "id NOT BETWEEN low AND high",
             Expr::Between {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
-                low: Box::new(Expr::Identifier("low".to_string())),
-                high: Box::new(Expr::Identifier("high".to_string()))
+                low: Box::new(Expr::Identifier("low".to_owned())),
+                high: Box::new(Expr::Identifier("high".to_owned()))
             }
             .to_sql()
         );
@@ -313,7 +313,7 @@ mod tests {
         assert_eq!(
             r#"id LIKE "%abc""#,
             Expr::Like {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
             }
@@ -322,7 +322,7 @@ mod tests {
         assert_eq!(
             r#"id NOT LIKE "%abc""#,
             Expr::Like {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc".to_owned()))),
             }
@@ -332,7 +332,7 @@ mod tests {
         assert_eq!(
             r#"id ILIKE "%abc_""#,
             Expr::ILike {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
             }
@@ -341,7 +341,7 @@ mod tests {
         assert_eq!(
             r#"id NOT ILIKE "%abc_""#,
             Expr::ILike {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
                 pattern: Box::new(Expr::Literal(AstLiteral::QuotedString("%abc_".to_owned()))),
             }
@@ -351,11 +351,11 @@ mod tests {
         assert_eq!(
             r#"id IN ("a", "b", "c")"#,
             Expr::InList {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 list: vec![
-                    Expr::Literal(AstLiteral::QuotedString("a".to_string())),
-                    Expr::Literal(AstLiteral::QuotedString("b".to_string())),
-                    Expr::Literal(AstLiteral::QuotedString("c".to_string()))
+                    Expr::Literal(AstLiteral::QuotedString("a".to_owned())),
+                    Expr::Literal(AstLiteral::QuotedString("b".to_owned())),
+                    Expr::Literal(AstLiteral::QuotedString("c".to_owned()))
                 ],
                 negated: false
             }
@@ -365,11 +365,11 @@ mod tests {
         assert_eq!(
             r#"id NOT IN ("a", "b", "c")"#,
             Expr::InList {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 list: vec![
-                    Expr::Literal(AstLiteral::QuotedString("a".to_string())),
-                    Expr::Literal(AstLiteral::QuotedString("b".to_string())),
-                    Expr::Literal(AstLiteral::QuotedString("c".to_string()))
+                    Expr::Literal(AstLiteral::QuotedString("a".to_owned())),
+                    Expr::Literal(AstLiteral::QuotedString("b".to_owned())),
+                    Expr::Literal(AstLiteral::QuotedString("c".to_owned()))
                 ],
                 negated: true
             }
@@ -379,7 +379,7 @@ mod tests {
         assert_eq!(
             "id IN (SELECT * FROM FOO)",
             Expr::InSubquery {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         projection: vec![SelectItem::Wildcard],
@@ -407,7 +407,7 @@ mod tests {
         assert_eq!(
             "id NOT IN (SELECT * FROM FOO)",
             Expr::InSubquery {
-                expr: Box::new(Expr::Identifier("id".to_string())),
+                expr: Box::new(Expr::Identifier("id".to_owned())),
                 subquery: Box::new(Query {
                     body: SetExpr::Select(Box::new(Select {
                         projection: vec![SelectItem::Wildcard],
@@ -521,19 +521,19 @@ mod tests {
                 "#,
             ),
             Expr::Case {
-                operand: Some(Box::new(Expr::Identifier("id".to_string()))),
+                operand: Some(Box::new(Expr::Identifier("id".to_owned()))),
                 when_then: vec![
                     (
                         Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
-                        Expr::Literal(AstLiteral::QuotedString("a".to_string()))
+                        Expr::Literal(AstLiteral::QuotedString("a".to_owned()))
                     ),
                     (
                         Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
-                        Expr::Literal(AstLiteral::QuotedString("b".to_string()))
+                        Expr::Literal(AstLiteral::QuotedString("b".to_owned()))
                     )
                 ],
                 else_result: Some(Box::new(Expr::Literal(AstLiteral::QuotedString(
-                    "c".to_string()
+                    "c".to_owned()
                 ))))
             }
             .to_sql()
@@ -549,7 +549,7 @@ mod tests {
 
         assert_eq!(
             "MAX(id)",
-            Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_string())))).to_sql()
+            Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_owned())))).to_sql()
         );
 
         assert_eq!(
@@ -559,35 +559,32 @@ mod tests {
 
         assert_eq!(
             "MIN(id)",
-            Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_string())))).to_sql()
+            Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_owned())))).to_sql()
         );
 
         assert_eq!(
             "SUM(price)",
             &Expr::Aggregate(Box::new(Aggregate::Sum(Expr::Identifier(
-                "price".to_string()
+                "price".to_owned()
             ))))
             .to_sql()
         );
 
         assert_eq!(
             "AVG(pay)",
-            &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier(
-                "pay".to_string()
-            ))))
-            .to_sql()
+            &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier("pay".to_owned())))).to_sql()
         );
         assert_eq!(
             "VARIANCE(pay)",
             &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
-                "pay".to_string()
+                "pay".to_owned()
             ))))
             .to_sql()
         );
         assert_eq!(
             "STDEV(total)",
             &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
-                "total".to_string()
+                "total".to_owned()
             ))))
             .to_sql()
         );

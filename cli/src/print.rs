@@ -129,7 +129,7 @@ impl<'a, W: Write> Print<W> {
                 let mut table = self.get_table(vec!["Index Name", "Order", "Description"]);
                 for index in indexes {
                     table.add_record([
-                        index.name.to_string(),
+                        index.name.to_owned(),
                         index.order.to_string(),
                         index.expr.to_sql(),
                     ]);
@@ -421,22 +421,22 @@ mod tests {
         test!(
             &Payload::ShowIndexes(vec![
                 SchemaIndex {
-                    name: "id_ndx".to_string(),
+                    name: "id_ndx".to_owned(),
                     order: SchemaIndexOrd::Asc,
-                    expr: Expr::Identifier("id".to_string())
+                    expr: Expr::Identifier("id".to_owned())
                 },
                 SchemaIndex {
-                    name: "name_ndx".to_string(),
+                    name: "name_ndx".to_owned(),
                     order: SchemaIndexOrd::Desc,
-                    expr: Expr::Identifier("name".to_string())
+                    expr: Expr::Identifier("name".to_owned())
                 },
                 SchemaIndex {
-                    name: "expr_ndx".to_string(),
+                    name: "expr_ndx".to_owned(),
                     order: SchemaIndexOrd::Both,
                     expr: Expr::BinaryOp {
-                        left: Box::new(Expr::Identifier("expr1".to_string())),
+                        left: Box::new(Expr::Identifier("expr1".to_owned())),
                         op: BinaryOperator::Minus,
-                        right: Box::new(Expr::Identifier("expr2".to_string()))
+                        right: Box::new(Expr::Identifier("expr2".to_owned()))
                     }
                 }
             ],),
@@ -450,9 +450,9 @@ mod tests {
 
         test!(
             &Payload::ShowColumns(vec![
-                ("id".to_string(), DataType::Int),
-                ("name".to_string(), DataType::Text),
-                ("isabear".to_string(), DataType::Boolean),
+                ("id".to_owned(), DataType::Int),
+                ("name".to_owned(), DataType::Text),
+                ("isabear".to_owned(), DataType::Boolean),
             ],),
             "
 | Field   | Type    |
@@ -464,16 +464,16 @@ mod tests {
 
         test!(
             &Payload::ShowColumns(vec![
-                ("id".to_string(), DataType::Int8),
-                ("calc1".to_string(), DataType::Float),
-                ("cost".to_string(), DataType::Decimal),
-                ("DOB".to_string(), DataType::Date),
-                ("clock".to_string(), DataType::Time),
-                ("tstamp".to_string(), DataType::Timestamp),
-                ("ival".to_string(), DataType::Interval),
-                ("uuid".to_string(), DataType::Uuid),
-                ("hash".to_string(), DataType::Map),
-                ("mylist".to_string(), DataType::List),
+                ("id".to_owned(), DataType::Int8),
+                ("calc1".to_owned(), DataType::Float),
+                ("cost".to_owned(), DataType::Decimal),
+                ("DOB".to_owned(), DataType::Date),
+                ("clock".to_owned(), DataType::Time),
+                ("tstamp".to_owned(), DataType::Timestamp),
+                ("ival".to_owned(), DataType::Interval),
+                ("uuid".to_owned(), DataType::Uuid),
+                ("hash".to_owned(), DataType::Map),
+                ("mylist".to_owned(), DataType::List),
             ],),
             "
 | Field  | Type      |

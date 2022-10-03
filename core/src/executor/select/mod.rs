@@ -93,7 +93,7 @@ pub fn get_labels<'a>(
                         .find(|(table_alias, _)| table_alias == &target_table_alias)
                         .map(|(_, columns)| columns)
                         .ok_or_else(|| {
-                            SelectError::TableAliasNotFound(target_table_alias.to_string()).into()
+                            SelectError::TableAliasNotFound(target_table_alias.to_owned()).into()
                         });
                     let columns = try_into!(columns);
                     let labels = to_labels(columns);

@@ -59,7 +59,7 @@ impl<'a> Blend<'a> {
                             match context.get_alias_values(table_alias) {
                                 Some(values) => Ok(values),
                                 None => Err(SelectError::BlendTableAliasNotFound(
-                                    table_alias.to_string(),
+                                    table_alias.to_owned(),
                                 )
                                 .into()),
                             }

@@ -1,3 +1,5 @@
+#![deny(clippy::str_to_string)]
+
 mod alter_table;
 mod index;
 mod transaction;

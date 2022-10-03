@@ -51,7 +51,7 @@ test_case!(format, async move {
         (
             r#"SELECT FORMAT("2015-09-05 23:56:04", "%Y-%m-%d %H") AS timestamp"#,
             Err(
-                EvaluateError::UnsupportedExprForFormatFunction("2015-09-05 23:56:04".to_string())
+                EvaluateError::UnsupportedExprForFormatFunction("2015-09-05 23:56:04".to_owned())
                     .into(),
             ),
         ),
