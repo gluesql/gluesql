@@ -26,6 +26,10 @@ test_case!(position, async move {
             Ok(select!(test; I64; 5)),
         ),
         (
+            r#"SELECT POSITION(NULL IN "cheese") AS test"#,
+            Ok(select_with_null!(test; Null)),
+        ),
+        (
             r#"SELECT POSITION(1 IN "cheese") AS test"#,
             Err(EvaluateError::FunctionRequiresStringValue(String::from("POSITION")).into()),
         ),
