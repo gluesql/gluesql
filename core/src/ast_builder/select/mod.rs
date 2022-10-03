@@ -1,5 +1,8 @@
+mod filter;
 mod group_by;
 mod having;
+mod join;
+mod join_constraint;
 mod limit;
 mod limit_offset;
 mod offset;
@@ -9,14 +12,21 @@ mod project;
 mod root;
 
 pub use {
-    group_by::GroupByNode, having::HavingNode, limit::LimitNode, limit_offset::LimitOffsetNode,
+    filter::FilterNode, group_by::GroupByNode, having::HavingNode, join::JoinNode,
+    join_constraint::JoinConstraintNode, limit::LimitNode, limit_offset::LimitOffsetNode,
     offset::OffsetNode, offset_limit::OffsetLimitNode, order_by::OrderByNode, project::ProjectNode,
     root::SelectNode,
 };
 
-use crate::{
-    ast::{Expr, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableWithJoins},
-    result::Result,
+use {
+    super::Build,
+    crate::{
+        ast::{
+            Expr, Join, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+            TableWithJoins,
+        },
+        result::Result,
+    },
 };
 
 pub trait Prebuild {
@@ -26,9 +36,10 @@ pub trait Prebuild {
 #[derive(Clone)]
 pub struct NodeData {
     pub projection: Vec<SelectItem>,
-    pub from: TableWithJoins,
+    pub relation: TableFactor,
+    pub joins: Vec<Join>,
+    pub filter: Option<Expr>,
     /// WHERE
-    pub selection: Option<Expr>,
     pub group_by: Vec<Expr>,
     pub having: Option<Expr>,
     pub order_by: Vec<OrderByExpr>,
@@ -40,14 +51,18 @@ impl NodeData {
     pub fn build_query(self) -> Query {
         let NodeData {
             projection,
-            from,
-            selection,
+            relation,
             group_by,
             having,
             order_by,
             offset,
             limit,
+            joins,
+            filter,
         } = self;
+
+        let selection = filter.map(Expr::try_from).and_then(|expr| expr.ok());
+        let from = TableWithJoins { relation, joins };
 
         let select = Select {
             projection,
@@ -68,5 +83,14 @@ impl NodeData {
         let query = self.build_query();
 
         Statement::Query(query)
+    }
+}
+
+impl<T> Build for T
+where
+    T: Prebuild,
+{
+    fn build(self) -> Result<Statement> {
+        self.prebuild().map(NodeData::build_stmt)
     }
 }

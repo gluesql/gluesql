@@ -116,4 +116,10 @@ pub enum TranslateError {
 
     #[error("Series should have size")]
     LackOfArgs,
+
+    #[error("unreachable empty object")]
+    UnreachableEmptyObject,
+
+    #[error("unimplemented - compound object is supported: {0}")]
+    CompoundObjectNotSupported(String),
 }

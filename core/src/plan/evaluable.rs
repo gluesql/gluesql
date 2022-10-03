@@ -1,11 +1,8 @@
 use {
     super::{context::Context, expr::PlanExpr},
-    crate::{
-        ast::{
-            Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
-            TableAlias, TableFactor, TableWithJoins, Values,
-        },
-        data::get_name,
+    crate::ast::{
+        Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr, TableAlias,
+        TableFactor, TableWithJoins, Values,
     },
     std::{convert::identity, rc::Rc},
 };
@@ -141,18 +138,13 @@ fn check_select(context: Option<Rc<Context<'_>>>, select: &Select) -> bool {
 
 fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFactor) -> bool {
     let alias = match table_factor {
-        TableFactor::Table { name, alias, .. } | TableFactor::Series { name, alias, .. } => {
-            let name = match get_name(name) {
-                Ok(name) => name,
-                Err(_) => return false,
-            };
-
-            alias
-                .as_ref()
-                .map(|TableAlias { name, .. }| name.clone())
-                .unwrap_or_else(|| name.clone())
-        }
-        TableFactor::Derived { alias, .. } => alias.to_owned().name,
+        TableFactor::Table { name, alias, .. } => alias
+            .as_ref()
+            .map(|TableAlias { name, .. }| name.clone())
+            .unwrap_or_else(|| name.clone()),
+        TableFactor::Derived { alias, .. }
+        | TableFactor::Series { alias, .. }
+        | TableFactor::Dictionary { alias, .. } => alias.name.to_owned(),
     };
 
     context

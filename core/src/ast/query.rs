@@ -1,6 +1,8 @@
 use {
-    super::{Expr, IndexOperator, ObjectName},
+    super::{Expr, IndexOperator},
+    crate::ast::ToSql,
     serde::{Deserialize, Serialize},
+    strum_macros::Display,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -32,7 +34,7 @@ pub enum SelectItem {
     /// An expression
     Expr { expr: Expr, label: String },
     /// `alias.*` or even `schema.table.*`
-    QualifiedWildcard(ObjectName),
+    QualifiedWildcard(String),
     /// An unqualified `*`
     Wildcard,
 }
@@ -56,7 +58,7 @@ pub enum IndexItem {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TableFactor {
     Table {
-        name: ObjectName,
+        name: String,
         alias: Option<TableAlias>,
         /// Query planner result
         index: Option<IndexItem>,
@@ -66,10 +68,20 @@ pub enum TableFactor {
         alias: TableAlias,
     },
     Series {
-        name: ObjectName,
-        alias: Option<TableAlias>,
+        alias: TableAlias,
         size: Expr,
     },
+    Dictionary {
+        dict: Dictionary,
+        alias: TableAlias,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
+pub enum Dictionary {
+    GlueTables,
+    GlueTableColumns,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -115,3 +127,48 @@ pub struct OrderByExpr {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Values(pub Vec<Vec<Expr>>);
+
+impl ToSql for OrderByExpr {
+    fn to_sql(&self) -> String {
+        let OrderByExpr { expr, asc } = self;
+        let expr = expr.to_sql();
+
+        match asc {
+            Some(true) => format!("{} ASC", expr),
+            Some(false) => format!("{} DESC", expr),
+            None => expr,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ast::{Expr, OrderByExpr, ToSql};
+
+    #[test]
+    fn to_sql_order_by_expr() {
+        let actual = "foo ASC".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: Some(true),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "foo DESC".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: Some(false),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "foo".to_string();
+        let expected = OrderByExpr {
+            expr: Expr::Identifier("foo".to_string()),
+            asc: None,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+}

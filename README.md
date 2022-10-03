@@ -25,13 +25,15 @@ GlueSQL provides three reference storage options.
 
 ### Installation
 
-* `Cargo.toml`
+- `Cargo.toml`
+
 ```toml
 [dependencies]
 gluesql = "0.12"
 ```
 
-* CLI application
+- CLI application
+
 ```
 $ cargo install gluesql
 ```
@@ -69,7 +71,7 @@ fn main() {
 [dependencies.gluesql]
 version = "0.12"
 default-features = false
-features = ["alter-table", "index", "transaction", "metadata"]
+features = ["alter-table", "index", "transaction"]
 ```
 
 #### Four features below are also optional
@@ -77,7 +79,6 @@ features = ["alter-table", "index", "transaction", "metadata"]
 - `alter-table` - ALTER TABLE query support
 - `index` - CREATE INDEX and DROP INDEX, index support
 - `transaction` - BEGIN, ROLLBACK and COMMIT, transaction support
-- `metadata` - SHOW TABLES and SHOW VERSION support
 
 ### Usage
 
@@ -103,7 +104,7 @@ pub trait StoreMut where Self: Sized {
 
 #### Optional store traits
 
-- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/core/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/index.rs), [`Transaction`](https://github.com/gluesql/gluesql/blob/main/core/src/store/transaction.rs) and [`Metadata`](https://github.com/gluesql/gluesql/blob/main/core/src/store/metadata.rs)
+- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/core/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/index.rs), [`Transaction`](https://github.com/gluesql/gluesql/blob/main/core/src/store/transaction.rs)
 
 ```rust
 pub trait AlterTable where Self: Sized {
@@ -127,11 +128,6 @@ pub trait Transaction where Self: Sized {
     async fn rollback(..) -> ..;
     async fn commit(..) -> ..;
 }
-
-pub trait Metadata {
-    fn version(..) -> String;
-    async fn schema_names(..) -> ..;
-}
 ```
 
 ## GlueSQL.js
@@ -139,20 +135,23 @@ pub trait Metadata {
 GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedded database and entirely runs in the browser. GlueSQL.js supports in-memory storage backend, but it will soon to have localStorage, sessionStorage and indexedDB backend supports.
 
 #### More info
-* [GlueSQL for web browsers and Node.js](https://github.com/gluesql/gluesql/tree/main/gluesql-js)
+
+- [GlueSQL for web browsers and Node.js](https://github.com/gluesql/gluesql/tree/main/gluesql-js)
 
 ## SQL Features
 
 GlueSQL currently supports a limited subset of queries. It's being actively developed.
 
 #### Data Types
-| Category | Type                                                                      |
-|----------|---------------------------------------------------------------------------|
-| Numeric  | `INT8`, `INT16`, `INT32`, `INTEGER`, `INT128`, `UINT8`, `FLOAT`, `DECIMAL`|
-| Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                   |
-| Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                         |
+
+| Category | Type                                                                       |
+| -------- | -------------------------------------------------------------------------- |
+| Numeric  | `INT8`, `INT16`, `INT32`, `INTEGER`, `INT128`, `UINT8`, `FLOAT`, `DECIMAL` |
+| Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                    |
+| Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                          |
 
 #### Queries
+
 - `CREATE TABLE`, `DROP TABLE`
 - `ALTER TABLE` - `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
 - `CREATE INDEX`, `DROP INDEX`

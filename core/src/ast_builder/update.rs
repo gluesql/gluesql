@@ -1,7 +1,7 @@
 use {
-    super::{AssignmentNode, ExprNode},
+    super::{AssignmentNode, Build, ExprNode},
     crate::{
-        ast::{Assignment, Expr, ObjectName, Statement},
+        ast::{Assignment, Expr, Statement},
         result::Result,
     },
 };
@@ -32,9 +32,11 @@ impl UpdateNode {
             .push(AssignmentNode::Expr(id.to_owned(), value.into()));
         self
     }
+}
 
-    pub fn build(self) -> Result<Statement> {
-        let table_name = ObjectName(vec![self.table_name]);
+impl Build for UpdateNode {
+    fn build(self) -> Result<Statement> {
+        let table_name = self.table_name;
         let selection = self.selection.map(Expr::try_from).transpose()?;
         let assignments = self
             .assignments
@@ -51,7 +53,7 @@ impl UpdateNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn update() {
