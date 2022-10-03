@@ -317,7 +317,7 @@ impl ToSql for Join {
 impl ToSql for JoinExecutor {
     fn to_sql(&self) -> String {
         match self {
-            JoinExecutor::NestedLoop => "".to_string(),
+            JoinExecutor::NestedLoop => "".to_owned(),
             JoinExecutor::Hash {
                 key_expr,
                 value_expr,
@@ -337,7 +337,7 @@ impl ToSql for JoinConstraint {
     fn to_sql(&self) -> String {
         match self {
             JoinConstraint::On(expr) => expr.to_sql(),
-            JoinConstraint::None => "".to_string(),
+            JoinConstraint::None => "".to_owned(),
         }
     }
 }
