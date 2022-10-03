@@ -225,18 +225,17 @@ pub fn substr(
 
 pub fn ascii(name: String, expr: Evaluated<'_>) -> Result<Value> {
     let string = eval_to_str!(name, expr);
+    let mut iter = string.chars();
 
-    if string.len() != 1 {
-        return Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into());
-    }
-
-    let char = string.chars().next();
-    match char {
-        Some(char) => {
-            let char = char as u8;
-            Ok(Value::U8(char as u8))
+    match (iter.next(), iter.next()) {
+        (Some(c), None) => {
+            if c.is_ascii() {
+                Ok(Value::U8(c as u8))
+            } else {
+                Err(EvaluateError::NonAsciiCharacterNotAllowed.into())
+            }
         }
-        None => Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
+        _ => Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
     }
 }
 

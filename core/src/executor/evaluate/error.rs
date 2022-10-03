@@ -67,6 +67,9 @@ pub enum EvaluateError {
     #[error("support single character only")]
     AsciiFunctionRequiresSingleCharacterValue,
 
+    #[error("not ascii character not allowed")]
+    NonAsciiCharacterNotAllowed,
+
     #[error("function requires integer value in range")]
     ChrFunctionRequiresIntegerValueInRange0To255,
 }
