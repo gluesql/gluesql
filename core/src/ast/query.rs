@@ -434,7 +434,7 @@ mod tests {
 
     #[test]
     fn to_sql_set_expr() {
-        let actual = "SELECT * FROM FOO AS F".to_string();
+        let actual = "SELECT * FROM FOO AS F INNER JOIN PlayerItem".to_string();
         let expected = SetExpr::Select(Box::new(Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
@@ -446,7 +446,15 @@ mod tests {
                     }),
                     index: None,
                 },
-                joins: Vec::new(),
+                joins: vec![Join {
+                    relation: TableFactor::Table {
+                        name: "PlayerItem".to_string(),
+                        alias: None,
+                        index: None,
+                    },
+                    join_operator: JoinOperator::Inner(JoinConstraint::None),
+                    join_executor: JoinExecutor::NestedLoop,
+                }],
             },
             selection: None,
             group_by: Vec::new(),
