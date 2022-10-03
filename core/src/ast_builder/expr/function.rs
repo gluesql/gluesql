@@ -1126,8 +1126,8 @@ mod tests {
 
     #[test]
     fn function_position() {
-        let actual = position(text("ke"), text("cake"));
-        let expected = r#"POSITION("ke" IN "cake")"#;
+        let actual = position(text("ke"), expr("cake"));
+        let expected = r#"POSITION("ke" IN cake)"#;
         test_expr(actual, expected);
 
         let actual = text("rice").position(text("cake"));
