@@ -310,10 +310,13 @@ fn evaluate_function<'a>(
             let format = eval(format)?;
             f::to_time(name(), expr, format)
         }
-        Function::Position { expr, r#in } => {
-            let expr = eval(expr)?;
-            let r#in = eval(r#in)?;
-            f::position(name(), expr, r#in)
+        Function::Position {
+            sub_expr,
+            from_expr,
+        } => {
+            let sub_expr = eval(sub_expr)?;
+            let from_expr = eval(from_expr)?;
+            f::position(name(), sub_expr, from_expr)
         }
     }
     .map(Evaluated::from)

@@ -416,10 +416,13 @@ async fn evaluate_function<'a>(
             let format = eval(format).await?;
             f::to_time(name(), expr, format)
         }
-        Function::Position { expr, r#in } => {
-            let expr = eval(expr).await?;
-            let r#in = eval(r#in).await?;
-            f::position(name(), expr, r#in)
+        Function::Position {
+            sub_expr,
+            from_expr,
+        } => {
+            let sub_expr = eval(sub_expr).await?;
+            let from_expr = eval(from_expr).await?;
+            f::position(name(), sub_expr, from_expr)
         }
     }
     .map(Evaluated::from)
