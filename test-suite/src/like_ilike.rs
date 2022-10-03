@@ -65,7 +65,7 @@ test_case!(like_ilike, async move {
         (
             "SELECT name FROM Item WHERE 'ABC' LIKE 10",
             LiteralError::LikeOnNonString(
-                format!("{:?}", Literal::Text(Cow::Owned("ABC".to_string()))),
+                format!("{:?}", Literal::Text(Cow::Owned("ABC".to_owned()))),
                 format!(
                     "{:?}",
                     Literal::Number(Cow::Owned(BigDecimal::from_str("10").unwrap()))
@@ -83,11 +83,11 @@ test_case!(like_ilike, async move {
         ),
         (
             "SELECT name FROM Item WHERE name = 'Amelia' AND name LIKE 10",
-            ValueError::LikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
+            ValueError::LikeOnNonString(Value::Str("Amelia".to_owned()), Value::I64(10)).into(),
         ),
         (
             "SELECT name FROM Item WHERE name = 'Amelia' AND name ILIKE 10",
-            ValueError::ILikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
+            ValueError::ILikeOnNonString(Value::Str("Amelia".to_owned()), Value::I64(10)).into(),
         ),
     ];
 

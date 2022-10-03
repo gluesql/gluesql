@@ -45,27 +45,27 @@ impl SelectNode {
     }
 
     pub fn join(self, table_name: &str) -> JoinNode {
-        JoinNode::new(self, table_name.to_string(), None, JoinOperatorType::Inner)
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
     }
 
     pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
         JoinNode::new(
             self,
-            table_name.to_string(),
-            Some(alias.to_string()),
+            table_name.to_owned(),
+            Some(alias.to_owned()),
             JoinOperatorType::Inner,
         )
     }
 
     pub fn left_join(self, table_name: &str) -> JoinNode {
-        JoinNode::new(self, table_name.to_string(), None, JoinOperatorType::Left)
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
     }
 
     pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
         JoinNode::new(
             self,
-            table_name.to_string(),
-            Some(alias.to_string()),
+            table_name.to_owned(),
+            Some(alias.to_owned()),
             JoinOperatorType::Left,
         )
     }

@@ -22,7 +22,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
             .any(|ColumnOptionDef { option, .. }| matches!(option, ColumnOption::Unique { .. }))
     {
         return Err(AlterError::UnsupportedDataTypeForUniqueColumn(
-            name.to_string(),
+            name.to_owned(),
             data_type.clone(),
         )
         .into());
