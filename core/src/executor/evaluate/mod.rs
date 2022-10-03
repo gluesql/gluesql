@@ -422,7 +422,7 @@ async fn evaluate_function<'a>(
         } => {
             let sub_expr = eval(sub_expr).await?;
             let from_expr = eval(from_expr).await?;
-            f::position(name(), sub_expr, from_expr)
+            f::position(name, sub_expr, from_expr)
         }
     }
     .map(Evaluated::from)
