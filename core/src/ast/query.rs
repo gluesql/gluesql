@@ -455,7 +455,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "VALUES (1, \"glue\", 3), (2, \"sql\", 2)".to_string();
+        let actual = r#"VALUES (1, "glue", 3), (2, "sql", 2)"#.to_owned();
         let expected = SetExpr::Values(Values(vec![
             vec![
                 Expr::Literal(AstLiteral::QuotedString("glue".to_string())),
@@ -472,7 +472,7 @@ mod tests {
 
     #[test]
     fn to_sql_select() {
-        let actual = "SELECT * FROM FOO AS F GROUP BY \"name\" HAVING name = \"glue\"";
+        let actual = r#"SELECT * FROM FOO AS F GROUP BY name HAVING name = "glue""#.to_owned();
         let expected = Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
@@ -487,7 +487,7 @@ mod tests {
                 joins: Vec::new(),
             },
             selection: None,
-            group_by: vec![Expr::Literal(AstLiteral::QuotedString("name".to_string()))],
+            group_by: vec![Expr::Identifier("name".to_string())],
             having: Some(Expr::BinaryOp {
                 left: Box::new(Expr::Identifier("name".to_string())),
                 op: BinaryOperator::Eq,
@@ -497,7 +497,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "SELECT * FROM FOO WHERE name = \"glue\"";
+        let actual = r#"SELECT * FROM FOO WHERE name = "glue""#.to_owned();
         let expected = Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
@@ -671,15 +671,17 @@ mod tests {
                 alias: None,
                 index: None,
             },
-            join_operator: JoinOperator::LeftOuter(JoinConstraint::On(expr(
-                "PlayerItem.user_id = Player.id",
-            ))),
-            join_executor: JoinExecutor::NestedLoop,
+            join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
+            join_executor: JoinExecutor::Hash {
+                key_expr: expr("PlayerItem.user_id"),
+                value_expr: expr("Player.id"),
+                where_clause: None,
+            },
         }
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id";
+        let actual = "LEFT OUTER JOIN PlayerItem ON PlayerItem.age > Player.age AND PlayerItem.user_id = Player.id AND PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2";
         let expected = Join {
             relation: TableFactor::Table {
                 name: "PlayerItem".to_string(),
@@ -692,7 +694,9 @@ mod tests {
             join_executor: JoinExecutor::Hash {
                 key_expr: expr("PlayerItem.user_id"),
                 value_expr: expr("Player.id"),
-                where_clause: None,
+                where_clause: Some(expr(
+                    "PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
+                )),
             },
         }
         .to_sql();
