@@ -1,6 +1,7 @@
 use {
     super::{Expr, IndexOperator},
     crate::ast::ToSql,
+    itertools::Itertools,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
 };
@@ -128,6 +129,152 @@ pub struct OrderByExpr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Values(pub Vec<Vec<Expr>>);
 
+impl ToSql for Query {
+    fn to_sql(&self) -> String {
+        let Query {
+            body,
+            order_by,
+            limit,
+            offset,
+        } = self;
+
+        let order_by = if order_by.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "ORDER BY {}",
+                order_by.iter().map(|expr| expr.to_sql()).join(" ")
+            )
+        };
+
+        let limit = match limit {
+            Some(expr) => format!("LIMIT {}", expr.to_sql()),
+            _ => "".to_string(),
+        };
+
+        let offset = match offset {
+            Some(expr) => format!("OFFSET {}", expr.to_sql()),
+            _ => "".to_string(),
+        };
+
+        let string = vec![order_by, limit, offset]
+            .iter()
+            .filter(|sql| !sql.is_empty())
+            .join(" ");
+
+        if string.is_empty() {
+            body.to_sql()
+        } else {
+            format!("{} {}", body.to_sql(), string)
+        }
+    }
+}
+
+impl ToSql for SetExpr {
+    fn to_sql(&self) -> String {
+        match self {
+            SetExpr::Select(expr) => expr.to_sql(),
+            SetExpr::Values(_value) => "(..value..)".to_string(),
+        }
+    }
+}
+
+impl ToSql for Select {
+    fn to_sql(&self) -> String {
+        let Select {
+            projection,
+            from,
+            selection,
+            group_by,
+            having,
+        } = self;
+        let projection = projection.iter().map(|item| item.to_sql()).join(", ");
+
+        let selection = match selection {
+            Some(expr) => format!("WHERE {}", expr.to_sql()),
+            None => "".to_string(),
+        };
+
+        let group_by = if group_by.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "GROUP BY {}",
+                group_by.iter().map(|item| item.to_sql()).join(", ")
+            )
+        };
+
+        let having = match having {
+            Some(having) => format!("HAVING {}", having.to_sql()),
+            None => "".to_string(),
+        };
+
+        let condition = vec![selection, group_by, having]
+            .iter()
+            .filter(|sql| !sql.is_empty())
+            .join(" ");
+
+        if condition.is_empty() {
+            format!("SELECT {projection} FROM {}", from.to_sql())
+        } else {
+            format!("SELECT {projection} FROM {} {condition}", from.to_sql())
+        }
+    }
+}
+
+impl ToSql for SelectItem {
+    fn to_sql(&self) -> String {
+        match self {
+            SelectItem::Expr { expr, label } => {
+                let expr = expr.to_sql();
+                format!("{} AS {}", expr, label)
+            }
+            SelectItem::QualifiedWildcard(obj) => format!("{}.*", obj),
+            SelectItem::Wildcard => "*".to_string(),
+        }
+    }
+}
+
+impl ToSql for TableWithJoins {
+    fn to_sql(&self) -> String {
+        let TableWithJoins { relation, joins } = self;
+
+        if joins.is_empty() {
+            relation.to_sql()
+        } else {
+            format!("{} (..join..)", relation.to_sql())
+        }
+    }
+}
+
+impl ToSql for TableFactor {
+    fn to_sql(&self) -> String {
+        match self {
+            TableFactor::Table { name, alias, .. } => match alias {
+                Some(alias) => format!("{} {}", name, alias.to_sql()),
+                None => name.to_string(),
+            },
+            TableFactor::Derived { subquery, alias } => {
+                format!("({}) {}", subquery.to_sql(), alias.to_sql())
+            }
+            TableFactor::Series { alias, size } => {
+                format!("SERIES({}) {}", size.to_sql(), alias.to_sql())
+            }
+            TableFactor::Dictionary { dict, alias } => {
+                format!("{dict} {}", alias.to_sql())
+            }
+        }
+    }
+}
+
+impl ToSql for TableAlias {
+    fn to_sql(&self) -> String {
+        let TableAlias { name, .. } = self;
+
+        format!("AS {}", name)
+    }
+}
+
 impl ToSql for OrderByExpr {
     fn to_sql(&self) -> String {
         let OrderByExpr { expr, asc } = self;
@@ -143,7 +290,216 @@ impl ToSql for OrderByExpr {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{Expr, OrderByExpr, ToSql};
+
+    use {
+        crate::ast::{
+            AstLiteral, BinaryOperator, Dictionary, Expr, OrderByExpr, Query, Select, SelectItem,
+            SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql,
+        },
+        bigdecimal::BigDecimal,
+        std::str::FromStr,
+    };
+
+    #[test]
+    fn to_sql_query() {
+        let order_by = vec![OrderByExpr {
+            expr: Expr::Identifier("name".to_string()),
+            asc: Some(true),
+        }];
+        let actual = "SELECT * FROM FOO AS F ORDER BY name ASC LIMIT 10 OFFSET 3".to_string();
+        let expected = Query {
+            body: SetExpr::Select(Box::new(Select {
+                projection: vec![SelectItem::Wildcard],
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "FOO".to_string(),
+                        alias: Some(TableAlias {
+                            name: "F".to_string(),
+                            columns: Vec::new(),
+                        }),
+                        index: None,
+                    },
+                    joins: Vec::new(),
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            })),
+            order_by,
+            limit: Some(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_str("10").unwrap(),
+            ))),
+            offset: Some(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_str("3").unwrap(),
+            ))),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_select() {
+        let actual = "SELECT * FROM FOO AS F GROUP BY \"name\" HAVING name = \"glue\"";
+        let expected = Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "FOO".to_string(),
+                    alias: Some(TableAlias {
+                        name: "F".to_string(),
+                        columns: Vec::new(),
+                    }),
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: None,
+            group_by: vec![Expr::Literal(AstLiteral::QuotedString("name".to_string()))],
+            having: Some(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("name".to_string())),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string()))),
+            }),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "SELECT * FROM FOO WHERE name = \"glue\"";
+        let expected = Select {
+            projection: vec![SelectItem::Wildcard],
+            from: TableWithJoins {
+                relation: TableFactor::Table {
+                    name: "FOO".to_string(),
+                    alias: None,
+                    index: None,
+                },
+                joins: Vec::new(),
+            },
+            selection: Some(Expr::BinaryOp {
+                left: Box::new(Expr::Identifier("name".to_string())),
+                op: BinaryOperator::Eq,
+                right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string()))),
+            }),
+            group_by: Vec::new(),
+            having: None,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_select_item() {
+        let actual = "name AS n".to_string();
+        let expected = SelectItem::Expr {
+            expr: Expr::Identifier("name".to_string()),
+            label: "n".to_string(),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "foo.*".to_string();
+        let expected = SelectItem::QualifiedWildcard("foo".to_string()).to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "*".to_string();
+        let expected = SelectItem::Wildcard.to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_table_with_joins() {
+        let actual = "FOO AS F";
+        let expected = TableWithJoins {
+            relation: TableFactor::Table {
+                name: "FOO".to_string(),
+                alias: Some(TableAlias {
+                    name: "F".to_string(),
+                    columns: Vec::new(),
+                }),
+                index: None,
+            },
+            joins: Vec::new(),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_table_factor() {
+        let actual = "FOO AS F";
+        let expected = TableFactor::Table {
+            name: "FOO".to_string(),
+            alias: Some(TableAlias {
+                name: "F".to_string(),
+                columns: Vec::new(),
+            }),
+            index: None,
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "(SELECT * FROM FOO) AS F";
+        let expected = TableFactor::Derived {
+            subquery: Query {
+                body: SetExpr::Select(Box::new(Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Table {
+                            name: "FOO".to_string(),
+                            alias: None,
+                            index: None,
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: None,
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            },
+            alias: TableAlias {
+                name: "F".to_string(),
+                columns: Vec::new(),
+            },
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "SERIES(3) AS S";
+        let expected = TableFactor::Series {
+            alias: TableAlias {
+                name: "S".to_string(),
+                columns: Vec::new(),
+            },
+            size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+
+        let actual = "GLUE_TABLES AS glue";
+        let expected = TableFactor::Dictionary {
+            dict: Dictionary::GlueTables,
+            alias: TableAlias {
+                name: "glue".to_string(),
+                columns: Vec::new(),
+            },
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn to_sql_table_alias() {
+        let actual = "AS F";
+        let expected = TableAlias {
+            name: "F".to_string(),
+            columns: Vec::new(),
+        }
+        .to_sql();
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn to_sql_order_by_expr() {
