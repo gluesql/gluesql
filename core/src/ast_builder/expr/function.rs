@@ -382,7 +382,7 @@ impl ExprNode {
         to_time(self, format)
     }
     pub fn position(self, format: ExprNode) -> ExprNode {
-        position(self, format)
+        position(format, self)
     }
 }
 
@@ -1131,7 +1131,7 @@ mod tests {
         test_expr(actual, expected);
 
         let actual = text("rice").position(text("cake"));
-        let expected = r#"POSITION("rice" IN "cake")"#;
+        let expected = r#"POSITION("cake" IN "rice")"#;
         test_expr(actual, expected);
     }
 }
