@@ -162,7 +162,7 @@ impl ToSql for CountArgExpr {
     fn to_sql(&self) -> String {
         match self {
             CountArgExpr::Expr(e) => e.to_sql(),
-            CountArgExpr::Wildcard => "*".to_string(),
+            CountArgExpr::Wildcard => "*".to_owned(),
         }
     }
 }

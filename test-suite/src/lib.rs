@@ -1,3 +1,5 @@
+#![deny(clippy::str_to_string)]
+
 pub mod aggregate;
 pub mod alter;
 pub mod arithmetic;

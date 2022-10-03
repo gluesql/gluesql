@@ -50,7 +50,7 @@ fn convert_payload(payload: Payload) -> Json {
                 .map(|(name, data_type)| {
                     json!({
                         "name": name,
-                        "type": data_type.to_string(),
+                        "type": data_type.to_owned(),
                     })
                 })
                 .collect();
@@ -66,7 +66,7 @@ fn convert_payload(payload: Payload) -> Json {
                 .map(|index| {
                     json!({
                         "name": index.name,
-                        "order": index.order.to_string(),
+                        "order": index.order.to_owned(),
                         "description": index.expr.to_sql(),
                     })
                 })

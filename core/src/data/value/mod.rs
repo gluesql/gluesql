@@ -572,8 +572,8 @@ impl Value {
     /// ```
     /// use gluesql_core::prelude::Value;
     ///
-    /// let str1 = Value::Str("ramen".to_string());
-    /// let str2 = Value::Str("men".to_string());
+    /// let str1 = Value::Str("ramen".to_owned());
+    /// let str2 = Value::Str("men".to_owned());
     /// assert_eq!(str1.position(&str2), Ok(Value::I64(3)));
     /// assert_eq!(str2.position(&str1), Ok(Value::I64(0)));
     /// assert!(Value::Null.position(&str2).unwrap().is_null());
@@ -1481,7 +1481,7 @@ mod tests {
         );
 
         assert_eq!(
-            Str("abc".to_string()).unary_minus(),
+            Str("abc".to_owned()).unary_minus(),
             Err(ValueError::UnaryMinusOnNonNumeric.into())
         );
     }
@@ -1506,7 +1506,7 @@ mod tests {
         );
         assert!(Null.unary_factorial().unwrap().is_null());
         assert_eq!(
-            Str("5".to_string()).unary_factorial(),
+            Str("5".to_owned()).unary_factorial(),
             Err(ValueError::FactorialOnNonNumeric.into())
         );
     }
@@ -1521,16 +1521,16 @@ mod tests {
         assert_eq!(F64(9.0).sqrt(), Ok(F64(3.0)));
         assert!(Null.sqrt().unwrap().is_null());
         assert_eq!(
-            Str("9".to_string()).sqrt(),
-            Err(ValueError::SqrtOnNonNumeric(Str("9".to_string())).into())
+            Str("9".to_owned()).sqrt(),
+            Err(ValueError::SqrtOnNonNumeric(Str("9".to_owned())).into())
         );
     }
 
     #[test]
     fn position() {
-        let str1 = Str("ramen".to_string());
-        let str2 = Str("men".to_string());
-        let empty_str = Str("".to_string());
+        let str1 = Str("ramen".to_owned());
+        let str2 = Str("men".to_owned());
+        let empty_str = Str("".to_owned());
         assert_eq!(str1.position(&str2), Ok(I64(3)));
         assert_eq!(str2.position(&str1), Ok(I64(0)));
         assert!(Null.position(&str2).unwrap().is_null());

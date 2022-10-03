@@ -82,7 +82,7 @@ pub fn left_or_right(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> 
     };
 
     let converted = if name == "LEFT" {
-        string.get(..size).map(|v| v.to_string()).unwrap_or(string)
+        string.get(..size).map(|v| v.to_owned()).unwrap_or(string)
     } else {
         let start_pos = if size > string.len() {
             0
@@ -92,7 +92,7 @@ pub fn left_or_right(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> 
 
         string
             .get(start_pos..)
-            .map(|value| value.to_string())
+            .map(|value| value.to_owned())
             .unwrap_or(string)
     };
 
@@ -134,7 +134,7 @@ pub fn lpad_or_rpad(
             string + &fill
         }
     } else {
-        string[0..size].to_string()
+        string[0..size].to_owned()
     };
 
     Ok(Value::Str(result))
@@ -170,7 +170,7 @@ pub fn ltrim(name: String, expr: Evaluated<'_>, chars: Option<Evaluated<'_>>) ->
         None => vec![' '],
     };
 
-    let value = expr.trim_start_matches(chars.as_slice()).to_string();
+    let value = expr.trim_start_matches(chars.as_slice()).to_owned();
     Ok(Value::Str(value))
 }
 
@@ -181,7 +181,7 @@ pub fn rtrim(name: String, expr: Evaluated<'_>, chars: Option<Evaluated<'_>>) ->
         None => vec![' '],
     };
 
-    let value = expr.trim_end_matches(chars.as_slice()).to_string();
+    let value = expr.trim_end_matches(chars.as_slice()).to_owned();
     Ok(Value::Str(value))
 }
 

@@ -25,13 +25,13 @@ test_case!(int128, async move {
     // cast i128::MAX+1
     test!(
         &format!("select cast({} as INT128) from Item", max_str),
-        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, max_str.to_string()).into())
+        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, max_str.to_owned()).into())
     );
 
     // cast i128::MIN-1
     test!(
         &format!("select cast({} as INT128) from Item", min_str),
-        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_string()).into())
+        Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int128, min_str.to_owned()).into())
     );
 
     // lets try some valid SQL
