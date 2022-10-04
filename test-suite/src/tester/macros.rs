@@ -100,7 +100,7 @@ macro_rules! stringify_label {
 macro_rules! select_with_null {
     ( $( $c: tt )|* ; $( $v: expr )* ) => (
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify_label!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify_label!($c).to_owned()),+],
             rows: vec![vec![$( $v ),*]],
         }
     );
@@ -110,7 +110,7 @@ macro_rules! select_with_null {
         ];
 
         gluesql_core::executor::Payload::Select {
-            labels: vec![$( stringify_label!($c).to_owned().replace("\"", "")),+],
+            labels: vec![$( stringify_label!($c).to_owned()),+],
             rows: concat_with_null!(rows ; $( $( $v2 )* );*),
         }
     });
