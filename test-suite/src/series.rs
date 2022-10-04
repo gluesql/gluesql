@@ -95,18 +95,18 @@ test_case!(series, async move {
             // SELECT without Table
             "SELECT 1, 'a', true, 1 + 2, 'a' || 'b'",
             Ok(select!(
-                1   | 'a'       | true | "1 + 2" | "'a' || 'b'"
-                I64 | Str       | Bool | I64     | Str;
-                1     "a".into()  true   3         "ab".into()
+                "1"   | "'a'"      | "true" | "1 + 2" | "'a' || 'b'"
+                I64   | Str        | Bool   | I64     | Str;
+                1       "a".into()   true     3         "ab".into()
             )),
         ),
         (
             // SELECT without Table in Scalar subquery
-            "SELECT (SELECT 1)",
+            r#"SELECT (SELECT "Hello")"#,
             Ok(select!(
-                (SELECT 1)
-                I64;
-                1
+                r#"(SELECT "Hello")"#
+                Str;
+                "Hello".to_owned()
             )),
         ),
         (
@@ -122,7 +122,7 @@ test_case!(series, async move {
             // SELECT without Table in Drived
             "SELECT * FROM (SELECT 1) AS Drived",
             Ok(select!(
-                1
+                "1"
                 I64;
                 1
             )),
