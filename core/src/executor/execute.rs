@@ -379,8 +379,8 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let query = Query {
                     body: SetExpr::Select(Box::new(crate::ast::Select {
                         projection: vec![SelectItem::Expr {
-                            expr: Expr::Identifier("TABLE_NAME".to_string()),
-                            label: "TABLE_NAME".to_string(),
+                            expr: Expr::Identifier("TABLE_NAME".to_owned()),
+                            label: "TABLE_NAME".to_owned(),
                         }],
                         from: TableWithJoins {
                             relation: TableFactor::Dictionary {

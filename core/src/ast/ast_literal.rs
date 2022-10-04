@@ -42,7 +42,7 @@ impl ToSql for AstLiteral {
                     None => format!("{value} {leading}"),
                 }
             }
-            AstLiteral::Null => "NULL".to_string(),
+            AstLiteral::Null => "NULL".to_owned(),
         }
     }
 }

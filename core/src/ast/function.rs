@@ -121,6 +121,10 @@ pub enum Function {
         expr: Expr,
         format: Expr,
     },
+    Position {
+        from_expr: Expr,
+        sub_expr: Expr,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -158,7 +162,7 @@ impl ToSql for CountArgExpr {
     fn to_sql(&self) -> String {
         match self {
             CountArgExpr::Expr(e) => e.to_sql(),
-            CountArgExpr::Wildcard => "*".to_string(),
+            CountArgExpr::Wildcard => "*".to_owned(),
         }
     }
 }

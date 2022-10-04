@@ -116,6 +116,10 @@ impl Function {
             | Self::Unwrap {
                 expr,
                 selector: expr2,
+            }
+            | Self::Position {
+                from_expr: expr2,
+                sub_expr: expr,
             } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
@@ -252,5 +256,8 @@ mod tests {
             r#"CONCAT("gluesql", " ", "is", " ", "cool")"#,
             &[r#""gluesql""#, r#"" ""#, r#""is""#, r#"" ""#, r#""cool""#],
         );
+
+        test(r#"POSITION("men" IN "ramen")"#, &[r#""men""#, r#""ramen""#]);
+        test(r#"POSITION("men" IN ramen)"#, &[r#""men""#, "ramen"]);
     }
 }

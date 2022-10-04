@@ -141,15 +141,15 @@ test_case!(left_right, async move {
         ),
         (
             r#"SELECT RIGHT(1, 1) AS test FROM SingleItem"#,
-            Err(EvaluateError::FunctionRequiresStringValue("RIGHT".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresStringValue("RIGHT".to_owned()).into()),
         ),
         (
             r#"SELECT RIGHT('Words', 1.1) AS test FROM SingleItem"#,
-            Err(EvaluateError::FunctionRequiresIntegerValue("RIGHT".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("RIGHT".to_owned()).into()),
         ),
         (
             r#"SELECT RIGHT('Words', -4) AS test FROM SingleItem"#,
-            Err(EvaluateError::FunctionRequiresUSizeValue("RIGHT".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresUSizeValue("RIGHT".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {

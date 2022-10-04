@@ -107,7 +107,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
         };
 
         let schema = Schema {
-            table_name: target_table_name.to_string(),
+            table_name: target_table_name.to_owned(),
             column_defs: target_columns_defs,
             indexes: vec![],
         };

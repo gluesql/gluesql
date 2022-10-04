@@ -24,12 +24,12 @@ impl TableNode {
 
     #[cfg(feature = "index")]
     pub fn drop_index(self, name: &str) -> DropIndexNode {
-        DropIndexNode::new(self.table_name, name.to_string())
+        DropIndexNode::new(self.table_name, name.to_owned())
     }
 
     #[cfg(feature = "index")]
     pub fn create_index<T: Into<OrderByExprNode>>(self, name: &str, column: T) -> CreateIndexNode {
-        CreateIndexNode::new(self.table_name, name.to_string(), column.into())
+        CreateIndexNode::new(self.table_name, name.to_owned(), column.into())
     }
 
     pub fn show_columns(self) -> ShowColumnsNode {

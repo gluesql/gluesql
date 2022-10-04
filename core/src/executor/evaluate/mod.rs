@@ -51,7 +51,7 @@ pub async fn evaluate<'a>(
 
             match context.get_value(ident) {
                 Some(value) => Ok(value.clone()),
-                None => Err(EvaluateError::ValueNotFound(ident.to_string()).into()),
+                None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
             }
             .map(Evaluated::from)
         }
@@ -420,6 +420,14 @@ async fn evaluate_function<'a>(
             let expr = eval(expr).await?;
             let format = eval(format).await?;
             f::to_time(name, expr, format)
+        }
+        Function::Position {
+            from_expr,
+            sub_expr,
+        } => {
+            let from_expr = eval(from_expr).await?;
+            let sub_expr = eval(sub_expr).await?;
+            f::position(name, from_expr, sub_expr)
         }
     }
     .map(Evaluated::from)
