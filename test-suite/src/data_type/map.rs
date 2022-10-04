@@ -88,21 +88,32 @@ INSERT INTO MapType2 VALUES
         ))
     );
 
-    // index expr with non-existent key from MapType Value returns Null
-    test!(
-        r#"SELECT
+    test! {
+        name: "select index expr without alias",
+        sql: r#"SELECT id, nested["b"] FROM MapType2"#,
+        expected: Ok(select_with_null!(
+            id     | r#"nested["b"]"#;
+            I64(1)   I64(10);
+            I64(2)   I64(20);
+            I64(3)   I64(30)
+        ))
+    }
+
+    test! {
+        name: "index expr with non-existent key from MapType Value returns Null",
+        sql: r#"SELECT
             id,
             nested["a"]["red"] AS fruit,
             nested["a"]["blue"] + nested["b"] as sum,
             nested["c"] AS c
         FROM MapType2"#,
-        Ok(select_with_null!(
-            id     | fruit        | sum      | c;
-            I64(1)   s("apple")     I64(11)    Null;
-            I64(2)   s("cherry")    I64(22)    Null;
-            I64(3)   s("berry")     I64(33)    Bool(true)
+        expected: Ok(select_with_null!(
+                id     | fruit        | sum      | c;
+                I64(1)   s("apple")     I64(11)    Null;
+                I64(2)   s("cherry")    I64(22)    Null;
+                I64(3)   s("berry")     I64(33)    Bool(true)
         ))
-    );
+    }
 
     test!(
         r#"SELECT UNWRAP("abc", "a.b.c") FROM MapType"#,

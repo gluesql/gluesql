@@ -63,6 +63,17 @@ INSERT INTO ListType VALUES
         ))
     );
 
+    test! {
+        name: "select index expr without alias",
+        sql: "SELECT id, items[1] FROM ListType",
+        expected: Ok(select_with_null!(
+            id     | "items[1]";
+            I64(1)   I64(2);
+            I64(2)   s("world");
+            I64(3)   I64(10)
+        ))
+    }
+
     run!(
         r#"
 CREATE TABLE ListType2 (
