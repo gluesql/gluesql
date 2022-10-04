@@ -138,6 +138,10 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 .map(|expr| translate_expr(expr.as_ref()).map(Box::new))
                 .transpose()?,
         }),
+        SqlExpr::ArrayIndex { obj, indexes } => Ok(Expr::ArrayIndex {
+            obj: translate_expr(obj).map(Box::new)?,
+            indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
+        }),
         SqlExpr::Position { expr, r#in } => translate_positon(expr, r#in),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }

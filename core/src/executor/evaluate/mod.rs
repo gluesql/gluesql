@@ -15,7 +15,7 @@ use {
     async_recursion::async_recursion,
     chrono::prelude::Utc,
     futures::{
-        future::ready,
+        future::{ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
@@ -227,6 +227,11 @@ pub async fn evaluate<'a>(
                 Some(er) => eval(er).await,
                 None => Ok(Evaluated::from(Value::Null)),
             }
+        }
+        Expr::ArrayIndex { obj, indexes } => {
+            let obj = eval(obj).await?;
+            let indexes = try_join_all(indexes.iter().map(eval)).await?;
+            expr::array_index(obj, indexes)
         }
     }
 }

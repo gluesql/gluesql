@@ -133,6 +133,11 @@ pub fn evaluate_stateless<'a>(
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
+        Expr::ArrayIndex { obj, indexes } => {
+            let obj = eval(obj)?;
+            let indexes = indexes.iter().map(eval).collect::<Result<Vec<_>>>()?;
+            expr::array_index(obj, indexes)
+        }
         Expr::Function(func) => evaluate_function(context, func),
         _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),
     }
