@@ -18,12 +18,15 @@ pub use {
     root::SelectNode,
 };
 
-use crate::{
-    ast::{
-        Expr, Join, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-        TableWithJoins,
+use {
+    super::Build,
+    crate::{
+        ast::{
+            Expr, Join, OrderByExpr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+            TableWithJoins,
+        },
+        result::Result,
     },
-    result::Result,
 };
 
 pub trait Prebuild {
@@ -80,5 +83,14 @@ impl NodeData {
         let query = self.build_query();
 
         Statement::Query(query)
+    }
+}
+
+impl<T> Build for T
+where
+    T: Prebuild,
+{
+    fn build(self) -> Result<Statement> {
+        self.prebuild().map(NodeData::build_stmt)
     }
 }

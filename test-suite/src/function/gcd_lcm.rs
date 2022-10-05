@@ -46,11 +46,11 @@ test_case!(gcd_lcm, async move {
         ),
         (
             r#"SELECT GCD(left, right) AS test FROM GcdStr"#,
-            Err(EvaluateError::FunctionRequiresIntegerValue("GCD".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("GCD".to_owned()).into()),
         ),
         (
             r#"SELECT GCD(right, left) AS test FROM GcdStr"#,
-            Err(EvaluateError::FunctionRequiresIntegerValue("GCD".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("GCD".to_owned()).into()),
         ),
         (
             r#"
@@ -90,11 +90,11 @@ test_case!(gcd_lcm, async move {
         ),
         (
             r#"SELECT LCM(left, right) AS test FROM LcmStr"#,
-            Err(EvaluateError::FunctionRequiresIntegerValue("LCM".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("LCM".to_owned()).into()),
         ),
         (
             r#"SELECT LCM(right, left) AS test FROM LcmStr"#,
-            Err(EvaluateError::FunctionRequiresIntegerValue("LCM".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("LCM".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {

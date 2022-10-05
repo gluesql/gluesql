@@ -55,7 +55,7 @@ test_case!(blend, async move {
     }
 
     let test_cases = [
-        ("SELECT 1 FROM BlendUser", select!(1; I64; 1; 1; 1)),
+        ("SELECT 1 FROM BlendUser", select!("1"; I64; 1; 1; 1)),
         (
             "SELECT id, name FROM BlendUser",
             select!(

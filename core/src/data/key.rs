@@ -302,6 +302,7 @@ mod tests {
             Key::try_from(Value::List(Vec::default())),
             Err(KeyError::ListTypeKeyNotSupported.into())
         );
+        assert_eq!(convert(r#"POSITION("PORK" IN "MEAT")"#), Ok(Key::I64(0)));
     }
 
     fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {

@@ -34,15 +34,15 @@ test_case!(sin, async move {
         ),
         (
             "SELECT SIN(true) AS sin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_owned()).into()),
         ),
         (
             "SELECT SIN(false) AS sin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_owned()).into()),
         ),
         (
             "SELECT SIN('string') AS sin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("SIN".to_owned()).into()),
         ),
         (
             "SELECT SIN() AS sin FROM SingleItem",
@@ -93,15 +93,15 @@ test_case!(cos, async move {
         ),
         (
             "SELECT COS(true) AS cos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_owned()).into()),
         ),
         (
             "SELECT COS(false) AS cos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_owned()).into()),
         ),
         (
             "SELECT COS('string') AS cos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("COS".to_owned()).into()),
         ),
         (
             "SELECT COS() AS cos FROM SingleItem",
@@ -152,15 +152,15 @@ test_case!(tan, async move {
         ),
         (
             "SELECT TAN(true) AS tan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_owned()).into()),
         ),
         (
             "SELECT TAN(false) AS tan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_owned()).into()),
         ),
         (
             "SELECT TAN('string') AS tan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("TAN".to_owned()).into()),
         ),
         (
             "SELECT TAN() AS tan FROM SingleItem",
@@ -207,7 +207,7 @@ test_case!(asin, async move {
         ),
         (
             "SELECT ASIN('string') AS asin FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ASIN".to_owned()).into()),
         ),
         (
             "SELECT ASIN(null) AS asin FROM SingleItem",
@@ -258,7 +258,7 @@ test_case!(acos, async move {
         ),
         (
             "SELECT ACOS('string') AS acos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_owned()).into()),
         ),
         (
             "SELECT ACOS(null) AS acos FROM SingleItem",
@@ -266,7 +266,7 @@ test_case!(acos, async move {
         ),
         (
             "SELECT ACOS(true) AS acos FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ACOS".to_owned()).into()),
         ),
         (
             "SELECT ACOS() AS acos FROM SingleItem",
@@ -313,7 +313,7 @@ test_case!(atan, async move {
         ),
         (
             "SELECT ATAN('string') AS atan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_owned()).into()),
         ),
         (
             "SELECT ATAN(null) AS atan FROM SingleItem",
@@ -321,7 +321,7 @@ test_case!(atan, async move {
         ),
         (
             "SELECT ATAN(true) AS atan FROM SingleItem",
-            Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresFloatValue("ATAN".to_owned()).into()),
         ),
         (
             "SELECT ATAN() AS atan FROM SingleItem",

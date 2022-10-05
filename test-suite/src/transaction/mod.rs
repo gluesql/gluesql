@@ -2,15 +2,14 @@
 
 mod alter_table;
 mod basic;
+mod dictionary;
 mod index;
-mod metadata;
 mod table;
 
 #[cfg(feature = "alter-table")]
 pub use alter_table::*;
 pub use basic::basic;
+pub use dictionary::dictionary;
 #[cfg(feature = "index")]
 pub use index::*;
-#[cfg(feature = "metadata")]
-pub use metadata::metadata;
 pub use table::*;

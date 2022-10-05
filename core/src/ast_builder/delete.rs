@@ -1,5 +1,5 @@
 use {
-    super::ExprNode,
+    super::{Build, ExprNode},
     crate::{
         ast::{Expr, Statement},
         result::Result,
@@ -25,8 +25,10 @@ impl DeleteNode {
 
         self
     }
+}
 
-    pub fn build(self) -> Result<Statement> {
+impl Build for DeleteNode {
+    fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let selection = self.filter_expr.map(Expr::try_from).transpose()?;
 
@@ -41,7 +43,7 @@ impl DeleteNode {
 mod tests {
     use crate::{
         ast::Expr,
-        ast_builder::{col, table, test},
+        ast_builder::{col, table, test, Build},
     };
 
     #[test]

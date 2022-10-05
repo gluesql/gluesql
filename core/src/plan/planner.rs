@@ -153,6 +153,14 @@ pub trait Planner<'a> {
                     else_result,
                 }
             }
+            Expr::ArrayIndex { obj, indexes } => {
+                let indexes = indexes
+                    .into_iter()
+                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr))
+                    .collect();
+                let obj = Box::new(self.subquery_expr(outer_context, *obj));
+                Expr::ArrayIndex { obj, indexes }
+            }
             Expr::Function(_) | Expr::Aggregate(_) => expr,
         }
     }
@@ -168,7 +176,9 @@ pub trait Planner<'a> {
 
                 (name, alias)
             }
-            TableFactor::Derived { .. } | TableFactor::Series { .. } => return next,
+            TableFactor::Derived { .. }
+            | TableFactor::Series { .. }
+            | TableFactor::Dictionary { .. } => return next,
         };
 
         let column_defs = match self.get_schema(name) {

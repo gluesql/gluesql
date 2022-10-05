@@ -24,5 +24,5 @@ impl Tester<MemoryStorage> for MemoryTester {
 }
 
 generate_store_tests!(wasm_bindgen_test, MemoryTester);
-generate_metadata_tests!(wasm_bindgen_test, MemoryTester);
+generate_dictionary_tests!(wasm_bindgen_test, MemoryTester);
 generate_alter_table_tests!(wasm_bindgen_test, MemoryTester);

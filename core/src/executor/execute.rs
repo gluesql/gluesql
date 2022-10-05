@@ -7,7 +7,11 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnOption, ColumnOptionDef, DataType, SetExpr, Statement, Values},
+        ast::{
+            ColumnDef, ColumnOption, ColumnOptionDef, DataType, Dictionary, Expr, Query,
+            SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
+            Variable,
+        },
         data::{Key, Row, Schema, Value},
         executor::limit::Limit,
         result::{MutResult, Result},
@@ -15,7 +19,7 @@ use {
     },
     futures::stream::{self, TryStreamExt},
     serde::{Deserialize, Serialize},
-    std::{fmt::Debug, rc::Rc},
+    std::{env::var, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -24,9 +28,6 @@ use super::alter::alter_table;
 
 #[cfg(feature = "index")]
 use {super::alter::create_index, crate::data::SchemaIndex};
-
-#[cfg(feature = "metadata")]
-use crate::{ast::Variable, result::TrySelf};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -61,14 +62,12 @@ pub enum Payload {
     #[cfg(feature = "transaction")]
     Rollback,
 
-    #[cfg(feature = "metadata")]
     ShowVariable(PayloadVariable),
 
     #[cfg(feature = "index")]
     ShowIndexes(Vec<SchemaIndex>),
 }
 
-#[cfg(feature = "metadata")]
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum PayloadVariable {
     Tables(Vec<String>),
@@ -375,16 +374,55 @@ pub async fn execute<T: GStore + GStoreMut>(
 
             Ok((storage, Payload::ShowIndexes(indexes)))
         }
-        //- Metadata
-        #[cfg(feature = "metadata")]
         Statement::ShowVariable(variable) => match variable {
-            Variable::Tables => storage
-                .schema_names()
-                .await
-                .map(|table_names| Payload::ShowVariable(PayloadVariable::Tables(table_names)))
-                .try_self(storage),
+            Variable::Tables => {
+                let query = Query {
+                    body: SetExpr::Select(Box::new(crate::ast::Select {
+                        projection: vec![SelectItem::Expr {
+                            expr: Expr::Identifier("TABLE_NAME".to_owned()),
+                            label: "TABLE_NAME".to_owned(),
+                        }],
+                        from: TableWithJoins {
+                            relation: TableFactor::Dictionary {
+                                dict: Dictionary::GlueTables,
+                                alias: TableAlias {
+                                    name: "GLUE_TABLES".to_owned(),
+                                    columns: Vec::new(),
+                                },
+                            },
+                            joins: Vec::new(),
+                        },
+                        selection: None,
+                        group_by: Vec::new(),
+                        having: None,
+                    })),
+                    order_by: Vec::new(),
+                    limit: None,
+                    offset: None,
+                };
+
+                let rows = try_block!(storage, {
+                    let rows = select(&storage, &query, None).await?;
+                    let rows = rows
+                        .map_ok(|Row(values)| values)
+                        .try_collect::<Vec<_>>()
+                        .await?;
+                    Ok(rows)
+                });
+
+                let table_names = rows
+                    .iter()
+                    .flat_map(|values| values.iter().map(|value| value.into()))
+                    .collect::<Vec<_>>();
+
+                Ok((
+                    storage,
+                    Payload::ShowVariable(PayloadVariable::Tables(table_names)),
+                ))
+            }
             Variable::Version => {
-                let version = storage.version();
+                let version = var("CARGO_PKG_VERSION")
+                    .unwrap_or_else(|_| env!("CARGO_PKG_VERSION").to_owned());
                 let payload = Payload::ShowVariable(PayloadVariable::Version(version));
 
                 Ok((storage, payload))

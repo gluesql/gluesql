@@ -1,8 +1,8 @@
-#![cfg(all(feature = "transaction", feature = "metadata"))]
+#![cfg(all(feature = "transaction"))]
 
 use {crate::*, gluesql_core::prelude::*};
 
-test_case!(metadata, async move {
+test_case!(dictionary, async move {
     let tables = |v: Vec<&str>| {
         Ok(Payload::ShowVariable(PayloadVariable::Tables(
             v.into_iter().map(ToOwned::to_owned).collect(),

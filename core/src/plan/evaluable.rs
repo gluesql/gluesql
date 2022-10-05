@@ -142,9 +142,9 @@ fn check_table_factor(context: Option<Rc<Context<'_>>>, table_factor: &TableFact
             .as_ref()
             .map(|TableAlias { name, .. }| name.clone())
             .unwrap_or_else(|| name.clone()),
-        TableFactor::Derived { alias, .. } | TableFactor::Series { alias, .. } => {
-            alias.to_owned().name
-        }
+        TableFactor::Derived { alias, .. }
+        | TableFactor::Series { alias, .. }
+        | TableFactor::Dictionary { alias, .. } => alias.name.to_owned(),
     };
 
     context

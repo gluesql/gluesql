@@ -133,6 +133,11 @@ pub fn evaluate_stateless<'a>(
 
             Ok(Evaluated::from(Value::Bool(!v)))
         }
+        Expr::ArrayIndex { obj, indexes } => {
+            let obj = eval(obj)?;
+            let indexes = indexes.iter().map(eval).collect::<Result<Vec<_>>>()?;
+            expr::array_index(obj, indexes)
+        }
         Expr::Function(func) => evaluate_function(context, func),
         _ => Err(EvaluateError::UnsupportedStatelessExpr(expr.clone()).into()),
     }
@@ -144,7 +149,7 @@ fn evaluate_function<'a>(
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
-    let name = || func.to_string();
+    let name = func.to_string();
     let eval = |expr| evaluate_stateless(context, expr);
     let eval_opt = |expr| -> Result<Option<_>> {
         match expr {
@@ -160,20 +165,20 @@ fn evaluate_function<'a>(
 
             f::concat(exprs)
         }
-        Function::Lower(expr) => f::lower(name(), eval(expr)?),
-        Function::Upper(expr) => f::upper(name(), eval(expr)?),
+        Function::Lower(expr) => f::lower(name, eval(expr)?),
+        Function::Upper(expr) => f::upper(name, eval(expr)?),
         Function::Left { expr, size } | Function::Right { expr, size } => {
             let expr = eval(expr)?;
             let size = eval(size)?;
 
-            f::left_or_right(name(), expr, size)
+            f::left_or_right(name, expr, size)
         }
         Function::Lpad { expr, size, fill } | Function::Rpad { expr, size, fill } => {
             let expr = eval(expr)?;
             let size = eval(size)?;
             let fill = eval_opt(fill.as_ref())?;
 
-            f::lpad_or_rpad(name(), expr, size, fill)
+            f::lpad_or_rpad(name, expr, size, fill)
         }
         Function::Trim {
             expr,
@@ -183,37 +188,37 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             let filter_chars = eval_opt(filter_chars.as_ref())?;
 
-            f::trim(name(), expr, filter_chars, trim_where_field)
+            f::trim(name, expr, filter_chars, trim_where_field)
         }
         Function::Ltrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = eval_opt(chars.as_ref())?;
 
-            f::ltrim(name(), expr, chars)
+            f::ltrim(name, expr, chars)
         }
         Function::Rtrim { expr, chars } => {
             let expr = eval(expr)?;
             let chars = eval_opt(chars.as_ref())?;
 
-            f::rtrim(name(), expr, chars)
+            f::rtrim(name, expr, chars)
         }
         Function::Reverse(expr) => {
             let expr = eval(expr)?;
 
-            f::reverse(name(), expr)
+            f::reverse(name, expr)
         }
         Function::Repeat { expr, num } => {
             let expr = eval(expr)?;
             let num = eval(num)?;
 
-            f::repeat(name(), expr, num)
+            f::repeat(name, expr, num)
         }
         Function::Substr { expr, start, count } => {
             let expr = eval(expr)?;
             let start = eval(start)?;
             let count = eval_opt(count.as_ref())?;
 
-            f::substr(name(), expr, start, count)
+            f::substr(name, expr, start, count)
         }
 
         // --- float ---
@@ -222,40 +227,40 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             let power = eval(power)?;
 
-            f::power(name(), expr, power)
+            f::power(name, expr, power)
         }
-        Function::Abs(expr) => f::abs(name(), eval(expr)?),
+        Function::Abs(expr) => f::abs(name, eval(expr)?),
         Function::IfNull { expr, then } => f::ifnull(eval(expr)?, eval(then)?),
-        Function::Sign(expr) => f::sign(name(), eval(expr)?),
-        Function::Ceil(expr) => f::ceil(name(), eval(expr)?),
-        Function::Round(expr) => f::round(name(), eval(expr)?),
-        Function::Floor(expr) => f::floor(name(), eval(expr)?),
-        Function::Radians(expr) => f::radians(name(), eval(expr)?),
-        Function::Degrees(expr) => f::degrees(name(), eval(expr)?),
+        Function::Sign(expr) => f::sign(name, eval(expr)?),
+        Function::Ceil(expr) => f::ceil(name, eval(expr)?),
+        Function::Round(expr) => f::round(name, eval(expr)?),
+        Function::Floor(expr) => f::floor(name, eval(expr)?),
+        Function::Radians(expr) => f::radians(name, eval(expr)?),
+        Function::Degrees(expr) => f::degrees(name, eval(expr)?),
         Function::Pi() => Ok(Value::F64(std::f64::consts::PI)),
-        Function::Exp(expr) => f::exp(name(), eval(expr)?),
+        Function::Exp(expr) => f::exp(name, eval(expr)?),
         Function::Log { antilog, base } => {
             let antilog = eval(antilog)?;
             let base = eval(base)?;
 
-            f::log(name(), antilog, base)
+            f::log(name, antilog, base)
         }
-        Function::Ln(expr) => f::ln(name(), eval(expr)?),
-        Function::Log2(expr) => f::log2(name(), eval(expr)?),
-        Function::Log10(expr) => f::log10(name(), eval(expr)?),
-        Function::Sin(expr) => f::sin(name(), eval(expr)?),
-        Function::Cos(expr) => f::cos(name(), eval(expr)?),
-        Function::Tan(expr) => f::tan(name(), eval(expr)?),
-        Function::Asin(expr) => f::asin(name(), eval(expr)?),
-        Function::Acos(expr) => f::acos(name(), eval(expr)?),
-        Function::Atan(expr) => f::atan(name(), eval(expr)?),
+        Function::Ln(expr) => f::ln(name, eval(expr)?),
+        Function::Log2(expr) => f::log2(name, eval(expr)?),
+        Function::Log10(expr) => f::log10(name, eval(expr)?),
+        Function::Sin(expr) => f::sin(name, eval(expr)?),
+        Function::Cos(expr) => f::cos(name, eval(expr)?),
+        Function::Tan(expr) => f::tan(name, eval(expr)?),
+        Function::Asin(expr) => f::asin(name, eval(expr)?),
+        Function::Acos(expr) => f::acos(name, eval(expr)?),
+        Function::Atan(expr) => f::atan(name, eval(expr)?),
 
         // --- integer ---
         Function::Div { dividend, divisor } => {
             let dividend = eval(dividend)?;
             let divisor = eval(divisor)?;
 
-            f::div(name(), dividend, divisor)
+            f::div(name, dividend, divisor)
         }
         Function::Mod { dividend, divisor } => {
             let dividend = eval(dividend)?;
@@ -267,13 +272,13 @@ fn evaluate_function<'a>(
             let left = eval(left)?;
             let right = eval(right)?;
 
-            f::gcd(name(), left, right)
+            f::gcd(name, left, right)
         }
         Function::Lcm { left, right } => {
             let left = eval(left)?;
             let right = eval(right)?;
 
-            f::lcm(name(), left, right)
+            f::lcm(name, left, right)
         }
 
         // --- etc ---
@@ -281,7 +286,7 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             let selector = eval(selector)?;
 
-            f::unwrap(name(), expr, selector)
+            f::unwrap(name, expr, selector)
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
         Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
@@ -289,26 +294,34 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             let format = eval(format)?;
 
-            f::format(name(), expr, format)
+            f::format(name, expr, format)
         }
 
         Function::ToDate { expr, format } => {
             let expr = eval(expr)?;
             let format = eval(format)?;
 
-            f::to_date(name(), expr, format)
+            f::to_date(name, expr, format)
         }
 
         Function::ToTimestamp { expr, format } => {
             let expr = eval(expr)?;
             let format = eval(format)?;
 
-            f::to_timestamp(name(), expr, format)
+            f::to_timestamp(name, expr, format)
         }
         Function::ToTime { expr, format } => {
             let expr = eval(expr)?;
             let format = eval(format)?;
-            f::to_time(name(), expr, format)
+            f::to_time(name, expr, format)
+        }
+        Function::Position {
+            from_expr,
+            sub_expr,
+        } => {
+            let from_expr = eval(from_expr)?;
+            let sub_expr = eval(sub_expr)?;
+            f::position(name, from_expr, sub_expr)
         }
     }
     .map(Evaluated::from)

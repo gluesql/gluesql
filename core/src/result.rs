@@ -12,7 +12,7 @@ use {
         translate::TranslateError,
     },
     serde::Serialize,
-    std::{fmt::Debug, ops::ControlFlow},
+    std::{error::Error as StdError, fmt::Debug, ops::ControlFlow},
     thiserror::Error as ThisError,
 };
 
@@ -26,7 +26,7 @@ use crate::store::IndexError;
 pub enum Error {
     #[error(transparent)]
     #[serde(with = "stringify")]
-    Storage(#[from] Box<dyn std::error::Error>),
+    Storage(#[from] Box<dyn StdError + Send + Sync>),
 
     #[error("storage error: {0}")]
     StorageMsg(String),
@@ -34,8 +34,6 @@ pub enum Error {
     #[error("parsing failed: {0}")]
     Parser(String),
 
-    //#[error("OverflowError: {0}")]
-    //OverflowError(String),
     #[error(transparent)]
     Translate(#[from] TranslateError),
 

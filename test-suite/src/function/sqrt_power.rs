@@ -46,7 +46,7 @@ test_case!(sqrt, async move {
         ),
         (
             "SELECT SQRT('string') AS sqrt FROM SingleItem",
-            Err(ValueError::SqrtOnNonNumeric(Str("string".to_string())).into()),
+            Err(ValueError::SqrtOnNonNumeric(Str("string".to_owned())).into()),
         ),
         (
             "SELECT SQRT(NULL) AS sqrt FROM SingleItem",

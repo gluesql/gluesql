@@ -104,7 +104,7 @@ test_case!(inline_view, async move {
             FROM OuterTable JOIN (
                 SELECT name FROM InnerTable
             ) AS InlineView ON OuterTable.id = InlineView.id",
-            Err(EvaluateError::ValueNotFound("id".to_string()).into()),
+            Err(EvaluateError::ValueNotFound("id".to_owned()).into()),
         ),
         (
             // join - Expr with WHERE clause

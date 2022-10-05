@@ -98,7 +98,6 @@ pub enum Statement {
     #[cfg(feature = "transaction")]
     Rollback,
     /// SHOW VARIABLE
-    #[cfg(feature = "metadata")]
     ShowVariable(Variable),
     #[cfg(feature = "index")]
     ShowIndexes(String),
@@ -110,7 +109,6 @@ pub struct Assignment {
     pub value: Expr,
 }
 
-#[cfg(feature = "metadata")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Variable {
     Tables,
@@ -204,21 +202,20 @@ impl ToSql for Statement {
                 format!("DROP INDEX {table_name}.{name}")
             }
             #[cfg(feature = "transaction")]
-            Statement::StartTransaction => "START TRANSACTION".to_string(),
+            Statement::StartTransaction => "START TRANSACTION".to_owned(),
             #[cfg(feature = "transaction")]
-            Statement::Commit => "COMMIT".to_string(),
+            Statement::Commit => "COMMIT".to_owned(),
             #[cfg(feature = "transaction")]
-            Statement::Rollback => "ROLLBACK".to_string(),
-            #[cfg(feature = "metadata")]
+            Statement::Rollback => "ROLLBACK".to_owned(),
             Statement::ShowVariable(variable) => match variable {
-                Variable::Tables => "SHOW TABLES".to_string(),
-                Variable::Version => "SHOW VERSIONS".to_string(),
+                Variable::Tables => "SHOW TABLES".to_owned(),
+                Variable::Version => "SHOW VERSIONS".to_owned(),
             },
             #[cfg(feature = "index")]
             Statement::ShowIndexes(object_name) => {
                 format!("SHOW INDEXES FROM {object_name}")
             }
-            _ => "(..statement..)".to_string(),
+            _ => "(..statement..)".to_owned(),
         }
     }
 }
@@ -237,13 +234,10 @@ mod tests {
     #[cfg(feature = "index")]
     use crate::ast::OrderByExpr;
 
-    #[cfg(feature = "metadata")]
-    use crate::ast::Variable;
-
     use {
         crate::ast::{
             Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
-            DataType, Expr, Query, SetExpr, Statement, ToSql, Values,
+            DataType, Expr, Query, SetExpr, Statement, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -266,12 +260,12 @@ mod tests {
             "INSERT INTO Test (id, num, name) (..query..)",
             Statement::Insert {
                 table_name: "Test".into(),
-                columns: vec!["id".to_string(), "num".to_string(), "name".to_string()],
+                columns: vec!["id".to_owned(), "num".to_owned(), "name".to_owned()],
                 source: Query {
                     body: SetExpr::Values(Values(vec![vec![
                         Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
                         Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
-                        Expr::Literal(AstLiteral::QuotedString("Hello".to_string()))
+                        Expr::Literal(AstLiteral::QuotedString("Hello".to_owned()))
                     ]])),
                     order_by: vec![],
                     limit: None,
@@ -290,14 +284,14 @@ mod tests {
                 table_name: "Foo".into(),
                 assignments: vec![
                     Assignment {
-                        id: "id".to_string(),
+                        id: "id".to_owned(),
                         value: Expr::Literal(AstLiteral::Number(
                             BigDecimal::from_str("4").unwrap()
                         ))
                     },
                     Assignment {
-                        id: "color".to_string(),
-                        value: Expr::Literal(AstLiteral::QuotedString("blue".to_string()))
+                        id: "color".to_owned(),
+                        value: Expr::Literal(AstLiteral::QuotedString("blue".to_owned()))
                     }
                 ],
                 selection: None
@@ -310,13 +304,13 @@ mod tests {
             Statement::Update {
                 table_name: "Foo".into(),
                 assignments: vec![Assignment {
-                    id: "name".to_string(),
-                    value: Expr::Literal(AstLiteral::QuotedString("first".to_string()))
+                    id: "name".to_owned(),
+                    value: Expr::Literal(AstLiteral::QuotedString("first".to_owned()))
                 }],
                 selection: Some(Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier("a".to_string())),
+                    left: Box::new(Expr::Identifier("a".to_owned())),
                     op: BinaryOperator::Gt,
-                    right: Box::new(Expr::Identifier("b".to_string()))
+                    right: Box::new(Expr::Identifier("b".to_owned()))
                 })
             }
             .to_sql()
@@ -339,9 +333,9 @@ mod tests {
             Statement::Delete {
                 table_name: "Foo".into(),
                 selection: Some(Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier("item".to_string())),
+                    left: Box::new(Expr::Identifier("item".to_owned())),
                     op: BinaryOperator::Eq,
-                    right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string())))
+                    right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned())))
                 })
             }
             .to_sql()
@@ -368,12 +362,12 @@ mod tests {
                 name: "Foo".into(),
                 columns: vec![
                     ColumnDef {
-                        name: "id".to_string(),
+                        name: "id".to_owned(),
                         data_type: DataType::Int,
                         options: vec![]
                     },
                     ColumnDef {
-                        name: "num".to_string(),
+                        name: "num".to_owned(),
                         data_type: DataType::Int,
                         options: vec![ColumnOptionDef {
                             name: None,
@@ -381,7 +375,7 @@ mod tests {
                         }]
                     },
                     ColumnDef {
-                        name: "name".to_string(),
+                        name: "name".to_owned(),
                         data_type: DataType::Text,
                         options: vec![]
                     }
@@ -440,7 +434,7 @@ mod tests {
                 name: "Foo".into(),
                 operation: AlterTableOperation::AddColumn {
                     column_def: ColumnDef {
-                        name: "amount".to_string(),
+                        name: "amount".to_owned(),
                         data_type: DataType::Int,
                         options: vec![ColumnOptionDef {
                             name: None,
@@ -459,7 +453,7 @@ mod tests {
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
-                    column_name: "something".to_string(),
+                    column_name: "something".to_owned(),
                     if_exists: false
                 }
             }
@@ -471,7 +465,7 @@ mod tests {
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
-                    column_name: "something".to_string(),
+                    column_name: "something".to_owned(),
                     if_exists: true
                 }
             }
@@ -483,8 +477,8 @@ mod tests {
             Statement::AlterTable {
                 name: "Bar".into(),
                 operation: AlterTableOperation::RenameColumn {
-                    old_column_name: "id".to_string(),
-                    new_column_name: "new_id".to_string()
+                    old_column_name: "id".to_owned(),
+                    new_column_name: "new_id".to_owned()
                 }
             }
             .to_sql()
@@ -541,7 +535,7 @@ mod tests {
                 name: "idx_name".into(),
                 table_name: "Test".into(),
                 column: OrderByExpr {
-                    expr: Expr::Identifier("LastName".to_string()),
+                    expr: Expr::Identifier("LastName".to_owned()),
                     asc: None
                 }
             }
@@ -571,7 +565,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "metadata")]
     fn to_sql_show_variable() {
         assert_eq!(
             "SHOW TABLES",
@@ -597,7 +590,7 @@ mod tests {
         assert_eq!(
             "count = 5",
             Assignment {
-                id: "count".to_string(),
+                id: "count".to_owned(),
                 value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("5").unwrap()))
             }
             .to_sql()

@@ -1,8 +1,11 @@
 #![cfg(feature = "alter-table")]
-use crate::{
-    ast::{AlterTableOperation, Statement},
-    ast_builder::ColumnDefNode,
-    result::Result,
+use {
+    super::Build,
+    crate::{
+        ast::{AlterTableOperation, Statement},
+        ast_builder::ColumnDefNode,
+        result::Result,
+    },
 };
 
 pub struct AlterTableNode {
@@ -58,8 +61,8 @@ pub struct AddColumnNode {
     column_def: ColumnDefNode,
 }
 
-impl AddColumnNode {
-    pub fn build(self) -> Result<Statement> {
+impl Build for AddColumnNode {
+    fn build(self) -> Result<Statement> {
         let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::AddColumn {
             column_def: self.column_def.try_into()?,
@@ -77,8 +80,8 @@ pub struct DropColumnNode {
     if_exists: bool,
 }
 
-impl DropColumnNode {
-    pub fn build(self) -> Result<Statement> {
+impl Build for DropColumnNode {
+    fn build(self) -> Result<Statement> {
         let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::DropColumn {
             column_name: self.column_name,
@@ -97,8 +100,8 @@ pub struct RenameColumnNode {
     new_column_name: String,
 }
 
-impl RenameColumnNode {
-    pub fn build(self) -> Result<Statement> {
+impl Build for RenameColumnNode {
+    fn build(self) -> Result<Statement> {
         let table_name = self.table_node.table_name;
         let operation = AlterTableOperation::RenameColumn {
             old_column_name: self.old_column_name,
@@ -116,8 +119,8 @@ pub struct RenameTableNode {
     new_table_name: String,
 }
 
-impl RenameTableNode {
-    pub fn build(self) -> Result<Statement> {
+impl Build for RenameTableNode {
+    fn build(self) -> Result<Statement> {
         let old_table_name = self.table_node.table_name;
         let operation = AlterTableOperation::RenameTable {
             table_name: self.new_table_name,
@@ -131,7 +134,7 @@ impl RenameTableNode {
 
 #[cfg(all(test, feature = "alter-table"))]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn alter_table() {

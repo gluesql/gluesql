@@ -150,7 +150,7 @@ mod tests {
     use super::Interval;
 
     #[test]
-    fn into_string() {
+    fn into_owned() {
         macro_rules! test {
             ($( $value: literal $duration: ident ),* => $result: literal $from_to: tt) => {
                 let interval = interval!($( $value $duration ),*);
