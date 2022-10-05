@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{data::NumericBinaryOperator, data::ValueError, prelude::Value::*},
+    gluesql_core::{data::ValueError, prelude::Value::*},
 };
 
 test_case!(uint16, async move {
