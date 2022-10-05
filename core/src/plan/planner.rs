@@ -161,6 +161,15 @@ pub trait Planner<'a> {
                 let obj = Box::new(self.subquery_expr(outer_context, *obj));
                 Expr::ArrayIndex { obj, indexes }
             }
+            Expr::Interval {
+                expr,
+                leading_field,
+                last_field,
+            } => Expr::Interval {
+                expr: Box::new(self.subquery_expr(outer_context, *expr)),
+                leading_field,
+                last_field,
+            },
             Expr::Function(_) | Expr::Aggregate(_) => expr,
         }
     }

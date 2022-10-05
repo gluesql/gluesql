@@ -8,7 +8,7 @@ use {
     super::{context::FilterContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{Literal, Value},
+        data::{Interval, Literal, Value},
         result::Result,
         store::GStore,
     },
@@ -109,7 +109,11 @@ pub async fn evaluate<'a>(
             evaluate_function(storage, context, aggregated, func).await
         }
         Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
-        Expr::Extract { field, expr } => eval(expr).await?.extract(field),
+        Expr::Extract { field, expr } => eval(expr)
+            .await
+            .and_then(Value::try_from)?
+            .extract(field)
+            .map(Evaluated::from),
         Expr::InList {
             expr,
             list,
@@ -232,6 +236,20 @@ pub async fn evaluate<'a>(
             let obj = eval(obj).await?;
             let indexes = try_join_all(indexes.iter().map(eval)).await?;
             expr::array_index(obj, indexes)
+        }
+        Expr::Interval {
+            expr,
+            leading_field,
+            last_field,
+        } => {
+            let value = eval(expr)
+                .await
+                .and_then(Value::try_from)
+                .map(String::from)?;
+
+            Interval::try_from_literal(&value, *leading_field, *last_field)
+                .map(Value::Interval)
+                .map(Evaluated::from)
         }
     }
 }

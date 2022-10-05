@@ -530,7 +530,7 @@ impl Value {
             _ => {
                 return Err(ValueError::ExtractFormatNotMatched {
                     value: self.clone(),
-                    field: date_type.clone(),
+                    field: *date_type,
                 }
                 .into())
             }

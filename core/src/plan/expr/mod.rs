@@ -32,7 +32,8 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
             | Expr::Cast { expr, .. }
             | Expr::Extract { expr, .. }
             | Expr::IsNull(expr)
-            | Expr::IsNotNull(expr) => PlanExpr::Expr(expr),
+            | Expr::IsNotNull(expr)
+            | Expr::Interval { expr, .. } => PlanExpr::Expr(expr),
             Expr::Aggregate(aggregate) => match aggregate.as_expr() {
                 Some(expr) => PlanExpr::Expr(expr),
                 None => PlanExpr::None,

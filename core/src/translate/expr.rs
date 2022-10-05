@@ -143,6 +143,22 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
         }),
         SqlExpr::Position { expr, r#in } => translate_positon(expr, r#in),
+        SqlExpr::Interval {
+            value,
+            leading_field,
+            last_field,
+            ..
+        } => Ok(Expr::Interval {
+            expr: translate_expr(value).map(Box::new)?,
+            leading_field: leading_field
+                .as_ref()
+                .map(translate_datetime_field)
+                .transpose()?,
+            last_field: last_field
+                .as_ref()
+                .map(translate_datetime_field)
+                .transpose()?,
+        }),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
 }

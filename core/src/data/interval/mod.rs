@@ -177,8 +177,8 @@ impl Interval {
 
     pub fn try_from_literal(
         value: &str,
-        leading_field: Option<&DateTimeField>,
-        last_field: Option<&DateTimeField>,
+        leading_field: Option<DateTimeField>,
+        last_field: Option<DateTimeField>,
     ) -> Result<Self> {
         use DateTimeField::*;
 
@@ -436,15 +436,15 @@ mod tests {
         macro_rules! test {
             ($value: expr, $datetime: ident => $expected_value: expr, $duration: ident) => {
                 let interval =
-                    Interval::try_from_literal($value, Some(&DateTimeField::$datetime), None);
+                    Interval::try_from_literal($value, Some(DateTimeField::$datetime), None);
 
                 assert_eq!(interval, Ok(Interval::$duration($expected_value)));
             };
             ($value: expr, $from: ident to $to: ident => $expected_value: expr, $duration: ident) => {
                 let interval = Interval::try_from_literal(
                     $value,
-                    Some(&DateTimeField::$from),
-                    Some(&DateTimeField::$to),
+                    Some(DateTimeField::$from),
+                    Some(DateTimeField::$to),
                 );
 
                 assert_eq!(interval, Ok(Interval::$duration($expected_value)));
