@@ -7,7 +7,7 @@ use {
                 Value::{self, *},
                 ValueError,
             },
-            IntervalError, LiteralError,
+            IntervalError,
         },
         prelude::Payload,
         translate::TranslateError,
@@ -88,7 +88,11 @@ test_case!(extract, async move {
         ),
         (
             r#"SELECT EXTRACT(HOUR FROM 100) FROM Item"#,
-            Err(LiteralError::CannotExtract.into()),
+            Err(ValueError::ExtractFormatNotMatched {
+                value: Value::I64(100),
+                field: DateTimeField::Hour,
+            }
+            .into()),
         ),
         (
             r#"SELECT EXTRACT(microseconds FROM "2011-01-1") FROM Item;"#,

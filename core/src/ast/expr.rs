@@ -80,6 +80,11 @@ pub enum Expr {
         obj: Box<Expr>,
         indexes: Vec<Expr>,
     },
+    Interval {
+        expr: Box<Expr>,
+        leading_field: Option<DateTimeField>,
+        last_field: Option<DateTimeField>,
+    },
 }
 
 impl ToSql for Expr {
@@ -210,6 +215,22 @@ impl ToSql for Expr {
                 format!("{obj}{indexes}")
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
+            Expr::Interval {
+                expr,
+                leading_field,
+                last_field,
+            } => {
+                let expr = expr.to_sql();
+                let leading_field = leading_field
+                    .as_ref()
+                    .map(|field| field.to_string())
+                    .unwrap_or_else(|| "".to_owned());
+
+                match last_field {
+                    Some(last_field) => format!("INTERVAL {expr} {leading_field} TO {last_field}"),
+                    None => format!("INTERVAL {expr} {leading_field}"),
+                }
+            }
         }
     }
 }
@@ -611,6 +632,29 @@ mod tests {
             &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
                 "total".to_owned()
             ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "INTERVAL col1 + 3 DAY",
+            &Expr::Interval {
+                expr: Box::new(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("col1".to_owned())),
+                    op: BinaryOperator::Plus,
+                    right: Box::new(Expr::Literal(AstLiteral::Number(3.into()))),
+                }),
+                leading_field: Some(DateTimeField::Day),
+                last_field: None,
+            }
+            .to_sql()
+        );
+        assert_eq!(
+            r#"INTERVAL "3-5" HOUR TO MINUTE"#,
+            &Expr::Interval {
+                expr: Box::new(Expr::Literal(AstLiteral::QuotedString("3-5".to_owned()))),
+                leading_field: Some(DateTimeField::Hour),
+                last_field: Some(DateTimeField::Minute),
+            }
             .to_sql()
         );
     }

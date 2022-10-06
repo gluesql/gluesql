@@ -39,7 +39,6 @@ impl PartialEq<Literal<'_>> for Value {
                 Some(r) => l == &r,
                 None => false,
             },
-            (Value::Interval(l), Literal::Interval(r)) => l == r,
             (Value::Uuid(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
             _ => false,
         }
@@ -83,7 +82,6 @@ impl PartialOrd<Literal<'_>> for Value {
                 Some(r) => l.partial_cmp(&r),
                 None => None,
             },
-            (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(r),
             (Value::Uuid(l), Literal::Text(r)) => {
                 parse_uuid(r).map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
@@ -105,7 +103,6 @@ impl TryFrom<&Literal<'_>> for Value {
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),
-            Literal::Interval(v) => Ok(Value::Interval(*v)),
             Literal::Null => Ok(Value::Null),
         }
     }
@@ -169,7 +166,6 @@ impl Value {
             (DataType::Time, Literal::Text(v)) => parse_time(v)
                 .map(Value::Time)
                 .ok_or_else(|| ValueError::FailedToParseTime(v.to_string()).into()),
-            (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Uuid, Literal::Bytea(v)) => parse_uuid(&hex::encode(v)).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
@@ -361,10 +357,10 @@ mod tests {
 
     #[test]
     fn eq() {
-        use super::parse_uuid;
-        use crate::data::interval::Interval as I;
-        use std::borrow::Cow;
-        use std::str::FromStr;
+        use {
+            super::parse_uuid,
+            std::{borrow::Cow, str::FromStr},
+        };
 
         let date = chrono::NaiveDate::from_ymd;
 
@@ -412,7 +408,6 @@ mod tests {
         );
         assert_eq!(Value::Time(time(10, 0, 0, 0)), text!("10:00:00"));
         assert_ne!(Value::Time(time(10, 0, 0, 0)), text!("FALSE"));
-        assert_eq!(Value::Interval(I::Month(1)), Literal::Interval(I::Month(1)));
         assert_eq!(Value::Uuid(uuid), text!(uuid_text));
     }
 
@@ -476,7 +471,7 @@ mod tests {
     #[test]
     fn try_from_literal() {
         use {
-            crate::{ast::DataType, data::Interval as I, data::ValueError},
+            crate::{ast::DataType, data::ValueError},
             chrono::NaiveDate,
             rust_decimal::Decimal,
             std::{borrow::Cow, str::FromStr},
@@ -547,16 +542,6 @@ mod tests {
             Value::Time(chrono::NaiveTime::from_hms_milli(12, 0, 35, 0))
         );
         test!(
-            DataType::Interval,
-            Literal::Interval(I::Month(1)),
-            Value::Interval(I::Month(1))
-        );
-        test!(
-            DataType::Interval,
-            Literal::Interval(I::Microsecond(1234567890)),
-            Value::Interval(I::Microsecond(1234567890))
-        );
-        test!(
             DataType::Uuid,
             text!("936DA01F9ABD4d9d80C702AF85C822A8"),
             Value::Uuid(195965723427462096757863453463987888808)
@@ -610,10 +595,7 @@ mod tests {
 
     #[test]
     fn try_from() {
-        use {
-            crate::data::Interval as I,
-            std::{borrow::Cow, str::FromStr},
-        };
+        use std::{borrow::Cow, str::FromStr};
 
         macro_rules! text {
             ($text: expr) => {
@@ -641,12 +623,7 @@ mod tests {
         test!(&Literal::Bytea(bytea("1234")), Value::Bytea(bytea("1234")));
         test!(num!("1234567890"), Value::I64(1234567890));
         test!(num!("12345678.90"), Value::F64(12345678.90));
-
         test!(&Literal::Boolean(false), Value::Bool(false));
-        test!(
-            &Literal::Interval(I::Month(1)),
-            Value::Interval(I::Month(1))
-        );
         assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
     }
 
