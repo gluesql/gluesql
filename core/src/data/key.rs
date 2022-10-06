@@ -167,7 +167,7 @@ impl Key {
                 .copied()
                 .collect::<Vec<_>>(),
             Key::Decimal(v) => {
-                let sign = if v.is_sign_negative() { 0 } else { 1 };
+                let sign = if v.is_sign_positive() { 1 } else { 0 };
                 let convert = |v: Decimal| {
                     let v = v.unpack();
                     let v = v.lo as i128 + ((v.mid as i128) << 32) + ((v.hi as i128) << 64);
