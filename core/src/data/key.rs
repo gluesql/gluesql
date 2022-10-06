@@ -170,9 +170,7 @@ impl Key {
                 let sign = if v.is_sign_negative() { 0 } else { 1 };
                 let convert = |v: Decimal| {
                     let v = v.unpack();
-                    let v = (v.lo as i128)
-                        + (v.mid as i128).wrapping_shl(32)
-                        + (v.hi as i128).wrapping_shl(64);
+                    let v = v.lo as i128 + ((v.mid as i128) << 32) + ((v.hi as i128) << 64);
 
                     if sign == 0 {
                         -v
