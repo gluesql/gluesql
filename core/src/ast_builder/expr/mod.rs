@@ -1,4 +1,5 @@
 mod binary_op;
+mod case;
 mod exists;
 mod is_null;
 mod like;
@@ -12,6 +13,7 @@ pub mod extract;
 pub mod function;
 pub mod in_list;
 
+pub use case::case;
 pub use exists::{exists, not_exists};
 pub use nested::nested;
 
@@ -30,6 +32,7 @@ use {
     },
     aggregate::AggregateNode,
     bigdecimal::BigDecimal,
+    // case::{CaseNode, WhenThenNode}, // TODO required??
     function::FunctionNode,
     in_list::InListNode,
 };
@@ -89,6 +92,11 @@ pub enum ExprNode {
     Exists {
         subquery: Box<QueryNode>,
         negated: bool,
+    },
+    Case {
+        operand: Option<Box<ExprNode>>,
+        when_then: Vec<(ExprNode, ExprNode)>,
+        else_result: Option<Box<ExprNode>>,
     },
 }
 
@@ -235,6 +243,29 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::Exists { subquery, negated } => Query::try_from(*subquery)
                 .map(Box::new)
                 .map(|subquery| Expr::Exists { subquery, negated }),
+            ExprNode::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                // TODO remove unwrap
+                let operand = operand.map(|what| Expr::try_from(*what).map(Box::new).unwrap()); // (Expr::try_from(*operand).map(Box::new)?);
+                let when_then = when_then
+                    .into_iter()
+                    .map(|(when, then)| {
+                        let when = Expr::try_from(when).unwrap();
+                        let then = Expr::try_from(then).unwrap();
+                        (when, then)
+                    })
+                    .collect();
+                let else_result =
+                    else_result.map(|expr| Expr::try_from(*expr).map(Box::new).unwrap());
+                Ok(Expr::Case {
+                    operand,
+                    when_then,
+                    else_result,
+                })
+            }
         }
     }
 }
@@ -248,6 +279,12 @@ impl From<&str> for ExprNode {
 impl From<i64> for ExprNode {
     fn from(n: i64) -> Self {
         ExprNode::Expr(Expr::Literal(AstLiteral::Number(BigDecimal::from(n))))
+    }
+}
+
+impl From<bool> for ExprNode {
+    fn from(b: bool) -> Self {
+        ExprNode::Expr(Expr::Literal(AstLiteral::Boolean(b)))
     }
 }
 
