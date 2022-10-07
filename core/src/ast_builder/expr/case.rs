@@ -64,7 +64,6 @@ mod tests {
             .when_then(num(1), text("a"))
             .when_then(2, text("b"))
             .or_else(text("c"));
-        //.when_then(2, "b") // "b" becomes identifier, not Literal(QuotedString("b")
         let expected = r#"
             CASE id
               WHEN 1 THEN "a"
@@ -91,7 +90,6 @@ mod tests {
 
     #[test]
     fn case_without_operand() {
-        // TODO q. nested case
         let actual = case()
             .when_then(
                 "City IS NULL",

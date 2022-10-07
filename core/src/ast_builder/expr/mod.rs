@@ -32,7 +32,6 @@ use {
     },
     aggregate::AggregateNode,
     bigdecimal::BigDecimal,
-    // case::{CaseNode, WhenThenNode}, // TODO required??
     function::FunctionNode,
     in_list::InListNode,
 };
@@ -248,18 +247,20 @@ impl TryFrom<ExprNode> for Expr {
                 when_then,
                 else_result,
             } => {
-                // TODO remove unwrap
                 let operand = operand.map(|what| Expr::try_from(*what).map(Box::new).unwrap()); // (Expr::try_from(*operand).map(Box::new)?);
                 let when_then = when_then
                     .into_iter()
                     .map(|(when, then)| {
-                        let when = Expr::try_from(when).unwrap();
-                        let then = Expr::try_from(then).unwrap();
-                        (when, then)
+                        let when = Expr::try_from(when)?;
+                        let then = Expr::try_from(then)?;
+                        Ok((when, then))
                     })
-                    .collect();
-                let else_result =
-                    else_result.map(|expr| Expr::try_from(*expr).map(Box::new).unwrap());
+                    .collect::<Result<Vec<_>>>()?;
+
+                let else_result = else_result
+                    .map(|expr| Expr::try_from(*expr))
+                    .transpose()?
+                    .map(Box::new);
                 Ok(Expr::Case {
                     operand,
                     when_then,
