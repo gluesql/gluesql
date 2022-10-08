@@ -247,7 +247,10 @@ impl TryFrom<ExprNode> for Expr {
                 when_then,
                 else_result,
             } => {
-                let operand = operand.map(|what| Expr::try_from(*what).map(Box::new).unwrap()); // (Expr::try_from(*operand).map(Box::new)?);
+                let operand = operand
+                    .map(|expr| Expr::try_from(*expr))
+                    .transpose()?
+                    .map(Box::new);
                 let when_then = when_then
                     .into_iter()
                     .map(|(when, then)| {
