@@ -53,7 +53,7 @@ pub fn evaluate_stateless<'a>(
 
             expr::unary_op(op, v)
         }
-        Expr::Cast { expr, data_type } => eval(expr)?.cast(data_type),
+        //Expr::Cast { expr, data_type } => eval(expr)?.cast(data_type),
         Expr::InList {
             expr,
             list,
@@ -334,6 +334,10 @@ fn evaluate_function<'a>(
             let from_expr = eval(from_expr)?;
             let sub_expr = eval(sub_expr)?;
             f::position(name, from_expr, sub_expr)
+        }
+        Function::Cast { expr, data_type } => {
+            let expr = eval(expr)?;
+            f::cast(name, expr, *data_type)
         }
     }
     .map(Evaluated::from)

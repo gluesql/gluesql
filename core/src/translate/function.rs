@@ -1,7 +1,9 @@
+use sqlparser::ast::DataType;
+
 use {
     super::{
-        ast_literal::translate_trim_where_field, expr::translate_expr, translate_object_name,
-        TranslateError,
+        ast_literal::translate_trim_where_field, expr::translate_expr, translate_data_type,
+        translate_object_name, TranslateError,
     },
     crate::{
         ast::{Aggregate, CountArgExpr, Expr, Function},
@@ -39,6 +41,12 @@ pub fn translate_positon(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr
         from_expr,
         sub_expr,
     })))
+}
+
+pub fn translate_cast(expr: &SqlExpr, data_type: &DataType) -> Result<Expr> {
+    let expr = translate_expr(expr).map(Box::new)?;
+    let data_type = translate_data_type(data_type)?;
+    Ok(Expr::Function(Box::new(Function::Cast { expr, data_type })))
 }
 
 fn check_len(name: String, found: usize, expected: usize) -> Result<()> {

@@ -7,7 +7,6 @@ mod unary_op;
 
 pub mod aggregate;
 pub mod between;
-pub mod cast;
 pub mod extract;
 pub mod function;
 pub mod in_list;
@@ -16,7 +15,6 @@ pub use exists::{exists, not_exists};
 pub use nested::nested;
 
 use {
-    super::DataTypeNode,
     crate::{
         ast::{
             Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, Function, Query,
@@ -82,10 +80,6 @@ pub enum ExprNode {
     Nested(Box<ExprNode>),
     Function(Box<FunctionNode>),
     Aggregate(Box<AggregateNode>),
-    Cast {
-        expr: Box<ExprNode>,
-        data_type: DataTypeNode,
-    },
     Exists {
         subquery: Box<QueryNode>,
         negated: bool,
@@ -166,11 +160,11 @@ impl TryFrom<ExprNode> for Expr {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
                 Ok(Expr::Extract { field, expr })
             }
-            ExprNode::Cast { expr, data_type } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
-                let data_type = data_type.try_into()?;
-                Ok(Expr::Cast { expr, data_type })
-            }
+            // ExprNode::Cast { expr, data_type } => {
+            //     let expr = Expr::try_from(*expr).map(Box::new)?;
+            //     let data_type = data_type.try_into()?;
+            //     Ok(Expr::Function(Box::new(Function::Cast { expr, data_type })))
+            // }
             ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
             ExprNode::InList {

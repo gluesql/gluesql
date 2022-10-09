@@ -29,7 +29,6 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
             }
             Expr::Nested(expr)
             | Expr::UnaryOp { expr, .. }
-            | Expr::Cast { expr, .. }
             | Expr::Extract { expr, .. }
             | Expr::IsNull(expr)
             | Expr::IsNotNull(expr)

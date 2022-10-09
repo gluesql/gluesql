@@ -118,10 +118,6 @@ pub trait Planner<'a> {
                 op,
                 expr: Box::new(self.subquery_expr(outer_context, *expr)),
             },
-            Expr::Cast { expr, data_type } => Expr::Cast {
-                expr: Box::new(self.subquery_expr(outer_context, *expr)),
-                data_type,
-            },
             Expr::Extract { field, expr } => Expr::Extract {
                 field,
                 expr: Box::new(self.subquery_expr(outer_context, *expr)),

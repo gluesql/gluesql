@@ -1,8 +1,8 @@
 use {
     super::ExprNode,
     crate::{
-        ast::Function,
-        ast_builder::ExprList,
+        ast::{Expr, Function},
+        ast_builder::{DataTypeNode, ExprList},
         result::{Error, Result},
     },
 };
@@ -116,6 +116,10 @@ pub enum FunctionNode {
     Position {
         from_expr: ExprNode,
         sub_expr: ExprNode,
+    },
+    Cast {
+        expr: Box<ExprNode>,
+        data_type: DataTypeNode,
     },
 }
 
@@ -258,6 +262,11 @@ impl TryFrom<FunctionNode> for Function {
                     sub_expr,
                 })
             }
+            FunctionNode::Cast { expr, data_type } => {
+                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let data_type = data_type.try_into()?;
+                Ok(Function::Cast { expr, data_type })
+            }
         }
     }
 }
@@ -383,6 +392,9 @@ impl ExprNode {
     }
     pub fn position(self, format: ExprNode) -> ExprNode {
         position(self, format)
+    }
+    pub fn cast(self, data_type: DataTypeNode) -> ExprNode {
+        cast(self, data_type)
     }
 }
 
@@ -606,14 +618,24 @@ pub fn position<T: Into<ExprNode>>(from_expr: T, sub_expr: T) -> ExprNode {
     }))
 }
 
+pub fn cast<T: Into<DataTypeNode>>(expr: ExprNode, data_type: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Cast {
+        expr: Box::new(expr),
+        data_type: data_type.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
-        format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad, ltrim,
-        modulo, now, num, pi, position, power, radians, repeat, reverse, right, round, rpad, rtrim,
-        sign, sin, sqrt, substr, tan, test_expr, text, time, timestamp, to_date, to_time,
-        to_timestamp, upper,
+    use crate::{
+        ast_builder::{
+            abs, acos, asin, atan, cast, ceil, col, concat, cos, date, degrees, divide, exp, expr,
+            floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower,
+            lpad, ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse, right,
+            round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time, timestamp,
+            to_date, to_time, to_timestamp, upper,
+        },
+        prelude::DataType,
     };
 
     #[test]
@@ -1132,6 +1154,17 @@ mod tests {
 
         let actual = text("rice").position(text("cake"));
         let expected = r#"POSITION("cake" IN "rice")"#;
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_cast() {
+        let actual = col("date").cast(DataType::Int.into());
+        let expected = "CAST(date AS INTEGER)";
+        test_expr(actual, expected);
+
+        let actual = col("date").cast("INTEGER".into());
+        let expected = "CAST(date AS INTEGER)";
         test_expr(actual, expected);
     }
 }

@@ -93,7 +93,6 @@ fn find_column(expr: &Expr, column_name: &str) -> bool {
         Expr::Nested(expr) => find(expr),
         Expr::BinaryOp { left, right, .. } => find(left) || find(right),
         Expr::UnaryOp { expr, .. } => find(expr),
-        Expr::Cast { expr, .. } => find(expr),
         _ => false,
     }
 }

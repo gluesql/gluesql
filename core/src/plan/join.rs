@@ -394,6 +394,8 @@ fn find_evaluable(context: Option<Rc<Context<'_>>>, expr: Expr) -> (EvaluableExp
 
 #[cfg(test)]
 mod tests {
+    use crate::ast::Function;
+
     use {
         super::plan,
         crate::{
@@ -1154,7 +1156,7 @@ mod tests {
         );
         let actual = plan_join(&storage, &sql);
         let expected = gen_expected(Expr::InList {
-            expr: Box::new(Expr::Cast {
+            expr: Box::new(Function::Cast {
                 expr: subquery_expr(),
                 data_type: DataType::Int,
             }),
