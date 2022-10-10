@@ -43,7 +43,8 @@ impl Function {
                 filter_chars: None,
                 ..
             }
-            | Self::Reverse(expr) => Exprs::Single([expr].into_iter()),
+            | Self::Reverse(expr)
+            | Self::Cast { expr, .. } => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -195,6 +196,7 @@ mod tests {
         test(r#"RTRIM("world  ")"#, &[r#""world  ""#]);
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
+        test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);

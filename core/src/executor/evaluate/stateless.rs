@@ -337,7 +337,7 @@ fn evaluate_function<'a>(
         }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr)?;
-            f::cast(name, expr, *data_type)
+            f::cast(expr, data_type)
         }
     }
     .map(Evaluated::from)

@@ -44,7 +44,7 @@ pub fn translate_positon(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr
 }
 
 pub fn translate_cast(expr: &SqlExpr, data_type: &DataType) -> Result<Expr> {
-    let expr = translate_expr(expr).map(Box::new)?;
+    let expr = translate_expr(expr)?;
     let data_type = translate_data_type(data_type)?;
     Ok(Expr::Function(Box::new(Function::Cast { expr, data_type })))
 }

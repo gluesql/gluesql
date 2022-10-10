@@ -1,7 +1,7 @@
 use {
     super::ExprNode,
     crate::{
-        ast::{Expr, Function},
+        ast::Function,
         ast_builder::{DataTypeNode, ExprList},
         result::{Error, Result},
     },
@@ -118,7 +118,7 @@ pub enum FunctionNode {
         sub_expr: ExprNode,
     },
     Cast {
-        expr: Box<ExprNode>,
+        expr: ExprNode,
         data_type: DataTypeNode,
     },
 }
@@ -263,7 +263,7 @@ impl TryFrom<FunctionNode> for Function {
                 })
             }
             FunctionNode::Cast { expr, data_type } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
+                let expr = expr.try_into()?;
                 let data_type = data_type.try_into()?;
                 Ok(Function::Cast { expr, data_type })
             }
@@ -620,7 +620,7 @@ pub fn position<T: Into<ExprNode>>(from_expr: T, sub_expr: T) -> ExprNode {
 
 pub fn cast<T: Into<DataTypeNode>>(expr: ExprNode, data_type: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Cast {
-        expr: Box::new(expr),
+        expr,
         data_type: data_type.into(),
     }))
 }
@@ -629,11 +629,11 @@ pub fn cast<T: Into<DataTypeNode>>(expr: ExprNode, data_type: T) -> ExprNode {
 mod tests {
     use crate::{
         ast_builder::{
-            abs, acos, asin, atan, cast, ceil, col, concat, cos, date, degrees, divide, exp, expr,
-            floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower,
-            lpad, ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse, right,
-            round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time, timestamp,
-            to_date, to_time, to_timestamp, upper,
+            abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
+            format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad,
+            ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse, right, round,
+            rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time, timestamp, to_date,
+            to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };

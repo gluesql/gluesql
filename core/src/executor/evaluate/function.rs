@@ -478,6 +478,6 @@ pub fn position(name: String, from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>)
     Value::position(&Value::Str(from_expr), &Value::Str(sub_expr))
 }
 
-pub fn cast<'a>(name: String, expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
-    expr.cast(data_type)
+pub fn cast(expr: Evaluated<'_>, data_type: &DataType) -> Result<Value> {
+    expr.cast(data_type)?.try_into()
 }

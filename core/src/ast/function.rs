@@ -33,7 +33,7 @@ pub enum Function {
         fill: Option<Expr>,
     },
     Cast {
-        expr: Box<Expr>,
+        expr: Expr,
         data_type: DataType,
     },
     Ceil(Expr),
