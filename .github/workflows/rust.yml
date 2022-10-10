@@ -10,8 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  clippy_root:
-    name: Clippy (root)
+  clippy_workspace:
+    name: Clippy (workspace) - Default Feature
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -24,7 +24,7 @@ jobs:
       - run: cargo clippy -- -D warnings
 
   clippy_core:
-    name: Clippy (core)
+    name: Clippy (core) - per Powerset Features
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -80,10 +80,10 @@ jobs:
       - name: Set up wasm pack
         uses: jetli/wasm-pack-action@v0.3.0
       - run: |
-          cd gluesql-js/web
+          cd pkg/javascript/web
           yarn install
           yarn build
-          cd ../../
+          cd ../../../
 
   run_tests:
     name: Run tests
