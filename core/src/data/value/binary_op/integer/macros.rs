@@ -222,6 +222,7 @@ macro_rules! generate_binary_op_tests {
                     base.partial_cmp(&Decimal(Decimal::ONE)),
                     Some(Ordering::Equal)
                 );
+                assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
                 assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
                 assert_eq!(base.partial_cmp(&I16(1)), Some(Ordering::Equal));
                 assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
