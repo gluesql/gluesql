@@ -160,11 +160,6 @@ impl TryFrom<ExprNode> for Expr {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
                 Ok(Expr::Extract { field, expr })
             }
-            // ExprNode::Cast { expr, data_type } => {
-            //     let expr = Expr::try_from(*expr).map(Box::new)?;
-            //     let data_type = data_type.try_into()?;
-            //     Ok(Expr::Function(Box::new(Function::Cast { expr, data_type })))
-            // }
             ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
             ExprNode::InList {

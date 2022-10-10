@@ -108,7 +108,6 @@ pub async fn evaluate<'a>(
 
             evaluate_function(storage, context, aggregated, func).await
         }
-        //Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
         Expr::Extract { field, expr } => eval(expr)
             .await
             .and_then(Value::try_from)?
@@ -428,7 +427,6 @@ async fn evaluate_function<'a>(
             let format = eval(format).await?;
             f::to_date(name, expr, format)
         }
-
         Function::ToTimestamp { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
@@ -449,8 +447,7 @@ async fn evaluate_function<'a>(
         }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr).await?;
-            //let data_type = eval(data_type).await?;
-            f::cast(name, expr, data_type)
+            f::cast(expr, data_type)
         }
     }
     .map(Evaluated::from)

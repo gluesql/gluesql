@@ -3,7 +3,7 @@
 use {
     super::AlterError,
     crate::{
-        ast::{ColumnDef, Expr, Function, OrderByExpr},
+        ast::{ColumnDef, Expr, OrderByExpr},
         data::Schema,
         result::MutResult,
         store::{GStore, GStoreMut},
@@ -62,8 +62,6 @@ fn validate_index_expr(columns: &[String], expr: &Expr) -> (bool, bool) {
             (valid_l && valid_r, has_ident_l || has_ident_r)
         }
         Expr::UnaryOp { expr, .. } => validate(expr),
-
-        //Expr::Function(Box::new(Function::Cast { expr, .. })) => validate(expr),
         _ => (false, false),
     }
 }
