@@ -1094,7 +1094,7 @@ mod tests {
                 offset: None,
             })
         };
-        let subquery_expr = || Box::new(Expr::Subquery(subquery()));
+        let subquery_expr = || Expr::Subquery(subquery());
 
         let gen_expected = |selection| {
             select(Select {
@@ -1114,7 +1114,7 @@ mod tests {
         let expected = gen_expected(Expr::BinaryOp {
             left: Box::new(expr("id")),
             op: BinaryOperator::Eq,
-            right: subquery_expr(),
+            right: Box::new(subquery_expr()),
         });
         assert_eq!(actual, expected, "binary operator:\n{sql}");
 
@@ -1123,7 +1123,7 @@ mod tests {
         let expected = gen_expected(Expr::InSubquery {
             expr: Box::new(Expr::UnaryOp {
                 op: UnaryOperator::Minus,
-                expr: subquery_expr(),
+                expr: Box::new(subquery_expr()),
             }),
             subquery: subquery(),
             negated: false,
@@ -1140,7 +1140,7 @@ mod tests {
         let expected = gen_expected(Expr::InSubquery {
             expr: Box::new(Expr::UnaryOp {
                 op: UnaryOperator::Minus,
-                expr: subquery_expr(),
+                expr: Box::new(subquery_expr()),
             }),
             subquery: subquery(),
             negated: false,
@@ -1156,10 +1156,10 @@ mod tests {
         );
         let actual = plan_join(&storage, &sql);
         let expected = gen_expected(Expr::InList {
-            expr: Box::new(Function::Cast {
+            expr: Box::new(Expr::Function(Box::new(Function::Cast {
                 expr: subquery_expr(),
                 data_type: DataType::Int,
-            }),
+            }))),
             list: vec![expr("1"), expr("2"), expr("3")],
             negated: false,
         });
@@ -1176,9 +1176,9 @@ mod tests {
         );
         let actual = plan_join(&storage, &sql);
         let expected = gen_expected(Expr::BinaryOp {
-            left: Box::new(Expr::IsNull(subquery_expr())),
+            left: Box::new(Expr::IsNull(Box::new(subquery_expr()))),
             op: BinaryOperator::Or,
-            right: Box::new(Expr::IsNotNull(subquery_expr())),
+            right: Box::new(Expr::IsNotNull(Box::new(subquery_expr()))),
         });
         assert_eq!(actual, expected, "is null and is not null:\n{sql}");
 
@@ -1198,9 +1198,9 @@ mod tests {
         );
         let actual = plan_join(&storage, &sql);
         let expected = gen_expected(Expr::Between {
-            expr: subquery_expr(),
+            expr: Box::new(subquery_expr()),
             negated: false,
-            low: subquery_expr(),
+            low: Box::new(subquery_expr()),
             high: Box::new(expr("100")),
         });
         assert_eq!(actual, expected, "between:\n{sql}");
@@ -1214,7 +1214,7 @@ mod tests {
         let actual = plan_join(&storage, &sql);
         let expected = gen_expected(Expr::IsNull(Box::new(Expr::Extract {
             field: DateTimeField::Hour,
-            expr: Box::new(Expr::Nested(subquery_expr())),
+            expr: Box::new(Expr::Nested(Box::new(subquery_expr()))),
         })));
         assert_eq!(actual, expected, "extract and nested:\n{sql}");
 
@@ -1231,10 +1231,10 @@ mod tests {
         );
         let actual = plan_join(&storage, &sql);
         let expected = gen_expected(Expr::Case {
-            operand: Some(subquery_expr()),
+            operand: Some(Box::new(subquery_expr())),
             when_then: vec![
                 (expr("10"), expr("True")),
-                (expr("20"), Expr::IsNull(subquery_expr())),
+                (expr("20"), Expr::IsNull(Box::new(subquery_expr()))),
             ],
             else_result: Some(Box::new(expr("col3"))),
         });
