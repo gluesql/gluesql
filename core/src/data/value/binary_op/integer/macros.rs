@@ -168,25 +168,17 @@ macro_rules! generate_binary_op_tests {
             }
 
             #[test]
-            fn eq_primitive() {
-                assert_eq!($primitive::from(0), $variant(0));
-                assert_eq!($primitive::from(1), $variant(1));
-                assert_eq!($primitive::MAX, $variant($primitive::MAX));
-                assert_eq!($primitive::MIN, $variant($primitive::MIN));
-            }
-
-            #[test]
             fn eq() {
                 let base: $primitive = 1.into();
 
+                assert_eq!(base, Decimal(Decimal::ONE));
+                assert_eq!(base, F64(1.0));
                 assert_eq!(base, I8(1));
                 assert_eq!(base, I16(1));
                 assert_eq!(base, I32(1));
                 assert_eq!(base, I64(1));
                 assert_eq!(base, I128(1));
                 assert_eq!(base, U8(1));
-                assert_eq!(base, F64(1.0));
-                assert_eq!(base, Decimal(Decimal::ONE));
 
                 assert_ne!(base, Bool(true));
             }
@@ -195,14 +187,22 @@ macro_rules! generate_binary_op_tests {
             fn partial_cmp() {
                 let base: $primitive = 1.into();
 
+                assert_eq!(
+                    base.partial_cmp(&Decimal(Decimal::ZERO)),
+                    Some(Ordering::Greater)
+                );
+                assert_eq!(base.partial_cmp(&F64(0.0)), Some(Ordering::Greater));
                 assert_eq!(base.partial_cmp(&I8(0)), Some(Ordering::Greater));
                 assert_eq!(base.partial_cmp(&I16(0)), Some(Ordering::Greater));
                 assert_eq!(base.partial_cmp(&I32(0)), Some(Ordering::Greater));
                 assert_eq!(base.partial_cmp(&I64(0)), Some(Ordering::Greater));
                 assert_eq!(base.partial_cmp(&I128(0)), Some(Ordering::Greater));
                 assert_eq!(base.partial_cmp(&U8(0)), Some(Ordering::Greater));
-                assert_eq!(base.partial_cmp(&F64(0.0)), Some(Ordering::Greater));
 
+                assert_eq!(
+                    base.partial_cmp(&Decimal(Decimal::ONE)),
+                    Some(Ordering::Equal)
+                );
                 assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
                 assert_eq!(base.partial_cmp(&I16(1)), Some(Ordering::Equal));
                 assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
@@ -211,18 +211,17 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.partial_cmp(&U8(1)), Some(Ordering::Equal));
                 assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
 
+                assert_eq!(
+                    base.partial_cmp(&Decimal(Decimal::TWO)),
+                    Some(Ordering::Less)
+                );
+                assert_eq!(base.partial_cmp(&F64(2.0)), Some(Ordering::Less));
                 assert_eq!(base.partial_cmp(&I8(2)), Some(Ordering::Less));
                 assert_eq!(base.partial_cmp(&I16(2)), Some(Ordering::Less));
                 assert_eq!(base.partial_cmp(&I32(2)), Some(Ordering::Less));
                 assert_eq!(base.partial_cmp(&I64(2)), Some(Ordering::Less));
                 assert_eq!(base.partial_cmp(&I128(2)), Some(Ordering::Less));
                 assert_eq!(base.partial_cmp(&U8(2)), Some(Ordering::Less));
-                assert_eq!(base.partial_cmp(&F64(2.0)), Some(Ordering::Less));
-
-                assert_eq!(
-                    base.partial_cmp(&Decimal(Decimal::ONE)),
-                    Some(Ordering::Equal)
-                );
 
                 assert_eq!(base.partial_cmp(&Bool(true)), None);
             }
@@ -237,7 +236,10 @@ macro_rules! generate_binary_op_tests {
                         Add
                     )
                 );
-
+                assert_eq!(
+                    $primitive::MAX.try_add(&F64(1.0)),
+                    overflow_err($variant($primitive::MAX), F64(1.0), Add)
+                );
                 assert_eq!(
                     $primitive::MAX.try_add(&I8(1)),
                     overflow_err($variant($primitive::MAX), I8(1), Add)
@@ -274,7 +276,10 @@ macro_rules! generate_binary_op_tests {
                         Subtract
                     )
                 );
-
+                assert_eq!(
+                    $primitive::MIN.try_subtract(&F64(1.0)),
+                    overflow_err($variant($primitive::MIN), F64(1.0), Subtract)
+                );
                 assert_eq!(
                     $primitive::MIN.try_subtract(&I8(1)),
                     overflow_err($variant($primitive::MIN), I8(1), Subtract)
@@ -311,7 +316,10 @@ macro_rules! generate_binary_op_tests {
                         Multiply
                     )
                 );
-
+                assert_eq!(
+                    $primitive::MAX.try_multiply(&F64(2.0)),
+                    overflow_err($variant($primitive::MAX), F64(2.0), Multiply)
+                );
                 assert_eq!(
                     $primitive::MAX.try_multiply(&I8(2)),
                     overflow_err($variant($primitive::MAX), I8(2), Multiply)
@@ -348,7 +356,10 @@ macro_rules! generate_binary_op_tests {
                         Divide
                     )
                 );
-
+                assert_eq!(
+                    $primitive::MAX.try_divide(&F64(0.0)),
+                    overflow_err($variant($primitive::MAX), F64(0.0), Divide)
+                );
                 assert_eq!(
                     $primitive::MAX.try_divide(&I8(0)),
                     overflow_err($variant($primitive::MAX), I8(0), Divide)
@@ -385,7 +396,10 @@ macro_rules! generate_binary_op_tests {
                         Modulo
                     )
                 );
-
+                assert_eq!(
+                    $primitive::MAX.try_modulo(&F64(0.0)),
+                    overflow_err($variant($primitive::MAX), F64(0.0), Modulo)
+                );
                 assert_eq!(
                     $primitive::MAX.try_modulo(&I8(0)),
                     overflow_err($variant($primitive::MAX), I8(0), Modulo)
