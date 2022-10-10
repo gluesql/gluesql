@@ -1,7 +1,7 @@
 use {
     super::{JoinConstraintData, JoinOperatorType},
     crate::{
-        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, TableAlias, TableFactor},
+        ast::{Join, JoinExecutor, JoinOperator, TableAlias, TableFactor},
         ast_builder::{
             select::{NodeData, Prebuild},
             ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
@@ -11,15 +11,6 @@ use {
         result::Result,
     },
 };
-
-impl From<&JoinOperatorType> for JoinOperator {
-    fn from(join_operator_type: &JoinOperatorType) -> Self {
-        match join_operator_type {
-            JoinOperatorType::Inner => JoinOperator::Inner(JoinConstraint::None),
-            JoinOperatorType::Left => JoinOperator::LeftOuter(JoinConstraint::None),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub enum PrevNode {
@@ -168,7 +159,7 @@ impl JoinNode {
 
     pub fn prebuild_for_hash_join(self) -> Result<(NodeData, TableFactor, JoinOperator)> {
         let select_data = self.prev_node.prebuild()?;
-        let join_operator = JoinOperator::from(&self.join_operator_type);
+        let join_operator = JoinOperator::from(self.join_operator_type);
 
         Ok((select_data, self.relation, join_operator))
     }
@@ -179,7 +170,7 @@ impl Prebuild for JoinNode {
         let mut select_data = self.prev_node.prebuild()?;
         select_data.joins.push(Join {
             relation: self.relation,
-            join_operator: JoinOperator::from(&self.join_operator_type),
+            join_operator: JoinOperator::from(self.join_operator_type),
             join_executor: JoinExecutor::NestedLoop,
         });
         Ok(select_data)
