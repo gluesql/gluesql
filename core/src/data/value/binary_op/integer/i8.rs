@@ -346,11 +346,11 @@ mod tests {
         assert_eq!(base.try_multiply(&Decimal(Decimal::TWO)), Ok(I8(6)));
         assert_eq!(base.try_multiply(&F64(2.0)), Ok(I8(6)));
         assert_eq!(base.try_multiply(&I8(2)), Ok(I8(6)));
-        assert_eq!(base.try_multiply(&I16(2)), Ok(I16(6)));
-        assert_eq!(base.try_multiply(&I32(2)), Ok(I32(6)));
-        assert_eq!(base.try_multiply(&I64(2)), Ok(I64(6)));
-        assert_eq!(base.try_multiply(&I128(2)), Ok(I128(6)));
-        assert_eq!(base.try_multiply(&U8(2)), Ok(U8(6)));
+        assert_eq!(base.try_multiply(&I16(2)), Ok(I8(6)));
+        assert_eq!(base.try_multiply(&I32(2)), Ok(I8(6)));
+        assert_eq!(base.try_multiply(&I64(2)), Ok(I8(6)));
+        assert_eq!(base.try_multiply(&I128(2)), Ok(I8(6)));
+        assert_eq!(base.try_multiply(&U8(2)), Ok(I8(6)));
 
         assert_eq!(
             base.try_multiply(&Bool(true)),
