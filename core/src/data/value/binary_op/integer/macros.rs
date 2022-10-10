@@ -155,6 +155,7 @@ macro_rules! impl_try_binary_op {
     };
 }
 
+#[cfg(test)]
 #[macro_export]
 macro_rules! generate_binary_op_tests {
     ($variant: ident, $primitive: ident) => {
