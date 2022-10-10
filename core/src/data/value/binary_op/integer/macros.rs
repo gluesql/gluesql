@@ -357,7 +357,7 @@ macro_rules! generate_binary_op_tests {
                 );
                 assert_eq!(
                     $primitive::MAX.try_multiply(&I128(2)),
-                    overflow_err(I8($primitive::MAX), I128(2), Multiply)
+                    overflow_err($variant($primitive::MAX), I128(2), Multiply)
                 );
                 assert_eq!(
                     $primitive::MAX.try_multiply(&U8(2)),

@@ -7,7 +7,6 @@ mod i16;
 mod i32;
 mod i64;
 mod integer;
-mod u8;
 
 pub trait TryBinaryOperator {
     type Rhs;
