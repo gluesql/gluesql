@@ -2,7 +2,6 @@ mod filter;
 mod group_by;
 mod having;
 mod join;
-mod join_constraint;
 mod limit;
 mod limit_offset;
 mod offset;
@@ -12,9 +11,16 @@ mod project;
 mod root;
 
 pub use {
-    filter::FilterNode, group_by::GroupByNode, having::HavingNode, join::JoinNode,
-    join_constraint::JoinConstraintNode, limit::LimitNode, limit_offset::LimitOffsetNode,
-    offset::OffsetNode, offset_limit::OffsetLimitNode, order_by::OrderByNode, project::ProjectNode,
+    filter::FilterNode,
+    group_by::GroupByNode,
+    having::HavingNode,
+    join::{HashJoinNode, JoinConstraintNode, JoinNode},
+    limit::LimitNode,
+    limit_offset::LimitOffsetNode,
+    offset::OffsetNode,
+    offset_limit::OffsetLimitNode,
+    order_by::OrderByNode,
+    project::ProjectNode,
     root::SelectNode,
 };
 
