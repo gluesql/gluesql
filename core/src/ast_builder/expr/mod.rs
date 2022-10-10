@@ -1,4 +1,5 @@
 mod binary_op;
+mod case;
 mod exists;
 mod is_null;
 mod like;
@@ -12,6 +13,7 @@ pub mod extract;
 pub mod function;
 pub mod in_list;
 
+pub use case::case;
 pub use exists::{exists, not_exists};
 pub use nested::nested;
 
@@ -89,6 +91,11 @@ pub enum ExprNode {
     Exists {
         subquery: Box<QueryNode>,
         negated: bool,
+    },
+    Case {
+        operand: Option<Box<ExprNode>>,
+        when_then: Vec<(ExprNode, ExprNode)>,
+        else_result: Option<Box<ExprNode>>,
     },
 }
 
@@ -235,6 +242,34 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::Exists { subquery, negated } => Query::try_from(*subquery)
                 .map(Box::new)
                 .map(|subquery| Expr::Exists { subquery, negated }),
+            ExprNode::Case {
+                operand,
+                when_then,
+                else_result,
+            } => {
+                let operand = operand
+                    .map(|expr| Expr::try_from(*expr))
+                    .transpose()?
+                    .map(Box::new);
+                let when_then = when_then
+                    .into_iter()
+                    .map(|(when, then)| {
+                        let when = Expr::try_from(when)?;
+                        let then = Expr::try_from(then)?;
+                        Ok((when, then))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+
+                let else_result = else_result
+                    .map(|expr| Expr::try_from(*expr))
+                    .transpose()?
+                    .map(Box::new);
+                Ok(Expr::Case {
+                    operand,
+                    when_then,
+                    else_result,
+                })
+            }
         }
     }
 }
@@ -248,6 +283,12 @@ impl From<&str> for ExprNode {
 impl From<i64> for ExprNode {
     fn from(n: i64) -> Self {
         ExprNode::Expr(Expr::Literal(AstLiteral::Number(BigDecimal::from(n))))
+    }
+}
+
+impl From<bool> for ExprNode {
+    fn from(b: bool) -> Self {
+        ExprNode::Expr(Expr::Literal(AstLiteral::Boolean(b)))
     }
 }
 
