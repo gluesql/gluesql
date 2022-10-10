@@ -92,7 +92,7 @@ test_case!(unary_operator, async move {
             Err(ValueError::FactorialOnNegativeNumeric.into()),
         ),
         (
-            "SELECT (v6 * 100)! as v6 FROM Test",
+            "SELECT (v6 * 2)! as v6 FROM Test",
             Err(ValueError::FactorialOverflow.into()),
         ),
         (
