@@ -44,6 +44,16 @@ pub enum TrimWhereField {
     Trailing,
 }
 
+impl ToSql for TrimWhereField {
+    fn to_sql(&self) -> String {
+        match self {
+            TrimWhereField::Both => "BOTH".to_owned(),
+            TrimWhereField::Leading => "LEADING".to_owned(),
+            TrimWhereField::Trailing => "TRAILING".to_owned(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {

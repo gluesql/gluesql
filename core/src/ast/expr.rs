@@ -192,7 +192,7 @@ impl ToSql for Expr {
                 [operand, when_then, else_result, "END".to_owned()].join("\n")
             }
             Expr::Aggregate(a) => a.to_sql(),
-            Expr::Function(func) => format!("{func}(..)"),
+            Expr::Function(func) => func.to_sql(),
             Expr::InSubquery {
                 expr,
                 subquery,
@@ -586,7 +586,7 @@ mod tests {
         );
 
         assert_eq!(
-            "SIGN(..)",
+            "SIGN(1.0)",
             &Expr::Function(Box::new(Function::Sign(Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_str("1.0").unwrap()
             )))))
