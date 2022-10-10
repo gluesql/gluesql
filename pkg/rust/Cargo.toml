@@ -1,0 +1,62 @@
+[package]
+name = "gluesql"
+version = "0.12.0"
+edition = "2021"
+authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
+default-run = "gluesql"
+description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
+license = "Apache-2.0"
+repository = "https://github.com/gluesql/gluesql"
+documentation = "https://docs.rs/gluesql/"
+readme = "README.md"
+keywords = [
+	"sql-database",
+	"sql",
+	"functional",
+	"no-mut-in-the-middle",
+	"webassembly",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+
+# ref. https://github.com/rustwasm/wasm-pack/issues/1111
+# enable this only for gluesql-js build
+# [profile.release]
+# opt-level = "s"
+
+[dependencies]
+gluesql-core = { path = "../../core", version = "0.12.0" }
+cli = { package = "gluesql-cli", path = "../../cli", version = "0.12.0", optional = true }
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.12.0", optional = true }
+memory-storage = { package = "gluesql_memory_storage", path = "../../storages/memory-storage", version = "0.12.0", optional = true }
+shared-memory-storage = { package = "gluesql-shared-memory-storage", path = "../../storages/shared-memory-storage", version = "0.12.0", optional = true }
+sled-storage = { package = "gluesql_sled_storage", path = "../../storages/sled-storage", version = "0.12.0", optional = true }
+
+[dev-dependencies]
+futures = "0.3"
+
+[features]
+# DB User
+default = [
+	"gluesql-core/alter-table",
+	"gluesql-core/index",
+	"gluesql-core/transaction",
+	"cli",
+	"test-suite",
+	"memory-storage",
+	"shared-memory-storage",
+	"sled-storage",
+]
+
+# Storage Maker
+
+# optional: ALTER TABLE
+# you can include whether ALTER TABLE support or not for your custom database implementation.
+alter-table = ["gluesql-core/alter-table", "test-suite/alter-table"]
+
+# optional: INDEX
+index = ["gluesql-core/index", "test-suite/index"]
+
+# optional: TRANSACTION
+transaction = ["gluesql-core/transaction", "test-suite/transaction"]
