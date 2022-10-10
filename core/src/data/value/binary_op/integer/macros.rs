@@ -406,7 +406,7 @@ macro_rules! generate_binary_op_tests {
             }
 
             #[test]
-            fn mod_overlfow() {
+            fn mod_overflow() {
                 assert_eq!(
                     $primitive::MAX.try_modulo(&Decimal(Decimal::from($primitive::from(0)))),
                     overflow_err(
