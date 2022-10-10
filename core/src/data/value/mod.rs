@@ -475,15 +475,16 @@ impl Value {
     pub fn unary_factorial(&self) -> Result<Value> {
         use Value::*;
 
-        let factorial_function = |a: i128| -> Result<i128> {
+        fn factorial_function(a: i128) -> Result<i128> {
             if a.is_negative() {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
+
             (1_i128..(a + 1_i128))
                 .into_iter()
-                .try_fold(1i128, |mul, x| mul.checked_mul(x))
+                .try_fold(1_i128, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
-        };
+        }
 
         match self {
             I8(a) => factorial_function(*a as i128).map(I128),
@@ -1017,15 +1018,15 @@ mod tests {
         test!(multiply decimal(3), decimal(2) => decimal(6));
 
         test!(multiply I8(3),    mon!(3)  => mon!(9));
-        test!(multiply I16(3),    mon!(3)  => mon!(9));
+        test!(multiply I16(3),   mon!(3)  => mon!(9));
         test!(multiply I32(3),   mon!(3)  => mon!(9));
         test!(multiply I64(3),   mon!(3)  => mon!(9));
-        test!(multiply I128(3),   mon!(3)  => mon!(9));
+        test!(multiply I128(3),  mon!(3)  => mon!(9));
         test!(multiply F64(3.0), mon!(3)  => mon!(9));
         test!(multiply mon!(3),  I8(2)    => mon!(6));
-        test!(multiply mon!(3),  I32(2)    => mon!(6));
+        test!(multiply mon!(3),  I32(2)   => mon!(6));
         test!(multiply mon!(3),  I64(2)   => mon!(6));
-        test!(multiply mon!(3),  I128(2)    => mon!(6));
+        test!(multiply mon!(3),  I128(2)  => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
         test!(divide I8(0),     I8(5)   => I8(0));
