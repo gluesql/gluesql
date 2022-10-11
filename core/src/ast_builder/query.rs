@@ -212,17 +212,17 @@ mod test {
                 having: None,
             };
 
-            Ok(Query {
+            Query {
                 body: SetExpr::Select(Box::new(select)),
                 order_by: Vec::new(),
                 limit: None,
                 offset: None,
-            })
+            }
         };
         assert_eq!(
-            actual.try_into(),
+            Query::try_from(actual).unwrap(),
             expected,
-            "from hash join node to query node"
+            "from hash join node"
         );
 
         let actual = table("FOO").select().group_by("id").into();
