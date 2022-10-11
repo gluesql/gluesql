@@ -1,3 +1,5 @@
+use chrono::Utc;
+
 use {
     crate::*,
     gluesql_core::{
@@ -327,14 +329,16 @@ CREATE TABLE Test (
         };
     }
 
+    let today = Utc::now().naive_utc().format("%Y-%m-%d");
+
     test!(
-        "SELECT * FROM GLUE_OBJECTS",
+        "SELECT OBJECT_NAME, OBJECT_TYPE, FORMAT(CREATED, \"%Y-%m-%d\") CREATED_DATE FROM GLUE_OBJECTS",
         Ok(select!(
-            OBJECT_NAME          | OBJECT_TYPE        | CREATED;
-            Str                  | Str                | Timestamp;
-            "Test".to_owned()      "TABLE".to_owned()   t!("2021-03-01T00:00:00");
-            "idx_id".to_owned()    "INDEX".to_owned()   t!("2021-03-01T00:00:00");
-            "idx_name".to_owned()  "INDEX".to_owned()   t!("2021-03-01T00:00:00")
+            OBJECT_NAME          | OBJECT_TYPE        | CREATED_DATE;
+            Str                  | Str                | Str;
+            "Test".to_owned()      "TABLE".to_owned()   today.to_string();
+            "idx_id".to_owned()    "INDEX".to_owned()   today.to_string();
+            "idx_name".to_owned()  "INDEX".to_owned()   today.to_string()
         ))
     );
 });

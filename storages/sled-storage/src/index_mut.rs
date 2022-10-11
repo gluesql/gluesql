@@ -10,6 +10,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::OrderByExpr,
+        chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         result::{Error, MutResult, Result, TrySelf},
         store::{IndexError, IndexMut, Store},
@@ -92,6 +93,7 @@ impl IndexMut for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                created: Utc::now().naive_utc(),
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
@@ -165,6 +167,7 @@ impl IndexMut for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                created: Utc::now().naive_utc(),
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);

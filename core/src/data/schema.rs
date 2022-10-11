@@ -1,5 +1,6 @@
 use {
     crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr},
+    chrono::NaiveDateTime,
     serde::{Deserialize, Serialize},
     std::fmt::Debug,
     strum_macros::Display,
@@ -25,6 +26,7 @@ pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,
     pub indexes: Vec<SchemaIndex>,
+    pub created: NaiveDateTime,
 }
 
 pub trait ColumnDefExt {
