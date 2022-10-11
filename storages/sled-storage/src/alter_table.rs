@@ -238,7 +238,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
-                created,
+                ..
             } = schema_snapshot
                 .get(txid, None)
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
@@ -367,7 +367,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
-                created,
+                ..
             } = schema_snapshot
                 .get(txid, None)
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())

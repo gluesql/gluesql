@@ -323,12 +323,6 @@ CREATE TABLE Test (
         Err(IndexError::IndexNameDoesNotExist("idx_aaa".to_owned()).into())
     );
 
-    macro_rules! t {
-        ($timestamp: expr) => {
-            $timestamp.parse().unwrap()
-        };
-    }
-
     let today = Utc::now().naive_utc().format("%Y-%m-%d");
 
     test!(

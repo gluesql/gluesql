@@ -82,6 +82,7 @@ impl IndexMut for SledStorage {
                 name: index_name.to_owned(),
                 expr: index_expr.clone(),
                 order: SchemaIndexOrd::Both,
+                created: Utc::now().naive_utc(),
             };
 
             let indexes = indexes

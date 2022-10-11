@@ -182,24 +182,11 @@ pub async fn fetch_relation_rows<'a>(
                                 Ok(Row(vec![
                                     Value::Str(index.name.clone()),
                                     Value::Str("INDEX".to_string()),
-                                    Value::Null,
+                                    Value::Timestamp(index.created),
                                 ]))
                             });
 
                             table_rows.into_iter().chain(index_rows)
-
-                            // let table_rows =
-                            //     vec![vec![schema.table_name, "TABLE".to_string(), schema.created]];
-                            // let index_rows = schema
-                            //     .indexes
-                            //     .into_iter()
-                            //     .map(|index| vec![index.name.clone(), "INDEX".to_string()]);
-
-                            // table_rows.into_iter().chain(index_rows).map(|names| {
-                            //     let values = names.into_iter().map(|v| Value::Str(v)).collect();
-
-                            //     Ok(Row(values))
-                            // })
                         });
 
                         Rows::Objects(rows)

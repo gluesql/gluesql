@@ -19,6 +19,7 @@ pub struct SchemaIndex {
     pub name: String,
     pub expr: Expr,
     pub order: SchemaIndexOrd,
+    pub created: NaiveDateTime,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

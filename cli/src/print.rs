@@ -264,6 +264,7 @@ mod tests {
         crate::command::{SetOption, ShowOption},
         gluesql_core::{
             ast::{BinaryOperator, Expr},
+            chrono::Utc,
             data::{SchemaIndex, SchemaIndexOrd},
         },
     };
@@ -431,12 +432,14 @@ mod tests {
                 SchemaIndex {
                     name: "id_ndx".to_owned(),
                     order: SchemaIndexOrd::Asc,
-                    expr: Expr::Identifier("id".to_owned())
+                    expr: Expr::Identifier("id".to_owned()),
+                    created: Utc::now().naive_utc(),
                 },
                 SchemaIndex {
                     name: "name_ndx".to_owned(),
                     order: SchemaIndexOrd::Desc,
-                    expr: Expr::Identifier("name".to_owned())
+                    expr: Expr::Identifier("name".to_owned()),
+                    created: Utc::now().naive_utc(),
                 },
                 SchemaIndex {
                     name: "expr_ndx".to_owned(),
@@ -445,7 +448,8 @@ mod tests {
                         left: Box::new(Expr::Identifier("expr1".to_owned())),
                         op: BinaryOperator::Minus,
                         right: Box::new(Expr::Identifier("expr2".to_owned()))
-                    }
+                    },
+                    created: Utc::now().naive_utc(),
                 }
             ],),
             "
