@@ -63,7 +63,7 @@ fn validate_index_expr(columns: &[String], expr: &Expr) -> (bool, bool) {
         }
         Expr::UnaryOp { expr, .. } => validate(expr),
         Expr::Function(func) => match &**func {
-            Function::Cast { expr: _, .. } => validate(expr),
+            Function::Cast { expr, .. } => validate(expr),
             _ => (false, false),
         },
         _ => (false, false),
