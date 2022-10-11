@@ -92,6 +92,7 @@ pub enum ExprNode {
         subquery: Box<QueryNode>,
         negated: bool,
     },
+    Subquery(Box<QueryNode>),
     Case {
         operand: Option<Box<ExprNode>>,
         when_then: Vec<(ExprNode, ExprNode)>,
@@ -242,6 +243,9 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::Exists { subquery, negated } => Query::try_from(*subquery)
                 .map(Box::new)
                 .map(|subquery| Expr::Exists { subquery, negated }),
+            ExprNode::Subquery(subquery) => Query::try_from(*subquery)
+                .map(Box::new)
+                .map(|subquery| Expr::Subquery(subquery)),
             ExprNode::Case {
                 operand,
                 when_then,
@@ -289,6 +293,12 @@ impl From<i64> for ExprNode {
 impl From<bool> for ExprNode {
     fn from(b: bool) -> Self {
         ExprNode::Expr(Expr::Literal(AstLiteral::Boolean(b)))
+    }
+}
+
+impl From<QueryNode> for ExprNode {
+    fn from(node: QueryNode) -> Self {
+        ExprNode::Subquery(Box::new(node))
     }
 }
 
@@ -341,4 +351,74 @@ pub fn time(time: &str) -> ExprNode {
         data_type: DataType::Time,
         value: time.to_owned(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::ExprNode,
+        crate::{
+            ast::Expr,
+            ast_builder::{table, test_expr, QueryNode, col, expr, num, text, date, time, timestamp},
+        },
+    };
+
+    #[test]
+    fn into_expr_node() {
+        // &str, i64, bool, QueryNode, Expr
+        let actual: ExprNode = "id IS NOT NULL".into();
+        let expected = "id IS NOT NULL";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = 1024.into();
+        let expected = "1024";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = true.into();
+        let expected = "True";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = QueryNode::from(table("Foo").select().project("id")).into();
+        let expected = "(SELECT id FROM Foo)";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = Expr::Identifier("id".to_owned()).into();
+        let expected = "id";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn syntactic_sugar() {
+        let actual = expr("col1 > 10");
+        let expected = "col1 > 10";
+        test_expr(actual, expected);
+
+        let actual = col("id");
+        let expected = "id";
+        test_expr(actual, expected);
+
+        let actual = col("Foo.id");
+        let expected = "Foo.id";
+        test_expr(actual, expected);
+
+        let actual = num(2048);
+        let expected = "2048";
+        test_expr(actual, expected);
+
+        let actual = text("hello world");
+        let expected = "'hello world'";
+        test_expr(actual, expected);
+
+        let actual = date("2022-10-11");
+        let expected = "DATE '2022-10-11'";
+        test_expr(actual, expected);
+
+        let actual = timestamp("2022-10-11 13:34:49");
+        let expected = "TIMESTAMP '2022-10-11 13:34:49'";
+        test_expr(actual, expected);
+
+        let actual = time("15:00:07");
+        let expected = "TIME '15:00:07'";
+        test_expr(actual, expected);
+    }
 }
