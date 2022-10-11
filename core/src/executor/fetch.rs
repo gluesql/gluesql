@@ -173,18 +173,17 @@ pub async fn fetch_relation_rows<'a>(
                     Dictionary::GlueObjects => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().flat_map(|schema| {
-                            let table_rows = vec![Ok(Row(vec![
-                                Value::Str(schema.table_name),
-                                Value::Str("TABLE".to_string()),
-                            ]))];
-                            let index_rows = schema.indexes.into_iter().map(|index| {
-                                Ok(Row(vec![
-                                    Value::Str(index.name.clone()),
-                                    Value::Str("INDEX".to_string()),
-                                ]))
-                            });
+                            let table_rows = vec![vec![schema.table_name, "TABLE".to_string()]];
+                            let index_rows = schema
+                                .indexes
+                                .into_iter()
+                                .map(|index| vec![index.name.clone(), "INDEX".to_string()]);
 
-                            table_rows.into_iter().chain(index_rows)
+                            table_rows.into_iter().chain(index_rows).map(|names| {
+                                let values = names.into_iter().map(|v| Value::Str(v)).collect();
+
+                                Ok(Row(values))
+                            })
                         });
 
                         Rows::Objects(rows)
