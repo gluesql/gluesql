@@ -353,6 +353,10 @@ pub fn time(time: &str) -> ExprNode {
     })
 }
 
+pub fn subquery<T: Into<QueryNode>>(query_node: T) -> ExprNode {
+    ExprNode::Subquery(Box::new(query_node.into()))
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -360,7 +364,7 @@ mod tests {
         crate::{
             ast::Expr,
             ast_builder::{
-                col, date, expr, num, table, test_expr, text, time, timestamp, QueryNode,
+                col, date, expr, num, subquery, table, test_expr, text, time, timestamp, QueryNode,
             },
         },
     };
@@ -420,6 +424,10 @@ mod tests {
 
         let actual = time("15:00:07");
         let expected = "TIME '15:00:07'";
+        test_expr(actual, expected);
+
+        let actual = subquery(table("Foo").select().filter("id IS NOT NULL"));
+        let expected = "(SELECT * FROM Foo WHERE id IS NOT NULL)";
         test_expr(actual, expected);
     }
 }
