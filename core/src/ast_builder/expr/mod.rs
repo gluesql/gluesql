@@ -243,9 +243,9 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::Exists { subquery, negated } => Query::try_from(*subquery)
                 .map(Box::new)
                 .map(|subquery| Expr::Exists { subquery, negated }),
-            ExprNode::Subquery(subquery) => Query::try_from(*subquery)
-                .map(Box::new)
-                .map(|subquery| Expr::Subquery(subquery)),
+            ExprNode::Subquery(subquery) => {
+                Query::try_from(*subquery).map(Box::new).map(Expr::Subquery)
+            }
             ExprNode::Case {
                 operand,
                 when_then,
@@ -359,7 +359,9 @@ mod tests {
         super::ExprNode,
         crate::{
             ast::Expr,
-            ast_builder::{table, test_expr, QueryNode, col, expr, num, text, date, time, timestamp},
+            ast_builder::{
+                col, date, expr, num, table, test_expr, text, time, timestamp, QueryNode,
+            },
         },
     };
 
