@@ -1,8 +1,8 @@
 use {
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
-            SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
+            AstLiteral, BinaryOperator, Expr, Function, IndexItem, IndexOperator, OrderByExpr,
+            Query, Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
         data::{Schema, SchemaIndex, SchemaIndexOrd, TableError},
         result::{Error, Result},
@@ -442,6 +442,10 @@ fn is_stateless(expr: &Expr) -> bool {
         | Expr::IsNotNull(expr)
         | Expr::UnaryOp { expr, .. }
         | Expr::Nested(expr) => is_stateless(expr.as_ref()),
+        Expr::Function(func) => match &**func {
+            Function::Cast { expr, .. } => is_stateless(expr),
+            _ => false,
+        },
         Expr::BinaryOp { left, right, .. } => {
             is_stateless(left.as_ref()) && is_stateless(right.as_ref())
         }
