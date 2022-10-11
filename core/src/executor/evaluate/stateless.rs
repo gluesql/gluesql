@@ -53,7 +53,6 @@ pub fn evaluate_stateless<'a>(
 
             expr::unary_op(op, v)
         }
-        //Expr::Cast { expr, data_type } => eval(expr)?.cast(data_type),
         Expr::InList {
             expr,
             list,
