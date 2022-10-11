@@ -14,8 +14,15 @@ pub struct TableNode {
 }
 
 impl TableNode {
+    pub fn alias_as(self, table_alias: &str) -> TableAliasNode {
+        TableAliasNode {
+            table_node: self,
+            table_alias: table_alias.to_owned(),
+        }
+    }
+
     pub fn select(self) -> SelectNode {
-        SelectNode::new(self.table_name)
+        SelectNode::new(self.table_name, None)
     }
 
     pub fn delete(self) -> DeleteNode {
@@ -63,5 +70,17 @@ impl TableNode {
 
     pub fn insert(self) -> InsertNode {
         InsertNode::new(self.table_name)
+    }
+}
+
+#[derive(Clone)]
+pub struct TableAliasNode {
+    pub table_node: TableNode,
+    pub table_alias: String,
+}
+
+impl TableAliasNode {
+    pub fn select(self) -> SelectNode {
+        SelectNode::new(self.table_node.table_name, Some(self.table_alias))
     }
 }

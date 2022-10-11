@@ -48,7 +48,7 @@ pub use {
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
-    table::TableNode,
+    table::{TableAliasNode, TableNode},
     update::UpdateNode,
 };
 
