@@ -67,4 +67,22 @@ test_case!(dictionary, async move {
             "Zoo".to_owned()   "id".to_owned()    1
         ))
     );
+
+    // macro_rules! t {
+    //     ($timestamp: expr) => {
+    //         $timestamp.parse().unwrap()
+    //     };
+    // }
+
+    // test!(
+    //     "SELECT * FROM GLUE_OBJECTS",
+    //     Ok(select!(
+    //         OBJECT_NAME      |  OBJECT_TYPE        | CREATED;
+    //         Str              |  Str                | Timestamp;
+    //         "Bar".to_owned()    "TABLE".to_owned()   t!("2021-03-01T00:00:00");
+    //         "Foo".to_owned()    "TABLE".to_owned()   t!("2021-03-01T00:00:00");
+    //         "Zoo".to_owned()    "TABLE".to_owned()   t!("2021-03-01T00:00:00");
+    //         "Bar_IX".to_owned() "INDEX".to_owned()   t!("2021-03-01T00:00:00")
+    //     ))
+    // );
 });

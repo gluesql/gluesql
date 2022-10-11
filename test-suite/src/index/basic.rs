@@ -320,4 +320,21 @@ CREATE TABLE Test (
         "DROP INDEX Test.idx_aaa",
         Err(IndexError::IndexNameDoesNotExist("idx_aaa".to_owned()).into())
     );
+
+    macro_rules! t {
+        ($timestamp: expr) => {
+            $timestamp.parse().unwrap()
+        };
+    }
+
+    test!(
+        "SELECT * FROM GLUE_OBJECTS",
+        Ok(select!(
+            OBJECT_NAME          | OBJECT_TYPE        | CREATED;
+            Str                  | Str                | Timestamp;
+            "Test".to_owned()      "TABLE".to_owned()   t!("2021-03-01T00:00:00");
+            "idx_id".to_owned()    "INDEX".to_owned()   t!("2021-03-01T00:00:00");
+            "idx_name".to_owned()  "INDEX".to_owned()   t!("2021-03-01T00:00:00")
+        ))
+    );
 });
