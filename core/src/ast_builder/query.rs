@@ -219,11 +219,7 @@ mod test {
                 offset: None,
             }
         };
-        assert_eq!(
-            Query::try_from(actual).unwrap(),
-            expected,
-            "from hash join node"
-        );
+        assert_eq!(Query::try_from(actual).unwrap(), expected);
 
         let actual = table("FOO").select().group_by("id").into();
         let expected = "SELECT * FROM FOO GROUP BY id";
