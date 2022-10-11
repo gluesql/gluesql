@@ -365,7 +365,6 @@ mod tests {
 
     #[test]
     fn into_expr_node() {
-        // &str, i64, bool, QueryNode, Expr
         let actual: ExprNode = "id IS NOT NULL".into();
         let expected = "id IS NOT NULL";
         test_expr(actual, expected);
