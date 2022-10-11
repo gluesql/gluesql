@@ -16,10 +16,10 @@ use {
 
 /// # Description
 /// Returns [`Expr`] in the form required for `GlueSQL` from [`SqlExpr`] provided by `sqlparser-rs`.
-/// Among them, there are functions that are translated to a lower level of Expr rather than Expr::Function e.g) cast, extract
+/// Among them, there are functions that are translated to a lower level of [`Expr`] rather than [`Expr::Function`] e.g) cast, extract
 /// This is because it follows the parsed result of `sqlparser-rs` as it is.
-/// It is ambiguous whether the parsed tokens will be classified as a lower level of [`Expr`] or a lower level of [`Expr::function`].
-/// In `GlueSQL`, if an argument is received wrapped in ( ) in the sql statement, the standard is set to translate in the form of [`Expr::Function::Cast`] rather than Expr::Cast.
+/// It is ambiguous whether the parsed tokens will be classified as a lower level of [`Expr`] or a lower level of [`Expr::Function`]
+/// In `GlueSQL`, if an argument is received wrapped in `( )` in the sql statement, the standard is set to translate in the form of [`Expr::Function(Box<Function::Cast>)`] rather than Expr::Cast.
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     match sql_expr {
         SqlExpr::Identifier(ident) => match ident.quote_style {
