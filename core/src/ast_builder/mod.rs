@@ -54,7 +54,8 @@ pub use {
 
 /// Available expression builder functions
 pub use expr::{
-    case, col, date, exists, expr, nested, not_exists, num, text, time, timestamp, ExprNode,
+    case, col, date, exists, expr, nested, not_exists, num, subquery, text, time, timestamp,
+    ExprNode,
 };
 
 #[cfg(feature = "alter-table")]
