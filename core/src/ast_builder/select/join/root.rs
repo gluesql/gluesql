@@ -120,7 +120,11 @@ impl JoinNode {
         )
     }
 
-    pub fn hash_executor<T: Into<ExprNode>>(self, key_expr: T, value_expr: T) -> HashJoinNode {
+    pub fn hash_executor<T: Into<ExprNode>, U: Into<ExprNode>>(
+        self,
+        key_expr: T,
+        value_expr: U,
+    ) -> HashJoinNode {
         HashJoinNode::new(self, key_expr, value_expr)
     }
 

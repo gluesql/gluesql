@@ -20,7 +20,11 @@ pub struct HashJoinNode {
 }
 
 impl HashJoinNode {
-    pub fn new<T: Into<ExprNode>>(join_node: JoinNode, key_expr: T, value_expr: T) -> Self {
+    pub fn new<T: Into<ExprNode>, U: Into<ExprNode>>(
+        join_node: JoinNode,
+        key_expr: T,
+        value_expr: U,
+    ) -> Self {
         Self {
             join_node,
             key_expr: key_expr.into(),
@@ -147,7 +151,7 @@ mod tests {
         let actual = table("Player")
             .select()
             .join("PlayerItem")
-            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_executor("PlayerItem.user_id", col("Player.id"))
             .build();
         let expected = {
             let join = Join {
