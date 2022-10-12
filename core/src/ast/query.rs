@@ -227,7 +227,10 @@ impl ToSql for SelectItem {
         match self {
             SelectItem::Expr { expr, label } => {
                 let expr = expr.to_sql();
-                format!("{} AS {}", expr, label)
+                match label.is_empty() {
+                    true => format!("{}", expr),
+                    false => format!("{} AS {label}", expr),
+                }
             }
             SelectItem::QualifiedWildcard(obj) => format!("{}.*", obj),
             SelectItem::Wildcard => "*".to_owned(),
@@ -360,14 +363,7 @@ impl ToSql for Values {
         let Values(expr) = self;
 
         expr.iter()
-            .enumerate()
-            .map(|(index, value)| {
-                format!(
-                    "({}, {})",
-                    index + 1,
-                    value.iter().map(|expr| expr.to_sql()).join(", ")
-                )
-            })
+            .map(|value| format!("({})", value.iter().map(|expr| expr.to_sql()).join(", ")))
             .join(", ")
     }
 }
@@ -466,10 +462,12 @@ mod tests {
         let actual = r#"VALUES (1, "glue", 3), (2, "sql", 2)"#.to_owned();
         let expected = SetExpr::Values(Values(vec![
             vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
                 Expr::Literal(AstLiteral::QuotedString("glue".to_owned())),
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap())),
             ],
             vec![
+                Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
                 Expr::Literal(AstLiteral::QuotedString("sql".to_owned())),
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
             ],
