@@ -51,13 +51,15 @@ impl<'a> FilterContext<'a> {
     }
 
     pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
-        if let Content::Some { columns, row, .. } = &self.content {
-            let value = columns
-                .iter()
-                .position(|column| column == target)
-                .map(|index| row.and_then(|row| row.get_value(index)));
+        if let Content::Some {
+            columns,
+            row: Some(row),
+            ..
+        } = &self.content
+        {
+            let value = row.get_value(columns, target);
 
-            if let Some(value) = value {
+            if value.is_some() {
                 return value;
             }
         }
@@ -74,27 +76,20 @@ impl<'a> FilterContext<'a> {
     }
 
     pub fn get_alias_value(&'a self, target_alias: &str, target: &str) -> Option<&'a Value> {
-        if let Content::Some {
-            table_alias,
-            columns,
-            row,
-        } = &self.content
-        {
-            let get_value = || {
-                if table_alias != &target_alias {
-                    return None;
+        match &self.content {
+            Content::Some {
+                table_alias,
+                columns,
+                row: Some(row),
+            } if table_alias == &target_alias => {
+                let value = row.get_value(columns, target);
+
+                if value.is_some() {
+                    return value;
                 }
-
-                columns
-                    .iter()
-                    .position(|column| column == target)
-                    .map(|index| row.and_then(|row| row.get_value(index)))
-            };
-
-            if let Some(value) = get_value() {
-                return value;
             }
-        }
+            _ => {}
+        };
 
         match (&self.next, &self.next2) {
             (None, None) => None,

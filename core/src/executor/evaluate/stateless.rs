@@ -30,12 +30,7 @@ pub fn evaluate_stateless<'a>(
                 }
             };
 
-            let value = columns
-                .iter()
-                .position(|column| column == ident)
-                .and_then(|index| row.get_value(index));
-
-            match value {
+            match row.get_value(columns, ident) {
                 Some(value) => Ok(value.clone()),
                 None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
             }
