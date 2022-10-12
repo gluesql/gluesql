@@ -1,5 +1,6 @@
 # GlueSQL project files
 /data/
+/pkg/rust/data/
 /storages/**/data/
 /storages/**/tmp/
 /reports/
