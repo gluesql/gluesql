@@ -338,6 +338,10 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             f::cast(expr, data_type)
         }
+        Function::Extract { field, expr } => {
+            let expr = eval(expr)?;
+            f::extract(field, expr)
+        }
     }
     .map(Evaluated::from)
 }
