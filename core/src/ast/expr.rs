@@ -167,7 +167,7 @@ impl ToSql for Expr {
             }
             Expr::Nested(expr) => format!("({})", expr.to_sql()),
             Expr::Literal(s) => s.to_sql(),
-            Expr::TypedString { data_type, value } => format!("{data_type}(\"{value}\")"),
+            Expr::TypedString { data_type, value } => format!("{data_type} \"{value}\""),
             Expr::Case {
                 operand,
                 when_then,
@@ -239,9 +239,8 @@ impl ToSql for Expr {
 mod tests {
     use {
         crate::ast::{
-            Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Expr,
-            Function, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins, ToSql,
-            UnaryOperator,
+            AstLiteral, BinaryOperator, DataType, DateTimeField, Expr, Query, Select, SelectItem,
+            SetExpr, TableFactor, TableWithJoins, ToSql, UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -300,7 +299,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"INT("1")"#,
+            r#"INT "1""#,
             Expr::TypedString {
                 data_type: DataType::Int,
                 value: "1".to_owned()
@@ -582,56 +581,6 @@ mod tests {
                     Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
                 ]
             }
-            .to_sql()
-        );
-
-        assert_eq!(
-            "SIGN(1.0)",
-            &Expr::Function(Box::new(Function::Sign(Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_str("1.0").unwrap()
-            )))))
-            .to_sql()
-        );
-
-        assert_eq!(
-            "MAX(id)",
-            Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_owned())))).to_sql()
-        );
-
-        assert_eq!(
-            "COUNT(*)",
-            Expr::Aggregate(Box::new(Aggregate::Count(CountArgExpr::Wildcard))).to_sql()
-        );
-
-        assert_eq!(
-            "MIN(id)",
-            Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_owned())))).to_sql()
-        );
-
-        assert_eq!(
-            "SUM(price)",
-            &Expr::Aggregate(Box::new(Aggregate::Sum(Expr::Identifier(
-                "price".to_owned()
-            ))))
-            .to_sql()
-        );
-
-        assert_eq!(
-            "AVG(pay)",
-            &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier("pay".to_owned())))).to_sql()
-        );
-        assert_eq!(
-            "VARIANCE(pay)",
-            &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
-                "pay".to_owned()
-            ))))
-            .to_sql()
-        );
-        assert_eq!(
-            "STDEV(total)",
-            &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
-                "total".to_owned()
-            ))))
             .to_sql()
         );
 

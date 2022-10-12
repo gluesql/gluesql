@@ -37,21 +37,12 @@ pub enum DateTimeField {
     Second,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrimWhereField {
     Both,
     Leading,
     Trailing,
-}
-
-impl ToSql for TrimWhereField {
-    fn to_sql(&self) -> String {
-        match self {
-            TrimWhereField::Both => "BOTH".to_owned(),
-            TrimWhereField::Leading => "LEADING".to_owned(),
-            TrimWhereField::Trailing => "TRAILING".to_owned(),
-        }
-    }
 }
 
 #[cfg(test)]
