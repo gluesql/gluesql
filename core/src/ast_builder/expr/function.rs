@@ -1,7 +1,7 @@
 use {
     super::ExprNode,
     crate::{
-        ast::Function,
+        ast::{DateTimeField, Function},
         ast_builder::{DataTypeNode, ExprList},
         result::{Error, Result},
     },
@@ -120,6 +120,10 @@ pub enum FunctionNode {
     Cast {
         expr: ExprNode,
         data_type: DataTypeNode,
+    },
+    Extract {
+        field: DateTimeField,
+        expr: ExprNode,
     },
 }
 
@@ -267,6 +271,10 @@ impl TryFrom<FunctionNode> for Function {
                 let data_type = data_type.try_into()?;
                 Ok(Function::Cast { expr, data_type })
             }
+            FunctionNode::Extract { field, expr } => {
+                let expr = expr.try_into()?;
+                Ok(Function::Extract { field, expr })
+            }
         }
     }
 }
@@ -395,6 +403,9 @@ impl ExprNode {
     }
     pub fn cast(self, data_type: DataTypeNode) -> ExprNode {
         cast(self, data_type)
+    }
+    pub fn extract(self, field: DateTimeField) -> ExprNode {
+        extract(field, self)
     }
 }
 
@@ -625,9 +636,17 @@ pub fn cast<T: Into<DataTypeNode>>(expr: ExprNode, data_type: T) -> ExprNode {
     }))
 }
 
+pub fn extract<T: Into<ExprNode>>(field: DateTimeField, expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Extract {
+        field,
+        expr: expr.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
+        ast::DateTimeField,
         ast_builder::{
             abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
             format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad,
@@ -1165,6 +1184,33 @@ mod tests {
 
         let actual = col("date").cast("INTEGER".into());
         let expected = "CAST(date AS INTEGER)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_extract() {
+        let actual = col("date").extract(DateTimeField::Year);
+        let expected = "EXTRACT(YEAR FROM date)";
+        test_expr(actual, expected);
+
+        let actual = col("date").extract(DateTimeField::Month);
+        let expected = "EXTRACT(MONTH FROM date)";
+        test_expr(actual, expected);
+
+        let actual = col("date").extract(DateTimeField::Day);
+        let expected = "EXTRACT(DAY FROM date)";
+        test_expr(actual, expected);
+
+        let actual = col("date").extract(DateTimeField::Hour);
+        let expected = "EXTRACT(HOUR FROM date)";
+        test_expr(actual, expected);
+
+        let actual = col("date").extract(DateTimeField::Minute);
+        let expected = "EXTRACT(MINUTE FROM date)";
+        test_expr(actual, expected);
+
+        let actual = col("date").extract(DateTimeField::Second);
+        let expected = "EXTRACT(SECOND FROM date)";
         test_expr(actual, expected);
     }
 }

@@ -8,7 +8,6 @@ mod unary_op;
 
 pub mod aggregate;
 pub mod between;
-pub mod extract;
 pub mod function;
 pub mod in_list;
 
@@ -18,10 +17,7 @@ pub use nested::nested;
 
 use {
     crate::{
-        ast::{
-            Aggregate, AstLiteral, BinaryOperator, DateTimeField, Expr, Function, Query,
-            UnaryOperator,
-        },
+        ast::{Aggregate, AstLiteral, BinaryOperator, Expr, Function, Query, UnaryOperator},
         ast_builder::QueryNode,
         parse_sql::{parse_comma_separated_exprs, parse_expr, parse_query},
         prelude::DataType,
@@ -66,10 +62,6 @@ pub enum ExprNode {
     },
     UnaryOp {
         op: UnaryOperator,
-        expr: Box<ExprNode>,
-    },
-    Extract {
-        field: DateTimeField,
         expr: Box<ExprNode>,
     },
     IsNull(Box<ExprNode>),
@@ -163,10 +155,6 @@ impl TryFrom<ExprNode> for Expr {
             ExprNode::UnaryOp { op, expr } => {
                 let expr = Expr::try_from(*expr).map(Box::new)?;
                 Ok(Expr::UnaryOp { op, expr })
-            }
-            ExprNode::Extract { field, expr } => {
-                let expr = Expr::try_from(*expr).map(Box::new)?;
-                Ok(Expr::Extract { field, expr })
             }
             ExprNode::IsNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNull),
             ExprNode::IsNotNull(expr) => Expr::try_from(*expr).map(Box::new).map(Expr::IsNotNull),
