@@ -136,7 +136,7 @@ GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedd
 
 #### More info
 
-- [GlueSQL for web browsers and Node.js](https://github.com/gluesql/gluesql/tree/main/gluesql-js)
+- [GlueSQL for web browsers and Node.js](https://github.com/gluesql/gluesql/tree/main/pkg/javascript)
 
 ## SQL Features
 

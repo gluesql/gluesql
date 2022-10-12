@@ -30,12 +30,7 @@ pub fn evaluate_stateless<'a>(
                 }
             };
 
-            let value = columns
-                .iter()
-                .position(|column| column == ident)
-                .and_then(|index| row.get_value(index));
-
-            match value {
+            match row.get_value(columns, ident) {
                 Some(value) => Ok(value.clone()),
                 None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
             }
@@ -53,7 +48,6 @@ pub fn evaluate_stateless<'a>(
 
             expr::unary_op(op, v)
         }
-        Expr::Cast { expr, data_type } => eval(expr)?.cast(data_type),
         Expr::InList {
             expr,
             list,
@@ -334,6 +328,10 @@ fn evaluate_function<'a>(
             let from_expr = eval(from_expr)?;
             let sub_expr = eval(sub_expr)?;
             f::position(name, from_expr, sub_expr)
+        }
+        Function::Cast { expr, data_type } => {
+            let expr = eval(expr)?;
+            f::cast(expr, data_type)
         }
     }
     .map(Evaluated::from)

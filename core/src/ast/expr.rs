@@ -50,10 +50,6 @@ pub enum Expr {
         op: UnaryOperator,
         expr: Box<Expr>,
     },
-    Cast {
-        expr: Box<Expr>,
-        data_type: DataType,
-    },
     Extract {
         field: DateTimeField,
         expr: Box<Expr>,
@@ -159,9 +155,6 @@ impl ToSql for Expr {
                 UnaryOperator::Factorial => format!("{}{}", expr.to_sql(), op.to_sql()),
                 _ => format!("{}{}", op.to_sql(), expr.to_sql()),
             },
-            Expr::Cast { expr, data_type } => {
-                format!("CAST({} AS {data_type})", expr.to_sql())
-            }
             Expr::Extract { field, expr } => {
                 format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
             }
@@ -286,17 +279,6 @@ mod tests {
 
         let id_expr: Box<Expr> = Box::new(Expr::Identifier("id".to_owned()));
         assert_eq!("id IS NOT NULL", Expr::IsNotNull(id_expr).to_sql());
-
-        assert_eq!(
-            "CAST(1.0 AS INT)",
-            Expr::Cast {
-                expr: Box::new(Expr::Literal(AstLiteral::Number(
-                    BigDecimal::from_str("1.0").unwrap()
-                ))),
-                data_type: DataType::Int
-            }
-            .to_sql()
-        );
 
         assert_eq!(
             r#"INT "1""#,

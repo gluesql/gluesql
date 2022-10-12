@@ -155,7 +155,7 @@ pub async fn validate_unique(
                     .try_for_each(|constraint| {
                         let col_idx = constraint.column_index;
                         let val = row
-                            .get_value(col_idx)
+                            .get_value_by_index(col_idx)
                             .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
                         constraint.check(val)?;
@@ -180,7 +180,7 @@ fn create_unique_constraints<'a>(
                 .clone()
                 .try_fold(new_constraint, |constraint, row| {
                     let val = row
-                        .get_value(col_idx)
+                        .get_value_by_index(col_idx)
                         .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
                     constraint.add(val)

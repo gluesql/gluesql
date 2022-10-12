@@ -1,5 +1,5 @@
 use {
-    super::{ast_literal::TrimWhereField, Expr},
+    super::{ast_literal::TrimWhereField, DataType, Expr},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
@@ -31,6 +31,10 @@ pub enum Function {
         expr: Expr,
         size: Expr,
         fill: Option<Expr>,
+    },
+    Cast {
+        expr: Expr,
+        data_type: DataType,
     },
     Ceil(Expr),
     Concat(Vec<Expr>),
@@ -158,6 +162,9 @@ impl ToSql for Function {
                     fill.to_sql()
                 ),
             },
+            Function::Cast { expr, data_type } => {
+                format!("CAST({} AS {data_type})", expr.to_sql())
+            }
             Function::Ceil(e) => format!("CEIL({})", e.to_sql()),
             Function::Concat(items) => {
                 let items = items
@@ -415,6 +422,15 @@ mod tests {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("10").unwrap())),
                 fill: Some(Expr::Literal(AstLiteral::QuotedString("Go".to_owned())))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CAST(1.0 AS INT)",
+            &Expr::Function(Box::new(Function::Cast {
+                expr: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1.0").unwrap())),
+                data_type: DataType::Int
             }))
             .to_sql()
         );

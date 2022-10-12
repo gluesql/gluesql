@@ -2,8 +2,9 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            ExprNode, FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, ProjectNode, SelectItemList, SelectNode,
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, SelectItemList,
+            SelectNode,
         },
         result::Result,
     },
@@ -17,6 +18,7 @@ pub enum PrevNode {
     Filter(FilterNode),
     JoinNode(JoinNode),
     JoinConstraint(JoinConstraintNode),
+    HashJoin(HashJoinNode),
 }
 
 impl Prebuild for PrevNode {
@@ -28,6 +30,7 @@ impl Prebuild for PrevNode {
             Self::Filter(node) => node.prebuild(),
             Self::JoinNode(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
+            Self::HashJoin(node) => node.prebuild(),
         }
     }
 }
@@ -65,6 +68,12 @@ impl From<JoinNode> for PrevNode {
 impl From<JoinConstraintNode> for PrevNode {
     fn from(node: JoinConstraintNode) -> Self {
         PrevNode::JoinConstraint(node)
+    }
+}
+
+impl From<HashJoinNode> for PrevNode {
+    fn from(node: HashJoinNode) -> Self {
+        PrevNode::HashJoin(node)
     }
 }
 
@@ -106,7 +115,13 @@ impl Prebuild for OrderByNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build, ExprNode};
+    use crate::{
+        ast::{
+            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr, Statement,
+            TableFactor, TableWithJoins,
+        },
+        ast_builder::{col, table, test, Build, ExprNode, OrderByExprList, SelectItemList},
+    };
 
     #[test]
     fn order_by() {
@@ -202,5 +217,52 @@ mod tests {
             ORDER BY Foo.id desc
         ";
         test(actual, expected);
+
+        // hash join node -> order by node -> build
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .order_by("Player.score DESC")
+            .build();
+        let expected = {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
+                    value_expr: col("Player.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            Ok(Statement::Query(Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: OrderByExprList::from("Player.score DESC")
+                    .try_into()
+                    .unwrap(),
+                limit: None,
+                offset: None,
+            }))
+        };
+        assert_eq!(actual, expected);
     }
 }

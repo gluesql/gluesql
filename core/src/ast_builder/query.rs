@@ -1,7 +1,8 @@
 use {
     super::{
-        select::NodeData, select::Prebuild, ExprList, FilterNode, GroupByNode, HavingNode,
-        LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode, ProjectNode, SelectNode,
+        select::NodeData, select::Prebuild, ExprList, FilterNode, GroupByNode, HashJoinNode,
+        HavingNode, JoinConstraintNode, JoinNode, LimitNode, LimitOffsetNode, OffsetLimitNode,
+        OffsetNode, ProjectNode, SelectNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -14,6 +15,9 @@ use {
 #[derive(Clone)]
 pub enum QueryNode {
     Select(SelectNode),
+    Join(JoinNode),
+    JoinConstraint(JoinConstraintNode),
+    HashJoin(HashJoinNode),
     GroupBy(GroupByNode),
     Having(HavingNode),
     Limit(LimitNode),
@@ -29,6 +33,24 @@ pub enum QueryNode {
 impl From<SelectNode> for QueryNode {
     fn from(node: SelectNode) -> Self {
         QueryNode::Select(node)
+    }
+}
+
+impl From<JoinNode> for QueryNode {
+    fn from(node: JoinNode) -> Self {
+        QueryNode::Join(node)
+    }
+}
+
+impl From<JoinConstraintNode> for QueryNode {
+    fn from(node: JoinConstraintNode) -> Self {
+        QueryNode::JoinConstraint(node)
+    }
+}
+
+impl From<HashJoinNode> for QueryNode {
+    fn from(node: HashJoinNode) -> Self {
+        QueryNode::HashJoin(node)
     }
 }
 
@@ -92,6 +114,11 @@ impl TryFrom<QueryNode> for Query {
     fn try_from(query_node: QueryNode) -> Result<Self> {
         match query_node {
             QueryNode::Select(query_node) => query_node.prebuild().map(NodeData::build_query),
+            QueryNode::Join(query_node) => query_node.prebuild().map(NodeData::build_query),
+            QueryNode::JoinConstraint(query_node) => {
+                query_node.prebuild().map(NodeData::build_query)
+            }
+            QueryNode::HashJoin(query_node) => query_node.prebuild().map(NodeData::build_query),
             QueryNode::GroupBy(query_node) => query_node.prebuild().map(NodeData::build_query),
             QueryNode::Having(query_node) => query_node.prebuild().map(NodeData::build_query),
             QueryNode::Limit(query_node) => query_node.prebuild().map(NodeData::build_query),
@@ -122,14 +149,77 @@ impl TryFrom<QueryNode> for Query {
 
 #[cfg(test)]
 mod test {
-
-    use crate::ast_builder::{table, test_query};
+    use {
+        super::QueryNode,
+        crate::{
+            ast::{
+                Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
+                TableFactor, TableWithJoins,
+            },
+            ast_builder::{col, table, test_query, SelectItemList},
+        },
+    };
 
     #[test]
     fn query() {
         let actual = table("FOO").select().into();
         let expected = "SELECT * FROM FOO";
         test_query(actual, expected);
+
+        let actual = table("Bar").select().join("Foo").into();
+        let expected = "SELECT * FROM Bar JOIN Foo";
+        test_query(actual, expected);
+
+        let actual = table("Bar")
+            .select()
+            .join("Foo")
+            .on("Foo.id = Bar.foo_id")
+            .into();
+        let expected = "SELECT * FROM Bar JOIN Foo ON Foo.id = Bar.foo_id";
+        test_query(actual, expected);
+
+        let actual: QueryNode = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .into();
+        let expected = {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
+                    value_expr: col("Player.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            }
+        };
+        assert_eq!(Query::try_from(actual).unwrap(), expected);
 
         let actual = table("FOO").select().group_by("id").into();
         let expected = "SELECT * FROM FOO GROUP BY id";

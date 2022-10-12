@@ -1,26 +1,23 @@
 use {
-    super::{NodeData, Prebuild},
+    super::{JoinConstraintData, JoinOperatorType},
     crate::{
-        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator, TableAlias, TableFactor},
+        ast::{Join, JoinExecutor, JoinOperator, TableAlias, TableFactor},
         ast_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, LimitNode, OffsetNode,
-            OrderByExprList, OrderByNode, ProjectNode, SelectItemList, SelectNode,
+            select::{NodeData, Prebuild},
+            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            SelectNode,
         },
         result::Result,
     },
 };
-
-#[derive(Clone, Copy)]
-pub enum JoinOperatorType {
-    Inner,
-    Left,
-}
 
 #[derive(Clone)]
 pub enum PrevNode {
     Select(SelectNode),
     Join(Box<JoinNode>),
     JoinConstraint(Box<JoinConstraintNode>),
+    HashJoin(Box<HashJoinNode>),
 }
 
 impl Prebuild for PrevNode {
@@ -29,6 +26,7 @@ impl Prebuild for PrevNode {
             Self::Select(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
+            Self::HashJoin(node) => node.prebuild(),
         }
     }
 }
@@ -48,6 +46,12 @@ impl From<JoinNode> for PrevNode {
 impl From<JoinConstraintNode> for PrevNode {
     fn from(node: JoinConstraintNode) -> Self {
         PrevNode::JoinConstraint(Box::new(node))
+    }
+}
+
+impl From<HashJoinNode> for PrevNode {
+    fn from(node: HashJoinNode) -> Self {
+        PrevNode::HashJoin(Box::new(node))
     }
 }
 
@@ -116,6 +120,14 @@ impl JoinNode {
         )
     }
 
+    pub fn hash_executor<T: Into<ExprNode>, U: Into<ExprNode>>(
+        self,
+        key_expr: T,
+        value_expr: U,
+    ) -> HashJoinNode {
+        HashJoinNode::new(self, key_expr, value_expr)
+    }
+
     pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
         ProjectNode::new(self, select_items)
     }
@@ -140,9 +152,20 @@ impl JoinNode {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn prebuild_for_constraint(self) -> Result<(NodeData, TableFactor, JoinOperatorType)> {
+    pub fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
+        Ok(JoinConstraintData {
+            node_data: self.prev_node.prebuild()?,
+            relation: self.relation,
+            operator_type: self.join_operator_type,
+            executor: JoinExecutor::NestedLoop,
+        })
+    }
+
+    pub fn prebuild_for_hash_join(self) -> Result<(NodeData, TableFactor, JoinOperator)> {
         let select_data = self.prev_node.prebuild()?;
-        Ok((select_data, self.relation, self.join_operator_type))
+        let join_operator = JoinOperator::from(self.join_operator_type);
+
+        Ok((select_data, self.relation, join_operator))
     }
 }
 
@@ -151,10 +174,7 @@ impl Prebuild for JoinNode {
         let mut select_data = self.prev_node.prebuild()?;
         select_data.joins.push(Join {
             relation: self.relation,
-            join_operator: match self.join_operator_type {
-                JoinOperatorType::Inner => JoinOperator::Inner(JoinConstraint::None),
-                JoinOperatorType::Left => JoinOperator::LeftOuter(JoinConstraint::None),
-            },
+            join_operator: JoinOperator::from(self.join_operator_type),
             join_executor: JoinExecutor::NestedLoop,
         });
         Ok(select_data)
@@ -535,5 +555,143 @@ mod tests {
             LEFT JOIN Baz C
             ";
         test(actual, expected);
+    }
+
+    #[test]
+    fn hash_join() {
+        use crate::{
+            ast::{
+                Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
+                Statement, TableAlias, TableFactor, TableWithJoins,
+            },
+            ast_builder::{col, SelectItemList},
+        };
+
+        let gen_expected = |other_join| {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
+                    value_expr: col("Player.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join, other_join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            Ok(Statement::Query(Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            }))
+        };
+
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .join("OtherItem")
+            .build();
+        let expected = {
+            let other_join = Join {
+                relation: TableFactor::Table {
+                    name: "OtherItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::NestedLoop,
+            };
+
+            gen_expected(other_join)
+        };
+        assert_eq!(actual, expected, "inner join");
+
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .join_as("OtherItem", "Ot")
+            .build();
+        let expected = {
+            let other_join = Join {
+                relation: TableFactor::Table {
+                    name: "OtherItem".to_owned(),
+                    alias: Some(TableAlias {
+                        name: "Ot".to_owned(),
+                        columns: Vec::new(),
+                    }),
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::NestedLoop,
+            };
+
+            gen_expected(other_join)
+        };
+        assert_eq!(actual, expected, "inner join with alias");
+
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .left_join("OtherItem")
+            .build();
+        let expected = {
+            let other_join = Join {
+                relation: TableFactor::Table {
+                    name: "OtherItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
+                join_executor: JoinExecutor::NestedLoop,
+            };
+
+            gen_expected(other_join)
+        };
+        assert_eq!(actual, expected, "left join");
+
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .left_join_as("OtherItem", "Ot")
+            .build();
+        let expected = {
+            let other_join = Join {
+                relation: TableFactor::Table {
+                    name: "OtherItem".to_owned(),
+                    alias: Some(TableAlias {
+                        name: "Ot".to_owned(),
+                        columns: Vec::new(),
+                    }),
+                    index: None,
+                },
+                join_operator: JoinOperator::LeftOuter(JoinConstraint::None),
+                join_executor: JoinExecutor::NestedLoop,
+            };
+
+            gen_expected(other_join)
+        };
+        assert_eq!(actual, expected, "left join with alias");
     }
 }

@@ -42,18 +42,21 @@ pub use {
     order_by_expr_list::OrderByExprList,
     query::QueryNode,
     select::{
-        FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+        FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
         LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
-    table::TableNode,
+    table::{TableAliasNode, TableNode},
     update::UpdateNode,
 };
 
 /// Available expression builder functions
-pub use expr::{col, date, exists, expr, nested, not_exists, num, text, time, timestamp, ExprNode};
+pub use expr::{
+    case, col, date, exists, expr, nested, not_exists, num, subquery, text, time, timestamp,
+    ExprNode,
+};
 
 #[cfg(feature = "alter-table")]
 pub use alter_table::{
@@ -67,7 +70,7 @@ pub use {index::CreateIndexNode, index::DropIndexNode};
 pub use expr::{
     aggregate::{avg, count, max, min, stdev, sum, variance, AggregateNode},
     function::{
-        abs, acos, asin, atan, ceil, concat, cos, degrees, divide, exp, floor, format, gcd,
+        abs, acos, asin, atan, cast, ceil, concat, cos, degrees, divide, exp, floor, format, gcd,
         generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad, ltrim, modulo, now,
         pi, position, power, radians, repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt,
         substr, tan, to_date, to_time, to_timestamp, upper, FunctionNode,

@@ -2,8 +2,8 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            ExprNode, FilterNode, GroupByNode, HavingNode, JoinConstraintNode, JoinNode,
-            LimitOffsetNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+            JoinNode, LimitOffsetNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -16,6 +16,7 @@ pub enum PrevNode {
     Having(HavingNode),
     Join(Box<JoinNode>),
     JoinConstraint(Box<JoinConstraintNode>),
+    HashJoin(HashJoinNode),
     Filter(FilterNode),
     OrderBy(OrderByNode),
 }
@@ -28,6 +29,7 @@ impl Prebuild for PrevNode {
             Self::Having(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
+            Self::HashJoin(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
             Self::OrderBy(node) => node.prebuild(),
         }
@@ -61,6 +63,12 @@ impl From<JoinConstraintNode> for PrevNode {
 impl From<JoinNode> for PrevNode {
     fn from(node: JoinNode) -> Self {
         PrevNode::Join(Box::new(node))
+    }
+}
+
+impl From<HashJoinNode> for PrevNode {
+    fn from(node: HashJoinNode) -> Self {
+        PrevNode::HashJoin(node)
     }
 }
 
@@ -110,7 +118,13 @@ impl Prebuild for LimitNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{col, table, test, Build};
+    use crate::{
+        ast::{
+            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr, Statement,
+            TableFactor, TableWithJoins,
+        },
+        ast_builder::{col, num, table, test, Build, SelectItemList},
+    };
 
     #[test]
     fn limit() {
@@ -191,5 +205,50 @@ mod tests {
             .build();
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
         test(actual, expected);
+
+        // hash join node -> limit node -> build
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .limit(100)
+            .build();
+        let expected = {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
+                    value_expr: col("Player.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            Ok(Statement::Query(Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: Some(num(100).try_into().unwrap()),
+                offset: None,
+            }))
+        };
+        assert_eq!(actual, expected);
     }
 }
