@@ -1,6 +1,10 @@
 use {
     super::{ChronoFormatError, EvaluateError, Evaluated},
-    crate::{ast::TrimWhereField, data::Value, result::Result},
+    crate::{
+        ast::{DataType, TrimWhereField},
+        data::Value,
+        result::Result,
+    },
     std::cmp::{max, min},
     uuid::Uuid,
 };
@@ -476,4 +480,8 @@ pub fn position(name: String, from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>)
     let from_expr = eval_to_str!(name, from_expr);
     let sub_expr = eval_to_str!(name, sub_expr);
     Value::position(&Value::Str(from_expr), &Value::Str(sub_expr))
+}
+
+pub fn cast(expr: Evaluated<'_>, data_type: &DataType) -> Result<Value> {
+    expr.cast(data_type)?.try_into()
 }
