@@ -442,7 +442,7 @@ fn is_stateless(expr: &Expr) -> bool {
         | Expr::IsNotNull(expr)
         | Expr::UnaryOp { expr, .. }
         | Expr::Nested(expr) => is_stateless(expr.as_ref()),
-        Expr::Function(func) => match &**func {
+        Expr::Function(func) => match func.as_ref() {
             Function::Cast { expr, .. } => is_stateless(expr),
             _ => false,
         },
