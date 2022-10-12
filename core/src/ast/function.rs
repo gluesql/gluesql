@@ -1,5 +1,5 @@
 use {
-    super::{ast_literal::TrimWhereField, DataType, Expr},
+    super::{ast_literal::TrimWhereField, DataType, DateTimeField, Expr},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
@@ -50,6 +50,10 @@ pub enum Function {
         trim_where_field: Option<TrimWhereField>,
     },
     Exp(Expr),
+    Extract {
+        field: DateTimeField,
+        expr: Expr,
+    },
     Ln(Expr),
     Log {
         antilog: Expr,

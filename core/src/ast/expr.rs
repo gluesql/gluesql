@@ -50,10 +50,6 @@ pub enum Expr {
         op: UnaryOperator,
         expr: Box<Expr>,
     },
-    Extract {
-        field: DateTimeField,
-        expr: Box<Expr>,
-    },
     Nested(Box<Expr>),
     Literal(AstLiteral),
     TypedString {
@@ -155,9 +151,6 @@ impl ToSql for Expr {
                 UnaryOperator::Factorial => format!("{}{}", expr.to_sql(), op.to_sql()),
                 _ => format!("{}{}", op.to_sql(), expr.to_sql()),
             },
-            Expr::Extract { field, expr } => {
-                format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
-            }
             Expr::Nested(expr) => format!("({})", expr.to_sql()),
             Expr::Literal(s) => s.to_sql(),
             Expr::TypedString { data_type, value } => format!("{data_type}(\"{value}\")"),
@@ -286,15 +279,6 @@ mod tests {
             Expr::TypedString {
                 data_type: DataType::Int,
                 value: "1".to_owned()
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            r#"EXTRACT(MINUTE FROM "2022-05-05 01:02:03")"#,
-            Expr::Extract {
-                field: DateTimeField::Minute,
-                expr: Box::new(Expr::Identifier("2022-05-05 01:02:03".to_owned()))
             }
             .to_sql()
         );
