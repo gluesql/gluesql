@@ -2,7 +2,7 @@ use {
     super::{
         ast_literal::{translate_ast_literal, translate_datetime_field},
         data_type::translate_data_type,
-        function::{translate_function, translate_positon},
+        function::{translate_cast, translate_function, translate_positon},
         operator::{translate_binary_operator, translate_unary_operator},
         translate_idents, translate_query, TranslateError,
     },
@@ -14,6 +14,14 @@ use {
     sqlparser::ast::{Expr as SqlExpr, OrderByExpr as SqlOrderByExpr},
 };
 
+/// # Description
+/// Returns [`Expr`] in the form required for `GlueSQL` from [`SqlExpr`] provided by `sqlparser-rs`. <br>
+/// Among them, there are functions that are translated to a lower level of [`Expr`] rather than [`Expr::Function`]
+/// - e.g) `cast`, `extract`
+///
+/// This is because it follows the parsed result of `sqlparser-rs` as it is. <br>
+/// It is ambiguous whether the parsed tokens will be classified as a lower level of [`Expr`] or a lower level of [`Expr::Function`]. <br>
+/// In `GlueSQL`, if an argument is received wrapped in `( )` in the sql statement, the standard is set to translate in the form of `Expr::Function(Box<Function::Cast>)` rather than `Expr::Cast`.
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     match sql_expr {
         SqlExpr::Identifier(ident) => match ident.quote_style {
@@ -88,10 +96,6 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             op: translate_unary_operator(op)?,
             expr: translate_expr(expr).map(Box::new)?,
         }),
-        SqlExpr::Cast { expr, data_type } => Ok(Expr::Cast {
-            expr: translate_expr(expr).map(Box::new)?,
-            data_type: translate_data_type(data_type)?,
-        }),
         SqlExpr::Extract { field, expr } => Ok(Expr::Extract {
             field: translate_datetime_field(field)?,
             expr: translate_expr(expr).map(Box::new)?,
@@ -159,6 +163,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 .map(translate_datetime_field)
                 .transpose()?,
         }),
+        SqlExpr::Cast { expr, data_type } => translate_cast(expr, data_type),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
 }
