@@ -16,9 +16,9 @@ use {
 
 /// # Description
 /// Returns [`Expr`] in the form required for `GlueSQL` from [`SqlExpr`] provided by `sqlparser-rs`. <br>
-/// Among them, there are functions that are translated to a lower level of [`Expr`] rather than [`Expr::Function`] 
+/// Among them, there are functions that are translated to a lower level of [`Expr`] rather than [`Expr::Function`]
 /// - e.g) `cast`, `extract`
-/// 
+///
 /// This is because it follows the parsed result of `sqlparser-rs` as it is. <br>
 /// It is ambiguous whether the parsed tokens will be classified as a lower level of [`Expr`] or a lower level of [`Expr::Function`]. <br>
 /// In `GlueSQL`, if an argument is received wrapped in `( )` in the sql statement, the standard is set to translate in the form of `Expr::Function(Box<Function::Cast>)` rather than `Expr::Cast`.
