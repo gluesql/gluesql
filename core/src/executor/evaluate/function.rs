@@ -1,6 +1,10 @@
 use {
     super::{ChronoFormatError, EvaluateError, Evaluated},
-    crate::{ast::TrimWhereField, data::Value, prelude::DataType, result::Result},
+    crate::{
+        ast::{DataType, TrimWhereField},
+        data::Value,
+        result::Result,
+    },
     std::cmp::{max, min},
     uuid::Uuid,
 };

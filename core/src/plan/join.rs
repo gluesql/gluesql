@@ -394,15 +394,13 @@ fn find_evaluable(context: Option<Rc<Context<'_>>>, expr: Expr) -> (EvaluableExp
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::Function;
-
     use {
         super::plan,
         crate::{
             ast::{
-                BinaryOperator, DataType, DateTimeField, Expr, Join, JoinConstraint, JoinExecutor,
-                JoinOperator, Query, Select, SelectItem, SetExpr, Statement, TableAlias,
-                TableFactor, TableWithJoins, UnaryOperator,
+                BinaryOperator, DataType, DateTimeField, Expr, Function, Join, JoinConstraint,
+                JoinExecutor, JoinOperator, Query, Select, SelectItem, SetExpr, Statement,
+                TableAlias, TableFactor, TableWithJoins, UnaryOperator,
             },
             parse_sql::{parse, parse_expr},
             plan::{

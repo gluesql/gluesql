@@ -1,5 +1,3 @@
-use sqlparser::ast::DataType;
-
 use {
     super::{
         ast_literal::translate_trim_where_field, expr::translate_expr, translate_data_type,
@@ -10,7 +8,7 @@ use {
         result::Result,
     },
     sqlparser::ast::{
-        Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
+        DataType, Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
         FunctionArgExpr as SqlFunctionArgExpr, TrimWhereField as SqlTrimWhereField,
     },
 };
