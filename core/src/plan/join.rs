@@ -1210,10 +1210,12 @@ mod tests {
         "
         );
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::IsNull(Box::new(Expr::Extract {
-            field: DateTimeField::Hour,
-            expr: Box::new(Expr::Nested(Box::new(subquery_expr()))),
-        })));
+        let expected = gen_expected(Expr::IsNull(Box::new(Expr::Function(Box::new(
+            Function::Extract {
+                field: DateTimeField::Hour,
+                expr: Expr::Nested(Box::new(subquery_expr())),
+            },
+        )))));
         assert_eq!(actual, expected, "extract and nested:\n{sql}");
 
         let sql = format!(
