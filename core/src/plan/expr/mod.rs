@@ -29,7 +29,6 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
             }
             Expr::Nested(expr)
             | Expr::UnaryOp { expr, .. }
-            | Expr::Cast { expr, .. }
             | Expr::Extract { expr, .. }
             | Expr::IsNull(expr)
             | Expr::IsNotNull(expr)
@@ -148,11 +147,6 @@ mod tests {
         let expected = PlanExpr::Expr(&expected);
         test!(actual, expected);
 
-        let actual = expr("CAST(0 AS BOOLEAN)");
-        let expected = expr("0");
-        let expected = PlanExpr::Expr(&expected);
-        test!(actual, expected);
-
         let actual = expr(r#"EXTRACT(YEAR FROM "2000-01-01")"#);
         let expected = expr(r#""2000-01-01""#);
         let expected = PlanExpr::Expr(&expected);
@@ -224,6 +218,11 @@ mod tests {
             .into_iter()
             .map(expr)
             .collect::<Vec<_>>();
+        let expected = PlanExpr::MultiExprs(expected.iter().collect());
+        test!(actual, expected);
+
+        let actual = expr("CAST(0 AS BOOLEAN)");
+        let expected = ["0"].into_iter().map(expr).collect::<Vec<_>>();
         let expected = PlanExpr::MultiExprs(expected.iter().collect());
         test!(actual, expected);
 

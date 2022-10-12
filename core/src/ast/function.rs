@@ -1,5 +1,5 @@
 use {
-    super::{ast_literal::TrimWhereField, Expr},
+    super::{ast_literal::TrimWhereField, DataType, Expr},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
@@ -31,6 +31,10 @@ pub enum Function {
         expr: Expr,
         size: Expr,
         fill: Option<Expr>,
+    },
+    Cast {
+        expr: Expr,
+        data_type: DataType,
     },
     Ceil(Expr),
     Concat(Vec<Expr>),
