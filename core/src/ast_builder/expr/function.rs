@@ -528,7 +528,7 @@ pub fn lpad<T: Into<ExprNode>, U: Into<ExprNode>>(
     ExprNode::Function(Box::new(FunctionNode::Lpad {
         expr: expr.into(),
         size: size.into(),
-        fill: fill.map(|v| v.into()),
+        fill,
     }))
 }
 
@@ -540,7 +540,7 @@ pub fn rpad<T: Into<ExprNode>, U: Into<ExprNode>>(
     ExprNode::Function(Box::new(FunctionNode::Rpad {
         expr: expr.into(),
         size: size.into(),
-        fill: fill.map(|v| v.into()),
+        fill,
     }))
 }
 
@@ -563,21 +563,21 @@ pub fn substr<T: Into<ExprNode>, U: Into<ExprNode>>(
     ExprNode::Function(Box::new(FunctionNode::Substr {
         expr: expr.into(),
         start: start.into(),
-        count: count.map(|v| v.into()),
+        count,
     }))
 }
 
 pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<ExprNode>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ltrim {
         expr: expr.into(),
-        chars: chars.map(|t| t.into()),
+        chars,
     }))
 }
 
 pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<ExprNode>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Rtrim {
         expr: expr.into(),
-        chars: chars.map(|t| t.into()),
+        chars,
     }))
 }
 
