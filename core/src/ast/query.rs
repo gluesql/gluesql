@@ -228,8 +228,8 @@ impl ToSql for SelectItem {
             SelectItem::Expr { expr, label } => {
                 let expr = expr.to_sql();
                 match label.is_empty() {
-                    true => format!("{}", expr),
-                    false => format!("{} AS {label}", expr),
+                    true => expr,
+                    false => format!("{expr} AS {label}"),
                 }
             }
             SelectItem::QualifiedWildcard(obj) => format!("{}.*", obj),
