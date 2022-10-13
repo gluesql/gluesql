@@ -1,7 +1,7 @@
 use {
     super::ExprNode,
     crate::ast_builder::{
-        GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+        FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
         LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, QueryNode,
         SelectNode,
     },
@@ -48,6 +48,7 @@ impl_from_select_nodes!(JoinConstraintNode);
 impl_from_select_nodes!(HashJoinNode);
 impl_from_select_nodes!(GroupByNode);
 impl_from_select_nodes!(HavingNode);
+impl_from_select_nodes!(FilterNode);
 impl_from_select_nodes!(LimitNode);
 impl_from_select_nodes!(LimitOffsetNode);
 impl_from_select_nodes!(OffsetNode);
@@ -208,6 +209,11 @@ mod test {
                 HAVING COUNT(id) > 10
             )
         ";
+        test_expr(actual, expected);
+
+        // from FilterNode
+        let actual = col("id").in_list(table("Bar").select().filter("num > 10"));
+        let expected = "id IN (SELECT * FROM Bar WHERE num > 10)";
         test_expr(actual, expected);
 
         // from LimitNode
