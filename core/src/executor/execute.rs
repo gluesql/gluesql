@@ -8,8 +8,8 @@ use {
     },
     crate::{
         ast::{
-            ColumnDef, ColumnOption, ColumnOptionDef, DataType, Dictionary, Expr, Query,
-            SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
+            BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef, DataType, Dictionary, Expr,
+            Query, SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
             Variable,
         },
         data::{Key, Row, Schema},
@@ -17,11 +17,14 @@ use {
         result::{MutResult, Result},
         store::{GStore, GStoreMut},
     },
+    async_recursion::async_recursion,
     futures::stream::{self, TryStreamExt},
     serde::{Deserialize, Serialize},
     std::{env::var, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
+
+use crate::ast::AstLiteral;
 
 #[cfg(feature = "alter-table")]
 use super::alter::alter_table;
@@ -65,7 +68,7 @@ pub enum Payload {
     ShowVariable(PayloadVariable),
 
     #[cfg(feature = "index")]
-    ShowIndexes(Vec<SchemaIndex>),
+    ShowIndexes(Vec<Vec<String>>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -104,6 +107,7 @@ pub async fn execute_atomic<T: GStore + GStoreMut>(
     }
 }
 
+#[async_recursion(?Send)]
 pub async fn execute<T: GStore + GStoreMut>(
     storage: T,
     statement: &Statement,
@@ -358,18 +362,55 @@ pub async fn execute<T: GStore + GStoreMut>(
         }
         #[cfg(feature = "index")]
         Statement::ShowIndexes(table_name) => {
-            let indexes = match storage.fetch_schema(table_name).await {
-                Ok(Some(Schema { indexes, .. })) => indexes,
-                Ok(None) => {
-                    return Err((
-                        storage,
-                        ExecuteError::TableNotFound(table_name.to_owned()).into(),
-                    ));
-                }
-                Err(e) => return Err((storage, e)),
+            let query = Query {
+                body: SetExpr::Select(Box::new(crate::ast::Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Dictionary {
+                            dict: Dictionary::GlueIndexes,
+                            alias: TableAlias {
+                                name: "GLUE_INDEXES".to_owned(),
+                                columns: Vec::new(),
+                            },
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: Some(Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("TABLE_NAME".to_owned())),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(Expr::Literal(AstLiteral::QuotedString(
+                            table_name.to_owned(),
+                        ))),
+                    }),
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
             };
 
-            Ok((storage, Payload::ShowIndexes(indexes)))
+            let rows = try_block!(storage, {
+                let rows = select(&storage, &query, None).await?;
+                let rows = rows
+                    .map_ok(|Row(values)| values)
+                    .try_collect::<Vec<_>>()
+                    .await?;
+                Ok(rows)
+            });
+
+            let indexes = rows
+                .iter()
+                .map(|values| values.iter().map(|value| value.into()).collect())
+                .collect::<Vec<_>>();
+
+            match indexes.is_empty() {
+                true => Err((
+                    storage,
+                    ExecuteError::TableNotFound(table_name.to_owned()).into(),
+                )),
+                false => Ok((storage, Payload::ShowIndexes(indexes))),
+            }
         }
         Statement::ShowVariable(variable) => match variable {
             Variable::Tables => {
