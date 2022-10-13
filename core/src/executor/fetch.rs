@@ -164,9 +164,9 @@ pub async fn fetch_relation_rows<'a>(
             let rows = {
                 #[derive(Iterator)]
                 enum Rows<I1, I2, I3> {
-                    GlueTables(I1),
-                    GlueTabColumns(I2),
-                    GlueIndexes(I3),
+                    Tables(I1),
+                    TableColumns(I2),
+                    Indexes(I3),
                 }
                 match dict {
                     Dictionary::GlueTables => {
@@ -175,7 +175,7 @@ pub async fn fetch_relation_rows<'a>(
                             .into_iter()
                             .map(|schema| Ok(Row(vec![Value::Str(schema.table_name)])));
 
-                        Rows::GlueTables(rows)
+                        Rows::Tables(rows)
                     }
                     Dictionary::GlueTableColumns => {
                         let schemas = storage.fetch_all_schemas().await?;
@@ -192,7 +192,7 @@ pub async fn fetch_relation_rows<'a>(
                             )
                         });
 
-                        Rows::GlueTabColumns(rows)
+                        Rows::TableColumns(rows)
                     }
                     Dictionary::GlueIndexes => {
                         let schemas = storage.fetch_all_schemas().await?;
@@ -207,7 +207,7 @@ pub async fn fetch_relation_rows<'a>(
                             })
                         });
 
-                        Rows::GlueIndexes(rows)
+                        Rows::Indexes(rows)
                     }
                 }
             };
