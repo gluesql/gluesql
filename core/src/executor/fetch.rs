@@ -3,7 +3,7 @@ use {
     crate::{
         ast::{
             ColumnDef, Dictionary, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias,
-            TableFactor, TableWithJoins, Values,
+            TableFactor, TableWithJoins, ToSql, Values,
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{
@@ -163,9 +163,10 @@ pub async fn fetch_relation_rows<'a>(
         TableFactor::Dictionary { dict, .. } => {
             let rows = {
                 #[derive(Iterator)]
-                enum Rows<I1, I2> {
+                enum Rows<I1, I2, I3> {
                     GlueTables(I1),
                     GlueTabColumns(I2),
+                    GlueIndexes(I3),
                 }
                 match dict {
                     Dictionary::GlueTables => {
@@ -192,6 +193,21 @@ pub async fn fetch_relation_rows<'a>(
                         });
 
                         Rows::GlueTabColumns(rows)
+                    }
+                    Dictionary::GlueIndexes => {
+                        let schemas = storage.fetch_all_schemas().await?;
+                        let rows = schemas.into_iter().flat_map(|schema| {
+                            schema.indexes.into_iter().map(move |index| {
+                                Ok(Row(vec![
+                                    Value::Str(schema.table_name.clone()),
+                                    Value::Str(index.name),
+                                    Value::Str(index.order.to_string()),
+                                    Value::Str(index.expr.to_sql()),
+                                ]))
+                            })
+                        });
+
+                        Rows::GlueIndexes(rows)
                     }
                 }
             };
@@ -226,6 +242,13 @@ pub async fn fetch_relation_columns(
                 "TABLE_NAME".to_owned(),
                 "COLUMN_NAME".to_owned(),
                 "COLUMN_ID".to_owned(),
+            ]),
+            Dictionary::GlueIndexes => Ok(vec![
+                "TABLE_NAME".to_owned(),
+                "INDEX_NAME".to_owned(),
+                "ORDER".to_owned(),
+                "EXPRESSION".to_owned(),
+                // "UNIQUENESS".to_owned(),
             ]),
         },
         TableFactor::Derived {
