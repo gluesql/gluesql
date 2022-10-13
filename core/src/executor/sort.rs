@@ -98,9 +98,9 @@ impl<'a> Sort<'a> {
                                 let zero_based = index.checked_sub(1).ok_or_else(|| -> Error {
                                     SortError::ColumnIndexOutOfRange(index).into()
                                 })?;
-                                let value = row.get_value(zero_based).ok_or_else(|| -> Error {
-                                    SortError::ColumnIndexOutOfRange(index).into()
-                                })?;
+                                let value = row.get_value_by_index(zero_based).ok_or_else(
+                                    || -> Error { SortError::ColumnIndexOutOfRange(index).into() },
+                                )?;
 
                                 Ok((SortType::Value(value.clone()), *asc))
                             }

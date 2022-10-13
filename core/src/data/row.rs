@@ -38,8 +38,15 @@ enum Columns<I1, I2> {
 pub struct Row(pub Vec<Value>);
 
 impl Row {
-    pub fn get_value(&self, index: usize) -> Option<&Value> {
+    pub fn get_value_by_index(&self, index: usize) -> Option<&Value> {
         self.0.get(index)
+    }
+
+    pub fn get_value(&self, columns: &[String], ident: &str) -> Option<&Value> {
+        columns
+            .iter()
+            .position(|column| column == ident)
+            .and_then(|index| self.0.get(index))
     }
 
     pub fn take_first_value(self) -> Result<Value> {
@@ -99,7 +106,7 @@ impl Row {
             .iter()
             .enumerate()
             .filter_map(|(index, column_def)| {
-                let value = self.get_value(index);
+                let value = self.get_value_by_index(index);
 
                 value.map(|v| (v, column_def))
             });

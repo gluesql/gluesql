@@ -397,17 +397,14 @@ mod tests {
     use {
         super::plan,
         crate::{
-            ast::{
-                BinaryOperator, DataType, DateTimeField, Expr, Function, Join, JoinConstraint,
-                JoinExecutor, JoinOperator, Query, Select, SelectItem, SetExpr, Statement,
-                TableAlias, TableFactor, TableWithJoins, UnaryOperator,
-            },
-            parse_sql::{parse, parse_expr},
+            ast::{DateTimeField, Statement},
+            ast_builder::{col, exists, num, subquery, table, Build, QueryNode},
+            parse_sql::parse,
             plan::{
                 fetch_schema_map,
                 mock::{run, MockStorage},
             },
-            translate::{translate, translate_expr},
+            translate::translate,
         },
         futures::executor::block_on,
     };
@@ -420,48 +417,12 @@ mod tests {
         plan(&schema_map, statement)
     }
 
-    fn expr(sql: &str) -> Expr {
-        let parsed = parse_expr(sql).expect(sql);
+    macro_rules! test {
+        ($actual: expr, $expected: expr, $name: literal) => {
+            let expected = $expected.build().unwrap();
 
-        translate_expr(&parsed).expect(sql)
-    }
-
-    fn inner(constraint: Option<&str>) -> JoinOperator {
-        let constraint = match constraint {
-            Some(constraint) => JoinConstraint::On(expr(constraint)),
-            None => JoinConstraint::None,
+            assert_eq!($actual, expected, $name);
         };
-
-        JoinOperator::Inner(constraint)
-    }
-
-    fn left_outer(constraint: Option<&str>) -> JoinOperator {
-        let constraint = match constraint {
-            Some(constraint) => JoinConstraint::On(expr(constraint)),
-            None => JoinConstraint::None,
-        };
-
-        JoinOperator::LeftOuter(constraint)
-    }
-
-    fn table_factor(name: &str, alias: Option<&str>) -> TableFactor {
-        TableFactor::Table {
-            name: name.to_owned(),
-            alias: alias.map(|alias| TableAlias {
-                name: alias.to_owned(),
-                columns: Vec::new(),
-            }),
-            index: None,
-        }
-    }
-
-    fn select(select: Select) -> Statement {
-        Statement::Query(Query {
-            body: SetExpr::Select(Box::new(select)),
-            order_by: vec![],
-            limit: None,
-            offset: None,
-        })
     }
 
     #[test]
@@ -480,25 +441,13 @@ mod tests {
 
         let sql = "SELECT * FROM Player;";
         let actual = plan_join(&storage, sql);
-        let expected = select(Select {
-            projection: vec![SelectItem::Wildcard],
-            from: TableWithJoins {
-                relation: table_factor("Player", None),
-                joins: Vec::new(),
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-        });
-        assert_eq!(actual, expected, "basic select:\n{sql}");
+        let expected = table("Player").select();
+        test!(actual, expected, "basic select:\n{sql}");
 
         let sql = "DELETE FROM Player WHERE id = 1;";
         let actual = plan_join(&storage, sql);
-        let expected = Statement::Delete {
-            table_name: "Player".to_owned(),
-            selection: Some(expr("id = 1")),
-        };
-        assert_eq!(actual, expected, "plan not covered:\n{sql}");
+        let expected = table("Player").delete().filter("id = 1");
+        test!(actual, expected, "plan not covered:\n{sql}");
 
         let sql = "
             SELECT *
@@ -506,21 +455,11 @@ mod tests {
             JOIN PlayerItem ON PlayerItem.user_id != Player.id
         ";
         let actual = plan_join(&storage, sql);
-        let expected = select(Select {
-            projection: vec![SelectItem::Wildcard],
-            from: TableWithJoins {
-                relation: table_factor("Player", None),
-                joins: vec![Join {
-                    relation: table_factor("PlayerItem", None),
-                    join_operator: inner(Some("PlayerItem.user_id != Player.id")),
-                    join_executor: JoinExecutor::NestedLoop,
-                }],
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-        });
-        assert_eq!(actual, expected, "basic nested loop join:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .on("PlayerItem.user_id != Player.id");
+        test!(actual, expected, "basic nested loop join:\n{sql}");
 
         let sql = "
             SELECT *
@@ -528,21 +467,11 @@ mod tests {
             LEFT JOIN PlayerItem ON PlayerItem.amount > 2
         ";
         let actual = plan_join(&storage, sql);
-        let expected = select(Select {
-            projection: vec![SelectItem::Wildcard],
-            from: TableWithJoins {
-                relation: table_factor("Player", None),
-                joins: vec![Join {
-                    relation: table_factor("PlayerItem", None),
-                    join_operator: left_outer(Some("PlayerItem.amount > 2")),
-                    join_executor: JoinExecutor::NestedLoop,
-                }],
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-        });
-        assert_eq!(actual, expected, "basic nested loop join 2:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .on("PlayerItem.amount > 2");
+        test!(actual, expected, "basic nested loop join 2:\n{sql}");
 
         let sql = "
             SELECT *
@@ -551,28 +480,11 @@ mod tests {
             LEFT JOIN Player u3;
         ";
         let actual = plan_join(&storage, sql);
-        let expected = select(Select {
-            projection: vec![SelectItem::Wildcard],
-            from: TableWithJoins {
-                relation: table_factor("Player", None),
-                joins: vec![
-                    Join {
-                        relation: table_factor("Empty", Some("u2")),
-                        join_operator: inner(None),
-                        join_executor: JoinExecutor::NestedLoop,
-                    },
-                    Join {
-                        relation: table_factor("Player", Some("u3")),
-                        join_operator: left_outer(None),
-                        join_executor: JoinExecutor::NestedLoop,
-                    },
-                ],
-            },
-            selection: None,
-            group_by: Vec::new(),
-            having: None,
-        });
-        assert_eq!(actual, expected, "self multiple joins:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .join_as("Empty", "u2")
+            .left_join_as("Player", "u3");
+        test!(actual, expected, "self multiple joins:\n{sql}");
 
         let sql = "
             SELECT *
@@ -580,29 +492,11 @@ mod tests {
             JOIN PlayerItem ON PlayerItem.user_id = Player.id
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: None,
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: inner(None),
-                        join_executor,
-                    }],
-                },
-                selection: None,
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(actual, expected, "basic hash join query:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id");
+        test!(actual, expected, "basic hash join query:\n{sql}");
 
         let sql = "
             SELECT *
@@ -615,30 +509,13 @@ mod tests {
 
             plan(&schema_map, actual)
         };
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: None,
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: inner(None),
-                        join_executor,
-                    }],
-                },
-                selection: None,
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(
-            actual, expected,
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id");
+        test!(
+            actual,
+            expected,
             "redundant plan does not change the plan result:\n{sql}"
         );
 
@@ -647,23 +524,11 @@ mod tests {
             JOIN PlayerItem ON (SELECT * FROM Player u2)
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: inner(Some("(SELECT * FROM Player u2)")),
-                        join_executor: JoinExecutor::NestedLoop,
-                    }],
-                },
-                selection: None,
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(actual, expected, "subquery in join_constraint:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .on("(SELECT * FROM Player u2)");
+        test!(actual, expected, "subquery in join_constraint:\n{sql}");
     }
 
     #[test]
@@ -693,29 +558,13 @@ mod tests {
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr("PlayerItem.amount > 10")),
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: left_outer(None),
-                        join_executor,
-                    }],
-                },
-                selection: Some(expr("True")),
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(actual, expected, "where_clause AND hash_join expr:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_filter("PlayerItem.amount > 10")
+            .filter(true);
+        test!(actual, expected, "where_clause AND hash_join expr:\n{sql}");
 
         let sql = "
             SELECT *
@@ -726,32 +575,14 @@ mod tests {
                 Player.name != 'barcode'
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: None,
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: inner(Some(
-                            "Player.name = 'abcd' AND Player.name != 'barcode'",
-                        )),
-                        join_executor,
-                    }],
-                },
-                selection: None,
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(
-            actual, expected,
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .on("Player.name = 'abcd' AND Player.name != 'barcode'");
+        test!(
+            actual,
+            expected,
             "nested expr & remaining join constraint:\n{sql}"
         );
 
@@ -765,31 +596,13 @@ mod tests {
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr(
-                    "PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2",
-                )),
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: left_outer(None),
-                        join_executor,
-                    }],
-                },
-                selection: Some(expr("True")),
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(actual, expected, "complex where_clause:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .left_join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_filter("PlayerItem.amount > 10 AND PlayerItem.amount * 3 <= 2")
+            .filter(true);
+        test!(actual, expected, "complex where_clause:\n{sql}");
 
         let sql = "
             SELECT *
@@ -800,29 +613,13 @@ mod tests {
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr("PlayerItem.amount > 10")),
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: inner(None),
-                        join_executor,
-                    }],
-                },
-                selection: Some(expr("True")),
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(actual, expected, "hash_join expr AND where_clause:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_filter("PlayerItem.amount > 10")
+            .filter(true);
+        test!(actual, expected, "hash_join expr AND where_clause:\n{sql}");
 
         let sql = "
             SELECT *
@@ -837,54 +634,22 @@ mod tests {
             );
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let subquery = Query {
-                body: SetExpr::Select(Box::new(Select {
-                    projection: vec![SelectItem::Expr {
-                        expr: expr("u3.id"),
-                        label: "id".to_owned(),
-                    }],
-                    from: TableWithJoins {
-                        relation: table_factor("Player", Some("u3")),
-                        joins: vec![Join {
-                            relation: table_factor("Player", Some("u4")),
-                            join_operator: inner(None),
-                            join_executor: JoinExecutor::Hash {
-                                key_expr: expr("u4.id"),
-                                value_expr: expr("u3.id"),
-                                where_clause: Some(expr("u4.id = u1.id")),
-                            },
-                        }],
-                    },
-                    selection: None,
-                    group_by: Vec::new(),
-                    having: None,
-                })),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", Some("u1")),
-                    joins: vec![Join {
-                        relation: table_factor("Player", Some("u2")),
-                        join_operator: left_outer(None),
-                        join_executor: JoinExecutor::NestedLoop,
-                    }],
-                },
-                selection: Some(Expr::BinaryOp {
-                    left: Box::new(expr("u2.id")),
-                    op: BinaryOperator::Eq,
-                    right: Box::new(Expr::Subquery(Box::new(subquery))),
-                }),
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(actual, expected, "hash join in subquery:\n{sql}");
+        let expected = table("Player")
+            .alias_as("u1")
+            .select()
+            .left_join_as("Player", "u2")
+            .filter(
+                col("u2.id").eq(subquery(
+                    table("Player")
+                        .alias_as("u3")
+                        .select()
+                        .join_as("Player", "u4")
+                        .hash_executor("u4.id", "u3.id")
+                        .hash_filter("u4.id = u1.id")
+                        .project("u3.id"),
+                )),
+            );
+        test!(actual, expected, "hash join in subquery:\n{sql}");
 
         let sql = "
             SELECT * FROM Player u1
@@ -898,69 +663,20 @@ mod tests {
             );
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("u4.id"),
-                value_expr: expr("u3.id + u1.id"),
-                where_clause: None,
-            };
-
-            let join_subquery = Query {
-                body: SetExpr::Select(Box::new(Select {
-                    projection: vec![SelectItem::Wildcard],
-                    from: TableWithJoins {
-                        relation: table_factor("Player", Some("u3")),
-                        joins: vec![Join {
-                            relation: table_factor("Player", Some("u4")),
-                            join_operator: inner(None),
-                            join_executor,
-                        }],
-                    },
-                    selection: None,
-                    group_by: Vec::new(),
-                    having: None,
-                })),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
-
-            let subquery = Query {
-                body: SetExpr::Select(Box::new(Select {
-                    projection: vec![SelectItem::Wildcard],
-                    from: TableWithJoins {
-                        relation: table_factor("Player", Some("u2")),
-                        joins: Vec::new(),
-                    },
-                    selection: Some(Expr::BinaryOp {
-                        left: Box::new(expr("u2.id")),
-                        op: BinaryOperator::Eq,
-                        right: Box::new(Expr::Subquery(Box::new(join_subquery))),
-                    }),
-                    group_by: Vec::new(),
-                    having: None,
-                })),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", Some("u1")),
-                    joins: Vec::new(),
-                },
-                selection: Some(Expr::BinaryOp {
-                    left: Box::new(expr("u1.id")),
-                    op: BinaryOperator::Eq,
-                    right: Box::new(Expr::Subquery(Box::new(subquery))),
-                }),
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(actual, expected, "hash join in nested subquery:\n{sql}");
+        let expected = table("Player").alias_as("u1").select().filter(
+            col("u1.id").eq(subquery(
+                table("Player").alias_as("u2").select().filter(
+                    col("u2.id").eq(subquery(
+                        table("Player")
+                            .alias_as("u3")
+                            .select()
+                            .join_as("Player", "u4")
+                            .hash_executor(col("u4.id"), col("u3.id").add("u1.id")),
+                    )),
+                ),
+            )),
+        );
+        test!(actual, expected, "hash join in nested subquery:\n{sql}");
 
         let sql = "
             SELECT *
@@ -973,32 +689,17 @@ mod tests {
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr(
-                    "PlayerItem.item_id IS NOT NULL AND PlayerItem.amount > 10",
-                )),
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: inner(Some("Player.id > 10")),
-                        join_executor,
-                    }],
-                },
-                selection: Some(expr("True")),
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(
-            actual, expected,
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_filter("PlayerItem.item_id IS NOT NULL")
+            .hash_filter("PlayerItem.amount > 10")
+            .on("Player.id > 10")
+            .filter(true);
+        test!(
+            actual,
+            expected,
             "hash join with join_constraint AND where_clause:\n{sql}"
         );
 
@@ -1013,32 +714,17 @@ mod tests {
             WHERE True;
         ";
         let actual = plan_join(&storage, sql);
-        let expected = {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("PlayerItem.user_id"),
-                value_expr: expr("Player.id"),
-                where_clause: Some(expr(
-                    "PlayerItem.item_id IS NOT NULL AND PlayerItem.amount > 10",
-                )),
-            };
-
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: vec![Join {
-                        relation: table_factor("PlayerItem", None),
-                        join_operator: inner(Some("Player.id > Player.id + PlayerItem.user_id")),
-                        join_executor,
-                    }],
-                },
-                selection: Some(expr("True")),
-                group_by: Vec::new(),
-                having: None,
-            })
-        };
-        assert_eq!(
-            actual, expected,
+        let expected = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .hash_filter("PlayerItem.item_id IS NOT NULL")
+            .hash_filter("PlayerItem.amount > 10")
+            .on("Player.id > Player.id + PlayerItem.user_id")
+            .filter(true);
+        test!(
+            actual,
+            expected,
             "hash join with join_constraint AND where_clause 2:\n{sql}"
         );
     }
@@ -1062,88 +748,29 @@ mod tests {
             FROM Player u
             JOIN Flag f ON f.user_id = u.id
         ";
-        let subquery = || {
-            let join_executor = JoinExecutor::Hash {
-                key_expr: expr("f.user_id"),
-                value_expr: expr("u.id"),
-                where_clause: None,
-            };
-
-            Box::new(Query {
-                body: SetExpr::Select(Box::new(Select {
-                    projection: vec![SelectItem::Expr {
-                        expr: expr("u.id"),
-                        label: "id".to_owned(),
-                    }],
-                    from: TableWithJoins {
-                        relation: table_factor("Player", Some("u")),
-                        joins: vec![Join {
-                            relation: table_factor("Flag", Some("f")),
-                            join_operator: inner(None),
-                            join_executor,
-                        }],
-                    },
-                    selection: None,
-                    group_by: Vec::new(),
-                    having: None,
-                })),
-                order_by: vec![],
-                limit: None,
-                offset: None,
-            })
-        };
-        let subquery_expr = || Expr::Subquery(subquery());
-
-        let gen_expected = |selection| {
-            select(Select {
-                projection: vec![SelectItem::Wildcard],
-                from: TableWithJoins {
-                    relation: table_factor("Player", None),
-                    joins: Vec::new(),
-                },
-                selection: Some(selection),
-                group_by: Vec::new(),
-                having: None,
-            })
+        let subquery_node = || -> QueryNode {
+            table("Player")
+                .alias_as("u")
+                .select()
+                .join_as("Flag", "f")
+                .hash_executor("f.user_id", "u.id")
+                .project("u.id")
+                .into()
         };
 
         let sql = format!("SELECT * FROM Player WHERE id = ({subquery_sql})");
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::BinaryOp {
-            left: Box::new(expr("id")),
-            op: BinaryOperator::Eq,
-            right: Box::new(subquery_expr()),
-        });
-        assert_eq!(actual, expected, "binary operator:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .filter(col("id").eq(subquery_node()));
+        test!(actual, expected, "binary operator:\n{sql}");
 
         let sql = format!("SELECT * FROM Player WHERE -({subquery_sql}) IN ({subquery_sql})");
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::InSubquery {
-            expr: Box::new(Expr::UnaryOp {
-                op: UnaryOperator::Minus,
-                expr: Box::new(subquery_expr()),
-            }),
-            subquery: subquery(),
-            negated: false,
-        });
-        assert_eq!(actual, expected, "unary operator and in subquery:\n{sql}");
-
-        let sql = format!(
-            "
-            SELECT * FROM Player
-            WHERE -({subquery_sql}) IN ({subquery_sql})
-        "
-        );
-        let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::InSubquery {
-            expr: Box::new(Expr::UnaryOp {
-                op: UnaryOperator::Minus,
-                expr: Box::new(subquery_expr()),
-            }),
-            subquery: subquery(),
-            negated: false,
-        });
-        assert_eq!(actual, expected, "unary operator and in subquery:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .filter(subquery(subquery_node()).minus().in_list(subquery_node()));
+        test!(actual, expected, "unary operator and in subquery:\n{sql}");
 
         let sql = format!(
             "
@@ -1153,15 +780,10 @@ mod tests {
         "
         );
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::InList {
-            expr: Box::new(Expr::Function(Box::new(Function::Cast {
-                expr: subquery_expr(),
-                data_type: DataType::Int,
-            }))),
-            list: vec![expr("1"), expr("2"), expr("3")],
-            negated: false,
-        });
-        assert_eq!(actual, expected, "cast and in list:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .filter(subquery(subquery_node()).cast("INTEGER").in_list("1, 2, 3"));
+        test!(actual, expected, "cast and in list:\n{sql}");
 
         let sql = format!(
             "
@@ -1173,20 +795,17 @@ mod tests {
         "
         );
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::BinaryOp {
-            left: Box::new(Expr::IsNull(Box::new(subquery_expr()))),
-            op: BinaryOperator::Or,
-            right: Box::new(Expr::IsNotNull(Box::new(subquery_expr()))),
-        });
-        assert_eq!(actual, expected, "is null and is not null:\n{sql}");
+        let expected = table("Player").select().filter(
+            subquery(subquery_node())
+                .is_null()
+                .or(subquery(subquery_node()).is_not_null()),
+        );
+        test!(actual, expected, "is null and is not null:\n{sql}");
 
         let sql = format!("SELECT * FROM Player WHERE EXISTS({subquery_sql})");
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::Exists {
-            subquery: subquery(),
-            negated: false,
-        });
-        assert_eq!(actual, expected, "exists:\n{sql}");
+        let expected = table("Player").select().filter(exists(subquery_node()));
+        test!(actual, expected, "exists:\n{sql}");
 
         let sql = format!(
             "
@@ -1195,13 +814,10 @@ mod tests {
         "
         );
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::Between {
-            expr: Box::new(subquery_expr()),
-            negated: false,
-            low: Box::new(subquery_expr()),
-            high: Box::new(expr("100")),
-        });
-        assert_eq!(actual, expected, "between:\n{sql}");
+        let expected = table("Player")
+            .select()
+            .filter(subquery(subquery_node()).between(subquery_node(), num(100)));
+        test!(actual, expected, "between:\n{sql}");
 
         let sql = format!(
             "
@@ -1210,13 +826,14 @@ mod tests {
         "
         );
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::IsNull(Box::new(Expr::Function(Box::new(
-            Function::Extract {
-                field: DateTimeField::Hour,
-                expr: Expr::Nested(Box::new(subquery_expr())),
-            },
-        )))));
-        assert_eq!(actual, expected, "extract and nested:\n{sql}");
+        
+        let expected = table("Player").select().filter(
+            subquery(subquery_node())
+                .nested()
+                .extract(DateTimeField::Hour)
+                .is_null(),
+        );
+        test!(actual, expected, "extract and nested:\n{sql}");
 
         let sql = format!(
             "
@@ -1230,14 +847,13 @@ mod tests {
         "
         );
         let actual = plan_join(&storage, &sql);
-        let expected = gen_expected(Expr::Case {
-            operand: Some(Box::new(subquery_expr())),
-            when_then: vec![
-                (expr("10"), expr("True")),
-                (expr("20"), Expr::IsNull(Box::new(subquery_expr()))),
-            ],
-            else_result: Some(Box::new(expr("col3"))),
-        });
-        assert_eq!(actual, expected, "case expr:\n{sql}");
+        let expected = table("Player").select().filter(
+            subquery(subquery_node())
+                .case()
+                .when_then(10, true)
+                .when_then(20, subquery(subquery_node()).is_null())
+                .or_else("col3"),
+        );
+        test!(actual, expected, "case expr:\n{sql}");
     }
 }

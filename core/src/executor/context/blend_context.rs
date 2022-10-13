@@ -33,49 +33,41 @@ impl<'a> BlendContext<'a> {
     }
 
     pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
-        let get_value = || {
-            self.columns
-                .iter()
-                .position(|column| column == target)
-                .map(|index| match &self.row {
-                    BlendContextRow::Shared(row) => row.get_value(index),
-                    BlendContextRow::Single(Some(row)) => row.get_value(index),
-                    BlendContextRow::Single(None) => Some(&Value::Null),
-                })
+        let value = match &self.row {
+            BlendContextRow::Shared(row) => row.get_value(&self.columns, target),
+            BlendContextRow::Single(Some(row)) => row.get_value(&self.columns, target),
+            BlendContextRow::Single(None) => Some(&Value::Null),
         };
 
-        match get_value() {
-            None => match &self.next {
-                None => None,
-                Some(context) => context.get_value(target),
-            },
-            Some(value) => value,
+        if value.is_some() {
+            return value;
         }
+
+        self.next
+            .as_ref()
+            .and_then(|context| context.get_value(target))
     }
 
     pub fn get_alias_value(&'a self, table_alias: &str, target: &str) -> Option<&'a Value> {
-        let get_value = || {
+        let value = (|| {
             if self.table_alias != table_alias {
                 return None;
             }
 
-            self.columns
-                .iter()
-                .position(|column| column == target)
-                .map(|index| match &self.row {
-                    BlendContextRow::Shared(row) => row.get_value(index),
-                    BlendContextRow::Single(Some(row)) => row.get_value(index),
-                    BlendContextRow::Single(None) => Some(&Value::Null),
-                })
-        };
+            match &self.row {
+                BlendContextRow::Shared(row) => row.get_value(&self.columns, target),
+                BlendContextRow::Single(Some(row)) => row.get_value(&self.columns, target),
+                BlendContextRow::Single(None) => Some(&Value::Null),
+            }
+        })();
 
-        match get_value() {
-            None => match &self.next {
-                None => None,
-                Some(context) => context.get_alias_value(table_alias, target),
-            },
-            Some(value) => value,
+        if value.is_some() {
+            return value;
         }
+
+        self.next
+            .as_ref()
+            .and_then(|context| context.get_alias_value(table_alias, target))
     }
 
     pub fn get_alias_values(&self, alias: &str) -> Option<Vec<Value>> {
