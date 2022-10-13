@@ -248,7 +248,7 @@ impl<'a> JoinExecutor<'a> {
                     let filter_context = Rc::new(FilterContext::new(
                         get_alias(relation),
                         columns,
-                        Some(&row),
+                        &row,
                         filter_context,
                     ));
 
@@ -293,8 +293,7 @@ async fn check_where_clause<'a, 'b>(
     where_clause: Option<&'a Expr>,
     row: Cow<'b, Row>,
 ) -> Result<Option<Rc<BlendContext<'a>>>> {
-    let filter_context =
-        FilterContext::new(table_alias, Rc::clone(&columns), Some(&row), filter_context);
+    let filter_context = FilterContext::new(table_alias, Rc::clone(&columns), &row, filter_context);
     let filter_context = Some(Rc::new(filter_context));
 
     match where_clause {

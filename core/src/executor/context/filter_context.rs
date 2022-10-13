@@ -9,7 +9,7 @@ enum Content<'a> {
     Some {
         table_alias: &'a str,
         columns: Rc<[String]>,
-        row: Option<&'a Row>,
+        row: &'a Row,
     },
     None,
 }
@@ -25,7 +25,7 @@ impl<'a> FilterContext<'a> {
     pub fn new(
         table_alias: &'a str,
         columns: Rc<[String]>,
-        row: Option<&'a Row>,
+        row: &'a Row,
         next: Option<Rc<FilterContext<'a>>>,
     ) -> Self {
         Self {
@@ -51,12 +51,7 @@ impl<'a> FilterContext<'a> {
     }
 
     pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
-        if let Content::Some {
-            columns,
-            row: Some(row),
-            ..
-        } = &self.content
-        {
+        if let Content::Some { columns, row, .. } = &self.content {
             let value = row.get_value(columns, target);
 
             if value.is_some() {
@@ -80,7 +75,7 @@ impl<'a> FilterContext<'a> {
             Content::Some {
                 table_alias,
                 columns,
-                row: Some(row),
+                row,
             } if table_alias == &target_alias => {
                 let value = row.get_value(columns, target);
 

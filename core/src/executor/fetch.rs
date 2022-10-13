@@ -53,7 +53,7 @@ pub async fn fetch<'a>(
                     Some(expr) => expr,
                 };
 
-                let context = FilterContext::new(table_name, Rc::clone(&columns), Some(&row), None);
+                let context = FilterContext::new(table_name, Rc::clone(&columns), &row, None);
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
