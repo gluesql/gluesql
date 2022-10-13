@@ -826,7 +826,7 @@ mod tests {
         "
         );
         let actual = plan_join(&storage, &sql);
-        
+
         let expected = table("Player").select().filter(
             subquery(subquery_node())
                 .nested()
