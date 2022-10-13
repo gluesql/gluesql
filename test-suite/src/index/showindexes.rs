@@ -43,25 +43,24 @@ CREATE TABLE Test (
     test!(
         "show indexes from Test",
         Ok(Payload::ShowIndexes(vec![
-            SchemaIndex {
-                name: "idx_id".to_owned(),
-                order: SchemaIndexOrd::Both,
-                expr: Expr::Identifier("id".to_owned())
-            },
-            SchemaIndex {
-                name: "idx_name".to_owned(),
-                order: SchemaIndexOrd::Both,
-                expr: Expr::Identifier("name".to_owned())
-            },
-            SchemaIndex {
-                name: "idx_id2".to_owned(),
-                order: SchemaIndexOrd::Both,
-                expr: Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier("id".to_owned())),
-                    op: BinaryOperator::Plus,
-                    right: Box::new(Expr::Identifier("num".to_owned()))
-                }
-            }
+            vec![
+                "Test".to_owned(),
+                "idx_id".to_owned(),
+                "BOTH".to_owned(),
+                "id".to_owned()
+            ],
+            vec![
+                "Test".to_owned(),
+                "idx_name".to_owned(),
+                "BOTH".to_owned(),
+                "name".to_owned()
+            ],
+            vec![
+                "Test".to_owned(),
+                "idx_id2".to_owned(),
+                "BOTH".to_owned(),
+                "id + num".to_owned()
+            ],
         ]))
     );
 
