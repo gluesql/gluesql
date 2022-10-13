@@ -400,16 +400,16 @@ mod tests {
                         projection: vec![
                             SelectItem::Expr {
                                 expr: Expr::Identifier("id".to_owned()),
-                                label: "".to_string()
+                                label: "".to_owned()
                             },
                             SelectItem::Expr {
                                 expr: Expr::Identifier("count".to_owned()),
-                                label: "".to_string()
+                                label: "".to_owned()
                             }
                         ],
                         from: TableWithJoins {
                             relation: TableFactor::Table {
-                                name: "Bar".to_string(),
+                                name: "Bar".to_owned(),
                                 alias: None,
                                 index: None
                             },
