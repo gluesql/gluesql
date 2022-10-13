@@ -1,9 +1,6 @@
 use {
     crate::command::{SetOption, ShowOption},
-    gluesql_core::{
-        ast::ToSql,
-        prelude::{Payload, PayloadVariable},
-    },
+    gluesql_core::prelude::{Payload, PayloadVariable},
     std::{
         fmt::Display,
         fs::File,
@@ -259,7 +256,6 @@ mod tests {
     use {
         super::Print,
         crate::command::{SetOption, ShowOption},
-        gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd},
     };
 
     #[test]
@@ -295,7 +291,7 @@ mod tests {
     #[test]
     fn print_payload() {
         use gluesql_core::{
-            ast::{BinaryOperator, DataType, Expr},
+            ast::DataType,
             prelude::{Payload, PayloadVariable, Row, Value},
         };
 
