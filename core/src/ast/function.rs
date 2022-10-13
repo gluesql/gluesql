@@ -688,8 +688,8 @@ mod tests {
         );
 
         assert_eq!(
-            r#"LTRIM("IMPORTANT*", "*")"#,
-            &Expr::Function(Box::new(Function::Ltrim {
+            r#"RTRIM("IMPORTANT*", "*")"#,
+            &Expr::Function(Box::new(Function::Rtrim {
                 expr: Expr::Literal(AstLiteral::QuotedString("IMPORTANT*".to_owned())),
                 chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
             }))
