@@ -8,9 +8,9 @@ use {
     },
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef, DataType,
-            Dictionary, Expr, Query, SelectItem, SetExpr, Statement, TableAlias, TableFactor,
-            TableWithJoins, Values, Variable,
+            ColumnDef, ColumnOption, ColumnOptionDef, DataType, Dictionary, Expr, Query,
+            SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
+            Variable,
         },
         data::{Key, Row, Schema},
         executor::limit::Limit,
@@ -28,7 +28,10 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use super::alter::create_index;
+use {
+    super::alter::create_index,
+    crate::ast::{AstLiteral, BinaryOperator},
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
