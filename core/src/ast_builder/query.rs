@@ -14,80 +14,20 @@ use {
 
 #[derive(Clone)]
 pub enum QueryNode {
-    Select(SelectNode),
-    Join(JoinNode),
-    JoinConstraint(JoinConstraintNode),
-    HashJoin(HashJoinNode),
-    GroupBy(GroupByNode),
-    Having(HavingNode),
-    Limit(LimitNode),
-    LimitOffset(LimitOffsetNode),
-    Offset(OffsetNode),
-    OffsetLimit(OffsetLimitNode),
-    Filter(FilterNode),
     Text(String),
     Values(Vec<ExprList>),
-    Project(ProjectNode),
-}
-
-impl From<SelectNode> for QueryNode {
-    fn from(node: SelectNode) -> Self {
-        QueryNode::Select(node)
-    }
-}
-
-impl From<JoinNode> for QueryNode {
-    fn from(node: JoinNode) -> Self {
-        QueryNode::Join(node)
-    }
-}
-
-impl From<JoinConstraintNode> for QueryNode {
-    fn from(node: JoinConstraintNode) -> Self {
-        QueryNode::JoinConstraint(node)
-    }
-}
-
-impl From<HashJoinNode> for QueryNode {
-    fn from(node: HashJoinNode) -> Self {
-        QueryNode::HashJoin(node)
-    }
-}
-
-impl From<GroupByNode> for QueryNode {
-    fn from(node: GroupByNode) -> Self {
-        QueryNode::GroupBy(node)
-    }
-}
-
-impl From<HavingNode> for QueryNode {
-    fn from(node: HavingNode) -> Self {
-        QueryNode::Having(node)
-    }
-}
-
-impl From<LimitNode> for QueryNode {
-    fn from(node: LimitNode) -> Self {
-        QueryNode::Limit(node)
-    }
-}
-
-impl From<LimitOffsetNode> for QueryNode {
-    fn from(node: LimitOffsetNode) -> Self {
-        QueryNode::LimitOffset(node)
-    }
-}
-
-impl From<OffsetNode> for QueryNode {
-    fn from(node: OffsetNode) -> Self {
-        QueryNode::Offset(node)
-    }
-}
-
-impl From<OffsetLimitNode> for QueryNode {
-    fn from(node: OffsetLimitNode) -> Self {
-        QueryNode::OffsetLimit(node)
-    }
+    SelectNode(SelectNode),
+    JoinNode(JoinNode),
+    JoinConstraintNode(JoinConstraintNode),
+    HashJoinNode(HashJoinNode),
+    GroupByNode(GroupByNode),
+    HavingNode(HavingNode),
+    LimitNode(LimitNode),
+    LimitOffsetNode(LimitOffsetNode),
+    OffsetNode(OffsetNode),
+    OffsetLimitNode(OffsetLimitNode),
+    FilterNode(FilterNode),
+    ProjectNode(ProjectNode),
 }
 
 impl From<&str> for QueryNode {
@@ -96,38 +36,36 @@ impl From<&str> for QueryNode {
     }
 }
 
-impl From<FilterNode> for QueryNode {
-    fn from(node: FilterNode) -> Self {
-        QueryNode::Filter(node)
-    }
+macro_rules! impl_from_select_nodes {
+    ($type: ident) => {
+        impl From<$type> for QueryNode {
+            fn from(node: $type) -> Self {
+                QueryNode::$type(node)
+            }
+        }
+    };
 }
 
-impl From<ProjectNode> for QueryNode {
-    fn from(node: ProjectNode) -> Self {
-        QueryNode::Project(node)
-    }
-}
+impl_from_select_nodes!(SelectNode);
+impl_from_select_nodes!(JoinNode);
+impl_from_select_nodes!(JoinConstraintNode);
+impl_from_select_nodes!(HashJoinNode);
+impl_from_select_nodes!(GroupByNode);
+impl_from_select_nodes!(HavingNode);
+impl_from_select_nodes!(FilterNode);
+impl_from_select_nodes!(LimitNode);
+impl_from_select_nodes!(LimitOffsetNode);
+impl_from_select_nodes!(OffsetNode);
+impl_from_select_nodes!(OffsetLimitNode);
+impl_from_select_nodes!(ProjectNode);
 
 impl TryFrom<QueryNode> for Query {
     type Error = Error;
 
     fn try_from(query_node: QueryNode) -> Result<Self> {
         match query_node {
-            QueryNode::Select(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::Join(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::JoinConstraint(query_node) => {
-                query_node.prebuild().map(NodeData::build_query)
-            }
-            QueryNode::HashJoin(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::GroupBy(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::Having(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::Limit(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::LimitOffset(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::Offset(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::OffsetLimit(query_node) => query_node.prebuild().map(NodeData::build_query),
-            QueryNode::Project(query_node) => query_node.prebuild().map(NodeData::build_query),
             QueryNode::Text(query_node) => {
-                parse_query(query_node).and_then(|item| translate_query(&item))
+                return parse_query(query_node).and_then(|item| translate_query(&item));
             }
             QueryNode::Values(values) => {
                 let values: Vec<Vec<Expr>> = values
@@ -135,15 +73,27 @@ impl TryFrom<QueryNode> for Query {
                     .map(TryInto::try_into)
                     .collect::<Result<Vec<_>>>()?;
 
-                Ok(Query {
+                return Ok(Query {
                     body: SetExpr::Values(Values(values)),
                     order_by: Vec::new(),
                     limit: None,
                     offset: None,
-                })
+                });
             }
-            QueryNode::Filter(query_node) => query_node.prebuild().map(NodeData::build_query),
+            QueryNode::SelectNode(node) => node.prebuild(),
+            QueryNode::JoinNode(node) => node.prebuild(),
+            QueryNode::JoinConstraintNode(node) => node.prebuild(),
+            QueryNode::HashJoinNode(node) => node.prebuild(),
+            QueryNode::GroupByNode(node) => node.prebuild(),
+            QueryNode::HavingNode(node) => node.prebuild(),
+            QueryNode::FilterNode(node) => node.prebuild(),
+            QueryNode::LimitNode(node) => node.prebuild(),
+            QueryNode::LimitOffsetNode(node) => node.prebuild(),
+            QueryNode::OffsetNode(node) => node.prebuild(),
+            QueryNode::OffsetLimitNode(node) => node.prebuild(),
+            QueryNode::ProjectNode(node) => node.prebuild(),
         }
+        .map(NodeData::build_query)
     }
 }
 
