@@ -54,7 +54,7 @@ mod hello_world {
         };
 
         let first_row = &rows[0];
-        let first_value = &first_row[0];
+        let first_value = first_row.iter().next().unwrap();
 
         /*
             Row values are wrapped into a value enum, on the basis of the result type
