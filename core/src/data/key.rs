@@ -315,6 +315,10 @@ mod tests {
             Err(KeyError::ListTypeKeyNotSupported.into())
         );
         assert_eq!(convert(r#"POSITION("PORK" IN "MEAT")"#), Ok(Key::I64(0)));
+        assert_eq!(
+            convert(r#"EXTRACT(SECOND FROM INTERVAL "8" SECOND)"#),
+            Ok(Key::I64(8))
+        );
     }
 
     fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {
