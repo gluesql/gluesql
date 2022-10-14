@@ -50,7 +50,7 @@ fn convert_payload(payload: Payload) -> Json {
                 .map(|(name, data_type)| {
                     json!({
                         "name": name,
-                        "type": data_type.to_owned(),
+                        "type": data_type.to_string(),
                     })
                 })
                 .collect();
