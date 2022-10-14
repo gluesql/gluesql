@@ -2,7 +2,7 @@ use {
     super::{
         select::NodeData, select::Prebuild, ExprList, FilterNode, GroupByNode, HashJoinNode,
         HavingNode, JoinConstraintNode, JoinNode, LimitNode, LimitOffsetNode, OffsetLimitNode,
-        OffsetNode, ProjectNode, SelectNode,
+        OffsetNode, OrderByNode, ProjectNode, SelectNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -28,6 +28,7 @@ pub enum QueryNode {
     OffsetLimitNode(OffsetLimitNode),
     FilterNode(FilterNode),
     ProjectNode(ProjectNode),
+    OrderByNode(OrderByNode),
 }
 
 impl From<&str> for QueryNode {
@@ -58,6 +59,7 @@ impl_from_select_nodes!(LimitOffsetNode);
 impl_from_select_nodes!(OffsetNode);
 impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
+impl_from_select_nodes!(OrderByNode);
 
 impl TryFrom<QueryNode> for Query {
     type Error = Error;
@@ -92,6 +94,7 @@ impl TryFrom<QueryNode> for Query {
             QueryNode::OffsetNode(node) => node.prebuild(),
             QueryNode::OffsetLimitNode(node) => node.prebuild(),
             QueryNode::ProjectNode(node) => node.prebuild(),
+            QueryNode::OrderByNode(node) => node.prebuild(),
         }
         .map(NodeData::build_query)
     }
@@ -217,6 +220,10 @@ mod test {
 
         let actual = table("FOO").select().limit(10).project("id, name").into();
         let expected = r#"SELECT id, name FROM FOO LIMIT 10"#;
+        test_query(actual, expected);
+
+        let actual = table("Foo").select().order_by("score DESC").into();
+        let expected = "SELECT * FROM Foo ORDER BY score DESC";
         test_query(actual, expected);
     }
 }
