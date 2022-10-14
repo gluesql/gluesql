@@ -69,11 +69,16 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         selection,
         group_by,
         having,
+        distinct,
         ..
     } = sql_select;
 
     if from.len() > 1 {
         return Err(TranslateError::TooManyTables.into());
+    }
+
+    if *distinct {
+        return Err(TranslateError::SelectDistinctNotSupported.into());
     }
 
     let from = match from.get(0) {
