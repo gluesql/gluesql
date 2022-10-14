@@ -6,7 +6,7 @@ use {
         result::Result,
     },
     serde::{Deserialize, Serialize},
-    std::fmt::Debug,
+    std::{fmt::Debug, slice::Iter, vec::IntoIter},
     thiserror::Error,
 };
 
@@ -120,5 +120,51 @@ impl Row {
         }
 
         Ok(())
+    }
+
+    pub fn iter(&self) -> Iter<'_, Value> {
+        self.0.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl IntoIterator for Row {
+    type Item = Value;
+    type IntoIter = IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl From<Row> for Vec<Value> {
+    fn from(row: Row) -> Self {
+        row.0
+    }
+}
+
+impl From<Vec<Value>> for Row {
+    fn from(values: Vec<Value>) -> Self {
+        Row(values)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::Row, crate::data::Value};
+
+    #[test]
+    fn len() {
+        let row: Row = vec![Value::Bool(true), Value::I64(100)].into();
+
+        assert_eq!(row.len(), 2);
+        assert!(!row.is_empty());
     }
 }
