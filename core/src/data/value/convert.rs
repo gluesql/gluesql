@@ -382,6 +382,7 @@ impl TryFrom<&Value> for u16 {
         })
     }
 }
+
 impl TryFrom<&Value> for f64 {
     type Error = Error;
 

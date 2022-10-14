@@ -50,10 +50,6 @@ pub enum Expr {
         op: UnaryOperator,
         expr: Box<Expr>,
     },
-    Cast {
-        expr: Box<Expr>,
-        data_type: DataType,
-    },
     Extract {
         field: DateTimeField,
         expr: Box<Expr>,
@@ -79,6 +75,11 @@ pub enum Expr {
     ArrayIndex {
         obj: Box<Expr>,
         indexes: Vec<Expr>,
+    },
+    Interval {
+        expr: Box<Expr>,
+        leading_field: Option<DateTimeField>,
+        last_field: Option<DateTimeField>,
     },
 }
 
@@ -154,15 +155,12 @@ impl ToSql for Expr {
                 UnaryOperator::Factorial => format!("{}{}", expr.to_sql(), op.to_sql()),
                 _ => format!("{}{}", op.to_sql(), expr.to_sql()),
             },
-            Expr::Cast { expr, data_type } => {
-                format!("CAST({} AS {data_type})", expr.to_sql())
-            }
             Expr::Extract { field, expr } => {
                 format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
             }
             Expr::Nested(expr) => format!("({})", expr.to_sql()),
             Expr::Literal(s) => s.to_sql(),
-            Expr::TypedString { data_type, value } => format!("{data_type}(\"{value}\")"),
+            Expr::TypedString { data_type, value } => format!("{data_type} \"{value}\""),
             Expr::Case {
                 operand,
                 when_then,
@@ -187,7 +185,7 @@ impl ToSql for Expr {
                 [operand, when_then, else_result, "END".to_owned()].join("\n")
             }
             Expr::Aggregate(a) => a.to_sql(),
-            Expr::Function(func) => format!("{func}(..)"),
+            Expr::Function(func) => func.to_sql(),
             Expr::InSubquery {
                 expr,
                 subquery,
@@ -210,6 +208,22 @@ impl ToSql for Expr {
                 format!("{obj}{indexes}")
             }
             Expr::Subquery(query) => format!("({})", query.to_sql()),
+            Expr::Interval {
+                expr,
+                leading_field,
+                last_field,
+            } => {
+                let expr = expr.to_sql();
+                let leading_field = leading_field
+                    .as_ref()
+                    .map(|field| field.to_string())
+                    .unwrap_or_else(|| "".to_owned());
+
+                match last_field {
+                    Some(last_field) => format!("INTERVAL {expr} {leading_field} TO {last_field}"),
+                    None => format!("INTERVAL {expr} {leading_field}"),
+                }
+            }
         }
     }
 }
@@ -218,9 +232,8 @@ impl ToSql for Expr {
 mod tests {
     use {
         crate::ast::{
-            Aggregate, AstLiteral, BinaryOperator, CountArgExpr, DataType, DateTimeField, Expr,
-            Function, Query, Select, SelectItem, SetExpr, TableFactor, TableWithJoins, ToSql,
-            UnaryOperator,
+            AstLiteral, BinaryOperator, DataType, DateTimeField, Expr, Query, Select, SelectItem,
+            SetExpr, TableFactor, TableWithJoins, ToSql, UnaryOperator,
         },
         bigdecimal::BigDecimal,
         regex::Regex,
@@ -268,18 +281,7 @@ mod tests {
         assert_eq!("id IS NOT NULL", Expr::IsNotNull(id_expr).to_sql());
 
         assert_eq!(
-            "CAST(1.0 AS INT)",
-            Expr::Cast {
-                expr: Box::new(Expr::Literal(AstLiteral::Number(
-                    BigDecimal::from_str("1.0").unwrap()
-                ))),
-                data_type: DataType::Int
-            }
-            .to_sql()
-        );
-
-        assert_eq!(
-            r#"INT("1")"#,
+            r#"INT "1""#,
             Expr::TypedString {
                 data_type: DataType::Int,
                 value: "1".to_owned()
@@ -565,52 +567,25 @@ mod tests {
         );
 
         assert_eq!(
-            "SIGN(..)",
-            &Expr::Function(Box::new(Function::Sign(Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_str("1.0").unwrap()
-            )))))
-            .to_sql()
-        );
-
-        assert_eq!(
-            "MAX(id)",
-            Expr::Aggregate(Box::new(Aggregate::Max(Expr::Identifier("id".to_owned())))).to_sql()
-        );
-
-        assert_eq!(
-            "COUNT(*)",
-            Expr::Aggregate(Box::new(Aggregate::Count(CountArgExpr::Wildcard))).to_sql()
-        );
-
-        assert_eq!(
-            "MIN(id)",
-            Expr::Aggregate(Box::new(Aggregate::Min(Expr::Identifier("id".to_owned())))).to_sql()
-        );
-
-        assert_eq!(
-            "SUM(price)",
-            &Expr::Aggregate(Box::new(Aggregate::Sum(Expr::Identifier(
-                "price".to_owned()
-            ))))
-            .to_sql()
-        );
-
-        assert_eq!(
-            "AVG(pay)",
-            &Expr::Aggregate(Box::new(Aggregate::Avg(Expr::Identifier("pay".to_owned())))).to_sql()
-        );
-        assert_eq!(
-            "VARIANCE(pay)",
-            &Expr::Aggregate(Box::new(Aggregate::Variance(Expr::Identifier(
-                "pay".to_owned()
-            ))))
+            "INTERVAL col1 + 3 DAY",
+            &Expr::Interval {
+                expr: Box::new(Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("col1".to_owned())),
+                    op: BinaryOperator::Plus,
+                    right: Box::new(Expr::Literal(AstLiteral::Number(3.into()))),
+                }),
+                leading_field: Some(DateTimeField::Day),
+                last_field: None,
+            }
             .to_sql()
         );
         assert_eq!(
-            "STDEV(total)",
-            &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
-                "total".to_owned()
-            ))))
+            r#"INTERVAL "3-5" HOUR TO MINUTE"#,
+            &Expr::Interval {
+                expr: Box::new(Expr::Literal(AstLiteral::QuotedString("3-5".to_owned()))),
+                leading_field: Some(DateTimeField::Hour),
+                last_field: Some(DateTimeField::Minute),
+            }
             .to_sql()
         );
     }

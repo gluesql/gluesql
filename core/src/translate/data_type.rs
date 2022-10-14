@@ -1,7 +1,7 @@
 use {
     super::TranslateError,
     crate::{ast::DataType, result::Result},
-    sqlparser::ast::DataType as SqlDataType,
+    sqlparser::ast::{DataType as SqlDataType, TimezoneInfo as SqlTimezoneInfo},
 };
 
 pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
@@ -12,8 +12,8 @@ pub fn translate_data_type(sql_data_type: &SqlDataType) -> Result<DataType> {
         SqlDataType::Text => Ok(DataType::Text),
         SqlDataType::Bytea => Ok(DataType::Bytea),
         SqlDataType::Date => Ok(DataType::Date),
-        SqlDataType::Timestamp => Ok(DataType::Timestamp),
-        SqlDataType::Time => Ok(DataType::Time),
+        SqlDataType::Timestamp(SqlTimezoneInfo::None) => Ok(DataType::Timestamp),
+        SqlDataType::Time(SqlTimezoneInfo::None) => Ok(DataType::Time),
         SqlDataType::Interval => Ok(DataType::Interval),
         SqlDataType::Uuid => Ok(DataType::Uuid),
         SqlDataType::Decimal(None, None) => Ok(DataType::Decimal),

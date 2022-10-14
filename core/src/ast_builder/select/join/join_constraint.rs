@@ -1,25 +1,53 @@
 use {
-    super::{join::JoinOperatorType, NodeData, Prebuild},
+    super::{JoinConstraintData, JoinOperatorType},
     crate::{
-        ast::{Join, JoinConstraint, JoinExecutor, JoinOperator},
+        ast::{Join, JoinConstraint, JoinOperator},
         ast_builder::{
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
-            OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            select::{NodeData, Prebuild},
+            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
         },
         result::Result,
     },
 };
 
 #[derive(Clone)]
+pub enum PrevNode {
+    Join(JoinNode),
+    HashJoin(HashJoinNode),
+}
+
+impl PrevNode {
+    fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
+        match self {
+            PrevNode::Join(node) => node.prebuild_for_constraint(),
+            PrevNode::HashJoin(node) => node.prebuild_for_constraint(),
+        }
+    }
+}
+
+impl From<JoinNode> for PrevNode {
+    fn from(node: JoinNode) -> Self {
+        PrevNode::Join(node)
+    }
+}
+
+impl From<HashJoinNode> for PrevNode {
+    fn from(node: HashJoinNode) -> Self {
+        PrevNode::HashJoin(node)
+    }
+}
+
+#[derive(Clone)]
 pub struct JoinConstraintNode {
-    join_node: JoinNode,
+    prev_node: PrevNode,
     expr: ExprNode,
 }
 
 impl JoinConstraintNode {
-    pub fn new<T: Into<ExprNode>>(join_node: JoinNode, expr: T) -> Self {
+    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
         Self {
-            join_node,
+            prev_node: prev_node.into(),
             expr: expr.into(),
         }
     }
@@ -77,11 +105,16 @@ impl JoinConstraintNode {
 
 impl Prebuild for JoinConstraintNode {
     fn prebuild(self) -> Result<NodeData> {
-        let (mut select_data, relation, join_operator_type) =
-            self.join_node.prebuild_for_constraint()?;
-        select_data.joins.push(Join {
+        let JoinConstraintData {
+            mut node_data,
             relation,
-            join_operator: match join_operator_type {
+            operator_type,
+            executor: join_executor,
+        } = self.prev_node.prebuild_for_constraint()?;
+
+        node_data.joins.push(Join {
+            relation,
+            join_operator: match operator_type {
                 JoinOperatorType::Inner => {
                     JoinOperator::Inner(JoinConstraint::On(self.expr.try_into()?))
                 }
@@ -89,15 +122,22 @@ impl Prebuild for JoinConstraintNode {
                     JoinOperator::LeftOuter(JoinConstraint::On(self.expr.try_into()?))
                 }
             },
-            join_executor: JoinExecutor::NestedLoop,
+            join_executor,
         });
-        Ok(select_data)
+
+        Ok(node_data)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test, Build};
+    use crate::{
+        ast::{
+            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr, Statement,
+            TableFactor, TableWithJoins,
+        },
+        ast_builder::{col, table, test, Build, SelectItemList},
+    };
 
     #[test]
     fn join_constraint() {
@@ -136,5 +176,52 @@ mod tests {
             .build();
         let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar b ON Foo.id = b.id";
         test(actual, expected);
+
+        // hash join node -> join constraint node -> build
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .on("PlayerItem.flag IS NOT NULL")
+            .build();
+        let expected = {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::On(
+                    col("PlayerItem.flag").is_not_null().try_into().unwrap(),
+                )),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
+                    value_expr: col("Player.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            Ok(Statement::Query(Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            }))
+        };
+        assert_eq!(actual, expected, "hash join -> join constraint");
     }
 }

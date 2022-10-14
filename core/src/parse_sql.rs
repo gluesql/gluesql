@@ -74,7 +74,7 @@ pub fn parse_interval<Sql: AsRef<str>>(sql_interval: Sql) -> Result<SqlExpr> {
         .map_err(|e| Error::Parser(format!("{:#?}", e)))?;
 
     Parser::new(tokens, &DIALECT)
-        .parse_literal_interval()
+        .parse_interval()
         .map_err(|e| Error::Parser(format!("{:#?}", e)))
 }
 

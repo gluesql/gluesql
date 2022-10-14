@@ -124,10 +124,10 @@ impl ToSql for Statement {
             Statement::Insert {
                 table_name,
                 columns,
-                source: _,
+                source,
             } => {
                 let columns = columns.join(", ");
-                format!("INSERT INTO {table_name} ({columns}) (..query..)",)
+                format!("INSERT INTO {table_name} ({columns}) {}", source.to_sql())
             }
             Statement::Update {
                 table_name,
@@ -162,9 +162,9 @@ impl ToSql for Statement {
                 columns,
                 source,
             } => match source {
-                Some(_query) => match if_not_exists {
-                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS (..query..)",),
-                    false => format!("CREATE TABLE {name} AS (..query..)"),
+                Some(query) => match if_not_exists {
+                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS {}", query.to_sql()),
+                    false => format!("CREATE TABLE {name} AS {}", query.to_sql()),
                 },
                 None => {
                     let columns = columns
@@ -237,7 +237,8 @@ mod tests {
     use {
         crate::ast::{
             Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
-            DataType, Expr, Query, SetExpr, Statement, ToSql, Values, Variable,
+            DataType, Expr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+            TableWithJoins, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -257,7 +258,7 @@ mod tests {
     #[test]
     fn to_sql_insert() {
         assert_eq!(
-            "INSERT INTO Test (id, num, name) (..query..)",
+            r#"INSERT INTO Test (id, num, name) VALUES (1, 2, "Hello")"#,
             Statement::Insert {
                 table_name: "Test".into(),
                 columns: vec!["id".to_owned(), "num".to_owned(), "name".to_owned()],
@@ -389,15 +390,35 @@ mod tests {
     #[test]
     fn to_sql_create_table_as() {
         assert_eq!(
-            "CREATE TABLE Foo AS (..query..)",
+            "CREATE TABLE Foo AS SELECT id, count FROM Bar",
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
                 columns: vec![],
                 source: Some(Box::new(Query {
-                    body: SetExpr::Values(Values(vec![vec![Expr::Literal(AstLiteral::Boolean(
-                        false
-                    ))]])),
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![
+                            SelectItem::Expr {
+                                expr: Expr::Identifier("id".to_owned()),
+                                label: "".to_owned()
+                            },
+                            SelectItem::Expr {
+                                expr: Expr::Identifier("count".to_owned()),
+                                label: "".to_owned()
+                            }
+                        ],
+                        from: TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: "Bar".to_owned(),
+                                alias: None,
+                                index: None
+                            },
+                            joins: vec![]
+                        },
+                        selection: None,
+                        group_by: vec![],
+                        having: None
+                    })),
                     order_by: vec![],
                     limit: None,
                     offset: None
@@ -407,7 +428,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo AS (..query..)",
+            "CREATE TABLE IF NOT EXISTS Foo AS VALUES (TRUE)",
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
