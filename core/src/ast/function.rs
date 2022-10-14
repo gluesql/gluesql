@@ -322,7 +322,8 @@ impl ToSql for CountArgExpr {
 mod tests {
     use {
         crate::ast::{
-            Aggregate, AstLiteral, CountArgExpr, DataType, Expr, Function, ToSql, TrimWhereField, DateTimeField
+            Aggregate, AstLiteral, CountArgExpr, DataType, DateTimeField, Expr, Function, ToSql,
+            TrimWhereField,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
