@@ -26,7 +26,7 @@ pub mod order_by;
 pub mod ordering;
 pub mod primary_key;
 pub mod series;
-pub mod showcolumns;
+pub mod show_columns;
 pub mod synthesize;
 pub mod transaction;
 pub mod type_match;
@@ -132,7 +132,7 @@ macro_rules! generate_store_tests {
         glue!(ordering, ordering::ordering);
         glue!(order_by, order_by::order_by);
         glue!(sql_types, data_type::sql_types::sql_types);
-        glue!(showcolumns, showcolumns::showcolumns);
+        glue!(show_columns, show_columns::show_columns);
         glue!(int8, data_type::int8::int8);
         glue!(uint8, data_type::int8::int8);
         glue!(int16, data_type::int16::int16);
