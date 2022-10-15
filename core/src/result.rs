@@ -5,14 +5,14 @@ use {
         },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
-            UpdateError, ValidateError,
+            SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
         store::{GStore, GStoreMut},
         translate::TranslateError,
     },
     serde::Serialize,
-    std::{fmt::Debug, ops::ControlFlow},
+    std::{error::Error as StdError, fmt::Debug, ops::ControlFlow},
     thiserror::Error as ThisError,
 };
 
@@ -26,7 +26,7 @@ use crate::store::IndexError;
 pub enum Error {
     #[error(transparent)]
     #[serde(with = "stringify")]
-    Storage(#[from] Box<dyn std::error::Error>),
+    Storage(#[from] Box<dyn StdError + Send + Sync>),
 
     #[error("storage error: {0}")]
     StorageMsg(String),
@@ -34,8 +34,6 @@ pub enum Error {
     #[error("parsing failed: {0}")]
     Parser(String),
 
-    //#[error("OverflowError: {0}")]
-    //OverflowError(String),
     #[error(transparent)]
     Translate(#[from] TranslateError),
 
@@ -59,6 +57,8 @@ pub enum Error {
     Select(#[from] SelectError),
     #[error(transparent)]
     Aggregate(#[from] AggregateError),
+    #[error(transparent)]
+    Sort(#[from] SortError),
     #[error(transparent)]
     Update(#[from] UpdateError),
     #[error(transparent)]
@@ -102,6 +102,7 @@ impl PartialEq for Error {
             (Evaluate(e), Evaluate(e2)) => e == e2,
             (Select(e), Select(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
+            (Sort(e), Sort(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,

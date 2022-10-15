@@ -9,6 +9,7 @@ mod query;
 
 pub use self::{
     data_type::translate_data_type,
+    ddl::translate_column_def,
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
     query::{translate_query, translate_select_item},
@@ -18,13 +19,9 @@ pub use self::{
 use ddl::translate_alter_table_operation;
 use sqlparser::ast::{TableFactor, TableWithJoins};
 
-#[cfg(feature = "metadata")]
-use crate::ast::Variable;
-
 use {
-    self::ddl::translate_column_def,
     crate::{
-        ast::{Assignment, ObjectName, Statement},
+        ast::{Assignment, Statement, Variable},
         result::Result,
     },
     sqlparser::ast::{
@@ -42,7 +39,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             source,
             ..
         } => Ok(Statement::Insert {
-            table_name: translate_object_name(table_name),
+            table_name: translate_object_name(table_name)?,
             columns: translate_idents(columns),
             source: translate_query(source)?,
         }),
@@ -60,10 +57,13 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             selection: selection.as_ref().map(translate_expr).transpose()?,
         }),
         SqlStatement::Delete {
-            table_name,
+            table_name: TableFactor::Table {
+                name: table_name, ..
+            },
             selection,
+            ..
         } => Ok(Statement::Delete {
-            table_name: translate_object_name(table_name),
+            table_name: translate_object_name(table_name)?,
             selection: selection.as_ref().map(translate_expr).transpose()?,
         }),
         SqlStatement::CreateTable {
@@ -74,7 +74,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             ..
         } => Ok(Statement::CreateTable {
             if_not_exists: *if_not_exists,
-            name: translate_object_name(name),
+            name: translate_object_name(name)?,
             columns: columns
                 .iter()
                 .map(translate_column_def)
@@ -88,7 +88,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::AlterTable {
             name, operation, ..
         } => Ok(Statement::AlterTable {
-            name: translate_object_name(name),
+            name: translate_object_name(name)?,
             operation: translate_alter_table_operation(operation)?,
         }),
         SqlStatement::Drop {
@@ -98,7 +98,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             ..
         } => Ok(Statement::DropTable {
             if_exists: *if_exists,
-            names: names.iter().map(translate_object_name).collect(),
+            names: names
+                .iter()
+                .map(translate_object_name)
+                .collect::<Result<Vec<_>>>()?,
         }),
         #[cfg(feature = "index")]
         SqlStatement::CreateIndex {
@@ -112,8 +115,8 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             }
 
             Ok(Statement::CreateIndex {
-                name: translate_object_name(name),
-                table_name: translate_object_name(table_name),
+                name: translate_object_name(name)?,
+                table_name: translate_object_name(table_name)?,
                 column: translate_order_by_expr(&columns[0])?,
             })
         }
@@ -132,8 +135,8 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 return Err(TranslateError::InvalidParamsInDropIndex.into());
             }
 
-            let table_name = ObjectName(vec![object_name[0].value.to_owned()]);
-            let name = ObjectName(vec![object_name[1].value.to_owned()]);
+            let table_name = object_name[0].value.to_owned();
+            let name = object_name[1].value.to_owned();
 
             Ok(Statement::DropIndex { name, table_name })
         }
@@ -143,21 +146,20 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
         SqlStatement::Commit { .. } => Ok(Statement::Commit),
         #[cfg(feature = "transaction")]
         SqlStatement::Rollback { .. } => Ok(Statement::Rollback),
-        #[cfg(feature = "metadata")]
+        SqlStatement::ShowTables {
+            filter: None,
+            db_name: None,
+            ..
+        } => Ok(Statement::ShowVariable(Variable::Tables)),
         SqlStatement::ShowVariable { variable } => match (variable.len(), variable.get(0)) {
             (1, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
-                "TABLES" => Ok(Statement::ShowVariable(Variable::Tables)),
                 "VERSION" => Ok(Statement::ShowVariable(Variable::Version)),
-                v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_string()).into()),
+                v => Err(TranslateError::UnsupportedShowVariableKeyword(v.to_owned()).into()),
             },
             #[cfg(feature = "index")]
             (3, Some(keyword)) => match keyword.value.to_uppercase().as_str() {
                 "INDEXES" => match variable.get(2) {
-                    Some(tablename) => {
-                        Ok(Statement::ShowIndexes(ObjectName(Vec::from([tablename
-                            .value
-                            .to_string()]))))
-                    }
+                    Some(tablename) => Ok(Statement::ShowIndexes(tablename.value.to_owned())),
                     _ => Err(TranslateError::UnsupportedShowVariableStatement(
                         sql_statement.to_string(),
                     )
@@ -173,13 +175,13 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             ),
         },
         SqlStatement::ShowColumns { table_name, .. } => Ok(Statement::ShowColumns {
-            table_name: translate_object_name(table_name),
+            table_name: translate_object_name(table_name)?,
         }),
         _ => Err(TranslateError::UnsupportedStatement(sql_statement.to_string()).into()),
     }
 }
 
-fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
+pub fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
     let SqlAssignment { id, value } = sql_assignment;
 
     if id.len() > 1 {
@@ -198,20 +200,29 @@ fn translate_assignment(sql_assignment: &SqlAssignment) -> Result<Assignment> {
     })
 }
 
-fn translate_table_with_join(table: &TableWithJoins) -> Result<ObjectName> {
+fn translate_table_with_join(table: &TableWithJoins) -> Result<String> {
     if !table.joins.is_empty() {
         return Err(TranslateError::JoinOnUpdateNotSupported.into());
     }
     match &table.relation {
-        TableFactor::Table { name, .. } => Ok(translate_object_name(name)),
+        TableFactor::Table { name, .. } => translate_object_name(name),
         t => Err(TranslateError::UnsupportedTableFactor(t.to_string()).into()),
     }
 }
 
-fn translate_object_name(sql_object_name: &SqlObjectName) -> ObjectName {
-    ObjectName(translate_idents(&sql_object_name.0))
+fn translate_object_name(sql_object_name: &SqlObjectName) -> Result<String> {
+    let sql_object_name = &sql_object_name.0;
+    if sql_object_name.len() > 1 {
+        let compound_object_name = translate_idents(sql_object_name).join(".");
+        return Err(TranslateError::CompoundObjectNotSupported(compound_object_name).into());
+    }
+
+    sql_object_name
+        .get(0)
+        .map(|v| v.value.to_owned())
+        .ok_or_else(|| TranslateError::UnreachableEmptyObject.into())
 }
 
-fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
+pub fn translate_idents(idents: &[SqlIdent]) -> Vec<String> {
     idents.iter().map(|v| v.value.to_owned()).collect()
 }

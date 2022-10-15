@@ -8,7 +8,7 @@ use {
 test_case!(abs, async move {
     let test_cases = [
         (
-            "CREATE TABLE SingleItem (id integer, int8 int(8), dec decimal)",
+            "CREATE TABLE SingleItem (id integer, int8 int8, dec decimal)",
             Ok(Payload::Create),
         ),
         (
@@ -98,6 +98,6 @@ test_case!(abs, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

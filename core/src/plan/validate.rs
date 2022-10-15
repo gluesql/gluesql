@@ -29,7 +29,7 @@ pub fn validate(schema_map: &HashMap<String, Schema>, statement: Statement) -> R
 
                             if tables_with_given_col.count() > 1 {
                                 return Err(
-                                    PlanError::ColumnReferenceAmbiguous(ident.to_string()).into()
+                                    PlanError::ColumnReferenceAmbiguous(ident.to_owned()).into()
                                 );
                             }
                         }

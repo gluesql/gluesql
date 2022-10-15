@@ -1,10 +1,10 @@
 use {
     crate::{
         ast::{
-            AstLiteral, BinaryOperator, Expr, IndexItem, IndexOperator, OrderByExpr, Query, Select,
-            SetExpr, Statement, TableFactor, TableWithJoins,
+            AstLiteral, BinaryOperator, Expr, Function, IndexItem, IndexOperator, OrderByExpr,
+            Query, Select, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema, SchemaIndex, SchemaIndexOrd, TableError},
+        data::{Schema, SchemaIndex, SchemaIndexOrd, TableError},
         result::{Error, Result},
     },
     std::collections::HashMap,
@@ -51,6 +51,7 @@ impl Indexes {
 fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Query> {
     let Query {
         body,
+        order_by,
         limit,
         offset,
     } = query;
@@ -60,6 +61,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         SetExpr::Values(_) => {
             return Ok(Query {
                 body,
+                order_by,
                 limit,
                 offset,
             });
@@ -68,15 +70,23 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
 
     let TableWithJoins { relation, .. } = &select.from;
     let table_name = match relation {
-        TableFactor::Table { name, .. } => get_name(name)?,
+        TableFactor::Table { name, .. } => name,
         TableFactor::Derived { .. } => {
             return Ok(Query {
                 body: SetExpr::Select(select),
+                order_by,
                 limit,
                 offset,
             });
         }
-        TableFactor::Series { name, .. } => get_name(name)?,
+        TableFactor::Series {
+            alias: TableAlias { name, .. },
+            ..
+        } => name,
+        TableFactor::Dictionary {
+            alias: TableAlias { name, .. },
+            ..
+        } => name,
     };
 
     let indexes = match schema_map.get(table_name) {
@@ -84,13 +94,14 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
         None => {
             return Ok(Query {
                 body: SetExpr::Select(select),
+                order_by,
                 limit,
                 offset,
             });
         }
     };
 
-    let index = select.order_by.last().and_then(|value_expr| {
+    let index = order_by.last().and_then(|value_expr| {
         indexes
             .find_ordered(value_expr)
             .map(|name| IndexItem::NonClustered {
@@ -108,16 +119,16 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 selection,
                 group_by,
                 having,
-                order_by,
             } = *select;
 
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } => {
+                TableFactor::Derived { .. }
+                | TableFactor::Series { .. }
+                | TableFactor::Dictionary { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
-                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let from = TableWithJoins {
@@ -131,11 +142,11 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
                 selection,
                 group_by,
                 having,
-                order_by: Vector::from(order_by).pop().0.into(),
             };
 
             Ok(Query {
                 body: SetExpr::Select(Box::new(select)),
+                order_by: Vector::from(order_by).pop().0.into(),
                 limit,
                 offset,
             })
@@ -145,6 +156,7 @@ fn plan_query(schema_map: &HashMap<String, Schema>, query: Query) -> Result<Quer
             let body = SetExpr::Select(Box::new(select));
             let query = Query {
                 body,
+                order_by,
                 limit,
                 offset,
             };
@@ -165,7 +177,6 @@ fn plan_select(
         selection,
         group_by,
         having,
-        order_by,
     } = select;
 
     let selection = match selection {
@@ -177,7 +188,6 @@ fn plan_select(
                 selection,
                 group_by,
                 having,
-                order_by,
             });
         }
     };
@@ -189,7 +199,6 @@ fn plan_select(
             selection: Some(selection),
             group_by,
             having,
-            order_by,
         }),
         Planned::IndexedExpr {
             index_name,
@@ -200,10 +209,11 @@ fn plan_select(
             let TableWithJoins { relation, joins } = from;
             let (name, alias) = match relation {
                 TableFactor::Table { name, alias, .. } => (name, alias),
-                TableFactor::Derived { .. } => {
+                TableFactor::Derived { .. }
+                | TableFactor::Series { .. }
+                | TableFactor::Dictionary { .. } => {
                     return Err(Error::Table(TableError::Unreachable));
                 }
-                TableFactor::Series { name, alias, .. } => (name, alias),
             };
 
             let index = Some(IndexItem::NonClustered {
@@ -222,7 +232,6 @@ fn plan_select(
                 selection,
                 group_by,
                 having,
-                order_by,
             })
         }
     }
@@ -251,9 +260,9 @@ fn plan_index(
             .map(Box::new)
             .map(Expr::Subquery)
             .map(Planned::Expr),
-        Expr::Exists(query) => plan_query(schema_map, *query)
+        Expr::Exists { subquery, negated } => plan_query(schema_map, *subquery)
             .map(Box::new)
-            .map(Expr::Exists)
+            .map(|subquery| Expr::Exists { subquery, negated })
             .map(Planned::Expr),
         Expr::InSubquery {
             expr,
@@ -432,8 +441,11 @@ fn is_stateless(expr: &Expr) -> bool {
         Expr::IsNull(expr)
         | Expr::IsNotNull(expr)
         | Expr::UnaryOp { expr, .. }
-        | Expr::Cast { expr, .. }
         | Expr::Nested(expr) => is_stateless(expr.as_ref()),
+        Expr::Function(func) => match func.as_ref() {
+            Function::Cast { expr, .. } => is_stateless(expr),
+            _ => false,
+        },
         Expr::BinaryOp { left, right, .. } => {
             is_stateless(left.as_ref()) && is_stateless(right.as_ref())
         }

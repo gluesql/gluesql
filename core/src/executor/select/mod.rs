@@ -7,7 +7,7 @@ use {
     self::blend::Blend,
     super::{
         aggregate::Aggregator,
-        context::{BlendContext, FilterContext},
+        context::{AggregateContext, BlendContext, BlendContextRow::Single, FilterContext},
         evaluate_stateless,
         fetch::{fetch_join_columns, fetch_relation_columns, fetch_relation_rows},
         filter::Filter,
@@ -16,8 +16,8 @@ use {
         sort::Sort,
     },
     crate::{
-        ast::{Expr, Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
-        data::{get_alias, get_name, Row, RowError},
+        ast::{Expr, OrderByExpr, Query, Select, SelectItem, SetExpr, TableWithJoins, Values},
+        data::{get_alias, Row, RowError},
         prelude::{DataType, Value},
         result::{Error, Result},
         store::GStore,
@@ -29,6 +29,7 @@ use {
         iter::{self, once},
         rc::Rc,
     },
+    utils::Vector,
 };
 
 pub fn get_labels<'a>(
@@ -81,9 +82,7 @@ pub fn get_labels<'a>(
                 let labels = labels.map(Ok);
                 Labeled::Wildcard(Wildcard::WithoutJoin(labels))
             }
-            SelectItem::QualifiedWildcard(target) => {
-                let target_table_alias = try_into!(get_name(target));
-
+            SelectItem::QualifiedWildcard(target_table_alias) => {
                 if table_alias == target_table_alias {
                     return Labeled::QualifiedWildcard(to_labels(columns).map(Ok));
                 }
@@ -94,7 +93,7 @@ pub fn get_labels<'a>(
                         .find(|(table_alias, _)| table_alias == &target_table_alias)
                         .map(|(_, columns)| columns)
                         .ok_or_else(|| {
-                            SelectError::TableAliasNotFound(target_table_alias.to_string()).into()
+                            SelectError::TableAliasNotFound(target_table_alias.to_owned()).into()
                         });
                     let columns = try_into!(columns);
                     let labels = to_labels(columns);
@@ -108,7 +107,7 @@ pub fn get_labels<'a>(
         .collect::<Result<_>>()
 }
 
-fn into_rows(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
+fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
     let first_len = exprs_list[0].len();
     let labels = (1..=first_len)
         .into_iter()
@@ -154,6 +153,36 @@ fn into_rows(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>) {
     (rows, labels)
 }
 
+fn sort_stateless(
+    rows: Vec<Result<Row>>,
+    labels: &Vec<String>,
+    order_by: &[OrderByExpr],
+) -> Result<Vec<Result<Row>>> {
+    let sorted = rows
+        .into_iter()
+        .map(|row| {
+            let values = order_by
+                .iter()
+                .map(|OrderByExpr { expr, asc }| -> Result<_> {
+                    let row = row.as_ref().ok();
+                    let context = row.map(|row| (labels.as_slice(), row));
+                    let value: Value = evaluate_stateless(context, expr)?.try_into()?;
+
+                    Ok((value, *asc))
+                })
+                .collect::<Result<Vec<_>>>();
+
+            values.map(|values| (values, row))
+        })
+        .collect::<Result<Vec<_>>>()
+        .map(Vector::from)?
+        .sort_by(|(values_a, _), (values_b, _)| Sort::sort_by(values_a, values_b))
+        .into_iter()
+        .map(|(_, row)| row)
+        .collect::<Vec<_>>();
+
+    Ok(sorted)
+}
 #[async_recursion(?Send)]
 pub async fn select_with_labels<'a>(
     storage: &'a dyn GStore,
@@ -170,12 +199,12 @@ pub async fn select_with_labels<'a>(
         projection,
         group_by,
         having,
-        order_by,
     } = match &query.body {
         SetExpr::Select(statement) => statement.as_ref(),
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-            let (rows, labels) = into_rows(values_list);
+            let (rows, labels) = rows_with_labels(values_list);
+            let rows = sort_stateless(rows, &labels, &query.order_by)?;
             let rows = stream::iter(rows);
             let rows = limit.apply(rows);
 
@@ -193,8 +222,8 @@ pub async fn select_with_labels<'a>(
             .map(move |row| {
                 let row = Some(row?);
                 let columns = Rc::clone(&columns);
-                let alias = get_alias(relation)?;
-                Ok(BlendContext::new(alias, columns, row, None))
+                let alias = get_alias(relation);
+                Ok(BlendContext::new(alias, columns, Single(row), None))
             })
     };
 
@@ -202,7 +231,7 @@ pub async fn select_with_labels<'a>(
     let labels = if with_labels {
         get_labels(
             projection,
-            get_alias(relation)?,
+            get_alias(relation),
             &columns,
             Some(&join_columns),
         )?
@@ -241,7 +270,7 @@ pub async fn select_with_labels<'a>(
         None,
     ));
     let limit = Limit::new(query.limit.as_ref(), query.offset.as_ref())?;
-    let sort = Sort::new(storage, filter_context, order_by);
+    let sort = Sort::new(storage, filter_context, &query.order_by);
 
     let rows = join.apply(rows).await?;
     let rows = rows.try_filter_map(move |blend_context| {
@@ -256,15 +285,29 @@ pub async fn select_with_labels<'a>(
     });
 
     let rows = aggregate.apply(rows).await?;
-    let rows = sort
-        .apply(rows)
-        .await?
-        .and_then(move |(aggregated, context)| {
-            let blend = Rc::clone(&blend);
 
-            async move { blend.apply(aggregated, context).await }
-        });
+    let rows = rows.and_then(move |aggregate_context| {
+        let blend = Rc::clone(&blend);
+        let AggregateContext { aggregated, next } = aggregate_context;
+        let aggregated = aggregated.map(Rc::new);
+
+        async move {
+            let row = blend
+                .apply(aggregated.as_ref().map(Rc::clone), Rc::clone(&next))
+                .await?;
+
+            Ok((aggregated, next, row))
+        }
+    });
+
+    let labels = Rc::new(labels);
+    let rows = sort
+        .apply(rows, Rc::clone(&labels), get_alias(relation))
+        .await?;
+
     let rows = limit.apply(rows);
+
+    let labels = Rc::try_unwrap(labels).map_err(|_| SelectError::Unreachable)?;
 
     Ok((labels, rows))
 }

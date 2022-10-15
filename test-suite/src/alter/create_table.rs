@@ -57,8 +57,8 @@ test_case!(create_table, async move {
             Err(TranslateError::UnsupportedDataType("SOMEWHAT".to_owned()).into()),
         ),
         (
-            "CREATE TABLE Gluery (id BLOB);",
-            Err(TranslateError::UnsupportedDataType("BLOB".to_owned()).into()),
+            "CREATE TABLE Gluery (id GLOBE);",
+            Err(TranslateError::UnsupportedDataType("GLOBE".to_owned()).into()),
         ),
         (
             "CREATE TABLE Gluery (id INTEGER CHECK (true));",
@@ -132,6 +132,6 @@ test_case!(create_table, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

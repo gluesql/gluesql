@@ -104,7 +104,7 @@ test_case!(inline_view, async move {
             FROM OuterTable JOIN (
                 SELECT name FROM InnerTable
             ) AS InlineView ON OuterTable.id = InlineView.id",
-            Err(EvaluateError::ValueNotFound("id".to_string()).into()),
+            Err(EvaluateError::ValueNotFound("id".to_owned()).into()),
         ),
         (
             // join - Expr with WHERE clause
@@ -245,6 +245,11 @@ test_case!(inline_view, async move {
             Err(TranslateError::TooManyTables.into()),
         ),
         (
+            // unsupported select distinct
+            "SELECT DISTINCT id FROM OuterTable",
+            Err(TranslateError::SelectDistinctNotSupported.into()),
+        ),
+        (
             // inline view subquery + join with inline view
             "SELECT *
             FROM (
@@ -261,6 +266,6 @@ test_case!(inline_view, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

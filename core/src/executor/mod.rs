@@ -14,10 +14,11 @@ mod validate;
 
 pub use aggregate::AggregateError;
 pub use alter::AlterError;
-pub use evaluate::{evaluate_stateless, EvaluateError};
-pub use execute::{ExecuteError, Payload};
+pub use evaluate::{evaluate_stateless, ChronoFormatError, EvaluateError};
+pub use execute::{ExecuteError, Payload, PayloadVariable};
 pub use fetch::FetchError;
 pub use select::SelectError;
+pub use sort::SortError;
 pub use update::UpdateError;
 pub use validate::ValidateError;
 
@@ -25,6 +26,3 @@ pub use validate::ValidateError;
 pub use execute::execute;
 #[cfg(feature = "transaction")]
 pub use execute::execute_atomic as execute;
-
-#[cfg(feature = "metadata")]
-pub use execute::PayloadVariable;

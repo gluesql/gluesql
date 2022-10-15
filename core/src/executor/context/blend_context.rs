@@ -4,10 +4,16 @@ use {
 };
 
 #[derive(Debug)]
+pub enum BlendContextRow {
+    Single(Option<Row>),
+    Shared(Rc<Row>),
+}
+
+#[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
     columns: Rc<[String]>,
-    row: Option<Row>,
+    row: BlendContextRow,
     next: Option<Rc<BlendContext<'a>>>,
 }
 
@@ -15,7 +21,7 @@ impl<'a> BlendContext<'a> {
     pub fn new(
         table_alias: &'a str,
         columns: Rc<[String]>,
-        row: Option<Row>,
+        row: BlendContextRow,
         next: Option<Rc<BlendContext<'a>>>,
     ) -> Self {
         Self {
@@ -27,54 +33,49 @@ impl<'a> BlendContext<'a> {
     }
 
     pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
-        let get_value = || {
-            self.columns
-                .iter()
-                .position(|column| column == target)
-                .map(|index| match &self.row {
-                    Some(row) => row.get_value(index),
-                    None => Some(&Value::Null),
-                })
+        let value = match &self.row {
+            BlendContextRow::Shared(row) => row.get_value(&self.columns, target),
+            BlendContextRow::Single(Some(row)) => row.get_value(&self.columns, target),
+            BlendContextRow::Single(None) => Some(&Value::Null),
         };
 
-        match get_value() {
-            None => match &self.next {
-                None => None,
-                Some(context) => context.get_value(target),
-            },
-            Some(value) => value,
+        if value.is_some() {
+            return value;
         }
+
+        self.next
+            .as_ref()
+            .and_then(|context| context.get_value(target))
     }
 
     pub fn get_alias_value(&'a self, table_alias: &str, target: &str) -> Option<&'a Value> {
-        let get_value = || {
+        let value = (|| {
             if self.table_alias != table_alias {
                 return None;
             }
 
-            self.columns
-                .iter()
-                .position(|column| column == target)
-                .map(|index| match &self.row {
-                    Some(row) => row.get_value(index),
-                    None => Some(&Value::Null),
-                })
-        };
+            match &self.row {
+                BlendContextRow::Shared(row) => row.get_value(&self.columns, target),
+                BlendContextRow::Single(Some(row)) => row.get_value(&self.columns, target),
+                BlendContextRow::Single(None) => Some(&Value::Null),
+            }
+        })();
 
-        match get_value() {
-            None => match &self.next {
-                None => None,
-                Some(context) => context.get_alias_value(table_alias, target),
-            },
-            Some(value) => value,
+        if value.is_some() {
+            return value;
         }
+
+        self.next
+            .as_ref()
+            .and_then(|context| context.get_alias_value(table_alias, target))
     }
 
     pub fn get_alias_values(&self, alias: &str) -> Option<Vec<Value>> {
         if self.table_alias == alias {
             let values = match &self.row {
-                Some(Row(values)) => values.clone(),
-                None => self.columns.iter().map(|_| Value::Null).collect(),
+                BlendContextRow::Shared(row) => row.0.clone(),
+                BlendContextRow::Single(Some(row)) => row.0.clone(),
+                BlendContextRow::Single(None) => self.columns.iter().map(|_| Value::Null).collect(),
             };
 
             Some(values)
@@ -87,8 +88,9 @@ impl<'a> BlendContext<'a> {
 
     pub fn get_all_values(&'a self) -> Vec<Value> {
         let values: Vec<Value> = match &self.row {
-            Some(Row(values)) => values.clone(),
-            None => self.columns.iter().map(|_| Value::Null).collect(),
+            BlendContextRow::Shared(row) => row.0.clone(),
+            BlendContextRow::Single(Some(row)) => row.0.clone(),
+            BlendContextRow::Single(None) => self.columns.iter().map(|_| Value::Null).collect(),
         };
 
         match &self.next {

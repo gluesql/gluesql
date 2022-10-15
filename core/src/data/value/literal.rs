@@ -23,6 +23,7 @@ impl PartialEq<Literal<'_>> for Value {
             (Value::I32(l), Literal::Number(r)) => r.to_i32().map(|r| *l == r).unwrap_or(false),
             (Value::I64(l), Literal::Number(r)) => r.to_i64().map(|r| *l == r).unwrap_or(false),
             (Value::I128(l), Literal::Number(r)) => r.to_i128().map(|r| *l == r).unwrap_or(false),
+            (Value::U8(l), Literal::Number(r)) => r.to_u8().map(|r| *l == r).unwrap_or(false),
             (Value::F64(l), Literal::Number(r)) => r.to_f64().map(|r| *l == r).unwrap_or(false),
             (Value::Str(l), Literal::Text(r)) => l == r.as_ref(),
             (Value::Bytea(l), Literal::Bytea(r)) => l == r,
@@ -38,7 +39,6 @@ impl PartialEq<Literal<'_>> for Value {
                 Some(r) => l == &r,
                 None => false,
             },
-            (Value::Interval(l), Literal::Interval(r)) => l == r,
             (Value::Uuid(l), Literal::Text(r)) => parse_uuid(r).map(|r| l == &r).unwrap_or(false),
             _ => false,
         }
@@ -63,6 +63,9 @@ impl PartialOrd<Literal<'_>> for Value {
             (Value::I128(l), Literal::Number(r)) => {
                 r.to_i128().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
+            (Value::U8(l), Literal::Number(r)) => {
+                r.to_u8().map(|r| l.partial_cmp(&r)).unwrap_or(None)
+            }
             (Value::F64(l), Literal::Number(r)) => {
                 r.to_f64().map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
@@ -79,7 +82,6 @@ impl PartialOrd<Literal<'_>> for Value {
                 Some(r) => l.partial_cmp(&r),
                 None => None,
             },
-            (Value::Interval(l), Literal::Interval(r)) => l.partial_cmp(r),
             (Value::Uuid(l), Literal::Text(r)) => {
                 parse_uuid(r).map(|r| l.partial_cmp(&r)).unwrap_or(None)
             }
@@ -101,7 +103,6 @@ impl TryFrom<&Literal<'_>> for Value {
             Literal::Boolean(v) => Ok(Value::Bool(*v)),
             Literal::Text(v) => Ok(Value::Str(v.as_ref().to_owned())),
             Literal::Bytea(v) => Ok(Value::Bytea(v.to_vec())),
-            Literal::Interval(v) => Ok(Value::Interval(*v)),
             Literal::Null => Ok(Value::Null),
         }
     }
@@ -142,6 +143,10 @@ impl Value {
                 .to_i128()
                 .map(Value::I128)
                 .ok_or_else(|| ValueError::FailedToParseNumber.into()),
+            (DataType::Uint8, Literal::Number(v)) => v
+                .to_u8()
+                .map(Value::U8)
+                .ok_or_else(|| ValueError::FailedToParseNumber.into()),
             (DataType::Float, Literal::Number(v)) => v
                 .to_f64()
                 .map(Value::F64)
@@ -161,7 +166,6 @@ impl Value {
             (DataType::Time, Literal::Text(v)) => parse_time(v)
                 .map(Value::Time)
                 .ok_or_else(|| ValueError::FailedToParseTime(v.to_string()).into()),
-            (DataType::Interval, Literal::Interval(v)) => Ok(Value::Interval(*v)),
             (DataType::Uuid, Literal::Text(v)) => parse_uuid(v).map(Value::Uuid),
             (DataType::Uuid, Literal::Bytea(v)) => parse_uuid(&hex::encode(v)).map(Value::Uuid),
             (DataType::Map, Literal::Text(v)) => Value::parse_json_map(v),
@@ -268,6 +272,18 @@ impl Value {
 
                 Ok(Value::I128(v))
             }
+            (DataType::Uint8, Literal::Text(v)) => v.parse::<u8>().map(Value::U8).map_err(|_| {
+                ValueError::LiteralCastFromTextToUnsignedInt8Failed(v.to_string()).into()
+            }),
+            (DataType::Uint8, Literal::Number(v)) => match v.to_u8() {
+                Some(x) => Ok(Value::U8(x)),
+                None => Err(ValueError::LiteralCastToUnsignedInt8Failed(v.to_string()).into()),
+            },
+            (DataType::Uint8, Literal::Boolean(v)) => {
+                let v = if *v { 1 } else { 0 };
+
+                Ok(Value::U8(v))
+            }
             (DataType::Float, Literal::Text(v)) => v
                 .parse::<f64>()
                 .map(Value::F64)
@@ -312,6 +328,7 @@ impl Value {
             | (DataType::Int32, Literal::Null)
             | (DataType::Int, Literal::Null)
             | (DataType::Int128, Literal::Null)
+            | (DataType::Uint8, Literal::Null)
             | (DataType::Float, Literal::Null)
             | (DataType::Decimal, Literal::Null)
             | (DataType::Text, Literal::Null) => Ok(Value::Null),
@@ -340,10 +357,10 @@ mod tests {
 
     #[test]
     fn eq() {
-        use super::parse_uuid;
-        use crate::data::interval::Interval as I;
-        use std::borrow::Cow;
-        use std::str::FromStr;
+        use {
+            super::parse_uuid,
+            std::{borrow::Cow, str::FromStr},
+        };
 
         let date = chrono::NaiveDate::from_ymd;
 
@@ -376,6 +393,7 @@ mod tests {
         assert_eq!(Value::I64(64), num!("64"));
         assert_eq!(Value::I128(128), num!("128"));
         assert_eq!(Value::F64(7.123), num!("7.123"));
+        assert_eq!(Value::U8(7), num!("7"));
         assert_eq!(Value::Str("Hello".to_owned()), text!("Hello"));
         assert_eq!(Value::Bytea(bytea()), Literal::Bytea(bytea()));
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
@@ -390,7 +408,6 @@ mod tests {
         );
         assert_eq!(Value::Time(time(10, 0, 0, 0)), text!("10:00:00"));
         assert_ne!(Value::Time(time(10, 0, 0, 0)), text!("FALSE"));
-        assert_eq!(Value::Interval(I::Month(1)), Literal::Interval(I::Month(1)));
         assert_eq!(Value::Uuid(uuid), text!(uuid_text));
     }
 
@@ -454,7 +471,7 @@ mod tests {
     #[test]
     fn try_from_literal() {
         use {
-            crate::{ast::DataType, data::Interval as I, data::ValueError},
+            crate::{ast::DataType, data::ValueError},
             chrono::NaiveDate,
             rust_decimal::Decimal,
             std::{borrow::Cow, str::FromStr},
@@ -491,6 +508,7 @@ mod tests {
         test!(DataType::Int32, num!("64"), Value::I32(64));
         test!(DataType::Int, num!("64"), Value::I64(64));
         test!(DataType::Int128, num!("64"), Value::I128(64));
+        test!(DataType::Uint8, num!("8"), Value::U8(8));
 
         test!(DataType::Float, num!("123456789"), Value::F64(123456789.0));
         test!(
@@ -522,16 +540,6 @@ mod tests {
             DataType::Time,
             text!("12:00:35"),
             Value::Time(chrono::NaiveTime::from_hms_milli(12, 0, 35, 0))
-        );
-        test!(
-            DataType::Interval,
-            Literal::Interval(I::Month(1)),
-            Value::Interval(I::Month(1))
-        );
-        test!(
-            DataType::Interval,
-            Literal::Interval(I::Microsecond(1234567890)),
-            Value::Interval(I::Microsecond(1234567890))
         );
         test!(
             DataType::Uuid,
@@ -587,10 +595,7 @@ mod tests {
 
     #[test]
     fn try_from() {
-        use {
-            crate::data::Interval as I,
-            std::{borrow::Cow, str::FromStr},
-        };
+        use std::{borrow::Cow, str::FromStr};
 
         macro_rules! text {
             ($text: expr) => {
@@ -618,12 +623,7 @@ mod tests {
         test!(&Literal::Bytea(bytea("1234")), Value::Bytea(bytea("1234")));
         test!(num!("1234567890"), Value::I64(1234567890));
         test!(num!("12345678.90"), Value::F64(12345678.90));
-
         test!(&Literal::Boolean(false), Value::Bool(false));
-        test!(
-            &Literal::Interval(I::Month(1)),
-            Value::Interval(I::Month(1))
-        );
         assert!(matches!(Value::try_from(&Literal::Null), Ok(Value::Null)))
     }
 
@@ -700,6 +700,11 @@ mod tests {
         test!(DataType::Int128, Literal::Boolean(true), Value::I128(1));
         test!(DataType::Int128, Literal::Boolean(false), Value::I128(0));
 
+        test!(DataType::Uint8, text!("127"), Value::U8(127));
+        test!(DataType::Uint8, num!("125"), Value::U8(125));
+        test!(DataType::Uint8, Literal::Boolean(true), Value::U8(1));
+        test!(DataType::Uint8, Literal::Boolean(false), Value::U8(0));
+
         test!(DataType::Float, text!("12345.6789"), Value::F64(12345.6789));
         test!(DataType::Float, num!("123456.789"), Value::F64(123456.789));
         test!(DataType::Float, Literal::Boolean(true), Value::F64(1.0));
@@ -733,6 +738,7 @@ mod tests {
         test_null!(DataType::Boolean, Literal::Null);
         test_null!(DataType::Int, Literal::Null);
         test_null!(DataType::Int8, Literal::Null);
+        test_null!(DataType::Uint8, Literal::Null);
         test_null!(DataType::Float, Literal::Null);
         test_null!(DataType::Text, Literal::Null);
         test!(

@@ -43,6 +43,7 @@ impl TryFrom<Value> for JsonValue {
             Value::I128(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
                 .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
+            Value::U8(v) => Ok(v.into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)
@@ -53,7 +54,7 @@ impl TryFrom<Value> for JsonValue {
             Value::Timestamp(v) => Ok(DateTime::<Utc>::from_utc(v, Utc).to_string().into()),
             Value::Time(v) => Ok(v.to_string().into()),
             Value::Interval(v) => Ok(String::from(&v).into()),
-            Value::Uuid(v) => Ok(Uuid::from_u128(v).to_hyphenated().to_string().into()),
+            Value::Uuid(v) => Ok(Uuid::from_u128(v).hyphenated().to_string().into()),
             Value::Map(v) => v
                 .into_iter()
                 .map(|(key, value)| value.try_into().map(|value| (key, value)))
@@ -141,7 +142,7 @@ mod tests {
             Value::I128(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
-
+        assert_eq!(Value::U8(100).try_into(), Ok(JsonValue::Number(100.into())));
         assert!(JsonValue::try_from(Value::I128(i128::MAX)).is_ok());
 
         assert_eq!(

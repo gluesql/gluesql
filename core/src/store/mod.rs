@@ -22,42 +22,40 @@ cfg_if! {
 }
 
 cfg_if! {
-    if #[cfg(feature = "metadata")] {
-        mod metadata;
-        pub use metadata::Metadata;
-    }
-
-}
-
-cfg_if! {
-    if #[cfg(all(feature = "metadata", feature = "index"))] {
-        pub trait GStore: Store + Metadata + Index {}
-    } else if #[cfg(feature = "metadata")] {
-        pub trait GStore: Store + Metadata {}
-    } else if #[cfg(feature = "index")] {
+    if #[cfg(feature = "index")] {
         pub trait GStore: Store + Index {}
+        impl<S: Store + Index> GStore for S {}
     } else {
         pub trait GStore: Store {}
+        impl<S: Store> GStore for S {}
     }
 }
 
 cfg_if! {
     if #[cfg(all(feature = "alter-table", feature = "index", feature = "transaction"))] {
         pub trait GStoreMut: StoreMut + IndexMut + AlterTable + Transaction {}
+        impl<S: StoreMut + IndexMut + AlterTable+ Transaction> GStoreMut for S {}
     } else if #[cfg(all(feature = "alter-table", feature = "index"))] {
         pub trait GStoreMut: StoreMut + IndexMut + AlterTable {}
+        impl<S: StoreMut + IndexMut + AlterTable> GStoreMut for S {}
     } else if #[cfg(all(feature = "alter-table", feature = "transaction"))] {
         pub trait GStoreMut: StoreMut + Transaction + AlterTable {}
+        impl<S: StoreMut + Transaction + AlterTable> GStoreMut for S {}
     } else if #[cfg(all(feature = "index", feature = "transaction"))] {
         pub trait GStoreMut: StoreMut + IndexMut + Transaction {}
+        impl<S: StoreMut + IndexMut + Transaction> GStoreMut for S {}
     } else if #[cfg(feature = "alter-table")] {
         pub trait GStoreMut: StoreMut + AlterTable {}
+        impl<S: StoreMut+ AlterTable> GStoreMut for S {}
     } else if #[cfg(feature = "index")] {
         pub trait GStoreMut: StoreMut + IndexMut {}
+        impl<S: StoreMut + IndexMut> GStoreMut for S {}
     } else if #[cfg(feature = "transaction")] {
         pub trait GStoreMut: StoreMut + Transaction {}
+        impl<S: StoreMut + Transaction> GStoreMut for S {}
     } else {
-        pub trait GStoreMut: Store + StoreMut {}
+        pub trait GStoreMut: StoreMut {}
+        impl<S: StoreMut> GStoreMut for S {}
     }
 }
 
@@ -75,6 +73,8 @@ pub type RowIter = Box<dyn Iterator<Item = Result<(Key, Row)>>>;
 #[async_trait(?Send)]
 pub trait Store {
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>>;
+
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>>;
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>>;
 

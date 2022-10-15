@@ -1,6 +1,6 @@
-use crate::{
-    ast::{ObjectName, Statement},
-    result::Result,
+use {
+    super::Build,
+    crate::{ast::Statement, result::Result},
 };
 
 #[derive(Clone)]
@@ -16,9 +16,11 @@ impl DropTableNode {
             if_exists: exists,
         }
     }
+}
 
-    pub fn build(self) -> Result<Statement> {
-        let names = vec![ObjectName(vec![self.table_name])];
+impl Build for DropTableNode {
+    fn build(self) -> Result<Statement> {
+        let names = vec![self.table_name];
         let if_exists = self.if_exists;
 
         Ok(Statement::DropTable { names, if_exists })
@@ -27,7 +29,7 @@ impl DropTableNode {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{table, test};
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn drop_table() {

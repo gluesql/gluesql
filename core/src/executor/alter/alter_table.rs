@@ -3,8 +3,7 @@
 use {
     super::validate,
     crate::{
-        ast::{AlterTableOperation, ObjectName},
-        data::get_name,
+        ast::AlterTableOperation,
         result::{MutResult, TrySelf},
         store::{GStore, GStoreMut},
     },
@@ -14,7 +13,7 @@ use {
 use {
     super::AlterError,
     crate::{
-        ast::Expr,
+        ast::{Expr, Function},
         data::{Schema, SchemaIndex},
     },
     futures::stream::{self, TryStreamExt},
@@ -22,19 +21,13 @@ use {
 
 pub async fn alter_table<T: GStore + GStoreMut>(
     storage: T,
-    name: &ObjectName,
+    table_name: &str,
     operation: &AlterTableOperation,
 ) -> MutResult<T, ()> {
-    let (storage, table_name) = get_name(name).try_self(storage)?;
-
     match operation {
         AlterTableOperation::RenameTable {
             table_name: new_table_name,
-        } => {
-            let (storage, new_table_name) = get_name(new_table_name).try_self(storage)?;
-
-            storage.rename_schema(table_name, new_table_name).await
-        }
+        } => storage.rename_schema(table_name, new_table_name).await,
         AlterTableOperation::RenameColumn {
             old_column_name,
             new_column_name,
@@ -100,7 +93,10 @@ fn find_column(expr: &Expr, column_name: &str) -> bool {
         Expr::Nested(expr) => find(expr),
         Expr::BinaryOp { left, right, .. } => find(left) || find(right),
         Expr::UnaryOp { expr, .. } => find(expr),
-        Expr::Cast { expr, .. } => find(expr),
+        Expr::Function(func) => match func.as_ref() {
+            Function::Cast { expr, .. } => find(expr),
+            _ => false,
+        },
         _ => false,
     }
 }

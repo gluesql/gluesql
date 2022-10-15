@@ -137,11 +137,11 @@ test_case!(substr, async move {
         ),
         (
             r#"SELECT SUBSTR(1, 1) AS test FROM SingleItem"#,
-            Err(EvaluateError::FunctionRequiresStringValue("SUBSTR".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresStringValue("SUBSTR".to_owned()).into()),
         ),
         (
             r#"SELECT SUBSTR('Words', 1.1) AS test FROM SingleItem"#,
-            Err(EvaluateError::FunctionRequiresIntegerValue("SUBSTR".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("SUBSTR".to_owned()).into()),
         ),
         (
             r#"SELECT SUBSTR('Words', 1, -4) AS test FROM SingleItem"#,
@@ -149,6 +149,6 @@ test_case!(substr, async move {
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

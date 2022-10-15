@@ -29,15 +29,18 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
             }
             Expr::Nested(expr)
             | Expr::UnaryOp { expr, .. }
-            | Expr::Cast { expr, .. }
             | Expr::Extract { expr, .. }
             | Expr::IsNull(expr)
-            | Expr::IsNotNull(expr) => PlanExpr::Expr(expr),
+            | Expr::IsNotNull(expr)
+            | Expr::Interval { expr, .. } => PlanExpr::Expr(expr),
             Expr::Aggregate(aggregate) => match aggregate.as_expr() {
                 Some(expr) => PlanExpr::Expr(expr),
                 None => PlanExpr::None,
             },
             Expr::BinaryOp { left, right, .. } => PlanExpr::TwoExprs(left, right),
+            Expr::Like { expr, pattern, .. } | Expr::ILike { expr, pattern, .. } => {
+                PlanExpr::TwoExprs(expr, pattern)
+            }
             Expr::Between {
                 expr, low, high, ..
             } => PlanExpr::ThreeExprs(expr, low, high),
@@ -63,8 +66,12 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
 
                 PlanExpr::MultiExprs(exprs)
             }
+            Expr::ArrayIndex { obj, indexes } => {
+                let exprs = indexes.iter().chain(once(obj.as_ref())).collect();
+                PlanExpr::MultiExprs(exprs)
+            }
             Expr::Function(function) => PlanExpr::MultiExprs(function.as_exprs().collect()),
-            Expr::Subquery(query) | Expr::Exists(query) => PlanExpr::Query(query),
+            Expr::Subquery(subquery) | Expr::Exists { subquery, .. } => PlanExpr::Query(subquery),
             Expr::InSubquery {
                 expr,
                 subquery: query,
@@ -140,11 +147,6 @@ mod tests {
         let expected = PlanExpr::Expr(&expected);
         test!(actual, expected);
 
-        let actual = expr("CAST(0 AS BOOLEAN)");
-        let expected = expr("0");
-        let expected = PlanExpr::Expr(&expected);
-        test!(actual, expected);
-
         let actual = expr(r#"EXTRACT(YEAR FROM "2000-01-01")"#);
         let expected = expr(r#""2000-01-01""#);
         let expected = PlanExpr::Expr(&expected);
@@ -165,6 +167,18 @@ mod tests {
         let left = expr("100");
         let right = expr("rate");
         let expected = PlanExpr::TwoExprs(&left, &right);
+        test!(actual, expected);
+
+        let actual = expr("name LIKE '_foo%'");
+        let target = expr("name");
+        let pattern = expr(r#""_foo%""#);
+        let expected = PlanExpr::TwoExprs(&target, &pattern);
+        test!(actual, expected);
+
+        let actual = expr("name ILIKE '_foo%'");
+        let target = expr("name");
+        let pattern = expr(r#""_foo%""#);
+        let expected = PlanExpr::TwoExprs(&target, &pattern);
         test!(actual, expected);
 
         // PlanExpr::ThreeExprs
@@ -204,6 +218,11 @@ mod tests {
             .into_iter()
             .map(expr)
             .collect::<Vec<_>>();
+        let expected = PlanExpr::MultiExprs(expected.iter().collect());
+        test!(actual, expected);
+
+        let actual = expr("CAST(0 AS BOOLEAN)");
+        let expected = ["0"].into_iter().map(expr).collect::<Vec<_>>();
         let expected = PlanExpr::MultiExprs(expected.iter().collect());
         test!(actual, expected);
 

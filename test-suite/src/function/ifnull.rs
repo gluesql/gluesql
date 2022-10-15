@@ -8,7 +8,7 @@ use {
 test_case!(ifnull, async move {
     let test_cases = [
         (
-            r#"CREATE TABLE SingleItem (id integer null, int8 int(8) null, dec decimal null, 
+            r#"CREATE TABLE SingleItem (id integer null, int8 int8 null, dec decimal null, 
                                         dt date null, mystring Text null,
                                         mybool Boolean null, myfloat float null,
                                         mytime time null, mytimestamp timestamp null)"#,
@@ -36,12 +36,12 @@ test_case!(ifnull, async move {
         (
             r#"SELECT ifnull(dt, "2000-01-01") AS mydate, ifnull(mystring, "blah") AS name 
             FROM SingleItem WHERE id IS NOT NULL"#,
-            select!("mydate" | "name"; Date | Str; NaiveDate::from_ymd(2022,5,23) "this is a string".to_string()),
+            select!("mydate" | "name"; Date | Str; NaiveDate::from_ymd(2022,5,23) "this is a string".to_owned()),
         ),
         (
             r#"SELECT IFNULL(dt, "2000-01-01") AS mydate, IFNULL(mystring, "blah") AS name 
             FROM SingleItem where id is null"#,
-            select!("mydate" | "name"; Str | Str; "2000-01-01".to_string() "blah".to_string()),
+            select!("mydate" | "name"; Str | Str; "2000-01-01".to_owned() "blah".to_owned()),
         ),
         (
             r#"SELECT IFNULL(mybool, "YES") AS mybool, IFNULL(myfloat, "NO") AS myfloat 
@@ -51,7 +51,7 @@ test_case!(ifnull, async move {
         (
             r#"SELECT IFNULL(mybool, "YES") AS mybool, IFNULL(myfloat, "NO") AS myfloat 
             FROM SingleItem WHERE id IS NULL"#,
-            select!("mybool" | "myfloat"; Str | Str; "YES".to_string() "NO".to_string()),
+            select!("mybool" | "myfloat"; Str | Str; "YES".to_owned() "NO".to_owned()),
         ),
         (
             r#"SELECT IFNULL(mytime, "YES") AS mybool, IFNULL(mytimestamp, "NO") AS myfloat 
@@ -62,11 +62,11 @@ test_case!(ifnull, async move {
         (
             r#"SELECT IFNULL(mytime, "YES") AS mybool, IFNULL(mytimestamp, "NO") AS myfloat 
             FROM SingleItem WHERE id IS NULL"#,
-            select!("mybool" | "myfloat"; Str | Str; "YES".to_string() "NO".to_string()),
+            select!("mybool" | "myfloat"; Str | Str; "YES".to_owned() "NO".to_owned()),
         ),
     ];
 
     for (sql, expected) in test_cases {
-        test!(Ok(expected), sql);
+        test!(sql, Ok(expected));
     }
 });

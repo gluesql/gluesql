@@ -92,7 +92,7 @@ test_case!(lpad_rpad, async move {
         (
             "SELECT LPAD(name) FROM Item",
             Err(TranslateError::FunctionArgsLengthNotWithinRange {
-                name: "LPAD".to_string(),
+                name: "LPAD".to_owned(),
                 expected_minimum: 2,
                 expected_maximum: 3,
                 found: 1,
@@ -102,7 +102,7 @@ test_case!(lpad_rpad, async move {
         (
             "SELECT RPAD(name) FROM Item",
             Err(TranslateError::FunctionArgsLengthNotWithinRange {
-                name: "RPAD".to_string(),
+                name: "RPAD".to_owned(),
                 expected_minimum: 2,
                 expected_maximum: 3,
                 found: 1,
@@ -112,7 +112,7 @@ test_case!(lpad_rpad, async move {
         (
             "SELECT LPAD(name, 10, 'ab', 'cd') FROM Item",
             Err(TranslateError::FunctionArgsLengthNotWithinRange {
-                name: "LPAD".to_string(),
+                name: "LPAD".to_owned(),
                 expected_minimum: 2,
                 expected_maximum: 3,
                 found: 4,
@@ -122,7 +122,7 @@ test_case!(lpad_rpad, async move {
         (
             "SELECT RPAD(name, 10, 'ab', 'cd') FROM Item",
             Err(TranslateError::FunctionArgsLengthNotWithinRange {
-                name: "RPAD".to_string(),
+                name: "RPAD".to_owned(),
                 expected_minimum: 2,
                 expected_maximum: 3,
                 found: 4,
@@ -131,31 +131,31 @@ test_case!(lpad_rpad, async move {
         ),
         (
             "SELECT LPAD(1, 10, 'ab') FROM Item",
-            Err(EvaluateError::FunctionRequiresStringValue("LPAD".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresStringValue("LPAD".to_owned()).into()),
         ),
         (
             "SELECT RPAD(1, 10, 'ab') FROM Item",
-            Err(EvaluateError::FunctionRequiresStringValue("RPAD".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresStringValue("RPAD".to_owned()).into()),
         ),
         (
             "SELECT LPAD(name, -10, 'ab') FROM Item",
-            Err(EvaluateError::FunctionRequiresUSizeValue("LPAD".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresUSizeValue("LPAD".to_owned()).into()),
         ),
         (
             "SELECT RPAD(name, -10, 'ab') FROM Item",
-            Err(EvaluateError::FunctionRequiresUSizeValue("RPAD".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresUSizeValue("RPAD".to_owned()).into()),
         ),
         (
             "SELECT LPAD(name, 10.1, 'ab') FROM Item",
-            Err(EvaluateError::FunctionRequiresIntegerValue("LPAD".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("LPAD".to_owned()).into()),
         ),
         (
             "SELECT RPAD(name, 10.1, 'ab') FROM Item",
-            Err(EvaluateError::FunctionRequiresIntegerValue("RPAD".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("RPAD".to_owned()).into()),
         ),
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

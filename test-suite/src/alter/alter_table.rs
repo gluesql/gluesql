@@ -34,7 +34,7 @@ test_case!(alter_table_rename, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -139,9 +139,23 @@ test_case!(alter_table_add_drop, async move {
                 I64(2)   Null
             )),
         ),
+        (
+            r#"ALTER TABLE Foo ADD CONSTRAINT "hey" PRIMARY KEY (asdf);"#,
+            Err(TranslateError::UnsupportedAlterTableOperation(
+                r#"ADD CONSTRAINT "hey" PRIMARY KEY (asdf)"#.to_owned(),
+            )
+            .into()),
+        ),
+        (
+            "ALTER TABLE Foo ADD CONSTRAINT hello UNIQUE (id)",
+            Err(TranslateError::UnsupportedAlterTableOperation(
+                "ADD CONSTRAINT hello UNIQUE (id)".to_owned(),
+            )
+            .into()),
+        ),
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

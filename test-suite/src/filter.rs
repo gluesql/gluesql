@@ -1,9 +1,4 @@
-use {
-    crate::*,
-    bigdecimal::BigDecimal,
-    gluesql_core::data::*,
-    std::{borrow::Cow, str::FromStr},
-};
+use {crate::*, gluesql_core::data::*};
 
 test_case!(filter, async move {
     let create_sqls = [
@@ -81,19 +76,6 @@ test_case!(filter, async move {
         (3, "SELECT id FROM Hunter WHERE +2 > +1.0"),
         (2, "SELECT name FROM Boss WHERE id <= +2"),
         (2, "SELECT name FROM Boss WHERE +id <= 2"),
-        (2, "SELECT name FROM Boss WHERE name LIKE '_a%'"),
-        (2, "SELECT name FROM Boss WHERE name LIKE '%r%'"),
-        (2, "SELECT name FROM Boss WHERE name LIKE '%a'"),
-        (5, "SELECT name FROM Boss WHERE name LIKE '%%'"),
-        (0, "SELECT name FROM Boss WHERE name LIKE 'g%'"),
-        (2, "SELECT name FROM Boss WHERE name ILIKE '_A%'"),
-        (2, "SELECT name FROM Boss WHERE name ILIKE 'g%'"),
-        (5, "SELECT name FROM Boss WHERE name ILIKE '%%'"),
-        (1, "SELECT name FROM Boss WHERE name NOT LIKE '%a%'"),
-        (1, "SELECT name FROM Boss WHERE name NOT ILIKE '%A%'"),
-        (5, "SELECT name FROM Boss WHERE 'ABC' LIKE '_B_'"),
-        (5, "SELECT name FROM Boss WHERE 'abc' ILIKE '_B_'"),
-        (5, "SELECT name FROM Boss WHERE 'ABC' ILIKE '_B_'"),
     ];
 
     for (num, sql) in select_sqls {
@@ -113,43 +95,24 @@ test_case!(filter, async move {
 
     let error_sqls = [
         (
-            LiteralError::UnaryOperationOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE +'abcd' > 1.0",
-        ),
-        (
             LiteralError::UnaryOperationOnNonNumeric.into(),
+        ),
+        (
             "SELECT id FROM Hunter WHERE -'abcd' < 1.0",
+            LiteralError::UnaryOperationOnNonNumeric.into(),
         ),
         (
-            ValueError::UnaryPlusOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE +name > 1.0",
+            ValueError::UnaryPlusOnNonNumeric.into(),
         ),
         (
-            ValueError::UnaryMinusOnNonNumeric.into(),
             "SELECT id FROM Hunter WHERE -name < 1.0",
-        ),
-        (
-            LiteralError::LikeOnNonString(
-                format!("{:?}", Literal::Text(Cow::Owned("ABC".to_string()))),
-                format!(
-                    "{:?}",
-                    Literal::Number(Cow::Owned(BigDecimal::from_str("10").unwrap()))
-                ),
-            )
-            .into(),
-            "SELECT name FROM Boss WHERE 'ABC' LIKE 10",
-        ),
-        (
-            ValueError::LikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
-            "SELECT name FROM Boss WHERE name = 'Amelia' AND name LIKE 10",
-        ),
-        (
-            ValueError::ILikeOnNonString(Value::Str("Amelia".to_string()), Value::I64(10)).into(),
-            "SELECT name FROM Boss WHERE name = 'Amelia' AND name ILIKE 10",
+            ValueError::UnaryMinusOnNonNumeric.into(),
         ),
     ];
 
-    for (error, sql) in error_sqls {
-        test!(Err(error), sql);
+    for (sql, error) in error_sqls {
+        test!(sql, Err(error));
     }
 });

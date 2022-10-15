@@ -1,6 +1,7 @@
+#![deny(clippy::str_to_string)]
+
 mod alter_table;
 mod index;
-mod metadata;
 mod transaction;
 
 use {
@@ -8,7 +9,7 @@ use {
     gluesql_core::{
         data::{Key, Row, Schema},
         result::{MutResult, Result},
-        store::{GStore, GStoreMut, RowIter, Store, StoreMut},
+        store::{RowIter, Store, StoreMut},
     },
     indexmap::IndexMap,
     serde::{Deserialize, Serialize},
@@ -29,6 +30,16 @@ pub struct MemoryStorage {
 
 #[async_trait(?Send)]
 impl Store for MemoryStorage {
+    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        let mut schemas = self
+            .items
+            .iter()
+            .map(|(_, item)| item.schema.clone())
+            .collect::<Vec<_>>();
+        schemas.sort_by(|a, b| a.table_name.cmp(&b.table_name));
+
+        Ok(schemas)
+    }
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
         self.items
             .get(table_name)
@@ -139,6 +150,3 @@ impl StoreMut for MemoryStorage {
         Ok((storage, ()))
     }
 }
-
-impl GStore for MemoryStorage {}
-impl GStoreMut for MemoryStorage {}

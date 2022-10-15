@@ -10,8 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  clippy_root:
-    name: Clippy (root)
+  clippy_workspace:
+    name: Clippy (workspace) - Default Feature
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -24,7 +24,7 @@ jobs:
       - run: cargo clippy -- -D warnings
 
   clippy_core:
-    name: Clippy (core)
+    name: Clippy (core) - per Powerset Features
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -37,7 +37,6 @@ jobs:
       - run: |
           cd core
           cargo clippy --no-default-features -- -D warnings
-          cargo clippy --no-default-features --features metadata -- -D warnings
           cargo clippy --no-default-features --features alter-table -- -D warnings
           cargo clippy --no-default-features --features index -- -D warnings
           cargo clippy --no-default-features --features transaction -- -D warnings
@@ -47,7 +46,7 @@ jobs:
           cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
           cargo clippy --all-features --all-targets -- -D warnings
           cd ../
-  
+
   rust_fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
@@ -61,7 +60,7 @@ jobs:
           components: rustfmt
       - run: |
           cargo fmt -- --check
-  
+
   rust_build:
     name: Build
     runs-on: ubuntu-latest
@@ -69,23 +68,6 @@ jobs:
       - uses: actions/checkout@v3
       - run: cargo build --all-features --verbose
 
-  gluesql_js_build:
-    name: Build (gluesql-js)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up node              
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - name: Set up wasm pack
-        uses: jetli/wasm-pack-action@v0.3.0
-      - run: |
-          cd gluesql-js/web
-          yarn install
-          yarn build
-          cd ../../
-  
   run_tests:
     name: Run tests
     runs-on: ubuntu-latest
@@ -95,9 +77,9 @@ jobs:
           cargo test --all-features --lib --bins --tests --examples --verbose -- --skip sled_transaction_timeout
           cargo test sled_transaction_timeout --verbose -- --test-threads=1
           cargo test --benches
-  
+
   run_examples:
-    name: Run examples  
+    name: Run examples
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -107,4 +89,21 @@ jobs:
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
 
-
+  gluesql_js_build_and_tests:
+    name: Build and run tests (gluesql-js)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - uses: browser-actions/setup-firefox@latest
+      - name: Set up wasm pack
+        uses: jetli/wasm-pack-action@v0.3.0
+      - run: |
+          cd pkg/javascript/web
+          yarn install
+          yarn build
+          yarn test:firefox
+          cd ../../../

@@ -18,8 +18,16 @@ test_case!(cast_literal, async move {
         ("CREATE TABLE Item (number TEXT)", Ok(Payload::Create)),
         (r#"INSERT INTO Item VALUES ("1")"#, Ok(Payload::Insert(1))),
         (
-            "CREATE TABLE test (mytext Text, myint8 Int(8), myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
+            "CREATE TABLE test (mytext Text, myint8 Int8, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
             Ok(Payload::Create),
+        ),
+        (
+            "CREATE TABLE utest (mytext Text, myuint8 UINT8, myint Int, myfloat Float, mydec Decimal, mybool Boolean, mydate Date)",
+            Ok(Payload::Create),
+        ),
+        (
+            r#"INSERT INTO utest VALUES ("foobar", 2, 2, 2.0, 2.0, true, "2001-09-11")"#,
+            Ok(Payload::Insert(1)),
         ),
         (
             r#"INSERT INTO test VALUES ("foobar", -2, 2, 2.0, 2.0, true, "2001-09-11")"#,
@@ -53,10 +61,9 @@ test_case!(cast_literal, async move {
             r#"SELECT CAST("foo" AS INTEGER) AS cast FROM Item"#,
             Err(ValueError::LiteralCastFromTextToIntegerFailed("foo".to_owned()).into()),
         ),
-
         (
             r#"SELECT CAST(1.1 AS INTEGER) AS cast FROM Item"#,
-            Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_string()).into()),
+            Err(ValueError::LiteralCastToDataTypeFailed(DataType::Int, "1.1".to_owned()).into()),
         ),
         (
             r#"SELECT CAST(TRUE AS INTEGER) AS cast FROM Item"#,
@@ -67,8 +74,16 @@ test_case!(cast_literal, async move {
             Ok(select_with_null!(cast; Null)),
         ),
         (
-            r#"SELECT CAST(255 AS INT(8)) AS cast FROM Item"#,
+            r#"SELECT CAST(255 AS INT8) AS cast FROM Item"#,
             Err(ValueError::LiteralCastToInt8Failed("255".to_owned()).into()),
+        ),
+        (
+            r#"SELECT CAST("foo" AS UINT8) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastFromTextToUnsignedInt8Failed("foo".to_owned()).into()),
+        ),
+        (
+            r#"SELECT CAST(-1 AS UINT8) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastToUnsignedInt8Failed("-1".to_owned()).into()),
         ),
         (
             r#"SELECT CAST("1.1" AS FLOAT) AS cast FROM Item"#,
@@ -163,6 +178,10 @@ test_case!(cast_literal, async move {
             Ok(select!(cast Decimal; Decimal::new(-2,0))),
         ),
         (
+            r#"SELECT CAST(myuint8 AS Decimal) AS cast FROM utest"#,
+            Ok(select!(cast Decimal; Decimal::new(2,0))),
+        ),
+        (
             r#"SELECT CAST(myint AS Decimal) AS cast FROM test"#,
             Ok(select!(cast Decimal; Decimal::new(2,0))),
         ),
@@ -190,15 +209,15 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST(1 AS TEXT) AS cast FROM Item"#,
-            Ok(select!(cast Str; "1".to_string())),
+            Ok(select!(cast Str; "1".to_owned())),
         ),
         (
             r#"SELECT CAST(1.1 AS TEXT) AS cast FROM Item"#,
-            Ok(select!(cast Str; "1.1".to_string())),
+            Ok(select!(cast Str; "1.1".to_owned())),
         ),
         (
             r#"SELECT CAST(TRUE AS TEXT) AS cast FROM Item"#,
-            Ok(select!(cast Str; "TRUE".to_string())),
+            Ok(select!(cast Str; "TRUE".to_owned())),
         ),
         (
             r#"SELECT CAST(NULL AS TEXT) AS cast FROM Item"#,
@@ -258,7 +277,7 @@ test_case!(cast_literal, async move {
         ),
         (
             r#"SELECT CAST('2021-08-025' AS DATE) FROM Item"#,
-            Err(ValueError::LiteralCastToDateFailed("2021-08-025".to_string()).into()),
+            Err(ValueError::LiteralCastToDateFailed("2021-08-025".to_owned()).into()),
         ),
         (
             "SELECT CAST('AM 8:05' AS TIME) AS cast FROM Item",
@@ -282,7 +301,7 @@ test_case!(cast_literal, async move {
         ),
         (
             "SELECT CAST('25:08:05' AS TIME) AS cast FROM Item",
-            Err(ValueError::LiteralCastToTimeFailed("25:08:05".to_string()).into()),
+            Err(ValueError::LiteralCastToTimeFailed("25:08:05".to_owned()).into()),
         ),
         (
             "SELECT CAST('2021-08-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
@@ -298,12 +317,12 @@ test_case!(cast_literal, async move {
         ),
         (
             "SELECT CAST('2021-13-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
-            Err(ValueError::LiteralCastToTimestampFailed("2021-13-25 08:05:30".to_string()).into()),
+            Err(ValueError::LiteralCastToTimestampFailed("2021-13-25 08:05:30".to_owned()).into()),
         ),
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });
 
@@ -384,6 +403,6 @@ test_case!(cast_value, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

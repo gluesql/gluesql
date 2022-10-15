@@ -45,4 +45,24 @@ impl Value {
 
         Ok(value)
     }
+
+    pub fn selector_by_index(&self, selector: &[Value]) -> Result<Value> {
+        selector
+            .iter()
+            .map(String::from)
+            .try_fold(self, |selectable, key| {
+                selectable.get_value_from_compound_type(&key)
+            })
+            .map(Clone::clone)
+    }
+
+    fn get_value_from_compound_type(&self, key: &str) -> Result<&Value> {
+        let value = match self {
+            Value::Map(map) => map.get(key),
+            Value::List(list) => key.parse::<usize>().ok().and_then(|i| list.get(i)),
+            _ => return Err(ValueError::SelectorRequiresMapOrListTypes.into()),
+        };
+
+        Ok(value.unwrap_or(&Value::Null))
+    }
 }

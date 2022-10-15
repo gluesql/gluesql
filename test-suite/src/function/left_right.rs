@@ -66,17 +66,16 @@ test_case!(left_right, async move {
                 "d$ folken!".to_owned()
             )),
         ),
-        // TODO Concatenation
-        /*(
-            r#"SELECT LEFT((name + 'bobbert'), 10) AS test FROM Item"#,
+        (
+            r#"SELECT LEFT((name || 'bobbert'), 10) AS test FROM Item"#,
             Ok(select!(
                 "test"
-                OptStr;
-                "Blop mc blee".to_owned();
+                Str;
+                "Blop mc bl".to_owned();
                 "Bbobbert".to_owned();
                 "Steven the".to_owned()
             )),
-        ),*/
+        ),
         (
             r#"SELECT LEFT('blue', 10) AS test FROM SingleItem"#,
             Ok(select!(
@@ -142,18 +141,18 @@ test_case!(left_right, async move {
         ),
         (
             r#"SELECT RIGHT(1, 1) AS test FROM SingleItem"#,
-            Err(EvaluateError::FunctionRequiresStringValue("RIGHT".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresStringValue("RIGHT".to_owned()).into()),
         ),
         (
             r#"SELECT RIGHT('Words', 1.1) AS test FROM SingleItem"#,
-            Err(EvaluateError::FunctionRequiresIntegerValue("RIGHT".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresIntegerValue("RIGHT".to_owned()).into()),
         ),
         (
             r#"SELECT RIGHT('Words', -4) AS test FROM SingleItem"#,
-            Err(EvaluateError::FunctionRequiresUSizeValue("RIGHT".to_string()).into()),
+            Err(EvaluateError::FunctionRequiresUSizeValue("RIGHT".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

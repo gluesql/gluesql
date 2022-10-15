@@ -1,44 +1,50 @@
 use {
     super::{
-        ast_literal::translate_trim_where_field, expr::translate_expr, translate_object_name,
-        TranslateError,
+        ast_literal::translate_trim_where_field, expr::translate_expr, translate_data_type,
+        translate_object_name, TranslateError,
     },
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr, Function, ObjectName, TrimWhereField},
+        ast::{Aggregate, CountArgExpr, Expr, Function},
         result::Result,
     },
     sqlparser::ast::{
-        Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
+        DataType, Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
         FunctionArgExpr as SqlFunctionArgExpr, TrimWhereField as SqlTrimWhereField,
     },
 };
 
 pub fn translate_trim(
     expr: &SqlExpr,
-    trim_where: &Option<(SqlTrimWhereField, Box<SqlExpr>)>,
+    trim_where: &Option<SqlTrimWhereField>,
+    trim_what: &Option<Box<SqlExpr>>,
 ) -> Result<Expr> {
     let expr = translate_expr(expr)?;
-    let trim_where = trim_where
+    let trim_where_field = trim_where.as_ref().map(translate_trim_where_field);
+    let filter_chars = trim_what
         .as_ref()
-        .map(
-            |(trim_where_field, expr)| -> Result<(TrimWhereField, Expr)> {
-                Ok((
-                    translate_trim_where_field(trim_where_field),
-                    translate_expr(expr)?,
-                ))
-            },
-        )
+        .map(|expr| translate_expr(expr.as_ref()))
         .transpose()?;
-    let (filter_chars, trim_where_field) = match trim_where {
-        Some((trim_where_field, filter_chars)) => (Some(filter_chars), Some(trim_where_field)),
-        None => (None, None),
-    };
 
     Ok(Expr::Function(Box::new(Function::Trim {
         expr,
         filter_chars,
         trim_where_field,
     })))
+}
+
+pub fn translate_positon(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr> {
+    let from_expr = translate_expr(from_expr)?;
+    let sub_expr = translate_expr(sub_expr)?;
+    Ok(Expr::Function(Box::new(Function::Position {
+        from_expr,
+        sub_expr,
+    })))
+}
+
+pub fn translate_cast(expr: &SqlExpr, data_type: &DataType) -> Result<Expr> {
+    let expr = translate_expr(expr)?;
+    let data_type = translate_data_type(data_type)?;
+    Ok(Expr::Function(Box::new(Function::Cast { expr, data_type })))
 }
 
 fn check_len(name: String, found: usize, expected: usize) -> Result<()> {
@@ -153,11 +159,7 @@ pub fn translate_function_arg_exprs(
 
 pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
     let SqlFunction { name, args, .. } = sql_function;
-    let name = {
-        let ObjectName(names) = translate_object_name(name);
-
-        names[0].to_uppercase()
-    };
+    let name = translate_object_name(name)?.to_uppercase();
 
     let function_arg_exprs = args
         .iter()
@@ -175,8 +177,8 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         let count_arg = match function_arg_exprs[0] {
             SqlFunctionArgExpr::Expr(expr) => CountArgExpr::Expr(translate_expr(expr)?),
             SqlFunctionArgExpr::QualifiedWildcard(idents) => {
-                let ObjectName(idents) = translate_object_name(idents);
-                let idents = format!("{}.*", idents.join("."));
+                let table_name = translate_object_name(idents)?;
+                let idents = format!("{}.*", table_name);
 
                 return Err(TranslateError::QualifiedWildcardInCountNotSupported(idents).into());
             }
@@ -384,6 +386,43 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "ABS" => translate_function_one_arg(Function::Abs, args, name),
         "SIGN" => translate_function_one_arg(Function::Sign, args, name),
         "GENERATE_UUID" => translate_function_zero_arg(Function::GenerateUuid(), args, name),
+        "FORMAT" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::Format { expr, format })))
+        }
+        "TO_DATE" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::ToDate { expr, format })))
+        }
+
+        "TO_TIMESTAMP" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::ToTimestamp {
+                expr,
+                format,
+            })))
+        }
+        "TO_TIME" => {
+            check_len(name, args.len(), 2)?;
+
+            let expr = translate_expr(args[0])?;
+            let format = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::ToTime { expr, format })))
+        }
+
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

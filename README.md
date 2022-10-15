@@ -2,9 +2,9 @@
 
 [![crates.io](https://img.shields.io/crates/v/gluesql.svg)](https://crates.io/crates/gluesql)
 [![npm](https://img.shields.io/npm/v/gluesql?color=red)](https://www.npmjs.com/package/gluesql)
-[![docs.rs](https://docs.rs/gluesql/badge.svg)](https://docs.rs/gluesql)
 [![LICENSE](https://img.shields.io/crates/l/gluesql.svg)](https://github.com/gluesql/gluesql/blob/main/LICENSE)
 ![Rust](https://github.com/gluesql/gluesql/workflows/Rust/badge.svg)
+[![docs.rs](https://docs.rs/gluesql/badge.svg)](https://docs.rs/gluesql)
 [![Chat](https://img.shields.io/discord/780298017940176946)](https://discord.gg/C6TDEgzDzY)
 [![Coverage Status](https://coveralls.io/repos/github/gluesql/gluesql/badge.svg?branch=main)](https://coveralls.io/github/gluesql/gluesql?branch=main)
 
@@ -17,20 +17,23 @@ Developers can choose to use GlueSQL to build their own SQL database, or as an e
 ## Standalone Mode
 
 You can use GlueSQL as an embedded SQL database.  
-GlueSQL provides two reference storage options.
+GlueSQL provides three reference storage options.
 
 - `SledStorage` - Persistent storage engine based on [`sled`](https://github.com/spacejam/sled "sled")
 - `MemoryStorage` - Non-persistent storage engine based on `BTreeMap`
+- `SharedMemoryStorage` - Non-persistent storage engine which works in multi-threaded environment
 
 ### Installation
 
-* `Cargo.toml`
+- `Cargo.toml`
+
 ```toml
 [dependencies]
-gluesql = "0.11"
+gluesql = "0.12"
 ```
 
-* CLI application
+- CLI application
+
 ```
 $ cargo install gluesql
 ```
@@ -66,9 +69,9 @@ fn main() {
 
 ```toml
 [dependencies.gluesql]
-version = "0.11"
+version = "0.12"
 default-features = false
-features = ["alter-table", "index", "transaction", "metadata"]
+features = ["alter-table", "index", "transaction"]
 ```
 
 #### Four features below are also optional
@@ -76,7 +79,6 @@ features = ["alter-table", "index", "transaction", "metadata"]
 - `alter-table` - ALTER TABLE query support
 - `index` - CREATE INDEX and DROP INDEX, index support
 - `transaction` - BEGIN, ROLLBACK and COMMIT, transaction support
-- `metadata` - SHOW TABLES and SHOW VERSION support
 
 ### Usage
 
@@ -85,23 +87,24 @@ features = ["alter-table", "index", "transaction", "metadata"]
 - [`Store & StoreMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/mod.rs)
 
 ```rust
-pub trait Store<T: Debug> {
+pub trait Store {
     async fn fetch_schema(..) -> ..;
+    async fn fetch_data(..) -> ..;
     async fn scan_data(..) -> ..;
 }
 
-pub trait StoreMut<T: Debug> where Self: Sized {
+pub trait StoreMut where Self: Sized {
     async fn insert_schema(..) -> ..;
     async fn delete_schema(..) -> ..;
+    async fn append_data(..) -> ..;
     async fn insert_data(..) -> ..;
-    async fn update_data(..) -> ..;
     async fn delete_data(..) -> ..;
 }
 ```
 
 #### Optional store traits
 
-- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/core/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/index.rs), [`Transaction`](https://github.com/gluesql/gluesql/blob/main/core/src/store/transaction.rs) and [`Metadata`](https://github.com/gluesql/gluesql/blob/main/core/src/store/metadata.rs)
+- [`AlterTable`](https://github.com/gluesql/gluesql/blob/main/core/src/store/alter_table.rs), [`Index & IndexMut`](https://github.com/gluesql/gluesql/blob/main/core/src/store/index.rs), [`Transaction`](https://github.com/gluesql/gluesql/blob/main/core/src/store/transaction.rs)
 
 ```rust
 pub trait AlterTable where Self: Sized {
@@ -111,11 +114,11 @@ pub trait AlterTable where Self: Sized {
     async fn drop_column(..) -> ..;
 }
 
-pub trait Index<T: Debug> {
+pub trait Index {
     async fn scan_indexed_data(..) -> ..;
 }
 
-pub trait IndexMut<T: Debug> where Self: Sized {
+pub trait IndexMut where Self: Sized {
     async fn create_index(..) -> ..;
     async fn drop_index(..) -> ..;
 }
@@ -125,11 +128,6 @@ pub trait Transaction where Self: Sized {
     async fn rollback(..) -> ..;
     async fn commit(..) -> ..;
 }
-
-pub trait Metadata {
-    fn version(..) -> String;
-    async fn schema_names(..) -> ..;
-}
 ```
 
 ## GlueSQL.js
@@ -137,18 +135,23 @@ pub trait Metadata {
 GlueSQL.js is a SQL database for web browsers and Node.js. It works as an embedded database and entirely runs in the browser. GlueSQL.js supports in-memory storage backend, but it will soon to have localStorage, sessionStorage and indexedDB backend supports.
 
 #### More info
-* [GlueSQL for web browsers and Node.js](https://github.com/gluesql/gluesql/tree/main/gluesql-js)
+
+- [GlueSQL for web browsers and Node.js](https://github.com/gluesql/gluesql/tree/main/pkg/javascript)
 
 ## SQL Features
 
 GlueSQL currently supports a limited subset of queries. It's being actively developed.
 
 #### Data Types
-- **Numeric** `INT(8)`, `INT(16)`, `INT(32)`, `INT(64)`, `INT(128)`, `INTEGER`, `FLOAT`, `DECIMAL`
-- **Date** `DATE`, `TIMESTAMP`, `TIME` `INTERVAL`
-- `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`
+
+| Category | Type                                                                       |
+| -------- | -------------------------------------------------------------------------- |
+| Numeric  | `INT8`, `INT16`, `INT32`, `INTEGER`, `INT128`, `UINT8`, `FLOAT`, `DECIMAL` |
+| Date     | `DATE`, `TIME`, `TIMESTAMP`, `INTERVAL`                                    |
+| Others   | `BOOLEAN`, `TEXT`, `UUID`, `MAP`, `LIST`, `BYTEA`                          |
 
 #### Queries
+
 - `CREATE TABLE`, `DROP TABLE`
 - `ALTER TABLE` - `ADD COLUMN`, `DROP COLUMN`, `RENAME COLUMN` and `RENAME TO`.
 - `CREATE INDEX`, `DROP INDEX`
@@ -159,11 +162,3 @@ GlueSQL currently supports a limited subset of queries. It's being actively deve
 - Nested select, join, aggregations ...
 
 You can see tests for the currently supported queries in [test-suite/src/\*](https://github.com/gluesql/gluesql/tree/main/test-suite/src).
-
-## Contribution
-
-There are a few simple rules to follow.
-
-- No `mut` keywords in the `core` workspace (except `glue.rs`).
-- Every error must have corresponding integration test cases to generate.  
-  (except for `Unreachable-` and `Conflict-` error types)

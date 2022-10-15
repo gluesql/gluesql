@@ -7,7 +7,7 @@ use {
         },
         data::{get_alias, Key, Row},
         executor::{
-            context::{BlendContext, FilterContext},
+            context::{BlendContext, BlendContextRow::Single, FilterContext},
             evaluate::evaluate,
             filter::check_expr,
         },
@@ -91,7 +91,7 @@ async fn join<'a>(
         join_executor,
     } = ast_join;
 
-    let table_alias = get_alias(relation)?;
+    let table_alias = get_alias(relation);
     let join_executor = JoinExecutor::new(
         storage,
         relation,
@@ -119,7 +119,7 @@ async fn join<'a>(
         let init_context = Rc::new(BlendContext::new(
             table_alias,
             Rc::clone(&columns),
-            None,
+            Single(None),
             Some(Rc::clone(&blend_context)),
         ));
         let join_executor = Rc::clone(&join_executor);
@@ -246,9 +246,9 @@ impl<'a> JoinExecutor<'a> {
 
                 async move {
                     let filter_context = Rc::new(FilterContext::new(
-                        get_alias(relation)?,
+                        get_alias(relation),
                         columns,
-                        Some(&row),
+                        &row,
                         filter_context,
                     ));
 
@@ -293,15 +293,21 @@ async fn check_where_clause<'a, 'b>(
     where_clause: Option<&'a Expr>,
     row: Cow<'b, Row>,
 ) -> Result<Option<Rc<BlendContext<'a>>>> {
-    let filter_context =
-        FilterContext::new(table_alias, Rc::clone(&columns), Some(&row), filter_context);
+    let filter_context = FilterContext::new(table_alias, Rc::clone(&columns), &row, filter_context);
     let filter_context = Some(Rc::new(filter_context));
 
     match where_clause {
         Some(expr) => check_expr(storage, filter_context, None, expr).await?,
         None => true,
     }
-    .then(|| BlendContext::new(table_alias, columns, Some(row.into_owned()), blend_context))
+    .then(|| {
+        BlendContext::new(
+            table_alias,
+            columns,
+            Single(Some(row.into_owned())),
+            blend_context,
+        )
+    })
     .map(Rc::new)
     .map(Ok)
     .transpose()

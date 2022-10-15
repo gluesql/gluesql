@@ -29,6 +29,8 @@ pub enum Key {
     I32(i32),
     I64(i64),
     I128(i128),
+    U8(u8),
+    Decimal(Decimal),
     Bool(bool),
     Str(String),
     Bytea(Vec<u8>),
@@ -37,7 +39,6 @@ pub enum Key {
     Time(NaiveTime),
     Interval(Interval),
     Uuid(u128),
-    Decimal(Decimal),
     None,
 }
 
@@ -48,6 +49,8 @@ impl PartialOrd for Key {
             (Key::I16(l), Key::I16(r)) => Some(l.cmp(r)),
             (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
             (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
+            (Key::U8(l), Key::U8(r)) => Some(l.cmp(r)),
+            (Key::Decimal(l), Key::Decimal(r)) => Some(l.cmp(r)),
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
             (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
             (Key::Bytea(l), Key::Bytea(r)) => Some(l.cmp(r)),
@@ -56,7 +59,6 @@ impl PartialOrd for Key {
             (Key::Time(l), Key::Time(r)) => Some(l.cmp(r)),
             (Key::Interval(l), Key::Interval(r)) => l.partial_cmp(r),
             (Key::Uuid(l), Key::Uuid(r)) => Some(l.cmp(r)),
-            (Key::Decimal(l), Key::Decimal(r)) => Some(l.cmp(r)),
             _ => None,
         }
     }
@@ -75,6 +77,8 @@ impl TryFrom<Value> for Key {
             I32(v) => Ok(Key::I32(v)),
             I64(v) => Ok(Key::I64(v)),
             I128(v) => Ok(Key::I128(v)),
+            U8(v) => Ok(Key::U8(v)),
+            Decimal(v) => Ok(Key::Decimal(v)),
             Str(v) => Ok(Key::Str(v)),
             Bytea(v) => Ok(Key::Bytea(v)),
             Date(v) => Ok(Key::Date(v)),
@@ -82,7 +86,6 @@ impl TryFrom<Value> for Key {
             Time(v) => Ok(Key::Time(v)),
             Interval(v) => Ok(Key::Interval(v)),
             Uuid(v) => Ok(Key::Uuid(v)),
-            Decimal(v) => Ok(Key::Decimal(v)),
             Null => Ok(Key::None),
             F64(_) => Err(KeyError::FloatTypeKeyNotSupported.into()),
             Map(_) => Err(KeyError::MapTypeKeyNotSupported.into()),
@@ -158,6 +161,30 @@ impl Key {
                     .copied()
                     .collect::<Vec<_>>()
             }
+            Key::U8(v) => [VALUE, 1]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Key::Decimal(v) => {
+                let sign = if v.is_sign_positive() { 1 } else { 0 };
+                let convert = |v: Decimal| {
+                    let v = v.unpack();
+                    let v = v.lo as i128 + ((v.mid as i128) << 32) + ((v.hi as i128) << 64);
+
+                    if sign == 0 {
+                        -v
+                    } else {
+                        v
+                    }
+                };
+
+                [VALUE, sign]
+                    .into_iter()
+                    .chain(convert(v.trunc()).to_be_bytes())
+                    .chain(convert(v.fract()).to_be_bytes())
+                    .collect::<Vec<_>>()
+            }
             Key::Str(v) => [VALUE]
                 .iter()
                 .chain(v.as_bytes().iter())
@@ -211,9 +238,6 @@ impl Key {
                 .chain(v.to_be_bytes().iter())
                 .copied()
                 .collect::<Vec<_>>(),
-            Key::Decimal(_) => {
-                todo!();
-            }
             Key::None => vec![NONE],
         }
     }
@@ -229,7 +253,8 @@ mod tests {
             result::Result,
             translate::translate_expr,
         },
-        std::{cmp::Ordering, collections::HashMap},
+        rust_decimal::Decimal,
+        std::{cmp::Ordering, collections::HashMap, str::FromStr},
     };
 
     fn convert(sql: &str) -> Result<Key> {
@@ -243,10 +268,16 @@ mod tests {
     fn evaluated_to_key() {
         // Some
         assert_eq!(convert("True"), Ok(Key::Bool(true)));
-        assert_eq!(convert("CAST(11 AS INT(8))"), Ok(Key::I8(11)));
-        assert_eq!(convert("CAST(11 AS INT(16))"), Ok(Key::I16(11)));
-        assert_eq!(convert("CAST(11 AS INT(32))"), Ok(Key::I32(11)));
+        assert_eq!(convert("CAST(11 AS INT8)"), Ok(Key::I8(11)));
+        assert_eq!(convert("CAST(11 AS INT16)"), Ok(Key::I16(11)));
+        assert_eq!(convert("CAST(11 AS INT32)"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
+        assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
+        assert_eq!(
+            convert("CAST(123.45 AS DECIMAL)"),
+            Ok(Key::Decimal(Decimal::from_str("123.45").unwrap()))
+        );
+
         assert_eq!(
             convert(r#""Hello World""#),
             Ok(Key::Str("Hello World".to_owned()))
@@ -283,6 +314,7 @@ mod tests {
             Key::try_from(Value::List(Vec::default())),
             Err(KeyError::ListTypeKeyNotSupported.into())
         );
+        assert_eq!(convert(r#"POSITION("PORK" IN "MEAT")"#), Ok(Key::I64(0)));
     }
 
     fn cmp(ls: &[u8], rs: &[u8]) -> Ordering {
@@ -383,6 +415,30 @@ mod tests {
         let n5 = I128(20).to_cmp_be_bytes();
         let n6 = I128(100).to_cmp_be_bytes();
 
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n6), Ordering::Less);
+        assert_eq!(cmp(&n5, &n5), Ordering::Equal);
+        assert_eq!(cmp(&n4, &n5), Ordering::Less);
+        assert_eq!(cmp(&n6, &n4), Ordering::Greater);
+        assert_eq!(cmp(&n4, &null), Ordering::Less);
+
+        let n1 = U8(0).to_cmp_be_bytes();
+        let n2 = U8(3).to_cmp_be_bytes();
+        let n3 = U8(20).to_cmp_be_bytes();
+        let n4 = U8(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
+        let dec = |n| Decimal(rust_decimal::Decimal::from_str(n).unwrap());
+        let n1 = dec("-1200.345678").to_cmp_be_bytes();
+        let n2 = dec("-1.01").to_cmp_be_bytes();
+        let n3 = dec("0").to_cmp_be_bytes();
+        let n4 = dec("3.9").to_cmp_be_bytes();
+        let n5 = dec("300.0").to_cmp_be_bytes();
+        let n6 = dec("3000").to_cmp_be_bytes();
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &n6), Ordering::Less);

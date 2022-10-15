@@ -2,7 +2,7 @@ use {
     super::{
         ast_literal::{translate_ast_literal, translate_datetime_field},
         data_type::translate_data_type,
-        function::translate_function,
+        function::{translate_cast, translate_function, translate_positon},
         operator::{translate_binary_operator, translate_unary_operator},
         translate_idents, translate_query, TranslateError,
     },
@@ -14,6 +14,14 @@ use {
     sqlparser::ast::{Expr as SqlExpr, OrderByExpr as SqlOrderByExpr},
 };
 
+/// # Description
+/// Returns [`Expr`] in the form required for `GlueSQL` from [`SqlExpr`] provided by `sqlparser-rs`. <br>
+/// Among them, there are functions that are translated to a lower level of [`Expr`] rather than [`Expr::Function`]
+/// - e.g) `cast`, `extract`
+///
+/// This is because it follows the parsed result of `sqlparser-rs` as it is. <br>
+/// It is ambiguous whether the parsed tokens will be classified as a lower level of [`Expr`] or a lower level of [`Expr::Function`]. <br>
+/// In `GlueSQL`, if an argument is received wrapped in `( )` in the sql statement, the standard is set to translate in the form of `Expr::Function(Box<Function::Cast>)` rather than `Expr::Cast`.
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     match sql_expr {
         SqlExpr::Identifier(ident) => match ident.quote_style {
@@ -59,6 +67,26 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             low: translate_expr(low).map(Box::new)?,
             high: translate_expr(high).map(Box::new)?,
         }),
+        SqlExpr::Like {
+            expr,
+            negated,
+            pattern,
+            escape_char: None,
+        } => Ok(Expr::Like {
+            expr: translate_expr(expr).map(Box::new)?,
+            negated: *negated,
+            pattern: translate_expr(pattern).map(Box::new)?,
+        }),
+        SqlExpr::ILike {
+            expr,
+            negated,
+            pattern,
+            escape_char: None,
+        } => Ok(Expr::ILike {
+            expr: translate_expr(expr).map(Box::new)?,
+            negated: *negated,
+            pattern: translate_expr(pattern).map(Box::new)?,
+        }),
         SqlExpr::BinaryOp { left, op, right } => Ok(Expr::BinaryOp {
             left: translate_expr(left).map(Box::new)?,
             op: translate_binary_operator(op)?,
@@ -67,10 +95,6 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
         SqlExpr::UnaryOp { op, expr } => Ok(Expr::UnaryOp {
             op: translate_unary_operator(op)?,
             expr: translate_expr(expr).map(Box::new)?,
-        }),
-        SqlExpr::Cast { expr, data_type } => Ok(Expr::Cast {
-            expr: translate_expr(expr).map(Box::new)?,
-            data_type: translate_data_type(data_type)?,
         }),
         SqlExpr::Extract { field, expr } => Ok(Expr::Extract {
             field: translate_datetime_field(field)?,
@@ -83,8 +107,15 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             value: value.to_owned(),
         }),
         SqlExpr::Function(function) => translate_function(function),
-        SqlExpr::Trim { expr, trim_where } => translate_trim(expr, trim_where),
-        SqlExpr::Exists(query) => translate_query(query).map(Box::new).map(Expr::Exists),
+        SqlExpr::Trim {
+            expr,
+            trim_where,
+            trim_what,
+        } => translate_trim(expr, trim_where, trim_what),
+        SqlExpr::Exists { subquery, negated } => Ok(Expr::Exists {
+            subquery: translate_query(subquery).map(Box::new)?,
+            negated: *negated,
+        }),
         SqlExpr::Subquery(query) => translate_query(query).map(Box::new).map(Expr::Subquery),
         SqlExpr::Case {
             operand,
@@ -111,6 +142,28 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
                 .map(|expr| translate_expr(expr.as_ref()).map(Box::new))
                 .transpose()?,
         }),
+        SqlExpr::ArrayIndex { obj, indexes } => Ok(Expr::ArrayIndex {
+            obj: translate_expr(obj).map(Box::new)?,
+            indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
+        }),
+        SqlExpr::Position { expr, r#in } => translate_positon(expr, r#in),
+        SqlExpr::Interval {
+            value,
+            leading_field,
+            last_field,
+            ..
+        } => Ok(Expr::Interval {
+            expr: translate_expr(value).map(Box::new)?,
+            leading_field: leading_field
+                .as_ref()
+                .map(translate_datetime_field)
+                .transpose()?,
+            last_field: last_field
+                .as_ref()
+                .map(translate_datetime_field)
+                .transpose()?,
+        }),
+        SqlExpr::Cast { expr, data_type } => translate_cast(expr, data_type),
         _ => Err(TranslateError::UnsupportedExpr(sql_expr.to_string()).into()),
     }
 }

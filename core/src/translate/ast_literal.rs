@@ -15,22 +15,6 @@ pub fn translate_ast_literal(sql_value: &SqlValue) -> Result<AstLiteral> {
         SqlValue::Number(v, _) => AstLiteral::Number(v.clone()),
         SqlValue::SingleQuotedString(v) => AstLiteral::QuotedString(v.clone()),
         SqlValue::HexStringLiteral(v) => AstLiteral::HexString(v.clone()),
-        SqlValue::Interval {
-            value,
-            leading_field,
-            last_field,
-            ..
-        } => AstLiteral::Interval {
-            value: value.to_owned(),
-            leading_field: leading_field
-                .as_ref()
-                .map(translate_datetime_field)
-                .transpose()?,
-            last_field: last_field
-                .as_ref()
-                .map(translate_datetime_field)
-                .transpose()?,
-        },
         SqlValue::Null => AstLiteral::Null,
         _ => {
             return Err(TranslateError::UnsupportedAstLiteral(sql_value.to_string()).into());

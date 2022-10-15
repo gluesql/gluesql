@@ -43,7 +43,8 @@ impl Function {
                 filter_chars: None,
                 ..
             }
-            | Self::Reverse(expr) => Exprs::Single([expr].into_iter()),
+            | Self::Reverse(expr)
+            | Self::Cast { expr, .. } => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -81,6 +82,22 @@ impl Function {
                 left: expr,
                 right: expr2,
             }
+            | Self::Format {
+                expr,
+                format: expr2,
+            }
+            | Self::ToDate {
+                expr,
+                format: expr2,
+            }
+            | Self::ToTimestamp {
+                expr,
+                format: expr2,
+            }
+            | Self::ToTime {
+                expr,
+                format: expr2,
+            }
             | Self::Power { expr, power: expr2 }
             | Self::Ltrim {
                 expr,
@@ -100,6 +117,10 @@ impl Function {
             | Self::Unwrap {
                 expr,
                 selector: expr2,
+            }
+            | Self::Position {
+                from_expr: expr2,
+                sub_expr: expr,
             } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,
@@ -175,6 +196,7 @@ mod tests {
         test(r#"RTRIM("world  ")"#, &[r#""world  ""#]);
         test(r#"TRIM("  rust  ")"#, &[r#""  rust  ""#]);
         test(r#"REVERSE("abcde")"#, &[r#""abcde""#]);
+        test(r#"CAST(1 AS BOOLEAN)"#, &["1"]);
 
         test(r#"ABS(1)"#, &["1"]);
         test(r#"ABS(-1)"#, &["-1"]);
@@ -236,5 +258,8 @@ mod tests {
             r#"CONCAT("gluesql", " ", "is", " ", "cool")"#,
             &[r#""gluesql""#, r#"" ""#, r#""is""#, r#"" ""#, r#""cool""#],
         );
+
+        test(r#"POSITION("men" IN "ramen")"#, &[r#""men""#, r#""ramen""#]);
+        test(r#"POSITION("men" IN ramen)"#, &[r#""men""#, "ramen"]);
     }
 }

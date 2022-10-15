@@ -114,8 +114,12 @@ test_case!(case, async move {
             "#,
             Err(TranslateError::UnsupportedExpr("1 COLLATE Item".to_owned()).into()),
         ),
+        (
+            "SELECT 1 COLLATE Item FROM Item;",
+            Err(TranslateError::UnsupportedExpr("1 COLLATE Item".to_owned()).into()),
+        ),
     ];
     for (sql, expected) in test_cases {
-        test!(expected, sql);
+        test!(sql, expected);
     }
 });

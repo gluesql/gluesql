@@ -6,6 +6,7 @@ use {
         ast::IndexOperator::*,
         executor::{AlterError, FetchError},
         prelude::Value::*,
+        translate::TranslateError,
     },
 };
 
@@ -22,8 +23,8 @@ test_case!(drop_indexed_table, async move {
 
     run!("DROP TABLE Test;");
     test!(
-        Err(FetchError::TableNotFound("Test".to_owned()).into()),
-        "SELECT * FROM Test;"
+        "SELECT * FROM Test;",
+        Err(FetchError::TableNotFound("Test".to_owned()).into())
     );
 
     run!("CREATE TABLE Test (id INTEGER);");
@@ -39,6 +40,15 @@ test_case!(drop_indexed_table, async move {
         Ok(select!(id I64; 3; 4)),
         idx!(idx_id, Lt, "10"),
         "SELECT * FROM Test WHERE id < 10"
+    );
+
+    test!(
+        "DROP INDEX Test",
+        Err(TranslateError::InvalidParamsInDropIndex.into())
+    );
+    test!(
+        "DROP INDEX Test.idx_id.IndexC",
+        Err(TranslateError::InvalidParamsInDropIndex.into())
     );
 });
 
@@ -71,8 +81,8 @@ CREATE TABLE Test (
 
     // check indexes working
     test!(
-        Err(AlterError::IdentifierNotFound(expr!("100")).into()),
-        "CREATE INDEX idx_literal ON Test (100)"
+        "CREATE INDEX idx_literal ON Test (100)",
+        Err(AlterError::IdentifierNotFound(expr!("100")).into())
     );
 
     test_idx!(
@@ -146,8 +156,8 @@ CREATE TABLE Test (
     );
 
     test!(
-        Err(AlterError::TableNotFound("Noname".to_owned()).into()),
-        "ALTER TABLE Noname DROP COLUMN id"
+        "ALTER TABLE Noname DROP COLUMN id",
+        Err(AlterError::TableNotFound("Noname".to_owned()).into())
     );
 
     run!("ALTER TABLE Test DROP COLUMN id");

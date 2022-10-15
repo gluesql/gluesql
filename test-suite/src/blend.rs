@@ -55,7 +55,7 @@ test_case!(blend, async move {
     }
 
     let test_cases = [
-        ("SELECT 1 FROM BlendUser", select!(1; I64; 1; 1; 1)),
+        ("SELECT 1 FROM BlendUser", select!("1"; I64; 1; 1; 1)),
         (
             "SELECT id, name FROM BlendUser",
             select!(
@@ -143,25 +143,29 @@ test_case!(blend, async move {
     ];
 
     for (sql, expected) in test_cases {
-        test!(Ok(expected), sql);
+        test!(sql, Ok(expected));
     }
 
     let error_cases = [
         (
-            SelectError::TableAliasNotFound("Whatever".to_owned()).into(),
             "SELECT Whatever.* FROM BlendUser",
+            SelectError::TableAliasNotFound("Whatever".to_owned()).into(),
         ),
         (
-            SelectError::BlendTableAliasNotFound("Whatever".to_owned()).into(),
             "SELECT * FROM BlendUser WHERE id IN (SELECT Whatever.* FROM BlendUser)",
+            SelectError::BlendTableAliasNotFound("Whatever".to_owned()).into(),
         ),
         (
-            EvaluateError::ValueNotFound("noname".to_owned()).into(),
             "SELECT noname FROM BlendUser",
+            EvaluateError::ValueNotFound("noname".to_owned()).into(),
+        ),
+        (
+            "SELECT (SELECT id FROM BlendItem) as id FROM BlendItem",
+            EvaluateError::MoreThanOneRowReturned.into(),
         ),
     ];
 
-    for (error, sql) in error_cases {
-        test!(Err(error), sql);
+    for (sql, error) in error_cases {
+        test!(sql, Err(error));
     }
 });

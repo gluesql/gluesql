@@ -5,7 +5,7 @@ use {
             Expr, Join, JoinConstraint, JoinOperator, Query, Select, SelectItem, SetExpr,
             Statement, TableFactor, TableWithJoins,
         },
-        data::{get_name, Schema},
+        data::Schema,
         result::Result,
         store::Store,
     },
@@ -31,7 +31,6 @@ pub async fn fetch_schema_map(
         Statement::Insert {
             table_name, source, ..
         } => {
-            let table_name = get_name(table_name)?;
             let table_schema = storage
                 .fetch_schema(table_name)
                 .await?
@@ -50,8 +49,6 @@ pub async fn fetch_schema_map(
             stream::iter(names)
                 .map(Ok)
                 .try_filter_map(|table_name| async move {
-                    let table_name = get_name(table_name)?;
-
                     Ok(storage
                         .fetch_schema(table_name)
                         .await?
@@ -69,6 +66,7 @@ async fn scan_query(storage: &dyn Store, query: &Query) -> Result<Vec<Schema>> {
         body,
         limit,
         offset,
+        ..
     } = query;
 
     let schema_list = match body {
@@ -99,7 +97,6 @@ async fn scan_select(storage: &dyn Store, select: &Select) -> Result<Vec<Schema>
         selection,
         group_by,
         having,
-        order_by,
     } = select;
 
     let projection = stream::iter(projection)
@@ -116,11 +113,7 @@ async fn scan_select(storage: &dyn Store, select: &Select) -> Result<Vec<Schema>
 
     let from = scan_table_with_joins(storage, from).await?;
 
-    let exprs = selection
-        .iter()
-        .chain(group_by.iter())
-        .chain(having.iter())
-        .chain(order_by.iter().map(|order_by| &order_by.expr));
+    let exprs = selection.iter().chain(group_by.iter()).chain(having.iter());
 
     Ok(stream::iter(exprs)
         .then(|expr| scan_expr(storage, expr))
@@ -176,14 +169,13 @@ async fn scan_join(storage: &dyn Store, join: &Join) -> Result<Vec<Schema>> {
 async fn scan_table_factor(storage: &dyn Store, table_factor: &TableFactor) -> Result<Vec<Schema>> {
     match table_factor {
         TableFactor::Table { name, .. } => {
-            let table_name = get_name(name)?;
-            let schema = storage.fetch_schema(table_name).await?;
+            let schema = storage.fetch_schema(name).await?;
             let schema_list = schema.map(|schema| vec![schema]).unwrap_or_else(Vec::new);
 
             Ok(schema_list)
         }
         TableFactor::Derived { subquery, .. } => scan_query(storage, subquery).await,
-        TableFactor::Series { .. } => Ok(vec![]),
+        TableFactor::Series { .. } | TableFactor::Dictionary { .. } => Ok(vec![]),
     }
 }
 

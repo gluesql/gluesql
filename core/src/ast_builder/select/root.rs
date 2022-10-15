@@ -1,9 +1,10 @@
 use {
-    super::{NodeData, Prebuild},
+    super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{Expr, ObjectName, SelectItem, Statement, TableFactor, TableWithJoins},
+        ast::{SelectItem, TableAlias, TableFactor},
         ast_builder::{
-            ExprList, ExprNode, GroupByNode, LimitNode, OffsetNode, ProjectNode, SelectItemList,
+            ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
+            OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -12,25 +13,19 @@ use {
 #[derive(Clone)]
 pub struct SelectNode {
     table_name: String,
-    filter_expr: Option<ExprNode>,
+    table_alias: Option<String>,
 }
 
 impl SelectNode {
-    pub fn new(table_name: String) -> Self {
+    pub fn new(table_name: String, table_alias: Option<String>) -> Self {
         Self {
             table_name,
-            filter_expr: None,
+            table_alias,
         }
     }
 
-    pub fn filter<T: Into<ExprNode>>(mut self, expr: T) -> Self {
-        if let Some(exprs) = self.filter_expr {
-            self.filter_expr = Some(exprs.and(expr));
-        } else {
-            self.filter_expr = Some(expr.into());
-        }
-
-        self
+    pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
+        FilterNode::new(self, expr)
     }
 
     pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
@@ -49,73 +44,75 @@ impl SelectNode {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn build(self) -> Result<Statement> {
-        self.prebuild().map(NodeData::build_stmt)
+    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+        OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn join(self, table_name: &str) -> JoinNode {
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
+    }
+
+    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
+        JoinNode::new(
+            self,
+            table_name.to_owned(),
+            Some(alias.to_owned()),
+            JoinOperatorType::Inner,
+        )
+    }
+
+    pub fn left_join(self, table_name: &str) -> JoinNode {
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
+    }
+
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
+        JoinNode::new(
+            self,
+            table_name.to_owned(),
+            Some(alias.to_owned()),
+            JoinOperatorType::Left,
+        )
     }
 }
 
 impl Prebuild for SelectNode {
     fn prebuild(self) -> Result<NodeData> {
         let relation = TableFactor::Table {
-            name: ObjectName(vec![self.table_name]),
-            alias: None,
+            name: self.table_name,
+            alias: self.table_alias.map(|name| TableAlias {
+                name,
+                columns: Vec::new(),
+            }),
             index: None,
         };
 
-        let from = TableWithJoins {
-            relation,
-            joins: vec![],
-        };
-
-        let selection = self.filter_expr.map(Expr::try_from).transpose()?;
-
         Ok(NodeData {
             projection: vec![SelectItem::Wildcard],
-            from,
-            selection,
+            relation,
+            filter: None,
             group_by: vec![],
             having: None,
+            order_by: vec![],
             offset: None,
             limit: None,
+            joins: vec![],
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ast::{BinaryOperator, Expr},
-        ast_builder::{table, test},
-    };
+    use crate::ast_builder::{table, test, Build};
 
     #[test]
     fn select() {
+        // select node -> build
         let actual = table("App").select().build();
         let expected = "SELECT * FROM App";
         test(actual, expected);
 
-        let actual = table("Bar").select().filter("id IS NULL").build();
-        let expected = "SELECT * FROM Bar WHERE id IS NULL";
-        test(actual, expected);
-
-        let actual = table("Bar")
-            .select()
-            .filter("id IS NULL")
-            .filter("id > 10")
-            .filter("id < 20")
-            .build();
-        let expected = "SELECT * FROM Bar WHERE id IS NULL AND id > 10 AND id < 20";
-        test(actual, expected);
-
-        let actual = table("Foo")
-            .select()
-            .filter(Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("col1".to_owned())),
-                op: BinaryOperator::Gt,
-                right: Box::new(Expr::Identifier("col2".to_owned())),
-            })
-            .build();
-        let expected = "SELECT * FROM Foo WHERE col1 > col2";
+        let actual = table("Item").alias_as("i").select().build();
+        let expected = "SELECT * FROM Item i";
         test(actual, expected);
     }
 }
