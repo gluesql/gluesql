@@ -82,7 +82,7 @@ pub async fn evaluate<'a>(
             evaluations
                 .into_iter()
                 .next()
-                .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))
+                .unwrap_or_else(|| Ok(Evaluated::from(Value::Null)))
         }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;

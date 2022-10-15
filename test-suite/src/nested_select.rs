@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::executor::EvaluateError};
+use {
+    crate::*,
+    gluesql_core::{executor::Payload, prelude::Value},
+};
 
 test_case!(nested_select, async move {
     let create_sqls: [&str; 2] = [
@@ -77,12 +80,24 @@ test_case!(nested_select, async move {
         count!(num, sql);
     }
 
-    let error_cases = [(
-        "SELECT * FROM Player WHERE id = (SELECT id FROM Player WHERE id = 9);",
-        EvaluateError::NestedSelectRowNotFound.into(),
-    )];
+    let test_cases = [
+        (
+            "SELECT * FROM Player WHERE id = (SELECT id FROM Player WHERE id = 9)",
+            Ok(Payload::Select {
+                labels: vec!["id".to_owned(), "name".to_owned()],
+                rows: vec![],
+            }),
+        ),
+        (
+            "SELECT (SELECT N FROM SERIES(3) WHERE N = 4) N",
+            Ok(select_with_null!(
+                N;
+                Value::Null
+            )),
+        ),
+    ];
 
-    for (sql, error) in error_cases {
-        test!(sql, Err(error));
+    for (sql, expected) in test_cases {
+        test!(sql, expected);
     }
 });
