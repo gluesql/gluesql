@@ -70,6 +70,14 @@ test_case!(sum, async move {
                 174
             ),
         ),
+        (
+            "SELECT SUM(CASE WHEN id > 3 THEN quantity ELSE 0 END) FROM Item;",
+            select!(
+                "SUM(CASE WHEN id > 3 THEN quantity ELSE 0 END)"
+                I64;
+                28
+            ),
+        ),
     ];
 
     for (sql, expected) in test_cases {

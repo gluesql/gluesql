@@ -6,6 +6,7 @@ use {
         translate::TranslateError,
     },
 };
+
 test_case!(inline_view, async move {
     let test_cases = [
         (

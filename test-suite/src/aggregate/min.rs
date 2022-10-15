@@ -46,8 +46,20 @@ test_case!(min, async move {
             ),
         ),
         (
-            "SELECT SUM(quantity) * 2 + MIN(quantity) - 3 / 1 FROM Item",
-            select!("SUM(quantity) * 2 + MIN(quantity) - 3 / 1"; I64; 91),
+            "SELECT SUM(quantity) * 2 + MIN(quantity) - 3 / 1 FROM Item;",
+            select!(
+                "SUM(quantity) * 2 + MIN(quantity) - 3 / 1"
+                I64;
+                91
+            ),
+        ),
+        (
+            "SELECT MIN(CASE WHEN quantity > 5 THEN id END) FROM Item;",
+            select!(
+                "MIN(CASE WHEN quantity > 5 THEN id END)"
+                I64;
+                1
+            ),
         ),
     ];
 
