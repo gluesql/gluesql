@@ -1,6 +1,9 @@
 use {
     crate::command::{SetOption, ShowOption},
-    gluesql_core::prelude::{Payload, PayloadVariable},
+    gluesql_core::{
+        ast::ToSql,
+        prelude::{Payload, PayloadVariable},
+    },
     std::{
         fmt::Display,
         fs::File,
@@ -123,10 +126,13 @@ impl<'a, W: Write> Print<W> {
                 self.write(table)?;
             }
             Payload::ShowIndexes(indexes) => {
-                let mut table =
-                    self.get_table(vec!["TABLE_NAME", "INDEX_NAME", "ORDER", "EXPRESSION"]);
+                let mut table = self.get_table(vec!["Index Name", "Order", "Description"]);
                 for index in indexes {
-                    table.add_record(index);
+                    table.add_record([
+                        index.name.to_owned(),
+                        index.order.to_string(),
+                        index.expr.to_sql(),
+                    ]);
                 }
                 let table = self.build_table(table);
                 self.write(table)?;
@@ -253,6 +259,11 @@ impl<'a, W: Write> Print<W> {
 
 #[cfg(test)]
 mod tests {
+    use gluesql_core::{
+        ast::{BinaryOperator, Expr},
+        data::{SchemaIndex, SchemaIndexOrd},
+    };
+
     use {
         super::Print,
         crate::command::{SetOption, ShowOption},
@@ -418,31 +429,32 @@ mod tests {
 
         test!(
             &Payload::ShowIndexes(vec![
-                vec![
-                    "Foo".to_owned(),
-                    "id_ndx".to_owned(),
-                    "ASC".to_owned(),
-                    "id".to_owned()
-                ],
-                vec![
-                    "Foo".to_owned(),
-                    "name_ndx".to_owned(),
-                    "DESC".to_owned(),
-                    "name".to_owned()
-                ],
-                vec![
-                    "Foo".to_owned(),
-                    "expr_ndx".to_owned(),
-                    "BOTH".to_owned(),
-                    "expr1 - expr2".to_owned()
-                ],
+                SchemaIndex {
+                    name: "id_ndx".to_owned(),
+                    order: SchemaIndexOrd::Asc,
+                    expr: Expr::Identifier("id".to_owned())
+                },
+                SchemaIndex {
+                    name: "name_ndx".to_owned(),
+                    order: SchemaIndexOrd::Desc,
+                    expr: Expr::Identifier("name".to_owned())
+                },
+                SchemaIndex {
+                    name: "expr_ndx".to_owned(),
+                    order: SchemaIndexOrd::Both,
+                    expr: Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("expr1".to_owned())),
+                        op: BinaryOperator::Minus,
+                        right: Box::new(Expr::Identifier("expr2".to_owned()))
+                    }
+                }
             ],),
             "
-| TABLE_NAME | INDEX_NAME | ORDER | EXPRESSION    |
-|------------|------------|-------|---------------|
-| Foo        | id_ndx     | ASC   | id            |
-| Foo        | name_ndx   | DESC  | name          |
-| Foo        | expr_ndx   | BOTH  | expr1 - expr2 |"
+| Index Name | Order | Description   |
+|------------|-------|---------------|
+| id_ndx     | ASC   | id            |
+| name_ndx   | DESC  | name          |
+| expr_ndx   | BOTH  | expr1 - expr2 |"
         );
 
         test!(

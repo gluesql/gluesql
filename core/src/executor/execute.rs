@@ -12,12 +12,11 @@ use {
             SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
             Variable,
         },
-        data::{Key, Row, Schema},
+        data::{Key, Row, Schema, SchemaIndex},
         executor::limit::Limit,
         result::{MutResult, Result},
         store::{GStore, GStoreMut},
     },
-    async_recursion::async_recursion,
     futures::stream::{self, TryStreamExt},
     serde::{Deserialize, Serialize},
     std::{env::var, fmt::Debug, rc::Rc},
@@ -28,10 +27,7 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use {
-    super::alter::create_index,
-    crate::ast::{AstLiteral, BinaryOperator},
-};
+use super::alter::create_index;
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -69,7 +65,7 @@ pub enum Payload {
     ShowVariable(PayloadVariable),
 
     #[cfg(feature = "index")]
-    ShowIndexes(Vec<Vec<String>>),
+    ShowIndexes(Vec<SchemaIndex>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -108,7 +104,6 @@ pub async fn execute_atomic<T: GStore + GStoreMut>(
     }
 }
 
-#[async_recursion(?Send)]
 pub async fn execute<T: GStore + GStoreMut>(
     storage: T,
     statement: &Statement,
@@ -363,55 +358,18 @@ pub async fn execute<T: GStore + GStoreMut>(
         }
         #[cfg(feature = "index")]
         Statement::ShowIndexes(table_name) => {
-            let query = Query {
-                body: SetExpr::Select(Box::new(crate::ast::Select {
-                    projection: vec![SelectItem::Wildcard],
-                    from: TableWithJoins {
-                        relation: TableFactor::Dictionary {
-                            dict: Dictionary::GlueIndexes,
-                            alias: TableAlias {
-                                name: "GLUE_INDEXES".to_owned(),
-                                columns: Vec::new(),
-                            },
-                        },
-                        joins: Vec::new(),
-                    },
-                    selection: Some(Expr::BinaryOp {
-                        left: Box::new(Expr::Identifier("TABLE_NAME".to_owned())),
-                        op: BinaryOperator::Eq,
-                        right: Box::new(Expr::Literal(AstLiteral::QuotedString(
-                            table_name.to_owned(),
-                        ))),
-                    }),
-                    group_by: Vec::new(),
-                    having: None,
-                })),
-                order_by: Vec::new(),
-                limit: None,
-                offset: None,
+            let indexes = match storage.fetch_schema(table_name).await {
+                Ok(Some(Schema { indexes, .. })) => indexes,
+                Ok(None) => {
+                    return Err((
+                        storage,
+                        ExecuteError::TableNotFound(table_name.to_owned()).into(),
+                    ));
+                }
+                Err(e) => return Err((storage, e)),
             };
 
-            let rows = try_block!(storage, {
-                let rows = select(&storage, &query, None).await?;
-                let rows = rows
-                    .map_ok(|Row(values)| values)
-                    .try_collect::<Vec<_>>()
-                    .await?;
-                Ok(rows)
-            });
-
-            let indexes = rows
-                .iter()
-                .map(|values| values.iter().map(|value| value.into()).collect())
-                .collect::<Vec<_>>();
-
-            match indexes.is_empty() {
-                true => Err((
-                    storage,
-                    ExecuteError::TableNotFound(table_name.to_owned()).into(),
-                )),
-                false => Ok((storage, Payload::ShowIndexes(indexes))),
-            }
+            Ok((storage, Payload::ShowIndexes(indexes)))
         }
         Statement::ShowVariable(variable) => match variable {
             Variable::Tables => {
