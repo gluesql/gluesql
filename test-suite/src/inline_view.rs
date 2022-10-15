@@ -245,6 +245,11 @@ test_case!(inline_view, async move {
             Err(TranslateError::TooManyTables.into()),
         ),
         (
+            // unsupported select distinct
+            "SELECT DISTINCT id FROM OuterTable",
+            Err(TranslateError::SelectDistinctNotSupported.into()),
+        ),
+        (
             // inline view subquery + join with inline view
             "SELECT *
             FROM (
