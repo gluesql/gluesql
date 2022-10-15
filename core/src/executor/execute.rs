@@ -12,7 +12,7 @@ use {
             SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
             Variable,
         },
-        data::{Key, Row, Schema, SchemaIndex},
+        data::{Key, Row, Schema},
         executor::limit::Limit,
         result::{MutResult, Result},
         store::{GStore, GStoreMut},
@@ -27,7 +27,7 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use super::alter::create_index;
+use {super::alter::create_index, crate::data::SchemaIndex};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
