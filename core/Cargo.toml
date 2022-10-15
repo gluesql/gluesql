@@ -31,10 +31,10 @@ bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
 hex = "0.4"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.uuid]
-version = "0.8.2"
-features = ["v4", "wasm-bindgen"]
+version = "1"
+features = ["v4", "js"]
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.uuid]
-version = "0.8.2"
+version = "1"
 features = ["v4"]
 
 [features]

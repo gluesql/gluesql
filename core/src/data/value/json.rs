@@ -54,7 +54,7 @@ impl TryFrom<Value> for JsonValue {
             Value::Timestamp(v) => Ok(DateTime::<Utc>::from_utc(v, Utc).to_string().into()),
             Value::Time(v) => Ok(v.to_string().into()),
             Value::Interval(v) => Ok(String::from(&v).into()),
-            Value::Uuid(v) => Ok(Uuid::from_u128(v).to_hyphenated().to_string().into()),
+            Value::Uuid(v) => Ok(Uuid::from_u128(v).hyphenated().to_string().into()),
             Value::Map(v) => v
                 .into_iter()
                 .map(|(key, value)| value.try_into().map(|value| (key, value)))
