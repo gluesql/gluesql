@@ -10,9 +10,6 @@ pub enum EvaluateError {
     #[error(transparent)]
     ChronoFormat(#[from] ChronoFormatError),
 
-    #[error("nested select row not found")]
-    NestedSelectRowNotFound,
-
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
 
