@@ -11,9 +11,11 @@ use {
     std::{cmp::Ordering, rc::Rc},
     utils::{IndexMap, Vector},
 };
+
 type Group = Rc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
 type Context<'a> = Rc<BlendContext<'a>>;
+
 enum AggrValue {
     Count {
         wildcard: bool,
