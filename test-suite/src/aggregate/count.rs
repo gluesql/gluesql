@@ -5,7 +5,7 @@ test_case!(count, async move {
         "
         CREATE TABLE Item (
             id INTEGER,
-            quantity INTEGER,
+            quantity INTEGER NULL,
             age INTEGER NULL,
             total INTEGER,
         );
@@ -14,7 +14,7 @@ test_case!(count, async move {
     run!(
         "
         INSERT INTO Item (id, quantity, age, total) VALUES
-            (1, 10,   11, 1),
+            (1, NULL,   11, 1),
             (2,  0,   90, 2),
             (3,  9, NULL, 3),
             (4,  3,    3, 1),
@@ -23,15 +23,29 @@ test_case!(count, async move {
     );
 
     let test_cases = [
-        ("SELECT COUNT(*) FROM Item", select!("COUNT(*)"; I64; 5)),
-        ("SELECT count(*) FROM Item", select!("count(*)"; I64; 5)),
         (
-            "SELECT COUNT(*), COUNT(*) FROM Item",
-            select!("COUNT(*)" | "COUNT(*)"; I64 | I64; 5 5),
+            "SELECT COUNT(*) FROM Item;",
+            select!(
+                "COUNT(*)";
+                I64;
+                5
+            ),
         ),
         (
-            "SELECT COUNT(age), COUNT(quantity) FROM Item",
-            select!("COUNT(age)" | "COUNT(quantity)"; I64 | I64; 3 5),
+            "SELECT COUNT(age), COUNT(quantity) FROM Item;",
+            select!(
+                "COUNT(age)" | "COUNT(quantity)";
+                I64          |               I64;
+                3                              4
+            ),
+        ),
+        (
+            "SELECT COUNT(NULL);",
+            select!(
+                "COUNT(NULL)";
+                I64;
+                0
+            ),
         ),
     ];
 

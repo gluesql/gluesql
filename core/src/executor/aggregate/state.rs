@@ -49,7 +49,7 @@ impl AggrValue {
             },
             Aggregate::Count(CountArgExpr::Expr(_)) => AggrValue::Count {
                 wildcard: false,
-                count: 1,
+                count: if value.is_null() { 0 } else { 1 },
             },
             Aggregate::Sum(_) => AggrValue::Sum(value),
             Aggregate::Min(_) => AggrValue::Min(value),
