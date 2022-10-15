@@ -32,7 +32,7 @@ impl PartialOrd<Value> for i16 {
             I32(other) => (*self as i32).partial_cmp(other),
             I64(other) => (*self as i64).partial_cmp(other),
             I128(other) => (*self as i128).partial_cmp(other),
-            U8(other) => (*self as u8).partial_cmp(other),
+            U8(other) => self.partial_cmp(&(*other as i16)),
             F64(other) => (*self as f64).partial_cmp(other),
             Decimal(other) => Decimal::from(*self).partial_cmp(other),
             _ => None,
