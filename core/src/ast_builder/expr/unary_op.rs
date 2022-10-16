@@ -8,7 +8,7 @@ impl ExprNode {
         minus(self)
     }
     #[allow(clippy::should_implement_trait)]
-    pub fn not(self) -> Self {
+    pub fn negate(self) -> Self {
         not(self)
     }
     pub fn factorial(self) -> Self {
@@ -58,7 +58,7 @@ mod tests {
         let expected = "-10";
         test_expr(actual, expected);
 
-        let actual = (col("count").gt(num(5))).not();
+        let actual = (col("count").gt(num(5))).negate();
         let expected = "NOT count > 5";
         test_expr(actual, expected);
 
