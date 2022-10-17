@@ -660,11 +660,11 @@ mod tests {
     use crate::{
         ast::DateTimeField,
         ast_builder::{
-            abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
-            format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad,
-            ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse, right, round,
-            rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time, timestamp, to_date,
-            to_time, to_timestamp, upper,
+            abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr,
+            extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2,
+            lower, lpad, ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse,
+            right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time,
+            timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1205,24 +1205,8 @@ mod tests {
         let expected = "EXTRACT(YEAR FROM date)";
         test_expr(actual, expected);
 
-        let actual = col("date").extract(DateTimeField::Month);
-        let expected = "EXTRACT(MONTH FROM date)";
-        test_expr(actual, expected);
-
-        let actual = col("date").extract(DateTimeField::Day);
-        let expected = "EXTRACT(DAY FROM date)";
-        test_expr(actual, expected);
-
-        let actual = col("date").extract(DateTimeField::Hour);
-        let expected = "EXTRACT(HOUR FROM date)";
-        test_expr(actual, expected);
-
-        let actual = col("date").extract(DateTimeField::Minute);
-        let expected = "EXTRACT(MINUTE FROM date)";
-        test_expr(actual, expected);
-
-        let actual = col("date").extract(DateTimeField::Second);
-        let expected = "EXTRACT(SECOND FROM date)";
+        let actual = extract(DateTimeField::Year, expr("date"));
+        let expected = "EXTRACT(YEAR FROM date)";
         test_expr(actual, expected);
     }
 }
