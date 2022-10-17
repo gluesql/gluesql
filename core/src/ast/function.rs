@@ -818,6 +818,22 @@ mod tests {
         );
 
         assert_eq!(
+            r#"ASCII("H")"#,
+            &Expr::Function(Box::new(Function::Ascii(Expr::Literal(
+                AstLiteral::QuotedString("H".to_owned())
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"CHR(72)"#,
+            &Expr::Function(Box::new(Function::Chr(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_str("72").unwrap()
+            )))))
+            .to_sql()
+        );
+
+        assert_eq!(
             r#"EXTRACT(MINUTE FROM "2022-05-05 01:02:03")"#,
             &Expr::Function(Box::new(Function::Extract {
                 field: DateTimeField::Minute,
