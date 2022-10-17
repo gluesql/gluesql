@@ -199,15 +199,13 @@ pub async fn fetch_relation_rows<'a>(
                         let rows = schemas.into_iter().flat_map(|schema| {
                             let primary_column = schema.column_defs.iter().find_map(
                                 |ColumnDef { name, options, .. }| {
-                                    let is_primary = options.iter().any(|column_option_def| {
-                                        column_option_def.option
-                                            == ColumnOption::Unique { is_primary: true }
-                                    });
-
-                                    match is_primary {
-                                        true => Some(name),
-                                        false => None,
-                                    }
+                                    options
+                                        .iter()
+                                        .any(|column_option_def| {
+                                            column_option_def.option
+                                                == ColumnOption::Unique { is_primary: true }
+                                        })
+                                        .then_some(name)
                                 },
                             );
 
