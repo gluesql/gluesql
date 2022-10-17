@@ -11,6 +11,7 @@ pub mod concat;
 pub mod data_type;
 pub mod default;
 pub mod dictionary;
+pub mod dictionary_index;
 pub mod filter;
 pub mod function;
 pub mod index;
@@ -211,6 +212,7 @@ macro_rules! generate_index_tests {
         glue!(index_order_by, index::order_by);
         glue!(index_order_by_multi, index::order_by_multi);
         glue!(showindexes, index::showindexes);
+        glue!(dictionary_index, dictionary_index::ditionary_index);
     };
 }
 

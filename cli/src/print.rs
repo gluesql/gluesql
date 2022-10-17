@@ -262,7 +262,10 @@ mod tests {
     use {
         super::Print,
         crate::command::{SetOption, ShowOption},
-        gluesql_core::{data::SchemaIndex, data::SchemaIndexOrd},
+        gluesql_core::{
+            ast::{BinaryOperator, Expr},
+            data::{SchemaIndex, SchemaIndexOrd},
+        },
     };
 
     #[test]
@@ -298,7 +301,7 @@ mod tests {
     #[test]
     fn print_payload() {
         use gluesql_core::{
-            ast::{BinaryOperator, DataType, Expr},
+            ast::DataType,
             prelude::{Payload, PayloadVariable, Row, Value},
         };
 
