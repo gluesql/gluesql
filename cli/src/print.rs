@@ -259,14 +259,13 @@ impl<'a, W: Write> Print<W> {
 
 #[cfg(test)]
 mod tests {
-    use gluesql_core::{
-        ast::{BinaryOperator, Expr},
-        data::{SchemaIndex, SchemaIndexOrd},
-    };
-
     use {
         super::Print,
         crate::command::{SetOption, ShowOption},
+        gluesql_core::{
+            ast::{BinaryOperator, Expr},
+            data::{SchemaIndex, SchemaIndexOrd},
+        },
     };
 
     #[test]
