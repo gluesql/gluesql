@@ -2,8 +2,8 @@ use {
     super::{context::FilterContext, evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
-            ColumnDef, Dictionary, Expr, IndexItem, Join, Query, Select, SetExpr, TableAlias,
-            TableFactor, TableWithJoins, ToSql, Values,
+            ColumnDef, ColumnOption, Dictionary, Expr, IndexItem, Join, Query, Select, SetExpr,
+            TableAlias, TableFactor, TableWithJoins, ToSql, Values,
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{
@@ -197,14 +197,45 @@ pub async fn fetch_relation_rows<'a>(
                     Dictionary::GlueIndexes => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().flat_map(|schema| {
-                            schema.indexes.into_iter().map(move |index| {
+                            let primary_column = schema.column_defs.iter().find_map(
+                                |ColumnDef { name, options, .. }| {
+                                    let is_primary = options.iter().any(|column_option_def| {
+                                        column_option_def.option
+                                            == ColumnOption::Unique { is_primary: true }
+                                    });
+
+                                    match is_primary {
+                                        true => Some(name),
+                                        false => None,
+                                    }
+                                },
+                            );
+
+                            let clustered = match primary_column {
+                                Some(column_name) => vec![Ok(Row(vec![
+                                    Value::Str(schema.table_name.clone()),
+                                    Value::Str("PRIMARY".to_owned()),
+                                    Value::Str("BOTH".to_owned()),
+                                    Value::Str(column_name.to_owned()),
+                                    Value::Bool(true),
+                                ]))],
+                                None => Vec::new(),
+                            };
+
+                            let non_clustered = schema.indexes.into_iter().map(|index| {
                                 Ok(Row(vec![
                                     Value::Str(schema.table_name.clone()),
                                     Value::Str(index.name),
                                     Value::Str(index.order.to_string()),
                                     Value::Str(index.expr.to_sql()),
+                                    Value::Bool(false),
                                 ]))
-                            })
+                            });
+
+                            clustered
+                                .into_iter()
+                                .chain(non_clustered)
+                                .collect::<Vec<_>>()
                         });
 
                         Rows::Indexes(rows)
@@ -248,7 +279,7 @@ pub async fn fetch_relation_columns(
                 "INDEX_NAME".to_owned(),
                 "ORDER".to_owned(),
                 "EXPRESSION".to_owned(),
-                // "UNIQUENESS".to_owned(),
+                "UNIQUENESS".to_owned(),
             ]),
         },
         TableFactor::Derived {
