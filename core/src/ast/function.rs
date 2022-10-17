@@ -133,6 +133,8 @@ pub enum Function {
         from_expr: Expr,
         sub_expr: Expr,
     },
+    Ascii(Expr),
+    Chr(Expr),
 }
 
 impl ToSql for Function {
@@ -274,10 +276,10 @@ impl ToSql for Function {
             Function::Extract { field, expr } => {
                 format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
             }
+            Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
+            Function::Chr(e) => format!("CHR({})", e.to_sql()),
         }
     }
-    Ascii(Expr),
-    Chr(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
