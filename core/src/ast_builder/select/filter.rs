@@ -2,8 +2,8 @@ use {
     super::{NodeData, Prebuild, SelectNode},
     crate::{
         ast_builder::{
-            ExprList, ExprNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode, OffsetNode,
-            OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            ExprList, ExprNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
         },
         result::Result,
     },
@@ -14,6 +14,7 @@ pub enum PrevNode {
     Select(SelectNode),
     Join(Box<JoinNode>),
     JoinConstraint(Box<JoinConstraintNode>),
+    HashJoin(Box<HashJoinNode>),
 }
 
 impl Prebuild for PrevNode {
@@ -22,6 +23,7 @@ impl Prebuild for PrevNode {
             Self::Select(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
+            Self::HashJoin(node) => node.prebuild(),
         }
     }
 }
@@ -35,6 +37,12 @@ impl From<JoinNode> for PrevNode {
 impl From<JoinConstraintNode> for PrevNode {
     fn from(node: JoinConstraintNode) -> Self {
         PrevNode::JoinConstraint(Box::new(node))
+    }
+}
+
+impl From<HashJoinNode> for PrevNode {
+    fn from(node: HashJoinNode) -> Self {
+        PrevNode::HashJoin(Box::new(node))
     }
 }
 
@@ -95,8 +103,11 @@ impl Prebuild for FilterNode {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{BinaryOperator, Expr},
-        ast_builder::{table, test, Build},
+        ast::{
+            BinaryOperator, Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select,
+            SetExpr, Statement, TableFactor, TableWithJoins,
+        },
+        ast_builder::{col, expr, table, test, Build, SelectItemList},
     };
 
     #[test]
@@ -173,5 +184,50 @@ mod tests {
             .build();
         let expected = "SELECT * FROM Foo JOIN Bar ON Foo.id = Bar.id WHERE id IS NULL";
         test(actual, expected);
+
+        // hash join node -> filter node -> build
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .filter("PlayerItem.amount > 10")
+            .build();
+        let expected = {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
+                    value_expr: col("Player.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: Some(expr("PlayerItem.amount > 10").try_into().unwrap()),
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            Ok(Statement::Query(Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            }))
+        };
+        assert_eq!(actual, expected);
     }
 }

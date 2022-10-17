@@ -13,7 +13,7 @@ pub trait StringExt {
 impl StringExt for String {
     fn like(&self, pattern: &str, case_sensitive: bool) -> Result<bool> {
         let (match_string, match_pattern) = match case_sensitive {
-            true => (self.to_string(), pattern.to_string()),
+            true => (self.to_owned(), pattern.to_owned()),
             false => {
                 let lowercase_string = self.to_lowercase();
                 let lowercase_pattern = pattern.to_lowercase();

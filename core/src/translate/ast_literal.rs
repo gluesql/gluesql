@@ -1,7 +1,7 @@
 use {
-    super::{translate_expr, TranslateError},
+    super::TranslateError,
     crate::{
-        ast::{AstLiteral, DateTimeField, Expr, ToSql, TrimWhereField},
+        ast::{AstLiteral, DateTimeField, TrimWhereField},
         result::Result,
     },
     sqlparser::ast::{
@@ -15,32 +15,6 @@ pub fn translate_ast_literal(sql_value: &SqlValue) -> Result<AstLiteral> {
         SqlValue::Number(v, _) => AstLiteral::Number(v.clone()),
         SqlValue::SingleQuotedString(v) => AstLiteral::QuotedString(v.clone()),
         SqlValue::HexStringLiteral(v) => AstLiteral::HexString(v.clone()),
-        SqlValue::Interval {
-            value,
-            leading_field,
-            last_field,
-            ..
-        } => {
-            let value = match translate_expr(value)? {
-                Expr::Literal(AstLiteral::QuotedString(v)) => v,
-                Expr::Literal(AstLiteral::Number(n)) => n.to_string(),
-                expr => {
-                    return Err(TranslateError::UnsupportedIntervalValue(expr.to_sql()).into());
-                }
-            };
-
-            AstLiteral::Interval {
-                value,
-                leading_field: leading_field
-                    .as_ref()
-                    .map(translate_datetime_field)
-                    .transpose()?,
-                last_field: last_field
-                    .as_ref()
-                    .map(translate_datetime_field)
-                    .transpose()?,
-            }
-        }
         SqlValue::Null => AstLiteral::Null,
         _ => {
             return Err(TranslateError::UnsupportedAstLiteral(sql_value.to_string()).into());

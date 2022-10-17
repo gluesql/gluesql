@@ -1,3 +1,5 @@
+#![deny(clippy::str_to_string)]
+
 mod cli;
 mod command;
 mod helper;

@@ -1,3 +1,5 @@
+#![deny(clippy::str_to_string)]
+
 // re-export
 pub use chrono;
 pub use sqlparser;
@@ -17,7 +19,7 @@ pub mod translate;
 pub mod prelude {
     pub use crate::{
         ast::DataType,
-        data::{Key, Value},
+        data::{Key, Row, Value},
         executor::{execute, Payload, PayloadVariable},
         glue::Glue,
         parse_sql::parse,

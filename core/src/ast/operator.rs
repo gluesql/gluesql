@@ -14,10 +14,10 @@ pub enum UnaryOperator {
 impl ToSql for UnaryOperator {
     fn to_sql(&self) -> String {
         match self {
-            UnaryOperator::Plus => "+".to_string(),
-            UnaryOperator::Minus => "-".to_string(),
-            UnaryOperator::Not => "NOT ".to_string(),
-            UnaryOperator::Factorial => "!".to_string(),
+            UnaryOperator::Plus => "+".to_owned(),
+            UnaryOperator::Minus => "-".to_owned(),
+            UnaryOperator::Not => "NOT ".to_owned(),
+            UnaryOperator::Factorial => "!".to_owned(),
         }
     }
 }
@@ -44,21 +44,21 @@ pub enum BinaryOperator {
 impl ToSql for BinaryOperator {
     fn to_sql(&self) -> String {
         match self {
-            BinaryOperator::Plus => "+".to_string(),
-            BinaryOperator::Minus => "-".to_string(),
-            BinaryOperator::Multiply => "*".to_string(),
-            BinaryOperator::Divide => "/".to_string(),
-            BinaryOperator::Modulo => "%".to_string(),
-            BinaryOperator::StringConcat => "+".to_string(),
-            BinaryOperator::Gt => ">".to_string(),
-            BinaryOperator::Lt => "<".to_string(),
-            BinaryOperator::GtEq => ">=".to_string(),
-            BinaryOperator::LtEq => "<=".to_string(),
-            BinaryOperator::Eq => "=".to_string(),
-            BinaryOperator::NotEq => "<>".to_string(),
-            BinaryOperator::And => "AND".to_string(),
-            BinaryOperator::Or => "OR".to_string(),
-            BinaryOperator::Xor => "XOR".to_string(),
+            BinaryOperator::Plus => "+".to_owned(),
+            BinaryOperator::Minus => "-".to_owned(),
+            BinaryOperator::Multiply => "*".to_owned(),
+            BinaryOperator::Divide => "/".to_owned(),
+            BinaryOperator::Modulo => "%".to_owned(),
+            BinaryOperator::StringConcat => "+".to_owned(),
+            BinaryOperator::Gt => ">".to_owned(),
+            BinaryOperator::Lt => "<".to_owned(),
+            BinaryOperator::GtEq => ">=".to_owned(),
+            BinaryOperator::LtEq => "<=".to_owned(),
+            BinaryOperator::Eq => "=".to_owned(),
+            BinaryOperator::NotEq => "<>".to_owned(),
+            BinaryOperator::And => "AND".to_owned(),
+            BinaryOperator::Or => "OR".to_owned(),
+            BinaryOperator::Xor => "XOR".to_owned(),
         }
     }
 }
@@ -156,9 +156,9 @@ mod tests {
         assert_eq!(
             "Glue + SQL",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("Glue".to_string())),
+                left: Box::new(Expr::Identifier("Glue".to_owned())),
                 op: BinaryOperator::StringConcat,
-                right: Box::new(Expr::Identifier("SQL".to_string()))
+                right: Box::new(Expr::Identifier("SQL".to_owned()))
             }
             .to_sql()
         );
@@ -219,27 +219,27 @@ mod tests {
         assert_eq!(
             "condition_0 AND condition_1",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("condition_0".to_string())),
+                left: Box::new(Expr::Identifier("condition_0".to_owned())),
                 op: BinaryOperator::And,
-                right: Box::new(Expr::Identifier("condition_1".to_string()))
+                right: Box::new(Expr::Identifier("condition_1".to_owned()))
             }
             .to_sql()
         );
         assert_eq!(
             "condition_0 OR condition_1",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("condition_0".to_string())),
+                left: Box::new(Expr::Identifier("condition_0".to_owned())),
                 op: BinaryOperator::Or,
-                right: Box::new(Expr::Identifier("condition_1".to_string()))
+                right: Box::new(Expr::Identifier("condition_1".to_owned()))
             }
             .to_sql()
         );
         assert_eq!(
             "condition_0 XOR condition_1",
             &Expr::BinaryOp {
-                left: Box::new(Expr::Identifier("condition_0".to_string())),
+                left: Box::new(Expr::Identifier("condition_0".to_owned())),
                 op: BinaryOperator::Xor,
-                right: Box::new(Expr::Identifier("condition_1".to_string()))
+                right: Box::new(Expr::Identifier("condition_1".to_owned()))
             }
             .to_sql()
         );

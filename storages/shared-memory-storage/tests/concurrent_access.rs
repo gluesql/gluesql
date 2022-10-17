@@ -38,7 +38,7 @@ async fn concurrent_access() {
     let actual = glue.execute("SELECT * FROM Thread").unwrap();
     let expected = vec![Payload::Select {
         labels: vec!["id".to_owned()],
-        rows: vec![vec![Value::I64(1)], vec![Value::I64(2)]],
+        rows: vec![vec![Value::I64(1)].into(), vec![Value::I64(2)].into()],
     }];
     assert_eq!(actual, expected);
 }

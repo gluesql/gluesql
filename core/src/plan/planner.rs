@@ -1,7 +1,10 @@
 use {
     super::context::Context,
     crate::{
-        ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Query, TableAlias, TableFactor},
+        ast::{
+            ColumnDef, ColumnOption, ColumnOptionDef, Expr, Function, Query, TableAlias,
+            TableFactor,
+        },
         data::Schema,
     },
     std::rc::Rc,
@@ -118,14 +121,6 @@ pub trait Planner<'a> {
                 op,
                 expr: Box::new(self.subquery_expr(outer_context, *expr)),
             },
-            Expr::Cast { expr, data_type } => Expr::Cast {
-                expr: Box::new(self.subquery_expr(outer_context, *expr)),
-                data_type,
-            },
-            Expr::Extract { field, expr } => Expr::Extract {
-                field,
-                expr: Box::new(self.subquery_expr(outer_context, *expr)),
-            },
             Expr::Nested(expr) => Expr::Nested(Box::new(self.subquery_expr(outer_context, *expr))),
             Expr::Case {
                 operand,
@@ -153,7 +148,35 @@ pub trait Planner<'a> {
                     else_result,
                 }
             }
-            Expr::Function(_) | Expr::Aggregate(_) => expr,
+            Expr::ArrayIndex { obj, indexes } => {
+                let indexes = indexes
+                    .into_iter()
+                    .map(|expr| self.subquery_expr(outer_context.as_ref().map(Rc::clone), expr))
+                    .collect();
+                let obj = Box::new(self.subquery_expr(outer_context, *obj));
+                Expr::ArrayIndex { obj, indexes }
+            }
+            Expr::Interval {
+                expr,
+                leading_field,
+                last_field,
+            } => Expr::Interval {
+                expr: Box::new(self.subquery_expr(outer_context, *expr)),
+                leading_field,
+                last_field,
+            },
+            Expr::Function(func) => match *func {
+                Function::Cast { expr, data_type } => Expr::Function(Box::new(Function::Cast {
+                    expr: self.subquery_expr(outer_context, expr),
+                    data_type,
+                })),
+                Function::Extract { field, expr } => Expr::Function(Box::new(Function::Extract {
+                    field,
+                    expr: self.subquery_expr(outer_context, expr),
+                })),
+                _ => Expr::Function(func),
+            },
+            Expr::Aggregate(_) => expr,
         }
     }
 

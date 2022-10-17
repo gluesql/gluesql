@@ -1,7 +1,7 @@
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{SelectItem, TableFactor},
+        ast::{SelectItem, TableAlias, TableFactor},
         ast_builder::{
             ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode, OffsetNode,
             OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
@@ -13,11 +13,15 @@ use {
 #[derive(Clone)]
 pub struct SelectNode {
     table_name: String,
+    table_alias: Option<String>,
 }
 
 impl SelectNode {
-    pub fn new(table_name: String) -> Self {
-        Self { table_name }
+    pub fn new(table_name: String, table_alias: Option<String>) -> Self {
+        Self {
+            table_name,
+            table_alias,
+        }
     }
 
     pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
@@ -45,27 +49,27 @@ impl SelectNode {
     }
 
     pub fn join(self, table_name: &str) -> JoinNode {
-        JoinNode::new(self, table_name.to_string(), None, JoinOperatorType::Inner)
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
     }
 
     pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
         JoinNode::new(
             self,
-            table_name.to_string(),
-            Some(alias.to_string()),
+            table_name.to_owned(),
+            Some(alias.to_owned()),
             JoinOperatorType::Inner,
         )
     }
 
     pub fn left_join(self, table_name: &str) -> JoinNode {
-        JoinNode::new(self, table_name.to_string(), None, JoinOperatorType::Left)
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
     }
 
     pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
         JoinNode::new(
             self,
-            table_name.to_string(),
-            Some(alias.to_string()),
+            table_name.to_owned(),
+            Some(alias.to_owned()),
             JoinOperatorType::Left,
         )
     }
@@ -75,7 +79,10 @@ impl Prebuild for SelectNode {
     fn prebuild(self) -> Result<NodeData> {
         let relation = TableFactor::Table {
             name: self.table_name,
-            alias: None,
+            alias: self.table_alias.map(|name| TableAlias {
+                name,
+                columns: Vec::new(),
+            }),
             index: None,
         };
 
@@ -102,6 +109,10 @@ mod tests {
         // select node -> build
         let actual = table("App").select().build();
         let expected = "SELECT * FROM App";
+        test(actual, expected);
+
+        let actual = table("Item").alias_as("i").select().build();
+        let expected = "SELECT * FROM Item i";
         test(actual, expected);
     }
 }

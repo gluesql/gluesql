@@ -1,8 +1,8 @@
 use {
     super::ExprNode,
     crate::{
-        ast::Function,
-        ast_builder::ExprList,
+        ast::{DateTimeField, Function},
+        ast_builder::{DataTypeNode, ExprList},
         result::{Error, Result},
     },
 };
@@ -113,6 +113,18 @@ pub enum FunctionNode {
         format: ExprNode,
     },
     Lower(ExprNode),
+    Position {
+        from_expr: ExprNode,
+        sub_expr: ExprNode,
+    },
+    Cast {
+        expr: ExprNode,
+        data_type: DataTypeNode,
+    },
+    Extract {
+        field: DateTimeField,
+        expr: ExprNode,
+    },
 }
 
 impl TryFrom<FunctionNode> for Function {
@@ -243,6 +255,26 @@ impl TryFrom<FunctionNode> for Function {
                 let format = format.try_into()?;
                 Ok(Function::ToTime { expr, format })
             }
+            FunctionNode::Position {
+                from_expr,
+                sub_expr,
+            } => {
+                let from_expr = from_expr.try_into()?;
+                let sub_expr = sub_expr.try_into()?;
+                Ok(Function::Position {
+                    from_expr,
+                    sub_expr,
+                })
+            }
+            FunctionNode::Cast { expr, data_type } => {
+                let expr = expr.try_into()?;
+                let data_type = data_type.try_into()?;
+                Ok(Function::Cast { expr, data_type })
+            }
+            FunctionNode::Extract { field, expr } => {
+                let expr = expr.try_into()?;
+                Ok(Function::Extract { field, expr })
+            }
         }
     }
 }
@@ -257,7 +289,7 @@ impl ExprNode {
     pub fn lower(self) -> ExprNode {
         lower(self)
     }
-    pub fn ifnull(self, another: ExprNode) -> ExprNode {
+    pub fn ifnull<T: Into<ExprNode>>(self, another: T) -> ExprNode {
         ifnull(self, another)
     }
     pub fn ceil(self) -> ExprNode {
@@ -287,10 +319,10 @@ impl ExprNode {
     pub fn tan(self) -> ExprNode {
         tan(self)
     }
-    pub fn left(self, size: Self) -> Self {
+    pub fn left<T: Into<ExprNode>>(self, size: T) -> Self {
         left(self, size)
     }
-    pub fn log(self, base: ExprNode) -> ExprNode {
+    pub fn log<T: Into<ExprNode>>(self, base: T) -> ExprNode {
         log(self, base)
     }
     pub fn log2(self) -> ExprNode {
@@ -302,7 +334,7 @@ impl ExprNode {
     pub fn ln(self) -> ExprNode {
         ln(self)
     }
-    pub fn right(self, size: Self) -> Self {
+    pub fn right<T: Into<ExprNode>>(self, size: T) -> Self {
         right(self, size)
     }
 
@@ -314,20 +346,20 @@ impl ExprNode {
         sign(self)
     }
 
-    pub fn power(self, pwr: ExprNode) -> ExprNode {
+    pub fn power<T: Into<ExprNode>>(self, pwr: T) -> ExprNode {
         power(self, pwr)
     }
 
     pub fn sqrt(self) -> ExprNode {
         sqrt(self)
     }
-    pub fn gcd(self, right: ExprNode) -> ExprNode {
+    pub fn gcd<T: Into<ExprNode>>(self, right: T) -> ExprNode {
         gcd(self, right)
     }
-    pub fn lcm(self, right: ExprNode) -> ExprNode {
+    pub fn lcm<T: Into<ExprNode>>(self, right: T) -> ExprNode {
         lcm(self, right)
     }
-    pub fn repeat(self, num: ExprNode) -> ExprNode {
+    pub fn repeat<T: Into<ExprNode>>(self, num: T) -> ExprNode {
         repeat(self, num)
     }
     pub fn degrees(self) -> ExprNode {
@@ -336,16 +368,16 @@ impl ExprNode {
     pub fn radians(self) -> ExprNode {
         radians(self)
     }
-    pub fn lpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
+    pub fn lpad<T: Into<ExprNode>>(self, size: T, fill: Option<ExprNode>) -> ExprNode {
         lpad(self, size, fill)
     }
-    pub fn rpad(self, size: ExprNode, fill: Option<ExprNode>) -> ExprNode {
+    pub fn rpad<T: Into<ExprNode>>(self, size: T, fill: Option<ExprNode>) -> ExprNode {
         rpad(self, size, fill)
     }
     pub fn exp(self) -> ExprNode {
         exp(self)
     }
-    pub fn substr(self, start: ExprNode, count: Option<ExprNode>) -> ExprNode {
+    pub fn substr<T: Into<ExprNode>>(self, start: T, count: Option<ExprNode>) -> ExprNode {
         substr(self, start, count)
     }
     pub fn rtrim(self, chars: Option<ExprNode>) -> ExprNode {
@@ -354,17 +386,26 @@ impl ExprNode {
     pub fn ltrim(self, chars: Option<ExprNode>) -> ExprNode {
         ltrim(self, chars)
     }
-    pub fn format(self, fmt: ExprNode) -> ExprNode {
+    pub fn format<T: Into<ExprNode>>(self, fmt: T) -> ExprNode {
         format(self, fmt)
     }
-    pub fn to_date(self, format: ExprNode) -> ExprNode {
+    pub fn to_date<T: Into<ExprNode>>(self, format: T) -> ExprNode {
         to_date(self, format)
     }
-    pub fn to_timestamp(self, format: ExprNode) -> ExprNode {
+    pub fn to_timestamp<T: Into<ExprNode>>(self, format: T) -> ExprNode {
         to_timestamp(self, format)
     }
-    pub fn to_time(self, format: ExprNode) -> ExprNode {
+    pub fn to_time<T: Into<ExprNode>>(self, format: T) -> ExprNode {
         to_time(self, format)
+    }
+    pub fn position<T: Into<ExprNode>>(self, format: T) -> ExprNode {
+        position(self, format)
+    }
+    pub fn cast<T: Into<DataTypeNode>>(self, data_type: T) -> ExprNode {
+        cast(self, data_type)
+    }
+    pub fn extract(self, field: DateTimeField) -> ExprNode {
+        extract(field, self)
     }
 }
 
@@ -377,7 +418,7 @@ pub fn upper<T: Into<ExprNode>>(expr: T) -> ExprNode {
 pub fn lower<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Lower(expr.into())))
 }
-pub fn ifnull<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, then: V) -> ExprNode {
+pub fn ifnull<T: Into<ExprNode>, U: Into<ExprNode>>(expr: T, then: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::IfNull {
         expr: expr.into(),
         then: then.into(),
@@ -422,13 +463,13 @@ pub fn generate_uuid() -> ExprNode {
 pub fn now() -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Now))
 }
-pub fn left<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
+pub fn left<T: Into<ExprNode>, U: Into<ExprNode>>(expr: T, size: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Left {
         expr: expr.into(),
         size: size.into(),
     }))
 }
-pub fn log<V: Into<ExprNode>>(antilog: V, base: V) -> ExprNode {
+pub fn log<T: Into<ExprNode>, U: Into<ExprNode>>(antilog: T, base: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Log {
         antilog: antilog.into(),
         base: base.into(),
@@ -443,7 +484,7 @@ pub fn log10<T: Into<ExprNode>>(expr: T) -> ExprNode {
 pub fn ln<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ln(expr.into())))
 }
-pub fn right<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, size: V) -> ExprNode {
+pub fn right<T: Into<ExprNode>, U: Into<ExprNode>>(expr: T, size: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Right {
         expr: expr.into(),
         size: size.into(),
@@ -458,7 +499,7 @@ pub fn sign<T: Into<ExprNode>>(expr: T) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Sign(expr.into())))
 }
 
-pub fn power<V: Into<ExprNode>>(expr: V, power: V) -> ExprNode {
+pub fn power<T: Into<ExprNode>, U: Into<ExprNode>>(expr: T, power: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Power {
         expr: expr.into(),
         power: power.into(),
@@ -469,40 +510,48 @@ pub fn sqrt<V: Into<ExprNode>>(expr: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Sqrt(expr.into())))
 }
 
-pub fn gcd<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
+pub fn gcd<T: Into<ExprNode>, U: Into<ExprNode>>(left: T, right: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Gcd {
         left: left.into(),
         right: right.into(),
     }))
 }
 
-pub fn lcm<V: Into<ExprNode>>(left: V, right: V) -> ExprNode {
+pub fn lcm<T: Into<ExprNode>, U: Into<ExprNode>>(left: T, right: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Lcm {
         left: left.into(),
         right: right.into(),
     }))
 }
 
-pub fn repeat<V: Into<ExprNode>>(expr: V, num: V) -> ExprNode {
+pub fn repeat<T: Into<ExprNode>, V: Into<ExprNode>>(expr: T, num: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Repeat {
         expr: expr.into(),
         num: num.into(),
     }))
 }
 
-pub fn lpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
+pub fn lpad<T: Into<ExprNode>, U: Into<ExprNode>>(
+    expr: T,
+    size: U,
+    fill: Option<ExprNode>,
+) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Lpad {
         expr: expr.into(),
         size: size.into(),
-        fill: fill.map(|v| v.into()),
+        fill,
     }))
 }
 
-pub fn rpad<V: Into<ExprNode>>(expr: V, size: V, fill: Option<V>) -> ExprNode {
+pub fn rpad<T: Into<ExprNode>, U: Into<ExprNode>>(
+    expr: T,
+    size: U,
+    fill: Option<ExprNode>,
+) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Rpad {
         expr: expr.into(),
         size: size.into(),
-        fill: fill.map(|v| v.into()),
+        fill,
     }))
 }
 
@@ -517,36 +566,40 @@ pub fn radians<V: Into<ExprNode>>(expr: V) -> ExprNode {
 pub fn exp<V: Into<ExprNode>>(expr: V) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Exp(expr.into())))
 }
-pub fn substr<V: Into<ExprNode>>(expr: V, start: V, count: Option<V>) -> ExprNode {
+pub fn substr<T: Into<ExprNode>, U: Into<ExprNode>>(
+    expr: T,
+    start: U,
+    count: Option<ExprNode>,
+) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Substr {
         expr: expr.into(),
         start: start.into(),
-        count: count.map(|v| v.into()),
+        count,
     }))
 }
 
-pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
+pub fn ltrim<T: Into<ExprNode>>(expr: T, chars: Option<ExprNode>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Ltrim {
         expr: expr.into(),
-        chars: chars.map(|t| t.into()),
+        chars,
     }))
 }
 
-pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<T>) -> ExprNode {
+pub fn rtrim<T: Into<ExprNode>>(expr: T, chars: Option<ExprNode>) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Rtrim {
         expr: expr.into(),
-        chars: chars.map(|t| t.into()),
+        chars,
     }))
 }
 
-pub fn divide<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
+pub fn divide<T: Into<ExprNode>, U: Into<ExprNode>>(dividend: T, divisor: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Div {
         dividend: dividend.into(),
         divisor: divisor.into(),
     }))
 }
 
-pub fn modulo<V: Into<ExprNode>>(dividend: V, divisor: V) -> ExprNode {
+pub fn modulo<T: Into<ExprNode>, U: Into<ExprNode>>(dividend: T, divisor: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::Mod {
         dividend: dividend.into(),
         divisor: divisor.into(),
@@ -560,35 +613,60 @@ pub fn format<D: Into<ExprNode>, T: Into<ExprNode>>(expr: D, format: T) -> ExprN
     }))
 }
 
-pub fn to_date<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
+pub fn to_date<T: Into<ExprNode>, U: Into<ExprNode>>(expr: T, format: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::ToDate {
         expr: expr.into(),
         format: format.into(),
     }))
 }
 
-pub fn to_timestamp<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
+pub fn to_timestamp<T: Into<ExprNode>, U: Into<ExprNode>>(expr: T, format: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::ToTimestamp {
         expr: expr.into(),
         format: format.into(),
     }))
 }
 
-pub fn to_time<T: Into<ExprNode>>(expr: T, format: T) -> ExprNode {
+pub fn to_time<T: Into<ExprNode>, U: Into<ExprNode>>(expr: T, format: U) -> ExprNode {
     ExprNode::Function(Box::new(FunctionNode::ToTime {
         expr: expr.into(),
         format: format.into(),
     }))
 }
 
+pub fn position<T: Into<ExprNode>, U: Into<ExprNode>>(from_expr: T, sub_expr: U) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Position {
+        from_expr: from_expr.into(),
+        sub_expr: sub_expr.into(),
+    }))
+}
+
+pub fn cast<T: Into<ExprNode>, U: Into<DataTypeNode>>(expr: T, data_type: U) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Cast {
+        expr: expr.into(),
+        data_type: data_type.into(),
+    }))
+}
+
+pub fn extract<T: Into<ExprNode>>(field: DateTimeField, expr: T) -> ExprNode {
+    ExprNode::Function(Box::new(FunctionNode::Extract {
+        field,
+        expr: expr.into(),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{
-        abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr, floor,
-        format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2, lower, lpad, ltrim,
-        modulo, now, num, pi, power, radians, repeat, reverse, right, round, rpad, rtrim, sign,
-        sin, sqrt, substr, tan, test_expr, text, time, timestamp, to_date, to_time, to_timestamp,
-        upper,
+    use crate::{
+        ast::DateTimeField,
+        ast_builder::{
+            abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr,
+            extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2,
+            lower, lpad, ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse,
+            right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time,
+            timestamp, to_date, to_time, to_timestamp, upper,
+        },
+        prelude::DataType,
     };
 
     #[test]
@@ -1096,6 +1174,39 @@ mod tests {
 
         let actual = expr("HoHo").lower();
         let expected = "LOWER(HoHo)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_position() {
+        let actual = position(expr("cake"), text("ke"));
+        let expected = r#"POSITION("ke" IN cake)"#;
+        test_expr(actual, expected);
+
+        let actual = text("rice").position(text("cake"));
+        let expected = r#"POSITION("cake" IN "rice")"#;
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_cast() {
+        let actual = col("date").cast(DataType::Int);
+        let expected = "CAST(date AS INTEGER)";
+        test_expr(actual, expected);
+
+        let actual = col("date").cast("INTEGER");
+        let expected = "CAST(date AS INTEGER)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_extract() {
+        let actual = col("date").extract(DateTimeField::Year);
+        let expected = "EXTRACT(YEAR FROM date)";
+        test_expr(actual, expected);
+
+        let actual = extract(DateTimeField::Year, expr("date"));
+        let expected = "EXTRACT(YEAR FROM date)";
         test_expr(actual, expected);
     }
 }

@@ -6,7 +6,7 @@ use {
         result::Result,
     },
     serde::{Deserialize, Serialize},
-    std::fmt::Debug,
+    std::{fmt::Debug, slice::Iter, vec::IntoIter},
     thiserror::Error,
 };
 
@@ -38,8 +38,15 @@ enum Columns<I1, I2> {
 pub struct Row(pub Vec<Value>);
 
 impl Row {
-    pub fn get_value(&self, index: usize) -> Option<&Value> {
+    pub fn get_value_by_index(&self, index: usize) -> Option<&Value> {
         self.0.get(index)
+    }
+
+    pub fn get_value(&self, columns: &[String], ident: &str) -> Option<&Value> {
+        columns
+            .iter()
+            .position(|column| column == ident)
+            .and_then(|index| self.0.get(index))
     }
 
     pub fn take_first_value(self) -> Result<Value> {
@@ -99,7 +106,7 @@ impl Row {
             .iter()
             .enumerate()
             .filter_map(|(index, column_def)| {
-                let value = self.get_value(index);
+                let value = self.get_value_by_index(index);
 
                 value.map(|v| (v, column_def))
             });
@@ -113,5 +120,51 @@ impl Row {
         }
 
         Ok(())
+    }
+
+    pub fn iter(&self) -> Iter<'_, Value> {
+        self.0.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl IntoIterator for Row {
+    type Item = Value;
+    type IntoIter = IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl From<Row> for Vec<Value> {
+    fn from(row: Row) -> Self {
+        row.0
+    }
+}
+
+impl From<Vec<Value>> for Row {
+    fn from(values: Vec<Value>) -> Self {
+        Row(values)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::Row, crate::data::Value};
+
+    #[test]
+    fn len() {
+        let row: Row = vec![Value::Bool(true), Value::I64(100)].into();
+
+        assert_eq!(row.len(), 2);
+        assert!(!row.is_empty());
     }
 }
