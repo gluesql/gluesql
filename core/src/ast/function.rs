@@ -133,6 +133,8 @@ pub enum Function {
         from_expr: Expr,
         sub_expr: Expr,
     },
+    Ascii(Expr),
+    Chr(Expr),
 }
 
 impl ToSql for Function {
@@ -274,6 +276,8 @@ impl ToSql for Function {
             Function::Extract { field, expr } => {
                 format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
             }
+            Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
+            Function::Chr(e) => format!("CHR({})", e.to_sql()),
         }
     }
 }
@@ -810,6 +814,22 @@ mod tests {
                 from_expr: Expr::Literal(AstLiteral::QuotedString("cupcake".to_owned())),
                 sub_expr: Expr::Literal(AstLiteral::QuotedString("cup".to_owned())),
             }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"ASCII("H")"#,
+            &Expr::Function(Box::new(Function::Ascii(Expr::Literal(
+                AstLiteral::QuotedString("H".to_owned())
+            ))))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"CHR(72)"#,
+            &Expr::Function(Box::new(Function::Chr(Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_str("72").unwrap()
+            )))))
             .to_sql()
         );
 
