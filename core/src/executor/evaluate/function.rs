@@ -1,7 +1,7 @@
 use {
     super::{ChronoFormatError, EvaluateError, Evaluated},
     crate::{
-        ast::{DataType, TrimWhereField},
+        ast::{DataType, DateTimeField, TrimWhereField},
         data::Value,
         result::Result,
     },
@@ -484,4 +484,8 @@ pub fn position(name: String, from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>)
 
 pub fn cast(expr: Evaluated<'_>, data_type: &DataType) -> Result<Value> {
     expr.cast(data_type)?.try_into()
+}
+
+pub fn extract(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Value> {
+    Value::try_from(expr)?.extract(field)
 }

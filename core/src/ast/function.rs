@@ -1,5 +1,5 @@
 use {
-    super::{ast_literal::TrimWhereField, DataType, Expr},
+    super::{ast_literal::TrimWhereField, DataType, DateTimeField, Expr},
     crate::ast::ToSql,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
@@ -50,6 +50,10 @@ pub enum Function {
         trim_where_field: Option<TrimWhereField>,
     },
     Exp(Expr),
+    Extract {
+        field: DateTimeField,
+        expr: Expr,
+    },
     Ln(Expr),
     Log {
         antilog: Expr,
@@ -267,6 +271,9 @@ impl ToSql for Function {
                 from_expr,
                 sub_expr,
             } => format!("POSITION({} IN {})", sub_expr.to_sql(), from_expr.to_sql()),
+            Function::Extract { field, expr } => {
+                format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
+            }
         }
     }
 }
@@ -315,7 +322,8 @@ impl ToSql for CountArgExpr {
 mod tests {
     use {
         crate::ast::{
-            Aggregate, AstLiteral, CountArgExpr, DataType, Expr, Function, ToSql, TrimWhereField,
+            Aggregate, AstLiteral, CountArgExpr, DataType, DateTimeField, Expr, Function, ToSql,
+            TrimWhereField,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -801,6 +809,15 @@ mod tests {
             &Expr::Function(Box::new(Function::Position {
                 from_expr: Expr::Literal(AstLiteral::QuotedString("cupcake".to_owned())),
                 sub_expr: Expr::Literal(AstLiteral::QuotedString("cup".to_owned())),
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"EXTRACT(MINUTE FROM "2022-05-05 01:02:03")"#,
+            &Expr::Function(Box::new(Function::Extract {
+                field: DateTimeField::Minute,
+                expr: Expr::Identifier("2022-05-05 01:02:03".to_owned())
             }))
             .to_sql()
         );
