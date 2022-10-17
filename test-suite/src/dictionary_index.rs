@@ -12,7 +12,7 @@ test_case!(ditionary_index, async move {
             Str              | Str                         | Str               | Str                      | Bool;
             "Foo".to_owned()   "PRIMARY".to_owned()          "BOTH".to_owned()   "id".to_owned()            true;
             "Foo".to_owned()   "Foo_id_1".to_owned()         "BOTH".to_owned()   "id + 1".to_owned()        false;
-            "Foo".to_owned()   "Foo_name_upper".to_owned()   "BOTH".to_owned()   "name + \"_\"".to_owned()   false
+            "Foo".to_owned()   "Foo_name_upper".to_owned()   "BOTH".to_owned()   "name + \"_\"".to_owned()  false
         )),
     )];
     for (sql, expected) in test_cases {
