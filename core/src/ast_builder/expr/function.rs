@@ -660,7 +660,7 @@ mod tests {
     use crate::{
         ast::DateTimeField,
         ast_builder::{
-            abs, acos, asin, atan, ceil, col, concat, cos, date, degrees, divide, exp, expr,
+            abs, acos, asin, atan, cast, ceil, col, concat, cos, date, degrees, divide, exp, expr,
             extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2,
             lower, lpad, ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse,
             right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time,
@@ -1194,7 +1194,7 @@ mod tests {
         let expected = "CAST(date AS INTEGER)";
         test_expr(actual, expected);
 
-        let actual = col("date").cast("INTEGER");
+        let actual = cast(expr("date"), "INTEGER");
         let expected = "CAST(date AS INTEGER)";
         test_expr(actual, expected);
     }
