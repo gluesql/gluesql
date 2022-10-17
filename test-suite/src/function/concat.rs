@@ -1,3 +1,5 @@
+use gluesql_core::data::ValueError;
+
 use {
     crate::*,
     gluesql_core::{prelude::Value::*, translate::TranslateError},
@@ -39,6 +41,22 @@ test_case!(concat, async move {
         r#"select concat("ab", "cd", NULL, "ef") as myconcat from Concat;"#,
         Ok(select_with_null!(myconcat; Null))
     );
+
+    test!(
+        r#"select concat() as myconcat from Concat;"#,
+        Err(TranslateError::FunctionArgsLengthNotMatchingMin {
+            name: "CONCAT".to_owned(),
+            expected_minimum: 1,
+            found: 0
+        }
+        .into())
+    );
+
+    test!(
+        r#"select concat(DATE "2020-06-11", DATE "2020-16-3") as myconcat from Concat;"#,
+        Err(ValueError::FailedToParseDate("2020-16-3".to_owned()).into())
+    );
+
     // test with non string arguments
     test!(
         r#"select concat(123, 456, 3.14) as myconcat from Concat;"#,
