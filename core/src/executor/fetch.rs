@@ -220,7 +220,7 @@ pub async fn fetch_relation_rows<'a>(
                                 None => Vec::new(),
                             };
 
-                            let non_clustered = schema.indexes.into_iter().map(|index| {
+                            let non_clustered = schema.indexes.into_iter().map(move |index| {
                                 Ok(Row(vec![
                                     Value::Str(schema.table_name.clone()),
                                     Value::Str(index.name),
@@ -230,10 +230,7 @@ pub async fn fetch_relation_rows<'a>(
                                 ]))
                             });
 
-                            clustered
-                                .into_iter()
-                                .chain(non_clustered)
-                                .collect::<Vec<_>>()
+                            clustered.into_iter().chain(non_clustered)
                         });
 
                         Rows::Indexes(rows)
