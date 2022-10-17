@@ -86,7 +86,7 @@ impl ToSql for ColumnDef {
                 .join(" ");
             format!("{name} {data_type} {options}")
                 .trim_end()
-                .to_string()
+                .to_owned()
         }
     }
 }
@@ -94,12 +94,12 @@ impl ToSql for ColumnDef {
 impl ToSql for ColumnOption {
     fn to_sql(&self) -> String {
         match self {
-            ColumnOption::Null => "NULL".to_string(),
-            ColumnOption::NotNull => "NOT NULL".to_string(),
+            ColumnOption::Null => "NULL".to_owned(),
+            ColumnOption::NotNull => "NOT NULL".to_owned(),
             ColumnOption::Default(expr) => format!("DEFAULT {}", expr.to_sql()),
             ColumnOption::Unique { is_primary } => match is_primary {
-                true => "PRIMARY KEY".to_string(),
-                false => "UNIQUE".to_string(),
+                true => "PRIMARY KEY".to_owned(),
+                false => "UNIQUE".to_owned(),
             },
         }
     }
@@ -114,7 +114,7 @@ mod tests {
         assert_eq!(
             "name TEXT UNIQUE",
             ColumnDef {
-                name: "name".to_string(),
+                name: "name".to_owned(),
                 data_type: DataType::Text,
                 options: vec![ColumnOptionDef {
                     name: None,
@@ -127,7 +127,7 @@ mod tests {
         assert_eq!(
             "accepted BOOLEAN NULL",
             ColumnDef {
-                name: "accepted".to_string(),
+                name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
                 options: vec![ColumnOptionDef {
                     name: None,
@@ -140,7 +140,7 @@ mod tests {
         assert_eq!(
             "id INT NOT NULL PRIMARY KEY",
             ColumnDef {
-                name: "id".to_string(),
+                name: "id".to_owned(),
                 data_type: DataType::Int,
                 options: vec![
                     ColumnOptionDef {
@@ -159,7 +159,7 @@ mod tests {
         assert_eq!(
             "accepted BOOLEAN DEFAULT FALSE",
             ColumnDef {
-                name: "accepted".to_string(),
+                name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
                 options: vec![ColumnOptionDef {
                     name: None,

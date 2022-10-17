@@ -1,7 +1,9 @@
 use {
     super::{Interval, IntervalError, DAY, HOUR, MINUTE, SECOND},
     crate::{
-        ast::{AstLiteral, Expr},
+        ast::Expr,
+        data::Value,
+        executor::evaluate_stateless,
         parse_sql::parse_interval,
         result::{Error, Result},
         translate::translate_expr,
@@ -15,11 +17,17 @@ impl TryFrom<&str> for Interval {
         let parsed = parse_interval(s)?;
 
         match translate_expr(&parsed)? {
-            Expr::Literal(AstLiteral::Interval {
-                value,
+            Expr::Interval {
+                expr,
                 leading_field,
                 last_field,
-            }) => Interval::try_from_literal(&value, leading_field.as_ref(), last_field.as_ref()),
+            } => {
+                let value = evaluate_stateless(None, &expr)
+                    .and_then(Value::try_from)
+                    .map(String::from)?;
+
+                Interval::try_from_literal(&value, leading_field, last_field)
+            }
             _ => Err(IntervalError::Unreachable.into()),
         }
     }
@@ -150,7 +158,7 @@ mod tests {
     use super::Interval;
 
     #[test]
-    fn into_string() {
+    fn into_owned() {
         macro_rules! test {
             ($( $value: literal $duration: ident ),* => $result: literal $from_to: tt) => {
                 let interval = interval!($( $value $duration ),*);

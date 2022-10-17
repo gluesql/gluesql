@@ -475,15 +475,16 @@ impl Value {
     pub fn unary_factorial(&self) -> Result<Value> {
         use Value::*;
 
-        let factorial_function = |a: i128| -> Result<i128> {
+        fn factorial_function(a: i128) -> Result<i128> {
             if a.is_negative() {
                 return Err(ValueError::FactorialOnNegativeNumeric.into());
             }
+
             (1_i128..(a + 1_i128))
                 .into_iter()
-                .try_fold(1i128, |mul, x| mul.checked_mul(x))
+                .try_fold(1_i128, |mul, x| mul.checked_mul(x))
                 .ok_or_else(|| ValueError::FactorialOverflow.into())
-        };
+        }
 
         match self {
             I8(a) => factorial_function(*a as i128).map(I128),
@@ -530,7 +531,7 @@ impl Value {
             _ => {
                 return Err(ValueError::ExtractFormatNotMatched {
                     value: self.clone(),
-                    field: date_type.clone(),
+                    field: *date_type,
                 }
                 .into())
             }
@@ -572,8 +573,8 @@ impl Value {
     /// ```
     /// use gluesql_core::prelude::Value;
     ///
-    /// let str1 = Value::Str("ramen".to_string());
-    /// let str2 = Value::Str("men".to_string());
+    /// let str1 = Value::Str("ramen".to_owned());
+    /// let str2 = Value::Str("men".to_owned());
     /// assert_eq!(str1.position(&str2), Ok(Value::I64(3)));
     /// assert_eq!(str2.position(&str1), Ok(Value::I64(0)));
     /// assert!(Value::Null.position(&str2).unwrap().is_null());
@@ -1017,15 +1018,15 @@ mod tests {
         test!(multiply decimal(3), decimal(2) => decimal(6));
 
         test!(multiply I8(3),    mon!(3)  => mon!(9));
-        test!(multiply I16(3),    mon!(3)  => mon!(9));
+        test!(multiply I16(3),   mon!(3)  => mon!(9));
         test!(multiply I32(3),   mon!(3)  => mon!(9));
         test!(multiply I64(3),   mon!(3)  => mon!(9));
-        test!(multiply I128(3),   mon!(3)  => mon!(9));
+        test!(multiply I128(3),  mon!(3)  => mon!(9));
         test!(multiply F64(3.0), mon!(3)  => mon!(9));
         test!(multiply mon!(3),  I8(2)    => mon!(6));
-        test!(multiply mon!(3),  I32(2)    => mon!(6));
+        test!(multiply mon!(3),  I32(2)   => mon!(6));
         test!(multiply mon!(3),  I64(2)   => mon!(6));
-        test!(multiply mon!(3),  I128(2)    => mon!(6));
+        test!(multiply mon!(3),  I128(2)  => mon!(6));
         test!(multiply mon!(3),  F64(2.0) => mon!(6));
 
         test!(divide I8(0),     I8(5)   => I8(0));
@@ -1481,7 +1482,7 @@ mod tests {
         );
 
         assert_eq!(
-            Str("abc".to_string()).unary_minus(),
+            Str("abc".to_owned()).unary_minus(),
             Err(ValueError::UnaryMinusOnNonNumeric.into())
         );
     }
@@ -1506,7 +1507,7 @@ mod tests {
         );
         assert!(Null.unary_factorial().unwrap().is_null());
         assert_eq!(
-            Str("5".to_string()).unary_factorial(),
+            Str("5".to_owned()).unary_factorial(),
             Err(ValueError::FactorialOnNonNumeric.into())
         );
     }
@@ -1521,16 +1522,16 @@ mod tests {
         assert_eq!(F64(9.0).sqrt(), Ok(F64(3.0)));
         assert!(Null.sqrt().unwrap().is_null());
         assert_eq!(
-            Str("9".to_string()).sqrt(),
-            Err(ValueError::SqrtOnNonNumeric(Str("9".to_string())).into())
+            Str("9".to_owned()).sqrt(),
+            Err(ValueError::SqrtOnNonNumeric(Str("9".to_owned())).into())
         );
     }
 
     #[test]
     fn position() {
-        let str1 = Str("ramen".to_string());
-        let str2 = Str("men".to_string());
-        let empty_str = Str("".to_string());
+        let str1 = Str("ramen".to_owned());
+        let str2 = Str("men".to_owned());
+        let empty_str = Str("".to_owned());
         assert_eq!(str1.position(&str2), Ok(I64(3)));
         assert_eq!(str2.position(&str1), Ok(I64(0)));
         assert!(Null.position(&str2).unwrap().is_null());

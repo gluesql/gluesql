@@ -55,7 +55,7 @@ impl SetOption {
                 "\"\"" => "",
                 _ => value,
             }
-            .to_string();
+            .to_owned();
 
             let set_option = match (key.to_lowercase().as_str(), &option.tabular) {
                 ("tabular", _) => Self::Tabular(bool_from(value)?),
@@ -139,7 +139,7 @@ impl Command {
                     Some(key) => Ok(Self::Show(ShowOption::parse(key)?)),
                     None => Err(CommandError::LackOfOption),
                 },
-                ".edit" => Ok(Self::Edit(params.get(1).map(|v| v.to_string()))),
+                ".edit" => Ok(Self::Edit(params.get(1).map(|&v| v.to_owned()))),
                 ".run" => Ok(Self::Run),
 
                 _ => Err(CommandError::NotSupported),

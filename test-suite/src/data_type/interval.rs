@@ -3,7 +3,6 @@ use {
     gluesql_core::{
         data::{Interval as I, IntervalError},
         prelude::Value::*,
-        translate::TranslateError,
     },
 };
 
@@ -63,7 +62,7 @@ INSERT INTO IntervalLog VALUES
             id,
             interval1 / 3 AS i1,
             interval2 - INTERVAL 3600 SECOND AS i2,
-            INTERVAL 30 SECOND + INTERVAL 10 SECOND * 3 AS i3
+            INTERVAL 20 + 10 SECOND + INTERVAL 10 SECOND * 3 AS i3
         FROM IntervalLog WHERE id = 2;"#,
         Ok(select!(
             id  | i1         | i2           | i3
@@ -125,10 +124,5 @@ INSERT INTO IntervalLog VALUES
     test!(
         r#"SELECT INTERVAL "111" DAY TO Second FROM IntervalLog;"#,
         Err(IntervalError::FailedToParseDayToSecond("111".to_owned()).into())
-    );
-
-    test!(
-        "SELECT INTERVAL a + b DAY TO MINUTE;",
-        Err(TranslateError::UnsupportedIntervalValue("a + b".to_owned()).into())
     );
 });

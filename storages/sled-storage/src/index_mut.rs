@@ -60,7 +60,7 @@ impl IndexMut for SledStorage {
 
             let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
-                .ok_or_else(|| IndexError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let (schema_snapshot, schema) = schema_snapshot.delete(txid);
@@ -137,7 +137,7 @@ impl IndexMut for SledStorage {
 
             let (schema_key, schema_snapshot) = fetch_schema(tree, table_name)?;
             let schema_snapshot = schema_snapshot
-                .ok_or_else(|| IndexError::TableNotFound(table_name.to_string()).into())
+                .ok_or_else(|| IndexError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let (schema_snapshot, schema) = schema_snapshot.delete(txid);

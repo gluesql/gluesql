@@ -3,7 +3,7 @@ use {
     gluesql_core::{ast::DataType, executor::ExecuteError, executor::Payload},
 };
 
-test_case!(showcolumns, async move {
+test_case!(show_columns, async move {
     run!(
         "
         CREATE TABLE mytable (

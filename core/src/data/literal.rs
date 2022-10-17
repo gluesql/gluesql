@@ -1,8 +1,7 @@
 use {
-    super::{StringExt, Value},
+    super::StringExt,
     crate::{
-        ast::{AstLiteral, DateTimeField},
-        data::BigDecimalExt,
+        ast::AstLiteral,
         result::{Error, Result},
     },
     bigdecimal::BigDecimal,
@@ -34,9 +33,6 @@ pub enum LiteralError {
 
     #[error("operator doesn't exist: {0:?} LIKE {1:?}")]
     LikeOnNonString(String, String),
-
-    #[error("cannot extract from value")]
-    CannotExtract,
 }
 
 #[derive(Clone, Debug)]
@@ -45,7 +41,6 @@ pub enum Literal<'a> {
     Number(Cow<'a, BigDecimal>),
     Text(Cow<'a, String>),
     Bytea(Vec<u8>),
-    Interval(super::Interval),
     Null,
 }
 
@@ -60,16 +55,6 @@ impl<'a> TryFrom<&'a AstLiteral> for Literal<'a> {
             AstLiteral::HexString(v) => {
                 Bytea(hex::decode(v).map_err(|_| LiteralError::FailedToDecodeHexString(v.clone()))?)
             }
-            AstLiteral::Interval {
-                value,
-                leading_field,
-                last_field,
-                ..
-            } => Interval(super::Interval::try_from_literal(
-                value,
-                leading_field.as_ref(),
-                last_field.as_ref(),
-            )?),
             AstLiteral::Null => Null,
         };
 
@@ -84,7 +69,6 @@ impl PartialEq<Literal<'_>> for Literal<'_> {
             (Number(l), Number(r)) => l == r,
             (Text(l), Text(r)) => l == r,
             (Bytea(l), Bytea(r)) => l == r,
-            (Interval(l), Interval(r)) => l == r,
             _ => false,
         }
     }
@@ -97,7 +81,6 @@ impl PartialOrd<Literal<'_>> for Literal<'_> {
             (Number(l), Number(r)) => Some(l.cmp(r)),
             (Text(l), Text(r)) => Some(l.cmp(r)),
             (Bytea(l), Bytea(r)) => Some(l.cmp(r)),
-            (Interval(l), Interval(r)) => l.partial_cmp(r),
             _ => None,
         }
     }
@@ -107,7 +90,6 @@ impl<'a> Literal<'a> {
     pub fn unary_plus(&self) -> Result<Self> {
         match self {
             Number(v) => Ok(Number(v.clone())),
-            Interval(v) => Ok(Interval(*v)),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
@@ -116,7 +98,6 @@ impl<'a> Literal<'a> {
     pub fn unary_minus(&self) -> Result<Self> {
         match self {
             Number(v) => Ok(Number(Cow::Owned(-v.as_ref()))),
-            Interval(v) => Ok(Interval(v.unary_minus())),
             Null => Ok(Null),
             _ => Err(LiteralError::UnaryOperationOnNonNumeric.into()),
         }
@@ -131,7 +112,6 @@ impl<'a> Literal<'a> {
             }),
             Number(v) => Some(v.to_string()),
             Text(v) => Some(v.into_owned()),
-            Interval(v) => Some(v.into()),
             Bytea(_) | Null => None,
         };
 
@@ -144,12 +124,7 @@ impl<'a> Literal<'a> {
     pub fn add(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() + r.as_ref()))),
-            (Interval(l), Interval(r)) => l.add(r).map(Interval),
-            (Null, Number(_))
-            | (Null, Interval(_))
-            | (Number(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),
                 format!("{:?}", other),
@@ -161,12 +136,7 @@ impl<'a> Literal<'a> {
     pub fn subtract(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() - r.as_ref()))),
-            (Interval(l), Interval(r)) => l.subtract(r).map(Interval),
-            (Null, Number(_))
-            | (Null, Interval(_))
-            | (Number(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),
                 format!("{:?}", other),
@@ -178,20 +148,7 @@ impl<'a> Literal<'a> {
     pub fn multiply(&self, other: &Literal<'a>) -> Result<Literal<'static>> {
         match (self, other) {
             (Number(l), Number(r)) => Ok(Number(Cow::Owned(l.as_ref() * r.as_ref()))),
-            (Number(l), Interval(r)) | (Interval(r), Number(l)) => {
-                if let Some(l) = l.to_i64() {
-                    Ok(Interval(l * *r))
-                } else if let Some(l) = l.to_f64() {
-                    Ok(Interval(l * *r))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
-            (Null, Number(_))
-            | (Null, Interval(_))
-            | (Number(_), Null)
-            | (Interval(_), Null)
-            | (Null, Null) => Ok(Literal::Null),
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),
                 format!("{:?}", other),
@@ -209,21 +166,7 @@ impl<'a> Literal<'a> {
                     Ok(Number(Cow::Owned(l.as_ref() / r.as_ref())))
                 }
             }
-            (Interval(l), Number(r)) => {
-                if let Some(r) = r.to_i64() {
-                    match r {
-                        0 => Err(LiteralError::DivisorShouldNotBeZero.into()),
-                        _ => Ok(Interval(*l / r)),
-                    }
-                } else if let Some(r) = r.to_f64() {
-                    Ok(Interval(*l / r))
-                } else {
-                    Err(LiteralError::UnreachableBinaryArithmetic.into())
-                }
-            }
-            (Null, Number(_)) | (Number(_), Null) | (Interval(_), Null) | (Null, Null) => {
-                Ok(Literal::Null)
-            }
+            (Null, Number(_)) | (Number(_), Null) | (Null, Null) => Ok(Literal::Null),
             _ => Err(LiteralError::UnsupportedBinaryArithmetic(
                 format!("{:?}", self),
                 format!("{:?}", other),
@@ -258,13 +201,6 @@ impl<'a> Literal<'a> {
             ),
         }
     }
-
-    pub fn extract(&self, date_type: &DateTimeField) -> Result<Value> {
-        match self {
-            Literal::Interval(v) => v.extract(date_type),
-            _ => Err(LiteralError::CannotExtract.into()),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -279,11 +215,7 @@ mod tests {
     fn try_from_ast_literal() {
         use {
             super::{Literal, LiteralError},
-            crate::{
-                ast::{AstLiteral, DateTimeField},
-                data::Interval as I,
-                result::Result,
-            },
+            crate::{ast::AstLiteral, result::Result},
         };
 
         fn test(ast_literal: AstLiteral, literal: Result<Literal>) {
@@ -307,14 +239,6 @@ mod tests {
             AstLiteral::HexString("!*@Q".to_owned()),
             Err(LiteralError::FailedToDecodeHexString("!*@Q".to_owned()).into()),
         );
-        test(
-            AstLiteral::Interval {
-                value: "1-2".to_owned(),
-                leading_field: Some(DateTimeField::Year),
-                last_field: Some(DateTimeField::Month),
-            },
-            Ok(Interval(I::Month(14))),
-        );
         assert!(matches!(
             Literal::try_from(&AstLiteral::Null).unwrap(),
             Null
@@ -323,24 +247,16 @@ mod tests {
 
     #[test]
     fn arithmetic() {
-        use crate::data::Interval as I;
         use crate::data::LiteralError;
 
-        let mon = |n| Interval(I::months(n));
         let num = |n: i32| Number(Cow::Owned(BigDecimal::from(n)));
 
-        assert_eq!(mon(1).add(&mon(2)), Ok(mon(3)));
         matches!(Null.add(&num(1)), Ok(Null));
-        matches!(Null.add(&mon(1)), Ok(Null));
         matches!(num(1).add(&Null), Ok(Null));
-        matches!(mon(1).add(&Null), Ok(Null));
 
         // subtract test
-        assert_eq!(mon(3).subtract(&mon(1)), Ok(mon(2)));
         matches!(Null.subtract(&num(2)), Ok(Null));
-        matches!(Null.subtract(&mon(3)), Ok(Null));
         matches!(num(2).subtract(&Null), Ok(Null));
-        matches!(mon(3).subtract(&Null), Ok(Null));
         matches!(Null.subtract(&Null), Ok(Null));
         assert_eq!(
             Boolean(true).subtract(&num(3)),
@@ -351,14 +267,9 @@ mod tests {
             .into()),
         );
 
-        assert_eq!(mon(3).multiply(&num(-4)), Ok(mon(-12)));
-        assert_eq!(num(9).multiply(&mon(2)), Ok(mon(18)));
-
         // multiply test
         matches!(Null.multiply(&num(2)), Ok(Null));
-        matches!(Null.multiply(&mon(1)), Ok(Null));
         matches!(num(2).multiply(&Null), Ok(Null));
-        matches!(mon(3).multiply(&Null), Ok(Null));
         matches!(Null.multiply(&Null), Ok(Null));
         assert_eq!(
             Boolean(true).multiply(&num(3)),
@@ -369,15 +280,9 @@ mod tests {
             .into()),
         );
 
-        assert_eq!(
-            Number(Cow::Owned(BigDecimal::try_from(3.3).unwrap())).multiply(&mon(10)),
-            Ok(mon(33))
-        );
         assert_eq!(num(2).unary_plus(), Ok(num(2)));
-        assert_eq!(mon(2).unary_plus(), Ok(mon(2)));
         matches!(Null.unary_plus(), Ok(Null));
         assert_eq!(num(1).unary_minus(), Ok(num(-1)));
-        assert_eq!(mon(1).unary_minus(), Ok(mon(-1)));
         matches!(Null.unary_minus(), Ok(Null));
     }
 
@@ -403,18 +308,11 @@ mod tests {
 
     #[test]
     fn div_mod() {
-        use crate::data::interval::Interval as I;
         use crate::data::LiteralError;
 
         macro_rules! num {
             ($num: expr) => {
                 Number(Cow::Owned(BigDecimal::from_str($num).unwrap()))
-            };
-        }
-
-        macro_rules! itv {
-            ($itv: expr) => {
-                Interval(I::Microsecond($itv))
             };
         }
 
@@ -425,11 +323,8 @@ mod tests {
         assert_eq!(num!("12").divide(&num_divisor("2.0")).unwrap(), num!("6"));
         assert_eq!(num!("12.0").divide(&num_divisor("2")).unwrap(), num!("6"));
         assert_eq!(num!("12.0").divide(&num_divisor("2.0")).unwrap(), num!("6"));
-        assert_eq!(itv!(12).divide(&num_divisor("2")).unwrap(), itv!(6));
-        assert_eq!(itv!(10).divide(&num_divisor("2.5")).unwrap(), itv!(4));
         matches!(num!("12").divide(&Null).unwrap(), Null);
         matches!(num!("12.5").divide(&Null).unwrap(), Null);
-        matches!(itv!(12).divide(&Null).unwrap(), Null);
         matches!(Null.divide(&num_divisor("2")).unwrap(), Null);
         matches!(Null.divide(&num_divisor("2.5")).unwrap(), Null);
         matches!(Null.divide(&Null).unwrap(), Null);
@@ -453,15 +348,9 @@ mod tests {
     }
     #[test]
     fn partial_eq() {
-        use crate::data::interval::Interval as I;
         macro_rules! text {
             ($text: expr) => {
                 Text(Cow::Owned($text.to_owned()))
-            };
-        }
-        macro_rules! itv {
-            ($itv: expr) => {
-                Interval(I::Microsecond($itv))
             };
         }
         macro_rules! num {
@@ -485,35 +374,23 @@ mod tests {
         assert!(num!("12.0") != num!("12.123"));
         assert!(num!("123") != num!("12.3"));
         assert!(num!("123") != text!("Foo"));
-        assert!(num!("123") != itv!(123)); //only same data type allowed
         assert!(num!("123") != Null);
         //Text
         assert_eq!(text!("Foo"), text!("Foo"));
         assert!(text!("Foo") != text!("Bar"));
-        assert!(text!("Foo") != itv!(12));
         assert!(text!("Foo") != Null);
         //Bytea
         assert_eq!(bytea!("12A456"), bytea!("12A456"));
         assert_ne!(bytea!("1324"), bytea!("1352"));
         assert_ne!(bytea!("1230"), num!("1230"));
         assert_ne!(bytea!("12"), Null);
-        //Interval
-        assert_eq!(itv!(123), itv!(123));
-        assert!(itv!(123) != itv!(1234));
-        assert!(itv!(123) != Null);
     }
     #[test]
     fn partial_ord() {
-        use crate::data::interval::Interval as I;
         use std::cmp::Ordering;
         macro_rules! text {
             ($text: expr) => {
                 Text(Cow::Owned($text.to_owned()))
-            };
-        }
-        macro_rules! itv {
-            ($itv: expr) => {
-                Interval(I::Microsecond($itv))
             };
         }
         macro_rules! num {
@@ -542,7 +419,6 @@ mod tests {
         );
         assert_eq!(Boolean(true).partial_cmp(&num!("1")), None);
         assert_eq!(Boolean(true).partial_cmp(&text!("Foo")), None);
-        assert_eq!(Boolean(true).partial_cmp(&itv!(12)), None);
         assert_eq!(Boolean(true).partial_cmp(&Null), None);
         //Number - valid format -> (int, int), (float, int), (int, float), (float, float)
         assert_eq!(num!("123").partial_cmp(&num!("1234")), Some(Ordering::Less));
@@ -561,13 +437,11 @@ mod tests {
             Some(Ordering::Greater)
         );
         assert_eq!(num!("123").partial_cmp(&text!("123")), None);
-        assert_eq!(num!("123").partial_cmp(&itv!(123)), None);
         assert_eq!(num!("123").partial_cmp(&Null), None);
         //text
         assert_eq!(text!("a").partial_cmp(&text!("b")), Some(Ordering::Less));
         assert_eq!(text!("a").partial_cmp(&text!("a")), Some(Ordering::Equal));
         assert_eq!(text!("b").partial_cmp(&text!("a")), Some(Ordering::Greater));
-        assert_eq!(text!("a").partial_cmp(&itv!(1)), None);
         assert_eq!(text!("a").partial_cmp(&Null), None);
         //Bytea
         assert_eq!(
@@ -582,13 +456,7 @@ mod tests {
             bytea!("9A").partial_cmp(&bytea!("2A")),
             Some(Ordering::Greater)
         );
-        assert_eq!(bytea!("1abc").partial_cmp(&itv!(1)), None);
         assert_eq!(bytea!("345D").partial_cmp(&Null), None);
-        //Interval
-        assert_eq!(itv!(1).partial_cmp(&itv!(2)), Some(Ordering::Less));
-        assert_eq!(itv!(1).partial_cmp(&itv!(1)), Some(Ordering::Equal));
-        assert_eq!(itv!(2).partial_cmp(&itv!(1)), Some(Ordering::Greater));
-        assert_eq!(itv!(2).partial_cmp(&Null), None);
         assert_eq!(Null.partial_cmp(&Null), None);
     }
 }

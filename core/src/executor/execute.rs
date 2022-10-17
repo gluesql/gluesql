@@ -12,7 +12,7 @@ use {
             SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
             Variable,
         },
-        data::{Key, Row, Schema, Value},
+        data::{Key, Row, Schema},
         executor::limit::Limit,
         result::{MutResult, Result},
         store::{GStore, GStoreMut},
@@ -42,7 +42,7 @@ pub enum Payload {
     Insert(usize),
     Select {
         labels: Vec<String>,
-        rows: Vec<Vec<Value>>,
+        rows: Vec<Row>,
     },
     Delete(usize),
     Update(usize),
@@ -334,10 +334,7 @@ pub async fn execute<T: GStore + GStoreMut>(
         Statement::Query(query) => {
             let (labels, rows) = try_block!(storage, {
                 let (labels, rows) = select_with_labels(&storage, query, None, true).await?;
-                let rows = rows
-                    .map_ok(|Row(values)| values)
-                    .try_collect::<Vec<_>>()
-                    .await?;
+                let rows = rows.try_collect::<Vec<_>>().await?;
                 Ok((labels, rows))
             });
             Ok((storage, Payload::Select { labels, rows }))
@@ -379,8 +376,8 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let query = Query {
                     body: SetExpr::Select(Box::new(crate::ast::Select {
                         projection: vec![SelectItem::Expr {
-                            expr: Expr::Identifier("TABLE_NAME".to_string()),
-                            label: "TABLE_NAME".to_string(),
+                            expr: Expr::Identifier("TABLE_NAME".to_owned()),
+                            label: "TABLE_NAME".to_owned(),
                         }],
                         from: TableWithJoins {
                             relation: TableFactor::Dictionary {

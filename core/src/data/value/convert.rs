@@ -15,9 +15,9 @@ use {
 impl From<&Value> for String {
     fn from(v: &Value) -> Self {
         match v {
-            Value::Str(value) => value.to_string(),
+            Value::Str(value) => value.to_owned(),
             Value::Bytea(value) => hex::encode(value),
-            Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_string(),
+            Value::Bool(value) => (if *value { "TRUE" } else { "FALSE" }).to_owned(),
             Value::I8(value) => value.to_string(),
             Value::I16(value) => value.to_string(),
             Value::I32(value) => value.to_string(),
@@ -28,7 +28,7 @@ impl From<&Value> for String {
             Value::Date(value) => value.to_string(),
             Value::Timestamp(value) => value.to_string(),
             Value::Time(value) => value.to_string(),
-            Value::Interval(value) => String::from(value),
+            Value::Interval(value) => value.into(),
             Value::Uuid(value) => Uuid::from_u128(*value).to_string(),
             Value::Map(_) => "[MAP]".to_owned(),
             Value::List(_) => "[LIST]".to_owned(),
@@ -334,6 +334,7 @@ impl TryFrom<&Value> for u8 {
         })
     }
 }
+
 impl TryFrom<&Value> for f64 {
     type Error = Error;
 

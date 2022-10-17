@@ -1,0 +1,227 @@
+use {
+    super::{JoinConstraintData, JoinOperatorType},
+    crate::{
+        ast::{Join, JoinConstraint, JoinOperator},
+        ast_builder::{
+            select::{NodeData, Prebuild},
+            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+        },
+        result::Result,
+    },
+};
+
+#[derive(Clone)]
+pub enum PrevNode {
+    Join(JoinNode),
+    HashJoin(HashJoinNode),
+}
+
+impl PrevNode {
+    fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
+        match self {
+            PrevNode::Join(node) => node.prebuild_for_constraint(),
+            PrevNode::HashJoin(node) => node.prebuild_for_constraint(),
+        }
+    }
+}
+
+impl From<JoinNode> for PrevNode {
+    fn from(node: JoinNode) -> Self {
+        PrevNode::Join(node)
+    }
+}
+
+impl From<HashJoinNode> for PrevNode {
+    fn from(node: HashJoinNode) -> Self {
+        PrevNode::HashJoin(node)
+    }
+}
+
+#[derive(Clone)]
+pub struct JoinConstraintNode {
+    prev_node: PrevNode,
+    expr: ExprNode,
+}
+
+impl JoinConstraintNode {
+    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
+        Self {
+            prev_node: prev_node.into(),
+            expr: expr.into(),
+        }
+    }
+
+    pub fn join(self, table_name: &str) -> JoinNode {
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
+    }
+
+    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
+        JoinNode::new(
+            self,
+            table_name.to_owned(),
+            Some(alias.to_owned()),
+            JoinOperatorType::Inner,
+        )
+    }
+
+    pub fn left_join(self, table_name: &str) -> JoinNode {
+        JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
+    }
+
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
+        JoinNode::new(
+            self,
+            table_name.to_owned(),
+            Some(alias.to_owned()),
+            JoinOperatorType::Left,
+        )
+    }
+
+    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+        ProjectNode::new(self, select_items)
+    }
+
+    pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
+        GroupByNode::new(self, expr_list)
+    }
+
+    pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
+        OffsetNode::new(self, expr)
+    }
+
+    pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
+        LimitNode::new(self, expr)
+    }
+
+    pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
+        FilterNode::new(self, expr)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+        OrderByNode::new(self, order_by_exprs)
+    }
+}
+
+impl Prebuild for JoinConstraintNode {
+    fn prebuild(self) -> Result<NodeData> {
+        let JoinConstraintData {
+            mut node_data,
+            relation,
+            operator_type,
+            executor: join_executor,
+        } = self.prev_node.prebuild_for_constraint()?;
+
+        node_data.joins.push(Join {
+            relation,
+            join_operator: match operator_type {
+                JoinOperatorType::Inner => {
+                    JoinOperator::Inner(JoinConstraint::On(self.expr.try_into()?))
+                }
+                JoinOperatorType::Left => {
+                    JoinOperator::LeftOuter(JoinConstraint::On(self.expr.try_into()?))
+                }
+            },
+            join_executor,
+        });
+
+        Ok(node_data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        ast::{
+            Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr, Statement,
+            TableFactor, TableWithJoins,
+        },
+        ast_builder::{col, table, test, Build, SelectItemList},
+    };
+
+    #[test]
+    fn join_constraint() {
+        // join node ->  join constarint node -> build
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .build();
+        let expected = "SELECT * FROM Foo INNER JOIN Bar ON Foo.id = Bar.id";
+        test(actual, expected);
+
+        // join node ->  join constraint node -> build
+        let actual = table("Foo")
+            .select()
+            .join_as("Bar", "B")
+            .on("Foo.id = B.id")
+            .build();
+        let expected = "SELECT * FROM Foo INNER JOIN Bar B ON Foo.id = B.id";
+        test(actual, expected);
+
+        // join node -> join constraint node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join("Bar")
+            .on("Foo.id = Bar.id")
+            .build();
+        let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar ON Foo.id = Bar.id";
+        test(actual, expected);
+
+        // join node -> join constraint node -> build
+        let actual = table("Foo")
+            .select()
+            .left_join_as("Bar", "b")
+            .on("Foo.id = b.id")
+            .build();
+        let expected = "SELECT * FROM Foo LEFT OUTER JOIN Bar b ON Foo.id = b.id";
+        test(actual, expected);
+
+        // hash join node -> join constraint node -> build
+        let actual = table("Player")
+            .select()
+            .join("PlayerItem")
+            .hash_executor("PlayerItem.user_id", "Player.id")
+            .on("PlayerItem.flag IS NOT NULL")
+            .build();
+        let expected = {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::On(
+                    col("PlayerItem.flag").is_not_null().try_into().unwrap(),
+                )),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
+                    value_expr: col("Player.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            Ok(Statement::Query(Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            }))
+        };
+        assert_eq!(actual, expected, "hash join -> join constraint");
+    }
+}

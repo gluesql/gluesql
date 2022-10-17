@@ -124,10 +124,10 @@ impl ToSql for Statement {
             Statement::Insert {
                 table_name,
                 columns,
-                source: _,
+                source,
             } => {
                 let columns = columns.join(", ");
-                format!("INSERT INTO {table_name} ({columns}) (..query..)",)
+                format!("INSERT INTO {table_name} ({columns}) {}", source.to_sql())
             }
             Statement::Update {
                 table_name,
@@ -162,9 +162,9 @@ impl ToSql for Statement {
                 columns,
                 source,
             } => match source {
-                Some(_query) => match if_not_exists {
-                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS (..query..)",),
-                    false => format!("CREATE TABLE {name} AS (..query..)"),
+                Some(query) => match if_not_exists {
+                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS {}", query.to_sql()),
+                    false => format!("CREATE TABLE {name} AS {}", query.to_sql()),
                 },
                 None => {
                     let columns = columns
@@ -202,20 +202,20 @@ impl ToSql for Statement {
                 format!("DROP INDEX {table_name}.{name}")
             }
             #[cfg(feature = "transaction")]
-            Statement::StartTransaction => "START TRANSACTION".to_string(),
+            Statement::StartTransaction => "START TRANSACTION".to_owned(),
             #[cfg(feature = "transaction")]
-            Statement::Commit => "COMMIT".to_string(),
+            Statement::Commit => "COMMIT".to_owned(),
             #[cfg(feature = "transaction")]
-            Statement::Rollback => "ROLLBACK".to_string(),
+            Statement::Rollback => "ROLLBACK".to_owned(),
             Statement::ShowVariable(variable) => match variable {
-                Variable::Tables => "SHOW TABLES".to_string(),
-                Variable::Version => "SHOW VERSIONS".to_string(),
+                Variable::Tables => "SHOW TABLES".to_owned(),
+                Variable::Version => "SHOW VERSIONS".to_owned(),
             },
             #[cfg(feature = "index")]
             Statement::ShowIndexes(object_name) => {
                 format!("SHOW INDEXES FROM {object_name}")
             }
-            _ => "(..statement..)".to_string(),
+            _ => "(..statement..)".to_owned(),
         }
     }
 }
@@ -237,7 +237,8 @@ mod tests {
     use {
         crate::ast::{
             Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
-            DataType, Expr, Query, SetExpr, Statement, ToSql, Values, Variable,
+            DataType, Expr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
+            TableWithJoins, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -257,15 +258,15 @@ mod tests {
     #[test]
     fn to_sql_insert() {
         assert_eq!(
-            "INSERT INTO Test (id, num, name) (..query..)",
+            r#"INSERT INTO Test (id, num, name) VALUES (1, 2, "Hello")"#,
             Statement::Insert {
                 table_name: "Test".into(),
-                columns: vec!["id".to_string(), "num".to_string(), "name".to_string()],
+                columns: vec!["id".to_owned(), "num".to_owned(), "name".to_owned()],
                 source: Query {
                     body: SetExpr::Values(Values(vec![vec![
                         Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
                         Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
-                        Expr::Literal(AstLiteral::QuotedString("Hello".to_string()))
+                        Expr::Literal(AstLiteral::QuotedString("Hello".to_owned()))
                     ]])),
                     order_by: vec![],
                     limit: None,
@@ -284,14 +285,14 @@ mod tests {
                 table_name: "Foo".into(),
                 assignments: vec![
                     Assignment {
-                        id: "id".to_string(),
+                        id: "id".to_owned(),
                         value: Expr::Literal(AstLiteral::Number(
                             BigDecimal::from_str("4").unwrap()
                         ))
                     },
                     Assignment {
-                        id: "color".to_string(),
-                        value: Expr::Literal(AstLiteral::QuotedString("blue".to_string()))
+                        id: "color".to_owned(),
+                        value: Expr::Literal(AstLiteral::QuotedString("blue".to_owned()))
                     }
                 ],
                 selection: None
@@ -304,13 +305,13 @@ mod tests {
             Statement::Update {
                 table_name: "Foo".into(),
                 assignments: vec![Assignment {
-                    id: "name".to_string(),
-                    value: Expr::Literal(AstLiteral::QuotedString("first".to_string()))
+                    id: "name".to_owned(),
+                    value: Expr::Literal(AstLiteral::QuotedString("first".to_owned()))
                 }],
                 selection: Some(Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier("a".to_string())),
+                    left: Box::new(Expr::Identifier("a".to_owned())),
                     op: BinaryOperator::Gt,
-                    right: Box::new(Expr::Identifier("b".to_string()))
+                    right: Box::new(Expr::Identifier("b".to_owned()))
                 })
             }
             .to_sql()
@@ -333,9 +334,9 @@ mod tests {
             Statement::Delete {
                 table_name: "Foo".into(),
                 selection: Some(Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier("item".to_string())),
+                    left: Box::new(Expr::Identifier("item".to_owned())),
                     op: BinaryOperator::Eq,
-                    right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_string())))
+                    right: Box::new(Expr::Literal(AstLiteral::QuotedString("glue".to_owned())))
                 })
             }
             .to_sql()
@@ -362,12 +363,12 @@ mod tests {
                 name: "Foo".into(),
                 columns: vec![
                     ColumnDef {
-                        name: "id".to_string(),
+                        name: "id".to_owned(),
                         data_type: DataType::Int,
                         options: vec![]
                     },
                     ColumnDef {
-                        name: "num".to_string(),
+                        name: "num".to_owned(),
                         data_type: DataType::Int,
                         options: vec![ColumnOptionDef {
                             name: None,
@@ -375,7 +376,7 @@ mod tests {
                         }]
                     },
                     ColumnDef {
-                        name: "name".to_string(),
+                        name: "name".to_owned(),
                         data_type: DataType::Text,
                         options: vec![]
                     }
@@ -389,15 +390,35 @@ mod tests {
     #[test]
     fn to_sql_create_table_as() {
         assert_eq!(
-            "CREATE TABLE Foo AS (..query..)",
+            "CREATE TABLE Foo AS SELECT id, count FROM Bar",
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
                 columns: vec![],
                 source: Some(Box::new(Query {
-                    body: SetExpr::Values(Values(vec![vec![Expr::Literal(AstLiteral::Boolean(
-                        false
-                    ))]])),
+                    body: SetExpr::Select(Box::new(Select {
+                        projection: vec![
+                            SelectItem::Expr {
+                                expr: Expr::Identifier("id".to_owned()),
+                                label: "".to_owned()
+                            },
+                            SelectItem::Expr {
+                                expr: Expr::Identifier("count".to_owned()),
+                                label: "".to_owned()
+                            }
+                        ],
+                        from: TableWithJoins {
+                            relation: TableFactor::Table {
+                                name: "Bar".to_owned(),
+                                alias: None,
+                                index: None
+                            },
+                            joins: vec![]
+                        },
+                        selection: None,
+                        group_by: vec![],
+                        having: None
+                    })),
                     order_by: vec![],
                     limit: None,
                     offset: None
@@ -407,7 +428,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo AS (..query..)",
+            "CREATE TABLE IF NOT EXISTS Foo AS VALUES (TRUE)",
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
@@ -434,7 +455,7 @@ mod tests {
                 name: "Foo".into(),
                 operation: AlterTableOperation::AddColumn {
                     column_def: ColumnDef {
-                        name: "amount".to_string(),
+                        name: "amount".to_owned(),
                         data_type: DataType::Int,
                         options: vec![ColumnOptionDef {
                             name: None,
@@ -453,7 +474,7 @@ mod tests {
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
-                    column_name: "something".to_string(),
+                    column_name: "something".to_owned(),
                     if_exists: false
                 }
             }
@@ -465,7 +486,7 @@ mod tests {
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::DropColumn {
-                    column_name: "something".to_string(),
+                    column_name: "something".to_owned(),
                     if_exists: true
                 }
             }
@@ -477,8 +498,8 @@ mod tests {
             Statement::AlterTable {
                 name: "Bar".into(),
                 operation: AlterTableOperation::RenameColumn {
-                    old_column_name: "id".to_string(),
-                    new_column_name: "new_id".to_string()
+                    old_column_name: "id".to_owned(),
+                    new_column_name: "new_id".to_owned()
                 }
             }
             .to_sql()
@@ -535,7 +556,7 @@ mod tests {
                 name: "idx_name".into(),
                 table_name: "Test".into(),
                 column: OrderByExpr {
-                    expr: Expr::Identifier("LastName".to_string()),
+                    expr: Expr::Identifier("LastName".to_owned()),
                     asc: None
                 }
             }
@@ -590,7 +611,7 @@ mod tests {
         assert_eq!(
             "count = 5",
             Assignment {
-                id: "count".to_string(),
+                id: "count".to_owned(),
                 value: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("5").unwrap()))
             }
             .to_sql()

@@ -54,6 +54,64 @@ INSERT INTO ListType VALUES
     );
 
     test!(
+        "SELECT id, items[1] AS second FROM ListType",
+        Ok(select_with_null!(
+            id     | second;
+            I64(1)   I64(2);
+            I64(2)   s("world");
+            I64(3)   I64(10)
+        ))
+    );
+
+    test! {
+        name: "select index expr without alias",
+        sql: "SELECT id, items[1] FROM ListType",
+        expected: Ok(select_with_null!(
+            id     | "items[1]";
+            I64(1)   I64(2);
+            I64(2)   s("world");
+            I64(3)   I64(10)
+        ))
+    }
+
+    run!(
+        r#"
+CREATE TABLE ListType2 (
+    id INTEGER,
+    items LIST
+)"#
+    );
+
+    run!(
+        r#"
+INSERT INTO ListType2 VALUES
+    (1, '[1, 2, 3, { "hi": "bye" }]'),
+    (2, '["one", "two", "three", [100, 200]]'),
+    (3, '["first", "second", "third", { "foo": true, "bar": false }]');
+"#
+    );
+
+    test!(
+        r#"SELECT
+            id,
+            items["0"] AS foo,
+            items["1"] AS bar,
+            items["3"]["0"] AS hundred
+        FROM ListType2"#,
+        Ok(select_with_null!(
+            id     | foo        | bar        | hundred;
+            I64(1)   I64(1)       I64(2)       Null;
+            I64(2)   s("one")     s("two")     I64(100);
+            I64(3)   s("first")   s("second")  Null
+        ))
+    );
+
+    test!(
+        r#"SELECT id, items["not"]["list"] AS foo FROM ListType2"#,
+        Err(ValueError::SelectorRequiresMapOrListTypes.into())
+    );
+
+    test!(
         r#"SELECT id FROM ListType GROUP BY items"#,
         Err(KeyError::ListTypeKeyNotSupported.into())
     );

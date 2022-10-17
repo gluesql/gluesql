@@ -53,7 +53,7 @@ pub async fn fetch<'a>(
                     Some(expr) => expr,
                 };
 
-                let context = FilterContext::new(table_name, Rc::clone(&columns), Some(&row), None);
+                let context = FilterContext::new(table_name, Rc::clone(&columns), &row, None);
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
@@ -205,7 +205,7 @@ pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec
     Ok(storage
         .fetch_schema(table_name)
         .await?
-        .ok_or_else(|| FetchError::TableNotFound(table_name.to_string()))?
+        .ok_or_else(|| FetchError::TableNotFound(table_name.to_owned()))?
         .column_defs
         .into_iter()
         .map(|ColumnDef { name, .. }| name)

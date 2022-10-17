@@ -4,7 +4,7 @@ use {
     gluesql_core::{
         data::{Literal, LiteralError, NumericBinaryOperator, ValueError},
         executor::{EvaluateError, UpdateError},
-        prelude::Value::{self},
+        prelude::Value,
     },
     std::borrow::Cow,
 };
@@ -98,11 +98,11 @@ test_case!(error, async move {
         ),
         (
             "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            ValueError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = INTERVAL '2' HOUR / 0.0",
-            LiteralError::DivisorShouldNotBeZero.into(),
+            ValueError::DivisorShouldNotBeZero.into(),
         ),
         (
             "SELECT * FROM Arith WHERE id = 2 % 0",

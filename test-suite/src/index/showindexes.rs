@@ -44,22 +44,22 @@ CREATE TABLE Test (
         "show indexes from Test",
         Ok(Payload::ShowIndexes(vec![
             SchemaIndex {
-                name: "idx_id".to_string(),
+                name: "idx_id".to_owned(),
                 order: SchemaIndexOrd::Both,
-                expr: Expr::Identifier("id".to_string())
+                expr: Expr::Identifier("id".to_owned())
             },
             SchemaIndex {
-                name: "idx_name".to_string(),
+                name: "idx_name".to_owned(),
                 order: SchemaIndexOrd::Both,
-                expr: Expr::Identifier("name".to_string())
+                expr: Expr::Identifier("name".to_owned())
             },
             SchemaIndex {
-                name: "idx_id2".to_string(),
+                name: "idx_id2".to_owned(),
                 order: SchemaIndexOrd::Both,
                 expr: Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier("id".to_string())),
+                    left: Box::new(Expr::Identifier("id".to_owned())),
                     op: BinaryOperator::Plus,
-                    right: Box::new(Expr::Identifier("num".to_string()))
+                    right: Box::new(Expr::Identifier("num".to_owned()))
                 }
             }
         ]))
@@ -67,6 +67,6 @@ CREATE TABLE Test (
 
     test!(
         "show indexes from NoTable",
-        Err(ExecuteError::TableNotFound("NoTable".to_string()).into())
+        Err(ExecuteError::TableNotFound("NoTable".to_owned()).into())
     );
 });

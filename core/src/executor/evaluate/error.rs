@@ -10,9 +10,6 @@ pub enum EvaluateError {
     #[error(transparent)]
     ChronoFormat(#[from] ChronoFormatError),
 
-    #[error("nested select row not found")]
-    NestedSelectRowNotFound,
-
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
 
@@ -42,6 +39,9 @@ pub enum EvaluateError {
 
     #[error("only boolean value is accepted: {0}")]
     BooleanTypeRequired(String),
+
+    #[error("expr requires map or list value")]
+    MapOrListTypeRequired,
 
     #[error("unsupported stateless expression: {0:#?}")]
     UnsupportedStatelessExpr(Expr),

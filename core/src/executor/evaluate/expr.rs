@@ -1,5 +1,5 @@
 use {
-    super::Evaluated,
+    super::{EvaluateError, Evaluated},
     crate::{
         ast::{AstLiteral, BinaryOperator, DataType, UnaryOperator},
         data::{Literal, Value},
@@ -77,4 +77,16 @@ pub fn between<'a>(
     let v = negated ^ v;
 
     Ok(Evaluated::from(Value::Bool(v)))
+}
+
+pub fn array_index<'a>(obj: Evaluated<'a>, indexes: Vec<Evaluated<'a>>) -> Result<Evaluated<'a>> {
+    let value = match obj {
+        Evaluated::Value(value) => value,
+        _ => return Err(EvaluateError::MapOrListTypeRequired.into()),
+    };
+    let indexes = indexes
+        .into_iter()
+        .map(Value::try_from)
+        .collect::<Result<Vec<_>>>()?;
+    value.selector_by_index(&indexes).map(Evaluated::from)
 }

@@ -8,14 +8,14 @@ use {
     super::{context::FilterContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
-        data::{Literal, Value},
+        data::{Interval, Literal, Value},
         result::Result,
         store::GStore,
     },
     async_recursion::async_recursion,
     chrono::prelude::Utc,
     futures::{
-        future::ready,
+        future::{ready, try_join_all},
         stream::{self, StreamExt, TryStreamExt},
     },
     im_rc::HashMap,
@@ -51,7 +51,7 @@ pub async fn evaluate<'a>(
 
             match context.get_value(ident) {
                 Some(value) => Ok(value.clone()),
-                None => Err(EvaluateError::ValueNotFound(ident.to_string()).into()),
+                None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
             }
             .map(Evaluated::from)
         }
@@ -82,7 +82,7 @@ pub async fn evaluate<'a>(
             evaluations
                 .into_iter()
                 .next()
-                .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))
+                .unwrap_or_else(|| Ok(Evaluated::from(Value::Null)))
         }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
@@ -108,8 +108,6 @@ pub async fn evaluate<'a>(
 
             evaluate_function(storage, context, aggregated, func).await
         }
-        Expr::Cast { expr, data_type } => eval(expr).await?.cast(data_type),
-        Expr::Extract { field, expr } => eval(expr).await?.extract(field),
         Expr::InList {
             expr,
             list,
@@ -227,6 +225,25 @@ pub async fn evaluate<'a>(
                 Some(er) => eval(er).await,
                 None => Ok(Evaluated::from(Value::Null)),
             }
+        }
+        Expr::ArrayIndex { obj, indexes } => {
+            let obj = eval(obj).await?;
+            let indexes = try_join_all(indexes.iter().map(eval)).await?;
+            expr::array_index(obj, indexes)
+        }
+        Expr::Interval {
+            expr,
+            leading_field,
+            last_field,
+        } => {
+            let value = eval(expr)
+                .await
+                .and_then(Value::try_from)
+                .map(String::from)?;
+
+            Interval::try_from_literal(&value, *leading_field, *last_field)
+                .map(Value::Interval)
+                .map(Evaluated::from)
         }
     }
 }
@@ -407,7 +424,6 @@ async fn evaluate_function<'a>(
             let format = eval(format).await?;
             f::to_date(name, expr, format)
         }
-
         Function::ToTimestamp { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
@@ -417,6 +433,22 @@ async fn evaluate_function<'a>(
             let expr = eval(expr).await?;
             let format = eval(format).await?;
             f::to_time(name, expr, format)
+        }
+        Function::Position {
+            from_expr,
+            sub_expr,
+        } => {
+            let from_expr = eval(from_expr).await?;
+            let sub_expr = eval(sub_expr).await?;
+            f::position(name, from_expr, sub_expr)
+        }
+        Function::Cast { expr, data_type } => {
+            let expr = eval(expr).await?;
+            f::cast(expr, data_type)
+        }
+        Function::Extract { field, expr } => {
+            let expr = eval(expr).await?;
+            f::extract(field, expr)
         }
     }
     .map(Evaluated::from)

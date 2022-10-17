@@ -5,6 +5,9 @@ pub enum TranslateError {
     #[error("unimplemented - select on two or more than tables are not supported")]
     TooManyTables,
 
+    #[error("unimplemented - select distinct is not supported")]
+    SelectDistinctNotSupported,
+
     #[error("unimplemented - composite index is not supported")]
     CompositeIndexNotSupported,
 
@@ -77,9 +80,6 @@ pub enum TranslateError {
 
     #[error("unsupported ast literal: {0}")]
     UnsupportedAstLiteral(String),
-
-    #[error("unsupported interval value: {0}")]
-    UnsupportedIntervalValue(String),
 
     #[error("unreachable unary operator: {0}")]
     UnreachableUnaryOperator(String),

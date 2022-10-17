@@ -29,10 +29,9 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
             }
             Expr::Nested(expr)
             | Expr::UnaryOp { expr, .. }
-            | Expr::Cast { expr, .. }
-            | Expr::Extract { expr, .. }
             | Expr::IsNull(expr)
-            | Expr::IsNotNull(expr) => PlanExpr::Expr(expr),
+            | Expr::IsNotNull(expr)
+            | Expr::Interval { expr, .. } => PlanExpr::Expr(expr),
             Expr::Aggregate(aggregate) => match aggregate.as_expr() {
                 Some(expr) => PlanExpr::Expr(expr),
                 None => PlanExpr::None,
@@ -64,6 +63,10 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
                     .chain(else_result.iter().map(AsRef::as_ref))
                     .collect();
 
+                PlanExpr::MultiExprs(exprs)
+            }
+            Expr::ArrayIndex { obj, indexes } => {
+                let exprs = indexes.iter().chain(once(obj.as_ref())).collect();
                 PlanExpr::MultiExprs(exprs)
             }
             Expr::Function(function) => PlanExpr::MultiExprs(function.as_exprs().collect()),
@@ -143,16 +146,6 @@ mod tests {
         let expected = PlanExpr::Expr(&expected);
         test!(actual, expected);
 
-        let actual = expr("CAST(0 AS BOOLEAN)");
-        let expected = expr("0");
-        let expected = PlanExpr::Expr(&expected);
-        test!(actual, expected);
-
-        let actual = expr(r#"EXTRACT(YEAR FROM "2000-01-01")"#);
-        let expected = expr(r#""2000-01-01""#);
-        let expected = PlanExpr::Expr(&expected);
-        test!(actual, expected);
-
         let actual = expr("2048 IS NULL");
         let expected = expr("2048");
         let expected = PlanExpr::Expr(&expected);
@@ -216,6 +209,19 @@ mod tests {
 
         let actual = expr(r#"TRIM(LEADING "x" FROM "xxx" || field)"#);
         let expected = [r#""xxx" || field"#, r#""x""#]
+            .into_iter()
+            .map(expr)
+            .collect::<Vec<_>>();
+        let expected = PlanExpr::MultiExprs(expected.iter().collect());
+        test!(actual, expected);
+
+        let actual = expr("CAST(0 AS BOOLEAN)");
+        let expected = ["0"].into_iter().map(expr).collect::<Vec<_>>();
+        let expected = PlanExpr::MultiExprs(expected.iter().collect());
+        test!(actual, expected);
+
+        let actual = expr(r#"EXTRACT(YEAR FROM "2000-01-01")"#);
+        let expected = [r#""2000-01-01""#]
             .into_iter()
             .map(expr)
             .collect::<Vec<_>>();
