@@ -136,11 +136,11 @@ macro_rules! generate_store_tests {
         glue!(sql_types, data_type::sql_types::sql_types);
         glue!(show_columns, show_columns::show_columns);
         glue!(int8, data_type::int8::int8);
-        glue!(uint8, data_type::int8::int8);
         glue!(int16, data_type::int16::int16);
         glue!(int32, data_type::int32::int32);
         glue!(int64, data_type::int64::int64);
         glue!(int128, data_type::int128::int128);
+        glue!(uint8, data_type::uint8::uint8);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);
         glue!(time, data_type::time::time);
