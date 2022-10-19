@@ -36,6 +36,9 @@ pub enum IndexError {
 
     #[error("conflict - index sync - delete index data")]
     ConflictOnIndexDataDeleteSync,
+
+    #[error("cannot drop primary index")]
+    CannotDropPrimary,
 }
 
 #[async_trait(?Send)]

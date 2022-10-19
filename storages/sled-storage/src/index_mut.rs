@@ -122,6 +122,10 @@ impl IndexMut for SledStorage {
     }
 
     async fn drop_index(self, table_name: &str, index_name: &str) -> MutResult<Self, ()> {
+        if index_name.to_uppercase() == "PRIMARY" {
+            return Err((self, IndexError::CannotDropPrimary.into()));
+        };
+
         let (self, rows) = self.scan_data(table_name).await.try_self(self)?;
         let (self, rows) = rows.collect::<Result<Vec<_>>>().try_self(self)?;
 
