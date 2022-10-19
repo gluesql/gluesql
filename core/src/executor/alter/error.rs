@@ -28,4 +28,7 @@ pub enum AlterError {
 
     #[error("identifier not found: {0:#?}")]
     IdentifierNotFound(Expr),
+
+    #[error("cannot create index with reserved name: {0}")]
+    ReservedIndexName(String),
 }

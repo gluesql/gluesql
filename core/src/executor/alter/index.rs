@@ -16,6 +16,12 @@ pub async fn create_index<T: GStore + GStoreMut>(
     index_name: &str,
     column: &OrderByExpr,
 ) -> MutResult<T, ()> {
+    if index_name.to_uppercase() == "PRIMARY" {
+        return Err((
+            storage,
+            AlterError::ReservedIndexName(index_name.to_owned()).into(),
+        ));
+    };
     let names = (|| async {
         let expr = &column.expr;
         let Schema { column_defs, .. } = storage
