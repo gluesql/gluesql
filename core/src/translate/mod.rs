@@ -117,7 +117,7 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
             let name = translate_object_name(name)?;
 
             if name.to_uppercase() == "PRIMARY" {
-                return Err(TranslateError::ReservedIndexName(name.to_owned()).into());
+                return Err(TranslateError::ReservedIndexName(name).into());
             };
 
             Ok(Statement::CreateIndex {
