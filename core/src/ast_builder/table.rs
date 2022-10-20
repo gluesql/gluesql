@@ -35,7 +35,11 @@ impl TableNode {
     }
 
     #[cfg(feature = "index")]
-    pub fn create_index<'a, T: Into<OrderByExprNode<'a>>>(self, name: &str, column: T) -> CreateIndexNode<'a> {
+    pub fn create_index<'a, T: Into<OrderByExprNode<'a>>>(
+        self,
+        name: &str,
+        column: T,
+    ) -> CreateIndexNode<'a> {
         CreateIndexNode::new(self.table_name, name.to_owned(), column.into())
     }
 
