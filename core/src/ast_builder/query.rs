@@ -13,41 +13,46 @@ use {
 };
 
 #[derive(Clone)]
-pub enum QueryNode {
+pub enum QueryNode<'a> {
     Text(String),
-    Values(Vec<ExprList>),
+    Values(Vec<ExprList<'a>>),
     SelectNode(SelectNode),
-    JoinNode(JoinNode),
-    JoinConstraintNode(JoinConstraintNode),
-    HashJoinNode(HashJoinNode),
-    GroupByNode(GroupByNode),
-    HavingNode(HavingNode),
-    LimitNode(LimitNode),
-    LimitOffsetNode(LimitOffsetNode),
-    OffsetNode(OffsetNode),
-    OffsetLimitNode(OffsetLimitNode),
-    FilterNode(FilterNode),
-    ProjectNode(ProjectNode),
-    OrderByNode(OrderByNode),
+    JoinNode(JoinNode<'a>),
+    JoinConstraintNode(JoinConstraintNode<'a>),
+    HashJoinNode(HashJoinNode<'a>),
+    GroupByNode(GroupByNode<'a>),
+    HavingNode(HavingNode<'a>),
+    LimitNode(LimitNode<'a>),
+    LimitOffsetNode(LimitOffsetNode<'a>),
+    OffsetNode(OffsetNode<'a>),
+    OffsetLimitNode(OffsetLimitNode<'a>),
+    FilterNode(FilterNode<'a>),
+    ProjectNode(ProjectNode<'a>),
+    OrderByNode(OrderByNode<'a>),
 }
 
-impl From<&str> for QueryNode {
+impl<'a> From<&str> for QueryNode<'a> {
     fn from(query: &str) -> Self {
         Self::Text(query.to_owned())
     }
 }
 
+impl<'a> From<SelectNode> for QueryNode<'a> {
+    fn from(node: SelectNode) -> Self {
+        QueryNode::SelectNode(node)
+    }
+}
+
 macro_rules! impl_from_select_nodes {
     ($type: ident) => {
-        impl From<$type> for QueryNode {
-            fn from(node: $type) -> Self {
+        impl<'a> From<$type<'a>> for QueryNode<'a> {
+            fn from(node: $type<'a>) -> Self {
                 QueryNode::$type(node)
             }
         }
     };
 }
 
-impl_from_select_nodes!(SelectNode);
 impl_from_select_nodes!(JoinNode);
 impl_from_select_nodes!(JoinConstraintNode);
 impl_from_select_nodes!(HashJoinNode);
@@ -61,10 +66,10 @@ impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
 impl_from_select_nodes!(OrderByNode);
 
-impl TryFrom<QueryNode> for Query {
+impl<'a> TryFrom<QueryNode<'a>> for Query {
     type Error = Error;
 
-    fn try_from(query_node: QueryNode) -> Result<Self> {
+    fn try_from(query_node: QueryNode<'a>) -> Result<Self> {
         match query_node {
             QueryNode::Text(query_node) => {
                 return parse_query(query_node).and_then(|item| translate_query(&item));

@@ -1,6 +1,6 @@
 use {super::ExprNode, crate::ast::UnaryOperator};
 
-impl ExprNode {
+impl<'a> ExprNode<'a> {
     pub fn plus(self) -> Self {
         plus(self)
     }
@@ -16,28 +16,28 @@ impl ExprNode {
     }
 }
 
-pub fn plus<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn plus<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::UnaryOp {
         op: UnaryOperator::Plus,
         expr: Box::new(expr.into()),
     }
 }
 
-pub fn minus<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn minus<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::UnaryOp {
         op: UnaryOperator::Minus,
         expr: Box::new(expr.into()),
     }
 }
 
-pub fn not<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn not<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::UnaryOp {
         op: UnaryOperator::Not,
         expr: Box::new(expr.into()),
     }
 }
 
-pub fn factorial<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn factorial<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::UnaryOp {
         op: UnaryOperator::Factorial,
         expr: Box::new(expr.into()),

@@ -29,11 +29,12 @@ use {
     bigdecimal::BigDecimal,
     function::FunctionNode,
     in_list::InListNode,
+    std::borrow::Cow,
 };
 
 #[derive(Clone)]
-pub enum ExprNode {
-    Expr(Expr),
+pub enum ExprNode<'a> {
+    Expr(Cow<'a, Expr>),
     SqlExpr(String),
     Identifier(String),
     CompoundIdentifier {
@@ -41,58 +42,58 @@ pub enum ExprNode {
         ident: String,
     },
     Between {
-        expr: Box<ExprNode>,
+        expr: Box<ExprNode<'a>>,
         negated: bool,
-        low: Box<ExprNode>,
-        high: Box<ExprNode>,
+        low: Box<ExprNode<'a>>,
+        high: Box<ExprNode<'a>>,
     },
     Like {
-        expr: Box<ExprNode>,
+        expr: Box<ExprNode<'a>>,
         negated: bool,
-        pattern: Box<ExprNode>,
+        pattern: Box<ExprNode<'a>>,
     },
     ILike {
-        expr: Box<ExprNode>,
+        expr: Box<ExprNode<'a>>,
         negated: bool,
-        pattern: Box<ExprNode>,
+        pattern: Box<ExprNode<'a>>,
     },
     BinaryOp {
-        left: Box<ExprNode>,
+        left: Box<ExprNode<'a>>,
         op: BinaryOperator,
-        right: Box<ExprNode>,
+        right: Box<ExprNode<'a>>,
     },
     UnaryOp {
         op: UnaryOperator,
-        expr: Box<ExprNode>,
+        expr: Box<ExprNode<'a>>,
     },
-    IsNull(Box<ExprNode>),
-    IsNotNull(Box<ExprNode>),
+    IsNull(Box<ExprNode<'a>>),
+    IsNotNull(Box<ExprNode<'a>>),
     InList {
-        expr: Box<ExprNode>,
-        list: Box<InListNode>,
+        expr: Box<ExprNode<'a>>,
+        list: Box<InListNode<'a>>,
         negated: bool,
     },
-    Nested(Box<ExprNode>),
-    Function(Box<FunctionNode>),
-    Aggregate(Box<AggregateNode>),
+    Nested(Box<ExprNode<'a>>),
+    Function(Box<FunctionNode<'a>>),
+    Aggregate(Box<AggregateNode<'a>>),
     Exists {
-        subquery: Box<QueryNode>,
+        subquery: Box<QueryNode<'a>>,
         negated: bool,
     },
-    Subquery(Box<QueryNode>),
+    Subquery(Box<QueryNode<'a>>),
     Case {
-        operand: Option<Box<ExprNode>>,
-        when_then: Vec<(ExprNode, ExprNode)>,
-        else_result: Option<Box<ExprNode>>,
+        operand: Option<Box<ExprNode<'a>>>,
+        when_then: Vec<(ExprNode<'a>, ExprNode<'a>)>,
+        else_result: Option<Box<ExprNode<'a>>>,
     },
 }
 
-impl TryFrom<ExprNode> for Expr {
+impl<'a> TryFrom<ExprNode<'a>> for Expr {
     type Error = Error;
 
-    fn try_from(expr_node: ExprNode) -> Result<Self> {
+    fn try_from(expr_node: ExprNode<'a>) -> Result<Self> {
         match expr_node {
-            ExprNode::Expr(expr) => Ok(expr),
+            ExprNode::Expr(expr) => Ok(expr.into_owned()),
             ExprNode::SqlExpr(expr) => {
                 let expr = parse_expr(expr)?;
 
@@ -256,41 +257,43 @@ impl TryFrom<ExprNode> for Expr {
     }
 }
 
-impl From<&str> for ExprNode {
+impl<'a> From<&str> for ExprNode<'a> {
     fn from(expr: &str) -> Self {
         ExprNode::SqlExpr(expr.to_owned())
     }
 }
 
-impl From<i64> for ExprNode {
+impl<'a> From<i64> for ExprNode<'a> {
     fn from(n: i64) -> Self {
-        ExprNode::Expr(Expr::Literal(AstLiteral::Number(BigDecimal::from(n))))
+        ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Number(
+            BigDecimal::from(n),
+        ))))
     }
 }
 
-impl From<bool> for ExprNode {
+impl<'a> From<bool> for ExprNode<'a> {
     fn from(b: bool) -> Self {
-        ExprNode::Expr(Expr::Literal(AstLiteral::Boolean(b)))
+        ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Boolean(b))))
     }
 }
 
-impl From<QueryNode> for ExprNode {
-    fn from(node: QueryNode) -> Self {
+impl<'a> From<QueryNode<'a>> for ExprNode<'a> {
+    fn from(node: QueryNode<'a>) -> Self {
         ExprNode::Subquery(Box::new(node))
     }
 }
 
-impl From<Expr> for ExprNode {
+impl<'a> From<Expr> for ExprNode<'a> {
     fn from(expr: Expr) -> Self {
-        ExprNode::Expr(expr)
+        ExprNode::Expr(Cow::Owned(expr))
     }
 }
 
-pub fn expr(value: &str) -> ExprNode {
+pub fn expr<'a>(value: &str) -> ExprNode<'a> {
     ExprNode::from(value)
 }
 
-pub fn col(value: &str) -> ExprNode {
+pub fn col<'a>(value: &str) -> ExprNode<'a> {
     let idents = value.split('.').collect::<Vec<_>>();
 
     match idents.as_slice() {
@@ -302,36 +305,38 @@ pub fn col(value: &str) -> ExprNode {
     }
 }
 
-pub fn num(value: i64) -> ExprNode {
+pub fn num<'a>(value: i64) -> ExprNode<'a> {
     ExprNode::from(value)
 }
 
-pub fn text(value: &str) -> ExprNode {
-    ExprNode::Expr(Expr::Literal(AstLiteral::QuotedString(value.to_owned())))
+pub fn text<'a>(value: &str) -> ExprNode<'a> {
+    ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::QuotedString(
+        value.to_owned(),
+    ))))
 }
 
-pub fn date(date: &str) -> ExprNode {
-    ExprNode::Expr(Expr::TypedString {
+pub fn date<'a>(date: &str) -> ExprNode<'a> {
+    ExprNode::Expr(Cow::Owned(Expr::TypedString {
         data_type: DataType::Date,
         value: date.to_owned(),
-    })
+    }))
 }
 
-pub fn timestamp(timestamp: &str) -> ExprNode {
-    ExprNode::Expr(Expr::TypedString {
+pub fn timestamp<'a>(timestamp: &str) -> ExprNode<'a> {
+    ExprNode::Expr(Cow::Owned(Expr::TypedString {
         data_type: DataType::Timestamp,
         value: timestamp.to_owned(),
-    })
+    }))
 }
 
-pub fn time(time: &str) -> ExprNode {
-    ExprNode::Expr(Expr::TypedString {
+pub fn time<'a>(time: &str) -> ExprNode<'a> {
+    ExprNode::Expr(Cow::Owned(Expr::TypedString {
         data_type: DataType::Time,
         value: time.to_owned(),
-    })
+    }))
 }
 
-pub fn subquery<T: Into<QueryNode>>(query_node: T) -> ExprNode {
+pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
     ExprNode::Subquery(Box::new(query_node.into()))
 }
 
