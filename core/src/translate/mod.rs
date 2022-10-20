@@ -114,8 +114,14 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
                 return Err(TranslateError::CompositeIndexNotSupported.into());
             }
 
+            let name = translate_object_name(name)?;
+
+            if name.to_uppercase() == "PRIMARY" {
+                return Err(TranslateError::ReservedIndexName(name.to_owned()).into());
+            };
+
             Ok(Statement::CreateIndex {
-                name: translate_object_name(name)?,
+                name,
                 table_name: translate_object_name(table_name)?,
                 column: translate_order_by_expr(&columns[0])?,
             })
@@ -137,6 +143,10 @@ pub fn translate(sql_statement: &SqlStatement) -> Result<Statement> {
 
             let table_name = object_name[0].value.to_owned();
             let name = object_name[1].value.to_owned();
+
+            if name.to_uppercase() == "PRIMARY" {
+                return Err(TranslateError::CannotDropPrimary.into());
+            };
 
             Ok(Statement::DropIndex { name, table_name })
         }

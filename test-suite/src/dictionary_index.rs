@@ -1,6 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{executor::AlterError, prelude::Value::*, store::IndexError},
+    gluesql_core::{prelude::Value::*, translate::TranslateError},
 };
 
 test_case!(ditionary_index, async move {
@@ -34,11 +34,11 @@ test_case!(ditionary_index, async move {
     let test_cases = [
         (
             "DROP INDEX Bar.PRIMARY",
-            Err(IndexError::CannotDropPrimary.into()),
+            Err(TranslateError::CannotDropPrimary.into()),
         ),
         (
             "CREATE INDEX Primary ON Foo (id)",
-            Err(AlterError::ReservedIndexName("Primary".to_owned()).into()),
+            Err(TranslateError::ReservedIndexName("Primary".to_owned()).into()),
         ),
     ];
     for (sql, expected) in test_cases {
