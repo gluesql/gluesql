@@ -24,35 +24,35 @@ impl SelectNode {
         }
     }
 
-    pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
+    pub fn filter<'a, T: Into<ExprNode<'a>>>(self, expr: T) -> FilterNode<'a> {
         FilterNode::new(self, expr)
     }
 
-    pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
+    pub fn group_by<'a, T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
         GroupByNode::new(self, expr_list)
     }
 
-    pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
+    pub fn offset<'a, T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
         OffsetNode::new(self, expr)
     }
 
-    pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
+    pub fn limit<'a, T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+    pub fn project<'a, T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+    pub fn order_by<'a, T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn join(self, table_name: &str) -> JoinNode {
+    pub fn join<'a>(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
     }
 
-    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
+    pub fn join_as<'a>(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
             table_name.to_owned(),
@@ -61,11 +61,11 @@ impl SelectNode {
         )
     }
 
-    pub fn left_join(self, table_name: &str) -> JoinNode {
+    pub fn left_join<'a>(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
     }
 
-    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
+    pub fn left_join_as<'a>(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
             table_name.to_owned(),

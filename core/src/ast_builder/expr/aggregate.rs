@@ -9,38 +9,38 @@ use {
 };
 
 #[derive(Clone)]
-pub enum AggregateNode {
-    Count(CountArgExprNode),
-    Sum(ExprNode),
-    Min(ExprNode),
-    Max(ExprNode),
-    Avg(ExprNode),
-    Variance(ExprNode),
-    Stdev(ExprNode),
+pub enum AggregateNode<'a> {
+    Count(CountArgExprNode<'a>),
+    Sum(ExprNode<'a>),
+    Min(ExprNode<'a>),
+    Max(ExprNode<'a>),
+    Avg(ExprNode<'a>),
+    Variance(ExprNode<'a>),
+    Stdev(ExprNode<'a>),
 }
 
 #[derive(Clone)]
-pub enum CountArgExprNode {
+pub enum CountArgExprNode<'a> {
     Text(String),
-    Expr(ExprNode),
+    Expr(ExprNode<'a>),
 }
 
-impl From<&str> for CountArgExprNode {
+impl<'a> From<&'a str> for CountArgExprNode<'a> {
     fn from(count_arg_str: &str) -> Self {
         Self::Text(count_arg_str.to_owned())
     }
 }
 
-impl From<ExprNode> for CountArgExprNode {
-    fn from(expr_node: ExprNode) -> Self {
+impl<'a> From<ExprNode<'a>> for CountArgExprNode<'a> {
+    fn from(expr_node: ExprNode<'a>) -> Self {
         Self::Expr(expr_node)
     }
 }
 
-impl TryFrom<CountArgExprNode> for CountArgExpr {
+impl<'a> TryFrom<CountArgExprNode<'a>> for CountArgExpr {
     type Error = Error;
 
-    fn try_from(count_expr_node: CountArgExprNode) -> Result<Self> {
+    fn try_from(count_expr_node: CountArgExprNode<'a>) -> Result<Self> {
         match count_expr_node {
             CountArgExprNode::Text(s) if &s == "*" => Ok(CountArgExpr::Wildcard),
             CountArgExprNode::Text(s) => {
@@ -53,10 +53,10 @@ impl TryFrom<CountArgExprNode> for CountArgExpr {
     }
 }
 
-impl TryFrom<AggregateNode> for Aggregate {
+impl<'a> TryFrom<AggregateNode<'a>> for Aggregate {
     type Error = Error;
 
-    fn try_from(aggr_node: AggregateNode) -> Result<Self> {
+    fn try_from(aggr_node: AggregateNode<'a>) -> Result<Self> {
         match aggr_node {
             AggregateNode::Count(count_arg_expr_node) => {
                 count_arg_expr_node.try_into().map(Aggregate::Count)
@@ -71,7 +71,7 @@ impl TryFrom<AggregateNode> for Aggregate {
     }
 }
 
-impl ExprNode {
+impl<'a> ExprNode<'a> {
     pub fn count(self) -> Self {
         count(self)
     }
@@ -101,31 +101,31 @@ impl ExprNode {
     }
 }
 
-pub fn count<T: Into<CountArgExprNode>>(expr: T) -> ExprNode {
+pub fn count<'a, T: Into<CountArgExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Count(expr.into())))
 }
 
-pub fn sum<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn sum<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Sum(expr.into())))
 }
 
-pub fn min<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn min<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Min(expr.into())))
 }
 
-pub fn max<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn max<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Max(expr.into())))
 }
 
-pub fn avg<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn avg<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Avg(expr.into())))
 }
 
-pub fn variance<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn variance<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Variance(expr.into())))
 }
 
-pub fn stdev<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn stdev<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Aggregate(Box::new(AggregateNode::Stdev(expr.into())))
 }
 

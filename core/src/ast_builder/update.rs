@@ -7,13 +7,13 @@ use {
 };
 
 #[derive(Clone)]
-pub struct UpdateNode {
+pub struct UpdateNode<'a> {
     table_name: String,
-    assignments: Vec<AssignmentNode>,
-    selection: Option<ExprNode>,
+    assignments: Vec<AssignmentNode<'a>>,
+    selection: Option<ExprNode<'a>>,
 }
 
-impl UpdateNode {
+impl<'a> UpdateNode<'a> {
     pub fn new(table_name: String) -> Self {
         Self {
             table_name,
@@ -22,19 +22,19 @@ impl UpdateNode {
         }
     }
 
-    pub fn filter<T: Into<ExprNode>>(mut self, expr: T) -> Self {
+    pub fn filter<T: Into<ExprNode<'a>>>(mut self, expr: T) -> Self {
         self.selection = Some(expr.into());
         self
     }
 
-    pub fn set<T: Into<ExprNode>>(mut self, id: &str, value: T) -> Self {
+    pub fn set<T: Into<ExprNode<'a>>>(mut self, id: &str, value: T) -> Self {
         self.assignments
             .push(AssignmentNode::Expr(id.to_owned(), value.into()));
         self
     }
 }
 
-impl Build for UpdateNode {
+impl<'a> Build for UpdateNode<'a> {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let selection = self.selection.map(Expr::try_from).transpose()?;

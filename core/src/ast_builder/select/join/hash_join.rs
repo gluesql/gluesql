@@ -12,16 +12,16 @@ use {
 };
 
 #[derive(Clone)]
-pub struct HashJoinNode {
-    join_node: JoinNode,
-    key_expr: ExprNode,
-    value_expr: ExprNode,
-    filter_expr: Option<ExprNode>,
+pub struct HashJoinNode<'a> {
+    join_node: JoinNode<'a>,
+    key_expr: ExprNode<'a>,
+    value_expr: ExprNode<'a>,
+    filter_expr: Option<ExprNode<'a>>,
 }
 
-impl HashJoinNode {
-    pub fn new<T: Into<ExprNode>, U: Into<ExprNode>>(
-        join_node: JoinNode,
+impl<'a> HashJoinNode<'a> {
+    pub fn new<T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
+        join_node: JoinNode<'a>,
         key_expr: T,
         value_expr: U,
     ) -> Self {
@@ -33,7 +33,7 @@ impl HashJoinNode {
         }
     }
 
-    pub fn hash_filter<T: Into<ExprNode>>(mut self, expr: T) -> Self {
+    pub fn hash_filter<T: Into<ExprNode<'a>>>(mut self, expr: T) -> Self {
         let expr = expr.into();
         let filter_expr = match self.filter_expr {
             Some(filter_expr) => filter_expr.and(expr),
@@ -44,15 +44,15 @@ impl HashJoinNode {
         self
     }
 
-    pub fn on<T: Into<ExprNode>>(self, expr: T) -> JoinConstraintNode {
+    pub fn on<T: Into<ExprNode<'a>>>(self, expr: T) -> JoinConstraintNode<'a> {
         JoinConstraintNode::new(self, expr)
     }
 
-    pub fn join(self, table_name: &str) -> JoinNode {
+    pub fn join(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
     }
 
-    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
+    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
             table_name.to_owned(),
@@ -61,11 +61,11 @@ impl HashJoinNode {
         )
     }
 
-    pub fn left_join(self, table_name: &str) -> JoinNode {
+    pub fn left_join(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
     }
 
-    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
             table_name.to_owned(),
@@ -74,27 +74,27 @@ impl HashJoinNode {
         )
     }
 
-    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
+    pub fn group_by<T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
         GroupByNode::new(self, expr_list)
     }
 
-    pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
         OffsetNode::new(self, expr)
     }
 
-    pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
+    pub fn filter<T: Into<ExprNode<'a>>>(self, expr: T) -> FilterNode<'a> {
         FilterNode::new(self, expr)
     }
 
-    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
@@ -108,7 +108,7 @@ impl HashJoinNode {
     }
 }
 
-impl Prebuild for HashJoinNode {
+impl<'a> Prebuild for HashJoinNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let (mut select_data, relation, join_operator) = self.join_node.prebuild_for_hash_join()?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
