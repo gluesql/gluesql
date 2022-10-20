@@ -1,4 +1,7 @@
-use {crate::*, gluesql_core::prelude::Value::*};
+use {
+    crate::*,
+    gluesql_core::{prelude::Value::*, translate::TranslateError},
+};
 
 test_case!(ditionary_index, async move {
     run!("CREATE TABLE Foo (id INT, name TEXT);");
@@ -27,4 +30,18 @@ test_case!(ditionary_index, async move {
             "Foo".to_owned()   "Foo_id_2".to_owned()         "BOTH".to_owned()   "id + 2".to_owned()        false
         ))
     );
+
+    let test_cases = [
+        (
+            "DROP INDEX Bar.PRIMARY",
+            Err(TranslateError::CannotDropPrimary.into()),
+        ),
+        (
+            "CREATE INDEX Primary ON Foo (id)",
+            Err(TranslateError::ReservedIndexName("Primary".to_owned()).into()),
+        ),
+    ];
+    for (sql, expected) in test_cases {
+        test!(sql, expected);
+    }
 });
