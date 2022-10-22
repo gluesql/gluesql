@@ -1,14 +1,14 @@
-use error::{err_into, StorageError};
-
 mod error;
+
 use {
     csv::ReaderBuilder,
+    error::{err_into, StorageError},
     gluesql_core::{
         ast::ColumnDef,
         prelude::{DataType, Row},
         result::Result,
     },
-    std::path::Path,
+    std::{ffi::OsStr, path::Path},
 };
 
 #[derive(Debug, PartialEq)]
@@ -21,9 +21,9 @@ pub struct CsvTable {
 impl CsvTable {
     /// Create csv table from given path.
     pub fn from_path(path: impl AsRef<Path>) -> Result<Self> {
-        let mut result = ReaderBuilder::new().from_path(&path).map_err(err_into)?;
-
-        let columns: Vec<ColumnDef> = result
+        let columns: Vec<ColumnDef> = ReaderBuilder::new()
+            .from_path(&path)
+            .map_err(err_into)?
             .headers()
             .map_err(err_into)?
             .into_iter()
@@ -34,19 +34,17 @@ impl CsvTable {
             })
             .collect();
 
-        if let Some(os_filename) = &path.as_ref().file_name() {
-            if let Some(filename) = os_filename.to_str() {
-                if filename.contains(".csv") {
-                    return Ok(CsvTable {
-                        name: filename.replace(".csv", ""),
-                        columns,
-                        rows: vec![],
-                    });
-                }
-            }
-        }
-
-        Err(StorageError::InvalidFileImport(format!("{}", path.as_ref().display())).into())
+        path.as_ref()
+            .file_name()
+            .and_then(OsStr::to_str)
+            .and_then(|filename| {
+                Some(CsvTable {
+                    name: filename.replace(".csv", ""),
+                    columns,
+                    rows: vec![],
+                })
+            })
+            .ok_or(StorageError::InvalidFileImport(format!("{}", path.as_ref().display())).into())
     }
 }
 
