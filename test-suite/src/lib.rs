@@ -11,6 +11,7 @@ pub mod concat;
 pub mod data_type;
 pub mod default;
 pub mod dictionary;
+pub mod dictionary_index;
 pub mod filter;
 pub mod function;
 pub mod index;
@@ -119,6 +120,8 @@ macro_rules! generate_store_tests {
         glue!(function_now, function::now::now);
         glue!(function_sign, function::sign::sign);
         glue!(function_to_date, function::to_date::to_date);
+        glue!(function_ascii, function::ascii::ascii);
+        glue!(function_chr, function::chr::chr);
         glue!(function_position, function::position::position);
         glue!(join, join::join);
         glue!(join_blend, join::blend);
@@ -134,11 +137,11 @@ macro_rules! generate_store_tests {
         glue!(sql_types, data_type::sql_types::sql_types);
         glue!(show_columns, show_columns::show_columns);
         glue!(int8, data_type::int8::int8);
-        glue!(uint8, data_type::int8::int8);
         glue!(int16, data_type::int16::int16);
         glue!(int32, data_type::int32::int32);
         glue!(int64, data_type::int64::int64);
         glue!(int128, data_type::int128::int128);
+        glue!(uint8, data_type::uint8::uint8);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);
         glue!(time, data_type::time::time);
@@ -168,6 +171,10 @@ macro_rules! generate_store_tests {
 
         // ast-builder
         glue!(ast_builder_basic, ast_builder::basic::basic);
+        glue!(ast_builder_select, ast_builder::select::select);
+        glue!(ast_builder_insert, ast_builder::insert::insert);
+        glue!(ast_builder_update, ast_builder::update::update);
+        glue!(ast_builder_delete, ast_builder::delete::delete);
     };
 }
 
@@ -205,6 +212,7 @@ macro_rules! generate_index_tests {
         glue!(index_order_by, index::order_by);
         glue!(index_order_by_multi, index::order_by_multi);
         glue!(showindexes, index::showindexes);
+        glue!(dictionary_index, dictionary_index::ditionary_index);
     };
 }
 

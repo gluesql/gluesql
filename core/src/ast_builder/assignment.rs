@@ -7,21 +7,21 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub enum AssignmentNode {
-    Expr(String, ExprNode),
+pub enum AssignmentNode<'a> {
+    Expr(String, ExprNode<'a>),
     Text(String),
 }
 
-impl From<&str> for AssignmentNode {
+impl<'a> From<&str> for AssignmentNode<'a> {
     fn from(expr: &str) -> Self {
         Self::Text(expr.to_owned())
     }
 }
 
-impl TryFrom<AssignmentNode> for Assignment {
+impl<'a> TryFrom<AssignmentNode<'a>> for Assignment {
     type Error = Error;
 
-    fn try_from(node: AssignmentNode) -> Result<Self> {
+    fn try_from(node: AssignmentNode<'a>) -> Result<Self> {
         match node {
             AssignmentNode::Text(expr) => {
                 let expr = parse_assignment(expr)

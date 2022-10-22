@@ -87,7 +87,7 @@ impl<'a> Update<'a> {
                     Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
                     Evaluated::Value(v) => {
                         v.validate_type(data_type)?;
-                        v.into_owned()
+                        v
                     }
                 };
 

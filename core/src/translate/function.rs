@@ -430,7 +430,18 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::ToTime { expr, format })))
         }
+        "ASCII" => {
+            check_len(name, args.len(), 1)?;
 
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Ascii(expr))))
+        }
+        "CHR" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Chr(expr))))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

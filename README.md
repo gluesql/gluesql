@@ -29,7 +29,7 @@ GlueSQL provides three reference storage options.
 
 ```toml
 [dependencies]
-gluesql = "0.12"
+gluesql = "0.13"
 ```
 
 - CLI application
@@ -69,7 +69,7 @@ fn main() {
 
 ```toml
 [dependencies.gluesql]
-version = "0.12"
+version = "0.13"
 default-features = false
 features = ["alter-table", "index", "transaction"]
 ```

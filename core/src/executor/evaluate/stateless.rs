@@ -226,6 +226,8 @@ fn evaluate_function<'a>(
 
             f::substr(name, expr, start, count)
         }
+        Function::Ascii(expr) => f::ascii(name, eval(expr)?),
+        Function::Chr(expr) => f::chr(name, eval(expr)?),
 
         // --- float ---
         Function::Sqrt(expr) => f::sqrt(eval(expr)?),
