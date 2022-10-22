@@ -5,7 +5,10 @@ use {
         data::Value,
         result::Result,
     },
-    std::cmp::{max, min},
+    std::{
+        cmp::{max, min},
+        ops::ControlFlow,
+    },
     uuid::Uuid,
 };
 
@@ -55,13 +58,25 @@ macro_rules! eval_to_float {
 // --- text ---
 
 pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Value> {
-    exprs
-        .into_iter()
-        .map(|expr| expr.try_into())
-        .filter(|value| !matches!(value, Ok(Value::Null)))
-        .try_fold(Value::Str("".to_owned()), |left, right| {
-            Ok(left.concat(&right?))
-        })
+    enum BreakCase {
+        Null,
+        Err(crate::result::Error),
+    }
+
+    let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_fold(
+        Value::Str(String::new()),
+        |left, right: Result<Value>| match right {
+            Ok(value) if value.is_null() => ControlFlow::Break(BreakCase::Null),
+            Err(err) => ControlFlow::Break(BreakCase::Err(err)),
+            Ok(value) => ControlFlow::Continue(left.concat(&value)),
+        },
+    );
+
+    match control_flow {
+        ControlFlow::Continue(value) => Ok(value),
+        ControlFlow::Break(BreakCase::Null) => Ok(Value::Null),
+        ControlFlow::Break(BreakCase::Err(err)) => Err(err),
+    }
 }
 
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {
