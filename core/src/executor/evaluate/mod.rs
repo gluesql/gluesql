@@ -82,7 +82,7 @@ pub async fn evaluate<'a>(
             evaluations
                 .into_iter()
                 .next()
-                .unwrap_or_else(|| Err(EvaluateError::NestedSelectRowNotFound.into()))
+                .unwrap_or_else(|| Ok(Evaluated::from(Value::Null)))
         }
         Expr::BinaryOp { op, left, right } => {
             let left = eval(left).await?;
@@ -108,11 +108,6 @@ pub async fn evaluate<'a>(
 
             evaluate_function(storage, context, aggregated, func).await
         }
-        Expr::Extract { field, expr } => eval(expr)
-            .await
-            .and_then(Value::try_from)?
-            .extract(field)
-            .map(Evaluated::from),
         Expr::InList {
             expr,
             list,
@@ -347,6 +342,8 @@ async fn evaluate_function<'a>(
 
             f::substr(name, expr, start, count)
         }
+        Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
+        Function::Chr(expr) => f::chr(name, eval(expr).await?),
 
         // --- float ---
         Function::Abs(expr) => f::abs(name, eval(expr).await?),
@@ -448,6 +445,10 @@ async fn evaluate_function<'a>(
         Function::Cast { expr, data_type } => {
             let expr = eval(expr).await?;
             f::cast(expr, data_type)
+        }
+        Function::Extract { field, expr } => {
+            let expr = eval(expr).await?;
+            f::extract(field, expr)
         }
     }
     .map(Evaluated::from)

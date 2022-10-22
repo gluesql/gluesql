@@ -1,15 +1,17 @@
 use {
     super::{
-        ast_literal::translate_trim_where_field, expr::translate_expr, translate_data_type,
-        translate_object_name, TranslateError,
+        ast_literal::{translate_datetime_field, translate_trim_where_field},
+        expr::translate_expr,
+        translate_data_type, translate_object_name, TranslateError,
     },
     crate::{
         ast::{Aggregate, CountArgExpr, Expr, Function},
         result::Result,
     },
     sqlparser::ast::{
-        DataType, Expr as SqlExpr, Function as SqlFunction, FunctionArg as SqlFunctionArg,
-        FunctionArgExpr as SqlFunctionArgExpr, TrimWhereField as SqlTrimWhereField,
+        DataType, DateTimeField as SqlDateTimeField, Expr as SqlExpr, Function as SqlFunction,
+        FunctionArg as SqlFunctionArg, FunctionArgExpr as SqlFunctionArgExpr,
+        TrimWhereField as SqlTrimWhereField,
     },
 };
 
@@ -45,6 +47,12 @@ pub fn translate_cast(expr: &SqlExpr, data_type: &DataType) -> Result<Expr> {
     let expr = translate_expr(expr)?;
     let data_type = translate_data_type(data_type)?;
     Ok(Expr::Function(Box::new(Function::Cast { expr, data_type })))
+}
+
+pub fn translate_extract(field: &SqlDateTimeField, expr: &SqlExpr) -> Result<Expr> {
+    let field = translate_datetime_field(field)?;
+    let expr = translate_expr(expr)?;
+    Ok(Expr::Function(Box::new(Function::Extract { field, expr })))
 }
 
 fn check_len(name: String, found: usize, expected: usize) -> Result<()> {
@@ -422,7 +430,18 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
 
             Ok(Expr::Function(Box::new(Function::ToTime { expr, format })))
         }
+        "ASCII" => {
+            check_len(name, args.len(), 1)?;
 
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Ascii(expr))))
+        }
+        "CHR" => {
+            check_len(name, args.len(), 1)?;
+
+            let expr = translate_expr(args[0])?;
+            Ok(Expr::Function(Box::new(Function::Chr(expr))))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

@@ -10,9 +10,6 @@ pub enum EvaluateError {
     #[error(transparent)]
     ChronoFormat(#[from] ChronoFormatError),
 
-    #[error("nested select row not found")]
-    NestedSelectRowNotFound,
-
     #[error("literal add on non-numeric")]
     LiteralAddOnNonNumeric,
 
@@ -66,6 +63,15 @@ pub enum EvaluateError {
 
     #[error("format function does not support following data_type: {0}")]
     UnsupportedExprForFormatFunction(String),
+
+    #[error("support single character only")]
+    AsciiFunctionRequiresSingleCharacterValue,
+
+    #[error("non-ascii character not allowed")]
+    NonAsciiCharacterNotAllowed,
+
+    #[error("function requires integer value in range")]
+    ChrFunctionRequiresIntegerValueInRange0To255,
 }
 
 #[derive(Error, Serialize, Debug, PartialEq)]

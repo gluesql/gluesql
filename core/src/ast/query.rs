@@ -83,6 +83,7 @@ pub enum TableFactor {
 pub enum Dictionary {
     GlueTables,
     GlueTableColumns,
+    GlueIndexes,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

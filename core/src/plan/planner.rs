@@ -121,10 +121,6 @@ pub trait Planner<'a> {
                 op,
                 expr: Box::new(self.subquery_expr(outer_context, *expr)),
             },
-            Expr::Extract { field, expr } => Expr::Extract {
-                field,
-                expr: Box::new(self.subquery_expr(outer_context, *expr)),
-            },
             Expr::Nested(expr) => Expr::Nested(Box::new(self.subquery_expr(outer_context, *expr))),
             Expr::Case {
                 operand,
@@ -173,6 +169,10 @@ pub trait Planner<'a> {
                 Function::Cast { expr, data_type } => Expr::Function(Box::new(Function::Cast {
                     expr: self.subquery_expr(outer_context, expr),
                     data_type,
+                })),
+                Function::Extract { field, expr } => Expr::Function(Box::new(Function::Extract {
+                    field,
+                    expr: self.subquery_expr(outer_context, expr),
                 })),
                 _ => Expr::Function(func),
             },

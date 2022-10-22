@@ -9,27 +9,27 @@ use {
 };
 
 #[derive(Clone)]
-pub enum OrderByExprNode {
+pub enum OrderByExprNode<'a> {
     Text(String),
-    Expr(ExprNode),
+    Expr(ExprNode<'a>),
 }
 
-impl From<&str> for OrderByExprNode {
+impl<'a> From<&str> for OrderByExprNode<'a> {
     fn from(expr: &str) -> Self {
         Self::Text(expr.to_owned())
     }
 }
 
-impl From<ExprNode> for OrderByExprNode {
-    fn from(expr_node: ExprNode) -> Self {
+impl<'a> From<ExprNode<'a>> for OrderByExprNode<'a> {
+    fn from(expr_node: ExprNode<'a>) -> Self {
         Self::Expr(expr_node)
     }
 }
 
-impl TryFrom<OrderByExprNode> for OrderByExpr {
+impl<'a> TryFrom<OrderByExprNode<'a>> for OrderByExpr {
     type Error = Error;
 
-    fn try_from(node: OrderByExprNode) -> Result<Self> {
+    fn try_from(node: OrderByExprNode<'a>) -> Result<Self> {
         match node {
             OrderByExprNode::Text(expr) => {
                 let expr = parse_order_by_expr(expr).and_then(|op| translate_order_by_expr(&op))?;

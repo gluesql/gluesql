@@ -188,7 +188,7 @@ macro_rules! generate_binary_op_tests {
 
             #[test]
             fn eq() {
-                let base: $primitive = 1.into();
+                let base: $primitive = 1;
 
                 assert_eq!(base, Decimal(Decimal::ONE));
                 assert_eq!(base, F64(1.0));
@@ -204,7 +204,7 @@ macro_rules! generate_binary_op_tests {
 
             #[test]
             fn partial_cmp() {
-                let base: $primitive = 1.into();
+                let base: $primitive = 1;
 
                 assert_eq!(
                     base.partial_cmp(&Decimal(Decimal::ZERO)),
@@ -249,12 +249,8 @@ macro_rules! generate_binary_op_tests {
             #[test]
             fn add_overflow() {
                 assert_eq!(
-                    $primitive::MAX.try_add(&Decimal(Decimal::from($primitive::from(1)))),
-                    overflow_err(
-                        $variant($primitive::MAX),
-                        Decimal(Decimal::from($primitive::from(1))),
-                        Add
-                    )
+                    $primitive::MAX.try_add(&Decimal(Decimal::from(1))),
+                    overflow_err($variant($primitive::MAX), Decimal(Decimal::from(1)), Add)
                 );
                 assert_eq!(
                     $primitive::MAX.try_add(&F64(1.0)),
@@ -289,10 +285,10 @@ macro_rules! generate_binary_op_tests {
             #[test]
             fn sub_overflow() {
                 assert_eq!(
-                    $primitive::MIN.try_subtract(&Decimal(Decimal::from($primitive::from(1)))),
+                    $primitive::MIN.try_subtract(&Decimal(Decimal::from(1))),
                     overflow_err(
                         $variant($primitive::MIN),
-                        Decimal(Decimal::from($primitive::from(1))),
+                        Decimal(Decimal::from(1)),
                         Subtract
                     )
                 );
@@ -329,10 +325,10 @@ macro_rules! generate_binary_op_tests {
             #[test]
             fn mul_overflow() {
                 assert_eq!(
-                    $primitive::MAX.try_multiply(&Decimal(Decimal::from($primitive::from(2)))),
+                    $primitive::MAX.try_multiply(&Decimal(Decimal::from(2))),
                     overflow_err(
                         $variant($primitive::MAX),
-                        Decimal(Decimal::from($primitive::from(2))),
+                        Decimal(Decimal::from(2)),
                         Multiply
                     )
                 );
@@ -369,12 +365,8 @@ macro_rules! generate_binary_op_tests {
             #[test]
             fn div_overflow() {
                 assert_eq!(
-                    $primitive::MAX.try_divide(&Decimal(Decimal::from($primitive::from(0)))),
-                    overflow_err(
-                        $variant($primitive::MAX),
-                        Decimal(Decimal::from($primitive::from(0))),
-                        Divide
-                    )
+                    $primitive::MAX.try_divide(&Decimal(Decimal::from(0))),
+                    overflow_err($variant($primitive::MAX), Decimal(Decimal::from(0)), Divide)
                 );
                 assert_eq!(
                     $primitive::MAX.try_divide(&F64(0.0)),
@@ -409,12 +401,8 @@ macro_rules! generate_binary_op_tests {
             #[test]
             fn mod_overflow() {
                 assert_eq!(
-                    $primitive::MAX.try_modulo(&Decimal(Decimal::from($primitive::from(0)))),
-                    overflow_err(
-                        $variant($primitive::MAX),
-                        Decimal(Decimal::from($primitive::from(0))),
-                        Modulo
-                    )
+                    $primitive::MAX.try_modulo(&Decimal(Decimal::from(0))),
+                    overflow_err($variant($primitive::MAX), Decimal(Decimal::from(0)), Modulo)
                 );
                 assert_eq!(
                     $primitive::MAX.try_modulo(&F64(0.0)),
@@ -448,7 +436,7 @@ macro_rules! generate_binary_op_tests {
 
             #[test]
             fn try_add() {
-                let base: $primitive = 1.into();
+                let base: $primitive = 1;
 
                 assert_eq!(base.try_add(&Decimal(Decimal::ONE)), Ok($variant(2)));
                 assert_eq!(base.try_add(&F64(1.0)), Ok($variant(2)));
@@ -472,7 +460,7 @@ macro_rules! generate_binary_op_tests {
 
             #[test]
             fn try_subtract() {
-                let base: $primitive = 1.into();
+                let base: $primitive = 1;
 
                 assert_eq!(base.try_subtract(&Decimal(Decimal::ONE)), Ok($variant(0)));
                 assert_eq!(base.try_subtract(&F64(1.0)), Ok($variant(0)));
@@ -496,7 +484,7 @@ macro_rules! generate_binary_op_tests {
 
             #[test]
             fn try_multiply() {
-                let base: $primitive = 3.into();
+                let base: $primitive = 3;
 
                 assert_eq!(base.try_multiply(&Decimal(Decimal::TWO)), Ok($variant(6)));
                 assert_eq!(base.try_multiply(&F64(2.0)), Ok($variant(6)));
@@ -520,7 +508,7 @@ macro_rules! generate_binary_op_tests {
 
             #[test]
             fn try_divide() {
-                let base: $primitive = 6.into();
+                let base: $primitive = 6;
 
                 assert_eq!(base.try_divide(&Decimal(Decimal::TWO)), Ok($variant(3)));
                 assert_eq!(base.try_divide(&F64(2.0)), Ok($variant(3)));
@@ -544,7 +532,7 @@ macro_rules! generate_binary_op_tests {
 
             #[test]
             fn try_modulo() {
-                let base: $primitive = 9.into();
+                let base: $primitive = 9;
 
                 assert_eq!(base.try_modulo(&Decimal(Decimal::ONE)), Ok($variant(0)));
                 assert_eq!(base.try_modulo(&F64(1.0)), Ok($variant(0)));

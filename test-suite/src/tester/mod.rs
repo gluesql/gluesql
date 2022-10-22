@@ -53,7 +53,7 @@ pub fn test(found: Result<Payload>, expected: Result<Payload>) {
     assert_eq!(
         found.len(),
         expected.len(),
-        "\n[err: number of rows]\nexpected: {:?}\n   found: {:?}",
+        "\n[err: number of rows]\n   found: {:?}\nexpected: {:?}",
         found,
         expected
     );
@@ -64,7 +64,7 @@ pub fn test(found: Result<Payload>, expected: Result<Payload>) {
         assert_eq!(
             found.len(),
             expected.len(),
-            "\n[err: size of row] row index: {}\nexpected: {:?}\n   found: {:?}",
+            "\n[err: size of row] row index: {}\n   found: {:?}\nexpected: {:?}",
             i,
             found,
             expected
@@ -80,7 +80,7 @@ pub fn test(found: Result<Payload>, expected: Result<Payload>) {
 
                 assert_eq!(
                     found_val, expected_val,
-                    "\n[err: value] row index: {}\nexpected: {:?}\n   found: {:?}",
+                    "\n[err: value] row index: {}\n   found: {:?}\nexpected: {:?}",
                     i, found, expected
                 );
             });

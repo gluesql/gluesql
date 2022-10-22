@@ -226,6 +226,8 @@ fn evaluate_function<'a>(
 
             f::substr(name, expr, start, count)
         }
+        Function::Ascii(expr) => f::ascii(name, eval(expr)?),
+        Function::Chr(expr) => f::chr(name, eval(expr)?),
 
         // --- float ---
         Function::Sqrt(expr) => f::sqrt(eval(expr)?),
@@ -332,6 +334,10 @@ fn evaluate_function<'a>(
         Function::Cast { expr, data_type } => {
             let expr = eval(expr)?;
             f::cast(expr, data_type)
+        }
+        Function::Extract { field, expr } => {
+            let expr = eval(expr)?;
+            f::extract(field, expr)
         }
     }
     .map(Evaluated::from)
