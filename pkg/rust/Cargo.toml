@@ -24,6 +24,7 @@ all-features = true
 gluesql-core = { path = "../../core", version = "0.13.0" }
 cli = { package = "gluesql-cli", path = "../../cli", version = "0.13.0", optional = true }
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0", optional = true }
+csv-storage = { package = "gluesql-csv-storage", path = "../../storages/csv-storage", version = "0.13.0", optional = true }
 memory-storage = { package = "gluesql_memory_storage", path = "../../storages/memory-storage", version = "0.13.0", optional = true }
 shared-memory-storage = { package = "gluesql-shared-memory-storage", path = "../../storages/shared-memory-storage", version = "0.13.0", optional = true }
 sled-storage = { package = "gluesql_sled_storage", path = "../../storages/sled-storage", version = "0.13.0", optional = true }
