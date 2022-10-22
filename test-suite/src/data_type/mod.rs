@@ -13,4 +13,5 @@ pub mod sql_types;
 pub mod time;
 pub mod timestamp;
 pub mod uint16;
+pub mod uint8;
 pub mod uuid;
