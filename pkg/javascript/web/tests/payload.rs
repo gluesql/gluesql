@@ -4,7 +4,6 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 use {
     gluesql_js::Glue,
-    memory_storage::MemoryStorage,
     serde_json::{json, Value as Json},
     wasm_bindgen_futures::JsFuture,
     wasm_bindgen_test::*,
@@ -79,7 +78,7 @@ async fn queries() {
             "SHOW VERSION",
             json!([{
                 "type": "SHOW VERSION",
-                "version": MemoryStorage::default().version()
+                "version": env!("CARGO_PKG_VERSION"),
             }]),
         ),
         (

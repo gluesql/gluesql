@@ -36,6 +36,8 @@ impl Function {
             | Self::Sqrt(expr)
             | Self::Abs(expr)
             | Self::Sign(expr)
+            | Self::Ascii(expr)
+            | Self::Chr(expr)
             | Self::Ltrim { expr, chars: None }
             | Self::Rtrim { expr, chars: None }
             | Self::Trim {
@@ -44,7 +46,8 @@ impl Function {
                 ..
             }
             | Self::Reverse(expr)
-            | Self::Cast { expr, .. } => Exprs::Single([expr].into_iter()),
+            | Self::Cast { expr, .. }
+            | Self::Extract { expr, .. } => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {

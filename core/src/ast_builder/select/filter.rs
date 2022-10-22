@@ -10,14 +10,14 @@ use {
 };
 
 #[derive(Clone)]
-pub enum PrevNode {
+pub enum PrevNode<'a> {
     Select(SelectNode),
-    Join(Box<JoinNode>),
-    JoinConstraint(Box<JoinConstraintNode>),
-    HashJoin(Box<HashJoinNode>),
+    Join(Box<JoinNode<'a>>),
+    JoinConstraint(Box<JoinConstraintNode<'a>>),
+    HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl Prebuild for PrevNode {
+impl<'a> Prebuild for PrevNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -28,71 +28,71 @@ impl Prebuild for PrevNode {
     }
 }
 
-impl From<JoinNode> for PrevNode {
-    fn from(node: JoinNode) -> Self {
+impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinNode<'a>) -> Self {
         PrevNode::Join(Box::new(node))
     }
 }
 
-impl From<JoinConstraintNode> for PrevNode {
-    fn from(node: JoinConstraintNode) -> Self {
+impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinConstraintNode<'a>) -> Self {
         PrevNode::JoinConstraint(Box::new(node))
     }
 }
 
-impl From<HashJoinNode> for PrevNode {
-    fn from(node: HashJoinNode) -> Self {
+impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: HashJoinNode<'a>) -> Self {
         PrevNode::HashJoin(Box::new(node))
     }
 }
 
-impl From<SelectNode> for PrevNode {
+impl<'a> From<SelectNode> for PrevNode<'a> {
     fn from(node: SelectNode) -> Self {
         PrevNode::Select(node)
     }
 }
 #[derive(Clone)]
-pub struct FilterNode {
-    prev_node: PrevNode,
-    filter_expr: ExprNode,
+pub struct FilterNode<'a> {
+    prev_node: PrevNode<'a>,
+    filter_expr: ExprNode<'a>,
 }
 
-impl FilterNode {
-    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
+impl<'a> FilterNode<'a> {
+    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             filter_expr: expr.into(),
         }
     }
 
-    pub fn filter<T: Into<ExprNode>>(mut self, expr: T) -> Self {
+    pub fn filter<T: Into<ExprNode<'a>>>(mut self, expr: T) -> Self {
         let exprs = self.filter_expr;
         self.filter_expr = exprs.and(expr);
         self
     }
 
-    pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
         OffsetNode::new(self, expr)
     }
 
-    pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
+    pub fn group_by<T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
         GroupByNode::new(self, expr_list)
     }
 
-    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 }
 
-impl Prebuild for FilterNode {
+impl<'a> Prebuild for FilterNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
         select_data.filter = Some(self.filter_expr.try_into()?);

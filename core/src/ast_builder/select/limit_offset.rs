@@ -7,11 +7,11 @@ use {
 };
 
 #[derive(Clone)]
-pub enum PrevNode {
-    Limit(LimitNode),
+pub enum PrevNode<'a> {
+    Limit(LimitNode<'a>),
 }
 
-impl Prebuild for PrevNode {
+impl<'a> Prebuild for PrevNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         match self {
             Self::Limit(node) => node.prebuild(),
@@ -19,32 +19,32 @@ impl Prebuild for PrevNode {
     }
 }
 
-impl From<LimitNode> for PrevNode {
-    fn from(node: LimitNode) -> Self {
+impl<'a> From<LimitNode<'a>> for PrevNode<'a> {
+    fn from(node: LimitNode<'a>) -> Self {
         PrevNode::Limit(node)
     }
 }
 
 #[derive(Clone)]
-pub struct LimitOffsetNode {
-    prev_node: PrevNode,
-    expr: ExprNode,
+pub struct LimitOffsetNode<'a> {
+    prev_node: PrevNode<'a>,
+    expr: ExprNode<'a>,
 }
 
-impl LimitOffsetNode {
-    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
+impl<'a> LimitOffsetNode<'a> {
+    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
         }
     }
 
-    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
     }
 }
 
-impl Prebuild for LimitOffsetNode {
+impl<'a> Prebuild for LimitOffsetNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
         select_data.offset = Some(self.expr.try_into()?);

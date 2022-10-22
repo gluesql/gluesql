@@ -1,30 +1,30 @@
 use super::ExprNode;
 use crate::{
     ast::{Assignment, Expr},
-    parse_sql::parse_sql_assignment,
+    parse_sql::parse_assignment,
     result::{Error, Result},
     translate::translate_assignment,
 };
 
 #[derive(Clone)]
-pub enum AssignmentNode {
-    Expr(String, ExprNode),
+pub enum AssignmentNode<'a> {
+    Expr(String, ExprNode<'a>),
     Text(String),
 }
 
-impl From<&str> for AssignmentNode {
+impl<'a> From<&str> for AssignmentNode<'a> {
     fn from(expr: &str) -> Self {
         Self::Text(expr.to_owned())
     }
 }
 
-impl TryFrom<AssignmentNode> for Assignment {
+impl<'a> TryFrom<AssignmentNode<'a>> for Assignment {
     type Error = Error;
 
-    fn try_from(node: AssignmentNode) -> Result<Self> {
+    fn try_from(node: AssignmentNode<'a>) -> Result<Self> {
         match node {
             AssignmentNode::Text(expr) => {
-                let expr = parse_sql_assignment(expr)
+                let expr = parse_assignment(expr)
                     .and_then(|assignment| translate_assignment(&assignment))?;
                 Ok(expr)
             }
@@ -40,12 +40,11 @@ impl TryFrom<AssignmentNode> for Assignment {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast_builder::AssignmentNode, parse_sql::parse_sql_assignment,
-        translate::translate_assignment,
+        ast_builder::AssignmentNode, parse_sql::parse_assignment, translate::translate_assignment,
     };
 
     fn test(actual: AssignmentNode, expected: &str) {
-        let parsed = &parse_sql_assignment(expected).expect(expected);
+        let parsed = &parse_assignment(expected).expect(expected);
         let expected = translate_assignment(parsed);
         assert_eq!(actual.try_into(), expected);
     }

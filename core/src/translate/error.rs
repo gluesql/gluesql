@@ -5,6 +5,9 @@ pub enum TranslateError {
     #[error("unimplemented - select on two or more than tables are not supported")]
     TooManyTables,
 
+    #[error("unimplemented - select distinct is not supported")]
+    SelectDistinctNotSupported,
+
     #[error("unimplemented - composite index is not supported")]
     CompositeIndexNotSupported,
 
@@ -119,4 +122,10 @@ pub enum TranslateError {
 
     #[error("unimplemented - compound object is supported: {0}")]
     CompoundObjectNotSupported(String),
+
+    #[error("cannot create index with reserved name: {0}")]
+    ReservedIndexName(String),
+
+    #[error("cannot drop primary index")]
+    CannotDropPrimary,
 }

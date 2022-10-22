@@ -9,33 +9,33 @@ use {
 };
 
 #[derive(Clone)]
-pub enum OrderByExprList {
+pub enum OrderByExprList<'a> {
     Text(String),
-    OrderByExprs(Vec<OrderByExprNode>),
+    OrderByExprs(Vec<OrderByExprNode<'a>>),
 }
 
-impl From<&str> for OrderByExprList {
+impl<'a> From<&str> for OrderByExprList<'a> {
     fn from(exprs: &str) -> Self {
         OrderByExprList::Text(exprs.to_owned())
     }
 }
 
-impl From<Vec<&str>> for OrderByExprList {
+impl<'a> From<Vec<&str>> for OrderByExprList<'a> {
     fn from(exprs: Vec<&str>) -> Self {
         OrderByExprList::OrderByExprs(exprs.into_iter().map(Into::into).collect())
     }
 }
 
-impl From<ExprNode> for OrderByExprList {
-    fn from(expr_node: ExprNode) -> Self {
+impl<'a> From<ExprNode<'a>> for OrderByExprList<'a> {
+    fn from(expr_node: ExprNode<'a>) -> Self {
         OrderByExprList::OrderByExprs(vec![expr_node.into()])
     }
 }
 
-impl TryFrom<OrderByExprList> for Vec<OrderByExpr> {
+impl<'a> TryFrom<OrderByExprList<'a>> for Vec<OrderByExpr> {
     type Error = Error;
 
-    fn try_from(order_by_exprs: OrderByExprList) -> Result<Self> {
+    fn try_from(order_by_exprs: OrderByExprList<'a>) -> Result<Self> {
         match order_by_exprs {
             OrderByExprList::Text(exprs) => parse_order_by_exprs(exprs)?
                 .iter()

@@ -1,7 +1,7 @@
 use {
     super::{ChronoFormatError, EvaluateError, Evaluated},
     crate::{
-        ast::{DataType, TrimWhereField},
+        ast::{DataType, DateTimeField, TrimWhereField},
         data::Value,
         result::Result,
     },
@@ -225,6 +225,34 @@ pub fn substr(
     let start = min(max(start, 0) as usize, string.len());
     let string = String::from(&string[start..end]);
     Ok(Value::Str(string))
+}
+
+pub fn ascii(name: String, expr: Evaluated<'_>) -> Result<Value> {
+    let string = eval_to_str!(name, expr);
+    let mut iter = string.chars();
+
+    match (iter.next(), iter.next()) {
+        (Some(c), None) => {
+            if c.is_ascii() {
+                Ok(Value::U8(c as u8))
+            } else {
+                Err(EvaluateError::NonAsciiCharacterNotAllowed.into())
+            }
+        }
+        _ => Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into()),
+    }
+}
+
+pub fn chr(name: String, expr: Evaluated<'_>) -> Result<Value> {
+    let expr = eval_to_int!(name, expr);
+
+    match expr {
+        0..=255 => {
+            let expr = expr as u8;
+            Ok(Value::Str((expr as char).to_string()))
+        }
+        _ => Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into()),
+    }
 }
 
 // --- float ---
@@ -484,4 +512,8 @@ pub fn position(name: String, from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>)
 
 pub fn cast(expr: Evaluated<'_>, data_type: &DataType) -> Result<Value> {
     expr.cast(data_type)?.try_into()
+}
+
+pub fn extract(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Value> {
+    Value::try_from(expr)?.extract(field)
 }

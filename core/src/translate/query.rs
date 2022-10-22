@@ -69,11 +69,16 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         selection,
         group_by,
         having,
+        distinct,
         ..
     } = sql_select;
 
     if from.len() > 1 {
         return Err(TranslateError::TooManyTables.into());
+    }
+
+    if *distinct {
+        return Err(TranslateError::SelectDistinctNotSupported.into());
     }
 
     let from = match from.get(0) {
@@ -191,6 +196,10 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                 }),
                 "GLUE_TABLES" => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTables,
+                    alias: alias_or_name,
+                }),
+                "GLUE_INDEXES" => Ok(TableFactor::Dictionary {
+                    dict: Dictionary::GlueIndexes,
                     alias: alias_or_name,
                 }),
                 "GLUE_TABLE_COLUMNS" => Ok(TableFactor::Dictionary {

@@ -11,22 +11,22 @@ use {
 };
 
 #[derive(Clone)]
-pub enum PrevNode {
+pub enum PrevNode<'a> {
     Select(SelectNode),
-    GroupBy(GroupByNode),
-    Having(HavingNode),
-    Limit(LimitNode),
-    LimitOffset(LimitOffsetNode),
-    Offset(OffsetNode),
-    OffsetLimit(OffsetLimitNode),
-    Join(Box<JoinNode>),
-    JoinConstraint(Box<JoinConstraintNode>),
-    HashJoin(HashJoinNode),
-    Filter(FilterNode),
-    OrderBy(OrderByNode),
+    GroupBy(GroupByNode<'a>),
+    Having(HavingNode<'a>),
+    Limit(LimitNode<'a>),
+    LimitOffset(LimitOffsetNode<'a>),
+    Offset(OffsetNode<'a>),
+    OffsetLimit(OffsetLimitNode<'a>),
+    Join(Box<JoinNode<'a>>),
+    JoinConstraint(Box<JoinConstraintNode<'a>>),
+    HashJoin(HashJoinNode<'a>),
+    Filter(FilterNode<'a>),
+    OrderBy(OrderByNode<'a>),
 }
 
-impl Prebuild for PrevNode {
+impl<'a> Prebuild for PrevNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -45,100 +45,103 @@ impl Prebuild for PrevNode {
     }
 }
 
-impl From<SelectNode> for PrevNode {
+impl<'a> From<SelectNode> for PrevNode<'a> {
     fn from(node: SelectNode) -> Self {
         PrevNode::Select(node)
     }
 }
 
-impl From<GroupByNode> for PrevNode {
-    fn from(node: GroupByNode) -> Self {
+impl<'a> From<GroupByNode<'a>> for PrevNode<'a> {
+    fn from(node: GroupByNode<'a>) -> Self {
         PrevNode::GroupBy(node)
     }
 }
 
-impl From<HavingNode> for PrevNode {
-    fn from(node: HavingNode) -> Self {
+impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
+    fn from(node: HavingNode<'a>) -> Self {
         PrevNode::Having(node)
     }
 }
 
-impl From<LimitNode> for PrevNode {
-    fn from(node: LimitNode) -> Self {
+impl<'a> From<LimitNode<'a>> for PrevNode<'a> {
+    fn from(node: LimitNode<'a>) -> Self {
         PrevNode::Limit(node)
     }
 }
 
-impl From<LimitOffsetNode> for PrevNode {
-    fn from(node: LimitOffsetNode) -> Self {
+impl<'a> From<LimitOffsetNode<'a>> for PrevNode<'a> {
+    fn from(node: LimitOffsetNode<'a>) -> Self {
         PrevNode::LimitOffset(node)
     }
 }
 
-impl From<OffsetNode> for PrevNode {
-    fn from(node: OffsetNode) -> Self {
+impl<'a> From<OffsetNode<'a>> for PrevNode<'a> {
+    fn from(node: OffsetNode<'a>) -> Self {
         PrevNode::Offset(node)
     }
 }
 
-impl From<OffsetLimitNode> for PrevNode {
-    fn from(node: OffsetLimitNode) -> Self {
+impl<'a> From<OffsetLimitNode<'a>> for PrevNode<'a> {
+    fn from(node: OffsetLimitNode<'a>) -> Self {
         PrevNode::OffsetLimit(node)
     }
 }
 
-impl From<JoinNode> for PrevNode {
-    fn from(node: JoinNode) -> Self {
+impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinNode<'a>) -> Self {
         PrevNode::Join(Box::new(node))
     }
 }
 
-impl From<JoinConstraintNode> for PrevNode {
-    fn from(node: JoinConstraintNode) -> Self {
+impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinConstraintNode<'a>) -> Self {
         PrevNode::JoinConstraint(Box::new(node))
     }
 }
 
-impl From<HashJoinNode> for PrevNode {
-    fn from(node: HashJoinNode) -> Self {
+impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: HashJoinNode<'a>) -> Self {
         PrevNode::HashJoin(node)
     }
 }
 
-impl From<FilterNode> for PrevNode {
-    fn from(node: FilterNode) -> Self {
+impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
+    fn from(node: FilterNode<'a>) -> Self {
         PrevNode::Filter(node)
     }
 }
 
-impl From<OrderByNode> for PrevNode {
-    fn from(node: OrderByNode) -> Self {
+impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
+    fn from(node: OrderByNode<'a>) -> Self {
         PrevNode::OrderBy(node)
     }
 }
 
 #[derive(Clone)]
-pub struct ProjectNode {
-    prev_node: PrevNode,
-    select_items_list: Vec<SelectItemList>,
+pub struct ProjectNode<'a> {
+    prev_node: PrevNode<'a>,
+    select_items_list: Vec<SelectItemList<'a>>,
 }
 
-impl ProjectNode {
-    pub fn new<N: Into<PrevNode>, T: Into<SelectItemList>>(prev_node: N, select_items: T) -> Self {
+impl<'a> ProjectNode<'a> {
+    pub fn new<N: Into<PrevNode<'a>>, T: Into<SelectItemList<'a>>>(
+        prev_node: N,
+        select_items: T,
+    ) -> Self {
         Self {
             prev_node: prev_node.into(),
             select_items_list: vec![select_items.into()],
         }
     }
 
-    pub fn project<T: Into<SelectItemList>>(mut self, select_items: T) -> Self {
+    pub fn project<T: Into<SelectItemList<'a>>>(mut self, select_items: T) -> Self {
         self.select_items_list.push(select_items.into());
 
         self
     }
 }
 
-impl Prebuild for ProjectNode {
+impl<'a> Prebuild for ProjectNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
         select_data.projection = self

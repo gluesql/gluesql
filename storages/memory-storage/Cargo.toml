@@ -1,6 +1,6 @@
 [package]
 name = "gluesql_memory_storage"
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
@@ -9,7 +9,7 @@ repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 
 [dependencies]
-gluesql-core = { path = "../../core", version = "0.12.0", features = [
+gluesql-core = { path = "../../core", version = "0.13.0", features = [
 	"alter-table",
 	"index",
 	"transaction",
@@ -19,7 +19,7 @@ serde = { version = "1", features = ["derive"] }
 indexmap = { version = "1.8", features = ["serde"] }
 
 [dev-dependencies]
-test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.12.0", features = [
+test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0", features = [
 	"alter-table",
 	"index",
 	"transaction",

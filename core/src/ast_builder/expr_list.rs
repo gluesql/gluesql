@@ -9,33 +9,33 @@ use {
 };
 
 #[derive(Clone)]
-pub enum ExprList {
+pub enum ExprList<'a> {
     Text(String),
-    Exprs(Vec<ExprNode>),
+    Exprs(Vec<ExprNode<'a>>),
 }
 
-impl From<&str> for ExprList {
+impl<'a> From<&str> for ExprList<'a> {
     fn from(exprs: &str) -> Self {
         ExprList::Text(exprs.to_owned())
     }
 }
 
-impl From<Vec<ExprNode>> for ExprList {
-    fn from(exprs: Vec<ExprNode>) -> Self {
+impl<'a> From<Vec<ExprNode<'a>>> for ExprList<'a> {
+    fn from(exprs: Vec<ExprNode<'a>>) -> Self {
         ExprList::Exprs(exprs)
     }
 }
 
-impl From<Vec<&str>> for ExprList {
+impl<'a> From<Vec<&str>> for ExprList<'a> {
     fn from(exprs: Vec<&str>) -> Self {
         ExprList::Exprs(exprs.into_iter().map(Into::into).collect())
     }
 }
 
-impl TryFrom<ExprList> for Vec<Expr> {
+impl<'a> TryFrom<ExprList<'a>> for Vec<Expr> {
     type Error = Error;
 
-    fn try_from(expr_list: ExprList) -> Result<Self> {
+    fn try_from(expr_list: ExprList<'a>) -> Result<Self> {
         match expr_list {
             ExprList::Text(exprs) => parse_comma_separated_exprs(exprs)?
                 .iter()

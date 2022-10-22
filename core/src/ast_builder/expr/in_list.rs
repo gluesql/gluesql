@@ -1,39 +1,40 @@
 use {
     super::ExprNode,
     crate::ast_builder::{
-        GroupByNode, HavingNode, LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode,
-        ProjectNode, QueryNode, SelectNode,
+        FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
+        LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, QueryNode,
+        SelectNode,
     },
 };
 
 #[derive(Clone)]
-pub enum InListNode {
-    InList(Vec<ExprNode>),
-    Query(Box<QueryNode>),
+pub enum InListNode<'a> {
+    InList(Vec<ExprNode<'a>>),
+    Query(Box<QueryNode<'a>>),
     Text(String),
 }
 
-impl From<Vec<ExprNode>> for InListNode {
-    fn from(list: Vec<ExprNode>) -> Self {
+impl<'a> From<Vec<ExprNode<'a>>> for InListNode<'a> {
+    fn from(list: Vec<ExprNode<'a>>) -> Self {
         InListNode::InList(list)
     }
 }
 
-impl From<&str> for InListNode {
+impl<'a> From<&str> for InListNode<'a> {
     fn from(query: &str) -> Self {
         InListNode::Text(query.to_owned())
     }
 }
 
-impl From<QueryNode> for InListNode {
-    fn from(node: QueryNode) -> Self {
+impl<'a> From<QueryNode<'a>> for InListNode<'a> {
+    fn from(node: QueryNode<'a>) -> Self {
         InListNode::Query(Box::new(node))
     }
 }
 
 macro_rules! impl_from_select_nodes {
     ($type: path) => {
-        impl From<$type> for InListNode {
+        impl<'a> From<$type> for InListNode<'a> {
             fn from(list: $type) -> Self {
                 InListNode::Query(Box::new(list.into()))
             }
@@ -42,16 +43,21 @@ macro_rules! impl_from_select_nodes {
 }
 
 impl_from_select_nodes!(SelectNode);
-impl_from_select_nodes!(GroupByNode);
-impl_from_select_nodes!(HavingNode);
-impl_from_select_nodes!(LimitNode);
-impl_from_select_nodes!(LimitOffsetNode);
-impl_from_select_nodes!(OffsetNode);
-impl_from_select_nodes!(OffsetLimitNode);
-impl_from_select_nodes!(ProjectNode);
+impl_from_select_nodes!(JoinNode<'a>);
+impl_from_select_nodes!(JoinConstraintNode<'a>);
+impl_from_select_nodes!(HashJoinNode<'a>);
+impl_from_select_nodes!(GroupByNode<'a>);
+impl_from_select_nodes!(HavingNode<'a>);
+impl_from_select_nodes!(FilterNode<'a>);
+impl_from_select_nodes!(LimitNode<'a>);
+impl_from_select_nodes!(LimitOffsetNode<'a>);
+impl_from_select_nodes!(OffsetNode<'a>);
+impl_from_select_nodes!(OffsetLimitNode<'a>);
+impl_from_select_nodes!(ProjectNode<'a>);
+impl_from_select_nodes!(OrderByNode<'a>);
 
-impl ExprNode {
-    pub fn in_list<T: Into<InListNode>>(self, value: T) -> Self {
+impl<'a> ExprNode<'a> {
+    pub fn in_list<T: Into<InListNode<'a>>>(self, value: T) -> Self {
         Self::InList {
             expr: Box::new(self),
             list: Box::new(value.into()),
@@ -59,7 +65,7 @@ impl ExprNode {
         }
     }
 
-    pub fn not_in_list<T: Into<InListNode>>(self, value: T) -> Self {
+    pub fn not_in_list<T: Into<InListNode<'a>>>(self, value: T) -> Self {
         Self::InList {
             expr: Box::new(self),
             list: Box::new(value.into()),
@@ -70,7 +76,13 @@ impl ExprNode {
 
 #[cfg(test)]
 mod test {
-    use crate::ast_builder::{col, table, test_expr, text, QueryNode};
+    use crate::{
+        ast::{
+            Expr, Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
+            TableFactor, TableWithJoins,
+        },
+        ast_builder::{col, table, test_expr, text, QueryNode, SelectItemList},
+    };
 
     #[test]
     fn in_list() {
@@ -110,6 +122,67 @@ mod test {
         let expected = "id IN (SELECT * FROM FOO)";
         test_expr(actual, expected);
 
+        // from JoinNode
+        let actual = col("id").in_list(table("Bar").select().join("Foo"));
+        let expected = "id IN (SELECT * FROM Bar JOIN Foo)";
+        test_expr(actual, expected);
+
+        // from JoinConstraintNode
+        let actual = col("id").in_list(table("Bar").select().join("Foo").on("Foo.id = Bar.foo_id"));
+        let expected = "id IN (SELECT * FROM Bar JOIN Foo ON Foo.id = Bar.foo_id)";
+        test_expr(actual, expected);
+
+        // from HashJoinNode
+        let actual = col("id").in_list(
+            table("Player")
+                .select()
+                .join("PlayerItem")
+                .hash_executor("PlayerItem.user_id", "Player.id"),
+        );
+        let expected = {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "PlayerItem".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("PlayerItem.user_id").try_into().unwrap(),
+                    value_expr: col("Player.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Player".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            let query = Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            };
+
+            Expr::InSubquery {
+                expr: Box::new(Expr::Identifier("id".to_owned())),
+                subquery: Box::new(query),
+                negated: false,
+            }
+        };
+        assert_eq!(Expr::try_from(actual).unwrap(), expected);
+
         // from GroupByNode
         let actual = col("id").not_in_list(
             table("Bar")
@@ -136,6 +209,11 @@ mod test {
                 HAVING COUNT(id) > 10
             )
         ";
+        test_expr(actual, expected);
+
+        // from FilterNode
+        let actual = col("id").in_list(table("Bar").select().filter("num > 10"));
+        let expected = "id IN (SELECT * FROM Bar WHERE num > 10)";
         test_expr(actual, expected);
 
         // from LimitNode
@@ -167,6 +245,11 @@ mod test {
         // from ProjectNode
         let actual = col("name").in_list(table("Item").select().project("name"));
         let expected = "name IN (SELECT name FROM Item)";
+        test_expr(actual, expected);
+
+        // from OrderByNode
+        let actual = col("id").in_list(table("Item").select().order_by("score ASC"));
+        let expected = "id IN (SELECT * FROM Item ORDER BY score ASC)";
         test_expr(actual, expected);
     }
 }

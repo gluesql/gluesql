@@ -8,14 +8,14 @@ use {
 use super::OrderByExprNode;
 
 #[derive(Clone)]
-pub struct CreateIndexNode {
+pub struct CreateIndexNode<'a> {
     name: String,
     table_name: String,
-    column: OrderByExprNode,
+    column: OrderByExprNode<'a>,
 }
 
-impl CreateIndexNode {
-    pub fn new(table_name: String, name: String, column: OrderByExprNode) -> Self {
+impl<'a> CreateIndexNode<'a> {
+    pub fn new(table_name: String, name: String, column: OrderByExprNode<'a>) -> Self {
         Self {
             table_name,
             name,
@@ -24,7 +24,7 @@ impl CreateIndexNode {
     }
 }
 
-impl Build for CreateIndexNode {
+impl<'a> Build for CreateIndexNode<'a> {
     fn build(self) -> Result<Statement> {
         let table_name = self.table_name;
         let name = self.name;

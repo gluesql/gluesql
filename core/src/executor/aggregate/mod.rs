@@ -179,6 +179,7 @@ async fn aggregate<'a>(
     expr: &'a Expr,
 ) -> Result<State<'a>> {
     let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
+
     match expr {
         Expr::Between {
             expr, low, high, ..
@@ -200,6 +201,26 @@ async fn aggregate<'a>(
         }
         Expr::UnaryOp { expr, .. } => aggr(state, expr).await,
         Expr::Nested(expr) => aggr(state, expr).await,
+        Expr::Case {
+            operand,
+            when_then,
+            else_result,
+        } => {
+            let operand = std::iter::once(operand.as_ref())
+                .filter_map(|operand| operand.map(|operand| &**operand));
+            let when_then = when_then
+                .iter()
+                .flat_map(|(when, then)| std::iter::once(when).chain(std::iter::once(then)));
+            let else_result = std::iter::once(else_result.as_ref())
+                .filter_map(|else_result| else_result.map(|else_result| &**else_result));
+
+            stream::iter(operand.chain(when_then).chain(else_result))
+                .fold(
+                    Ok(state),
+                    |state, expr| async move { aggr(state?, expr).await },
+                )
+                .await
+        }
         Expr::Aggregate(aggr) => state.accumulate(filter_context, aggr.as_ref()).await,
         _ => Ok(state),
     }
@@ -213,6 +234,21 @@ fn check(expr: &Expr) -> bool {
         Expr::BinaryOp { left, right, .. } => check(left) || check(right),
         Expr::UnaryOp { expr, .. } => check(expr),
         Expr::Nested(expr) => check(expr),
+        Expr::Case {
+            operand,
+            when_then,
+            else_result,
+        } => {
+            operand.as_ref().map(|expr| check(&*expr)).unwrap_or(false)
+                || when_then
+                    .iter()
+                    .map(|(when, then)| check(when) || check(then))
+                    .any(identity)
+                || else_result
+                    .as_ref()
+                    .map(|expr| check(&*expr))
+                    .unwrap_or(false)
+        }
         Expr::Aggregate(_) => true,
         _ => false,
     }

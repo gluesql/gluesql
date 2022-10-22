@@ -2,7 +2,7 @@ use {
     super::{
         ast_literal::{translate_ast_literal, translate_datetime_field},
         data_type::translate_data_type,
-        function::{translate_cast, translate_function, translate_positon},
+        function::{translate_cast, translate_extract, translate_function, translate_positon},
         operator::{translate_binary_operator, translate_unary_operator},
         translate_idents, translate_query, TranslateError,
     },
@@ -96,10 +96,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             op: translate_unary_operator(op)?,
             expr: translate_expr(expr).map(Box::new)?,
         }),
-        SqlExpr::Extract { field, expr } => Ok(Expr::Extract {
-            field: translate_datetime_field(field)?,
-            expr: translate_expr(expr).map(Box::new)?,
-        }),
+        SqlExpr::Extract { field, expr } => translate_extract(field, expr),
         SqlExpr::Nested(expr) => translate_expr(expr).map(Box::new).map(Expr::Nested),
         SqlExpr::Value(value) => translate_ast_literal(value).map(Expr::Literal),
         SqlExpr::TypedString { data_type, value } => Ok(Expr::TypedString {
