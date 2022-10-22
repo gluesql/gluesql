@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! impl_interval_method {
     (checked_mul, $lhs_variant: ident, $op: ident, $lhs: ident, $rhs: ident) => {
         return Ok(Value::Interval($lhs * $rhs))
@@ -13,7 +12,6 @@ macro_rules! impl_interval_method {
     };
 }
 
-#[macro_export]
 macro_rules! impl_method {
     ($lhs_variant: ident, $lhs_primitive: ident, $lhs: ident, $method: ident, $op: ident, $rhs: ident) => {{
         match *$rhs {
@@ -99,7 +97,7 @@ macro_rules! impl_method {
                 }),
             Null => return Ok(Null),
             Interval(rhs) => {
-                $crate::impl_interval_method!($method, $lhs_variant, $op, $lhs, rhs);
+                super::macros::impl_interval_method!($method, $lhs_variant, $op, $lhs, rhs);
             }
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: $lhs_variant($lhs),
@@ -112,7 +110,6 @@ macro_rules! impl_method {
     }};
 }
 
-#[macro_export]
 macro_rules! impl_try_binary_op {
     ($variant: ident, $primitive: ident) => {
         use $crate::{
@@ -129,34 +126,33 @@ macro_rules! impl_try_binary_op {
 
             fn try_add(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_add, Add, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_add, Add, rhs)
             }
 
             fn try_subtract(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_sub, Subtract, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_sub, Subtract, rhs)
             }
 
             fn try_multiply(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_mul, Multiply, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_mul, Multiply, rhs)
             }
 
             fn try_divide(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_div, Divide, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_div, Divide, rhs)
             }
 
             fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_rem, Modulo, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_rem, Modulo, rhs)
             }
         }
     };
 }
 
 #[cfg(test)]
-#[macro_export]
 macro_rules! generate_binary_op_tests {
     ($variant: ident, $primitive: ident) => {
         mod tests {
@@ -556,3 +552,9 @@ macro_rules! generate_binary_op_tests {
         }
     };
 }
+
+#[cfg(test)]
+pub(crate) use generate_binary_op_tests;
+pub(crate) use impl_interval_method;
+pub(crate) use impl_method;
+pub(crate) use impl_try_binary_op;
