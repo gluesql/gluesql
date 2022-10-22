@@ -5,24 +5,18 @@ use {
         data::{Key, Literal, Value},
         result::{Error, Result},
     },
-    std::{borrow::Cow, cmp::Ordering},
+    std::cmp::Ordering,
 };
 
 #[derive(Clone)]
 pub enum Evaluated<'a> {
     Literal(Literal<'a>),
-    Value(Cow<'a, Value>),
+    Value(Value),
 }
 
 impl<'a> From<Value> for Evaluated<'a> {
     fn from(value: Value) -> Self {
-        Evaluated::Value(Cow::Owned(value))
-    }
-}
-
-impl<'a> From<&'a Value> for Evaluated<'a> {
-    fn from(value: &'a Value) -> Self {
-        Evaluated::Value(Cow::Borrowed(value))
+        Evaluated::Value(value)
     }
 }
 
@@ -32,7 +26,7 @@ impl TryFrom<Evaluated<'_>> for Value {
     fn try_from(e: Evaluated<'_>) -> Result<Value> {
         match e {
             Evaluated::Literal(v) => Value::try_from(v),
-            Evaluated::Value(v) => Ok(v.into_owned()),
+            Evaluated::Value(v) => Ok(v),
         }
     }
 }
@@ -51,7 +45,7 @@ impl TryFrom<&Evaluated<'_>> for Key {
     fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
         match evaluated {
             Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
-            Evaluated::Value(v) => v.as_ref().try_into(),
+            Evaluated::Value(v) => v.try_into(),
         }
     }
 }
@@ -65,8 +59,7 @@ impl TryFrom<Evaluated<'_>> for bool {
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
             }
-            Evaluated::Value(Cow::Owned(Value::Bool(v))) => Ok(v),
-            Evaluated::Value(Cow::Borrowed(Value::Bool(v))) => Ok(*v),
+            Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Value(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
             }
@@ -79,7 +72,7 @@ impl<'a> PartialEq for Evaluated<'a> {
         match (self, other) {
             (Evaluated::Literal(a), Evaluated::Literal(b)) => a == b,
             (Evaluated::Literal(b), Evaluated::Value(a))
-            | (Evaluated::Value(a), Evaluated::Literal(b)) => a.as_ref() == b,
+            | (Evaluated::Value(a), Evaluated::Literal(b)) => a == b,
             (Evaluated::Value(a), Evaluated::Value(b)) => a == b,
         }
     }
@@ -89,11 +82,9 @@ impl<'a> PartialOrd for Evaluated<'a> {
     fn partial_cmp(&self, other: &Evaluated<'a>) -> Option<Ordering> {
         match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => l.partial_cmp(r),
-            (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                r.as_ref().partial_cmp(l).map(|o| o.reverse())
-            }
-            (Evaluated::Value(l), Evaluated::Literal(r)) => l.as_ref().partial_cmp(r),
-            (Evaluated::Value(l), Evaluated::Value(r)) => l.as_ref().partial_cmp(r.as_ref()),
+            (Evaluated::Literal(l), Evaluated::Value(r)) => r.partial_cmp(l).map(|o| o.reverse()),
+            (Evaluated::Value(l), Evaluated::Literal(r)) => l.partial_cmp(r),
+            (Evaluated::Value(l), Evaluated::Value(r)) => l.partial_cmp(r),
         }
     }
 }
@@ -111,14 +102,12 @@ where
     match (l, r) {
         (Evaluated::Literal(l), Evaluated::Literal(r)) => literal_op(l, r).map(Evaluated::Literal),
         (Evaluated::Literal(l), Evaluated::Value(r)) => {
-            value_op(&Value::try_from(l)?, r.as_ref()).map(Evaluated::from)
+            value_op(&Value::try_from(l)?, r).map(Evaluated::from)
         }
         (Evaluated::Value(l), Evaluated::Literal(r)) => {
-            value_op(l.as_ref(), &Value::try_from(r)?).map(Evaluated::from)
+            value_op(l, &Value::try_from(r)?).map(Evaluated::from)
         }
-        (Evaluated::Value(l), Evaluated::Value(r)) => {
-            value_op(l.as_ref(), r.as_ref()).map(Evaluated::from)
-        }
+        (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
     }
 }
 
@@ -180,14 +169,12 @@ impl<'a> Evaluated<'a> {
         let evaluated = match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.concat(r)),
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((&Value::try_from(l)?).concat(r.as_ref()))
+                Evaluated::from((&Value::try_from(l)?).concat(&r))
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::from(l.as_ref().concat(&Value::try_from(r)?))
+                Evaluated::from(l.concat(&Value::try_from(r)?))
             }
-            (Evaluated::Value(l), Evaluated::Value(r)) => {
-                Evaluated::from(l.as_ref().concat(r.as_ref()))
-            }
+            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(&r)),
         };
 
         Ok(evaluated)
@@ -199,13 +186,13 @@ impl<'a> Evaluated<'a> {
                 Evaluated::Literal(l.like(&r, case_sensitive)?)
             }
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((&Value::try_from(l)?).like(r.as_ref(), case_sensitive)?)
+                Evaluated::from((&Value::try_from(l)?).like(&r, case_sensitive)?)
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::from(l.as_ref().like(&Value::try_from(r)?, case_sensitive)?)
+                Evaluated::from(l.like(&Value::try_from(r)?, case_sensitive)?)
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => {
-                Evaluated::from(l.as_ref().like(r.as_ref(), case_sensitive)?)
+                Evaluated::from(l.like(&r, case_sensitive)?)
             }
         };
 
@@ -221,7 +208,7 @@ impl<'a> Evaluated<'a> {
 
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
-            Evaluated::Value(v) => v.into_owned(),
+            Evaluated::Value(v) => v,
             Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
         };
 
