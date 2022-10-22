@@ -1,11 +1,9 @@
-use gluesql_core::data::Schema;
-
 mod error;
 
 use {
     csv::ReaderBuilder,
     error::StorageError,
-    gluesql_core::{ast::ColumnDef, prelude::DataType},
+    gluesql_core::{ast::ColumnDef, data::Schema, prelude::DataType},
     std::{
         ffi::OsStr,
         path::{Path, PathBuf},
@@ -21,21 +19,8 @@ pub struct CsvTable {
 
 impl CsvTable {
     /// Create csv table from given path.
-    /// This method constructs `CsvTable` with string typed columns.
+    /// Columns are defaulted as string type.
     pub fn from_path(path: impl AsRef<Path>) -> std::result::Result<Self, StorageError> {
-        // FIXME: Should not validate by filename, but by file structure
-        let table_name = path
-            .as_ref()
-            .file_name()
-            .and_then(OsStr::to_str)
-            .and_then(|filename| filename.strip_suffix(".csv"))
-            .ok_or(StorageError::InvalidFileImport(
-                path.as_ref().display().to_string(),
-            ))?
-            .to_string();
-
-        let file_path = path.as_ref().to_path_buf();
-
         let column_defs: Vec<ColumnDef> = ReaderBuilder::new()
             .from_path(&path)
             .map_err(StorageError::from_csv_error)?
@@ -48,6 +33,22 @@ impl CsvTable {
                 options: vec![],
             })
             .collect();
+
+        let file_path = path.as_ref().to_path_buf();
+
+        let table_name = path
+            .as_ref()
+            .file_name()
+            .and_then(OsStr::to_str)
+            .and_then(|filename| filename.split('.').next())
+            // TODO: Should increment number for default
+            .map_or("new_table_0", |filename| {
+                if filename.len() == 0 {
+                    return "new_table_0";
+                }
+                filename
+            })
+            .to_string();
 
         Ok(CsvTable {
             file_path,
@@ -93,11 +94,9 @@ impl CsvTable {
 
 #[cfg(test)]
 mod test {
-    use gluesql_core::data::Schema;
-
     use {
-        crate::{error::*, CsvTable},
-        gluesql_core::{ast::ColumnDef, prelude::DataType},
+        crate::CsvTable,
+        gluesql_core::{ast::ColumnDef, data::Schema, prelude::DataType},
         std::{fs, path::PathBuf, str::FromStr},
     };
 
@@ -142,23 +141,43 @@ mod test {
     }
 
     #[test]
-    fn fails_when_file_is_not_csv() {
+    fn give_default_table_name_for_empty_filename() {
         // Arrange
-        let xlsx_file = "users.xlsx";
+        let csv_path = ".csv";
         let csv_contents = "id,name,age\n1,John,23\n2,Patrick,30";
-        fs::write(xlsx_file, csv_contents).unwrap();
+        fs::write(csv_path, csv_contents).unwrap();
 
         // Act
-        let result = CsvTable::from_path(xlsx_file);
+        let result = CsvTable::from_path(csv_path);
 
         // Assert
         assert_eq!(
-            Err(StorageError::InvalidFileImport("users.xlsx".to_string()).into()),
-            result
+            Ok(CsvTable {
+                file_path: PathBuf::from_str(".csv").unwrap(),
+                table_name: "new_table_0".to_string(),
+                column_defs: vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Text,
+                        options: vec![]
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        options: vec![]
+                    },
+                    ColumnDef {
+                        name: "age".to_owned(),
+                        data_type: DataType::Text,
+                        options: vec![]
+                    },
+                ],
+            }),
+            result,
         );
 
-        // Should cleanup created file
-        fs::remove_file(xlsx_file).unwrap();
+        // Should cleanup created csv file
+        fs::remove_file(csv_path).unwrap();
     }
 
     #[test]
