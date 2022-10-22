@@ -3,25 +3,26 @@ mod error;
 use {
     csv::ReaderBuilder,
     error::{err_into, StorageError},
-    gluesql_core::{
-        ast::ColumnDef,
-        prelude::{DataType, Row},
-        result::Result,
+    gluesql_core::{ast::ColumnDef, prelude::DataType, result::Result},
+    std::{
+        ffi::OsStr,
+        path::{Path, PathBuf},
     },
-    std::{ffi::OsStr, path::Path},
 };
 
 #[derive(Debug, PartialEq)]
 pub struct CsvTable {
-    name: String,
-    columns: Vec<ColumnDef>,
-    rows: Vec<Row>,
+    file_path: PathBuf,
+    table_name: String,
+    column_defs: Vec<ColumnDef>,
 }
 
 impl CsvTable {
     /// Create csv table from given path.
     pub fn from_path(path: impl AsRef<Path>) -> Result<Self> {
-        let columns: Vec<ColumnDef> = ReaderBuilder::new()
+        let file_path = path.as_ref().to_path_buf();
+
+        let column_defs: Vec<ColumnDef> = ReaderBuilder::new()
             .from_path(&path)
             .map_err(err_into)?
             .headers()
@@ -39,9 +40,9 @@ impl CsvTable {
             .and_then(OsStr::to_str)
             .and_then(|filename| {
                 Some(CsvTable {
-                    name: filename.replace(".csv", ""),
-                    columns,
-                    rows: vec![],
+                    file_path,
+                    table_name: filename.replace(".csv", ""),
+                    column_defs,
                 })
             })
             .ok_or(StorageError::InvalidFileImport(format!("{}", path.as_ref().display())).into())
@@ -53,11 +54,11 @@ mod test {
     use {
         crate::CsvTable,
         gluesql_core::{ast::ColumnDef, prelude::DataType},
-        std::fs,
+        std::{fs, path::PathBuf, str::FromStr},
     };
 
     #[test]
-    fn create_csv_table_from_csv_file() {
+    fn create_table_from_path() {
         // Arrange
         let csv_path = "users.csv";
         let csv_contents = "id,name,age\n1,John,23\n2,Patrick,30";
@@ -70,8 +71,9 @@ mod test {
         assert_eq!(
             result,
             Ok(CsvTable {
-                name: "users".to_owned(),
-                columns: vec![
+                file_path: PathBuf::from_str("users.csv").unwrap(),
+                table_name: "users".to_string(),
+                column_defs: vec![
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Text,
@@ -88,7 +90,6 @@ mod test {
                         options: vec![]
                     },
                 ],
-                rows: vec![]
             })
         );
 
