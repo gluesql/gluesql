@@ -213,6 +213,19 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
                 .collect::<Result<Vec<_>>>()?;
             Ok(Expr::Function(Box::new(Function::Concat(exprs))))
         }
+        "CONCAT_WS" => {
+            check_len_min(name, args.len(), 2)?;
+            let separator = translate_expr(args[0])?;
+            let exprs = args[1..]
+                .iter()
+                .copied()
+                .map(translate_expr)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Expr::Function(Box::new(Function::ConcatWs {
+                separator,
+                exprs,
+            })))
+        }
         "LOWER" => translate_function_one_arg(Function::Lower, args, name),
         "UPPER" => translate_function_one_arg(Function::Upper, args, name),
         "LEFT" => {

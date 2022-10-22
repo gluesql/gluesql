@@ -339,6 +339,15 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             f::extract(field, expr)
         }
+        Function::ConcatWs { separator, exprs } => {
+            let separator = eval(separator)?;
+            let exprs = exprs
+                .iter()
+                .map(|expr| eval(expr))
+                .collect::<Result<Vec<_>>>()?;
+
+            f::concat_ws(name, separator, exprs)
+        }
     }
     .map(Evaluated::from)
 }

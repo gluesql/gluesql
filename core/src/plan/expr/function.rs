@@ -1,17 +1,18 @@
 use {
     crate::ast::{Expr, Function},
-    std::iter::empty,
+    std::iter::{empty, once},
 };
 
 impl Function {
-    pub fn as_exprs(&self) -> impl ExactSizeIterator<Item = &Expr> {
-        #[derive(iter_enum::Iterator, iter_enum::ExactSizeIterator)]
-        enum Exprs<I0, I1, I2, I3, I4> {
+    pub fn as_exprs(&self) -> impl Iterator<Item = &Expr> {
+        #[derive(iter_enum::Iterator)]
+        enum Exprs<I0, I1, I2, I3, I4, I5> {
             Empty(I0),
             Single(I1),
             Double(I2),
             Triple(I3),
             VariableArgs(I4),
+            TypedStringVariableArgs(I5),
         }
 
         match self {
@@ -141,6 +142,9 @@ impl Function {
                 count: Some(expr3),
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
+            Self::ConcatWs { separator, exprs } => {
+                Exprs::TypedStringVariableArgs(once(separator).chain(exprs.iter()))
+            }
         }
     }
 }
@@ -161,10 +165,11 @@ mod tests {
             _ => unreachable!("only for function tests"),
         };
         let actual = function.as_exprs();
+        let actual = actual.collect::<Vec<_>>();
 
         assert_eq!(actual.len(), expected.len(), "{sql}");
 
-        for (expected, actual) in expected.iter().zip(actual) {
+        for (expected, actual) in expected.iter().zip(actual.into_iter()) {
             assert_eq!(actual, &expr(expected), "{sql}");
         }
     }
@@ -264,5 +269,11 @@ mod tests {
 
         test(r#"POSITION("men" IN "ramen")"#, &[r#""men""#, r#""ramen""#]);
         test(r#"POSITION("men" IN ramen)"#, &[r#""men""#, "ramen"]);
+
+        //TypedStringVariableArgs
+        test(
+            r#"CONCAT_WS(",", "gluesql", "is", "cool")"#,
+            &[r#"",""#, r#""gluesql""#, r#""is""#, r#""cool""#],
+        );
     }
 }

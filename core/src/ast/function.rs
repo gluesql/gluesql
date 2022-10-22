@@ -38,6 +38,10 @@ pub enum Function {
     },
     Ceil(Expr),
     Concat(Vec<Expr>),
+    ConcatWs {
+        separator: Expr,
+        exprs: Vec<Expr>,
+    },
     IfNull {
         expr: Expr,
         then: Expr,
@@ -179,6 +183,14 @@ impl ToSql for Function {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("CONCAT({items})")
+            }
+            Function::ConcatWs { separator, exprs } => {
+                let exprs = exprs
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(&separator.to_sql());
+                format!("CONCAT_WS({}, {})", separator.to_sql(), exprs)
             }
             Function::IfNull { expr, then } => {
                 format!("IFNULL({}, {})", expr.to_sql(), then.to_sql())

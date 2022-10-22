@@ -64,6 +64,21 @@ pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Value> {
         })
 }
 
+pub fn concat_ws(
+    name: String,
+    separator: Evaluated<'_>,
+    exprs: Vec<Evaluated<'_>>,
+) -> Result<Value> {
+    let separator = eval_to_str!(name, separator);
+    exprs
+        .into_iter()
+        .map(|expr| expr.try_into())
+        .filter(|value| !matches!(value, Ok(Value::Null)))
+        .try_fold(Value::Str("".to_owned()), |left, right| {
+            Ok(left.concat_ws(separator.clone(), &right?))
+        })
+}
+
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {
     Ok(Value::Str(eval_to_str!(name, expr).to_lowercase()))
 }
