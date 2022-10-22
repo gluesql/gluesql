@@ -94,6 +94,8 @@ impl CsvTable {
 
 #[cfg(test)]
 mod test {
+    use crate::error::StorageError;
+
     use {
         crate::CsvTable,
         gluesql_core::{ast::ColumnDef, data::Schema, prelude::DataType},
@@ -106,10 +108,8 @@ mod test {
         let csv_path = "users.csv";
         let csv_contents = "id,name,age\n1,John,23\n2,Patrick,30";
         fs::write(csv_path, csv_contents).unwrap();
-
         // Act
         let result = CsvTable::from_path(csv_path);
-
         // Assert
         assert_eq!(
             Ok(CsvTable {
@@ -135,7 +135,6 @@ mod test {
             }),
             result,
         );
-
         // Should cleanup created csv file
         fs::remove_file(csv_path).unwrap();
     }
@@ -146,10 +145,8 @@ mod test {
         let csv_path = ".csv";
         let csv_contents = "id,name,age\n1,John,23\n2,Patrick,30";
         fs::write(csv_path, csv_contents).unwrap();
-
         // Act
         let result = CsvTable::from_path(csv_path);
-
         // Assert
         assert_eq!(
             Ok(CsvTable {
@@ -180,10 +177,10 @@ mod test {
         fs::remove_file(csv_path).unwrap();
     }
 
-    #[test]
-    fn converts_column_defs_with_given_schema() {
-        // Arrange
-        let csv_table = CsvTable {
+    // Test `adapt_schema()`
+
+    fn generate_csv_table() -> CsvTable {
+        CsvTable {
             file_path: PathBuf::from_str("users.csv").unwrap(),
             table_name: "users".to_string(),
             column_defs: vec![
@@ -203,8 +200,13 @@ mod test {
                     options: vec![],
                 },
             ],
-        };
+        }
+    }
 
+    #[test]
+    fn converts_column_defs_with_given_schema() {
+        // Arrange
+        let csv_table = generate_csv_table();
         let schema = Schema {
             table_name: "users".to_string(),
             column_defs: vec![
@@ -226,10 +228,8 @@ mod test {
             ],
             indexes: vec![],
         };
-
         // Act
         let result = csv_table.adapt_schema(schema);
-
         // Assert
         assert_eq!(
             result,
@@ -254,6 +254,27 @@ mod test {
                     },
                 ],
             })
+        )
+    }
+
+    #[test]
+    fn fails_when_table_names_are_different() {
+        // Arrange
+        let csv_table = generate_csv_table();
+        let schema = Schema {
+            table_name: "animals".to_string(),
+            column_defs: vec![],
+            indexes: vec![],
+        };
+        // Act
+        let result = csv_table.adapt_schema(schema);
+        // Assert
+        assert_eq!(
+            Err(StorageError::SchemaMismatch(
+                "Csv table name: users".to_string(),
+                "Schema table name: animals".to_string()
+            )),
+            result
         )
     }
 }
