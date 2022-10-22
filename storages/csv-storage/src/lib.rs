@@ -94,10 +94,8 @@ impl CsvTable {
 
 #[cfg(test)]
 mod test {
-    use crate::error::StorageError;
-
     use {
-        crate::CsvTable,
+        crate::{error::StorageError, CsvTable},
         gluesql_core::{ast::ColumnDef, data::Schema, prelude::DataType},
         std::{fs, path::PathBuf, str::FromStr},
     };
@@ -275,6 +273,31 @@ mod test {
                 "Schema table name: animals".to_string()
             )),
             result
-        )
+        );
+    }
+
+    #[test]
+    fn fails_when_column_names_are_different() {
+        // Arrange
+        let csv_table = generate_csv_table();
+        let schema = Schema {
+            table_name: "users".to_string(),
+            column_defs: vec![ColumnDef {
+                name: "identifier".to_owned(),
+                data_type: DataType::Int128,
+                options: vec![],
+            }],
+            indexes: vec![],
+        };
+        // Act
+        let result = csv_table.adapt_schema(schema);
+        // Assert
+        assert_eq!(
+            Err(StorageError::SchemaMismatch(
+                "Csv column name: id".to_string(),
+                "Schema column name: identifier".to_string()
+            )),
+            result
+        );
     }
 }
