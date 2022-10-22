@@ -1,12 +1,8 @@
-use {
-    crate::{impl_try_binary_op, prelude::Value},
-    rust_decimal::prelude::Decimal,
-    std::cmp::Ordering,
-};
+use {crate::prelude::Value, rust_decimal::prelude::Decimal, std::cmp::Ordering};
 
-impl_try_binary_op!(I8, i8);
+super::macros::impl_try_binary_op!(I8, i8);
 #[cfg(test)]
-crate::generate_binary_op_tests!(I8, i8);
+super::macros::generate_binary_op_tests!(I8, i8);
 
 impl PartialEq<Value> for i8 {
     fn eq(&self, other: &Value) -> bool {
