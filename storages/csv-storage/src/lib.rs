@@ -1,3 +1,5 @@
+use gluesql_core::data::Schema;
+
 mod error;
 
 use {
@@ -19,7 +21,9 @@ pub struct CsvTable {
 
 impl CsvTable {
     /// Create csv table from given path.
+    /// This method constructs `CsvTable` with string typed columns.
     pub fn from_path(path: impl AsRef<Path>) -> std::result::Result<Self, StorageError> {
+        // FIXME: Should not validate by filename, but by file structure
         let table_name = path
             .as_ref()
             .file_name()
@@ -51,10 +55,46 @@ impl CsvTable {
             column_defs,
         })
     }
+
+    /// Adapts schema and create new `CsvTable`.    
+    ///
+    /// Following info should be identical between `schema` and `CsvTable`:
+    /// - `table_name`
+    /// - `column_def.name` for every item in `column_defs`
+    pub fn adapt_schema(self, schema: Schema) -> Result<Self, StorageError> {
+        if self.table_name != schema.table_name {
+            return Err(StorageError::SchemaMismatch(
+                format!("Csv table name: {}", self.table_name),
+                format!("Schema table name: {}", schema.table_name),
+            ));
+        }
+
+        let column_defs = self
+            .column_defs
+            .into_iter()
+            .zip(schema.column_defs)
+            .map(|(csv_col, schema_col)| {
+                if csv_col.name != schema_col.name {
+                    return Err(StorageError::SchemaMismatch(
+                        format!("Csv column name: {}", csv_col.name),
+                        format!("Schema column name: {}", schema_col.name),
+                    ));
+                }
+                Ok(schema_col)
+            })
+            .collect::<Result<Vec<_>, StorageError>>()?;
+
+        Ok(CsvTable {
+            column_defs,
+            ..self
+        })
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use gluesql_core::data::Schema;
+
     use {
         crate::{error::*, CsvTable},
         gluesql_core::{ast::ColumnDef, prelude::DataType},
@@ -119,5 +159,82 @@ mod test {
 
         // Should cleanup created file
         fs::remove_file(xlsx_file).unwrap();
+    }
+
+    #[test]
+    fn converts_column_defs_with_given_schema() {
+        // Arrange
+        let csv_table = CsvTable {
+            file_path: PathBuf::from_str("users.csv").unwrap(),
+            table_name: "users".to_string(),
+            column_defs: vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Text,
+                    options: vec![],
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    options: vec![],
+                },
+                ColumnDef {
+                    name: "age".to_owned(),
+                    data_type: DataType::Text,
+                    options: vec![],
+                },
+            ],
+        };
+
+        let schema = Schema {
+            table_name: "users".to_string(),
+            column_defs: vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int128,
+                    options: vec![],
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    options: vec![],
+                },
+                ColumnDef {
+                    name: "age".to_owned(),
+                    data_type: DataType::Uint8,
+                    options: vec![],
+                },
+            ],
+            indexes: vec![],
+        };
+
+        // Act
+        let result = csv_table.adapt_schema(schema);
+
+        // Assert
+        assert_eq!(
+            result,
+            Ok(CsvTable {
+                file_path: PathBuf::from_str("users.csv").unwrap(),
+                table_name: "users".to_string(),
+                column_defs: vec![
+                    ColumnDef {
+                        name: "id".to_owned(),
+                        data_type: DataType::Int128,
+                        options: vec![],
+                    },
+                    ColumnDef {
+                        name: "name".to_owned(),
+                        data_type: DataType::Text,
+                        options: vec![],
+                    },
+                    ColumnDef {
+                        name: "age".to_owned(),
+                        data_type: DataType::Uint8,
+                        options: vec![],
+                    },
+                ],
+            })
+        )
     }
 }

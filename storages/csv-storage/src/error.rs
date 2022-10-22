@@ -7,6 +7,9 @@ pub enum StorageError {
 
     #[error("failed to process csv record: {0}")]
     FailedToProcessCsv(String),
+
+    #[error("given schema doesn't fit for csv table: {0}, {1}")]
+    SchemaMismatch(String, String),
 }
 
 impl StorageError {
