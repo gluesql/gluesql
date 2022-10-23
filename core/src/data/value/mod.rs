@@ -226,13 +226,6 @@ impl Value {
         }
     }
 
-    pub fn concat_ws(&self, separator: String, other: &Value) -> Value {
-        match (self, other) {
-            (Value::Null, _) | (_, Value::Null) => Value::Null,
-            _ => Value::Str(String::from(self) + &separator + &String::from(other)),
-        }
-    }
-
     pub fn add(&self, other: &Value) -> Result<Value> {
         use Value::*;
 

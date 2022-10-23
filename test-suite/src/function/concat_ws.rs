@@ -2,7 +2,17 @@ use {
     crate::*,
     gluesql_core::{prelude::Value::*, translate::TranslateError},
 };
+
 test_case!(concat_ws, async move {
+    test!(
+        r#"VALUES(CONCAT_WS(",", "AB", "CD", "EF"))"#,
+        Ok(select!(
+            column1
+            Str;
+            "AB,CD,EF".to_owned()
+        ))
+    );
+
     run!(
         "
         CREATE TABLE Concat (
