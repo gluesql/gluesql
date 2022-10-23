@@ -85,13 +85,19 @@ pub fn concat_ws(
     exprs: Vec<Evaluated<'_>>,
 ) -> Result<Value> {
     let separator = eval_to_str!(name, separator);
-    exprs
+
+    let result = exprs
         .into_iter()
         .map(|expr| expr.try_into())
         .filter(|value| !matches!(value, Ok(Value::Null)))
-        .try_fold(Value::Str("".to_owned()), |left, right| {
-            Ok(left.concat_ws(separator.clone(), &right?))
+        .map(|value| match value {
+            Ok(value) => Ok(String::from(value)),
+            Err(_err) => Ok(String::from(Value::Str("".to_owned()))),
         })
+        .collect::<Result<Vec<_>>>()?
+        .join(&separator);
+
+    Ok(Value::Str(result))
 }
 
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {

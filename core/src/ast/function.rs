@@ -189,7 +189,7 @@ impl ToSql for Function {
                     .iter()
                     .map(ToSql::to_sql)
                     .collect::<Vec<_>>()
-                    .join(&separator.to_sql());
+                    .join(", ");
                 format!("CONCAT_WS({}, {})", separator.to_sql(), exprs)
             }
             Function::IfNull { expr, then } => {
@@ -471,6 +471,19 @@ mod tests {
                 Expr::Identifier("tac".to_owned()),
                 Expr::Identifier("toe".to_owned())
             ])))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CONCAT_WS(-, Tic, tac, toe)",
+            &Expr::Function(Box::new(Function::ConcatWs {
+                separator: Expr::Identifier("-".to_owned()),
+                exprs: vec![
+                    Expr::Identifier("Tic".to_owned()),
+                    Expr::Identifier("tac".to_owned()),
+                    Expr::Identifier("toe".to_owned())
+                ]
+            }))
             .to_sql()
         );
 

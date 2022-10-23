@@ -48,7 +48,7 @@ test_case!(concat_ws, async move {
         Ok(select!(
            myconcat
            Str;
-           "ab/cd/af".to_owned()
+           "ab/cd/ef".to_owned()
         ))
     );
 
@@ -74,7 +74,7 @@ test_case!(concat_ws, async move {
         r#"select concat_ws() as myconcat from Concat;"#,
         Err(TranslateError::FunctionArgsLengthNotMatchingMin {
             name: "CONCAT_WS".to_owned(),
-            expected_minimum: 1,
+            expected_minimum: 2,
             found: 0
         }
         .into())
