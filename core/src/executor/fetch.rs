@@ -175,13 +175,13 @@ pub async fn fetch_relation_rows<'a>(
                         let rows = schemas.into_iter().flat_map(|schema| {
                             let table_rows = vec![Ok(Row(vec![
                                 Value::Str(schema.table_name),
-                                Value::Str("TABLE".to_string()),
+                                Value::Str("TABLE".to_owned()),
                                 Value::Timestamp(schema.created),
                             ]))];
                             let index_rows = schema.indexes.into_iter().map(|index| {
                                 Ok(Row(vec![
                                     Value::Str(index.name.clone()),
-                                    Value::Str("INDEX".to_string()),
+                                    Value::Str("INDEX".to_owned()),
                                     Value::Timestamp(index.created),
                                 ]))
                             });
