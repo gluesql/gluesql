@@ -1,7 +1,6 @@
-use chrono::Utc;
-
 use {
     crate::*,
+    chrono::Utc,
     gluesql_core::{
         ast::IndexOperator::*,
         executor::AlterError,

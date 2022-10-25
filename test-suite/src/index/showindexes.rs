@@ -34,35 +34,6 @@ CREATE TABLE Test (
         "CREATE INDEX idx_id2 ON Test (id + num)",
         Ok(Payload::CreateIndex)
     );
-
-    // test!(
-    //     "show indexes from Test",
-    //     Ok(Payload::ShowIndexes(vec![
-    //         SchemaIndex {
-    //             name: "idx_id".to_owned(),
-    //             order: SchemaIndexOrd::Both,
-    //             expr: Expr::Identifier("id".to_owned()),
-    //             created: Utc::now().naive_utc(),
-    //         },
-    //         SchemaIndex {
-    //             name: "idx_name".to_owned(),
-    //             order: SchemaIndexOrd::Both,
-    //             expr: Expr::Identifier("name".to_owned()),
-    //             created: Utc::now().naive_utc(),
-    //         },
-    //         SchemaIndex {
-    //             name: "idx_id2".to_owned(),
-    //             order: SchemaIndexOrd::Both,
-    //             expr: Expr::BinaryOp {
-    //                 left: Box::new(Expr::Identifier("id".to_owned())),
-    //                 op: BinaryOperator::Plus,
-    //                 right: Box::new(Expr::Identifier("num".to_owned()))
-    //             },
-    //             created: Utc::now().naive_utc(),
-    //         }
-    //     ]))
-    // );
-
     test!(
         "show indexes from NoTable",
         Err(ExecuteError::TableNotFound("NoTable".to_owned()).into())
