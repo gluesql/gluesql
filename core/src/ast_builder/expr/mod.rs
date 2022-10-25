@@ -35,11 +35,12 @@ use {
 #[derive(Clone)]
 pub enum ExprNode<'a> {
     Expr(Cow<'a, Expr>),
-    SqlExpr(String),
-    Identifier(String),
-    CompoundIdentifier {
-        alias: String,
-        ident: String,
+    SqlExpr(Cow<'a, str>),
+    Identifier(Cow<'a, str>),
+    QuotedString(Cow<'a, str>),
+    TypedString {
+        data_type: DataType,
+        value: Cow<'a, str>,
     },
     Between {
         expr: Box<ExprNode<'a>>,
@@ -99,10 +100,26 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
 
                 translate_expr(&expr)
             }
-            ExprNode::Identifier(ident) => Ok(Expr::Identifier(ident)),
-            ExprNode::CompoundIdentifier { alias, ident } => {
-                Ok(Expr::CompoundIdentifier { alias, ident })
+            ExprNode::Identifier(value) => {
+                let idents = value.as_ref().split('.').collect::<Vec<_>>();
+
+                Ok(match idents.as_slice() {
+                    [alias, ident] => Expr::CompoundIdentifier {
+                        alias: alias.to_string(),
+                        ident: ident.to_string(),
+                    },
+                    _ => Expr::Identifier(value.into_owned()),
+                })
             }
+            ExprNode::QuotedString(value) => {
+                let value = value.into_owned();
+
+                Ok(Expr::Literal(AstLiteral::QuotedString(value)))
+            }
+            ExprNode::TypedString { data_type, value } => Ok(Expr::TypedString {
+                data_type,
+                value: value.into_owned(),
+            }),
             ExprNode::Between {
                 expr,
                 negated,
@@ -257,9 +274,15 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
     }
 }
 
-impl<'a> From<&str> for ExprNode<'a> {
-    fn from(expr: &str) -> Self {
-        ExprNode::SqlExpr(expr.to_owned())
+impl<'a> From<&'a str> for ExprNode<'a> {
+    fn from(expr: &'a str) -> Self {
+        ExprNode::SqlExpr(Cow::Borrowed(expr))
+    }
+}
+
+impl<'a> From<String> for ExprNode<'a> {
+    fn from(expr: String) -> Self {
+        ExprNode::SqlExpr(Cow::Owned(expr))
     }
 }
 
@@ -289,51 +312,47 @@ impl<'a> From<Expr> for ExprNode<'a> {
     }
 }
 
-pub fn expr<'a>(value: &str) -> ExprNode<'a> {
-    ExprNode::from(value)
+impl<'a> From<&'a Expr> for ExprNode<'a> {
+    fn from(expr: &'a Expr) -> Self {
+        ExprNode::Expr(Cow::Borrowed(expr))
+    }
 }
 
-pub fn col<'a>(value: &str) -> ExprNode<'a> {
-    let idents = value.split('.').collect::<Vec<_>>();
+pub fn expr<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::SqlExpr(value.into())
+}
 
-    match idents.as_slice() {
-        [alias, ident] => ExprNode::CompoundIdentifier {
-            alias: alias.to_string(),
-            ident: ident.to_string(),
-        },
-        _ => ExprNode::Identifier(value.to_owned()),
-    }
+pub fn col<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::Identifier(value.into())
 }
 
 pub fn num<'a>(value: i64) -> ExprNode<'a> {
     ExprNode::from(value)
 }
 
-pub fn text<'a>(value: &str) -> ExprNode<'a> {
-    ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::QuotedString(
-        value.to_owned(),
-    ))))
+pub fn text<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::QuotedString(value.into())
 }
 
-pub fn date<'a>(date: &str) -> ExprNode<'a> {
-    ExprNode::Expr(Cow::Owned(Expr::TypedString {
+pub fn date<'a, T: Into<Cow<'a, str>>>(date: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
         data_type: DataType::Date,
-        value: date.to_owned(),
-    }))
+        value: date.into(),
+    }
 }
 
-pub fn timestamp<'a>(timestamp: &str) -> ExprNode<'a> {
-    ExprNode::Expr(Cow::Owned(Expr::TypedString {
+pub fn timestamp<'a, T: Into<Cow<'a, str>>>(timestamp: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
         data_type: DataType::Timestamp,
-        value: timestamp.to_owned(),
-    }))
+        value: timestamp.into(),
+    }
 }
 
-pub fn time<'a>(time: &str) -> ExprNode<'a> {
-    ExprNode::Expr(Cow::Owned(Expr::TypedString {
+pub fn time<'a, T: Into<Cow<'a, str>>>(time: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
         data_type: DataType::Time,
-        value: time.to_owned(),
-    }))
+        value: time.into(),
+    }
 }
 
 pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
@@ -358,6 +377,10 @@ mod tests {
         let expected = "id IS NOT NULL";
         test_expr(actual, expected);
 
+        let actual: ExprNode = String::from("1 + 10)").into();
+        let expected = "1 + 10";
+        test_expr(actual, expected);
+
         let actual: ExprNode = 1024.into();
         let expected = "1024";
         test_expr(actual, expected);
@@ -370,8 +393,12 @@ mod tests {
         let expected = "(SELECT id FROM Foo)";
         test_expr(actual, expected);
 
-        let actual: ExprNode = Expr::Identifier("id".to_owned()).into();
+        let expr = Expr::Identifier("id".to_owned());
+        let actual: ExprNode = (&expr).into();
         let expected = "id";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = expr.into();
         test_expr(actual, expected);
     }
 

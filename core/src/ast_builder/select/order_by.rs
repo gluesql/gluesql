@@ -167,7 +167,7 @@ mod tests {
             .select()
             .group_by("city")
             .having("COUNT(name) < 100")
-            .order_by(ExprNode::Identifier("name".to_owned()))
+            .order_by(ExprNode::Identifier("name".into()))
             .limit(3)
             .offset(2)
             .build();
