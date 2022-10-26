@@ -29,10 +29,7 @@ use super::alter::alter_table;
 #[cfg(feature = "index")]
 use {
     super::alter::create_index,
-    crate::{
-        ast::{AstLiteral, BinaryOperator},
-        data::SchemaIndex,
-    },
+    crate::ast::{AstLiteral, BinaryOperator},
 };
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
@@ -69,9 +66,6 @@ pub enum Payload {
     Rollback,
 
     ShowVariable(PayloadVariable),
-
-    #[cfg(feature = "index")]
-    ShowIndexes(Vec<SchemaIndex>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
