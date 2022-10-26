@@ -1,4 +1,5 @@
 mod error;
+mod schema;
 
 use {
     csv::ReaderBuilder,

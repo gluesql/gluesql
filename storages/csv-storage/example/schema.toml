@@ -1,0 +1,16 @@
+[table.users]
+path = "example/data/users.csv"
+columns.id = "Int128"
+columns.name = "Text"
+columns.age = "Uint8"
+columns.role = "Text"
+
+[table.orders]
+path = "example/data/orders.csv"
+columns.id = "Int128"
+columns.name = "Text"
+columns.orderer_id = "Int128"
+columns.restaurant_id = "Int128"
+columns.quantity = "Uint8"
+columns.price = "Float"
+columns.status = "Text"
