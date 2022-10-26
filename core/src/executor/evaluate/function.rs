@@ -90,10 +90,7 @@ pub fn concat_ws<'a>(
         .into_iter()
         .map(|expr| expr.try_into())
         .filter(|value| !matches!(value, Ok(Value::Null)))
-        .map(|value| match value {
-            Ok(value) => Ok(String::from(value)),
-            Err(_err) => Ok(String::from(Value::Str("".to_owned()))),
-        })
+        .map(|value| Ok(String::from(value?)))
         .collect::<Result<Vec<_>>>()?
         .join(&separator);
 

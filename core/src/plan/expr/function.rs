@@ -12,7 +12,7 @@ impl Function {
             Double(I2),
             Triple(I3),
             VariableArgs(I4),
-            TypedStringVariableArgs(I5),
+            VariableArgsWithSingle(I5),
         }
 
         match self {
@@ -143,7 +143,7 @@ impl Function {
             } => Exprs::Triple([expr, expr2, expr3].into_iter()),
             Self::Concat(exprs) => Exprs::VariableArgs(exprs.iter()),
             Self::ConcatWs { separator, exprs } => {
-                Exprs::TypedStringVariableArgs(once(separator).chain(exprs.iter()))
+                Exprs::VariableArgsWithSingle(once(separator).chain(exprs.iter()))
             }
         }
     }
