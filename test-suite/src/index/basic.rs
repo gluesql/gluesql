@@ -321,17 +321,4 @@ CREATE TABLE Test (
         "DROP INDEX Test.idx_aaa",
         Err(IndexError::IndexNameDoesNotExist("idx_aaa".to_owned()).into())
     );
-
-    let today = Utc::now().naive_utc().format("%Y-%m-%d");
-
-    test!(
-        "SELECT OBJECT_NAME, OBJECT_TYPE, FORMAT(CREATED, \"%Y-%m-%d\") CREATED_DATE FROM GLUE_OBJECTS",
-        Ok(select!(
-            OBJECT_NAME          | OBJECT_TYPE        | CREATED_DATE;
-            Str                  | Str                | Str;
-            "Test".to_owned()      "TABLE".to_owned()   today.to_string();
-            "idx_id".to_owned()    "INDEX".to_owned()   today.to_string();
-            "idx_name".to_owned()  "INDEX".to_owned()   today.to_string()
-        ))
-    );
 });
