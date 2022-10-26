@@ -60,23 +60,6 @@ fn convert_payload(payload: Payload) -> Json {
                 "columns": Json::Array(columns),
             })
         }
-        Payload::ShowIndexes(indexes) => {
-            let indexes = indexes
-                .into_iter()
-                .map(|index| {
-                    json!({
-                        "name": index.name,
-                        "order": index.order.to_owned(),
-                        "description": index.expr.to_sql(),
-                    })
-                })
-                .collect();
-
-            json!({
-                "type": "SHOW INDEXES",
-                "indexes": Json::Array(indexes),
-            })
-        }
         Payload::Insert(num) => json!({
             "type": "INSERT",
             "affected": num
