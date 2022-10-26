@@ -1,3 +1,8 @@
+use gluesql_core::{
+    ast::Expr,
+    data::{SchemaIndex, SchemaIndexOrd},
+};
+
 use {
     crate::*,
     gluesql_core::{executor::ExecuteError, prelude::Payload},
@@ -33,6 +38,31 @@ CREATE TABLE Test (
     test!(
         "CREATE INDEX idx_id2 ON Test (id + num)",
         Ok(Payload::CreateIndex)
+    );
+    test!(
+        "show indexes from Test",
+        Ok(Payload::ShowIndexes(vec![
+            SchemaIndex {
+                name: "idx_id".to_owned(),
+                order: SchemaIndexOrd::Both,
+                expr: Expr::Identifier("id".to_owned())
+                created:
+            },
+            SchemaIndex {
+                name: "idx_name".to_owned(),
+                order: SchemaIndexOrd::Both,
+                expr: Expr::Identifier("name".to_owned())
+            },
+            SchemaIndex {
+                name: "idx_id2".to_owned(),
+                order: SchemaIndexOrd::Both,
+                expr: Expr::BinaryOp {
+                    left: Box::new(Expr::Identifier("id".to_owned())),
+                    op: BinaryOperator::Plus,
+                    right: Box::new(Expr::Identifier("num".to_owned()))
+                }
+            }
+        ]))
     );
     test!(
         "show indexes from NoTable",
