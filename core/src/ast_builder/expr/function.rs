@@ -75,6 +75,10 @@ pub enum FunctionNode<'a> {
     Degrees(ExprNode<'a>),
     Radians(ExprNode<'a>),
     Concat(ExprList<'a>),
+    ConcatWs {
+        separator: ExprNode<'a>,
+        exprs: ExprList<'a>,
+    },
     Substr {
         expr: ExprNode<'a>,
         start: ExprNode<'a>,
@@ -206,6 +210,11 @@ impl<'a> TryFrom<FunctionNode<'a>> for Function {
                 Ok(Function::Rpad { expr, size, fill })
             }
             FunctionNode::Concat(expr_list) => expr_list.try_into().map(Function::Concat),
+            FunctionNode::ConcatWs { separator, exprs } => {
+                let separator = separator.try_into()?;
+                let exprs = exprs.try_into()?;
+                Ok(Function::ConcatWs { separator, exprs })
+            }
             FunctionNode::Degrees(expr) => expr.try_into().map(Function::Degrees),
             FunctionNode::Radians(expr) => expr.try_into().map(Function::Radians),
             FunctionNode::Exp(expr) => expr.try_into().map(Function::Exp),
@@ -437,6 +446,17 @@ pub fn round<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
 pub fn concat<'a, T: Into<ExprList<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Concat(expr.into())))
 }
+
+pub fn concat_ws<'a, T: Into<ExprNode<'a>>, U: Into<ExprList<'a>>>(
+    separator: T,
+    exprs: U,
+) -> ExprNode<'a> {
+    ExprNode::Function(Box::new(FunctionNode::ConcatWs {
+        separator: separator.into(),
+        exprs: exprs.into(),
+    }))
+}
+
 pub fn floor<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Function(Box::new(FunctionNode::Floor(expr.into())))
 }
@@ -688,11 +708,11 @@ mod tests {
     use crate::{
         ast::DateTimeField,
         ast_builder::{
-            abs, acos, asin, atan, cast, ceil, col, concat, cos, date, degrees, divide, exp, expr,
-            extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2,
-            lower, lpad, ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse,
-            right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time,
-            timestamp, to_date, to_time, to_timestamp, upper,
+            abs, acos, asin, atan, cast, ceil, col, concat, concat_ws, cos, date, degrees, divide,
+            exp, expr, extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log,
+            log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians,
+            repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr,
+            text, time, timestamp, to_date, to_time, to_timestamp, upper,
         },
         prelude::DataType,
     };
@@ -1010,6 +1030,17 @@ mod tests {
 
         let actual = concat(vec!["Glue", "SQL", "Go"]);
         let expected = "CONCAT(Glue, SQL, Go)";
+        test_expr(actual, expected);
+    }
+
+    #[test]
+    fn function_concat_ws() {
+        let actual = concat_ws(text(","), vec![text("Glue"), text("SQL"), text("Go")]);
+        let expected = "CONCAT_WS(',', 'Glue', 'SQL', 'Go')";
+        test_expr(actual, expected);
+
+        let actual = concat_ws(text(","), vec!["Glue", "SQL", "Go"]);
+        let expected = "CONCAT_WS(',', Glue, SQL, Go)";
         test_expr(actual, expected);
     }
 

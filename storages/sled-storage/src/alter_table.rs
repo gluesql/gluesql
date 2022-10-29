@@ -53,6 +53,7 @@ impl AlterTable for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                created,
                 ..
             } = old_schema
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
@@ -62,6 +63,7 @@ impl AlterTable for SledStorage {
                 table_name: new_table_name.to_owned(),
                 column_defs,
                 indexes,
+                created,
             };
 
             bincode::serialize(&old_snapshot)
@@ -158,6 +160,7 @@ impl AlterTable for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                created,
                 ..
             } = snapshot
                 .get(txid, None)
@@ -185,6 +188,7 @@ impl AlterTable for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                created,
             };
             let (snapshot, _) = snapshot.update(txid, schema);
             let value = bincode::serialize(&snapshot)
@@ -235,6 +239,8 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
+                created,
+                ..
             } = schema_snapshot
                 .get(txid, None)
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
@@ -308,6 +314,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
+                created,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
             let schema_value = bincode::serialize(&schema_snapshot)
@@ -362,6 +369,8 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
+                created,
+                ..
             } = schema_snapshot
                 .get(txid, None)
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
@@ -428,6 +437,7 @@ impl AlterTable for SledStorage {
                 table_name,
                 column_defs,
                 indexes,
+                created,
             };
             let (schema_snapshot, _) = schema_snapshot.update(txid, schema);
             let schema_value = bincode::serialize(&schema_snapshot)

@@ -194,6 +194,10 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                     alias: alias_or_name,
                     size: translate_table_args(args)?,
                 }),
+                "GLUE_OBJECTS" => Ok(TableFactor::Dictionary {
+                    dict: Dictionary::GlueObjects,
+                    alias: alias_or_name,
+                }),
                 "GLUE_TABLES" => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTables,
                     alias: alias_or_name,

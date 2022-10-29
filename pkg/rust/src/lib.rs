@@ -9,11 +9,11 @@
 //! ## Examples
 //!
 //! ```
-//! # #[cfg(feature = "sled-storage")]
+//! # #[cfg(feature = "memory-storage")]
 //! # fn main() {
 //! use gluesql::prelude::*;
 //!
-//! let storage = SledStorage::new("data/doc-db").unwrap();
+//! let storage = MemoryStorage::default();
 //! let mut glue = Glue::new(storage);
 //!     
 //! let sqls = vec![
@@ -26,11 +26,11 @@
 //!
 //! for sql in sqls {
 //!     let output = glue.execute(sql).unwrap();
-//!     println!("{:?}", output)
+//!     println!("{:?}", output);
 //! }
 //! # }
 //!
-//! # #[cfg(not(feature = "sled-storage"))]
+//! # #[cfg(not(feature = "memory-storage"))]
 //! # fn main() {}
 //! ```
 //!
