@@ -79,6 +79,24 @@ pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {
     }
 }
 
+pub fn concat_ws<'a>(
+    name: String,
+    separator: Evaluated<'a>,
+    exprs: Vec<Evaluated<'a>>,
+) -> Result<Evaluated<'a>> {
+    let separator = eval_to_str!(name, separator);
+
+    let result = exprs
+        .into_iter()
+        .map(Value::try_from)
+        .filter(|value| !matches!(value, Ok(Value::Null)))
+        .map(|value| Ok(String::from(value?)))
+        .collect::<Result<Vec<_>>>()?
+        .join(&separator);
+
+    Ok(Evaluated::from(Value::Str(result)))
+}
+
 pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
     Ok(Evaluated::from(Value::Str(
         eval_to_str!(name, expr).to_lowercase(),

@@ -271,6 +271,11 @@ async fn evaluate_function<'a>(
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat(exprs)
         }
+        Function::ConcatWs { separator, exprs } => {
+            let separator = eval(separator).await?;
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::concat_ws(name, separator, exprs)
+        }
         Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
         Function::Lower(expr) => f::lower(name, eval(expr).await?),
         Function::Upper(expr) => f::upper(name, eval(expr).await?),

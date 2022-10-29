@@ -4,6 +4,7 @@ pub mod cast;
 pub mod ceil;
 pub mod chr;
 pub mod concat;
+pub mod concat_ws;
 pub mod degrees;
 pub mod div_mod;
 pub mod exp_log;
