@@ -1,3 +1,5 @@
+use crate::ast::ToSql;
+
 use {
     crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr},
     serde::{Deserialize, Serialize},
@@ -25,6 +27,42 @@ pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,
     pub indexes: Vec<SchemaIndex>,
+}
+
+impl Schema {
+    fn to_ddl(&self) -> String {
+        let Schema { table_name, .. } = self;
+        let column_defs = self
+            .column_defs
+            .iter()
+            .map(
+                |ColumnDef {
+                     name,
+                     data_type,
+                     options,
+                 }| {
+                    let options = options
+                        .iter()
+                        .map(|ColumnOptionDef { option, .. }| match option {
+                            ColumnOption::Null => "NULL".to_owned(),
+                            ColumnOption::NotNull => "NOT NULL".to_owned(),
+                            ColumnOption::Default(expr) => format!("DEFAULT {}", expr.to_sql()),
+                            ColumnOption::Unique { is_primary } => match is_primary {
+                                true => "PRIMARY KEY".to_owned(),
+                                false => "UNIQUE".to_owned(),
+                            },
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+
+                    format!("{name} {data_type} {options}")
+                },
+            )
+            .collect::<Vec<_>>()
+            .join(",");
+
+        format!("CREATE TABLE {table_name} ({column_defs})")
+    }
 }
 
 pub trait ColumnDefExt {
