@@ -32,50 +32,36 @@ pub struct Schema {
 impl Schema {
     fn to_ddl(self) -> String {
         let Schema {
-            table_name: name,
+            table_name,
             column_defs: columns,
+            indexes,
             ..
         } = self;
 
-        Statement::CreateTable {
+        let create_indexes = indexes.iter().fold(
+            "".to_owned(),
+            |acc,
+             SchemaIndex {
+                 name, expr, order, ..
+             }| {
+                let expr = expr.to_sql();
+                let table_name = &table_name;
+
+                format!("{acc}CREATE INDEX {name} ON {table_name} ({expr} {order});\n")
+            },
+        );
+
+        let create_table = Statement::CreateTable {
             if_not_exists: false,
-            name,
+            name: table_name,
             columns,
             source: None,
         }
-        .to_sql()
+        .to_sql();
 
-        // let Schema { table_name, .. } = self;
-        // let column_defs = self
-        //     .column_defs
-        //     .iter()
-        //     .map(
-        //         |ColumnDef {
-        //              name,
-        //              data_type,
-        //              options,
-        //          }| {
-        //             let options = options
-        //                 .iter()
-        //                 .map(|ColumnOptionDef { option, .. }| match option {
-        //                     ColumnOption::Null => "NULL".to_owned(),
-        //                     ColumnOption::NotNull => "NOT NULL".to_owned(),
-        //                     ColumnOption::Default(expr) => format!("DEFAULT {}", expr.to_sql()),
-        //                     ColumnOption::Unique { is_primary } => match is_primary {
-        //                         true => "PRIMARY KEY".to_owned(),
-        //                         false => "UNIQUE".to_owned(),
-        //                     },
-        //                 })
-        //                 .collect::<Vec<_>>()
-        //                 .join(" ");
-
-        //             format!("{name} {data_type} {options}")
-        //         },
-        //     )
-        //     .collect::<Vec<_>>()
-        //     .join(",");
-
-        // format!("CREATE TABLE {table_name} ({column_defs})")
+        format!("{create_table}\n{create_indexes}")
+            .trim_end()
+            .to_owned()
     }
 }
 
@@ -105,9 +91,13 @@ impl ColumnDefExt for ColumnDef {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{ColumnDef, ColumnOption::Unique, ColumnOptionDef},
+        ast::{
+            AstLiteral, ColumnDef,
+            ColumnOption::{self, Unique},
+            ColumnOptionDef, Expr,
+        },
         chrono::Utc,
-        data::Schema,
+        data::{Schema, SchemaIndex, SchemaIndexOrd},
         prelude::DataType,
     };
 
@@ -115,15 +105,37 @@ mod tests {
     fn table_basic() {
         let schema = Schema {
             table_name: "Foo".to_owned(),
-            column_defs: vec![ColumnDef {
-                name: "no".to_owned(),
-                data_type: DataType::Int,
-                options: Vec::new(),
-            }],
+            column_defs: vec![
+                ColumnDef {
+                    name: "no".to_owned(),
+                    data_type: DataType::Int,
+                    options: Vec::new(),
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    options: vec![
+                        ColumnOptionDef {
+                            name: None,
+                            option: ColumnOption::Null,
+                        },
+                        ColumnOptionDef {
+                            name: None,
+                            option: ColumnOption::Default(Expr::Literal(AstLiteral::QuotedString(
+                                "glue".to_owned(),
+                            ))),
+                        },
+                    ],
+                },
+            ],
             indexes: Vec::new(),
             created: Utc::now().naive_utc(),
         };
-        assert_eq!(schema.to_ddl(), "CREATE TABLE Foo (no INT NOT NULL)");
+
+        assert_eq!(
+            schema.to_ddl(),
+            "CREATE TABLE Foo (no INT NOT NULL, name TEXT NULL DEFAULT \"glue\");"
+        )
     }
 
     #[test]
@@ -141,9 +153,38 @@ mod tests {
             indexes: Vec::new(),
             created: Utc::now().naive_utc(),
         };
+
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE Foo (no INT NOT NULL PRIMARY KEY)"
+            "CREATE TABLE Foo (no INT NOT NULL PRIMARY KEY);"
+        );
+    }
+
+    #[test]
+    fn index() {
+        let schema = Schema {
+            table_name: "Foo".to_owned(),
+            column_defs: vec![ColumnDef {
+                name: "no".to_owned(),
+                data_type: DataType::Int,
+                options: vec![ColumnOptionDef {
+                    name: None,
+                    option: Unique { is_primary: true },
+                }],
+            }],
+            indexes: vec![SchemaIndex {
+                name: "Foo_no".to_owned(),
+                expr: Expr::Identifier("no".to_owned()),
+                order: SchemaIndexOrd::Both,
+                created: Utc::now().naive_utc(),
+            }],
+            created: Utc::now().naive_utc(),
+        };
+
+        assert_eq!(
+            schema.to_ddl(),
+            "CREATE TABLE Foo (no INT NOT NULL PRIMARY KEY);
+CREATE INDEX Foo_no ON Foo (no BOTH);"
         );
     }
 }

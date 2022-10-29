@@ -82,9 +82,6 @@ impl ToSql for ColumnDef {
             let nullable = !options
                 .iter()
                 .filter(|ColumnOptionDef { option, .. }| {
-                    println!("{:?}", option);
-                    println!("{:?}", option == &ColumnOption::NotNull);
-
                     option == &ColumnOption::NotNull || option == &ColumnOption::Null
                 })
                 .collect::<Vec<_>>()
@@ -94,8 +91,6 @@ impl ToSql for ColumnDef {
                 true => " ",
                 false => " NOT NULL ",
             };
-
-            println!("{name}: {nullable}");
 
             let options = options
                 .iter()

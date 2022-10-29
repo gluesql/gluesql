@@ -173,8 +173,8 @@ impl ToSql for Statement {
                         .collect::<Vec<_>>()
                         .join(", ");
                     match if_not_exists {
-                        true => format!("CREATE TABLE IF NOT EXISTS {name} ({columns})"),
-                        false => format!("CREATE TABLE {name} ({columns})"),
+                        true => format!("CREATE TABLE IF NOT EXISTS {name} ({columns});"),
+                        false => format!("CREATE TABLE {name} ({columns});"),
                     }
                 }
             },
@@ -346,7 +346,7 @@ mod tests {
     #[test]
     fn to_sql_create_table() {
         assert_eq!(
-            "CREATE TABLE IF NOT EXISTS Foo ()",
+            "CREATE TABLE IF NOT EXISTS Foo ();",
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
@@ -357,7 +357,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE Foo (id INT NOT NULL, num INT NULL, name TEXT NOT NULL)",
+            "CREATE TABLE Foo (id INT NOT NULL, num INT NULL, name TEXT NOT NULL);",
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
