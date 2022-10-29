@@ -161,30 +161,43 @@ mod tests {
     }
 
     #[test]
-    fn index() {
+    fn table_with_index() {
         let schema = Schema {
             table_name: "Foo".to_owned(),
-            column_defs: vec![ColumnDef {
-                name: "no".to_owned(),
-                data_type: DataType::Int,
-                options: vec![ColumnOptionDef {
-                    name: None,
-                    option: Unique { is_primary: true },
-                }],
-            }],
-            indexes: vec![SchemaIndex {
-                name: "Foo_no".to_owned(),
-                expr: Expr::Identifier("no".to_owned()),
-                order: SchemaIndexOrd::Both,
-                created: Utc::now().naive_utc(),
-            }],
+            column_defs: vec![
+                ColumnDef {
+                    name: "no".to_owned(),
+                    data_type: DataType::Int,
+                    options: Vec::new(),
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    options: Vec::new(),
+                },
+            ],
+            indexes: vec![
+                SchemaIndex {
+                    name: "Foo_no".to_owned(),
+                    expr: Expr::Identifier("no".to_owned()),
+                    order: SchemaIndexOrd::Both,
+                    created: Utc::now().naive_utc(),
+                },
+                SchemaIndex {
+                    name: "Foo_name".to_owned(),
+                    expr: Expr::Identifier("name".to_owned()),
+                    order: SchemaIndexOrd::Both,
+                    created: Utc::now().naive_utc(),
+                },
+            ],
             created: Utc::now().naive_utc(),
         };
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE Foo (no INT NOT NULL PRIMARY KEY);
-CREATE INDEX Foo_no ON Foo (no BOTH);"
+            "CREATE TABLE Foo (no INT NOT NULL, name TEXT NOT NULL);
+CREATE INDEX Foo_no ON Foo (no BOTH);
+CREATE INDEX Foo_name ON Foo (name BOTH);"
         );
     }
 }
