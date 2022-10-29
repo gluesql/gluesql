@@ -12,6 +12,7 @@ pub mod floor;
 pub mod format;
 pub mod gcd_lcm;
 pub mod generate_uuid;
+pub mod get_ddl;
 pub mod ifnull;
 pub mod left_right;
 pub mod lpad_rpad;
