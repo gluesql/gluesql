@@ -17,14 +17,22 @@ test_case!(concat_ws, async move {
         "
         CREATE TABLE Concat (
             id INTEGER,
-            rate FLOAT,
             flag BOOLEAN,
             text TEXT,
             null_value TEXT NULL,
         );
     "
     );
-    run!(r#"INSERT INTO Concat VALUES (1, 2.3, TRUE, "Foo", NULL);"#);
+    run!(r#"INSERT INTO Concat VALUES (1, TRUE, "Foo", NULL);"#);
+
+    test!(
+        r#"select concat_ws("/", id, flag, null_value, text) as myc from Concat;"#,
+        Ok(select!(
+           myc
+           Str;
+           "1/TRUE/Foo".to_owned()
+        ))
+    );
 
     test!(
         r#"select concat_ws("", "ab", "cd") as myc from Concat;"#,
