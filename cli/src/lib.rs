@@ -1,6 +1,7 @@
 #![deny(clippy::str_to_string)]
 
 use futures::executor::block_on;
+use gluesql_core::store::Transaction;
 use std::fs::File;
 use std::io::{Result as IOResult, Write};
 
@@ -44,24 +45,34 @@ pub fn run() {
         let path = path.as_path().to_str().expect("wrong path");
 
         if let Some(dump) = args.dump {
-            block_on(async {
-                run(
-                    SledStorage::new(path).expect("failed to load sled-storage"),
-                    args.execute,
-                ); // panic write after fetching something
+            // run(
+            //     SledStorage::new(path).expect("failed to load sled-storage"),
+            //     args.execute,
+            // ); // panic write after fetching something
 
-                let storage = SledStorage::new(path).expect("failed to load sled-storage");
-                let schemas = storage.fetch_all_schemas().await?;
-                println!("{schemas:?}");
-                let ddls = schemas.into_iter().fold("".to_owned(), |acc, schema| {
-                    format!("{acc}{}", schema.to_ddl())
-                });
+            let storage = SledStorage::new(path).expect("failed to load sled-storage");
+            // block_on(async {
+            //     let schemas = storage.fetch_all_schemas().await?;
+            //     println!("{schemas:?}");
+            //     Ok::<_, Error>(())
+            // });
 
-                let mut file = File::create(dump).unwrap();
-                writeln!(file, "{}\n", ddls);
+            let schemas = block_on(async {
+                let (storage, _) = storage.begin(true).await.unwrap();
+                let schemas = storage.fetch_all_schemas().await.unwrap();
 
-                Ok::<_, Error>(())
+                storage.commit().await.unwrap();
+
+                schemas
             });
+
+            // let schemas = block_on(storage.fetch_all_schemas()).unwrap();
+            let ddls = schemas.into_iter().fold("".to_owned(), |acc, schema| {
+                format!("{acc}{}", schema.to_ddl())
+            });
+
+            let mut file = File::create(dump).unwrap();
+            writeln!(file, "{}\n", ddls);
 
             return;
         }
