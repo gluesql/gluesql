@@ -37,7 +37,7 @@ struct Args {
     dump: Option<PathBuf>,
 }
 
-pub fn run() -> Result<()> {
+pub fn run() {
     let args = Args::parse();
 
     if let Some(path) = args.path {
@@ -45,6 +45,11 @@ pub fn run() -> Result<()> {
 
         if let Some(dump) = args.dump {
             block_on(async {
+                run(
+                    SledStorage::new(path).expect("failed to load sled-storage"),
+                    args.execute,
+                ); // panic write after fetching something
+
                 let storage = SledStorage::new(path).expect("failed to load sled-storage");
                 let schemas = storage.fetch_all_schemas().await?;
                 println!("{schemas:?}");
@@ -58,7 +63,7 @@ pub fn run() -> Result<()> {
                 Ok::<_, Error>(())
             });
 
-            return Ok(());
+            return;
         }
 
         println!("[sled-storage] connected to {}", path);
@@ -85,6 +90,4 @@ pub fn run() -> Result<()> {
             eprintln!("{}", e);
         }
     }
-
-    Ok(())
 }
