@@ -88,7 +88,7 @@ pub fn concat_ws<'a>(
 
     let result = exprs
         .into_iter()
-        .map(|expr| expr.try_into())
+        .map(Value::try_from)
         .filter(|value| !matches!(value, Ok(Value::Null)))
         .map(|value| Ok(String::from(value?)))
         .collect::<Result<Vec<_>>>()?
