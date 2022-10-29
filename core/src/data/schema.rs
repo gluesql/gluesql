@@ -30,7 +30,7 @@ pub struct Schema {
 }
 
 impl Schema {
-    fn to_ddl(self) -> String {
+    pub fn to_ddl(self) -> String {
         let Schema {
             table_name,
             column_defs: columns,
