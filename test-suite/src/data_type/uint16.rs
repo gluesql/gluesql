@@ -44,22 +44,4 @@ test_case!(uint16, async move {
         "SELECT field_one FROM Item WHERE field_one = 2",
         Ok(select!(field_one U16; 2))
     );
-    // test!(
-    //     "SELECT field_one-64 FROM Item",
-    //     Err(ValueError::BinaryOperationOverflow {
-    //         lhs: U16(1),
-    //         rhs: I8(64),
-    //         operator: NumericBinaryOperator::Subtract,
-    //     }
-    //     .into())
-    // );
-    // test!(
-    //     "SELECT field_one+(-64) FROM Item",
-    //     Err(ValueError::BinaryOperationOverflow {
-    //         lhs: U16(1),
-    //         rhs: I8(-64),
-    //         operator: NumericBinaryOperator::Add,
-    //     }
-    //     .into())
-    // );
 });
