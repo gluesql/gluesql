@@ -89,6 +89,7 @@ impl<'a> Update<'a> {
                         v.validate_type(data_type)?;
                         v
                     }
+                    Evaluated::StrSlice(s) => Value::from(s),
                 };
 
                 value.validate_null(nullable)?;

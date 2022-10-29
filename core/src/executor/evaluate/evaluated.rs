@@ -11,6 +11,7 @@ use {
 #[derive(Clone)]
 pub enum Evaluated<'a> {
     Literal(Literal<'a>),
+    StrSlice(&'a str),
     Value(Value),
 }
 
@@ -26,6 +27,7 @@ impl TryFrom<Evaluated<'_>> for Value {
     fn try_from(e: Evaluated<'_>) -> Result<Value> {
         match e {
             Evaluated::Literal(v) => Value::try_from(v),
+            Evaluated::StrSlice(s) => Ok(Value::from(s)),
             Evaluated::Value(v) => Ok(v),
         }
     }
@@ -45,6 +47,7 @@ impl TryFrom<&Evaluated<'_>> for Key {
     fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
         match evaluated {
             Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
+            Evaluated::StrSlice(s) => (*s).try_into(),
             Evaluated::Value(v) => v.try_into(),
         }
     }
@@ -58,6 +61,9 @@ impl TryFrom<Evaluated<'_>> for bool {
             Evaluated::Literal(Literal::Boolean(v)) => Ok(v),
             Evaluated::Literal(v) => {
                 Err(EvaluateError::BooleanTypeRequired(format!("{:?}", v)).into())
+            }
+            Evaluated::StrSlice(s) => {
+                Err(EvaluateError::BooleanTypeRequired(format!("{:?}", s)).into())
             }
             Evaluated::Value(Value::Bool(v)) => Ok(v),
             Evaluated::Value(v) => {
@@ -74,6 +80,11 @@ impl<'a> PartialEq for Evaluated<'a> {
             (Evaluated::Literal(b), Evaluated::Value(a))
             | (Evaluated::Value(a), Evaluated::Literal(b)) => a == b,
             (Evaluated::Value(a), Evaluated::Value(b)) => a == b,
+            (Evaluated::Literal(a), Evaluated::StrSlice(b)) => a == b,
+            (Evaluated::Value(a), Evaluated::StrSlice(b)) => a == b,
+            (Evaluated::StrSlice(a), Evaluated::Literal(b)) => b == a,
+            (Evaluated::StrSlice(a), Evaluated::Value(b)) => b == a,
+            (Evaluated::StrSlice(a), Evaluated::StrSlice(b)) => a == b,
         }
     }
 }
@@ -85,6 +96,13 @@ impl<'a> PartialOrd for Evaluated<'a> {
             (Evaluated::Literal(l), Evaluated::Value(r)) => r.partial_cmp(l).map(|o| o.reverse()),
             (Evaluated::Value(l), Evaluated::Literal(r)) => l.partial_cmp(r),
             (Evaluated::Value(l), Evaluated::Value(r)) => l.partial_cmp(r),
+            (Evaluated::Literal(l), Evaluated::StrSlice(r)) => l.partial_cmp(r),
+            (Evaluated::Value(l), Evaluated::StrSlice(r)) => l.partial_cmp(r),
+            (Evaluated::StrSlice(l), Evaluated::Literal(r)) => {
+                r.partial_cmp(l).map(|o| o.reverse())
+            }
+            (Evaluated::StrSlice(l), Evaluated::Value(r)) => r.partial_cmp(l).map(|o| o.reverse()),
+            (Evaluated::StrSlice(l), Evaluated::StrSlice(r)) => l.partial_cmp(r),
         }
     }
 }
@@ -108,6 +126,21 @@ where
             value_op(l, &Value::try_from(r)?).map(Evaluated::from)
         }
         (Evaluated::Value(l), Evaluated::Value(r)) => value_op(l, r).map(Evaluated::from),
+        (Evaluated::Literal(l), Evaluated::StrSlice(r)) => {
+            value_op(&Value::try_from(l)?, &Value::from(*r)).map(Evaluated::from)
+        }
+        (Evaluated::StrSlice(l), Evaluated::Literal(r)) => {
+            value_op(&Value::from(*l), &Value::try_from(r)?).map(Evaluated::from)
+        }
+        (Evaluated::StrSlice(l), Evaluated::StrSlice(r)) => {
+            value_op(&Value::from(*l), &Value::from(*r)).map(Evaluated::from)
+        }
+        (Evaluated::StrSlice(l), Evaluated::Value(r)) => {
+            value_op(&Value::from(*l), r).map(Evaluated::from)
+        }
+        (Evaluated::Value(l), Evaluated::StrSlice(r)) => {
+            value_op(l, &Value::from(*r)).map(Evaluated::from)
+        }
     }
 }
 
@@ -136,6 +169,7 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => v.unary_plus().map(Evaluated::Literal),
             Evaluated::Value(v) => v.unary_plus().map(Evaluated::from),
+            Evaluated::StrSlice(s) => Value::from(*s).unary_plus().map(Evaluated::from),
         }
     }
 
@@ -143,6 +177,7 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => v.unary_minus().map(Evaluated::Literal),
             Evaluated::Value(v) => v.unary_minus().map(Evaluated::from),
+            Evaluated::StrSlice(s) => Value::from(*s).unary_minus().map(Evaluated::from),
         }
     }
 
@@ -150,6 +185,7 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(v) => Value::try_from(v).and_then(|v| v.unary_factorial()),
             Evaluated::Value(v) => v.unary_factorial(),
+            Evaluated::StrSlice(s) => Value::from(*s).unary_factorial(),
         }
         .map(Evaluated::from)
     }
@@ -161,6 +197,7 @@ impl<'a> Evaluated<'a> {
         match self {
             Evaluated::Literal(value) => cast_literal(&value),
             Evaluated::Value(value) => cast_value(&value),
+            Evaluated::StrSlice(s) => cast_value(&Value::from(s)),
         }
         .map(Evaluated::from)
     }
@@ -175,6 +212,21 @@ impl<'a> Evaluated<'a> {
                 Evaluated::from(l.concat(&Value::try_from(r)?))
             }
             (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(&r)),
+            (Evaluated::Literal(l), Evaluated::StrSlice(r)) => {
+                Evaluated::from((&Value::try_from(l)?).concat(&Value::from(r)))
+            }
+            (Evaluated::Value(l), Evaluated::StrSlice(r)) => {
+                Evaluated::from(l.concat(&Value::from(r)))
+            }
+            (Evaluated::StrSlice(l), Evaluated::Literal(r)) => {
+                Evaluated::from(Value::from(l).concat(&Value::try_from(r)?))
+            }
+            (Evaluated::StrSlice(l), Evaluated::Value(r)) => {
+                Evaluated::from(Value::from(l).concat(&r))
+            }
+            (Evaluated::StrSlice(l), Evaluated::StrSlice(r)) => {
+                Evaluated::from(Value::from(l).concat(&Value::from(r)))
+            }
         };
 
         Ok(evaluated)
@@ -194,6 +246,21 @@ impl<'a> Evaluated<'a> {
             (Evaluated::Value(l), Evaluated::Value(r)) => {
                 Evaluated::from(l.like(&r, case_sensitive)?)
             }
+            (Evaluated::Literal(l), Evaluated::StrSlice(r)) => {
+                Evaluated::from(Value::try_from(l)?.like(&Value::from(r), case_sensitive)?)
+            }
+            (Evaluated::StrSlice(l), Evaluated::Literal(r)) => {
+                Evaluated::from(Value::from(*l).like(&Value::try_from(r)?, case_sensitive)?)
+            }
+            (Evaluated::StrSlice(l), Evaluated::StrSlice(r)) => {
+                Evaluated::from(Value::from(*l).like(&Value::from(r), case_sensitive)?)
+            }
+            (Evaluated::StrSlice(l), Evaluated::Value(r)) => {
+                Evaluated::from(Value::from(*l).like(&r, case_sensitive)?)
+            }
+            (Evaluated::Value(l), Evaluated::StrSlice(r)) => {
+                Evaluated::from(l.like(&Value::from(r), case_sensitive)?)
+            }
         };
 
         Ok(evaluated)
@@ -202,14 +269,16 @@ impl<'a> Evaluated<'a> {
     pub fn is_null(&self) -> bool {
         match self {
             Evaluated::Value(v) => v.is_null(),
+            Evaluated::StrSlice(s) => Value::from(*s).is_null(),
             Evaluated::Literal(v) => matches!(v, &Literal::Null),
         }
     }
 
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
-            Evaluated::Value(v) => v,
             Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
+            Evaluated::Value(v) => v,
+            Evaluated::StrSlice(s) => Value::from(s),
         };
 
         value.validate_null(nullable)?;

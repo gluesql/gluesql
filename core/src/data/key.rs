@@ -102,6 +102,14 @@ impl TryFrom<&Value> for Key {
     }
 }
 
+impl TryFrom<&str> for Key {
+    type Error = Error;
+
+    fn try_from(slice: &str) -> Result<Self> {
+        slice.try_into()
+    }
+}
+
 const VALUE: u8 = 0;
 const NONE: u8 = 1;
 

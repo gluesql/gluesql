@@ -16,6 +16,7 @@ mod error;
 mod json;
 mod literal;
 mod selector;
+mod string;
 mod uuid;
 
 pub use error::NumericBinaryOperator;
