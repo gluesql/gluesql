@@ -692,7 +692,7 @@ mod tests {
             extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log, log10, log2,
             lower, lpad, ltrim, modulo, now, num, pi, position, power, radians, repeat, reverse,
             right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr, text, time,
-            timestamp, to_date, to_time, to_timestamp, upper,
+            timestamp, to_date, to_time, to_timestamp, upper, FormatTypeNode,
         },
         prelude::DataType,
     };
@@ -1157,6 +1157,14 @@ mod tests {
 
         let actual = time("23:56:04").format(text("%H:%M:%S"));
         let expected = "FORMAT(TIME '23:56:04', '%H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = format(num(1), FormatTypeNode::Binary);
+        let expected = "FORMAT(1, BINARY)";
+        test_expr(actual, expected);
+
+        let actual = format(num(1), FormatTypeNode::Hex);
+        let expected = "FORMAT(1, HEX)";
         test_expr(actual, expected);
     }
 

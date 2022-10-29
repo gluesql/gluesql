@@ -832,6 +832,24 @@ mod tests {
         );
 
         assert_eq!(
+            r#"FORMAT(1, BINARY)"#,
+            &Expr::Function(Box::new(Function::Format {
+                expr: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                format: FormatType::Binary
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"FORMAT(1, HEX)"#,
+            &Expr::Function(Box::new(Function::Format {
+                expr: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                format: FormatType::Hex
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
             r#"TO_DATE("2022-10-12", "%Y-%m-%d")"#,
             &Expr::Function(Box::new(Function::ToDate {
                 expr: Expr::Literal(AstLiteral::QuotedString("2022-10-12".to_owned())),

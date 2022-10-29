@@ -196,6 +196,11 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         return Ok(Expr::Aggregate(Box::new(Aggregate::Count(count_arg))));
     }
 
+    let args_str = function_arg_exprs
+        .clone()
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect::<Vec<_>>();
     let args = translate_function_arg_exprs(function_arg_exprs)?;
 
     match name.as_str() {
@@ -411,12 +416,13 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             check_len(name, args.len(), 2)?;
 
             let expr = translate_expr(args[0])?;
-            let format = translate_expr(args[1])?;
+            let format = match args_str[1].as_str() {
+                "BINARY" => FormatType::Binary,
+                "HEX" => FormatType::Hex,
+                _ => FormatType::Datetime(translate_expr(args[1])?),
+            };
 
-            Ok(Expr::Function(Box::new(Function::Format {
-                expr,
-                format: FormatType::Datetime(format),
-            })))
+            Ok(Expr::Function(Box::new(Function::Format { expr, format })))
         }
         "TO_DATE" => {
             check_len(name, args.len(), 2)?;

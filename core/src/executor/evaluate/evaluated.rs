@@ -11,8 +11,8 @@ use {
 #[derive(Clone)]
 pub enum EvaluatedFormatType<'a> {
     Datetime(Evaluated<'a>),
-    Hex,
     Binary,
+    Hex,
 }
 
 #[derive(Clone)]
