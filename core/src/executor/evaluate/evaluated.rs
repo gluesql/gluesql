@@ -9,6 +9,13 @@ use {
 };
 
 #[derive(Clone)]
+pub enum EvaluatedFormatType<'a> {
+    Datetime(Evaluated<'a>),
+    Hex,
+    Binary,
+}
+
+#[derive(Clone)]
 pub enum Evaluated<'a> {
     Literal(Literal<'a>),
     Value(Value),

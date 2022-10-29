@@ -11,6 +11,7 @@ mod drop_table;
 mod execute;
 mod expr;
 mod expr_list;
+mod format_type;
 #[cfg(feature = "index")]
 mod index;
 mod insert;
@@ -37,6 +38,7 @@ pub use {
     drop_table::DropTableNode,
     execute::Execute,
     expr_list::ExprList,
+    format_type::FormatTypeNode,
     insert::InsertNode,
     order_by_expr::OrderByExprNode,
     order_by_expr_list::OrderByExprList,

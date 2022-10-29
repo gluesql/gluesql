@@ -1,8 +1,9 @@
 use {
     super::{expr, function, EvaluateError, Evaluated},
     crate::{
-        ast::{Expr, Function},
+        ast::{Expr, FormatType, Function},
         data::{Interval, Literal, Row, Value},
+        executor::evaluate::evaluated::EvaluatedFormatType,
         result::Result,
     },
     chrono::prelude::Utc,
@@ -300,7 +301,11 @@ fn evaluate_function<'a>(
         Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr)?;
-            let format = eval(format)?;
+            let format = match format {
+                FormatType::Datetime(expr) => EvaluatedFormatType::Datetime(eval(expr)?),
+                FormatType::Hex => EvaluatedFormatType::Hex,
+                FormatType::Binary => EvaluatedFormatType::Binary,
+            };
 
             f::format(name, expr, format)
         }

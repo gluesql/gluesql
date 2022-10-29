@@ -5,7 +5,7 @@ use {
         translate_data_type, translate_object_name, TranslateError,
     },
     crate::{
-        ast::{Aggregate, CountArgExpr, Expr, Function},
+        ast::{Aggregate, CountArgExpr, Expr, FormatType, Function},
         result::Result,
     },
     sqlparser::ast::{
@@ -413,7 +413,10 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             let format = translate_expr(args[1])?;
 
-            Ok(Expr::Function(Box::new(Function::Format { expr, format })))
+            Ok(Expr::Function(Box::new(Function::Format {
+                expr,
+                format: FormatType::Datetime(format),
+            })))
         }
         "TO_DATE" => {
             check_len(name, args.len(), 2)?;
