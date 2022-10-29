@@ -104,10 +104,10 @@ mod tests {
     #[test]
     fn table_basic() {
         let schema = Schema {
-            table_name: "Foo".to_owned(),
+            table_name: "User".to_owned(),
             column_defs: vec![
                 ColumnDef {
-                    name: "no".to_owned(),
+                    name: "id".to_owned(),
                     data_type: DataType::Int,
                     options: Vec::new(),
                 },
@@ -134,16 +134,16 @@ mod tests {
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE Foo (no INT NOT NULL, name TEXT NULL DEFAULT \"glue\");"
+            "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT \"glue\");"
         )
     }
 
     #[test]
     fn table_primary() {
         let schema = Schema {
-            table_name: "Foo".to_owned(),
+            table_name: "User".to_owned(),
             column_defs: vec![ColumnDef {
-                name: "no".to_owned(),
+                name: "id".to_owned(),
                 data_type: DataType::Int,
                 options: vec![ColumnOptionDef {
                     name: None,
@@ -156,17 +156,17 @@ mod tests {
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE Foo (no INT NOT NULL PRIMARY KEY);"
+            "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);"
         );
     }
 
     #[test]
     fn table_with_index() {
         let schema = Schema {
-            table_name: "Foo".to_owned(),
+            table_name: "User".to_owned(),
             column_defs: vec![
                 ColumnDef {
-                    name: "no".to_owned(),
+                    name: "id".to_owned(),
                     data_type: DataType::Int,
                     options: Vec::new(),
                 },
@@ -178,13 +178,13 @@ mod tests {
             ],
             indexes: vec![
                 SchemaIndex {
-                    name: "Foo_no".to_owned(),
-                    expr: Expr::Identifier("no".to_owned()),
+                    name: "User_id".to_owned(),
+                    expr: Expr::Identifier("id".to_owned()),
                     order: SchemaIndexOrd::Both,
                     created: Utc::now().naive_utc(),
                 },
                 SchemaIndex {
-                    name: "Foo_name".to_owned(),
+                    name: "User_name".to_owned(),
                     expr: Expr::Identifier("name".to_owned()),
                     order: SchemaIndexOrd::Both,
                     created: Utc::now().naive_utc(),
@@ -195,9 +195,9 @@ mod tests {
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE Foo (no INT NOT NULL, name TEXT NOT NULL);
-CREATE INDEX Foo_no ON Foo (no BOTH);
-CREATE INDEX Foo_name ON Foo (name BOTH);"
+            "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
+CREATE INDEX User_id ON User (id BOTH);
+CREATE INDEX User_name ON User (name BOTH);"
         );
     }
 }
