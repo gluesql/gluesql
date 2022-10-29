@@ -10,6 +10,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::OrderByExpr,
+        chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         result::{Error, MutResult, Result, TrySelf},
         store::{IndexError, IndexMut, Store},
@@ -67,6 +68,7 @@ impl IndexMut for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                created,
                 ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
@@ -81,6 +83,7 @@ impl IndexMut for SledStorage {
                 name: index_name.to_owned(),
                 expr: index_expr.clone(),
                 order: SchemaIndexOrd::Both,
+                created: Utc::now().naive_utc(),
             };
 
             let indexes = indexes
@@ -92,6 +95,7 @@ impl IndexMut for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                created,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);
@@ -144,6 +148,7 @@ impl IndexMut for SledStorage {
             let Schema {
                 column_defs,
                 indexes,
+                created,
                 ..
             } = schema
                 .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()).into())
@@ -165,6 +170,7 @@ impl IndexMut for SledStorage {
                 table_name: table_name.to_owned(),
                 column_defs,
                 indexes,
+                created,
             };
 
             let index_sync = IndexSync::from_schema(tree, txid, &schema);

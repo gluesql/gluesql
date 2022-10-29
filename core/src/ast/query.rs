@@ -84,6 +84,7 @@ pub enum Dictionary {
     GlueTables,
     GlueTableColumns,
     GlueIndexes,
+    GlueObjects,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
