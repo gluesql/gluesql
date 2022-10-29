@@ -442,6 +442,17 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
             let expr = translate_expr(args[0])?;
             Ok(Expr::Function(Box::new(Function::Chr(expr))))
         }
+        "GET_DDL" => {
+            check_len(name, args.len(), 2)?;
+
+            let object_type = translate_expr(args[0])?;
+            let object_name = translate_expr(args[1])?;
+
+            Ok(Expr::Function(Box::new(Function::GetDDL {
+                object_type,
+                object_name,
+            })))
+        }
         _ => Err(TranslateError::UnsupportedFunction(name).into()),
     }
 }

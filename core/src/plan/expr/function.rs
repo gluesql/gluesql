@@ -124,6 +124,10 @@ impl Function {
             | Self::Position {
                 from_expr: expr2,
                 sub_expr: expr,
+            }
+            | Self::GetDDL {
+                object_type: expr,
+                object_name: expr2,
             } => Exprs::Double([expr, expr2].into_iter()),
             Self::Lpad {
                 expr,

@@ -1,3 +1,9 @@
+use crate::{
+    ast::ToSql,
+    ast_builder::{table, Build, CreateTableNode},
+    store::{GStore, Store},
+};
+
 use {
     super::{ChronoFormatError, EvaluateError, Evaluated},
     crate::{
@@ -582,4 +588,34 @@ pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'
 
 pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     Ok(Evaluated::from(Value::try_from(expr)?.extract(field)?))
+}
+
+pub async fn get_ddl<'a>(
+    name: String,
+    storage: &'a dyn GStore,
+    object_type: Evaluated<'a>,
+    object_name: Evaluated<'a>,
+) -> Result<Evaluated<'a>> {
+    let value: Value = object_name.try_into()?;
+    let str = match value {
+        Value::Str(str) => str,
+        _ => todo!(),
+    };
+    let schema = storage.fetch_schema(&str).await?.unwrap();
+    // let table_name = schema.table_name;
+    // let columns = schema.column_defs;
+    let ddl_text = schema
+        .column_defs
+        .iter()
+        .fold(
+            table(&schema.table_name).create_table(),
+            |create_table_node, column_def| {
+                println!("{:?}", column_def);
+                create_table_node.add_column(column_def.to_sql().as_ref())
+            },
+        )
+        .build()?
+        .to_sql();
+
+    Ok(Evaluated::from(Value::Str(ddl_text.to_owned())))
 }

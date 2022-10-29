@@ -450,5 +450,13 @@ async fn evaluate_function<'a>(
             let expr = eval(expr).await?;
             f::extract(field, expr)
         }
+        Function::GetDDL {
+            object_type,
+            object_name,
+        } => {
+            let object_type = eval(object_type).await?;
+            let object_name = eval(object_name).await?;
+            f::get_ddl(name, storage, object_type, object_name).await
+        }
     }
 }
