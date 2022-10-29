@@ -339,5 +339,14 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             f::extract(field, expr)
         }
+        Function::GetDDL {
+            object_type,
+            object_name,
+        } => {
+            // let object_type = eval(object_type)?;
+            // let object_name = eval(object_name)?;
+            // f::get_ddl(name, object_type, object_name)
+            todo!()
+        }
     }
 }

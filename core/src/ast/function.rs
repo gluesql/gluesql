@@ -135,6 +135,10 @@ pub enum Function {
     },
     Ascii(Expr),
     Chr(Expr),
+    GetDDL {
+        object_type: Expr,
+        object_name: Expr,
+    },
 }
 
 impl ToSql for Function {
@@ -278,6 +282,14 @@ impl ToSql for Function {
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
+            Function::GetDDL {
+                object_type,
+                object_name,
+            } => format!(
+                "GET_DDL({} IN {})",
+                object_type.to_sql(),
+                object_name.to_sql()
+            ),
         }
     }
 }
