@@ -81,16 +81,11 @@ impl ToSql for ColumnDef {
         {
             let not_null = options
                 .iter()
-                .filter(|ColumnOptionDef { option, .. }| {
+                .find(|ColumnOptionDef { option, .. }| {
                     option == &ColumnOption::NotNull || option == &ColumnOption::Null
                 })
-                .collect::<Vec<_>>()
-                .is_empty();
-
-            let not_null = match not_null {
-                true => " NOT NULL ",
-                false => " ",
-            };
+                .map(|_| " ")
+                .unwrap_or_else(|| " NOT NULL ");
 
             let options = options
                 .iter()
