@@ -96,7 +96,6 @@ mod tests {
             ColumnOption::{self, Unique},
             ColumnOptionDef, Expr,
         },
-        chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         prelude::DataType,
     };
@@ -129,7 +128,6 @@ mod tests {
                 },
             ],
             indexes: Vec::new(),
-            created: Utc::now().naive_utc(),
         };
 
         assert_eq!(
@@ -151,7 +149,6 @@ mod tests {
                 }],
             }],
             indexes: Vec::new(),
-            created: Utc::now().naive_utc(),
         };
 
         assert_eq!(
@@ -181,16 +178,13 @@ mod tests {
                     name: "User_id".to_owned(),
                     expr: Expr::Identifier("id".to_owned()),
                     order: SchemaIndexOrd::Both,
-                    created: Utc::now().naive_utc(),
                 },
                 SchemaIndex {
                     name: "User_name".to_owned(),
                     expr: Expr::Identifier("name".to_owned()),
                     order: SchemaIndexOrd::Both,
-                    created: Utc::now().naive_utc(),
                 },
             ],
-            created: Utc::now().naive_utc(),
         };
 
         assert_eq!(
