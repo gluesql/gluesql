@@ -43,3 +43,51 @@ impl From<&str> for Value {
         Value::Str(str_slice.to_owned())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{borrow::Cow, cmp::Ordering};
+
+    use crate::{data::Literal, prelude::Value};
+
+    #[test]
+    fn eq() {
+        assert_eq!(Value::Str("wolf".to_owned()), "wolf");
+        assert_eq!(Literal::Text(Cow::Borrowed(&"fox".to_owned())), "fox");
+    }
+
+    #[test]
+    fn cmp() {
+        macro_rules! literal_text {
+            ($text: expr) => {
+                Literal::Text(Cow::Borrowed(&$text.to_owned()))
+            };
+        }
+
+        macro_rules! text {
+            ($text: expr) => {
+                Value::Str($text.to_owned())
+            };
+        }
+
+        assert_eq!("b".partial_cmp("b"), Some(Ordering::Equal));
+        assert_eq!("a".partial_cmp("b"), Some(Ordering::Less));
+        assert_eq!("c".partial_cmp("b"), Some(Ordering::Greater));
+
+        assert_eq!(literal_text!("b").partial_cmp(&"b"), Some(Ordering::Equal));
+        assert_eq!(literal_text!("a").partial_cmp(&"b"), Some(Ordering::Less));
+        assert_eq!(
+            literal_text!("c").partial_cmp(&"b"),
+            Some(Ordering::Greater)
+        );
+
+        assert_eq!(text!("wolf").partial_cmp(&"wolf"), Some(Ordering::Equal));
+        assert_eq!(text!("apple").partial_cmp(&"wolf"), Some(Ordering::Less));
+        assert_eq!(text!("zoo").partial_cmp(&"wolf"), Some(Ordering::Greater));
+    }
+
+    #[test]
+    fn from_str() {
+        assert_eq!(Value::Str("meat".to_owned()), Value::from("meat"));
+    }
+}

@@ -108,8 +108,8 @@ impl TryFrom<&Value> for Key {
 impl TryFrom<&str> for Key {
     type Error = Error;
 
-    fn try_from(slice: &str) -> Result<Self> {
-        slice.try_into()
+    fn try_from(s: &str) -> Result<Self> {
+        Ok(Key::Str(s.to_owned()))
     }
 }
 
@@ -278,6 +278,11 @@ mod tests {
         let expr = translate_expr(&parsed).expect(sql);
 
         evaluate_stateless(None, &expr).expect(sql).try_into()
+    }
+
+    #[test]
+    fn try_from_key() {
+        assert_eq!(Key::try_from("apple"), Ok(Key::Str("apple".to_owned())));
     }
 
     #[test]
