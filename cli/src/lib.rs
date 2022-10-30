@@ -2,11 +2,13 @@
 
 use futures::executor::block_on;
 use gluesql_core::store::Transaction;
+use std::error::Error;
 use std::fs::File;
-use std::io::{Result as IOResult, Write};
+use std::io::Write;
 
-use gluesql_core::result::{Error, Result};
+// use gluesql_core::result::{Error, Result};
 use gluesql_core::store::Store;
+use std::result::Result;
 
 mod cli;
 mod command;
@@ -38,43 +40,30 @@ struct Args {
     dump: Option<PathBuf>,
 }
 
-pub fn run() {
+pub fn run() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
     if let Some(path) = args.path {
         let path = path.as_path().to_str().expect("wrong path");
 
         if let Some(dump) = args.dump {
-            // run(
-            //     SledStorage::new(path).expect("failed to load sled-storage"),
-            //     args.execute,
-            // ); // panic write after fetching something
-
             let storage = SledStorage::new(path).expect("failed to load sled-storage");
-            // block_on(async {
-            //     let schemas = storage.fetch_all_schemas().await?;
-            //     println!("{schemas:?}");
-            //     Ok::<_, Error>(())
-            // });
-
             let schemas = block_on(async {
-                let (storage, _) = storage.begin(true).await.unwrap();
-                let schemas = storage.fetch_all_schemas().await.unwrap();
+                let (storage, _) = storage.begin(true).await.map_err(|(_, error)| error)?;
+                let schemas = storage.fetch_all_schemas().await?;
+                storage.commit().await.map_err(|(_, error)| error)?;
 
-                storage.commit().await.unwrap();
+                Ok::<_, Box<dyn Error>>(schemas)
+            })?;
 
-                schemas
-            });
-
-            // let schemas = block_on(storage.fetch_all_schemas()).unwrap();
             let ddls = schemas.into_iter().fold("".to_owned(), |acc, schema| {
                 format!("{acc}{}", schema.to_ddl())
             });
 
-            let mut file = File::create(dump).unwrap();
-            writeln!(file, "{}\n", ddls);
+            let mut file = File::create(dump)?;
+            writeln!(file, "{}\n", ddls)?;
 
-            return;
+            return Ok(());
         }
 
         println!("[sled-storage] connected to {}", path);
@@ -101,4 +90,6 @@ pub fn run() {
             eprintln!("{}", e);
         }
     }
+
+    Ok(())
 }
