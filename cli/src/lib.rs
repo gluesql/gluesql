@@ -57,7 +57,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             })?;
 
             let ddls = schemas.into_iter().fold("".to_owned(), |acc, schema| {
-                format!("{acc}{}", schema.to_ddl())
+                let ddl = schema.to_ddl();
+
+                format!("{acc}{ddl}")
             });
 
             let mut file = File::create(dump)?;
