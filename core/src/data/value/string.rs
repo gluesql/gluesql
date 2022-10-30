@@ -53,7 +53,9 @@ mod tests {
     #[test]
     fn eq() {
         assert_eq!(Value::Str("wolf".to_owned()), "wolf");
+        assert_ne!(Value::Str("wolf".to_owned()), "wow");
         assert_eq!(Literal::Text(Cow::Borrowed(&"fox".to_owned())), "fox");
+        assert_ne!(Literal::Text(Cow::Borrowed(&"fox".to_owned())), "foo",);
     }
 
     #[test]
@@ -80,10 +82,12 @@ mod tests {
             literal_text!("c").partial_cmp(&"b"),
             Some(Ordering::Greater)
         );
+        assert_eq!(Literal::Boolean(true).partial_cmp(&"true"), None);
 
         assert_eq!(text!("wolf").partial_cmp(&"wolf"), Some(Ordering::Equal));
         assert_eq!(text!("apple").partial_cmp(&"wolf"), Some(Ordering::Less));
         assert_eq!(text!("zoo").partial_cmp(&"wolf"), Some(Ordering::Greater));
+        assert_eq!(Value::I64(0).partial_cmp(&"0"), None);
     }
 
     #[test]
