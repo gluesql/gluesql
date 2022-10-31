@@ -101,40 +101,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                             .map(|Row(values)| {
                                 values
                                     .into_iter()
-                                    .map(|value| match value {
-                                        Value::Bool(v) => Expr::Literal(AstLiteral::Boolean(v)),
-                                        Value::I8(v) => Expr::Literal(AstLiteral::Number(
-                                            BigDecimal::from_i8(v).unwrap(),
-                                        )),
-                                        Value::I16(v) => Expr::Literal(AstLiteral::Number(
-                                            BigDecimal::from_i16(v).unwrap(),
-                                        )),
-                                        Value::I32(v) => Expr::Literal(AstLiteral::Number(
-                                            BigDecimal::from_i32(v).unwrap(),
-                                        )),
-                                        Value::I64(v) => Expr::Literal(AstLiteral::Number(
-                                            BigDecimal::from_i64(v).unwrap(),
-                                        )),
-                                        Value::I128(v) => Expr::Literal(AstLiteral::Number(
-                                            BigDecimal::from_i128(v).unwrap(),
-                                        )),
-                                        Value::U8(v) => Expr::Literal(AstLiteral::Number(
-                                            BigDecimal::from_u8(v).unwrap(),
-                                        )),
-                                        Value::F64(v) => Expr::Literal(AstLiteral::Number(
-                                            BigDecimal::from_f64(v).unwrap(),
-                                        )),
-                                        Value::Decimal(v) => todo!(),
-                                        Value::Str(v) => Expr::Literal(AstLiteral::QuotedString(v)),
-                                        Value::Bytea(v) => todo!(),
-                                        Value::Date(v) => todo!(),
-                                        Value::Timestamp(v) => todo!(),
-                                        Value::Time(v) => todo!(),
-                                        Value::Interval(v) => todo!(),
-                                        Value::Uuid(v) => todo!(),
-                                        Value::Map(v) => todo!(),
-                                        Value::List(v) => todo!(),
-                                        Value::Null => Expr::Literal(AstLiteral::Null),
+                                    .map(|value| {
+                                        Expr::Literal(AstLiteral::try_from(value).unwrap())
                                     })
                                     .collect::<Vec<_>>()
                             })

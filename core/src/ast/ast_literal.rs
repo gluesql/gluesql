@@ -1,5 +1,11 @@
+use bigdecimal::FromPrimitive;
+
+use crate::{prelude::Value, result::Error};
+
+use super::Expr;
+
 use {
-    crate::ast::ToSql,
+    crate::{ast::ToSql, result::Result},
     bigdecimal::BigDecimal,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
@@ -23,6 +29,36 @@ impl ToSql for AstLiteral {
             AstLiteral::HexString(hs) => format!(r#""{hs}""#),
             AstLiteral::Null => "NULL".to_owned(),
         }
+    }
+}
+
+impl<'a> TryFrom<Value> for AstLiteral {
+    type Error = Error;
+
+    fn try_from(value: Value) -> Result<Self> {
+        let ast_literal = match value {
+            Value::Bool(v) => AstLiteral::Boolean(v),
+            Value::I8(v) => AstLiteral::Number(BigDecimal::from_i8(v).unwrap()),
+            Value::I16(v) => AstLiteral::Number(BigDecimal::from_i16(v).unwrap()),
+            Value::I32(v) => AstLiteral::Number(BigDecimal::from_i32(v).unwrap()),
+            Value::I64(v) => AstLiteral::Number(BigDecimal::from_i64(v).unwrap()),
+            Value::I128(v) => AstLiteral::Number(BigDecimal::from_i128(v).unwrap()),
+            Value::U8(v) => AstLiteral::Number(BigDecimal::from_u8(v).unwrap()),
+            Value::F64(v) => AstLiteral::Number(BigDecimal::from_f64(v).unwrap()),
+            Value::Decimal(v) => todo!(),
+            Value::Str(v) => AstLiteral::QuotedString(v),
+            Value::Bytea(v) => todo!(),
+            Value::Date(v) => todo!(),
+            Value::Timestamp(v) => todo!(),
+            Value::Time(v) => todo!(),
+            Value::Interval(v) => todo!(),
+            Value::Uuid(v) => todo!(),
+            Value::Map(v) => todo!(),
+            Value::List(v) => todo!(),
+            Value::Null => AstLiteral::Null,
+        };
+
+        Ok(ast_literal)
     }
 }
 
