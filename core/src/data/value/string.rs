@@ -53,9 +53,9 @@ mod tests {
     #[test]
     fn eq() {
         assert_eq!(Value::Str("wolf".to_owned()), "wolf");
-        assert!(Value::Str("wolf".to_owned()) != "wow");
+        assert_ne!(Value::I8(2), "2");
         assert_eq!(Literal::Text(Cow::Borrowed(&"fox".to_owned())), "fox");
-        assert!(Literal::Text(Cow::Borrowed(&"fox".to_owned())) != "foo",);
+        assert_ne!(Literal::Boolean(true), "true",);
     }
 
     #[test]
