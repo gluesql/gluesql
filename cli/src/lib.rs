@@ -1,6 +1,7 @@
 #![deny(clippy::str_to_string)]
 
 use bigdecimal::{BigDecimal, FromPrimitive};
+use futures::FutureExt;
 use futures::{executor::block_on, stream, StreamExt, TryStream, TryStreamExt};
 use gluesql_core::ast::{AstLiteral, Expr, ToSql};
 // use std::str::FromStr;
@@ -164,7 +165,15 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 Ok::<_, Box<dyn Error>>(insert_statements)
             });
 
-            insert_statements.next();
+            block_on(async {
+                insert_statements
+                    .next()
+                    .unwrap()
+                    .await
+                    .unwrap()
+                    .next()
+                    .await;
+            });
 
             return Ok(());
         }
