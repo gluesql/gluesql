@@ -1,8 +1,8 @@
 #![deny(clippy::str_to_string)]
 
 use bigdecimal::{BigDecimal, FromPrimitive};
-use futures::FutureExt;
 use futures::{executor::block_on, stream, StreamExt, TryStream, TryStreamExt};
+use futures::{future, FutureExt};
 use gluesql_core::ast::{AstLiteral, Expr, ToSql};
 // use std::str::FromStr;
 // use gluesql_core::data::BigDecimalExt;
@@ -59,10 +59,54 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         let path = path.as_path().to_str().expect("wrong path");
 
         if let Some(dump) = args.dump {
+            let file = File::create(dump)?;
             let storage = SledStorage::new(path).expect("failed to load sled-storage");
             let (storage, schemas) = block_on(async {
                 let (storage, _) = storage.begin(true).await.map_err(|(_, error)| error)?;
                 let schemas = storage.fetch_all_schemas().await?;
+                stream::iter(&schemas)
+                    .for_each(|schema| async {
+                        writeln!(&file, "{}\n", schema.clone().to_ddl());
+
+                        storage
+                            .scan_data(&schema.table_name)
+                            .await
+                            .map(stream::iter)
+                            .unwrap()
+                            .map_ok(|(_, row)| row)
+                            .try_chunks(100)
+                            .try_for_each(|rows| {
+                                let exprs_list = rows
+                                    .into_iter()
+                                    .map(|Row(values)| {
+                                        values
+                                            .into_iter()
+                                            .map(|value| {
+                                                Expr::Literal(AstLiteral::try_from(value).unwrap())
+                                            })
+                                            .collect::<Vec<_>>()
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                let insert_statement = Statement::Insert {
+                                    table_name: schema.table_name.clone(),
+                                    columns: Vec::new(),
+                                    source: gluesql_core::ast::Query {
+                                        body: SetExpr::Values(Values(exprs_list)),
+                                        order_by: Vec::new(),
+                                        limit: None,
+                                        offset: None,
+                                    },
+                                }
+                                .to_sql();
+
+                                writeln!(&file, "{}\n", insert_statement);
+
+                                ready(Ok(()))
+                            })
+                            .await;
+                    })
+                    .await;
 
                 // let rows_list = schemas.iter().map(|schema| async {
                 //     let rows = storage
@@ -84,64 +128,64 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             //     format!("{acc}{ddl}")
             // });
 
-            let mut file = File::create(dump)?;
+            // let mut file = File::create(dump)?;
             // writeln!(file, "{}\n", ddls)?;
 
-            let mut insert_statements = schemas.iter().map(|schema| async {
-                println!("here:+:+:+:+");
-                let insert_statements = storage
-                    .scan_data(&schema.table_name)
-                    .await
-                    .map(stream::iter)?
-                    .map_ok(|(_, row)| row)
-                    .try_chunks(100)
-                    .map_ok(|rows| {
-                        let exprs_list = rows
-                            .into_iter()
-                            .map(|Row(values)| {
-                                values
-                                    .into_iter()
-                                    .map(|value| {
-                                        Expr::Literal(AstLiteral::try_from(value).unwrap())
-                                    })
-                                    .collect::<Vec<_>>()
-                            })
-                            .collect::<Vec<_>>();
+            // let mut insert_statements = schemas.iter().map(|schema| async {
+            //     println!("here:+:+:+:+");
+            //     let insert_statements = storage
+            //         .scan_data(&schema.table_name)
+            //         .await
+            //         .map(stream::iter)?
+            //         .map_ok(|(_, row)| row)
+            //         .try_chunks(100)
+            //         .map_ok(|rows| {
+            //             let exprs_list = rows
+            //                 .into_iter()
+            //                 .map(|Row(values)| {
+            //                     values
+            //                         .into_iter()
+            //                         .map(|value| {
+            //                             Expr::Literal(AstLiteral::try_from(value).unwrap())
+            //                         })
+            //                         .collect::<Vec<_>>()
+            //                 })
+            //                 .collect::<Vec<_>>();
 
-                        let stmt = Statement::Insert {
-                            table_name: schema.table_name.clone(),
-                            columns: Vec::new(),
-                            source: gluesql_core::ast::Query {
-                                body: SetExpr::Values(Values(exprs_list)),
-                                order_by: Vec::new(),
-                                limit: None,
-                                offset: None,
-                            },
-                        }
-                        .to_sql();
+            //             let stmt = Statement::Insert {
+            //                 table_name: schema.table_name.clone(),
+            //                 columns: Vec::new(),
+            //                 source: gluesql_core::ast::Query {
+            //                     body: SetExpr::Values(Values(exprs_list)),
+            //                     order_by: Vec::new(),
+            //                     limit: None,
+            //                     offset: None,
+            //                 },
+            //             }
+            //             .to_sql();
 
-                        println!(":+:+:+::+:+:+:+:+:+:");
-                        println!("{stmt}");
-                        writeln!(&file, "{}\n", format!("{stmt};\n"));
-                    });
-                // .try_fold("".to_owned(), |acc, cur| async move {
-                //     writeln!(file, "{}\n", format!("{cur};\n"));
+            //             println!(":+:+:+::+:+:+:+:+:+:");
+            //             println!("{stmt}");
+            //             writeln!(&file, "{}\n", format!("{stmt};\n"));
+            //         });
+            //     // .try_fold("".to_owned(), |acc, cur| async move {
+            //     //     writeln!(file, "{}\n", format!("{cur};\n"));
 
-                //     Ok(format!("{acc}{cur};\n"))
-                // });
+            //     //     Ok(format!("{acc}{cur};\n"))
+            //     // });
 
-                Ok::<_, Box<dyn Error>>(insert_statements)
-            });
+            //     Ok::<_, Box<dyn Error>>(insert_statements)
+            // });
 
-            block_on(async {
-                insert_statements
-                    .next()
-                    .unwrap()
-                    .await
-                    .unwrap()
-                    .next()
-                    .await;
-            });
+            // block_on(async {
+            //     insert_statements
+            //         .next()
+            //         .unwrap()
+            //         .await
+            //         .unwrap()
+            //         .next()
+            //         .await;
+            // });
 
             return Ok(());
         }
