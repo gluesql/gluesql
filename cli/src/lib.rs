@@ -64,10 +64,11 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             block_on(async {
                 let (storage, _) = storage.begin(true).await.map_err(|(_, error)| error)?;
                 let schemas = storage.fetch_all_schemas().await?;
-                stream::iter(&schemas)
-                    .for_each(|schema| async {
-                        writeln!(&file, "{}\n", schema.clone().to_ddl());
+                // stream::iter(&schemas)
+                schemas.iter().try_for_each(|schema| {
+                    writeln!(&file, "{}\n", schema.clone().to_ddl())?;
 
+                    block_on(async {
                         storage
                             .scan_data(&schema.table_name)
                             .await
@@ -101,13 +102,17 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                                 .to_sql();
 
                                 writeln!(&file, "{}\n", insert_statement);
-                                // .map_err(|err| ready(Err(err)));
 
                                 ready(Ok(()))
                             })
-                            .await;
-                    })
-                    .await;
+                            .await
+                    });
+
+                    // Ok(())
+                    Ok::<_, Box<dyn Error>>(())
+                    // ready(Ok::<_, Box<dyn Error>>(()))
+                });
+                // .await;
 
                 Ok::<_, Box<dyn Error>>(())
             })?;
