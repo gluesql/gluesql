@@ -53,11 +53,9 @@ impl<'a> TryFrom<Value> for AstLiteral {
             // }
             Value::Time(v) => AstLiteral::QuotedString(v.to_string()),
             Value::Interval(v) => AstLiteral::QuotedString(v.into()),
-            Value::Uuid(v) => {
-                AstLiteral::QuotedString(Uuid::from_u128(v).hyphenated().to_string().into())
-            }
-            Value::Map(v) => todo!(),
-            Value::List(v) => todo!(),
+            Value::Uuid(v) => AstLiteral::QuotedString(Uuid::from_u128(v).hyphenated().to_string()),
+            Value::Map(_) => todo!(),
+            Value::List(_) => todo!(),
             Value::Null => AstLiteral::Null,
         };
 
@@ -144,8 +142,8 @@ mod tests {
             Ok(AstLiteral::Number(BigDecimal::from_f64(64.4).unwrap()))
         );
         assert_eq!(
-            Value::Decimal(Decimal::new(314, 2)).try_into(),
-            Ok(AstLiteral::Number(BigDecimal::from_f64(3.14).unwrap()))
+            Value::Decimal(Decimal::new(315, 2)).try_into(),
+            Ok(AstLiteral::Number(BigDecimal::from_f64(3.15).unwrap()))
         );
         assert_eq!(
             Value::Str("data".to_owned()).try_into(),
