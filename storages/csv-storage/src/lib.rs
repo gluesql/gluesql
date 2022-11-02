@@ -4,7 +4,11 @@ mod schema;
 use {
     csv::ReaderBuilder,
     error::StorageError,
-    gluesql_core::{ast::ColumnDef, data::Schema, prelude::DataType},
+    gluesql_core::{
+        ast::{ColumnDef, ColumnOptionDef},
+        data::Schema,
+        prelude::DataType,
+    },
     serde::Deserialize,
     std::{
         ffi::OsStr,
@@ -17,6 +21,12 @@ pub struct CsvTable {
     name: String,
     path: PathBuf,
     columns: Vec<ColumnDef>,
+}
+
+pub struct Column {
+    pub name: String,
+    pub data_type: DataType,
+    pub options: Option<Vec<ColumnOptionDef>>,
 }
 
 impl CsvTable {
@@ -98,7 +108,7 @@ impl CsvTable {
 mod test {
     use {
         crate::{error::StorageError, CsvTable},
-        gluesql_core::{ast::ColumnDef, data::Schema, prelude::DataType},
+        gluesql_core::{ast::ColumnDef, chrono::NaiveDateTime, data::Schema, prelude::DataType},
         std::{fs, path::PathBuf, str::FromStr},
     };
 
@@ -177,8 +187,6 @@ mod test {
         fs::remove_file(csv_path).unwrap();
     }
 
-    // Test `adapt_schema()`
-
     fn generate_csv_table() -> CsvTable {
         CsvTable {
             path: PathBuf::from_str("users.csv").unwrap(),
@@ -227,6 +235,7 @@ mod test {
                 },
             ],
             indexes: vec![],
+            created: NaiveDateTime::default(),
         };
         // Act
         let result = csv_table.adapt_schema(schema);
@@ -265,6 +274,7 @@ mod test {
             table_name: "animals".to_string(),
             column_defs: vec![],
             indexes: vec![],
+            created: NaiveDateTime::default(),
         };
         // Act
         let result = csv_table.adapt_schema(schema);
@@ -290,6 +300,7 @@ mod test {
                 options: vec![],
             }],
             indexes: vec![],
+            created: NaiveDateTime::default(),
         };
         // Act
         let result = csv_table.adapt_schema(schema);
