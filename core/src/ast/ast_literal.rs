@@ -3,7 +3,9 @@ use {
     bigdecimal::BigDecimal,
     bigdecimal::FromPrimitive,
     serde::{Deserialize, Serialize},
+    serde_json::{Map as JsonMap, Value as JsonValue},
     strum_macros::Display,
+    thiserror::Error,
     uuid::Uuid,
 };
 
@@ -28,22 +30,43 @@ impl ToSql for AstLiteral {
     }
 }
 
+#[derive(Error, Serialize, Debug, PartialEq)]
+pub enum AstLiteralError {
+    #[error("impossible cast")]
+    ImpossibleCast,
+}
+
 impl<'a> TryFrom<Value> for AstLiteral {
     type Error = Error;
 
     fn try_from(value: Value) -> Result<Self> {
         let ast_literal = match value {
             Value::Bool(v) => AstLiteral::Boolean(v),
-            Value::I8(v) => AstLiteral::Number(BigDecimal::from_i8(v).unwrap()),
-            Value::I16(v) => AstLiteral::Number(BigDecimal::from_i16(v).unwrap()),
-            Value::I32(v) => AstLiteral::Number(BigDecimal::from_i32(v).unwrap()),
-            Value::I64(v) => AstLiteral::Number(BigDecimal::from_i64(v).unwrap()),
-            Value::I128(v) => AstLiteral::Number(BigDecimal::from_i128(v).unwrap()),
-            Value::U8(v) => AstLiteral::Number(BigDecimal::from_u8(v).unwrap()),
-            Value::F64(v) => AstLiteral::Number(BigDecimal::from_f64(v).unwrap()),
-            Value::Decimal(v) => {
-                AstLiteral::Number(BigDecimal::from_f64(v.try_into().unwrap()).unwrap())
+            Value::I8(v) => {
+                AstLiteral::Number(BigDecimal::from_i8(v).ok_or(AstLiteralError::ImpossibleCast)?)
             }
+            Value::I16(v) => {
+                AstLiteral::Number(BigDecimal::from_i16(v).ok_or(AstLiteralError::ImpossibleCast)?)
+            }
+            Value::I32(v) => {
+                AstLiteral::Number(BigDecimal::from_i32(v).ok_or(AstLiteralError::ImpossibleCast)?)
+            }
+            Value::I64(v) => {
+                AstLiteral::Number(BigDecimal::from_i64(v).ok_or(AstLiteralError::ImpossibleCast)?)
+            }
+            Value::I128(v) => {
+                AstLiteral::Number(BigDecimal::from_i128(v).ok_or(AstLiteralError::ImpossibleCast)?)
+            }
+            Value::U8(v) => {
+                AstLiteral::Number(BigDecimal::from_u8(v).ok_or(AstLiteralError::ImpossibleCast)?)
+            }
+            Value::F64(v) => {
+                AstLiteral::Number(BigDecimal::from_f64(v).ok_or(AstLiteralError::ImpossibleCast)?)
+            }
+            Value::Decimal(v) => AstLiteral::Number(
+                BigDecimal::from_f64(v.try_into().map_err(|_| AstLiteralError::ImpossibleCast)?)
+                    .ok_or(AstLiteralError::ImpossibleCast)?,
+            ),
             Value::Str(v) => AstLiteral::QuotedString(v),
             Value::Bytea(v) => AstLiteral::HexString(hex::encode(v)),
             Value::Date(v) => AstLiteral::QuotedString(v.to_string()),
@@ -54,8 +77,26 @@ impl<'a> TryFrom<Value> for AstLiteral {
             Value::Time(v) => AstLiteral::QuotedString(v.to_string()),
             Value::Interval(v) => AstLiteral::QuotedString(v.into()),
             Value::Uuid(v) => AstLiteral::QuotedString(Uuid::from_u128(v).hyphenated().to_string()),
-            Value::Map(_) => todo!(),
-            Value::List(_) => todo!(),
+            Value::Map(v) => {
+                let json: JsonValue = v
+                    .into_iter()
+                    .map(|(key, value)| value.try_into().map(|value| (key, value)))
+                    .collect::<Result<Vec<(String, JsonValue)>>>()
+                    .map(|v| JsonMap::from_iter(v).into())
+                    .map_err(|_| AstLiteralError::ImpossibleCast)?;
+
+                AstLiteral::QuotedString(json.to_string())
+            }
+            Value::List(v) => {
+                let json: JsonValue = v
+                    .into_iter()
+                    .map(|value| value.try_into())
+                    .collect::<Result<Vec<JsonValue>>>()
+                    .map(|v| v.into())
+                    .map_err(|_| AstLiteralError::ImpossibleCast)?;
+
+                AstLiteral::QuotedString(json.to_string())
+            }
             Value::Null => AstLiteral::Null,
         };
 
@@ -84,6 +125,8 @@ pub enum TrimWhereField {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use {
         crate::{
             ast::{AstLiteral, ToSql},
@@ -178,14 +221,19 @@ mod tests {
                 "936da01f-9abd-4d9d-80c7-02af85c822a8".to_owned()
             ))
         );
-        // assert_eq!(
-        //     Value::Map(HashMap::from([("a".to_owned(), Value::Bool(true))])).try_into(),
-        //     Ok(AstLiteral::QuotedString("todo".to_owned()))
-        // );
-        // assert_eq!(
-        //     Value::List(vec![Value::Bool(true)]).try_into(),
-        //     Ok(AstLiteral::QuotedString("todo".to_owned()))
-        // );
+        assert_eq!(
+            Value::Map(HashMap::from([("a".to_owned(), Value::Bool(true))])).try_into(),
+            Ok(AstLiteral::QuotedString("{\"a\":true}".to_owned()))
+        );
+        assert_eq!(
+            Value::List(vec![
+                Value::I64(1),
+                Value::Bool(true),
+                Value::Str("a".to_owned())
+            ])
+            .try_into(),
+            Ok(AstLiteral::QuotedString("[1,true,\"a\"]".to_owned()))
+        );
         assert_eq!(Value::Null.try_into(), Ok(AstLiteral::Null));
     }
 }

@@ -1,5 +1,6 @@
 use {
     crate::{
+        ast::AstLiteralError,
         data::{
             IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
         },
@@ -79,6 +80,8 @@ pub enum Error {
     StringExt(#[from] StringExtError),
     #[error(transparent)]
     Plan(#[from] PlanError),
+    #[error(transparent)]
+    AstLiteral(#[from] AstLiteralError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
