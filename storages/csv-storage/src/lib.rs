@@ -5,17 +5,18 @@ use {
     csv::ReaderBuilder,
     error::StorageError,
     gluesql_core::{ast::ColumnDef, data::Schema, prelude::DataType},
+    serde::Deserialize,
     std::{
         ffi::OsStr,
         path::{Path, PathBuf},
     },
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 pub struct CsvTable {
-    file_path: PathBuf,
-    table_name: String,
-    column_defs: Vec<ColumnDef>,
+    name: String,
+    path: PathBuf,
+    columns: Vec<ColumnDef>,
 }
 
 impl CsvTable {
@@ -52,9 +53,9 @@ impl CsvTable {
             .to_string();
 
         Ok(CsvTable {
-            file_path,
-            table_name,
-            column_defs,
+            path: file_path,
+            name: table_name,
+            columns: column_defs,
         })
     }
 
@@ -64,15 +65,15 @@ impl CsvTable {
     /// - `table_name`
     /// - `column_def.name` for every item in `column_defs`
     pub fn adapt_schema(self, schema: Schema) -> Result<Self, StorageError> {
-        if self.table_name != schema.table_name {
+        if self.name != schema.table_name {
             return Err(StorageError::SchemaMismatch(
-                format!("Csv table name: {}", self.table_name),
+                format!("Csv table name: {}", self.name),
                 format!("Schema table name: {}", schema.table_name),
             ));
         }
 
         let column_defs = self
-            .column_defs
+            .columns
             .into_iter()
             .zip(schema.column_defs)
             .map(|(csv_col, schema_col)| {
@@ -87,7 +88,7 @@ impl CsvTable {
             .collect::<Result<Vec<_>, StorageError>>()?;
 
         Ok(CsvTable {
-            column_defs,
+            columns: column_defs,
             ..self
         })
     }
@@ -112,9 +113,9 @@ mod test {
         // Assert
         assert_eq!(
             Ok(CsvTable {
-                file_path: PathBuf::from_str("users.csv").unwrap(),
-                table_name: "users".to_string(),
-                column_defs: vec![
+                path: PathBuf::from_str("users.csv").unwrap(),
+                name: "users".to_string(),
+                columns: vec![
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Text,
@@ -149,9 +150,9 @@ mod test {
         // Assert
         assert_eq!(
             Ok(CsvTable {
-                file_path: PathBuf::from_str(".csv").unwrap(),
-                table_name: "new_table_0".to_string(),
-                column_defs: vec![
+                path: PathBuf::from_str(".csv").unwrap(),
+                name: "new_table_0".to_string(),
+                columns: vec![
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Text,
@@ -180,9 +181,9 @@ mod test {
 
     fn generate_csv_table() -> CsvTable {
         CsvTable {
-            file_path: PathBuf::from_str("users.csv").unwrap(),
-            table_name: "users".to_string(),
-            column_defs: vec![
+            path: PathBuf::from_str("users.csv").unwrap(),
+            name: "users".to_string(),
+            columns: vec![
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Text,
@@ -233,9 +234,9 @@ mod test {
         assert_eq!(
             result,
             Ok(CsvTable {
-                file_path: PathBuf::from_str("users.csv").unwrap(),
-                table_name: "users".to_string(),
-                column_defs: vec![
+                path: PathBuf::from_str("users.csv").unwrap(),
+                name: "users".to_string(),
+                columns: vec![
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Int128,

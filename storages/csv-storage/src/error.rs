@@ -10,6 +10,9 @@ pub enum StorageError {
 
     #[error("given schema doesn't fit for csv table: {0}, {1}")]
     SchemaMismatch(String, String),
+
+    #[error("cannot read schema file: {0}")]
+    InvalidSchemaFile(String),
 }
 
 impl StorageError {
