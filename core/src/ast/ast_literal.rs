@@ -1,14 +1,10 @@
-use bigdecimal::FromPrimitive;
-
-use crate::{prelude::Value, result::Error};
-
-use super::Expr;
-
 use {
-    crate::{ast::ToSql, result::Result},
+    crate::{ast::ToSql, prelude::Value, result::Error, result::Result},
     bigdecimal::BigDecimal,
+    bigdecimal::FromPrimitive,
     serde::{Deserialize, Serialize},
     strum_macros::Display,
+    uuid::Uuid,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -45,14 +41,21 @@ impl<'a> TryFrom<Value> for AstLiteral {
             Value::I128(v) => AstLiteral::Number(BigDecimal::from_i128(v).unwrap()),
             Value::U8(v) => AstLiteral::Number(BigDecimal::from_u8(v).unwrap()),
             Value::F64(v) => AstLiteral::Number(BigDecimal::from_f64(v).unwrap()),
-            Value::Decimal(v) => todo!(),
+            Value::Decimal(v) => {
+                AstLiteral::Number(BigDecimal::from_f64(v.try_into().unwrap()).unwrap())
+            }
             Value::Str(v) => AstLiteral::QuotedString(v),
-            Value::Bytea(v) => todo!(),
-            Value::Date(v) => todo!(),
-            Value::Timestamp(v) => todo!(),
-            Value::Time(v) => todo!(),
-            Value::Interval(v) => todo!(),
-            Value::Uuid(v) => todo!(),
+            Value::Bytea(v) => AstLiteral::HexString(hex::encode(v)),
+            Value::Date(v) => AstLiteral::QuotedString(v.to_string()),
+            Value::Timestamp(v) => AstLiteral::QuotedString(v.to_string()),
+            // Value::Timestamp(v) => {
+            //     AstLiteral::QuotedString(DateTime::<Utc>::from_utc(v, Utc).to_string().into())
+            // }
+            Value::Time(v) => AstLiteral::QuotedString(v.to_string()),
+            Value::Interval(v) => AstLiteral::QuotedString(v.into()),
+            Value::Uuid(v) => {
+                AstLiteral::QuotedString(Uuid::from_u128(v).hyphenated().to_string().into())
+            }
             Value::Map(v) => todo!(),
             Value::List(v) => todo!(),
             Value::Null => AstLiteral::Null,
@@ -84,8 +87,15 @@ pub enum TrimWhereField {
 #[cfg(test)]
 mod tests {
     use {
-        crate::ast::{AstLiteral, ToSql},
+        crate::{
+            ast::{AstLiteral, ToSql},
+            data::Interval,
+            prelude::Value,
+        },
         bigdecimal::BigDecimal,
+        bigdecimal::FromPrimitive,
+        chrono::{NaiveDate, NaiveTime},
+        rust_decimal::Decimal,
     };
 
     #[test]
@@ -97,5 +107,87 @@ mod tests {
             AstLiteral::QuotedString("hello".to_owned()).to_sql()
         );
         assert_eq!("NULL", AstLiteral::Null.to_sql());
+    }
+
+    #[test]
+    fn value_to_literal() {
+        assert_eq!(Value::Bool(true).try_into(), Ok(AstLiteral::Boolean(true)));
+
+        assert_eq!(
+            Value::I8(127).try_into(),
+            Ok(AstLiteral::Number(BigDecimal::from_i8(127).unwrap()))
+        );
+        assert_eq!(
+            Value::I16(32767).try_into(),
+            Ok(AstLiteral::Number(BigDecimal::from_i16(32767).unwrap()))
+        );
+        assert_eq!(
+            Value::I32(2147483647).try_into(),
+            Ok(AstLiteral::Number(
+                BigDecimal::from_i32(2147483647).unwrap()
+            ))
+        );
+        assert_eq!(
+            Value::I64(64).try_into(),
+            Ok(AstLiteral::Number(BigDecimal::from_i64(64).unwrap()))
+        );
+        assert_eq!(
+            Value::I128(128).try_into(),
+            Ok(AstLiteral::Number(BigDecimal::from_i128(128).unwrap()))
+        );
+        assert_eq!(
+            Value::U8(8).try_into(),
+            Ok(AstLiteral::Number(BigDecimal::from_u8(8).unwrap()))
+        );
+        assert_eq!(
+            Value::F64(64.4).try_into(),
+            Ok(AstLiteral::Number(BigDecimal::from_f64(64.4).unwrap()))
+        );
+        assert_eq!(
+            Value::Decimal(Decimal::new(314, 2)).try_into(),
+            Ok(AstLiteral::Number(BigDecimal::from_f64(3.14).unwrap()))
+        );
+        assert_eq!(
+            Value::Str("data".to_owned()).try_into(),
+            Ok(AstLiteral::QuotedString("data".to_owned()))
+        );
+        assert_eq!(
+            Value::Bytea(hex::decode("1234").unwrap()).try_into(),
+            Ok(AstLiteral::HexString("1234".to_owned()))
+        );
+        assert_eq!(
+            Value::Date(NaiveDate::from_ymd(2021, 8, 25)).try_into(),
+            Ok(AstLiteral::QuotedString("2021-08-25".to_owned()))
+        );
+        assert_eq!(
+            Value::Timestamp(NaiveDate::from_ymd(2021, 8, 25).and_hms_milli(8, 5, 30, 900))
+                .try_into(),
+            Ok(AstLiteral::QuotedString(
+                "2021-08-25 08:05:30.900".to_owned()
+            ))
+        );
+        assert_eq!(
+            Value::Time(NaiveTime::from_hms(20, 11, 59)).try_into(),
+            Ok(AstLiteral::QuotedString("20:11:59".to_owned()))
+        );
+        assert_eq!(
+            Value::Interval(Interval::Month(1)).try_into(),
+            Ok(AstLiteral::QuotedString("\"1\" MONTH".to_owned()))
+        );
+        assert_eq!(
+            Value::Uuid(195965723427462096757863453463987888808).try_into(),
+            Ok(AstLiteral::QuotedString(
+                "936da01f-9abd-4d9d-80c7-02af85c822a8".to_owned()
+            ))
+        );
+        // assert_eq!(
+        //     Value::Map(HashMap::from([("a".to_owned(), Value::Bool(true))])).try_into(),
+        //     Ok(AstLiteral::QuotedString("todo".to_owned()))
+        // );
+        // assert_eq!(
+        //     Value::List(vec![Value::Bool(true)]).try_into(),
+        //     Ok(AstLiteral::QuotedString("todo".to_owned()))
+        // );
+        assert_eq!(Value::Null.try_into(), Ok(AstLiteral::Null));
     }
 }
