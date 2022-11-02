@@ -8,6 +8,7 @@ use {
         result::{Error, IntoControlFlow, MutResult, Result, TrySelf},
         store::{GStore, GStoreMut},
     },
+    chrono::Utc,
     futures::stream::{self, TryStreamExt},
     std::{
         iter,
@@ -110,6 +111,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             table_name: target_table_name.to_owned(),
             column_defs: target_columns_defs,
             indexes: vec![],
+            created: Utc::now().naive_utc(),
         };
 
         for column_def in &schema.column_defs {

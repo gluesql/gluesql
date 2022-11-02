@@ -24,6 +24,7 @@ impl From<&Value> for String {
             Value::I64(value) => value.to_string(),
             Value::I128(value) => value.to_string(),
             Value::U8(value) => value.to_string(),
+            Value::U16(value) => value.to_string(),
             Value::F64(value) => value.to_string(),
             Value::Date(value) => value.to_string(),
             Value::Timestamp(value) => value.to_string(),
@@ -83,6 +84,11 @@ impl TryFrom<&Value> for bool {
                 0 => false,
                 _ => return Err(ValueError::ImpossibleCast.into()),
             },
+            Value::U16(value) => match value {
+                1 => true,
+                0 => false,
+                _ => return Err(ValueError::ImpossibleCast.into()),
+            },
             Value::F64(value) => {
                 if value.eq(&1.0) {
                     true
@@ -137,6 +143,7 @@ impl TryFrom<&Value> for i8 {
             Value::I64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i8>()
@@ -173,6 +180,7 @@ impl TryFrom<&Value> for i16 {
             Value::I64(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i16().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i16>()
@@ -209,6 +217,7 @@ impl TryFrom<&Value> for i32 {
             Value::I64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i32().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i32>()
@@ -245,6 +254,7 @@ impl TryFrom<&Value> for i64 {
             Value::I64(value) => *value,
             Value::I128(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_i64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i64>()
@@ -281,6 +291,7 @@ impl TryFrom<&Value> for i128 {
             Value::I64(value) => *value as i128,
             Value::I128(value) => *value,
             Value::U8(value) => *value as i128,
+            Value::U16(value) => *value as i128,
             Value::F64(value) => value.to_i128().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<i128>()
@@ -317,11 +328,48 @@ impl TryFrom<&Value> for u8 {
             Value::I64(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => *value,
+            Value::U16(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<u8>()
                 .map_err(|_| ValueError::ImpossibleCast)?,
             Value::Decimal(value) => value.to_u8().ok_or(ValueError::ImpossibleCast)?,
+            Value::Date(_)
+            | Value::Timestamp(_)
+            | Value::Time(_)
+            | Value::Interval(_)
+            | Value::Uuid(_)
+            | Value::Map(_)
+            | Value::List(_)
+            | Value::Bytea(_)
+            | Value::Null => return Err(ValueError::ImpossibleCast.into()),
+        })
+    }
+}
+impl TryFrom<&Value> for u16 {
+    type Error = Error;
+
+    fn try_from(v: &Value) -> Result<u16> {
+        Ok(match v {
+            Value::Bool(value) => {
+                if *value {
+                    1
+                } else {
+                    0
+                }
+            }
+            Value::I8(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I16(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I32(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I64(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::I128(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::U8(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => *value,
+            Value::F64(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
+            Value::Str(value) => value
+                .parse::<u16>()
+                .map_err(|_| ValueError::ImpossibleCast)?,
+            Value::Decimal(value) => value.to_u16().ok_or(ValueError::ImpossibleCast)?,
             Value::Date(_)
             | Value::Timestamp(_)
             | Value::Time(_)
@@ -353,6 +401,7 @@ impl TryFrom<&Value> for f64 {
             Value::I64(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => *value as f64,
             Value::U8(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_f64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => *value,
             Value::Str(value) => value
                 .parse::<f64>()
@@ -389,6 +438,7 @@ impl TryFrom<&Value> for usize {
             Value::I64(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_usize().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<usize>()
@@ -425,6 +475,7 @@ impl TryFrom<&Value> for Decimal {
             Value::I64(value) => Decimal::from_i64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::I128(value) => Decimal::from_i128(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::U8(value) => Decimal::from_u8(*value).ok_or(ValueError::ImpossibleCast)?,
+            Value::U16(value) => Decimal::from_u16(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => Decimal::from_f64(*value).ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => {
                 Decimal::from_str(value).map_err(|_| ValueError::ImpossibleCast)?
@@ -456,7 +507,7 @@ macro_rules! try_from_owned_value {
     )*}
 }
 
-try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u8, u128, usize, Decimal);
+try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u8, u16, u128, usize, Decimal);
 
 impl TryFrom<&Value> for NaiveDate {
     type Error = Error;
@@ -549,6 +600,7 @@ mod tests {
         test!(Value::I64(1234567890), "1234567890");
         test!(Value::I128(1234567890), "1234567890");
         test!(Value::U8(122), "122");
+        test!(Value::U16(122), "122");
         test!(Value::F64(1234567890.0987), "1234567890.0987");
         test!(Value::Date(date(2021, 11, 20)), "2021-11-20");
         test!(
@@ -594,6 +646,9 @@ mod tests {
         test!(Value::U8(1), Ok(true));
         test!(Value::U8(0), Ok(false));
         test!(Value::U8(2), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U16(1), Ok(true));
+        test!(Value::U16(0), Ok(false));
+        test!(Value::U16(2), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(1.0), Ok(true));
         test!(Value::F64(0.0), Ok(false));
         test!(Value::Str("true".to_owned()), Ok(true));
@@ -663,6 +718,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
         test!(Value::F64(122.9), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
@@ -703,6 +759,7 @@ mod tests {
         test!(Value::I64(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::I128(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::U8(128), Err(ValueError::ImpossibleCast.into()));
+        test!(Value::U16(128), Err(ValueError::ImpossibleCast.into()));
         test!(Value::F64(128.0), Err(ValueError::ImpossibleCast.into()));
     }
 
@@ -727,6 +784,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
         test!(Value::F64(122.1), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
@@ -783,6 +841,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));
@@ -840,6 +899,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));
@@ -897,6 +957,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.9), Ok(1234567890));
@@ -954,6 +1015,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::F64(122.0), Ok(122));
         test!(Value::F64(122.9), Ok(122));
         test!(Value::Str("122".to_owned()), Ok(122));
@@ -1002,6 +1064,63 @@ mod tests {
     }
 
     #[test]
+    fn try_into_u16() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                assert_eq!($from.try_into() as Result<u16>, $to);
+                assert_eq!(u16::try_from($from), $to);
+            };
+        }
+        let timestamp = |y, m, d, hh, mm, ss, ms| {
+            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+        };
+        let time = chrono::NaiveTime::from_hms_milli;
+        let date = chrono::NaiveDate::from_ymd;
+        test!(Value::Bool(true), Ok(1));
+        test!(Value::Bool(false), Ok(0));
+        test!(Value::I8(122), Ok(122));
+        test!(Value::I16(122), Ok(122));
+        test!(Value::I32(122), Ok(122));
+        test!(Value::I64(122), Ok(122));
+        test!(Value::I128(122), Ok(122));
+        test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
+        test!(Value::F64(122.0), Ok(122));
+        test!(Value::F64(122.1), Ok(122));
+        test!(Value::Str("122".to_owned()), Ok(122));
+        test!(Value::Decimal(Decimal::new(122, 0)), Ok(122));
+        test!(
+            Value::Date(date(2021, 11, 20)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Time(time(10, 0, 0, 0)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Interval(I::Month(1)),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Uuid(195965723427462096757863453463987888808),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::Map(HashMap::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(
+            Value::List(Vec::new()),
+            Err(ValueError::ImpossibleCast.into())
+        );
+        test!(Value::Null, Err(ValueError::ImpossibleCast.into()));
+    }
+
+    #[test]
     fn try_into_f64() {
         macro_rules! test {
             ($from: expr, $to: expr) => {
@@ -1022,6 +1141,7 @@ mod tests {
         test!(Value::I64(122), Ok(122.0));
         test!(Value::I128(122), Ok(122.0));
         test!(Value::U8(122), Ok(122.0));
+        test!(Value::U16(122), Ok(122.0));
         test!(Value::I64(1234567890), Ok(1234567890.0));
         test!(Value::F64(1234567890.1), Ok(1234567890.1));
         test!(Value::Str("1234567890.1".to_owned()), Ok(1234567890.1));
@@ -1081,6 +1201,7 @@ mod tests {
         test!(Value::I64(122), Ok(122));
         test!(Value::I128(122), Ok(122));
         test!(Value::U8(122), Ok(122));
+        test!(Value::U16(122), Ok(122));
         test!(Value::I64(1234567890), Ok(1234567890));
         test!(Value::F64(1234567890.0), Ok(1234567890));
         test!(Value::F64(1234567890.1), Ok(1234567890));

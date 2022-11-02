@@ -11,6 +11,7 @@ pub enum DataType {
     Int,
     Int128,
     Uint8,
+    Uint16,
     Float,
     Text,
     Bytea,

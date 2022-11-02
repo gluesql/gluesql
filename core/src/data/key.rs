@@ -31,6 +31,7 @@ pub enum Key {
     I128(i128),
     U8(u8),
     Decimal(Decimal),
+    U16(u16),
     Bool(bool),
     Str(String),
     Bytea(Vec<u8>),
@@ -50,6 +51,7 @@ impl PartialOrd for Key {
             (Key::I32(l), Key::I32(r)) => Some(l.cmp(r)),
             (Key::I64(l), Key::I64(r)) => Some(l.cmp(r)),
             (Key::U8(l), Key::U8(r)) => Some(l.cmp(r)),
+            (Key::U16(l), Key::U16(r)) => Some(l.cmp(r)),
             (Key::Decimal(l), Key::Decimal(r)) => Some(l.cmp(r)),
             (Key::Bool(l), Key::Bool(r)) => Some(l.cmp(r)),
             (Key::Str(l), Key::Str(r)) => Some(l.cmp(r)),
@@ -78,6 +80,7 @@ impl TryFrom<Value> for Key {
             I64(v) => Ok(Key::I64(v)),
             I128(v) => Ok(Key::I128(v)),
             U8(v) => Ok(Key::U8(v)),
+            U16(v) => Ok(Key::U16(v)),
             Decimal(v) => Ok(Key::Decimal(v)),
             Str(v) => Ok(Key::Str(v)),
             Bytea(v) => Ok(Key::Bytea(v)),
@@ -162,6 +165,11 @@ impl Key {
                     .collect::<Vec<_>>()
             }
             Key::U8(v) => [VALUE, 1]
+                .iter()
+                .chain(v.to_be_bytes().iter())
+                .copied()
+                .collect::<Vec<_>>(),
+            Key::U16(v) => [VALUE, 1]
                 .iter()
                 .chain(v.to_be_bytes().iter())
                 .copied()
@@ -273,6 +281,7 @@ mod tests {
         assert_eq!(convert("CAST(11 AS INT32)"), Ok(Key::I32(11)));
         assert_eq!(convert("2048"), Ok(Key::I64(2048)));
         assert_eq!(convert("CAST(11 AS UINT8)"), Ok(Key::U8(11)));
+        assert_eq!(convert("CAST(11 AS UINT16)"), Ok(Key::U16(11)));
         assert_eq!(
             convert("CAST(123.45 AS DECIMAL)"),
             Ok(Key::Decimal(Decimal::from_str("123.45").unwrap()))
@@ -431,6 +440,15 @@ mod tests {
         let n2 = U8(3).to_cmp_be_bytes();
         let n3 = U8(20).to_cmp_be_bytes();
         let n4 = U8(20).to_cmp_be_bytes();
+        assert_eq!(cmp(&n1, &n2), Ordering::Less);
+        assert_eq!(cmp(&n3, &n2), Ordering::Greater);
+        assert_eq!(cmp(&n1, &n4), Ordering::Less);
+        assert_eq!(cmp(&n3, &n4), Ordering::Equal);
+
+        let n1 = U16(0).to_cmp_be_bytes();
+        let n2 = U16(3).to_cmp_be_bytes();
+        let n3 = U16(20).to_cmp_be_bytes();
+        let n4 = U16(20).to_cmp_be_bytes();
         assert_eq!(cmp(&n1, &n2), Ordering::Less);
         assert_eq!(cmp(&n3, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &n4), Ordering::Less);

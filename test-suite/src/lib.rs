@@ -100,6 +100,7 @@ macro_rules! generate_store_tests {
         glue!(function_cast_literal, function::cast::cast_literal);
         glue!(function_cast_value, function::cast::cast_value);
         glue!(function_concat, function::concat::concat);
+        glue!(function_concat_ws, function::concat_ws::concat_ws);
         glue!(function_ifnull, function::ifnull::ifnull);
         glue!(function_math_function_asin, function::math_function::asin);
         glue!(function_math_function_acos, function::math_function::acos);
@@ -141,6 +142,7 @@ macro_rules! generate_store_tests {
         glue!(int32, data_type::int32::int32);
         glue!(int64, data_type::int64::int64);
         glue!(int128, data_type::int128::int128);
+        glue!(uint16, data_type::uint16::uint16);
         glue!(uint8, data_type::uint8::uint8);
         glue!(date, data_type::date::date);
         glue!(timestamp, data_type::timestamp::timestamp);
