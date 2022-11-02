@@ -1,7 +1,5 @@
-use crate::ast::{Statement, ToSql};
-
 use {
-    crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr},
+    crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Statement, ToSql},
     serde::{Deserialize, Serialize},
     std::fmt::Debug,
     strum_macros::Display,
