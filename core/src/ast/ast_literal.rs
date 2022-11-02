@@ -36,7 +36,7 @@ pub enum AstLiteralError {
     ImpossibleCast,
 }
 
-impl<'a> TryFrom<Value> for AstLiteral {
+impl TryFrom<Value> for AstLiteral {
     type Error = Error;
 
     fn try_from(value: Value) -> Result<Self> {
