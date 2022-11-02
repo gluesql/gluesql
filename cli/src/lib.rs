@@ -1,27 +1,5 @@
 #![deny(clippy::str_to_string)]
 
-use bigdecimal::{BigDecimal, FromPrimitive};
-use futures::{executor::block_on, stream, StreamExt, TryStream, TryStreamExt};
-use futures::{future, FutureExt};
-use gluesql_core::ast::{AstLiteral, Expr, ToSql};
-// use std::str::FromStr;
-// use gluesql_core::data::BigDecimalExt;
-use gluesql_core::prelude::Value;
-use gluesql_core::{
-    ast::{SetExpr, Statement, Values},
-    data::Literal,
-    prelude::Row,
-    store::Transaction,
-};
-use std::error::Error;
-use std::fs::File;
-use std::future::ready;
-use std::io::Write;
-
-// use gluesql_core::result::{Error, Result};
-use gluesql_core::store::Store;
-use std::result::Result;
-
 mod cli;
 mod command;
 mod helper;
@@ -30,10 +8,18 @@ mod print;
 use {
     crate::cli::Cli,
     clap::Parser,
-    gluesql_core::store::{GStore, GStoreMut},
+    futures::{executor::block_on, stream, StreamExt, TryStreamExt},
+    gluesql_core::{
+        ast::{AstLiteral, Expr, SetExpr, Statement, ToSql, Values},
+        prelude::Row,
+        store::Transaction,
+        store::{GStore, GStoreMut, Store},
+    },
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
-    std::{fmt::Debug, path::PathBuf},
+    std::{
+        error::Error, fmt::Debug, fs::File, future::ready, io::Write, path::PathBuf, result::Result,
+    },
 };
 
 #[derive(Parser, Debug)]
@@ -64,11 +50,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             block_on(async {
                 let (storage, _) = storage.begin(true).await.map_err(|(_, error)| error)?;
                 let schemas = storage.fetch_all_schemas().await?;
-                // stream::iter(&schemas)
-                schemas.iter().try_for_each(|schema| {
-                    writeln!(&file, "{}\n", schema.clone().to_ddl())?;
+                stream::iter(&schemas)
+                    .for_each(|schema| async {
+                        writeln!(&file, "{}", schema.clone().to_ddl()).unwrap();
 
-                    block_on(async {
                         storage
                             .scan_data(&schema.table_name)
                             .await
@@ -101,18 +86,18 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                                 }
                                 .to_sql();
 
-                                writeln!(&file, "{}\n", insert_statement);
+                                writeln!(&file, "{}", insert_statement)
+                                    .map_err(ready)
+                                    .unwrap();
 
                                 ready(Ok(()))
                             })
                             .await
-                    });
+                            .unwrap();
 
-                    // Ok(())
-                    Ok::<_, Box<dyn Error>>(())
-                    // ready(Ok::<_, Box<dyn Error>>(()))
-                });
-                // .await;
+                        writeln!(&file).unwrap();
+                    })
+                    .await;
 
                 Ok::<_, Box<dyn Error>>(())
             })?;
