@@ -125,8 +125,6 @@ pub enum TrimWhereField {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use {
         crate::{
             ast::{AstLiteral, ToSql},
@@ -137,6 +135,7 @@ mod tests {
         bigdecimal::FromPrimitive,
         chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
+        std::collections::HashMap,
     };
 
     #[test]
