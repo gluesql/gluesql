@@ -2,6 +2,7 @@ use {
     crate::{ast::ToSql, prelude::Value, result::Error, result::Result},
     bigdecimal::BigDecimal,
     bigdecimal::FromPrimitive,
+    chrono::{DateTime, Utc},
     serde::{Deserialize, Serialize},
     serde_json::{Map as JsonMap, Value as JsonValue},
     strum_macros::Display,
@@ -70,10 +71,9 @@ impl TryFrom<Value> for AstLiteral {
             Value::Str(v) => AstLiteral::QuotedString(v),
             Value::Bytea(v) => AstLiteral::HexString(hex::encode(v)),
             Value::Date(v) => AstLiteral::QuotedString(v.to_string()),
-            Value::Timestamp(v) => AstLiteral::QuotedString(v.to_string()),
-            // Value::Timestamp(v) => {
-            //     AstLiteral::QuotedString(DateTime::<Utc>::from_utc(v, Utc).to_string().into())
-            // }
+            Value::Timestamp(v) => {
+                AstLiteral::QuotedString(DateTime::<Utc>::from_utc(v, Utc).to_string().into())
+            }
             Value::Time(v) => AstLiteral::QuotedString(v.to_string()),
             Value::Interval(v) => AstLiteral::QuotedString(v.into()),
             Value::Uuid(v) => AstLiteral::QuotedString(Uuid::from_u128(v).hyphenated().to_string()),
@@ -197,14 +197,14 @@ mod tests {
             Ok(AstLiteral::HexString("1234".to_owned()))
         );
         assert_eq!(
-            Value::Date(NaiveDate::from_ymd(2021, 8, 25)).try_into(),
-            Ok(AstLiteral::QuotedString("2021-08-25".to_owned()))
+            Value::Date(NaiveDate::from_ymd(2022, 11, 3)).try_into(),
+            Ok(AstLiteral::QuotedString("2022-11-03".to_owned()))
         );
         assert_eq!(
-            Value::Timestamp(NaiveDate::from_ymd(2021, 8, 25).and_hms_milli(8, 5, 30, 900))
+            Value::Timestamp(NaiveDate::from_ymd(2022, 11, 03).and_hms_milli(8, 5, 30, 900))
                 .try_into(),
             Ok(AstLiteral::QuotedString(
-                "2021-08-25 08:05:30.900".to_owned()
+                "2022-11-03 08:05:30.900 UTC".to_owned()
             ))
         );
         assert_eq!(
