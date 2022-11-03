@@ -32,13 +32,13 @@ GlueSQL provides three reference storage options.
 gluesql = "0.13"
 ```
 
-- install CLI
+- Install CLI
 
 ```sh
 $ cargo install gluesql
 ```
 
-- run CLI
+- Run CLI
 
 ```sh
 $ gluesql [--path ~/data_path] [--execute ~/sql_path]
