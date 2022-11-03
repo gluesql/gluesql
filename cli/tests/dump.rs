@@ -1,9 +1,8 @@
-use gluesql_core::store::Transaction;
-
 use {
     gluesql_cli::dump_database,
     gluesql_core::prelude::Glue,
     gluesql_core::store::Store,
+    gluesql_core::store::Transaction,
     gluesql_sled_storage::{sled, SledStorage},
     std::{fs::File, io::Read, path::PathBuf},
 };
