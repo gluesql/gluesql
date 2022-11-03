@@ -20,7 +20,7 @@ pub struct SchemaIndex {
     pub order: SchemaIndexOrd,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,

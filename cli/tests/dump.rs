@@ -1,12 +1,16 @@
+use gluesql_core::store::Transaction;
+
 use {
     gluesql_cli::dump_database,
     gluesql_core::prelude::Glue,
+    gluesql_core::store::Store,
     gluesql_sled_storage::{sled, SledStorage},
     std::{fs::File, io::Read, path::PathBuf},
 };
 
-#[test]
-fn dump_and_import() {
+// #[test]
+#[tokio::test]
+async fn dump_and_import() {
     let data_path = "tmp/src";
     let dump_path = PathBuf::from("tmp/dump.sql");
 
@@ -24,9 +28,9 @@ fn dump_and_import() {
     }
 
     let sql = "SELECT * FROM User;";
-    let source = source_glue.execute(sql).unwrap();
+    let source_data = source_glue.execute(sql).unwrap();
 
-    dump_database(source_glue.storage.unwrap(), dump_path.clone()).unwrap();
+    let source_storage = dump_database(source_glue.storage.unwrap(), dump_path.clone()).unwrap();
 
     let data_path = "tmp/target";
     let config = sled::Config::default().path(data_path).temporary(true);
@@ -43,6 +47,14 @@ fn dump_and_import() {
         target_glue.execute(sql).unwrap();
     }
 
-    let target = target_glue.execute(sql).unwrap();
-    assert_eq!(source, target);
+    let target_data = target_glue.execute(sql).unwrap();
+    assert_eq!(source_data, target_data);
+
+    let (source_storage, _) = source_storage.begin(true).await.unwrap();
+    let source_schemas = source_storage.fetch_all_schemas().await.unwrap();
+
+    let (target_storage, _) = target_glue.storage.unwrap().begin(true).await.unwrap();
+    let target_schemas = target_storage.fetch_all_schemas().await.unwrap();
+
+    assert_eq!(source_schemas, target_schemas);
 }

@@ -79,7 +79,7 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<()> {
+pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<SledStorage> {
     let file = File::create(dump_path)?;
 
     block_on(async {
@@ -124,6 +124,6 @@ pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<()> {
             writeln!(&file)?;
         }
 
-        Ok::<_, Error>(())
+        Ok(storage)
     })
 }
