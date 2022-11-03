@@ -72,7 +72,7 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
     })
 }
 
-/// Translate `ColumnOptionDef` to `ColumnOption`.
+/// Translate [`SqlColumnOptionDef`] to [`ColumnOption`].
 ///
 /// `sql-parser` parses column option as `{ name, option }` type,
 /// but in here we only need `option`.
