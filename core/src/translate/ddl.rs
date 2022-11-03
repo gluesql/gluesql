@@ -79,9 +79,8 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
 fn translate_column_option_def(
     sql_column_option_def: &SqlColumnOptionDef,
 ) -> Result<Vec<ColumnOption>> {
-    let SqlColumnOptionDef { name, option } = sql_column_option_def;
+    let SqlColumnOptionDef { option, .. } = sql_column_option_def;
 
-    let name = name.as_ref().map(|name| name.value.to_owned());
     let option = match option {
         SqlColumnOption::Null => Ok(ColumnOption::Null),
         SqlColumnOption::NotNull => Ok(ColumnOption::NotNull),

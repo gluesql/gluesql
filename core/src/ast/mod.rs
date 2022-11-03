@@ -370,7 +370,7 @@ mod tests {
                     ColumnDef {
                         name: "num".to_owned(),
                         data_type: DataType::Int,
-                        options: vec![option: ColumnOption::Null]
+                        options: vec![ColumnOption::Null]
                     },
                     ColumnDef {
                         name: "name".to_owned(),
