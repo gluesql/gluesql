@@ -8,9 +8,8 @@ use {
     },
     crate::{
         ast::{
-            ColumnDef, ColumnOption, ColumnOptionDef, DataType, Dictionary, Expr, Query,
-            SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
-            Variable,
+            ColumnDef, ColumnOption, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
+            Statement, TableAlias, TableFactor, TableWithJoins, Values, Variable,
         },
         data::{Key, Row, Schema},
         executor::limit::Limit,
@@ -229,9 +228,9 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .iter()
                     .enumerate()
                     .find(|(_, ColumnDef { options, .. })| {
-                        options.iter().any(|ColumnOptionDef { option, .. }| {
-                            option == &ColumnOption::Unique { is_primary: true }
-                        })
+                        options
+                            .iter()
+                            .any(|option| option == &ColumnOption::Unique { is_primary: true })
                     })
                     .map(|(i, _)| i);
 
