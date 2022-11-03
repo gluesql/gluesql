@@ -79,21 +79,13 @@ impl ToSql for ColumnDef {
             options,
         } = self;
         {
-            let not_null = options
-                .iter()
-                .find(|ColumnOptionDef { option, .. }| {
-                    option == &ColumnOption::NotNull || option == &ColumnOption::Null
-                })
-                .map(|_| " ")
-                .unwrap_or_else(|| " NOT NULL ");
-
             let options = options
                 .iter()
                 .map(|ColumnOptionDef { option, .. }| option.to_sql())
                 .collect::<Vec<_>>()
                 .join(" ");
 
-            format!("{name} {data_type}{not_null}{options}")
+            format!("{name} {data_type} {options}")
                 .trim_end()
                 .to_owned()
         }
@@ -121,7 +113,7 @@ mod tests {
     #[test]
     fn to_sql_column_def() {
         assert_eq!(
-            "name TEXT NOT NULL UNIQUE",
+            "name TEXT UNIQUE",
             ColumnDef {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
@@ -166,7 +158,7 @@ mod tests {
         );
 
         assert_eq!(
-            "accepted BOOLEAN NOT NULL DEFAULT FALSE",
+            "accepted BOOLEAN DEFAULT FALSE",
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,

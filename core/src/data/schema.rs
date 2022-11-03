@@ -36,18 +36,15 @@ impl Schema {
             ..
         } = self;
 
-        let create_indexes = indexes.iter().fold(
-            "".to_owned(),
-            |acc,
-             SchemaIndex {
-                 name, expr, order, ..
-             }| {
-                let expr = expr.to_sql();
-                let table_name = &table_name;
+        let create_indexes =
+            indexes
+                .iter()
+                .fold("".to_owned(), |acc, SchemaIndex { name, expr, .. }| {
+                    let expr = expr.to_sql();
+                    let table_name = &table_name;
 
-                format!("{acc}CREATE INDEX {name} ON {table_name} ({expr} {order});\n")
-            },
-        );
+                    format!("{acc}CREATE INDEX {name} ON {table_name} ({expr});\n")
+                });
 
         let create_table = Statement::CreateTable {
             if_not_exists: false,
@@ -130,7 +127,7 @@ mod tests {
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT \"glue\");"
+            "CREATE TABLE User (id INT, name TEXT NULL DEFAULT \"glue\");"
         )
     }
 
@@ -149,10 +146,7 @@ mod tests {
             indexes: Vec::new(),
         };
 
-        assert_eq!(
-            schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);"
-        );
+        assert_eq!(schema.to_ddl(), "CREATE TABLE User (id INT PRIMARY KEY);");
     }
 
     #[test]
@@ -187,9 +181,9 @@ mod tests {
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
-CREATE INDEX User_id ON User (id BOTH);
-CREATE INDEX User_name ON User (name BOTH);"
+            "CREATE TABLE User (id INT, name TEXT);
+CREATE INDEX User_id ON User (id);
+CREATE INDEX User_name ON User (name);"
         );
     }
 }
