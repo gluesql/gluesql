@@ -1,8 +1,5 @@
 #![deny(clippy::str_to_string)]
 
-use futures::stream::{iter, TryChunksError};
-use itertools::Itertools;
-
 mod cli;
 mod command;
 mod helper;
@@ -12,7 +9,7 @@ use {
     crate::cli::Cli,
     anyhow::{Error, Result},
     clap::Parser,
-    futures::{executor::block_on, stream, StreamExt, TryStreamExt},
+    futures::executor::block_on,
     gluesql_core::{
         ast::{AstLiteral, Expr, SetExpr, Statement, ToSql, Values},
         prelude::Row,
@@ -21,7 +18,8 @@ use {
     },
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,
-    std::{fmt::Debug, fs::File, future::ready, io::Write, path::PathBuf},
+    itertools::Itertools,
+    std::{fmt::Debug, fs::File, io::Write, path::PathBuf},
 };
 
 #[derive(Parser, Debug)]
@@ -52,31 +50,28 @@ pub fn run() -> Result<()> {
             block_on(async {
                 let (storage, _) = storage.begin(true).await.map_err(|(_, error)| error)?;
                 let schemas = storage.fetch_all_schemas().await?;
-                // stream::iter(&schemas)
                 for schema in schemas {
-                    // .for_each(|schema| async {
-                    writeln!(&file, "{}", schema.clone().to_ddl());
+                    writeln!(&file, "{}", schema.clone().to_ddl())?;
 
                     let rows_list = storage
                         .scan_data(&schema.table_name)
-                        .await
-                        .unwrap()
-                        .map(|result| result.map(|(_, row)| row))
+                        .await?
+                        .map_ok(|(_, row)| row)
                         .chunks(100);
 
                     for rows in &rows_list {
                         let exprs_list = rows
-                            .map_ok(|Row(values)| {
-                                values
-                                    .into_iter()
-                                    .map(|value| {
-                                        Ok(Expr::Literal(AstLiteral::try_from(value.to_owned())?))
-                                    })
-                                    .collect::<Result<Vec<_>>>()
-                                    .unwrap()
+                            .map(|result| {
+                                result.map(|Row(values)| {
+                                    values
+                                        .into_iter()
+                                        .map(|value| {
+                                            Ok(Expr::Literal(AstLiteral::try_from(value)?))
+                                        })
+                                        .collect::<Result<Vec<_>>>()
+                                })?
                             })
-                            .collect::<Result<Vec<_>, _>>()
-                            .unwrap();
+                            .collect::<Result<Vec<_>, _>>()?;
 
                         let insert_statement = Statement::Insert {
                             table_name: schema.table_name.clone(),
@@ -90,28 +85,15 @@ pub fn run() -> Result<()> {
                         }
                         .to_sql();
 
-                        writeln!(&file, "{}", insert_statement)
-                            .map_err(ready)
-                            .unwrap();
-
-                        // ready(Ok::<_, Error>(()))
-                        // Ok::<_, Error>(())
+                        writeln!(&file, "{}", insert_statement)?;
                     }
-                    // .await
-                    // .unwrap();
 
-                    writeln!(&file).unwrap();
-
-                    // ready(Ok(()))
-                    // ready(Ok::<_, Error>(()))
+                    writeln!(&file)?;
                 }
-                // )
-                // .await;
 
                 Ok::<_, Error>(())
             })?;
 
-            // return Ok(());
             return Ok::<_, Error>(());
         }
 
