@@ -26,13 +26,7 @@ pub enum AlterTableOperation {
 pub struct ColumnDef {
     pub name: String,
     pub data_type: DataType,
-    pub options: Vec<ColumnOptionDef>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ColumnOptionDef {
-    pub name: Option<String>,
-    pub option: ColumnOption,
+    pub options: Vec<ColumnOption>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
