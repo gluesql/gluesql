@@ -1,7 +1,7 @@
 use {
     super::{data_type::translate_data_type, expr::translate_expr, TranslateError},
     crate::{
-        ast::{ColumnDef, ColumnOption, ColumnOptionDef},
+        ast::{ColumnDef, ColumnOption},
         result::Result,
     },
     sqlparser::ast::{
@@ -72,9 +72,13 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
     })
 }
 
+/// Translate `ColumnOptionDef` to `ColumnOption`.
+///
+/// `sql-parser` parses column option as `{ name, option }` type,
+/// but in here we only need `option`.
 fn translate_column_option_def(
     sql_column_option_def: &SqlColumnOptionDef,
-) -> Result<Vec<ColumnOptionDef>> {
+) -> Result<Vec<ColumnOption>> {
     let SqlColumnOptionDef { name, option } = sql_column_option_def;
 
     let name = name.as_ref().map(|name| name.value.to_owned());
@@ -87,18 +91,12 @@ fn translate_column_option_def(
         }
         SqlColumnOption::Unique { .. } => {
             return Ok(vec![
-                ColumnOptionDef {
-                    name: name.clone(),
-                    option: ColumnOption::Unique { is_primary: true },
-                },
-                ColumnOptionDef {
-                    name,
-                    option: ColumnOption::NotNull,
-                },
+                ColumnOption::Unique { is_primary: true },
+                ColumnOption::NotNull,
             ]);
         }
         _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
     }?;
 
-    Ok(vec![ColumnOptionDef { name, option }])
+    Ok(vec![option])
 }

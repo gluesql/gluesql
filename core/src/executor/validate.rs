@@ -192,7 +192,7 @@ fn fetch_all_unique_columns(column_defs: &[ColumnDef]) -> Vec<(usize, String)> {
             table_col
                 .options
                 .iter()
-                .any(|opt_def| matches!(opt_def.option, ColumnOption::Unique { .. }))
+                .any(|option| matches!(option, ColumnOption::Unique { .. }))
                 .then_some((i, table_col.name.to_owned()))
         })
         .collect()
