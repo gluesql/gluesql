@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{ColumnDef, ColumnOption, ColumnOptionDef},
+        ast::{ColumnDef, ColumnOption},
         data::{Key, Row, Value},
         result::Result,
         store::Store,
@@ -91,41 +91,36 @@ pub async fn validate_unique(
         All(Vec<(usize, String)>),
     }
 
-    let columns = match &column_validation {
-        ColumnValidation::All(column_defs) => {
-            let primary_key_index = column_defs
-                .iter()
-                .enumerate()
-                .find(|(_, column_def)| {
-                    column_def
-                        .options
-                        .iter()
-                        .any(|ColumnOptionDef { option, .. }| {
+    let columns =
+        match &column_validation {
+            ColumnValidation::All(column_defs) => {
+                let primary_key_index = column_defs
+                    .iter()
+                    .enumerate()
+                    .find(|(_, column_def)| {
+                        column_def.options.iter().any(|option| {
                             matches!(option, ColumnOption::Unique { is_primary: true })
                         })
-                })
-                .map(|(i, _)| i);
-            let other_unique_column_def_count = column_defs
-                .iter()
-                .filter(|column_def| {
-                    column_def
-                        .options
-                        .iter()
-                        .any(|ColumnOptionDef { option, .. }| {
+                    })
+                    .map(|(i, _)| i);
+                let other_unique_column_def_count = column_defs
+                    .iter()
+                    .filter(|column_def| {
+                        column_def.options.iter().any(|option| {
                             matches!(option, ColumnOption::Unique { is_primary: false })
                         })
-                })
-                .count();
+                    })
+                    .count();
 
-            match (primary_key_index, other_unique_column_def_count) {
-                (Some(primary_key_index), 0) => Columns::PrimaryKeyOnly(primary_key_index),
-                _ => Columns::All(fetch_all_unique_columns(column_defs)),
+                match (primary_key_index, other_unique_column_def_count) {
+                    (Some(primary_key_index), 0) => Columns::PrimaryKeyOnly(primary_key_index),
+                    _ => Columns::All(fetch_all_unique_columns(column_defs)),
+                }
             }
-        }
-        ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => Columns::All(
-            fetch_specified_unique_columns(column_defs, specified_columns),
-        ),
-    };
+            ColumnValidation::SpecifiedColumns(column_defs, specified_columns) => Columns::All(
+                fetch_specified_unique_columns(column_defs, specified_columns),
+            ),
+        };
 
     match columns {
         Columns::PrimaryKeyOnly(primary_key_index) => {
@@ -214,7 +209,7 @@ fn fetch_specified_unique_columns(
             table_col
                 .options
                 .iter()
-                .any(|ColumnOptionDef { option, .. }| match option {
+                .any(|option| match option {
                     ColumnOption::Unique { .. } => specified_columns
                         .iter()
                         .any(|specified_col| specified_col == &table_col.name),
