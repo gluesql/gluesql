@@ -19,6 +19,7 @@ async fn dump_and_import() {
 
     let sqls = vec![
         "CREATE TABLE User (id INT, name TEXT);",
+        "CREATE INDEX User_id ON User (id);",
         "INSERT INTO User SELECT N, 'a' FROM SERIES(101);",
     ];
 
