@@ -236,9 +236,9 @@ mod tests {
 
     use {
         crate::ast::{
-            Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, ColumnOptionDef,
-            DataType, Expr, Query, Select, SelectItem, SetExpr, Statement, TableFactor,
-            TableWithJoins, ToSql, Values, Variable,
+            Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, DataType, Expr, Query,
+            Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, Values,
+            Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -370,10 +370,7 @@ mod tests {
                     ColumnDef {
                         name: "num".to_owned(),
                         data_type: DataType::Int,
-                        options: vec![ColumnOptionDef {
-                            name: None,
-                            option: ColumnOption::Null
-                        }]
+                        options: vec![option: ColumnOption::Null]
                     },
                     ColumnDef {
                         name: "name".to_owned(),
@@ -457,12 +454,9 @@ mod tests {
                     column_def: ColumnDef {
                         name: "amount".to_owned(),
                         data_type: DataType::Int,
-                        options: vec![ColumnOptionDef {
-                            name: None,
-                            option: ColumnOption::Default(Expr::Literal(AstLiteral::Number(
-                                BigDecimal::from_str("10").unwrap()
-                            )))
-                        }]
+                        options: vec![ColumnOption::Default(Expr::Literal(AstLiteral::Number(
+                            BigDecimal::from_str("10").unwrap()
+                        )))]
                     }
                 }
             }
