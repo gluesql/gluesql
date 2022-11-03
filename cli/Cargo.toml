@@ -21,3 +21,5 @@ thiserror = "1.0"
 edit = "0.1.4"
 futures = "0.3"
 bigdecimal = { version = "0.3", features = ["serde", "string-only"] }
+anyhow = "1.0"
+itertools = "0.10"
