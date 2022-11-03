@@ -72,7 +72,7 @@ impl TryFrom<Value> for AstLiteral {
             Value::Bytea(v) => AstLiteral::HexString(hex::encode(v)),
             Value::Date(v) => AstLiteral::QuotedString(v.to_string()),
             Value::Timestamp(v) => {
-                AstLiteral::QuotedString(DateTime::<Utc>::from_utc(v, Utc).to_string().into())
+                AstLiteral::QuotedString(DateTime::<Utc>::from_utc(v, Utc).to_string())
             }
             Value::Time(v) => AstLiteral::QuotedString(v.to_string()),
             Value::Interval(v) => AstLiteral::QuotedString(v.into()),
@@ -201,7 +201,7 @@ mod tests {
             Ok(AstLiteral::QuotedString("2022-11-03".to_owned()))
         );
         assert_eq!(
-            Value::Timestamp(NaiveDate::from_ymd(2022, 11, 03).and_hms_milli(8, 5, 30, 900))
+            Value::Timestamp(NaiveDate::from_ymd(2022, 11, 3).and_hms_milli(8, 5, 30, 900))
                 .try_into(),
             Ok(AstLiteral::QuotedString(
                 "2022-11-03 08:05:30.900 UTC".to_owned()
