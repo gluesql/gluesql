@@ -44,55 +44,9 @@ pub fn run() -> Result<()> {
     if let Some(path) = args.path {
         let path = path.as_path().to_str().expect("wrong path");
 
-        if let Some(dump) = args.dump {
-            let file = File::create(dump)?;
+        if let Some(dump_path) = args.dump {
             let storage = SledStorage::new(path).expect("failed to load sled-storage");
-            block_on(async {
-                let (storage, _) = storage.begin(true).await.map_err(|(_, error)| error)?;
-                let schemas = storage.fetch_all_schemas().await?;
-                for schema in schemas {
-                    writeln!(&file, "{}", schema.clone().to_ddl())?;
-
-                    let rows_list = storage
-                        .scan_data(&schema.table_name)
-                        .await?
-                        .map_ok(|(_, row)| row)
-                        .chunks(100);
-
-                    for rows in &rows_list {
-                        let exprs_list = rows
-                            .map(|result| {
-                                result.map(|Row(values)| {
-                                    values
-                                        .into_iter()
-                                        .map(|value| {
-                                            Ok(Expr::Literal(AstLiteral::try_from(value)?))
-                                        })
-                                        .collect::<Result<Vec<_>>>()
-                                })?
-                            })
-                            .collect::<Result<Vec<_>, _>>()?;
-
-                        let insert_statement = Statement::Insert {
-                            table_name: schema.table_name.clone(),
-                            columns: Vec::new(),
-                            source: gluesql_core::ast::Query {
-                                body: SetExpr::Values(Values(exprs_list)),
-                                order_by: Vec::new(),
-                                limit: None,
-                                offset: None,
-                            },
-                        }
-                        .to_sql();
-
-                        writeln!(&file, "{}", insert_statement)?;
-                    }
-
-                    writeln!(&file)?;
-                }
-
-                Ok::<_, Error>(())
-            })?;
+            dump_database(storage, dump_path)?;
 
             return Ok::<_, Error>(());
         }
@@ -123,4 +77,53 @@ pub fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<()> {
+    let file = File::create(dump_path)?;
+
+    block_on(async {
+        let (storage, _) = storage.begin(true).await.map_err(|(_, error)| error)?;
+        let schemas = storage.fetch_all_schemas().await?;
+        for schema in schemas {
+            writeln!(&file, "{}", schema.clone().to_ddl())?;
+
+            let rows_list = storage
+                .scan_data(&schema.table_name)
+                .await?
+                .map_ok(|(_, row)| row)
+                .chunks(100);
+
+            for rows in &rows_list {
+                let exprs_list = rows
+                    .map(|result| {
+                        result.map(|Row(values)| {
+                            values
+                                .into_iter()
+                                .map(|value| Ok(Expr::Literal(AstLiteral::try_from(value)?)))
+                                .collect::<Result<Vec<_>>>()
+                        })?
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                let insert_statement = Statement::Insert {
+                    table_name: schema.table_name.clone(),
+                    columns: Vec::new(),
+                    source: gluesql_core::ast::Query {
+                        body: SetExpr::Values(Values(exprs_list)),
+                        order_by: Vec::new(),
+                        limit: None,
+                        offset: None,
+                    },
+                }
+                .to_sql();
+
+                writeln!(&file, "{}", insert_statement)?;
+            }
+
+            writeln!(&file)?;
+        }
+
+        Ok::<_, Error>(())
+    })
 }
