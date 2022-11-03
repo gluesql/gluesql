@@ -8,7 +8,6 @@ use {
     std::{fs::File, io::Read, path::PathBuf},
 };
 
-// #[test]
 #[tokio::test]
 async fn dump_and_import() {
     let data_path = "tmp/src";
