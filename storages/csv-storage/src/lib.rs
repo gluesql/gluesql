@@ -4,11 +4,7 @@ mod schema_list;
 use {
     csv::ReaderBuilder,
     error::StorageError,
-    gluesql_core::{
-        ast::{ColumnDef, ColumnOption},
-        data::Schema,
-        prelude::DataType,
-    },
+    gluesql_core::{ast::ColumnDef, data::Schema, prelude::DataType},
     serde::Deserialize,
     std::{
         ffi::OsStr,
@@ -21,12 +17,6 @@ pub struct CsvTable {
     name: String,
     path: PathBuf,
     columns: Vec<ColumnDef>,
-}
-
-pub struct Column {
-    pub name: String,
-    pub data_type: DataType,
-    pub options: Option<Vec<ColumnOption>>,
 }
 
 impl CsvTable {
