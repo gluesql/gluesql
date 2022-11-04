@@ -5,7 +5,7 @@ use {
     csv::ReaderBuilder,
     error::StorageError,
     gluesql_core::{
-        ast::{ColumnDef, ColumnOptionDef},
+        ast::{ColumnDef, ColumnOption},
         data::Schema,
         prelude::DataType,
     },
@@ -26,7 +26,7 @@ pub struct CsvTable {
 pub struct Column {
     pub name: String,
     pub data_type: DataType,
-    pub options: Option<Vec<ColumnOptionDef>>,
+    pub options: Option<Vec<ColumnOption>>,
 }
 
 impl CsvTable {

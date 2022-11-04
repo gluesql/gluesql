@@ -25,7 +25,7 @@ mod test {
         super::*,
         crate::CsvTable,
         gluesql_core::{
-            ast::{ColumnDef, ColumnOption, ColumnOptionDef},
+            ast::{ColumnDef, ColumnOption},
             prelude::DataType,
         },
         std::{path::PathBuf, str::FromStr},
@@ -34,7 +34,7 @@ mod test {
     #[test]
     fn successfully_load_schema() {
         // Arrange
-        let file_path = "./example/schema.toml";
+        let file_path = "./example/schema_list.toml";
         // Act
         let result = load_schema_list(file_path);
         // Assert
@@ -47,18 +47,12 @@ mod test {
                         ColumnDef {
                             name: "id".to_string(),
                             data_type: DataType::Int128,
-                            options: vec![ColumnOptionDef {
-                                name: None,
-                                option: ColumnOption::NotNull
-                            }],
+                            options: vec![ColumnOption::NotNull],
                         },
                         ColumnDef {
                             name: "name".to_string(),
                             data_type: DataType::Text,
-                            options: vec![ColumnOptionDef {
-                                name: None,
-                                option: ColumnOption::NotNull
-                            }],
+                            options: vec![ColumnOption::NotNull],
                         },
                         ColumnDef {
                             name: "age".to_string(),
@@ -68,10 +62,7 @@ mod test {
                         ColumnDef {
                             name: "role".to_string(),
                             data_type: DataType::Text,
-                            options: vec![ColumnOptionDef {
-                                name: None,
-                                option: ColumnOption::NotNull
-                            }],
+                            options: vec![ColumnOption::NotNull],
                         },
                     ]
                 }]
