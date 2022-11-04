@@ -218,5 +218,9 @@ mod test {
         let actual = table("Foo").select().order_by("score DESC").into();
         let expected = "SELECT * FROM Foo ORDER BY score DESC";
         test_query(actual, expected);
+
+        let actual = table("GLUE_OBJECTS").select().into();
+        let expected = "SELECT * FROM GLUE_OBJECTS";
+        test_query(actual, expected);
     }
 }
