@@ -102,6 +102,14 @@ impl<'a, W: Write> Print<W> {
         };
 
         match payload {
+            Payload::Create => self.write("Table created")?,
+            Payload::DropTable => self.write("Table dropped")?,
+            Payload::AlterTable => self.write("Table altered")?,
+            Payload::CreateIndex => self.write("Index created")?,
+            Payload::DropIndex => self.write("Index dropped")?,
+            Payload::Commit => self.write("Commit completed")?,
+            Payload::Rollback => self.write("Rollback completed")?,
+            Payload::StartTransaction => self.write("Transaction started")?,
             Payload::Insert(n) => affected(*n, "inserted")?,
             Payload::Delete(n) => affected(*n, "deleted")?,
             Payload::Update(n) => affected(*n, "updated")?,
@@ -164,7 +172,6 @@ impl<'a, W: Write> Print<W> {
                     }
                 }
             }
-            _ => {}
         };
 
         Ok(())
@@ -304,6 +311,14 @@ mod tests {
             };
         }
 
+        test!(&Payload::Create, "Table created");
+        test!(&Payload::DropTable, "Table dropped");
+        test!(&Payload::AlterTable, "Table altered");
+        test!(&Payload::CreateIndex, "Index created");
+        test!(&Payload::DropIndex, "Index dropped");
+        test!(&Payload::Commit, "Commit completed");
+        test!(&Payload::Rollback, "Rollback completed");
+        test!(&Payload::StartTransaction, "Transaction started");
         test!(&Payload::Insert(0), "0 row inserted");
         test!(&Payload::Insert(1), "1 row inserted");
         test!(&Payload::Insert(7), "7 rows inserted");
