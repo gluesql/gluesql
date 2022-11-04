@@ -1,9 +1,0 @@
-[[tables]]
-name = "users"
-path = "example/data/users.csv"
-columns = [
-	{ name = "id",   data_type = "Int128", options = ["Primarykey"] },
-	{ name = "name", data_type = "Text",   options = ["Unique"] },
-	{ name = "age",  data_type = "Uint8",  options = []          },
-	{ name = "role", data_type = "Text",   options = ["NotNull"] },
-]
