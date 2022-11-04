@@ -30,20 +30,14 @@ pub struct Schema {
     pub created: NaiveDateTime,
 }
 
-pub trait ColumnDefExt {
-    fn is_nullable(&self) -> bool;
-
-    fn get_default(&self) -> Option<&Expr>;
-}
-
-impl ColumnDefExt for ColumnDef {
-    fn is_nullable(&self) -> bool {
+impl ColumnDef {
+    pub fn is_nullable(&self) -> bool {
         self.options
             .iter()
             .any(|option| option == &ColumnOption::Null)
     }
 
-    fn get_default(&self) -> Option<&Expr> {
+    pub fn get_default(&self) -> Option<&Expr> {
         self.options.iter().find_map(|option| match option {
             ColumnOption::Default(expr) => Some(expr),
             _ => None,
