@@ -5,7 +5,7 @@ use {
     },
     crate::{
         ast::{Assignment, ColumnDef, ColumnOption},
-        data::{schema::ColumnDefExt, Row, Value},
+        data::{Row, Value},
         result::Result,
         store::GStore,
     },

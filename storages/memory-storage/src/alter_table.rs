@@ -3,7 +3,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
-        data::{schema::ColumnDefExt, Value},
+        data::Value,
         result::{MutResult, Result, TrySelf},
         store::AlterTable,
         store::AlterTableError,

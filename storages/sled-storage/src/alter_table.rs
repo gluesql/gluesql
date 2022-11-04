@@ -9,10 +9,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
-        data::{
-            schema::{ColumnDefExt, Schema},
-            Row, Value,
-        },
+        data::{schema::Schema, Row, Value},
         executor::evaluate_stateless,
         result::{MutResult, Result, TrySelf},
         store::{AlterTable, AlterTableError},
