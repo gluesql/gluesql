@@ -1,7 +1,7 @@
 use {
     crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Statement, ToSql},
     serde::{Deserialize, Serialize},
-    std::fmt::Debug,
+    std::{fmt::Debug, iter},
     strum_macros::Display,
 };
 
@@ -36,27 +36,25 @@ impl Schema {
             ..
         } = self;
 
-        let create_indexes =
-            indexes
-                .iter()
-                .fold("".to_owned(), |acc, SchemaIndex { name, expr, .. }| {
-                    let expr = expr.to_sql();
-                    let table_name = &table_name;
-
-                    format!("{acc}CREATE INDEX {name} ON {table_name} ({expr});\n")
-                });
-
         let create_table = Statement::CreateTable {
             if_not_exists: false,
-            name: table_name,
+            name: table_name.clone(),
             columns,
             source: None,
         }
         .to_sql();
 
-        format!("{create_table}\n{create_indexes}")
-            .trim_end()
-            .to_owned()
+        let create_indexes = indexes.iter().map(|SchemaIndex { name, expr, .. }| {
+            let expr = expr.to_sql();
+            let table_name = &table_name;
+
+            format!("CREATE INDEX {name} ON {table_name} ({expr});")
+        });
+
+        iter::once(create_table)
+            .chain(create_indexes)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 
