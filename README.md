@@ -44,9 +44,9 @@ $ cargo install gluesql
 $ gluesql [--path ~/data_path] [--execute ~/sql_path]
 ```
 
-### Migration by CLI
+### Migration using CLI
 
-#### Dump whole schemas and data by generating SQL with `--dump {PATH}` option
+#### Dump whole schemas and data by generating SQL using `--dump {PATH}` option
 
 ```sh
 $ gluesql --path ~/glue_data --dump ./dump.sql
