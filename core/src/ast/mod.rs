@@ -117,9 +117,9 @@ pub enum Variable {
 
 impl ToSql for Statement {
     fn to_sql(&self) -> String {
-        let sql = match self {
+        match self {
             Statement::ShowColumns { table_name } => {
-                format!("SHOW COLUMNS FROM {table_name}")
+                format!("SHOW COLUMNS FROM {table_name};")
             }
             Statement::Insert {
                 table_name,
@@ -131,7 +131,7 @@ impl ToSql for Statement {
                     false => format!("({}) ", columns.join(", ")),
                 };
 
-                format!("INSERT INTO {table_name} {columns}{}", source.to_sql())
+                format!("INSERT INTO {table_name} {columns}{};", source.to_sql())
             }
             Statement::Update {
                 table_name,
@@ -146,19 +146,19 @@ impl ToSql for Statement {
                 match selection {
                     Some(expr) => {
                         format!(
-                            "UPDATE {table_name} SET {assignments} WHERE {}",
+                            "UPDATE {table_name} SET {assignments} WHERE {};",
                             expr.to_sql()
                         )
                     }
-                    None => format!("UPDATE {table_name} SET {assignments}"),
+                    None => format!("UPDATE {table_name} SET {assignments};"),
                 }
             }
             Statement::Delete {
                 table_name,
                 selection,
             } => match selection {
-                Some(expr) => format!("DELETE FROM {table_name} WHERE {}", expr.to_sql()),
-                None => format!("DELETE FROM {table_name}"),
+                Some(expr) => format!("DELETE FROM {table_name} WHERE {};", expr.to_sql()),
+                None => format!("DELETE FROM {table_name};"),
             },
             Statement::CreateTable {
                 if_not_exists,
@@ -167,8 +167,8 @@ impl ToSql for Statement {
                 source,
             } => match source {
                 Some(query) => match if_not_exists {
-                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS {}", query.to_sql()),
-                    false => format!("CREATE TABLE {name} AS {}", query.to_sql()),
+                    true => format!("CREATE TABLE IF NOT EXISTS {name} AS {};", query.to_sql()),
+                    false => format!("CREATE TABLE {name} AS {};", query.to_sql()),
                 },
                 None => {
                     let columns = columns
@@ -177,20 +177,20 @@ impl ToSql for Statement {
                         .collect::<Vec<_>>()
                         .join(", ");
                     match if_not_exists {
-                        true => format!("CREATE TABLE IF NOT EXISTS {name} ({columns})"),
-                        false => format!("CREATE TABLE {name} ({columns})"),
+                        true => format!("CREATE TABLE IF NOT EXISTS {name} ({columns});"),
+                        false => format!("CREATE TABLE {name} ({columns});"),
                     }
                 }
             },
             #[cfg(feature = "alter-table")]
             Statement::AlterTable { name, operation } => {
-                format!("ALTER TABLE {name} {}", operation.to_sql())
+                format!("ALTER TABLE {name} {};", operation.to_sql())
             }
             Statement::DropTable { if_exists, names } => {
                 let names = names.join(", ");
                 match if_exists {
-                    true => format!("DROP TABLE IF EXISTS {}", names),
-                    false => format!("DROP TABLE {}", names),
+                    true => format!("DROP TABLE IF EXISTS {};", names),
+                    false => format!("DROP TABLE {};", names),
                 }
             }
             #[cfg(feature = "index")]
@@ -199,30 +199,28 @@ impl ToSql for Statement {
                 table_name,
                 column,
             } => {
-                format!("CREATE INDEX {name} ON {table_name} {}", column.to_sql())
+                format!("CREATE INDEX {name} ON {table_name} {};", column.to_sql())
             }
             #[cfg(feature = "index")]
             Statement::DropIndex { name, table_name } => {
-                format!("DROP INDEX {table_name}.{name}")
+                format!("DROP INDEX {table_name}.{name};")
             }
             #[cfg(feature = "transaction")]
-            Statement::StartTransaction => "START TRANSACTION".to_owned(),
+            Statement::StartTransaction => "START TRANSACTION;".to_owned(),
             #[cfg(feature = "transaction")]
-            Statement::Commit => "COMMIT".to_owned(),
+            Statement::Commit => "COMMIT;".to_owned(),
             #[cfg(feature = "transaction")]
-            Statement::Rollback => "ROLLBACK".to_owned(),
+            Statement::Rollback => "ROLLBACK;".to_owned(),
             Statement::ShowVariable(variable) => match variable {
-                Variable::Tables => "SHOW TABLES".to_owned(),
-                Variable::Version => "SHOW VERSIONS".to_owned(),
+                Variable::Tables => "SHOW TABLES;".to_owned(),
+                Variable::Version => "SHOW VERSIONS;".to_owned(),
             },
             #[cfg(feature = "index")]
             Statement::ShowIndexes(object_name) => {
-                format!("SHOW INDEXES FROM {object_name}")
+                format!("SHOW INDEXES FROM {object_name};")
             }
             _ => "(..statement..)".to_owned(),
-        };
-
-        format!("{sql};")
+        }
     }
 }
 
