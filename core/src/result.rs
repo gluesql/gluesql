@@ -1,8 +1,8 @@
 use {
     crate::{
-        ast::AstLiteralError,
         data::{
-            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
+            AstLiteralError, IntervalError, KeyError, LiteralError, RowError, StringExtError,
+            TableError, ValueError,
         },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,

@@ -1,3 +1,4 @@
+mod ast_literal;
 mod bigdecimal_ext;
 mod interval;
 mod key;
@@ -10,6 +11,7 @@ pub mod schema;
 pub mod value;
 
 pub use {
+    ast_literal::AstLiteralError,
     bigdecimal_ext::BigDecimalExt,
     interval::{Interval, IntervalError},
     key::{Key, KeyError},
