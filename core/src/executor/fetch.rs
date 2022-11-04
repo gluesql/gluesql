@@ -223,9 +223,8 @@ pub async fn fetch_relation_rows<'a>(
                                 |ColumnDef { name, options, .. }| {
                                     options
                                         .iter()
-                                        .any(|column_option_def| {
-                                            column_option_def.option
-                                                == ColumnOption::Unique { is_primary: true }
+                                        .any(|option| {
+                                            option == &ColumnOption::Unique { is_primary: true }
                                         })
                                         .then_some(name)
                                 },
