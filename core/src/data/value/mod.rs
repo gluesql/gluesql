@@ -9,6 +9,7 @@ use {
     std::{cmp::Ordering, collections::HashMap, fmt::Debug},
 };
 
+mod ast_literal;
 mod binary_op;
 mod convert;
 mod date;
@@ -18,8 +19,7 @@ mod literal;
 mod selector;
 mod uuid;
 
-pub use error::NumericBinaryOperator;
-pub use error::ValueError;
+pub use error::{NumericBinaryOperator, ValueError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {

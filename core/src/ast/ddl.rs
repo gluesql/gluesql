@@ -84,6 +84,7 @@ impl ToSql for ColumnDef {
                 .map(|ColumnOptionDef { option, .. }| option.to_sql())
                 .collect::<Vec<_>>()
                 .join(" ");
+
             format!("{name} {data_type} {options}")
                 .trim_end()
                 .to_owned()

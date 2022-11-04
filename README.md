@@ -32,10 +32,39 @@ GlueSQL provides three reference storage options.
 gluesql = "0.13"
 ```
 
-- CLI application
+- Install CLI
 
-```
+```sh
 $ cargo install gluesql
+```
+
+- Run CLI
+
+```sh
+$ gluesql [--path ~/data_path] [--execute ~/sql_path]
+```
+
+### Migration using CLI
+
+#### Dump whole schemas and data by generating SQL using `--dump {PATH}` option
+
+```sh
+$ gluesql --path ~/glue_data --dump ./dump.sql
+```
+
+```sql
+-- dump.sql
+CREATE TABLE User (id INT, name TEXT);
+CREATE INDEX User_id ON User (id);
+..
+INSERT INTO User VALUES (1, 'Foo'), (2, 'Bar') ..
+..
+```
+
+#### Import database
+
+```sh
+$ gluesql --path ~/new_data --execute ./dump.sql
 ```
 
 ### Usage
