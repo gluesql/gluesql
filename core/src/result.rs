@@ -1,8 +1,7 @@
 use {
     crate::{
         data::{
-            AstLiteralError, IntervalError, KeyError, LiteralError, RowError, StringExtError,
-            TableError, ValueError,
+            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
         },
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
@@ -80,8 +79,6 @@ pub enum Error {
     StringExt(#[from] StringExtError),
     #[error(transparent)]
     Plan(#[from] PlanError),
-    #[error(transparent)]
-    AstLiteral(#[from] AstLiteralError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

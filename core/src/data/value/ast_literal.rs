@@ -1,18 +1,11 @@
 use {
+    super::ValueError::ValueToAstLiteralConversionFailure,
     crate::{ast::AstLiteral, prelude::Value, result::Error, result::Result},
     bigdecimal::{BigDecimal, FromPrimitive},
     chrono::{DateTime, Utc},
-    serde::Serialize,
     serde_json::{Map as JsonMap, Value as JsonValue},
-    thiserror::Error,
     uuid::Uuid,
 };
-
-#[derive(Error, Serialize, Debug, PartialEq)]
-pub enum AstLiteralError {
-    #[error("impossible cast")]
-    ImpossibleCast,
-}
 
 impl TryFrom<Value> for AstLiteral {
     type Error = Error;
@@ -20,30 +13,33 @@ impl TryFrom<Value> for AstLiteral {
     fn try_from(value: Value) -> Result<Self> {
         let ast_literal = match value {
             Value::Bool(v) => AstLiteral::Boolean(v),
-            Value::I8(v) => {
-                AstLiteral::Number(BigDecimal::from_i8(v).ok_or(AstLiteralError::ImpossibleCast)?)
-            }
-            Value::I16(v) => {
-                AstLiteral::Number(BigDecimal::from_i16(v).ok_or(AstLiteralError::ImpossibleCast)?)
-            }
-            Value::I32(v) => {
-                AstLiteral::Number(BigDecimal::from_i32(v).ok_or(AstLiteralError::ImpossibleCast)?)
-            }
-            Value::I64(v) => {
-                AstLiteral::Number(BigDecimal::from_i64(v).ok_or(AstLiteralError::ImpossibleCast)?)
-            }
-            Value::I128(v) => {
-                AstLiteral::Number(BigDecimal::from_i128(v).ok_or(AstLiteralError::ImpossibleCast)?)
-            }
-            Value::U8(v) => {
-                AstLiteral::Number(BigDecimal::from_u8(v).ok_or(AstLiteralError::ImpossibleCast)?)
-            }
-            Value::F64(v) => {
-                AstLiteral::Number(BigDecimal::from_f64(v).ok_or(AstLiteralError::ImpossibleCast)?)
-            }
+            Value::I8(v) => AstLiteral::Number(
+                BigDecimal::from_i8(v).ok_or(ValueToAstLiteralConversionFailure)?,
+            ),
+            Value::I16(v) => AstLiteral::Number(
+                BigDecimal::from_i16(v).ok_or(ValueToAstLiteralConversionFailure)?,
+            ),
+            Value::I32(v) => AstLiteral::Number(
+                BigDecimal::from_i32(v).ok_or(ValueToAstLiteralConversionFailure)?,
+            ),
+            Value::I64(v) => AstLiteral::Number(
+                BigDecimal::from_i64(v).ok_or(ValueToAstLiteralConversionFailure)?,
+            ),
+            Value::I128(v) => AstLiteral::Number(
+                BigDecimal::from_i128(v).ok_or(ValueToAstLiteralConversionFailure)?,
+            ),
+            Value::U8(v) => AstLiteral::Number(
+                BigDecimal::from_u8(v).ok_or(ValueToAstLiteralConversionFailure)?,
+            ),
+            Value::F64(v) => AstLiteral::Number(
+                BigDecimal::from_f64(v).ok_or(ValueToAstLiteralConversionFailure)?,
+            ),
             Value::Decimal(v) => AstLiteral::Number(
-                BigDecimal::from_f64(v.try_into().map_err(|_| AstLiteralError::ImpossibleCast)?)
-                    .ok_or(AstLiteralError::ImpossibleCast)?,
+                BigDecimal::from_f64(
+                    v.try_into()
+                        .map_err(|_| ValueToAstLiteralConversionFailure)?,
+                )
+                .ok_or(ValueToAstLiteralConversionFailure)?,
             ),
             Value::Str(v) => AstLiteral::QuotedString(v),
             Value::Bytea(v) => AstLiteral::HexString(hex::encode(v)),
@@ -60,7 +56,7 @@ impl TryFrom<Value> for AstLiteral {
                     .map(|(key, value)| value.try_into().map(|value| (key, value)))
                     .collect::<Result<Vec<(String, JsonValue)>>>()
                     .map(|v| JsonMap::from_iter(v).into())
-                    .map_err(|_| AstLiteralError::ImpossibleCast)?;
+                    .map_err(|_| ValueToAstLiteralConversionFailure)?;
 
                 AstLiteral::QuotedString(json.to_string())
             }
@@ -70,7 +66,7 @@ impl TryFrom<Value> for AstLiteral {
                     .map(|value| value.try_into())
                     .collect::<Result<Vec<JsonValue>>>()
                     .map(|v| v.into())
-                    .map_err(|_| AstLiteralError::ImpossibleCast)?;
+                    .map_err(|_| ValueToAstLiteralConversionFailure)?;
 
                 AstLiteral::QuotedString(json.to_string())
             }
