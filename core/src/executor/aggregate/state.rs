@@ -134,7 +134,7 @@ impl AggrValue {
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
             Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
-            Self::Avg { sum, count } => sum.divide(&Value::F64(count as f64)),
+            Self::Avg { sum, count } => (sum.cast(&DataType::Float)?).divide(&Value::I64(count as i64)),
             Self::Variance {
                 sum_square,
                 sum,
