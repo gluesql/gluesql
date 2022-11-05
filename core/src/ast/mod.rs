@@ -361,7 +361,7 @@ mod tests {
         );
 
         assert_eq!(
-            "CREATE TABLE Foo (id INT, num INT NULL, name TEXT);",
+            "CREATE TABLE Foo (id INT NOT NULL, num INT NULL, name TEXT NOT NULL)",
             Statement::CreateTable {
                 if_not_exists: false,
                 name: "Foo".into(),
@@ -376,7 +376,7 @@ mod tests {
                         name: "num".to_owned(),
                         data_type: DataType::Int,
                         nullable: true,
-                        options: vec![ColumnOption::Null]
+                        options: Vec::new()
                     },
                     ColumnDef {
                         name: "name".to_owned(),
@@ -454,7 +454,7 @@ mod tests {
     #[cfg(feature = "alter-table")]
     fn to_sql_alter_table() {
         assert_eq!(
-            "ALTER TABLE Foo ADD COLUMN amount INT DEFAULT 10;",
+            "ALTER TABLE Foo ADD COLUMN amount INT NOT NULL DEFAULT 10",
             Statement::AlterTable {
                 name: "Foo".into(),
                 operation: AlterTableOperation::AddColumn {

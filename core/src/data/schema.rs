@@ -62,12 +62,6 @@ impl Schema {
 }
 
 impl ColumnDef {
-    pub fn is_nullable(&self) -> bool {
-        self.options
-            .iter()
-            .any(|option| option == &ColumnOption::Null)
-    }
-
     pub fn get_default(&self) -> Option<&Expr> {
         self.options.iter().find_map(|option| match option {
             ColumnOption::Default(expr) => Some(expr),

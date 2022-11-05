@@ -1,7 +1,7 @@
 use {
     super::{validate, AlterError},
     crate::{
-        ast::{ColumnDef, ColumnOption, Query, SetExpr, TableFactor, Values},
+        ast::{ColumnDef, Query, SetExpr, TableFactor, Values},
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
@@ -43,7 +43,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                             name: "N".into(),
                             data_type: DataType::Int,
                             nullable: false,
-                            options: vec![ColumnOption::NotNull],
+                            options: Vec::new(),
                         };
 
                         vec![column_def]

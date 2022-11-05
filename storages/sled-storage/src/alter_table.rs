@@ -257,8 +257,12 @@ impl AlterTable for SledStorage {
                     .map_err(ConflictableTransactionError::Abort);
             }
 
-            let ColumnDef { data_type, .. } = column_def;
-            let nullable = column_def.is_nullable();
+            let ColumnDef {
+                data_type,
+                nullable,
+                ..
+            } = column_def;
+
             let default = column_def.get_default();
             let value = match (default, nullable) {
                 (Some(expr), _) => {

@@ -131,7 +131,7 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
                         let evaluated = evaluate_stateless(None, expr)?;
 
                         let value = match column_type {
-                            Some(data_type) => evaluated.try_into_value(data_type, true)?,
+                            Some(data_type) => evaluated.try_into_value(data_type, &true)?,
                             None => {
                                 let value: Value = evaluated.try_into()?;
                                 *column_type = value.get_type();
