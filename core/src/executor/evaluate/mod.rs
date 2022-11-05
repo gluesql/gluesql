@@ -271,6 +271,11 @@ async fn evaluate_function<'a>(
             let exprs = stream::iter(exprs).then(eval).try_collect().await?;
             f::concat(exprs)
         }
+        Function::ConcatWs { separator, exprs } => {
+            let separator = eval(separator).await?;
+            let exprs = stream::iter(exprs).then(eval).try_collect().await?;
+            f::concat_ws(name, separator, exprs)
+        }
         Function::IfNull { expr, then } => f::ifnull(eval(expr).await?, eval(then).await?),
         Function::Lower(expr) => f::lower(name, eval(expr).await?),
         Function::Upper(expr) => f::upper(name, eval(expr).await?),
@@ -360,7 +365,7 @@ async fn evaluate_function<'a>(
         Function::Floor(expr) => f::floor(name, eval(expr).await?),
         Function::Radians(expr) => f::radians(name, eval(expr).await?),
         Function::Degrees(expr) => f::degrees(name, eval(expr).await?),
-        Function::Pi() => Ok(Value::F64(std::f64::consts::PI)),
+        Function::Pi() => Ok(Evaluated::from(Value::F64(std::f64::consts::PI))),
         Function::Exp(expr) => f::exp(name, eval(expr).await?),
         Function::Log { antilog, base } => {
             let antilog = eval(antilog).await?;
@@ -389,7 +394,7 @@ async fn evaluate_function<'a>(
             let dividend = eval(dividend).await?;
             let divisor = eval(divisor).await?;
 
-            return dividend.modulo(&divisor);
+            dividend.modulo(&divisor)
         }
         Function::Gcd { left, right } => {
             let left = eval(left).await?;
@@ -412,7 +417,7 @@ async fn evaluate_function<'a>(
             f::unwrap(name, expr, selector)
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
-        Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
+        Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;
             let format = eval(format).await?;
@@ -451,5 +456,4 @@ async fn evaluate_function<'a>(
             f::extract(field, expr)
         }
     }
-    .map(Evaluated::from)
 }

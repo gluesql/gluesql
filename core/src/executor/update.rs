@@ -4,8 +4,8 @@ use {
         evaluate::{evaluate, Evaluated},
     },
     crate::{
-        ast::{Assignment, ColumnDef, ColumnOption, ColumnOptionDef},
-        data::{schema::ColumnDefExt, Row, Value},
+        ast::{Assignment, ColumnDef, ColumnOption},
+        data::{Row, Value},
         result::Result,
         store::GStore,
     },
@@ -51,9 +51,9 @@ impl<'a> Update<'a> {
                     return false;
                 }
 
-                options.iter().any(|ColumnOptionDef { option, .. }| {
-                    option == &ColumnOption::Unique { is_primary: true }
-                })
+                options
+                    .iter()
+                    .any(|option| option == &ColumnOption::Unique { is_primary: true })
             }) {
                 return Err(UpdateError::UpdateOnPrimaryKeyNotSupported(id.to_owned()).into());
             }
@@ -87,7 +87,7 @@ impl<'a> Update<'a> {
                     Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
                     Evaluated::Value(v) => {
                         v.validate_type(data_type)?;
-                        v.into_owned()
+                        v
                     }
                 };
 

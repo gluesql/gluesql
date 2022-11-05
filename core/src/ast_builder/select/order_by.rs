@@ -11,17 +11,17 @@ use {
 };
 
 #[derive(Clone)]
-pub enum PrevNode {
+pub enum PrevNode<'a> {
     Select(SelectNode),
-    Having(HavingNode),
-    GroupBy(GroupByNode),
-    Filter(FilterNode),
-    JoinNode(JoinNode),
-    JoinConstraint(JoinConstraintNode),
-    HashJoin(HashJoinNode),
+    Having(HavingNode<'a>),
+    GroupBy(GroupByNode<'a>),
+    Filter(FilterNode<'a>),
+    JoinNode(JoinNode<'a>),
+    JoinConstraint(JoinConstraintNode<'a>),
+    HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl Prebuild for PrevNode {
+impl<'a> Prebuild for PrevNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         match self {
             Self::Select(node) => node.prebuild(),
@@ -35,76 +35,79 @@ impl Prebuild for PrevNode {
     }
 }
 
-impl From<SelectNode> for PrevNode {
+impl<'a> From<SelectNode> for PrevNode<'a> {
     fn from(node: SelectNode) -> Self {
         PrevNode::Select(node)
     }
 }
 
-impl From<HavingNode> for PrevNode {
-    fn from(node: HavingNode) -> Self {
+impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
+    fn from(node: HavingNode<'a>) -> Self {
         PrevNode::Having(node)
     }
 }
 
-impl From<GroupByNode> for PrevNode {
-    fn from(node: GroupByNode) -> Self {
+impl<'a> From<GroupByNode<'a>> for PrevNode<'a> {
+    fn from(node: GroupByNode<'a>) -> Self {
         PrevNode::GroupBy(node)
     }
 }
 
-impl From<FilterNode> for PrevNode {
-    fn from(node: FilterNode) -> Self {
+impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
+    fn from(node: FilterNode<'a>) -> Self {
         PrevNode::Filter(node)
     }
 }
 
-impl From<JoinNode> for PrevNode {
-    fn from(node: JoinNode) -> Self {
+impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinNode<'a>) -> Self {
         PrevNode::JoinNode(node)
     }
 }
 
-impl From<JoinConstraintNode> for PrevNode {
-    fn from(node: JoinConstraintNode) -> Self {
+impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinConstraintNode<'a>) -> Self {
         PrevNode::JoinConstraint(node)
     }
 }
 
-impl From<HashJoinNode> for PrevNode {
-    fn from(node: HashJoinNode) -> Self {
-        PrevNode::HashJoin(node)
+impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: HashJoinNode<'a>) -> Self {
+        PrevNode::HashJoin(Box::new(node))
     }
 }
 
 #[derive(Clone)]
-pub struct OrderByNode {
-    prev_node: PrevNode,
-    expr_list: OrderByExprList,
+pub struct OrderByNode<'a> {
+    prev_node: PrevNode<'a>,
+    expr_list: OrderByExprList<'a>,
 }
 
-impl OrderByNode {
-    pub fn new<N: Into<PrevNode>, T: Into<OrderByExprList>>(prev_node: N, expr_list: T) -> Self {
+impl<'a> OrderByNode<'a> {
+    pub fn new<N: Into<PrevNode<'a>>, T: Into<OrderByExprList<'a>>>(
+        prev_node: N,
+        expr_list: T,
+    ) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr_list: expr_list.into(),
         }
     }
 
-    pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
         OffsetNode::new(self, expr)
     }
 
-    pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
     }
 }
 
-impl Prebuild for OrderByNode {
+impl<'a> Prebuild for OrderByNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
         select_data.order_by = self.expr_list.try_into()?;
@@ -164,7 +167,7 @@ mod tests {
             .select()
             .group_by("city")
             .having("COUNT(name) < 100")
-            .order_by(ExprNode::Identifier("name".to_owned()))
+            .order_by(ExprNode::Identifier("name".into()))
             .limit(3)
             .offset(2)
             .build();

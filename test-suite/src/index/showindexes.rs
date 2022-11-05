@@ -1,11 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        ast::{BinaryOperator, Expr},
-        data::{SchemaIndex, SchemaIndexOrd},
-        executor::ExecuteError,
-        prelude::Payload,
-    },
+    gluesql_core::{executor::ExecuteError, prelude::Payload, prelude::Value::*},
 };
 
 test_case!(showindexes, async move {
@@ -39,32 +34,16 @@ CREATE TABLE Test (
         "CREATE INDEX idx_id2 ON Test (id + num)",
         Ok(Payload::CreateIndex)
     );
-
     test!(
         "show indexes from Test",
-        Ok(Payload::ShowIndexes(vec![
-            SchemaIndex {
-                name: "idx_id".to_owned(),
-                order: SchemaIndexOrd::Both,
-                expr: Expr::Identifier("id".to_owned())
-            },
-            SchemaIndex {
-                name: "idx_name".to_owned(),
-                order: SchemaIndexOrd::Both,
-                expr: Expr::Identifier("name".to_owned())
-            },
-            SchemaIndex {
-                name: "idx_id2".to_owned(),
-                order: SchemaIndexOrd::Both,
-                expr: Expr::BinaryOp {
-                    left: Box::new(Expr::Identifier("id".to_owned())),
-                    op: BinaryOperator::Plus,
-                    right: Box::new(Expr::Identifier("num".to_owned()))
-                }
-            }
-        ]))
+        Ok(select!(
+            TABLE_NAME        | INDEX_NAME            | ORDER             | EXPRESSION            | UNIQUENESS;
+            Str               | Str                   | Str               | Str                   | Bool;
+            "Test".to_owned()   "idx_id".to_owned()     "BOTH".to_owned()   "id".to_owned()         false;
+            "Test".to_owned()   "idx_name".to_owned()   "BOTH".to_owned()   "name".to_owned()       false;
+            "Test".to_owned()   "idx_id2".to_owned()    "BOTH".to_owned()   "id + num".to_owned()   false
+        ))
     );
-
     test!(
         "show indexes from NoTable",
         Err(ExecuteError::TableNotFound("NoTable".to_owned()).into())

@@ -1,6 +1,6 @@
 use {super::ExprNode, crate::ast::BinaryOperator};
 
-impl ExprNode {
+impl<'a> ExprNode<'a> {
     fn binary_op<T: Into<Self>>(self, op: BinaryOperator, other: T) -> Self {
         Self::BinaryOp {
             left: Box::new(self),

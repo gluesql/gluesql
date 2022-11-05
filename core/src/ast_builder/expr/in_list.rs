@@ -8,33 +8,33 @@ use {
 };
 
 #[derive(Clone)]
-pub enum InListNode {
-    InList(Vec<ExprNode>),
-    Query(Box<QueryNode>),
+pub enum InListNode<'a> {
+    InList(Vec<ExprNode<'a>>),
+    Query(Box<QueryNode<'a>>),
     Text(String),
 }
 
-impl From<Vec<ExprNode>> for InListNode {
-    fn from(list: Vec<ExprNode>) -> Self {
+impl<'a> From<Vec<ExprNode<'a>>> for InListNode<'a> {
+    fn from(list: Vec<ExprNode<'a>>) -> Self {
         InListNode::InList(list)
     }
 }
 
-impl From<&str> for InListNode {
+impl<'a> From<&str> for InListNode<'a> {
     fn from(query: &str) -> Self {
         InListNode::Text(query.to_owned())
     }
 }
 
-impl From<QueryNode> for InListNode {
-    fn from(node: QueryNode) -> Self {
+impl<'a> From<QueryNode<'a>> for InListNode<'a> {
+    fn from(node: QueryNode<'a>) -> Self {
         InListNode::Query(Box::new(node))
     }
 }
 
 macro_rules! impl_from_select_nodes {
     ($type: path) => {
-        impl From<$type> for InListNode {
+        impl<'a> From<$type> for InListNode<'a> {
             fn from(list: $type) -> Self {
                 InListNode::Query(Box::new(list.into()))
             }
@@ -43,21 +43,21 @@ macro_rules! impl_from_select_nodes {
 }
 
 impl_from_select_nodes!(SelectNode);
-impl_from_select_nodes!(JoinNode);
-impl_from_select_nodes!(JoinConstraintNode);
-impl_from_select_nodes!(HashJoinNode);
-impl_from_select_nodes!(GroupByNode);
-impl_from_select_nodes!(HavingNode);
-impl_from_select_nodes!(FilterNode);
-impl_from_select_nodes!(LimitNode);
-impl_from_select_nodes!(LimitOffsetNode);
-impl_from_select_nodes!(OffsetNode);
-impl_from_select_nodes!(OffsetLimitNode);
-impl_from_select_nodes!(ProjectNode);
-impl_from_select_nodes!(OrderByNode);
+impl_from_select_nodes!(JoinNode<'a>);
+impl_from_select_nodes!(JoinConstraintNode<'a>);
+impl_from_select_nodes!(HashJoinNode<'a>);
+impl_from_select_nodes!(GroupByNode<'a>);
+impl_from_select_nodes!(HavingNode<'a>);
+impl_from_select_nodes!(FilterNode<'a>);
+impl_from_select_nodes!(LimitNode<'a>);
+impl_from_select_nodes!(LimitOffsetNode<'a>);
+impl_from_select_nodes!(OffsetNode<'a>);
+impl_from_select_nodes!(OffsetLimitNode<'a>);
+impl_from_select_nodes!(ProjectNode<'a>);
+impl_from_select_nodes!(OrderByNode<'a>);
 
-impl ExprNode {
-    pub fn in_list<T: Into<InListNode>>(self, value: T) -> Self {
+impl<'a> ExprNode<'a> {
+    pub fn in_list<T: Into<InListNode<'a>>>(self, value: T) -> Self {
         Self::InList {
             expr: Box::new(self),
             list: Box::new(value.into()),
@@ -65,7 +65,7 @@ impl ExprNode {
         }
     }
 
-    pub fn not_in_list<T: Into<InListNode>>(self, value: T) -> Self {
+    pub fn not_in_list<T: Into<InListNode<'a>>>(self, value: T) -> Self {
         Self::InList {
             expr: Box::new(self),
             list: Box::new(value.into()),

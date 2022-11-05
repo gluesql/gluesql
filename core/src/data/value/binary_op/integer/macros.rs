@@ -1,4 +1,3 @@
-#[macro_export]
 macro_rules! impl_interval_method {
     (checked_mul, $lhs_variant: ident, $op: ident, $lhs: ident, $rhs: ident) => {
         return Ok(Value::Interval($lhs * $rhs))
@@ -13,7 +12,6 @@ macro_rules! impl_interval_method {
     };
 }
 
-#[macro_export]
 macro_rules! impl_method {
     ($lhs_variant: ident, $lhs_primitive: ident, $lhs: ident, $method: ident, $op: ident, $rhs: ident) => {{
         match *$rhs {
@@ -77,6 +75,16 @@ macro_rules! impl_method {
                     }
                     .into()
                 }),
+            U16(rhs) => $lhs
+                .$method($lhs_primitive::try_from($rhs)?)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: $lhs_variant($lhs),
+                        rhs: U16(rhs),
+                        operator: $op,
+                    }
+                    .into()
+                }),
             F64(rhs) => $lhs
                 .$method($lhs_primitive::try_from($rhs)?)
                 .ok_or_else(|| {
@@ -99,7 +107,7 @@ macro_rules! impl_method {
                 }),
             Null => return Ok(Null),
             Interval(rhs) => {
-                $crate::impl_interval_method!($method, $lhs_variant, $op, $lhs, rhs);
+                super::macros::impl_interval_method!($method, $lhs_variant, $op, $lhs, rhs);
             }
             _ => Err(ValueError::NonNumericMathOperation {
                 lhs: $lhs_variant($lhs),
@@ -112,7 +120,6 @@ macro_rules! impl_method {
     }};
 }
 
-#[macro_export]
 macro_rules! impl_try_binary_op {
     ($variant: ident, $primitive: ident) => {
         use $crate::{
@@ -129,34 +136,33 @@ macro_rules! impl_try_binary_op {
 
             fn try_add(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_add, Add, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_add, Add, rhs)
             }
 
             fn try_subtract(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_sub, Subtract, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_sub, Subtract, rhs)
             }
 
             fn try_multiply(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_mul, Multiply, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_mul, Multiply, rhs)
             }
 
             fn try_divide(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_div, Divide, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_div, Divide, rhs)
             }
 
             fn try_modulo(&self, rhs: &Self::Rhs) -> Result<Value> {
                 let lhs = *self;
-                $crate::impl_method!($variant, $primitive, lhs, checked_rem, Modulo, rhs)
+                super::macros::impl_method!($variant, $primitive, lhs, checked_rem, Modulo, rhs)
             }
         }
     };
 }
 
 #[cfg(test)]
-#[macro_export]
 macro_rules! generate_binary_op_tests {
     ($variant: ident, $primitive: ident) => {
         mod tests {
@@ -198,6 +204,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base, I64(1));
                 assert_eq!(base, I128(1));
                 assert_eq!(base, U8(1));
+                assert_eq!(base, U16(1));
 
                 assert_ne!(base, Bool(true));
             }
@@ -217,6 +224,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.partial_cmp(&I64(0)), Some(Ordering::Greater));
                 assert_eq!(base.partial_cmp(&I128(0)), Some(Ordering::Greater));
                 assert_eq!(base.partial_cmp(&U8(0)), Some(Ordering::Greater));
+                assert_eq!(base.partial_cmp(&U16(0)), Some(Ordering::Greater));
 
                 assert_eq!(
                     base.partial_cmp(&Decimal(Decimal::ONE)),
@@ -229,7 +237,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
                 assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
                 assert_eq!(base.partial_cmp(&U8(1)), Some(Ordering::Equal));
-                assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
+                assert_eq!(base.partial_cmp(&U16(1)), Some(Ordering::Equal));
 
                 assert_eq!(
                     base.partial_cmp(&Decimal(Decimal::TWO)),
@@ -242,6 +250,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.partial_cmp(&I64(2)), Some(Ordering::Less));
                 assert_eq!(base.partial_cmp(&I128(2)), Some(Ordering::Less));
                 assert_eq!(base.partial_cmp(&U8(2)), Some(Ordering::Less));
+                assert_eq!(base.partial_cmp(&U16(2)), Some(Ordering::Less));
 
                 assert_eq!(base.partial_cmp(&Bool(true)), None);
             }
@@ -279,6 +288,10 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(
                     $primitive::MAX.try_add(&U8(1)),
                     overflow_err($variant($primitive::MAX), U8(1), Add)
+                );
+                assert_eq!(
+                    $primitive::MAX.try_add(&U16(1)),
+                    overflow_err($variant($primitive::MAX), U16(1), Add)
                 );
             }
 
@@ -320,6 +333,10 @@ macro_rules! generate_binary_op_tests {
                     $primitive::MIN.try_subtract(&U8(1)),
                     overflow_err($variant($primitive::MIN), U8(1), Subtract)
                 );
+                assert_eq!(
+                    $primitive::MIN.try_subtract(&U16(1)),
+                    overflow_err($variant($primitive::MIN), U16(1), Subtract)
+                );
             }
 
             #[test]
@@ -360,6 +377,10 @@ macro_rules! generate_binary_op_tests {
                     $primitive::MAX.try_multiply(&U8(2)),
                     overflow_err($variant($primitive::MAX), U8(2), Multiply)
                 );
+                assert_eq!(
+                    $primitive::MAX.try_multiply(&U16(2)),
+                    overflow_err($variant($primitive::MAX), U16(2), Multiply)
+                );
             }
 
             #[test]
@@ -395,6 +416,10 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(
                     $primitive::MAX.try_divide(&U8(0)),
                     overflow_err($variant($primitive::MAX), U8(0), Divide)
+                );
+                assert_eq!(
+                    $primitive::MAX.try_divide(&U16(0)),
+                    overflow_err($variant($primitive::MAX), U16(0), Divide)
                 );
             }
 
@@ -432,6 +457,10 @@ macro_rules! generate_binary_op_tests {
                     $primitive::MAX.try_modulo(&U8(0)),
                     overflow_err($variant($primitive::MAX), U8(0), Modulo)
                 );
+                assert_eq!(
+                    $primitive::MAX.try_modulo(&U16(0)),
+                    overflow_err($variant($primitive::MAX), U16(0), Modulo)
+                );
             }
 
             #[test]
@@ -446,6 +475,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_add(&I64(1)), Ok($variant(2)));
                 assert_eq!(base.try_add(&I128(1)), Ok($variant(2)));
                 assert_eq!(base.try_add(&U8(1)), Ok($variant(2)));
+                assert_eq!(base.try_add(&U16(1)), Ok($variant(2)));
 
                 assert_eq!(
                     base.try_add(&Bool(true)),
@@ -470,6 +500,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_subtract(&I64(1)), Ok($variant(0)));
                 assert_eq!(base.try_subtract(&I128(1)), Ok($variant(0)));
                 assert_eq!(base.try_subtract(&U8(1)), Ok($variant(0)));
+                assert_eq!(base.try_subtract(&U16(1)), Ok($variant(0)));
 
                 assert_eq!(
                     base.try_subtract(&Bool(true)),
@@ -494,6 +525,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_multiply(&I64(2)), Ok($variant(6)));
                 assert_eq!(base.try_multiply(&I128(2)), Ok($variant(6)));
                 assert_eq!(base.try_multiply(&U8(2)), Ok($variant(6)));
+                assert_eq!(base.try_multiply(&U16(2)), Ok($variant(6)));
 
                 assert_eq!(
                     base.try_multiply(&Bool(true)),
@@ -518,6 +550,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_divide(&I64(2)), Ok($variant(3)));
                 assert_eq!(base.try_divide(&I128(2)), Ok($variant(3)));
                 assert_eq!(base.try_divide(&U8(2)), Ok($variant(3)));
+                assert_eq!(base.try_divide(&U16(2)), Ok($variant(3)));
 
                 assert_eq!(
                     base.try_divide(&Bool(true)),
@@ -542,6 +575,7 @@ macro_rules! generate_binary_op_tests {
                 assert_eq!(base.try_modulo(&I64(1)), Ok($variant(0)));
                 assert_eq!(base.try_modulo(&I128(1)), Ok($variant(0)));
                 assert_eq!(base.try_modulo(&U8(1)), Ok($variant(0)));
+                assert_eq!(base.try_modulo(&U16(1)), Ok($variant(0)));
 
                 assert_eq!(
                     base.try_modulo(&Bool(true)),
@@ -556,3 +590,9 @@ macro_rules! generate_binary_op_tests {
         }
     };
 }
+
+#[cfg(test)]
+pub(crate) use generate_binary_op_tests;
+pub(crate) use impl_interval_method;
+pub(crate) use impl_method;
+pub(crate) use impl_try_binary_op;

@@ -5,7 +5,10 @@ use {
         data::Value,
         result::Result,
     },
-    std::cmp::{max, min},
+    std::{
+        cmp::{max, min},
+        ops::ControlFlow,
+    },
     uuid::Uuid,
 };
 
@@ -14,7 +17,7 @@ macro_rules! eval_to_str {
         match $evaluated.try_into()? {
             Value::Str(value) => value,
             Value::Null => {
-                return Ok(Value::Null);
+                return Ok(Evaluated::from(Value::Null));
             }
             _ => {
                 return Err(EvaluateError::FunctionRequiresStringValue($name).into());
@@ -28,7 +31,7 @@ macro_rules! eval_to_int {
         match $evaluated.try_into()? {
             Value::I64(num) => num,
             Value::Null => {
-                return Ok(Value::Null);
+                return Ok(Evaluated::from(Value::Null));
             }
             _ => {
                 return Err(EvaluateError::FunctionRequiresIntegerValue($name).into());
@@ -43,7 +46,7 @@ macro_rules! eval_to_float {
             Value::I64(v) => v as f64,
             Value::F64(v) => v,
             Value::Null => {
-                return Ok(Value::Null);
+                return Ok(Evaluated::from(Value::Null));
             }
             _ => {
                 return Err(EvaluateError::FunctionRequiresFloatValue($name).into());
@@ -54,31 +57,69 @@ macro_rules! eval_to_float {
 
 // --- text ---
 
-pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Value> {
-    exprs
+pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {
+    enum BreakCase {
+        Null,
+        Err(crate::result::Error),
+    }
+
+    let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_fold(
+        Value::Str(String::new()),
+        |left, right: Result<Value>| match right {
+            Ok(value) if value.is_null() => ControlFlow::Break(BreakCase::Null),
+            Err(err) => ControlFlow::Break(BreakCase::Err(err)),
+            Ok(value) => ControlFlow::Continue(left.concat(&value)),
+        },
+    );
+
+    match control_flow {
+        ControlFlow::Continue(value) => Ok(Evaluated::from(value)),
+        ControlFlow::Break(BreakCase::Null) => Ok(Evaluated::from(Value::Null)),
+        ControlFlow::Break(BreakCase::Err(err)) => Err(err),
+    }
+}
+
+pub fn concat_ws<'a>(
+    name: String,
+    separator: Evaluated<'a>,
+    exprs: Vec<Evaluated<'a>>,
+) -> Result<Evaluated<'a>> {
+    let separator = eval_to_str!(name, separator);
+
+    let result = exprs
         .into_iter()
-        .map(|expr| expr.try_into())
+        .map(Value::try_from)
         .filter(|value| !matches!(value, Ok(Value::Null)))
-        .try_fold(Value::Str("".to_owned()), |left, right| {
-            Ok(left.concat(&right?))
-        })
+        .map(|value| Ok(String::from(value?)))
+        .collect::<Result<Vec<_>>>()?
+        .join(&separator);
+
+    Ok(Evaluated::from(Value::Str(result)))
 }
 
-pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::Str(eval_to_str!(name, expr).to_lowercase()))
+pub fn lower(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
+    Ok(Evaluated::from(Value::Str(
+        eval_to_str!(name, expr).to_lowercase(),
+    )))
 }
 
-pub fn upper(name: String, expr: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::Str(eval_to_str!(name, expr).to_uppercase()))
+pub fn upper(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
+    Ok(Evaluated::from(Value::Str(
+        eval_to_str!(name, expr).to_uppercase(),
+    )))
 }
 
-pub fn left_or_right(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> Result<Value> {
+pub fn left_or_right<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    size: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
     let string = eval_to_str!(name, expr);
     let size = match size.try_into()? {
         Value::I64(number) => usize::try_from(number)
             .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?,
         Value::Null => {
-            return Ok(Value::Null);
+            return Ok(Evaluated::Value(Value::Null));
         }
         _ => {
             return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
@@ -100,21 +141,21 @@ pub fn left_or_right(name: String, expr: Evaluated<'_>, size: Evaluated<'_>) -> 
             .unwrap_or(string)
     };
 
-    Ok(Value::Str(converted))
+    Ok(Evaluated::from(Value::Str(converted)))
 }
 
-pub fn lpad_or_rpad(
+pub fn lpad_or_rpad<'a>(
     name: String,
     expr: Evaluated<'_>,
     size: Evaluated<'_>,
     fill: Option<Evaluated<'_>>,
-) -> Result<Value> {
+) -> Result<Evaluated<'a>> {
     let string = eval_to_str!(name, expr);
     let size = match size.try_into()? {
         Value::I64(number) => usize::try_from(number)
             .map_err(|_| EvaluateError::FunctionRequiresUSizeValue(name.clone()))?,
         Value::Null => {
-            return Ok(Value::Null);
+            return Ok(Evaluated::Value(Value::Null));
         }
         _ => {
             return Err(EvaluateError::FunctionRequiresIntegerValue(name).into());
@@ -141,15 +182,15 @@ pub fn lpad_or_rpad(
         string[0..size].to_owned()
     };
 
-    Ok(Value::Str(result))
+    Ok(Evaluated::from(Value::Str(result)))
 }
 
-pub fn trim(
+pub fn trim<'a>(
     name: String,
     expr: Evaluated<'_>,
     filter_chars: Option<Evaluated<'_>>,
-    trim_where_field: &Option<TrimWhereField>,
-) -> Result<Value> {
+    trim_where_field: &'a Option<TrimWhereField>,
+) -> Result<Evaluated<'a>> {
     let expr_str = eval_to_str!(name, expr);
     let expr_str = expr_str.as_str();
     let filter_chars = match filter_chars {
@@ -164,10 +205,14 @@ pub fn trim(
         None => expr_str.trim(),
     };
 
-    Ok(Value::Str(value.to_owned()))
+    Ok(Evaluated::from(Value::Str(value.to_owned())))
 }
 
-pub fn ltrim(name: String, expr: Evaluated<'_>, chars: Option<Evaluated<'_>>) -> Result<Value> {
+pub fn ltrim<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    chars: Option<Evaluated<'_>>,
+) -> Result<Evaluated<'a>> {
     let expr = eval_to_str!(name, expr);
     let chars = match chars {
         Some(chars) => eval_to_str!(name, chars).chars().collect::<Vec<char>>(),
@@ -175,10 +220,14 @@ pub fn ltrim(name: String, expr: Evaluated<'_>, chars: Option<Evaluated<'_>>) ->
     };
 
     let value = expr.trim_start_matches(chars.as_slice()).to_owned();
-    Ok(Value::Str(value))
+    Ok(Evaluated::from(Value::Str(value)))
 }
 
-pub fn rtrim(name: String, expr: Evaluated<'_>, chars: Option<Evaluated<'_>>) -> Result<Value> {
+pub fn rtrim<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    chars: Option<Evaluated<'_>>,
+) -> Result<Evaluated<'a>> {
     let expr = eval_to_str!(name, expr);
     let chars = match chars {
         Some(chars) => eval_to_str!(name, chars).chars().collect::<Vec<char>>(),
@@ -186,29 +235,29 @@ pub fn rtrim(name: String, expr: Evaluated<'_>, chars: Option<Evaluated<'_>>) ->
     };
 
     let value = expr.trim_end_matches(chars.as_slice()).to_owned();
-    Ok(Value::Str(value))
+    Ok(Evaluated::from(Value::Str(value)))
 }
 
-pub fn reverse(name: String, expr: Evaluated<'_>) -> Result<Value> {
+pub fn reverse(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
     let value = eval_to_str!(name, expr).chars().rev().collect::<String>();
 
-    Ok(Value::Str(value))
+    Ok(Evaluated::from(Value::Str(value)))
 }
 
-pub fn repeat(name: String, expr: Evaluated<'_>, num: Evaluated<'_>) -> Result<Value> {
+pub fn repeat<'a>(name: String, expr: Evaluated<'_>, num: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let expr = eval_to_str!(name, expr);
     let num = eval_to_int!(name, num) as usize;
     let value = expr.repeat(num);
 
-    Ok(Value::Str(value))
+    Ok(Evaluated::from(Value::Str(value)))
 }
 
-pub fn substr(
+pub fn substr<'a>(
     name: String,
     expr: Evaluated<'_>,
     start: Evaluated<'_>,
     count: Option<Evaluated<'_>>,
-) -> Result<Value> {
+) -> Result<Evaluated<'a>> {
     let string = eval_to_str!(name, expr);
     let start = eval_to_int!(name, start) - 1;
     let count = match count {
@@ -224,17 +273,17 @@ pub fn substr(
 
     let start = min(max(start, 0) as usize, string.len());
     let string = String::from(&string[start..end]);
-    Ok(Value::Str(string))
+    Ok(Evaluated::from(Value::Str(string)))
 }
 
-pub fn ascii(name: String, expr: Evaluated<'_>) -> Result<Value> {
+pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let string = eval_to_str!(name, expr);
     let mut iter = string.chars();
 
     match (iter.next(), iter.next()) {
         (Some(c), None) => {
             if c.is_ascii() {
-                Ok(Value::U8(c as u8))
+                Ok(Evaluated::from(Value::U8(c as u8)))
             } else {
                 Err(EvaluateError::NonAsciiCharacterNotAllowed.into())
             }
@@ -243,13 +292,13 @@ pub fn ascii(name: String, expr: Evaluated<'_>) -> Result<Value> {
     }
 }
 
-pub fn chr(name: String, expr: Evaluated<'_>) -> Result<Value> {
+pub fn chr<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let expr = eval_to_int!(name, expr);
 
     match expr {
         0..=255 => {
             let expr = expr as u8;
-            Ok(Value::Str((expr as char).to_string()))
+            Ok(Evaluated::from(Value::Str((expr as char).to_string())))
         }
         _ => Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into()),
     }
@@ -257,118 +306,126 @@ pub fn chr(name: String, expr: Evaluated<'_>) -> Result<Value> {
 
 // --- float ---
 
-pub fn abs(name: String, n: Evaluated<'_>) -> Result<Value> {
+pub fn abs<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
     match n.try_into()? {
-        Value::I8(v) => Ok(Value::I8(v.abs())),
-        Value::I64(v) => Ok(Value::I64(v.abs())),
-        Value::Decimal(v) => Ok(Value::Decimal(v.abs())),
-        Value::F64(v) => Ok(Value::F64(v.abs())),
-        Value::Null => Ok(Value::Null),
+        Value::I8(v) => Ok(Evaluated::from(Value::I8(v.abs()))),
+        Value::I64(v) => Ok(Evaluated::from(Value::I64(v.abs()))),
+        Value::Decimal(v) => Ok(Evaluated::from(Value::Decimal(v.abs()))),
+        Value::F64(v) => Ok(Evaluated::from(Value::F64(v.abs()))),
+        Value::Null => Ok(Evaluated::from(Value::Null)),
         _ => Err(EvaluateError::FunctionRequiresFloatValue(name).into()),
     }
 }
 
-pub fn ifnull(expr: Evaluated<'_>, then: Evaluated<'_>) -> Result<Value> {
+pub fn ifnull<'a>(expr: Evaluated<'a>, then: Evaluated<'a>) -> Result<Evaluated<'a>> {
     Ok(match expr.is_null() {
-        true => then.try_into()?,
-        false => expr.try_into()?,
+        true => then,
+        false => expr,
     })
 }
 
-pub fn sign(name: String, n: Evaluated<'_>) -> Result<Value> {
+pub fn sign(name: String, n: Evaluated<'_>) -> Result<Evaluated> {
     let x = eval_to_float!(name, n);
     if x == 0.0 {
-        return Ok(Value::I8(0));
+        return Ok(Evaluated::from(Value::I8(0)));
     }
-    Ok(Value::I8(x.signum() as i8))
+    Ok(Evaluated::from(Value::I8(x.signum() as i8)))
 }
 
-pub fn sqrt(n: Evaluated<'_>) -> Result<Value> {
-    Value::sqrt(&n.try_into()?)
+pub fn sqrt<'a>(n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::sqrt(&n.try_into()?)?))
 }
 
-pub fn power(name: String, expr: Evaluated<'_>, power: Evaluated<'_>) -> Result<Value> {
+pub fn power<'a>(name: String, expr: Evaluated<'_>, power: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let expr = eval_to_float!(name, expr);
     let power = eval_to_float!(name, power);
 
-    Ok(Value::F64(expr.powf(power)))
+    Ok(Evaluated::from(Value::F64(expr.powf(power))))
 }
 
-pub fn ceil(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).ceil()))
+pub fn ceil<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).ceil())))
 }
 
-pub fn round(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).round()))
+pub fn round<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).round())))
 }
 
-pub fn floor(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).floor()))
+pub fn floor<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).floor())))
 }
 
-pub fn radians(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).to_radians()))
+pub fn radians<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(
+        eval_to_float!(name, n).to_radians(),
+    )))
 }
 
-pub fn degrees(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).to_degrees()))
+pub fn degrees<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(
+        eval_to_float!(name, n).to_degrees(),
+    )))
 }
 
-pub fn exp(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).exp()))
+pub fn exp<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).exp())))
 }
 
-pub fn log(name: String, antilog: Evaluated<'_>, base: Evaluated<'_>) -> Result<Value> {
+pub fn log<'a>(name: String, antilog: Evaluated<'_>, base: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let antilog = eval_to_float!(name, antilog);
     let base = eval_to_float!(name, base);
 
-    Ok(Value::F64(antilog.log(base)))
+    Ok(Evaluated::from(Value::F64(antilog.log(base))))
 }
 
-pub fn ln(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).ln()))
+pub fn ln<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).ln())))
 }
 
-pub fn log2(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).log2()))
+pub fn log2<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).log2())))
 }
 
-pub fn log10(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).log10()))
+pub fn log10<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).log10())))
 }
 
-pub fn sin(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).sin()))
+pub fn sin<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).sin())))
 }
 
-pub fn cos(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).cos()))
+pub fn cos<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).cos())))
 }
 
-pub fn tan(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).tan()))
+pub fn tan<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).tan())))
 }
 
-pub fn asin(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).asin()))
+pub fn asin<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).asin())))
 }
 
-pub fn acos(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).acos()))
+pub fn acos<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).acos())))
 }
 
-pub fn atan(name: String, n: Evaluated<'_>) -> Result<Value> {
-    Ok(Value::F64(eval_to_float!(name, n).atan()))
+pub fn atan<'a>(name: String, n: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::F64(eval_to_float!(name, n).atan())))
 }
 
 // --- integer ---
 
-pub fn div(name: String, dividend: Evaluated<'_>, divisor: Evaluated<'_>) -> Result<Value> {
+pub fn div<'a>(
+    name: String,
+    dividend: Evaluated<'_>,
+    divisor: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
     let dividend = match dividend.try_into()? {
         Value::F64(number) => number,
         Value::I64(number) => number as f64,
         Value::Null => {
-            return Ok(Value::Null);
+            return Ok(Evaluated::from(Value::Null));
         }
         _ => {
             return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(name).into());
@@ -385,24 +442,24 @@ pub fn div(name: String, dividend: Evaluated<'_>, divisor: Evaluated<'_>) -> Res
             _ => number as f64,
         },
         Value::Null => {
-            return Ok(Value::Null);
+            return Ok(Evaluated::from(Value::Null));
         }
         _ => {
             return Err(EvaluateError::FunctionRequiresFloatOrIntegerValue(name).into());
         }
     };
 
-    Ok(Value::I64((dividend / divisor) as i64))
+    Ok(Evaluated::from(Value::I64((dividend / divisor) as i64)))
 }
 
-pub fn gcd(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Value> {
+pub fn gcd<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let left = eval_to_int!(name, left);
     let right = eval_to_int!(name, right);
 
-    Ok(Value::I64(gcd_i64(left, right)))
+    Ok(Evaluated::from(Value::I64(gcd_i64(left, right))))
 }
 
-pub fn lcm(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Value> {
+pub fn lcm<'a>(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Evaluated<'a>> {
     let left = eval_to_int!(name, left);
     let right = eval_to_int!(name, right);
 
@@ -410,7 +467,7 @@ pub fn lcm(name: String, left: Evaluated<'_>, right: Evaluated<'_>) -> Result<Va
         a * b / gcd_i64(a, b)
     }
 
-    Ok(Value::I64(lcm(left, right)))
+    Ok(Evaluated::from(Value::I64(lcm(left, right))))
 }
 
 fn gcd_i64(a: i64, b: i64) -> i64 {
@@ -423,9 +480,13 @@ fn gcd_i64(a: i64, b: i64) -> i64 {
 
 // --- etc ---
 
-pub fn unwrap(name: String, expr: Evaluated<'_>, selector: Evaluated<'_>) -> Result<Value> {
+pub fn unwrap<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    selector: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
     if expr.is_null() {
-        return Ok(Value::Null);
+        return Ok(Evaluated::from(Value::Null));
     }
 
     let value = match expr {
@@ -436,84 +497,107 @@ pub fn unwrap(name: String, expr: Evaluated<'_>, selector: Evaluated<'_>) -> Res
     };
 
     let selector = eval_to_str!(name, selector);
-    value.selector(&selector)
+    Ok(Evaluated::from(value.selector(&selector)?))
 }
 
-pub fn generate_uuid() -> Value {
-    Value::Uuid(Uuid::new_v4().as_u128())
+pub fn generate_uuid<'a>() -> Evaluated<'a> {
+    Evaluated::from(Value::Uuid(Uuid::new_v4().as_u128()))
 }
 
-pub fn format(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+pub fn format<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    format: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
         Value::Date(expr) => {
             let format = eval_to_str!(name, format);
 
-            Ok(Value::Str(
+            Ok(Evaluated::from(Value::Str(
                 chrono::NaiveDate::format(&expr, &format).to_string(),
-            ))
+            )))
         }
         Value::Timestamp(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(
+            Ok(Evaluated::from(Value::Str(
                 chrono::NaiveDateTime::format(&expr, &format).to_string(),
-            ))
+            )))
         }
         Value::Time(expr) => {
             let format = eval_to_str!(name, format);
-            Ok(Value::Str(
+            Ok(Evaluated::from(Value::Str(
                 chrono::NaiveTime::format(&expr, &format).to_string(),
-            ))
+            )))
         }
         value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
     }
 }
 
-pub fn to_date(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+pub fn to_date<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    format: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
             chrono::NaiveDate::parse_from_str(&expr, &format)
-                .map(Value::Date)
                 .map_err(ChronoFormatError::err_into)
+                .map(Value::Date)
+                .map(Evaluated::from)
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
 
-pub fn to_timestamp(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+pub fn to_timestamp<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    format: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
             chrono::NaiveDateTime::parse_from_str(&expr, &format)
-                .map(Value::Timestamp)
                 .map_err(ChronoFormatError::err_into)
+                .map(Value::Timestamp)
+                .map(Evaluated::from)
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
 
-pub fn to_time(name: String, expr: Evaluated<'_>, format: Evaluated<'_>) -> Result<Value> {
+pub fn to_time<'a>(
+    name: String,
+    expr: Evaluated<'_>,
+    format: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
             chrono::NaiveTime::parse_from_str(&expr, &format)
                 .map(Value::Time)
                 .map_err(ChronoFormatError::err_into)
+                .map(Evaluated::from)
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
 
-pub fn position(name: String, from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>) -> Result<Value> {
+pub fn position<'a>(
+    name: String,
+    from_expr: Evaluated<'_>,
+    sub_expr: Evaluated<'_>,
+) -> Result<Evaluated<'a>> {
     let from_expr = eval_to_str!(name, from_expr);
     let sub_expr = eval_to_str!(name, sub_expr);
-    Value::position(&Value::Str(from_expr), &Value::Str(sub_expr))
+    Value::position(&Value::Str(from_expr), &Value::Str(sub_expr)).map(Evaluated::from)
 }
 
-pub fn cast(expr: Evaluated<'_>, data_type: &DataType) -> Result<Value> {
-    expr.cast(data_type)?.try_into()
+pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
+    expr.cast(data_type)
 }
 
-pub fn extract(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Value> {
-    Value::try_from(expr)?.extract(field)
+pub fn extract<'a>(field: &DateTimeField, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    Ok(Evaluated::from(Value::try_from(expr)?.extract(field)?))
 }

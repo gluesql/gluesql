@@ -1,7 +1,7 @@
 use {
     super::AlterError,
     crate::{
-        ast::{ColumnDef, ColumnOption, ColumnOptionDef, DataType},
+        ast::{ColumnDef, ColumnOption, DataType},
         executor::evaluate_stateless,
         result::Result,
     },
@@ -19,7 +19,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
     if matches!(data_type, DataType::Float | DataType::Map)
         && options
             .iter()
-            .any(|ColumnOptionDef { option, .. }| matches!(option, ColumnOption::Unique { .. }))
+            .any(|option| matches!(option, ColumnOption::Unique { .. }))
     {
         return Err(AlterError::UnsupportedDataTypeForUniqueColumn(
             name.to_owned(),
@@ -28,12 +28,10 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
         .into());
     }
 
-    let default = options
-        .iter()
-        .find_map(|ColumnOptionDef { option, .. }| match option {
-            ColumnOption::Default(expr) => Some(expr),
-            _ => None,
-        });
+    let default = options.iter().find_map(|option| match option {
+        ColumnOption::Default(expr) => Some(expr),
+        _ => None,
+    });
 
     if let Some(expr) = default {
         evaluate_stateless(None, expr)?;
