@@ -125,7 +125,7 @@ mod tests {
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE User (id INT, name TEXT NULL DEFAULT \"glue\");"
+            "CREATE TABLE User (id INT, name TEXT NULL DEFAULT 'glue');"
         )
     }
 
