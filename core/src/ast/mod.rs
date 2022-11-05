@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn to_sql_insert() {
         assert_eq!(
-            r#"INSERT INTO Test (id, num, name) VALUES (1, 2, "Hello");"#,
+            "INSERT INTO Test (id, num, name) VALUES (1, 2, 'Hello');",
             Statement::Insert {
                 table_name: "Test".into(),
                 columns: vec!["id".to_owned(), "num".to_owned(), "name".to_owned()],
@@ -284,7 +284,7 @@ mod tests {
     #[test]
     fn to_sql_update() {
         assert_eq!(
-            r#"UPDATE Foo SET id = 4, color = "blue";"#,
+            "UPDATE Foo SET id = 4, color = 'blue';",
             Statement::Update {
                 table_name: "Foo".into(),
                 assignments: vec![
@@ -305,7 +305,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"UPDATE Foo SET name = "first" WHERE a > b;"#,
+            "UPDATE Foo SET name = 'first' WHERE a > b;",
             Statement::Update {
                 table_name: "Foo".into(),
                 assignments: vec![Assignment {
@@ -334,7 +334,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"DELETE FROM Foo WHERE item = "glue";"#,
+            "DELETE FROM Foo WHERE item = 'glue';",
             Statement::Delete {
                 table_name: "Foo".into(),
                 selection: Some(Expr::BinaryOp {

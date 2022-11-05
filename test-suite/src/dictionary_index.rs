@@ -22,7 +22,7 @@ test_case!(ditionary_index, async move {
             TABLE_NAME       | INDEX_NAME                  | ORDER             | EXPRESSION               | UNIQUENESS;
             Str              | Str                         | Str               | Str                      | Bool;
             "Bar".to_owned()   "PRIMARY".to_owned()          "BOTH".to_owned()   "id".to_owned()            true;
-            "Bar".to_owned()   "Bar_name_concat".to_owned()  "BOTH".to_owned()   "name + \"_\"".to_owned()  false;
+            "Bar".to_owned()   "Bar_name_concat".to_owned()  "BOTH".to_owned()   "name + '_'".to_owned()  false;
             "Foo".to_owned()   "Foo_id".to_owned()           "BOTH".to_owned()   "id".to_owned()            false;
             "Foo".to_owned()   "Foo_id_2".to_owned()         "BOTH".to_owned()   "id + 2".to_owned()        false
         ))
