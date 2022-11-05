@@ -1,5 +1,5 @@
 use {
-    crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr},
+    crate::ast::{ColumnDef, ColumnOption, Expr},
     chrono::NaiveDateTime,
     serde::{Deserialize, Serialize},
     std::fmt::Debug,
@@ -30,25 +30,17 @@ pub struct Schema {
     pub created: NaiveDateTime,
 }
 
-pub trait ColumnDefExt {
-    fn is_nullable(&self) -> bool;
-
-    fn get_default(&self) -> Option<&Expr>;
-}
-
-impl ColumnDefExt for ColumnDef {
-    fn is_nullable(&self) -> bool {
+impl ColumnDef {
+    pub fn is_nullable(&self) -> bool {
         self.options
             .iter()
-            .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null)
+            .any(|option| option == &ColumnOption::Null)
     }
 
-    fn get_default(&self) -> Option<&Expr> {
-        self.options
-            .iter()
-            .find_map(|ColumnOptionDef { option, .. }| match option {
-                ColumnOption::Default(expr) => Some(expr),
-                _ => None,
-            })
+    pub fn get_default(&self) -> Option<&Expr> {
+        self.options.iter().find_map(|option| match option {
+            ColumnOption::Default(expr) => Some(expr),
+            _ => None,
+        })
     }
 }

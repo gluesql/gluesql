@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::{ColumnDef, Expr},
-        data::{schema::ColumnDefExt, Value},
+        data::Value,
         executor::evaluate_stateless,
         result::Result,
     },

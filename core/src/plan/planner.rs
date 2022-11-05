@@ -1,10 +1,7 @@
 use {
     super::context::Context,
     crate::{
-        ast::{
-            ColumnDef, ColumnOption, ColumnOptionDef, Expr, Function, Query, TableAlias,
-            TableFactor,
-        },
+        ast::{ColumnDef, ColumnOption, Expr, Function, Query, TableAlias, TableFactor},
         data::Schema,
     },
     std::rc::Rc,
@@ -211,9 +208,7 @@ pub trait Planner<'a> {
             .find_map(|ColumnDef { name, options, .. }| {
                 options
                     .iter()
-                    .any(|ColumnOptionDef { option, .. }| {
-                        matches!(option, ColumnOption::Unique { is_primary: true })
-                    })
+                    .any(|option| matches!(option, ColumnOption::Unique { is_primary: true }))
                     .then(|| name.as_str())
             });
 
