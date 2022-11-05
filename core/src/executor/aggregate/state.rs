@@ -1,6 +1,6 @@
 use {
     crate::{
-        ast::{Aggregate, CountArgExpr,DataType},
+        ast::{Aggregate, CountArgExpr, DataType},
         data::{Key, Value},
         executor::{context::BlendContext, context::FilterContext, evaluate::evaluate},
         result::Result,
@@ -123,7 +123,7 @@ impl AggrValue {
 
     fn export(self) -> Result<Value> {
         let variance = |sum_square: Value, sum: Value, count: i64| {
-            let count=Value::I64(count as i64);
+            let count = Value::I64(count as i64);
             let sum_expr1 = sum_square.multiply(&count)?;
             let sum_expr2 = sum.multiply(&sum)?;
             let expr_sub = sum_expr1.cast(&DataType::Float)?.subtract(&sum_expr2)?;
@@ -134,7 +134,9 @@ impl AggrValue {
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
             Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
-            Self::Avg { sum, count } => (sum.cast(&DataType::Float)?).divide(&Value::I64(count as i64)),
+            Self::Avg { sum, count } => {
+                (sum.cast(&DataType::Float)?).divide(&Value::I64(count as i64))
+            }
             Self::Variance {
                 sum_square,
                 sum,
