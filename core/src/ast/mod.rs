@@ -369,16 +369,19 @@ mod tests {
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Int,
+                        nullable: false,
                         options: vec![]
                     },
                     ColumnDef {
                         name: "num".to_owned(),
                         data_type: DataType::Int,
+                        nullable: true,
                         options: vec![ColumnOption::Null]
                     },
                     ColumnDef {
                         name: "name".to_owned(),
                         data_type: DataType::Text,
+                        nullable: false,
                         options: vec![]
                     }
                 ],
@@ -458,6 +461,7 @@ mod tests {
                     column_def: ColumnDef {
                         name: "amount".to_owned(),
                         data_type: DataType::Int,
+                        nullable: false,
                         options: vec![ColumnOption::Default(Expr::Literal(AstLiteral::Number(
                             BigDecimal::from_str("10").unwrap()
                         )))]

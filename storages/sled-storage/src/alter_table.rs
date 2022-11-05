@@ -171,12 +171,16 @@ impl AlterTable for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let ColumnDef {
-                data_type, options, ..
+                data_type,
+                nullable,
+                options,
+                ..
             } = column_defs[i].clone();
 
             let column_def = ColumnDef {
                 name: new_column_name.to_owned(),
                 data_type,
+                nullable,
                 options,
             };
             let column_defs = Vector::from(column_defs).update(i, column_def).into();

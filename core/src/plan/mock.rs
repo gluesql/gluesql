@@ -181,6 +181,7 @@ mod tests {
                 &ColumnDef {
                     name: "new_col".to_owned(),
                     data_type: DataType::Boolean,
+                    nullable: false,
                     options: Vec::new(),
                 },
             ));

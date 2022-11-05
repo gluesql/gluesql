@@ -26,6 +26,7 @@ pub enum AlterTableOperation {
 pub struct ColumnDef {
     pub name: String,
     pub data_type: DataType,
+    pub nullable: bool,
     pub options: Vec<ColumnOption>,
 }
 
@@ -70,6 +71,7 @@ impl ToSql for ColumnDef {
         let ColumnDef {
             name,
             data_type,
+            nullable,
             options,
         } = self;
         {
@@ -79,7 +81,7 @@ impl ToSql for ColumnDef {
                 .collect::<Vec<_>>()
                 .join(" ");
 
-            format!("{name} {data_type} {options}")
+            format!("{name} {data_type} {nullable} {options}")
                 .trim_end()
                 .to_owned()
         }
@@ -111,6 +113,7 @@ mod tests {
             ColumnDef {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
+                nullable: false,
                 options: vec![ColumnOption::Unique { is_primary: false }]
             }
             .to_sql()
@@ -121,6 +124,7 @@ mod tests {
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
+                nullable: true,
                 options: vec![ColumnOption::Null]
             }
             .to_sql()
@@ -131,6 +135,7 @@ mod tests {
             ColumnDef {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
+                nullable: false,
                 options: vec![
                     ColumnOption::NotNull,
                     ColumnOption::Unique { is_primary: true }
@@ -144,6 +149,7 @@ mod tests {
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
+                nullable: false,
                 options: vec![ColumnOption::Default(Expr::Literal(AstLiteral::Boolean(
                     false
                 )))]

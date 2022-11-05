@@ -59,9 +59,15 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
         ..
     } = sql_column_def;
 
+    let nullable = options
+        .iter()
+        .find(|SqlColumnOptionDef { option, .. }| option == &SqlColumnOption::Null)
+        .is_some();
+
     Ok(ColumnDef {
         name: name.value.to_owned(),
         data_type: translate_data_type(data_type)?,
+        nullable,
         options: options
             .iter()
             .map(translate_column_option_def)
@@ -82,17 +88,13 @@ fn translate_column_option_def(
     let SqlColumnOptionDef { option, .. } = sql_column_option_def;
 
     let option = match option {
-        SqlColumnOption::Null => Ok(ColumnOption::Null),
-        SqlColumnOption::NotNull => Ok(ColumnOption::NotNull),
+        SqlColumnOption::Null | SqlColumnOption::NotNull => return Ok(Vec::new()),
         SqlColumnOption::Default(expr) => translate_expr(expr).map(ColumnOption::Default),
         SqlColumnOption::Unique { is_primary } if !is_primary => {
             Ok(ColumnOption::Unique { is_primary: false })
         }
         SqlColumnOption::Unique { .. } => {
-            return Ok(vec![
-                ColumnOption::Unique { is_primary: true },
-                ColumnOption::NotNull,
-            ]);
+            return Ok(vec![ColumnOption::Unique { is_primary: true }]);
         }
         _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
     }?;
