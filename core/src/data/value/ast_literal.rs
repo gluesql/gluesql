@@ -48,7 +48,7 @@ impl TryFrom<Value> for AstLiteral {
                 AstLiteral::QuotedString(DateTime::<Utc>::from_utc(v, Utc).to_string())
             }
             Value::Time(v) => AstLiteral::QuotedString(v.to_string()),
-            Value::Interval(v) => AstLiteral::QuotedString(v.into()),
+            Value::Interval(v) => AstLiteral::QuotedString(format!("INTERVAL {}", String::from(v))),
             Value::Uuid(v) => AstLiteral::QuotedString(Uuid::from_u128(v).hyphenated().to_string()),
             Value::Map(v) => {
                 let json: JsonValue = v
