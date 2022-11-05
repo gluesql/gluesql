@@ -61,8 +61,7 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
 
     let nullable = options
         .iter()
-        .find(|SqlColumnOptionDef { option, .. }| option == &SqlColumnOption::Null)
-        .is_some();
+        .any(|SqlColumnOptionDef { option, .. }| option == &SqlColumnOption::Null);
 
     Ok(ColumnDef {
         name: name.value.to_owned(),
