@@ -1,0 +1,29 @@
+[[tables]]
+name = "users"
+path = "example/data/users.csv"
+columns = [
+	{ name = "id",   data_type = "Int128", options = ["PrimaryKey"] },
+	{ name = "name", data_type = "Text",   options = ["Unique"]     },
+	{ name = "age",  data_type = "Uint8"                            },
+	{ name = "role", default   = "GUEST",  options = ["NotNull"]    },
+]
+
+[[tables]]
+name = "orders"
+path = "example/data/orders.csv"
+columns = [
+	{ name = "id",         data_type = "Int128", options = ["PrimaryKey"] },
+	{ name = "orderer_id", data_type = "Int128", options = ["NotNull"]    },
+	{ name = "food_id",    data_type = "Int128", options = ["NotNull"]    },
+	{ name = "cost",       data_type = "Uint16", default = "0"            },
+]
+
+[[tables]]
+name = "foods"
+path = "example/data/foods.csv"
+columns = [
+	{ name = "id",             data_type = "Int128", options = ["PrimaryKey"] },
+	{ name = "restaurant_id",  data_type = "Uint8",  options = ["Unique"]     },
+	{ name = "name",           data_type = "Text"                             },
+	{ name = "price",          data_type = "Uint16", default = "0"            },
+]
