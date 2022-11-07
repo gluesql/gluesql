@@ -58,23 +58,15 @@ impl TryFrom<Value> for Expr {
             Value::Interval(v) => match v {
                 Interval::Month(v) => Expr::Interval {
                     expr: Box::new(Expr::Literal(AstLiteral::Number(
-                        BigDecimal::from_i32(
-                            v.try_into()
-                                .map_err(|_| ValueToAstLiteralConversionFailure)?,
-                        )
-                        .ok_or(ValueToAstLiteralConversionFailure)?,
+                        BigDecimal::from_i32(v).ok_or(ValueToAstLiteralConversionFailure)?,
                     ))),
                     leading_field: Some(DateTimeField::Month),
                     last_field: None,
                 },
                 Interval::Microsecond(v) => Expr::Interval {
                     expr: Box::new(Expr::Literal(AstLiteral::Number(
-                        BigDecimal::from_i64(
-                            (v / SECOND)
-                                .try_into()
-                                .map_err(|_| ValueToAstLiteralConversionFailure)?,
-                        )
-                        .ok_or(ValueToAstLiteralConversionFailure)?,
+                        BigDecimal::from_i64(v / SECOND)
+                            .ok_or(ValueToAstLiteralConversionFailure)?,
                     ))),
                     leading_field: Some(DateTimeField::Second),
                     last_field: None,
