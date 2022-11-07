@@ -49,13 +49,17 @@ pub enum TrimWhereField {
 mod tests {
     use {
         crate::ast::{AstLiteral, ToSql},
-        bigdecimal::BigDecimal,
+        bigdecimal::{BigDecimal, FromPrimitive},
     };
 
     #[test]
     fn to_sql() {
         assert_eq!("TRUE", AstLiteral::Boolean(true).to_sql());
         assert_eq!("123", AstLiteral::Number(BigDecimal::from(123)).to_sql());
+        assert_eq!(
+            "123.4",
+            AstLiteral::Number(BigDecimal::from_f32(123.4).unwrap()).to_sql()
+        );
         assert_eq!(
             "'hello'",
             AstLiteral::QuotedString("hello".to_owned()).to_sql()
