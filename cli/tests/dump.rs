@@ -39,7 +39,7 @@ async fn dump_and_import() {
             decimal DECIMAL
          );",
         r#"INSERT INTO Foo
-         VALUES ( 
+         VALUES (
          true,
          1,
          2,

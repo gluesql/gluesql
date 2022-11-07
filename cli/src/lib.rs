@@ -11,7 +11,7 @@ use {
     clap::Parser,
     futures::executor::block_on,
     gluesql_core::{
-        ast::{AstLiteral, Expr, SetExpr, Statement, ToSql, Values},
+        ast::{Expr, SetExpr, Statement, ToSql, Values},
         prelude::Row,
         store::Transaction,
         store::{GStore, GStoreMut, Store},
@@ -100,7 +100,7 @@ pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<SledSto
                         result.map(|Row(values)| {
                             values
                                 .into_iter()
-                                .map(|value| Ok(Expr::Literal(AstLiteral::try_from(value)?)))
+                                .map(|value| Ok(Expr::try_from(value)?))
                                 .collect::<Result<Vec<_>>>()
                         })?
                     })
