@@ -1,13 +1,16 @@
-use crate::{
-    ast::{DateTimeField, Expr},
-    data::Interval,
-};
-
 use {
     super::ValueError::ValueToAstLiteralConversionFailure,
-    crate::{ast::AstLiteral, prelude::Value, result::Error, result::Result},
+    crate::{
+        ast::AstLiteral,
+        ast::{DateTimeField, Expr},
+        chrono::{DateTime, Utc},
+        data::Interval,
+        prelude::DataType,
+        prelude::Value,
+        result::Error,
+        result::Result,
+    },
     bigdecimal::{BigDecimal, FromPrimitive},
-    chrono::{DateTime, Utc},
     serde_json::{Map as JsonMap, Value as JsonValue},
     uuid::Uuid,
 };
@@ -50,11 +53,18 @@ impl TryFrom<Value> for Expr {
             )),
             Value::Str(v) => Expr::Literal(AstLiteral::QuotedString(v)),
             Value::Bytea(v) => Expr::Literal(AstLiteral::HexString(hex::encode(v))),
-            Value::Date(v) => Expr::Literal(AstLiteral::QuotedString(v.to_string())),
-            Value::Timestamp(v) => Expr::Literal(AstLiteral::QuotedString(
-                DateTime::<Utc>::from_utc(v, Utc).to_string(),
-            )),
-            Value::Time(v) => Expr::Literal(AstLiteral::QuotedString(v.to_string())),
+            Value::Date(v) => Expr::TypedString {
+                data_type: DataType::Date,
+                value: v.to_string(),
+            },
+            Value::Timestamp(v) => Expr::TypedString {
+                data_type: DataType::Timestamp,
+                value: DateTime::<Utc>::from_utc(v, Utc).to_string(),
+            },
+            Value::Time(v) => Expr::TypedString {
+                data_type: DataType::Time,
+                value: v.to_string(),
+            },
             Value::Interval(v) => match v {
                 Interval::Month(v) => Expr::Interval {
                     expr: Box::new(Expr::Literal(AstLiteral::Number(
@@ -104,12 +114,11 @@ impl TryFrom<Value> for Expr {
 
 #[cfg(test)]
 mod tests {
-
     use {
         crate::{
             ast::{AstLiteral, DateTimeField, Expr},
             data::Interval,
-            prelude::Value,
+            prelude::{DataType, Value},
         },
         bigdecimal::BigDecimal,
         bigdecimal::FromPrimitive,
@@ -183,22 +192,25 @@ mod tests {
         );
         assert_eq!(
             Value::Date(NaiveDate::from_ymd(2022, 11, 3)).try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(
-                "2022-11-03".to_owned()
-            )))
+            Ok(Expr::TypedString {
+                data_type: DataType::Date,
+                value: "2022-11-03".to_owned(),
+            })
         );
         assert_eq!(
             Value::Timestamp(NaiveDate::from_ymd(2022, 11, 3).and_hms_milli(8, 5, 30, 900))
                 .try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(
-                "2022-11-03 08:05:30.900 UTC".to_owned()
-            )))
+            Ok(Expr::TypedString {
+                data_type: DataType::Timestamp,
+                value: "2022-11-03 08:05:30.900 UTC".to_owned(),
+            }),
         );
         assert_eq!(
             Value::Time(NaiveTime::from_hms(20, 11, 59)).try_into(),
-            Ok(Expr::Literal(AstLiteral::QuotedString(
-                "20:11:59".to_owned()
-            )))
+            Ok(Expr::TypedString {
+                data_type: DataType::Time,
+                value: "20:11:59".to_owned()
+            }),
         );
         assert_eq!(
             Value::Interval(Interval::Month(1)).try_into(),
