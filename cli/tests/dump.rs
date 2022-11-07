@@ -56,13 +56,14 @@ async fn dump_and_import() {
          '[{ "foo": 100, "bar": [true, 0, [10.5, false] ] }, 10, 20]'
          );"#,
         "CREATE INDEX Foo_int ON Foo (int);",
+        "CREATE TABLE Bar AS SELECT N FROM SERIES(101);",
     ];
 
     for sql in sqls {
         source_glue.execute(sql).unwrap();
     }
 
-    let sql = "SELECT * FROM Foo;";
+    let sql = "SELECT * FROM Foo JOIN Bar;";
     let source_data = source_glue.execute(sql).unwrap();
 
     let source_storage = dump_database(source_glue.storage.unwrap(), dump_path.clone()).unwrap();
