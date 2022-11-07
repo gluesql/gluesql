@@ -26,7 +26,6 @@ async fn dump_and_import() {
             int INT,
             int128 INT128,
             uinti8 UINT8,
-            float FLOAT,
             text TEXT,
             bytea BYTEA,
             date DATE,
@@ -36,7 +35,6 @@ async fn dump_and_import() {
             uuid UUID,
             map MAP,
             list LIST,
-            decimal DECIMAL
          );",
         r#"INSERT INTO Foo
          VALUES (
@@ -47,7 +45,6 @@ async fn dump_and_import() {
          4,
          5,
          6,
-         7,
          'a',
          X'123456',
          DATE '2022-11-01',
@@ -56,8 +53,8 @@ async fn dump_and_import() {
          INTERVAL '1' DAY,
          '550e8400-e29b-41d4-a716-446655440000',
          '{"a": {"red": "apple", "blue": 1}, "b": 10}',
-         '[{ "foo": 100, "bar": [true, 0, [10.5, false] ] }, 10, 20]',
-         8);"#,
+         '[{ "foo": 100, "bar": [true, 0, [10.5, false] ] }, 10, 20]'
+         );"#,
         "CREATE INDEX Foo_int ON Foo (int);",
     ];
 
