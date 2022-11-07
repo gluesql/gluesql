@@ -16,6 +16,8 @@ impl TryFrom<Value> for Expr {
     type Error = Error;
 
     fn try_from(value: Value) -> Result<Self> {
+        const SECOND: i64 = 1_000_000;
+
         let expr = match value {
             Value::Bool(v) => Expr::Literal(AstLiteral::Boolean(v)),
             Value::I8(v) => Expr::Literal(AstLiteral::Number(
@@ -68,7 +70,7 @@ impl TryFrom<Value> for Expr {
                 Interval::Microsecond(v) => Expr::Interval {
                     expr: Box::new(Expr::Literal(AstLiteral::Number(
                         BigDecimal::from_i64(
-                            (v / 1000)
+                            (v / SECOND)
                                 .try_into()
                                 .map_err(|_| ValueToAstLiteralConversionFailure)?,
                         )
