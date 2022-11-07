@@ -1,5 +1,5 @@
 use {
-    super::ValueError::ValueToAstLiteralConversionFailure,
+    super::ValueError::ValueToExprConversionFailure,
     crate::{
         ast::AstLiteral,
         ast::{DateTimeField, Expr},
@@ -24,32 +24,29 @@ impl TryFrom<Value> for Expr {
         let expr = match value {
             Value::Bool(v) => Expr::Literal(AstLiteral::Boolean(v)),
             Value::I8(v) => Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_i8(v).ok_or(ValueToAstLiteralConversionFailure)?,
+                BigDecimal::from_i8(v).ok_or(ValueToExprConversionFailure)?,
             )),
             Value::I16(v) => Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_i16(v).ok_or(ValueToAstLiteralConversionFailure)?,
+                BigDecimal::from_i16(v).ok_or(ValueToExprConversionFailure)?,
             )),
             Value::I32(v) => Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_i32(v).ok_or(ValueToAstLiteralConversionFailure)?,
+                BigDecimal::from_i32(v).ok_or(ValueToExprConversionFailure)?,
             )),
             Value::I64(v) => Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_i64(v).ok_or(ValueToAstLiteralConversionFailure)?,
+                BigDecimal::from_i64(v).ok_or(ValueToExprConversionFailure)?,
             )),
             Value::I128(v) => Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_i128(v).ok_or(ValueToAstLiteralConversionFailure)?,
+                BigDecimal::from_i128(v).ok_or(ValueToExprConversionFailure)?,
             )),
             Value::U8(v) => Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_u8(v).ok_or(ValueToAstLiteralConversionFailure)?,
+                BigDecimal::from_u8(v).ok_or(ValueToExprConversionFailure)?,
             )),
             Value::F64(v) => Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_f64(v).ok_or(ValueToAstLiteralConversionFailure)?,
+                BigDecimal::from_f64(v).ok_or(ValueToExprConversionFailure)?,
             )),
             Value::Decimal(v) => Expr::Literal(AstLiteral::Number(
-                BigDecimal::from_f64(
-                    v.try_into()
-                        .map_err(|_| ValueToAstLiteralConversionFailure)?,
-                )
-                .ok_or(ValueToAstLiteralConversionFailure)?,
+                BigDecimal::from_f64(v.try_into().map_err(|_| ValueToExprConversionFailure)?)
+                    .ok_or(ValueToExprConversionFailure)?,
             )),
             Value::Str(v) => Expr::Literal(AstLiteral::QuotedString(v)),
             Value::Bytea(v) => Expr::Literal(AstLiteral::HexString(hex::encode(v))),
@@ -68,15 +65,14 @@ impl TryFrom<Value> for Expr {
             Value::Interval(v) => match v {
                 Interval::Month(v) => Expr::Interval {
                     expr: Box::new(Expr::Literal(AstLiteral::Number(
-                        BigDecimal::from_i32(v).ok_or(ValueToAstLiteralConversionFailure)?,
+                        BigDecimal::from_i32(v).ok_or(ValueToExprConversionFailure)?,
                     ))),
                     leading_field: Some(DateTimeField::Month),
                     last_field: None,
                 },
                 Interval::Microsecond(v) => Expr::Interval {
                     expr: Box::new(Expr::Literal(AstLiteral::Number(
-                        BigDecimal::from_i64(v / SECOND)
-                            .ok_or(ValueToAstLiteralConversionFailure)?,
+                        BigDecimal::from_i64(v / SECOND).ok_or(ValueToExprConversionFailure)?,
                     ))),
                     leading_field: Some(DateTimeField::Second),
                     last_field: None,
@@ -91,7 +87,7 @@ impl TryFrom<Value> for Expr {
                     .map(|(key, value)| value.try_into().map(|value| (key, value)))
                     .collect::<Result<Vec<(String, JsonValue)>>>()
                     .map(|v| JsonMap::from_iter(v).into())
-                    .map_err(|_| ValueToAstLiteralConversionFailure)?;
+                    .map_err(|_| ValueToExprConversionFailure)?;
 
                 Expr::Literal(AstLiteral::QuotedString(json.to_string()))
             }
@@ -101,7 +97,7 @@ impl TryFrom<Value> for Expr {
                     .map(|value| value.try_into())
                     .collect::<Result<Vec<JsonValue>>>()
                     .map(|v| v.into())
-                    .map_err(|_| ValueToAstLiteralConversionFailure)?;
+                    .map_err(|_| ValueToExprConversionFailure)?;
 
                 Expr::Literal(AstLiteral::QuotedString(json.to_string()))
             }
