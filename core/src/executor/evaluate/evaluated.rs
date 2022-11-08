@@ -212,7 +212,7 @@ impl<'a> Evaluated<'a> {
             Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
         };
 
-        value.validate_null(nullable.to_owned())?;
+        value.validate_null(nullable)?;
 
         Ok(value)
     }

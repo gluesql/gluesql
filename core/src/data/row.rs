@@ -87,8 +87,9 @@ impl Row {
                     .map(|(_, value)| value);
 
                 match (value, column_def.get_default(), nullable) {
-                    (Some(&expr), _, _) | (None, Some(expr), _) => evaluate_stateless(None, expr)?
-                        .try_into_value(data_type, nullable.to_owned()),
+                    (Some(&expr), _, _) | (None, Some(expr), _) => {
+                        evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
+                    }
                     (None, None, true) => Ok(Value::Null),
                     (None, None, false) => {
                         Err(RowError::LackOfRequiredColumn(def_name.to_owned()).into())
@@ -117,7 +118,7 @@ impl Row {
             } = column_def;
 
             value.validate_type(data_type)?;
-            value.validate_null(nullable.to_owned())?;
+            value.validate_null(*nullable)?;
         }
 
         Ok(())
