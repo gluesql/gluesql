@@ -43,7 +43,7 @@ jobs:
             --branch \
             --ignore-not-existing \
             --ignore "/*" \
-            --ignore "examples/*.rs" \
+            --ignore "pkg/rust/examples/*.rs" \
             --ignore "cli/src/{cli,helper,lib,main}.rs" \
             --excl-line "#\\[derive\\(" \
             -o ./coverage/lcov.info

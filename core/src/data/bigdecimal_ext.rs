@@ -7,6 +7,7 @@ pub trait BigDecimalExt {
     fn to_i64(&self) -> Option<i64>;
     fn to_i128(&self) -> Option<i128>;
     fn to_u8(&self) -> Option<u8>;
+    fn to_u16(&self) -> Option<u16>;
     fn to_f64(&self) -> Option<f64>;
 }
 
@@ -38,6 +39,10 @@ impl BigDecimalExt for BigDecimal {
     fn to_u8(&self) -> Option<u8> {
         self.is_integer()
             .then(|| bigdecimal::ToPrimitive::to_u8(self))?
+    }
+    fn to_u16(&self) -> Option<u16> {
+        self.is_integer()
+            .then(|| bigdecimal::ToPrimitive::to_u16(self))?
     }
     fn to_f64(&self) -> Option<f64> {
         bigdecimal::ToPrimitive::to_f64(self)

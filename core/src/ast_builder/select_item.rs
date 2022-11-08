@@ -9,34 +9,34 @@ use {
 };
 
 #[derive(Clone)]
-pub enum SelectItemNode {
+pub enum SelectItemNode<'a> {
     SelectItem(SelectItem),
-    Expr(ExprNode),
+    Expr(ExprNode<'a>),
     Text(String),
 }
 
-impl From<SelectItem> for SelectItemNode {
+impl<'a> From<SelectItem> for SelectItemNode<'a> {
     fn from(select_item: SelectItem) -> Self {
         Self::SelectItem(select_item)
     }
 }
 
-impl From<ExprNode> for SelectItemNode {
-    fn from(expr_node: ExprNode) -> Self {
+impl<'a> From<ExprNode<'a>> for SelectItemNode<'a> {
+    fn from(expr_node: ExprNode<'a>) -> Self {
         Self::Expr(expr_node)
     }
 }
 
-impl From<&str> for SelectItemNode {
+impl<'a> From<&str> for SelectItemNode<'a> {
     fn from(select_item: &str) -> Self {
         Self::Text(select_item.to_owned())
     }
 }
 
-impl TryFrom<SelectItemNode> for SelectItem {
+impl<'a> TryFrom<SelectItemNode<'a>> for SelectItem {
     type Error = Error;
 
-    fn try_from(select_item_node: SelectItemNode) -> Result<Self> {
+    fn try_from(select_item_node: SelectItemNode<'a>) -> Result<Self> {
         match select_item_node {
             SelectItemNode::SelectItem(select_item) => Ok(select_item),
             SelectItemNode::Text(select_item) => {

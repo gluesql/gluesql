@@ -1,13 +1,13 @@
 use {super::ExprNode, crate::ast_builder::QueryNode};
 
-pub fn exists<T: Into<QueryNode>>(query: T) -> ExprNode {
+pub fn exists<'a, T: Into<QueryNode<'a>>>(query: T) -> ExprNode<'a> {
     ExprNode::Exists {
         subquery: Box::new(query.into()),
         negated: false,
     }
 }
 
-pub fn not_exists<T: Into<QueryNode>>(query: T) -> ExprNode {
+pub fn not_exists<'a, T: Into<QueryNode<'a>>>(query: T) -> ExprNode<'a> {
     ExprNode::Exists {
         subquery: Box::new(query.into()),
         negated: true,

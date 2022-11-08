@@ -1,9 +1,6 @@
 use {
     gluesql_cli::dump_database,
-    gluesql_core::{
-        prelude::Glue,
-        store::{Store, Transaction},
-    },
+    gluesql_core::prelude::Glue,
     gluesql_sled_storage::{sled, SledStorage},
     std::{fs::File, io::Read, path::PathBuf},
 };
@@ -63,9 +60,6 @@ async fn dump_and_import() {
         source_glue.execute(sql).unwrap();
     }
 
-    let sql = "SELECT * FROM Foo JOIN Bar;";
-    let source_data = source_glue.execute(sql).unwrap();
-
     let source_storage = dump_database(source_glue.storage.unwrap(), dump_path.clone()).unwrap();
 
     let data_path = "tmp/target";
@@ -83,14 +77,17 @@ async fn dump_and_import() {
         target_glue.execute(sql).unwrap();
     }
 
+    let mut source_glue = Glue::new(source_storage);
+
+    // schemas should be identical
+    let sql = "SELECT OBJECT_TYPE, OBJECT_NAME FROM GLUE_OBJECTS";
+    let source_data = source_glue.execute(sql).unwrap();
     let target_data = target_glue.execute(sql).unwrap();
     assert_eq!(source_data, target_data);
 
-    let (source_storage, _) = source_storage.begin(true).await.unwrap();
-    let source_schemas = source_storage.fetch_all_schemas().await.unwrap();
-
-    let (target_storage, _) = target_glue.storage.unwrap().begin(true).await.unwrap();
-    let target_schemas = target_storage.fetch_all_schemas().await.unwrap();
-
-    assert_eq!(source_schemas, target_schemas);
+    // data should be identical
+    let sql = "SELECT * FROM Foo JOIN Bar;";
+    let source_data = source_glue.execute(sql).unwrap();
+    let target_data = target_glue.execute(sql).unwrap();
+    assert_eq!(source_data, target_data);
 }

@@ -26,13 +26,7 @@ pub enum AlterTableOperation {
 pub struct ColumnDef {
     pub name: String,
     pub data_type: DataType,
-    pub options: Vec<ColumnOptionDef>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ColumnOptionDef {
-    pub name: Option<String>,
-    pub option: ColumnOption,
+    pub options: Vec<ColumnOption>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -81,7 +75,7 @@ impl ToSql for ColumnDef {
         {
             let options = options
                 .iter()
-                .map(|ColumnOptionDef { option, .. }| option.to_sql())
+                .map(|option| option.to_sql())
                 .collect::<Vec<_>>()
                 .join(" ");
 
@@ -108,7 +102,7 @@ impl ToSql for ColumnOption {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::{AstLiteral, ColumnDef, ColumnOption, ColumnOptionDef, DataType, Expr, ToSql};
+    use crate::ast::{AstLiteral, ColumnDef, ColumnOption, DataType, Expr, ToSql};
 
     #[test]
     fn to_sql_column_def() {
@@ -117,10 +111,7 @@ mod tests {
             ColumnDef {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
-                options: vec![ColumnOptionDef {
-                    name: None,
-                    option: ColumnOption::Unique { is_primary: false }
-                }]
+                options: vec![ColumnOption::Unique { is_primary: false }]
             }
             .to_sql()
         );
@@ -130,10 +121,7 @@ mod tests {
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
-                options: vec![ColumnOptionDef {
-                    name: None,
-                    option: ColumnOption::Null
-                }]
+                options: vec![ColumnOption::Null]
             }
             .to_sql()
         );
@@ -144,14 +132,8 @@ mod tests {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
                 options: vec![
-                    ColumnOptionDef {
-                        name: None,
-                        option: ColumnOption::NotNull
-                    },
-                    ColumnOptionDef {
-                        name: None,
-                        option: ColumnOption::Unique { is_primary: true }
-                    }
+                    ColumnOption::NotNull,
+                    ColumnOption::Unique { is_primary: true }
                 ]
             }
             .to_sql()
@@ -162,10 +144,9 @@ mod tests {
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
-                options: vec![ColumnOptionDef {
-                    name: None,
-                    option: ColumnOption::Default(Expr::Literal(AstLiteral::Boolean(false)))
-                }]
+                options: vec![ColumnOption::Default(Expr::Literal(AstLiteral::Boolean(
+                    false
+                )))]
             }
             .to_sql()
         );

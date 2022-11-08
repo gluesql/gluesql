@@ -163,12 +163,34 @@ pub async fn fetch_relation_rows<'a>(
         TableFactor::Dictionary { dict, .. } => {
             let rows = {
                 #[derive(Iterator)]
-                enum Rows<I1, I2, I3> {
+                enum Rows<I1, I2, I3, I4> {
                     Tables(I1),
                     TableColumns(I2),
                     Indexes(I3),
+                    Objects(I4),
                 }
                 match dict {
+                    Dictionary::GlueObjects => {
+                        let schemas = storage.fetch_all_schemas().await?;
+                        let rows = schemas.into_iter().flat_map(|schema| {
+                            let table_rows = vec![Ok(Row(vec![
+                                Value::Str(schema.table_name),
+                                Value::Str("TABLE".to_owned()),
+                                Value::Timestamp(schema.created),
+                            ]))];
+                            let index_rows = schema.indexes.into_iter().map(|index| {
+                                Ok(Row(vec![
+                                    Value::Str(index.name.clone()),
+                                    Value::Str("INDEX".to_owned()),
+                                    Value::Timestamp(index.created),
+                                ]))
+                            });
+
+                            table_rows.into_iter().chain(index_rows)
+                        });
+
+                        Rows::Objects(rows)
+                    }
                     Dictionary::GlueTables => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas
@@ -201,9 +223,8 @@ pub async fn fetch_relation_rows<'a>(
                                 |ColumnDef { name, options, .. }| {
                                     options
                                         .iter()
-                                        .any(|column_option_def| {
-                                            column_option_def.option
-                                                == ColumnOption::Unique { is_primary: true }
+                                        .any(|option| {
+                                            option == &ColumnOption::Unique { is_primary: true }
                                         })
                                         .then_some(name)
                                 },
@@ -263,6 +284,11 @@ pub async fn fetch_relation_columns(
         TableFactor::Table { name, .. } => fetch_columns(storage, name).await,
         TableFactor::Series { .. } => Ok(vec!["N".to_owned()]),
         TableFactor::Dictionary { dict, .. } => match dict {
+            Dictionary::GlueObjects => Ok(vec![
+                "OBJECT_NAME".to_owned(),
+                "OBJECT_TYPE".to_owned(),
+                "CREATED".to_owned(),
+            ]),
             Dictionary::GlueTables => Ok(vec!["TABLE_NAME".to_owned()]),
             Dictionary::GlueTableColumns => Ok(vec![
                 "TABLE_NAME".to_owned(),

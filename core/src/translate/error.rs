@@ -122,4 +122,10 @@ pub enum TranslateError {
 
     #[error("unimplemented - compound object is supported: {0}")]
     CompoundObjectNotSupported(String),
+
+    #[error("cannot create index with reserved name: {0}")]
+    ReservedIndexName(String),
+
+    #[error("cannot drop primary index")]
+    CannotDropPrimary,
 }

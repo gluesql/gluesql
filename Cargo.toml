@@ -17,3 +17,8 @@ default-members = [
 	"test-suite",
 	"utils",
 ]
+
+# ref. https://github.com/rustwasm/wasm-pack/issues/1111
+# enable this only for gluesql-js build
+# [profile.release]
+# opt-level = "s"

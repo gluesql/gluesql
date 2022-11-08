@@ -12,12 +12,12 @@ use {
 };
 
 #[derive(Clone)]
-pub enum PrevNode {
-    Join(JoinNode),
-    HashJoin(HashJoinNode),
+pub enum PrevNode<'a> {
+    Join(Box<JoinNode<'a>>),
+    HashJoin(Box<HashJoinNode<'a>>),
 }
 
-impl PrevNode {
+impl<'a> PrevNode<'a> {
     fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
         match self {
             PrevNode::Join(node) => node.prebuild_for_constraint(),
@@ -26,37 +26,37 @@ impl PrevNode {
     }
 }
 
-impl From<JoinNode> for PrevNode {
-    fn from(node: JoinNode) -> Self {
-        PrevNode::Join(node)
+impl<'a> From<JoinNode<'a>> for PrevNode<'a> {
+    fn from(node: JoinNode<'a>) -> Self {
+        PrevNode::Join(Box::new(node))
     }
 }
 
-impl From<HashJoinNode> for PrevNode {
-    fn from(node: HashJoinNode) -> Self {
-        PrevNode::HashJoin(node)
+impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
+    fn from(node: HashJoinNode<'a>) -> Self {
+        PrevNode::HashJoin(Box::new(node))
     }
 }
 
 #[derive(Clone)]
-pub struct JoinConstraintNode {
-    prev_node: PrevNode,
-    expr: ExprNode,
+pub struct JoinConstraintNode<'a> {
+    prev_node: PrevNode<'a>,
+    expr: ExprNode<'a>,
 }
 
-impl JoinConstraintNode {
-    pub fn new<N: Into<PrevNode>, T: Into<ExprNode>>(prev_node: N, expr: T) -> Self {
+impl<'a> JoinConstraintNode<'a> {
+    pub fn new<N: Into<PrevNode<'a>>, T: Into<ExprNode<'a>>>(prev_node: N, expr: T) -> Self {
         Self {
             prev_node: prev_node.into(),
             expr: expr.into(),
         }
     }
 
-    pub fn join(self, table_name: &str) -> JoinNode {
+    pub fn join(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Inner)
     }
 
-    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode {
+    pub fn join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
             table_name.to_owned(),
@@ -65,11 +65,11 @@ impl JoinConstraintNode {
         )
     }
 
-    pub fn left_join(self, table_name: &str) -> JoinNode {
+    pub fn left_join(self, table_name: &str) -> JoinNode<'a> {
         JoinNode::new(self, table_name.to_owned(), None, JoinOperatorType::Left)
     }
 
-    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode {
+    pub fn left_join_as(self, table_name: &str, alias: &str) -> JoinNode<'a> {
         JoinNode::new(
             self,
             table_name.to_owned(),
@@ -78,32 +78,32 @@ impl JoinConstraintNode {
         )
     }
 
-    pub fn project<T: Into<SelectItemList>>(self, select_items: T) -> ProjectNode {
+    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn group_by<T: Into<ExprList>>(self, expr_list: T) -> GroupByNode {
+    pub fn group_by<T: Into<ExprList<'a>>>(self, expr_list: T) -> GroupByNode<'a> {
         GroupByNode::new(self, expr_list)
     }
 
-    pub fn offset<T: Into<ExprNode>>(self, expr: T) -> OffsetNode {
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
         OffsetNode::new(self, expr)
     }
 
-    pub fn limit<T: Into<ExprNode>>(self, expr: T) -> LimitNode {
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
         LimitNode::new(self, expr)
     }
 
-    pub fn filter<T: Into<ExprNode>>(self, expr: T) -> FilterNode {
+    pub fn filter<T: Into<ExprNode<'a>>>(self, expr: T) -> FilterNode<'a> {
         FilterNode::new(self, expr)
     }
 
-    pub fn order_by<T: Into<OrderByExprList>>(self, order_by_exprs: T) -> OrderByNode {
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 }
 
-impl Prebuild for JoinConstraintNode {
+impl<'a> Prebuild for JoinConstraintNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let JoinConstraintData {
             mut node_data,

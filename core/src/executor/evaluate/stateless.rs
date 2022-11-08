@@ -245,7 +245,7 @@ fn evaluate_function<'a>(
         Function::Floor(expr) => f::floor(name, eval(expr)?),
         Function::Radians(expr) => f::radians(name, eval(expr)?),
         Function::Degrees(expr) => f::degrees(name, eval(expr)?),
-        Function::Pi() => Ok(Value::F64(std::f64::consts::PI)),
+        Function::Pi() => Ok(Evaluated::from(Value::F64(std::f64::consts::PI))),
         Function::Exp(expr) => f::exp(name, eval(expr)?),
         Function::Log { antilog, base } => {
             let antilog = eval(antilog)?;
@@ -274,7 +274,7 @@ fn evaluate_function<'a>(
             let dividend = eval(dividend)?;
             let divisor = eval(divisor)?;
 
-            return dividend.modulo(&divisor);
+            dividend.modulo(&divisor)
         }
         Function::Gcd { left, right } => {
             let left = eval(left)?;
@@ -297,7 +297,7 @@ fn evaluate_function<'a>(
             f::unwrap(name, expr, selector)
         }
         Function::GenerateUuid() => Ok(f::generate_uuid()),
-        Function::Now() => Ok(Value::Timestamp(Utc::now().naive_utc())),
+        Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr)?;
             let format = eval(format)?;
@@ -339,6 +339,11 @@ fn evaluate_function<'a>(
             let expr = eval(expr)?;
             f::extract(field, expr)
         }
+        Function::ConcatWs { separator, exprs } => {
+            let separator = eval(separator)?;
+            let exprs = exprs.iter().map(eval).collect::<Result<Vec<_>>>()?;
+
+            f::concat_ws(name, separator, exprs)
+        }
     }
-    .map(Evaluated::from)
 }

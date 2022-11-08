@@ -1,5 +1,6 @@
 use {
-    crate::ast::{ColumnDef, ColumnOption, ColumnOptionDef, Expr, Statement, ToSql},
+    crate::ast::{ColumnDef, ColumnOption, Expr, Statement, ToSql},
+    chrono::NaiveDateTime,
     serde::{Deserialize, Serialize},
     std::{fmt::Debug, iter},
     strum_macros::Display,
@@ -18,6 +19,7 @@ pub struct SchemaIndex {
     pub name: String,
     pub expr: Expr,
     pub order: SchemaIndexOrd,
+    pub created: NaiveDateTime,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -25,6 +27,7 @@ pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,
     pub indexes: Vec<SchemaIndex>,
+    pub created: NaiveDateTime,
 }
 
 impl Schema {
@@ -58,37 +61,27 @@ impl Schema {
     }
 }
 
-pub trait ColumnDefExt {
-    fn is_nullable(&self) -> bool;
-
-    fn get_default(&self) -> Option<&Expr>;
-}
-
-impl ColumnDefExt for ColumnDef {
-    fn is_nullable(&self) -> bool {
+impl ColumnDef {
+    pub fn is_nullable(&self) -> bool {
         self.options
             .iter()
-            .any(|ColumnOptionDef { option, .. }| option == &ColumnOption::Null)
+            .any(|option| option == &ColumnOption::Null)
     }
 
-    fn get_default(&self) -> Option<&Expr> {
-        self.options
-            .iter()
-            .find_map(|ColumnOptionDef { option, .. }| match option {
-                ColumnOption::Default(expr) => Some(expr),
-                _ => None,
-            })
+    pub fn get_default(&self) -> Option<&Expr> {
+        self.options.iter().find_map(|option| match option {
+            ColumnOption::Default(expr) => Some(expr),
+            _ => None,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
-        ast::{
-            AstLiteral, ColumnDef,
-            ColumnOption::{self, Unique},
-            ColumnOptionDef, Expr,
-        },
+        ast::{AstLiteral, ColumnDef, ColumnOption, Expr},
+        chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         prelude::DataType,
     };
@@ -107,20 +100,15 @@ mod tests {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     options: vec![
-                        ColumnOptionDef {
-                            name: None,
-                            option: ColumnOption::Null,
-                        },
-                        ColumnOptionDef {
-                            name: None,
-                            option: ColumnOption::Default(Expr::Literal(AstLiteral::QuotedString(
-                                "glue".to_owned(),
-                            ))),
-                        },
+                        ColumnOption::Null,
+                        ColumnOption::Default(Expr::Literal(AstLiteral::QuotedString(
+                            "glue".to_owned(),
+                        ))),
                     ],
                 },
             ],
             indexes: Vec::new(),
+            created: Utc::now().naive_utc(),
         };
 
         assert_eq!(
@@ -136,12 +124,10 @@ mod tests {
             column_defs: vec![ColumnDef {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
-                options: vec![ColumnOptionDef {
-                    name: None,
-                    option: Unique { is_primary: true },
-                }],
+                options: vec![ColumnOption::Unique { is_primary: true }],
             }],
             indexes: Vec::new(),
+            created: Utc::now().naive_utc(),
         };
 
         assert_eq!(schema.to_ddl(), "CREATE TABLE User (id INT PRIMARY KEY);");
@@ -168,13 +154,16 @@ mod tests {
                     name: "User_id".to_owned(),
                     expr: Expr::Identifier("id".to_owned()),
                     order: SchemaIndexOrd::Both,
+                    created: Utc::now().naive_utc(),
                 },
                 SchemaIndex {
                     name: "User_name".to_owned(),
                     expr: Expr::Identifier("name".to_owned()),
                     order: SchemaIndexOrd::Both,
+                    created: Utc::now().naive_utc(),
                 },
             ],
+            created: Utc::now().naive_utc(),
         };
 
         assert_eq!(

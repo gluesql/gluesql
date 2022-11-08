@@ -1,23 +1,27 @@
 use super::ExprNode;
 
-impl ExprNode {
-    pub fn case(self) -> CaseNode {
+impl<'a> ExprNode<'a> {
+    pub fn case(self) -> CaseNode<'a> {
         CaseNode {
             operand: Some(Box::new(self)),
         }
     }
 }
 
-pub fn case() -> CaseNode {
+pub fn case() -> CaseNode<'static> {
     CaseNode { operand: None }
 }
 
-pub struct CaseNode {
-    operand: Option<Box<ExprNode>>,
+pub struct CaseNode<'a> {
+    operand: Option<Box<ExprNode<'a>>>,
 }
 
-impl CaseNode {
-    pub fn when_then<W: Into<ExprNode>, T: Into<ExprNode>>(self, when: W, then: T) -> WhenThenNode {
+impl<'a> CaseNode<'a> {
+    pub fn when_then<W: Into<ExprNode<'a>>, T: Into<ExprNode<'a>>>(
+        self,
+        when: W,
+        then: T,
+    ) -> WhenThenNode<'a> {
         WhenThenNode {
             prev_node: self,
             when_then: vec![(when.into(), then.into())],
@@ -25,18 +29,22 @@ impl CaseNode {
     }
 }
 
-pub struct WhenThenNode {
-    prev_node: CaseNode,
-    when_then: Vec<(ExprNode, ExprNode)>,
+pub struct WhenThenNode<'a> {
+    prev_node: CaseNode<'a>,
+    when_then: Vec<(ExprNode<'a>, ExprNode<'a>)>,
 }
 
-impl WhenThenNode {
-    pub fn when_then<W: Into<ExprNode>, T: Into<ExprNode>>(mut self, when: W, then: T) -> Self {
+impl<'a> WhenThenNode<'a> {
+    pub fn when_then<W: Into<ExprNode<'a>>, T: Into<ExprNode<'a>>>(
+        mut self,
+        when: W,
+        then: T,
+    ) -> Self {
         self.when_then.push((when.into(), then.into()));
         self
     }
 
-    pub fn or_else<T: Into<ExprNode>>(self, else_result: T) -> ExprNode {
+    pub fn or_else<T: Into<ExprNode<'a>>>(self, else_result: T) -> ExprNode<'a> {
         ExprNode::Case {
             operand: self.prev_node.operand,
             when_then: self.when_then,
@@ -44,7 +52,7 @@ impl WhenThenNode {
         }
     }
 
-    pub fn end(self) -> ExprNode {
+    pub fn end(self) -> ExprNode<'a> {
         ExprNode::Case {
             operand: self.prev_node.operand,
             when_then: self.when_then,
