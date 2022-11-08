@@ -153,7 +153,7 @@ impl ToSql for Expr {
             },
             Expr::Nested(expr) => format!("({})", expr.to_sql()),
             Expr::Literal(s) => s.to_sql(),
-            Expr::TypedString { data_type, value } => format!("{data_type} \"{value}\""),
+            Expr::TypedString { data_type, value } => format!("{data_type} '{value}'"),
             Expr::Case {
                 operand,
                 when_then,
@@ -274,7 +274,7 @@ mod tests {
         assert_eq!("id IS NOT NULL", Expr::IsNotNull(id_expr).to_sql());
 
         assert_eq!(
-            r#"INT "1""#,
+            "INT '1'",
             Expr::TypedString {
                 data_type: DataType::Int,
                 value: "1".to_owned()
@@ -310,7 +310,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"id LIKE "%abc""#,
+            "id LIKE '%abc'",
             Expr::Like {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
@@ -319,7 +319,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            r#"id NOT LIKE "%abc""#,
+            "id NOT LIKE '%abc'",
             Expr::Like {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
@@ -329,7 +329,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"id ILIKE "%abc_""#,
+            "id ILIKE '%abc_'",
             Expr::ILike {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: false,
@@ -338,7 +338,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            r#"id NOT ILIKE "%abc_""#,
+            "id NOT ILIKE '%abc_'",
             Expr::ILike {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 negated: true,
@@ -348,7 +348,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"id IN ("a", "b", "c")"#,
+            "id IN ('a', 'b', 'c')",
             Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 list: vec![
@@ -362,7 +362,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"id NOT IN ("a", "b", "c")"#,
+            "id NOT IN ('a', 'b', 'c')",
             Expr::InList {
                 expr: Box::new(Expr::Identifier("id".to_owned())),
                 list: vec![
@@ -511,13 +511,11 @@ mod tests {
 
         assert_eq!(
             trim(
-                r#"                                                                           
-                CASE id
-                  WHEN 1 THEN "a"
-                  WHEN 2 THEN "b"
-                  ELSE "c"
-                END
-                "#,
+                "CASE id
+                  WHEN 1 THEN 'a'
+                  WHEN 2 THEN 'b'
+                  ELSE 'c'
+                END",
             ),
             Expr::Case {
                 operand: Some(Box::new(Expr::Identifier("id".to_owned()))),
@@ -564,7 +562,7 @@ mod tests {
             .to_sql()
         );
         assert_eq!(
-            r#"INTERVAL "3-5" HOUR TO MINUTE"#,
+            "INTERVAL '3-5' HOUR TO MINUTE",
             &Expr::Interval {
                 expr: Box::new(Expr::Literal(AstLiteral::QuotedString("3-5".to_owned()))),
                 leading_field: Some(DateTimeField::Hour),

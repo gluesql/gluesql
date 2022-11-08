@@ -1,8 +1,8 @@
 use {
-    crate::ast::{ColumnDef, ColumnOption, Expr},
+    crate::ast::{ColumnDef, ColumnOption, Expr, Statement, ToSql},
     chrono::NaiveDateTime,
     serde::{Deserialize, Serialize},
-    std::fmt::Debug,
+    std::{fmt::Debug, iter},
     strum_macros::Display,
 };
 
@@ -22,12 +22,43 @@ pub struct SchemaIndex {
     pub created: NaiveDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,
     pub indexes: Vec<SchemaIndex>,
     pub created: NaiveDateTime,
+}
+
+impl Schema {
+    pub fn to_ddl(self) -> String {
+        let Schema {
+            table_name,
+            column_defs: columns,
+            indexes,
+            ..
+        } = self;
+
+        let create_table = Statement::CreateTable {
+            if_not_exists: false,
+            name: table_name.clone(),
+            columns,
+            source: None,
+        }
+        .to_sql();
+
+        let create_indexes = indexes.iter().map(|SchemaIndex { name, expr, .. }| {
+            let expr = expr.to_sql();
+            let table_name = &table_name;
+
+            format!("CREATE INDEX {name} ON {table_name} ({expr});")
+        });
+
+        iter::once(create_table)
+            .chain(create_indexes)
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
 }
 
 impl ColumnDef {
@@ -42,5 +73,104 @@ impl ColumnDef {
             ColumnOption::Default(expr) => Some(expr),
             _ => None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{
+        ast::{AstLiteral, ColumnDef, ColumnOption, Expr},
+        chrono::Utc,
+        data::{Schema, SchemaIndex, SchemaIndexOrd},
+        prelude::DataType,
+    };
+
+    #[test]
+    fn table_basic() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    options: Vec::new(),
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    options: vec![
+                        ColumnOption::Null,
+                        ColumnOption::Default(Expr::Literal(AstLiteral::QuotedString(
+                            "glue".to_owned(),
+                        ))),
+                    ],
+                },
+            ],
+            indexes: Vec::new(),
+            created: Utc::now().naive_utc(),
+        };
+
+        assert_eq!(
+            schema.to_ddl(),
+            "CREATE TABLE User (id INT, name TEXT NULL DEFAULT 'glue');"
+        )
+    }
+
+    #[test]
+    fn table_primary() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: vec![ColumnDef {
+                name: "id".to_owned(),
+                data_type: DataType::Int,
+                options: vec![ColumnOption::Unique { is_primary: true }],
+            }],
+            indexes: Vec::new(),
+            created: Utc::now().naive_utc(),
+        };
+
+        assert_eq!(schema.to_ddl(), "CREATE TABLE User (id INT PRIMARY KEY);");
+    }
+
+    #[test]
+    fn table_with_index() {
+        let schema = Schema {
+            table_name: "User".to_owned(),
+            column_defs: vec![
+                ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Int,
+                    options: Vec::new(),
+                },
+                ColumnDef {
+                    name: "name".to_owned(),
+                    data_type: DataType::Text,
+                    options: Vec::new(),
+                },
+            ],
+            indexes: vec![
+                SchemaIndex {
+                    name: "User_id".to_owned(),
+                    expr: Expr::Identifier("id".to_owned()),
+                    order: SchemaIndexOrd::Both,
+                    created: Utc::now().naive_utc(),
+                },
+                SchemaIndex {
+                    name: "User_name".to_owned(),
+                    expr: Expr::Identifier("name".to_owned()),
+                    order: SchemaIndexOrd::Both,
+                    created: Utc::now().naive_utc(),
+                },
+            ],
+            created: Utc::now().naive_utc(),
+        };
+
+        assert_eq!(
+            schema.to_ddl(),
+            "CREATE TABLE User (id INT, name TEXT);
+CREATE INDEX User_id ON User (id);
+CREATE INDEX User_name ON User (name);"
+        );
     }
 }
