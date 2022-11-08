@@ -26,15 +26,12 @@ pub enum AlterTableOperation {
 pub struct ColumnDef {
     pub name: String,
     pub data_type: DataType,
+    pub nullable: bool,
     pub options: Vec<ColumnOption>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ColumnOption {
-    /// `NULL`
-    Null,
-    /// `NOT NULL`
-    NotNull,
     /// `DEFAULT <restricted-expr>`
     Default(Expr),
     /// `{ PRIMARY KEY | UNIQUE }`
@@ -70,16 +67,22 @@ impl ToSql for ColumnDef {
         let ColumnDef {
             name,
             data_type,
+            nullable,
             options,
         } = self;
         {
+            let nullable = match nullable {
+                true => "NULL",
+                false => "NOT NULL",
+            };
+
             let options = options
                 .iter()
                 .map(|option| option.to_sql())
                 .collect::<Vec<_>>()
                 .join(" ");
 
-            format!("{name} {data_type} {options}")
+            format!("{name} {data_type} {nullable} {options}")
                 .trim_end()
                 .to_owned()
         }
@@ -89,8 +92,6 @@ impl ToSql for ColumnDef {
 impl ToSql for ColumnOption {
     fn to_sql(&self) -> String {
         match self {
-            ColumnOption::Null => "NULL".to_owned(),
-            ColumnOption::NotNull => "NOT NULL".to_owned(),
             ColumnOption::Default(expr) => format!("DEFAULT {}", expr.to_sql()),
             ColumnOption::Unique { is_primary } => match is_primary {
                 true => "PRIMARY KEY".to_owned(),
@@ -107,10 +108,11 @@ mod tests {
     #[test]
     fn to_sql_column_def() {
         assert_eq!(
-            "name TEXT UNIQUE",
+            "name TEXT NOT NULL UNIQUE",
             ColumnDef {
                 name: "name".to_owned(),
                 data_type: DataType::Text,
+                nullable: false,
                 options: vec![ColumnOption::Unique { is_primary: false }]
             }
             .to_sql()
@@ -121,7 +123,8 @@ mod tests {
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
-                options: vec![ColumnOption::Null]
+                nullable: true,
+                options: Vec::new()
             }
             .to_sql()
         );
@@ -131,19 +134,18 @@ mod tests {
             ColumnDef {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
-                options: vec![
-                    ColumnOption::NotNull,
-                    ColumnOption::Unique { is_primary: true }
-                ]
+                nullable: false,
+                options: vec![ColumnOption::Unique { is_primary: true }]
             }
             .to_sql()
         );
 
         assert_eq!(
-            "accepted BOOLEAN DEFAULT FALSE",
+            "accepted BOOLEAN NOT NULL DEFAULT FALSE",
             ColumnDef {
                 name: "accepted".to_owned(),
                 data_type: DataType::Boolean,
+                nullable: false,
                 options: vec![ColumnOption::Default(Expr::Literal(AstLiteral::Boolean(
                     false
                 )))]

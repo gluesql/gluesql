@@ -80,8 +80,11 @@ impl<'a> Update<'a> {
             None => Ok(None),
             Some(assignment) => {
                 let Assignment { value, .. } = &assignment;
-                let ColumnDef { data_type, .. } = column_def;
-                let nullable = column_def.is_nullable();
+                let ColumnDef {
+                    data_type,
+                    nullable,
+                    ..
+                } = column_def;
 
                 let value = match evaluate(self.storage, context, None, value).await? {
                     Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
@@ -91,7 +94,7 @@ impl<'a> Update<'a> {
                     }
                 };
 
-                value.validate_null(nullable)?;
+                value.validate_null(*nullable)?;
 
                 Ok(Some(value))
             }

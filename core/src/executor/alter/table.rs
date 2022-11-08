@@ -1,7 +1,7 @@
 use {
     super::{validate, AlterError},
     crate::{
-        ast::{ColumnDef, ColumnOption, Query, SetExpr, TableFactor, Values},
+        ast::{ColumnDef, Query, SetExpr, TableFactor, Values},
         data::{Schema, TableError},
         executor::{evaluate_stateless, select::select},
         prelude::{DataType, Value},
@@ -42,7 +42,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         let column_def = ColumnDef {
                             name: "N".into(),
                             data_type: DataType::Int,
-                            options: vec![ColumnOption::NotNull],
+                            nullable: false,
+                            options: Vec::new(),
                         };
 
                         vec![column_def]
@@ -91,7 +92,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
                         .map(|(i, data_type)| ColumnDef {
                             name: format!("column{}", i + 1),
                             data_type,
-                            options: vec![ColumnOption::Null],
+                            nullable: true,
+                            options: Vec::new(),
                         })
                         .collect::<Vec<_>>();
 

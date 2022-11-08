@@ -48,6 +48,7 @@ test_case!(alter_table_add_drop, async move {
             Err(AlterTableError::DefaultValueRequired(ColumnDef {
                 name: "amount".to_owned(),
                 data_type: DataType::Int,
+                nullable: false,
                 options: vec![],
             })
             .into()),

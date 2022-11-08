@@ -171,12 +171,16 @@ impl AlterTable for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let ColumnDef {
-                data_type, options, ..
+                data_type,
+                nullable,
+                options,
+                ..
             } = column_defs[i].clone();
 
             let column_def = ColumnDef {
                 name: new_column_name.to_owned(),
                 data_type,
+                nullable,
                 options,
             };
             let column_defs = Vector::from(column_defs).update(i, column_def).into();
@@ -253,8 +257,12 @@ impl AlterTable for SledStorage {
                     .map_err(ConflictableTransactionError::Abort);
             }
 
-            let ColumnDef { data_type, .. } = column_def;
-            let nullable = column_def.is_nullable();
+            let ColumnDef {
+                data_type,
+                nullable,
+                ..
+            } = column_def;
+
             let default = column_def.get_default();
             let value = match (default, nullable) {
                 (Some(expr), _) => {
@@ -262,7 +270,7 @@ impl AlterTable for SledStorage {
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated
-                        .try_into_value(data_type, nullable)
+                        .try_into_value(data_type, *nullable)
                         .map_err(ConflictableTransactionError::Abort)?
                 }
                 (None, true) => Value::Null,

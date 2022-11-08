@@ -63,14 +63,18 @@ impl MemoryStorage {
             return Err(AlterTableError::AddingColumnAlreadyExists(adding_column).into());
         }
 
-        let ColumnDef { data_type, .. } = column_def;
-        let nullable = column_def.is_nullable();
+        let ColumnDef {
+            data_type,
+            nullable,
+            ..
+        } = column_def;
+
         let default = column_def.get_default();
         let value = match (default, nullable) {
             (Some(expr), _) => {
                 let evaluated = gluesql_core::executor::evaluate_stateless(None, expr)?;
 
-                evaluated.try_into_value(data_type, nullable)?
+                evaluated.try_into_value(data_type, *nullable)?
             }
             (None, true) => Value::Null,
             (None, false) => {

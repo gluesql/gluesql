@@ -62,12 +62,6 @@ impl Schema {
 }
 
 impl ColumnDef {
-    pub fn is_nullable(&self) -> bool {
-        self.options
-            .iter()
-            .any(|option| option == &ColumnOption::Null)
-    }
-
     pub fn get_default(&self) -> Option<&Expr> {
         self.options.iter().find_map(|option| match option {
             ColumnOption::Default(expr) => Some(expr),
@@ -94,17 +88,16 @@ mod tests {
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Int,
+                    nullable: false,
                     options: Vec::new(),
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
-                    options: vec![
-                        ColumnOption::Null,
-                        ColumnOption::Default(Expr::Literal(AstLiteral::QuotedString(
-                            "glue".to_owned(),
-                        ))),
-                    ],
+                    nullable: true,
+                    options: vec![ColumnOption::Default(Expr::Literal(
+                        AstLiteral::QuotedString("glue".to_owned()),
+                    ))],
                 },
             ],
             indexes: Vec::new(),
@@ -113,7 +106,7 @@ mod tests {
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE User (id INT, name TEXT NULL DEFAULT 'glue');"
+            "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');"
         )
     }
 
@@ -124,13 +117,17 @@ mod tests {
             column_defs: vec![ColumnDef {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
+                nullable: false,
                 options: vec![ColumnOption::Unique { is_primary: true }],
             }],
             indexes: Vec::new(),
             created: Utc::now().naive_utc(),
         };
 
-        assert_eq!(schema.to_ddl(), "CREATE TABLE User (id INT PRIMARY KEY);");
+        assert_eq!(
+            schema.to_ddl(),
+            "CREATE TABLE User (id INT NOT NULL PRIMARY KEY);"
+        );
     }
 
     #[test]
@@ -141,11 +138,13 @@ mod tests {
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Int,
+                    nullable: false,
                     options: Vec::new(),
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
+                    nullable: false,
                     options: Vec::new(),
                 },
             ],
@@ -168,7 +167,7 @@ mod tests {
 
         assert_eq!(
             schema.to_ddl(),
-            "CREATE TABLE User (id INT, name TEXT);
+            "CREATE TABLE User (id INT NOT NULL, name TEXT NOT NULL);
 CREATE INDEX User_id ON User (id);
 CREATE INDEX User_name ON User (name);"
         );
