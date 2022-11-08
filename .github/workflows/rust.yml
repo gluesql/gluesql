@@ -21,7 +21,7 @@ jobs:
           profile: minimal
           default: true
           components: clippy
-      - run: cargo clippy -- -D warnings
+      - run: cargo clippy --all-targets -- -D warnings
 
   clippy_core:
     name: Clippy (core) - per Powerset Features
@@ -86,6 +86,7 @@ jobs:
       - run: |
           cargo run --package gluesql --example hello_world
           cargo run --package gluesql --example api_usage
+          cargo run --package gluesql --example memory_storage_usage
           cargo run --package gluesql --example sled_multi_threaded
           cargo run --package gluesql --example using_config
 
