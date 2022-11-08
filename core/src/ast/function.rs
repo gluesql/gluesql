@@ -38,6 +38,10 @@ pub enum Function {
     },
     Ceil(Expr),
     Concat(Vec<Expr>),
+    ConcatWs {
+        separator: Expr,
+        exprs: Vec<Expr>,
+    },
     IfNull {
         expr: Expr,
         then: Expr,
@@ -179,6 +183,14 @@ impl ToSql for Function {
                     .collect::<Vec<_>>()
                     .join(", ");
                 format!("CONCAT({items})")
+            }
+            Function::ConcatWs { separator, exprs } => {
+                let exprs = exprs
+                    .iter()
+                    .map(ToSql::to_sql)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("CONCAT_WS({}, {})", separator.to_sql(), exprs)
             }
             Function::IfNull { expr, then } => {
                 format!("IFNULL({}, {})", expr.to_sql(), then.to_sql())
@@ -459,6 +471,19 @@ mod tests {
                 Expr::Identifier("tac".to_owned()),
                 Expr::Identifier("toe".to_owned())
             ])))
+            .to_sql()
+        );
+
+        assert_eq!(
+            "CONCAT_WS(-, Tic, tac, toe)",
+            &Expr::Function(Box::new(Function::ConcatWs {
+                separator: Expr::Identifier("-".to_owned()),
+                exprs: vec![
+                    Expr::Identifier("Tic".to_owned()),
+                    Expr::Identifier("tac".to_owned()),
+                    Expr::Identifier("toe".to_owned())
+                ]
+            }))
             .to_sql()
         );
 

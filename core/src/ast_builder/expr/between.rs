@@ -1,6 +1,6 @@
 use super::ExprNode;
 
-impl ExprNode {
+impl<'a> ExprNode<'a> {
     pub fn between<T: Into<Self>, U: Into<Self>>(self, low: T, high: U) -> Self {
         Self::Between {
             expr: Box::new(self),

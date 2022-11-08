@@ -25,7 +25,7 @@ impl TableNode {
         SelectNode::new(self.table_name, None)
     }
 
-    pub fn delete(self) -> DeleteNode {
+    pub fn delete(self) -> DeleteNode<'static> {
         DeleteNode::new(self.table_name)
     }
 
@@ -35,7 +35,11 @@ impl TableNode {
     }
 
     #[cfg(feature = "index")]
-    pub fn create_index<T: Into<OrderByExprNode>>(self, name: &str, column: T) -> CreateIndexNode {
+    pub fn create_index<'a, T: Into<OrderByExprNode<'a>>>(
+        self,
+        name: &str,
+        column: T,
+    ) -> CreateIndexNode<'a> {
         CreateIndexNode::new(self.table_name, name.to_owned(), column.into())
     }
 
@@ -64,7 +68,7 @@ impl TableNode {
         DropTableNode::new(self.table_name, true)
     }
 
-    pub fn update(self) -> UpdateNode {
+    pub fn update(self) -> UpdateNode<'static> {
         UpdateNode::new(self.table_name)
     }
 

@@ -9,39 +9,39 @@ use {
 };
 
 #[derive(Clone)]
-pub enum SelectItemList {
+pub enum SelectItemList<'a> {
     Text(String),
-    SelectItems(Vec<SelectItemNode>),
+    SelectItems(Vec<SelectItemNode<'a>>),
 }
 
-impl From<&str> for SelectItemList {
+impl<'a> From<&str> for SelectItemList<'a> {
     fn from(exprs: &str) -> Self {
         SelectItemList::Text(exprs.to_owned())
     }
 }
 
-impl From<Vec<&str>> for SelectItemList {
+impl<'a> From<Vec<&str>> for SelectItemList<'a> {
     fn from(select_items: Vec<&str>) -> Self {
         SelectItemList::SelectItems(select_items.into_iter().map(Into::into).collect())
     }
 }
 
-impl From<ExprNode> for SelectItemList {
-    fn from(expr_node: ExprNode) -> Self {
+impl<'a> From<ExprNode<'a>> for SelectItemList<'a> {
+    fn from(expr_node: ExprNode<'a>) -> Self {
         SelectItemList::SelectItems(vec![expr_node.into()])
     }
 }
 
-impl From<Vec<ExprNode>> for SelectItemList {
-    fn from(expr_nodes: Vec<ExprNode>) -> Self {
+impl<'a> From<Vec<ExprNode<'a>>> for SelectItemList<'a> {
+    fn from(expr_nodes: Vec<ExprNode<'a>>) -> Self {
         SelectItemList::SelectItems(expr_nodes.into_iter().map(Into::into).collect())
     }
 }
 
-impl TryFrom<SelectItemList> for Vec<SelectItem> {
+impl<'a> TryFrom<SelectItemList<'a>> for Vec<SelectItem> {
     type Error = Error;
 
-    fn try_from(select_items: SelectItemList) -> Result<Self> {
+    fn try_from(select_items: SelectItemList<'a>) -> Result<Self> {
         match select_items {
             SelectItemList::Text(items) => parse_select_items(items)?
                 .iter()

@@ -86,6 +86,14 @@ test_case!(cast_literal, async move {
             Err(ValueError::LiteralCastToUnsignedInt8Failed("-1".to_owned()).into()),
         ),
         (
+            r#"SELECT CAST("foo" AS UINT16) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastFromTextToUint16Failed("foo".to_owned()).into()),
+        ),
+        (
+            r#"SELECT CAST(-1 AS UINT16) AS cast FROM Item"#,
+            Err(ValueError::LiteralCastToUint16Failed("-1".to_owned()).into()),
+        ),
+        (
             r#"SELECT CAST("1.1" AS FLOAT) AS cast FROM Item"#,
             Ok(select!(cast F64; 1.1)),
         ),

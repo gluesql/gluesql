@@ -1,9 +1,6 @@
 use {
     crate::command::{SetOption, ShowOption},
-    gluesql_core::{
-        ast::ToSql,
-        prelude::{Payload, PayloadVariable},
-    },
+    gluesql_core::prelude::{Payload, PayloadVariable},
     std::{
         fmt::Display,
         fs::File,
@@ -105,6 +102,14 @@ impl<'a, W: Write> Print<W> {
         };
 
         match payload {
+            Payload::Create => self.write("Table created")?,
+            Payload::DropTable => self.write("Table dropped")?,
+            Payload::AlterTable => self.write("Table altered")?,
+            Payload::CreateIndex => self.write("Index created")?,
+            Payload::DropIndex => self.write("Index dropped")?,
+            Payload::Commit => self.write("Commit completed")?,
+            Payload::Rollback => self.write("Rollback completed")?,
+            Payload::StartTransaction => self.write("Transaction started")?,
             Payload::Insert(n) => affected(*n, "inserted")?,
             Payload::Delete(n) => affected(*n, "deleted")?,
             Payload::Update(n) => affected(*n, "updated")?,
@@ -121,18 +126,6 @@ impl<'a, W: Write> Print<W> {
                 let mut table = self.get_table(vec!["Field", "Type"]);
                 for (field, field_type) in columns {
                     table.add_record([field, &field_type.to_string()]);
-                }
-                let table = self.build_table(table);
-                self.write(table)?;
-            }
-            Payload::ShowIndexes(indexes) => {
-                let mut table = self.get_table(vec!["Index Name", "Order", "Description"]);
-                for index in indexes {
-                    table.add_record([
-                        index.name.to_owned(),
-                        index.order.to_string(),
-                        index.expr.to_sql(),
-                    ]);
                 }
                 let table = self.build_table(table);
                 self.write(table)?;
@@ -179,7 +172,6 @@ impl<'a, W: Write> Print<W> {
                     }
                 }
             }
-            _ => {}
         };
 
         Ok(())
@@ -262,10 +254,6 @@ mod tests {
     use {
         super::Print,
         crate::command::{SetOption, ShowOption},
-        gluesql_core::{
-            ast::{BinaryOperator, Expr},
-            data::{SchemaIndex, SchemaIndexOrd},
-        },
     };
 
     #[test]
@@ -323,6 +311,14 @@ mod tests {
             };
         }
 
+        test!(&Payload::Create, "Table created");
+        test!(&Payload::DropTable, "Table dropped");
+        test!(&Payload::AlterTable, "Table altered");
+        test!(&Payload::CreateIndex, "Index created");
+        test!(&Payload::DropIndex, "Index dropped");
+        test!(&Payload::Commit, "Commit completed");
+        test!(&Payload::Rollback, "Rollback completed");
+        test!(&Payload::StartTransaction, "Transaction started");
         test!(&Payload::Insert(0), "0 row inserted");
         test!(&Payload::Insert(1), "1 row inserted");
         test!(&Payload::Insert(7), "7 rows inserted");
@@ -424,36 +420,6 @@ mod tests {
 | 3  | bas   | FALSE |
 | 4  | lim   | TRUE  |
 | 5  | kim   | TRUE  |"
-        );
-
-        test!(
-            &Payload::ShowIndexes(vec![
-                SchemaIndex {
-                    name: "id_ndx".to_owned(),
-                    order: SchemaIndexOrd::Asc,
-                    expr: Expr::Identifier("id".to_owned())
-                },
-                SchemaIndex {
-                    name: "name_ndx".to_owned(),
-                    order: SchemaIndexOrd::Desc,
-                    expr: Expr::Identifier("name".to_owned())
-                },
-                SchemaIndex {
-                    name: "expr_ndx".to_owned(),
-                    order: SchemaIndexOrd::Both,
-                    expr: Expr::BinaryOp {
-                        left: Box::new(Expr::Identifier("expr1".to_owned())),
-                        op: BinaryOperator::Minus,
-                        right: Box::new(Expr::Identifier("expr2".to_owned()))
-                    }
-                }
-            ],),
-            "
-| Index Name | Order | Description   |
-|------------|-------|---------------|
-| id_ndx     | ASC   | id            |
-| name_ndx   | DESC  | name          |
-| expr_ndx   | BOTH  | expr1 - expr2 |"
         );
 
         test!(

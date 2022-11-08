@@ -29,79 +29,97 @@ use {
     bigdecimal::BigDecimal,
     function::FunctionNode,
     in_list::InListNode,
+    std::borrow::Cow,
 };
 
 #[derive(Clone)]
-pub enum ExprNode {
-    Expr(Expr),
-    SqlExpr(String),
-    Identifier(String),
-    CompoundIdentifier {
-        alias: String,
-        ident: String,
+pub enum ExprNode<'a> {
+    Expr(Cow<'a, Expr>),
+    SqlExpr(Cow<'a, str>),
+    Identifier(Cow<'a, str>),
+    QuotedString(Cow<'a, str>),
+    TypedString {
+        data_type: DataType,
+        value: Cow<'a, str>,
     },
     Between {
-        expr: Box<ExprNode>,
+        expr: Box<ExprNode<'a>>,
         negated: bool,
-        low: Box<ExprNode>,
-        high: Box<ExprNode>,
+        low: Box<ExprNode<'a>>,
+        high: Box<ExprNode<'a>>,
     },
     Like {
-        expr: Box<ExprNode>,
+        expr: Box<ExprNode<'a>>,
         negated: bool,
-        pattern: Box<ExprNode>,
+        pattern: Box<ExprNode<'a>>,
     },
     ILike {
-        expr: Box<ExprNode>,
+        expr: Box<ExprNode<'a>>,
         negated: bool,
-        pattern: Box<ExprNode>,
+        pattern: Box<ExprNode<'a>>,
     },
     BinaryOp {
-        left: Box<ExprNode>,
+        left: Box<ExprNode<'a>>,
         op: BinaryOperator,
-        right: Box<ExprNode>,
+        right: Box<ExprNode<'a>>,
     },
     UnaryOp {
         op: UnaryOperator,
-        expr: Box<ExprNode>,
+        expr: Box<ExprNode<'a>>,
     },
-    IsNull(Box<ExprNode>),
-    IsNotNull(Box<ExprNode>),
+    IsNull(Box<ExprNode<'a>>),
+    IsNotNull(Box<ExprNode<'a>>),
     InList {
-        expr: Box<ExprNode>,
-        list: Box<InListNode>,
+        expr: Box<ExprNode<'a>>,
+        list: Box<InListNode<'a>>,
         negated: bool,
     },
-    Nested(Box<ExprNode>),
-    Function(Box<FunctionNode>),
-    Aggregate(Box<AggregateNode>),
+    Nested(Box<ExprNode<'a>>),
+    Function(Box<FunctionNode<'a>>),
+    Aggregate(Box<AggregateNode<'a>>),
     Exists {
-        subquery: Box<QueryNode>,
+        subquery: Box<QueryNode<'a>>,
         negated: bool,
     },
-    Subquery(Box<QueryNode>),
+    Subquery(Box<QueryNode<'a>>),
     Case {
-        operand: Option<Box<ExprNode>>,
-        when_then: Vec<(ExprNode, ExprNode)>,
-        else_result: Option<Box<ExprNode>>,
+        operand: Option<Box<ExprNode<'a>>>,
+        when_then: Vec<(ExprNode<'a>, ExprNode<'a>)>,
+        else_result: Option<Box<ExprNode<'a>>>,
     },
 }
 
-impl TryFrom<ExprNode> for Expr {
+impl<'a> TryFrom<ExprNode<'a>> for Expr {
     type Error = Error;
 
-    fn try_from(expr_node: ExprNode) -> Result<Self> {
+    fn try_from(expr_node: ExprNode<'a>) -> Result<Self> {
         match expr_node {
-            ExprNode::Expr(expr) => Ok(expr),
+            ExprNode::Expr(expr) => Ok(expr.into_owned()),
             ExprNode::SqlExpr(expr) => {
                 let expr = parse_expr(expr)?;
 
                 translate_expr(&expr)
             }
-            ExprNode::Identifier(ident) => Ok(Expr::Identifier(ident)),
-            ExprNode::CompoundIdentifier { alias, ident } => {
-                Ok(Expr::CompoundIdentifier { alias, ident })
+            ExprNode::Identifier(value) => {
+                let idents = value.as_ref().split('.').collect::<Vec<_>>();
+
+                Ok(match idents.as_slice() {
+                    [alias, ident] => Expr::CompoundIdentifier {
+                        alias: alias.to_string(),
+                        ident: ident.to_string(),
+                    },
+                    _ => Expr::Identifier(value.into_owned()),
+                })
             }
+            ExprNode::QuotedString(value) => {
+                let value = value.into_owned();
+
+                Ok(Expr::Literal(AstLiteral::QuotedString(value)))
+            }
+            ExprNode::TypedString { data_type, value } => Ok(Expr::TypedString {
+                data_type,
+                value: value.into_owned(),
+            }),
             ExprNode::Between {
                 expr,
                 negated,
@@ -256,82 +274,88 @@ impl TryFrom<ExprNode> for Expr {
     }
 }
 
-impl From<&str> for ExprNode {
-    fn from(expr: &str) -> Self {
-        ExprNode::SqlExpr(expr.to_owned())
+impl<'a> From<&'a str> for ExprNode<'a> {
+    fn from(expr: &'a str) -> Self {
+        ExprNode::SqlExpr(Cow::Borrowed(expr))
     }
 }
 
-impl From<i64> for ExprNode {
+impl<'a> From<String> for ExprNode<'a> {
+    fn from(expr: String) -> Self {
+        ExprNode::SqlExpr(Cow::Owned(expr))
+    }
+}
+
+impl<'a> From<i64> for ExprNode<'a> {
     fn from(n: i64) -> Self {
-        ExprNode::Expr(Expr::Literal(AstLiteral::Number(BigDecimal::from(n))))
+        ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Number(
+            BigDecimal::from(n),
+        ))))
     }
 }
 
-impl From<bool> for ExprNode {
+impl<'a> From<bool> for ExprNode<'a> {
     fn from(b: bool) -> Self {
-        ExprNode::Expr(Expr::Literal(AstLiteral::Boolean(b)))
+        ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Boolean(b))))
     }
 }
 
-impl From<QueryNode> for ExprNode {
-    fn from(node: QueryNode) -> Self {
+impl<'a> From<QueryNode<'a>> for ExprNode<'a> {
+    fn from(node: QueryNode<'a>) -> Self {
         ExprNode::Subquery(Box::new(node))
     }
 }
 
-impl From<Expr> for ExprNode {
+impl<'a> From<Expr> for ExprNode<'a> {
     fn from(expr: Expr) -> Self {
-        ExprNode::Expr(expr)
+        ExprNode::Expr(Cow::Owned(expr))
     }
 }
 
-pub fn expr(value: &str) -> ExprNode {
-    ExprNode::from(value)
-}
-
-pub fn col(value: &str) -> ExprNode {
-    let idents = value.split('.').collect::<Vec<_>>();
-
-    match idents.as_slice() {
-        [alias, ident] => ExprNode::CompoundIdentifier {
-            alias: alias.to_string(),
-            ident: ident.to_string(),
-        },
-        _ => ExprNode::Identifier(value.to_owned()),
+impl<'a> From<&'a Expr> for ExprNode<'a> {
+    fn from(expr: &'a Expr) -> Self {
+        ExprNode::Expr(Cow::Borrowed(expr))
     }
 }
 
-pub fn num(value: i64) -> ExprNode {
+pub fn expr<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::SqlExpr(value.into())
+}
+
+pub fn col<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::Identifier(value.into())
+}
+
+pub fn num<'a>(value: i64) -> ExprNode<'a> {
     ExprNode::from(value)
 }
 
-pub fn text(value: &str) -> ExprNode {
-    ExprNode::Expr(Expr::Literal(AstLiteral::QuotedString(value.to_owned())))
+pub fn text<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
+    ExprNode::QuotedString(value.into())
 }
 
-pub fn date(date: &str) -> ExprNode {
-    ExprNode::Expr(Expr::TypedString {
+pub fn date<'a, T: Into<Cow<'a, str>>>(date: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
         data_type: DataType::Date,
-        value: date.to_owned(),
-    })
+        value: date.into(),
+    }
 }
 
-pub fn timestamp(timestamp: &str) -> ExprNode {
-    ExprNode::Expr(Expr::TypedString {
+pub fn timestamp<'a, T: Into<Cow<'a, str>>>(timestamp: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
         data_type: DataType::Timestamp,
-        value: timestamp.to_owned(),
-    })
+        value: timestamp.into(),
+    }
 }
 
-pub fn time(time: &str) -> ExprNode {
-    ExprNode::Expr(Expr::TypedString {
+pub fn time<'a, T: Into<Cow<'a, str>>>(time: T) -> ExprNode<'a> {
+    ExprNode::TypedString {
         data_type: DataType::Time,
-        value: time.to_owned(),
-    })
+        value: time.into(),
+    }
 }
 
-pub fn subquery<T: Into<QueryNode>>(query_node: T) -> ExprNode {
+pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
     ExprNode::Subquery(Box::new(query_node.into()))
 }
 
@@ -353,6 +377,10 @@ mod tests {
         let expected = "id IS NOT NULL";
         test_expr(actual, expected);
 
+        let actual: ExprNode = String::from("1 + 10)").into();
+        let expected = "1 + 10";
+        test_expr(actual, expected);
+
         let actual: ExprNode = 1024.into();
         let expected = "1024";
         test_expr(actual, expected);
@@ -365,8 +393,12 @@ mod tests {
         let expected = "(SELECT id FROM Foo)";
         test_expr(actual, expected);
 
-        let actual: ExprNode = Expr::Identifier("id".to_owned()).into();
+        let expr = Expr::Identifier("id".to_owned());
+        let actual: ExprNode = (&expr).into();
         let expected = "id";
+        test_expr(actual, expected);
+
+        let actual: ExprNode = expr.into();
         test_expr(actual, expected);
     }
 

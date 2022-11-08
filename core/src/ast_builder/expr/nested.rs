@@ -1,12 +1,12 @@
 use super::ExprNode;
 
-impl ExprNode {
+impl<'a> ExprNode<'a> {
     pub fn nested(self) -> Self {
         nested(self)
     }
 }
 
-pub fn nested<T: Into<ExprNode>>(expr: T) -> ExprNode {
+pub fn nested<'a, T: Into<ExprNode<'a>>>(expr: T) -> ExprNode<'a> {
     ExprNode::Nested(Box::new(expr.into()))
 }
 

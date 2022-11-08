@@ -8,9 +8,8 @@ use {
     },
     crate::{
         ast::{
-            ColumnDef, ColumnOption, ColumnOptionDef, DataType, Dictionary, Expr, Query,
-            SelectItem, SetExpr, Statement, TableAlias, TableFactor, TableWithJoins, Values,
-            Variable,
+            ColumnDef, ColumnOption, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
+            Statement, TableAlias, TableFactor, TableWithJoins, Values, Variable,
         },
         data::{Key, Row, Schema},
         executor::limit::Limit,
@@ -27,7 +26,10 @@ use {
 use super::alter::alter_table;
 
 #[cfg(feature = "index")]
-use {super::alter::create_index, crate::data::SchemaIndex};
+use {
+    super::alter::create_index,
+    crate::ast::{AstLiteral, BinaryOperator},
+};
 
 #[derive(ThisError, Serialize, Debug, PartialEq)]
 pub enum ExecuteError {
@@ -63,9 +65,6 @@ pub enum Payload {
     Rollback,
 
     ShowVariable(PayloadVariable),
-
-    #[cfg(feature = "index")]
-    ShowIndexes(Vec<SchemaIndex>),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -229,9 +228,9 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .iter()
                     .enumerate()
                     .find(|(_, ColumnDef { options, .. })| {
-                        options.iter().any(|ColumnOptionDef { option, .. }| {
-                            option == &ColumnOption::Unique { is_primary: true }
-                        })
+                        options
+                            .iter()
+                            .any(|option| option == &ColumnOption::Unique { is_primary: true })
                     })
                     .map(|(i, _)| i);
 
@@ -358,18 +357,47 @@ pub async fn execute<T: GStore + GStoreMut>(
         }
         #[cfg(feature = "index")]
         Statement::ShowIndexes(table_name) => {
-            let indexes = match storage.fetch_schema(table_name).await {
-                Ok(Some(Schema { indexes, .. })) => indexes,
-                Ok(None) => {
-                    return Err((
-                        storage,
-                        ExecuteError::TableNotFound(table_name.to_owned()).into(),
-                    ));
-                }
-                Err(e) => return Err((storage, e)),
+            let query = Query {
+                body: SetExpr::Select(Box::new(crate::ast::Select {
+                    projection: vec![SelectItem::Wildcard],
+                    from: TableWithJoins {
+                        relation: TableFactor::Dictionary {
+                            dict: Dictionary::GlueIndexes,
+                            alias: TableAlias {
+                                name: "GLUE_INDEXES".to_owned(),
+                                columns: Vec::new(),
+                            },
+                        },
+                        joins: Vec::new(),
+                    },
+                    selection: Some(Expr::BinaryOp {
+                        left: Box::new(Expr::Identifier("TABLE_NAME".to_owned())),
+                        op: BinaryOperator::Eq,
+                        right: Box::new(Expr::Literal(AstLiteral::QuotedString(
+                            table_name.to_owned(),
+                        ))),
+                    }),
+                    group_by: Vec::new(),
+                    having: None,
+                })),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
             };
 
-            Ok((storage, Payload::ShowIndexes(indexes)))
+            let (labels, rows) = try_block!(storage, {
+                let (labels, rows) = select_with_labels(&storage, &query, None, true).await?;
+                let rows = rows.try_collect::<Vec<_>>().await?;
+                Ok((labels, rows))
+            });
+
+            match rows.is_empty() {
+                true => Err((
+                    storage,
+                    ExecuteError::TableNotFound(table_name.to_owned()).into(),
+                )),
+                false => Ok((storage, Payload::Select { labels, rows })),
+            }
         }
         Statement::ShowVariable(variable) => match variable {
             Variable::Tables => {
