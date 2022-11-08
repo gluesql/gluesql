@@ -13,13 +13,13 @@ mod binary_op;
 mod convert;
 mod date;
 mod error;
+mod expr;
 mod json;
 mod literal;
 mod selector;
 mod uuid;
 
-pub use error::NumericBinaryOperator;
-pub use error::ValueError;
+pub use error::{NumericBinaryOperator, ValueError};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Value {

@@ -19,8 +19,8 @@ impl ToSql for AstLiteral {
         match self {
             AstLiteral::Boolean(b) => b.to_string().to_uppercase(),
             AstLiteral::Number(n) => n.to_string(),
-            AstLiteral::QuotedString(qs) => format!(r#""{qs}""#),
-            AstLiteral::HexString(hs) => format!(r#""{hs}""#),
+            AstLiteral::QuotedString(qs) => format!("'{qs}'"),
+            AstLiteral::HexString(hs) => format!("'{hs}'"),
             AstLiteral::Null => "NULL".to_owned(),
         }
     }
@@ -57,7 +57,7 @@ mod tests {
         assert_eq!("TRUE", AstLiteral::Boolean(true).to_sql());
         assert_eq!("123", AstLiteral::Number(BigDecimal::from(123)).to_sql());
         assert_eq!(
-            r#""hello""#,
+            "'hello'",
             AstLiteral::QuotedString("hello".to_owned()).to_sql()
         );
         assert_eq!("NULL", AstLiteral::Null.to_sql());

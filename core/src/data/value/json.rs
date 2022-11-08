@@ -180,7 +180,7 @@ mod tests {
         );
         assert_eq!(
             Value::Interval(Interval::Month(17)).try_into(),
-            Ok(JsonValue::String(r#""1-5" YEAR TO MONTH"#.to_owned()))
+            Ok(JsonValue::String("'1-5' YEAR TO MONTH".to_owned()))
         );
 
         let uuid = "43185717-59af-4e2b-9cd3-3264bf3691a4";
