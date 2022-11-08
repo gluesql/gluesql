@@ -74,7 +74,7 @@ impl MemoryStorage {
             (Some(expr), _) => {
                 let evaluated = gluesql_core::executor::evaluate_stateless(None, expr)?;
 
-                evaluated.try_into_value(data_type, nullable)?
+                evaluated.try_into_value(data_type, nullable.to_owned())?
             }
             (None, true) => Value::Null,
             (None, false) => {

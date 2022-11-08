@@ -177,7 +177,7 @@ impl Value {
         Ok(())
     }
 
-    pub fn validate_null(&self, nullable: &bool) -> Result<()> {
+    pub fn validate_null(&self, nullable: bool) -> Result<()> {
         if !nullable && matches!(self, Value::Null) {
             return Err(ValueError::NullValueOnNotNullField.into());
         }

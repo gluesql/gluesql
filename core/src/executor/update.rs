@@ -94,7 +94,7 @@ impl<'a> Update<'a> {
                     }
                 };
 
-                value.validate_null(nullable)?;
+                value.validate_null(nullable.to_owned())?;
 
                 Ok(Some(value))
             }

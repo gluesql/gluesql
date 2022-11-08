@@ -270,7 +270,7 @@ impl AlterTable for SledStorage {
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated
-                        .try_into_value(data_type, nullable)
+                        .try_into_value(data_type, nullable.to_owned())
                         .map_err(ConflictableTransactionError::Abort)?
                 }
                 (None, true) => Value::Null,
