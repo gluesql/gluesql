@@ -1,5 +1,5 @@
 use {
-    super::{validate, AlterError},
+    super::{validate, validate_column_names, AlterError},
     crate::{
         ast::{ColumnDef, Query, SetExpr, TableFactor, Values},
         data::{Schema, TableError},
@@ -110,23 +110,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             created: Utc::now().naive_utc(),
         };
 
-        // validate dupplicate column names
-        let dupplicate_column = schema
-            .column_defs
-            .iter()
-            .enumerate()
-            .find(|(i, base_column)| {
-                schema
-                    .column_defs
-                    .iter()
-                    .skip(i + 1)
-                    .any(|target_column| base_column.name == target_column.name)
-            })
-            .map(|(_, column)| &column.name);
-
-        if let Some(v) = dupplicate_column {
-            return Err(AlterError::DuplicateColumnName(v.to_owned()).into());
-        }
+        validate_column_names(&schema.column_defs)?;
 
         for column_def in &schema.column_defs {
             validate(column_def)?;
