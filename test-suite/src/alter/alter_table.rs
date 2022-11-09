@@ -37,7 +37,7 @@ test_case!(alter_table_rename, async move {
         (
             // Cannot rename to duplicated column name
             "ALTER TABLE Bar RENAME COLUMN name TO new_id",
-            Err(AlterTableError::ColumnAlreadyExists("new_id".to_owned()).into()),
+            Err(AlterTableError::AlreadyExistingColumn("new_id".to_owned()).into()),
         ),
     ];
 
@@ -63,7 +63,7 @@ test_case!(alter_table_add_drop, async move {
         ),
         (
             "ALTER TABLE Foo ADD COLUMN id INTEGER",
-            Err(AlterTableError::ColumnAlreadyExists("id".to_owned()).into()),
+            Err(AlterTableError::AlreadyExistingColumn("id".to_owned()).into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER DEFAULT 10",

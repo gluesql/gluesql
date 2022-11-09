@@ -40,7 +40,7 @@ impl MemoryStorage {
             .iter()
             .any(|ColumnDef { name, .. }| name == new_column_name)
         {
-            return Err(AlterTableError::ColumnAlreadyExists(new_column_name.to_owned()).into());
+            return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
         }
 
         let mut column_def = item
@@ -69,7 +69,7 @@ impl MemoryStorage {
         {
             let adding_column = column_def.name.to_owned();
 
-            return Err(AlterTableError::ColumnAlreadyExists(adding_column).into());
+            return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
         }
 
         let ColumnDef {

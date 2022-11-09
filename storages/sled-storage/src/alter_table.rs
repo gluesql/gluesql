@@ -169,7 +169,7 @@ impl AlterTable for SledStorage {
                 .any(|ColumnDef { name, .. }| name == new_column_name)
             {
                 return Err(
-                    AlterTableError::ColumnAlreadyExists(new_column_name.to_owned()).into(),
+                    AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into(),
                 )
                 .map_err(ConflictableTransactionError::Abort);
             }
@@ -263,7 +263,7 @@ impl AlterTable for SledStorage {
             {
                 let adding_column = column_def.name.to_owned();
 
-                return Err(AlterTableError::ColumnAlreadyExists(adding_column).into())
+                return Err(AlterTableError::AlreadyExistingColumn(adding_column).into())
                     .map_err(ConflictableTransactionError::Abort);
             }
 
