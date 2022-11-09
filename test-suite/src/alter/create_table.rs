@@ -129,6 +129,11 @@ test_case!(create_table, async move {
             "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
             Err(AlterError::CtasSourceTableNotFound("NonExistentTable".to_owned()).into()),
         ),
+        (
+            // Cannot create table with duplicate column name
+            "CREATE TABLE DuplicateColumns (id INT, id INT)",
+            Err(AlterError::DuplicateColumnName("id".to_owned()).into()),
+        ),
     ];
 
     for (sql, expected) in test_cases {
