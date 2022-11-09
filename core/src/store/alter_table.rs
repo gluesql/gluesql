@@ -21,7 +21,7 @@ pub enum AlterTableError {
     DefaultValueRequired(ColumnDef),
 
     #[error("Adding column already exists: {0}")]
-    AddingColumnAlreadyExists(String),
+    ColumnAlreadyExists(String),
 
     #[error("Dropping column not found: {0}")]
     DroppingColumnNotFound(String),

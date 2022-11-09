@@ -164,6 +164,16 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
+            if column_defs
+                .iter()
+                .any(|ColumnDef { name, .. }| name == new_column_name)
+            {
+                return Err(
+                    AlterTableError::ColumnAlreadyExists(new_column_name.to_string()).into(),
+                )
+                .map_err(ConflictableTransactionError::Abort);
+            }
+
             let i = column_defs
                 .iter()
                 .position(|column_def| column_def.name == old_column_name)
@@ -253,7 +263,7 @@ impl AlterTable for SledStorage {
             {
                 let adding_column = column_def.name.to_owned();
 
-                return Err(AlterTableError::AddingColumnAlreadyExists(adding_column).into())
+                return Err(AlterTableError::ColumnAlreadyExists(adding_column).into())
                     .map_err(ConflictableTransactionError::Abort);
             }
 
