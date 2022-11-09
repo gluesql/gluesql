@@ -8,7 +8,7 @@ test_case!(nullable, async move {
         "
 CREATE TABLE Test (
     id INTEGER NULL,
-    num INTEGER,
+    num INTEGER NOT NULL,
     name TEXT
 )"
     );

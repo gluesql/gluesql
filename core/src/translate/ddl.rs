@@ -59,9 +59,10 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
         ..
     } = sql_column_def;
 
-    let nullable = options
-        .iter()
-        .any(|SqlColumnOptionDef { option, .. }| option == &SqlColumnOption::Null);
+    let nullable = !options.iter().any(|SqlColumnOptionDef { option, .. }| {
+        option == &SqlColumnOption::NotNull
+            || option == &SqlColumnOption::Unique { is_primary: true }
+    });
 
     Ok(ColumnDef {
         name: name.value.to_owned(),
