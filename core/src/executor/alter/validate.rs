@@ -40,7 +40,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
     Ok(())
 }
 
-pub fn validate_column_names(column_defs: &Vec<ColumnDef>) -> Result<()> {
+pub fn validate_column_names(column_defs: &[ColumnDef]) -> Result<()> {
     let duplicate_colum_name = column_defs
         .iter()
         .enumerate()
