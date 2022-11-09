@@ -1,21 +1,24 @@
-use std::path::Path;
+use std::collections::HashMap;
 
-use error::StorageError;
-use gluesql_core::data::Schema;
-use schema_list::get_schema_list;
+use csv_table::CsvTable;
 
 mod csv_table;
 mod error;
 mod schema_list;
 mod store;
 
+use {error::StorageError, std::path::Path};
+
+pub(crate) type TableName = String;
+
 pub struct CsvStorage {
-    schema_list: Vec<Schema>,
+    tables: HashMap<TableName, CsvTable>,
 }
 
 impl CsvStorage {
     pub fn from_toml(toml_file: impl AsRef<Path>) -> Result<Self, StorageError> {
-        let schema_list = get_schema_list(toml_file)?;
-        Ok(Self { schema_list })
+        Ok(Self {
+            tables: HashMap::new(),
+        })
     }
 }

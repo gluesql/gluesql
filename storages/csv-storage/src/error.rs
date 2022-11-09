@@ -1,4 +1,4 @@
-use thiserror::Error as ThisError;
+use {gluesql_core::result::Error, thiserror::Error as ThisError};
 
 #[derive(ThisError, Debug, PartialEq, Eq)]
 pub enum StorageError {
@@ -13,10 +13,19 @@ pub enum StorageError {
 
     #[error("cannot read schema file: {0}")]
     InvalidSchemaFile(String),
+
+    #[error("table not found: {0}")]
+    TableNotFound(String),
 }
 
 impl StorageError {
     pub fn from_csv_error(e: csv::Error) -> Self {
         Self::FailedToProcessCsv(e.to_string())
+    }
+}
+
+impl From<StorageError> for Error {
+    fn from(e: StorageError) -> Self {
+        Self::Storage(Box::new(e))
     }
 }
