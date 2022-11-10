@@ -34,6 +34,15 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
+        if item
+            .schema
+            .column_defs
+            .iter()
+            .any(|ColumnDef { name, .. }| name == new_column_name)
+        {
+            return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
+        }
+
         let mut column_def = item
             .schema
             .column_defs
@@ -60,7 +69,7 @@ impl MemoryStorage {
         {
             let adding_column = column_def.name.to_owned();
 
-            return Err(AlterTableError::AddingColumnAlreadyExists(adding_column).into());
+            return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
         }
 
         let ColumnDef {

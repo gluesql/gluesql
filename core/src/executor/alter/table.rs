@@ -1,5 +1,5 @@
 use {
-    super::{validate, AlterError},
+    super::{validate, validate_column_names, AlterError},
     crate::{
         ast::{ColumnDef, Query, SetExpr, TableFactor, Values},
         data::{Schema, TableError},
@@ -109,6 +109,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
             indexes: vec![],
             created: Utc::now().naive_utc(),
         };
+
+        validate_column_names(&schema.column_defs)?;
 
         for column_def in &schema.column_defs {
             validate(column_def)?;

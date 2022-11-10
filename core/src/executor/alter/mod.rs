@@ -4,7 +4,7 @@ mod index;
 mod table;
 mod validate;
 
-use validate::validate;
+use validate::{validate, validate_column_names};
 
 #[cfg(feature = "alter-table")]
 pub use alter_table::alter_table;
