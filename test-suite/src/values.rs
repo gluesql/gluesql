@@ -163,7 +163,7 @@ test_case!(values, async move {
         ),
         (
             "INSERT INTO TableA (id2) VALUES (1);",
-            Err(RowError::LackOfRequiredColumn("id".to_owned()).into()),
+            Err(RowError::WrongColumnName("id2".to_owned()).into()),
         ),
         (
             "INSERT INTO TableA (id) VALUES ('test2', 3)",
