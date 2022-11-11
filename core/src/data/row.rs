@@ -66,13 +66,13 @@ impl Row {
             return Err(RowError::TooManyValues.into());
         }
 
-        if let Some(wrong_column_name) = columns.iter().find(|column_name| {
-            !column_defs
-                .iter()
-                .any(|column_def| &&column_def.name == column_name)
-        }) {
-            return Err(RowError::WrongColumnName(wrong_column_name.to_owned()).into());
-        }
+        // if let Some(wrong_column_name) = columns.iter().find(|column_name| {
+        //     !column_defs
+        //         .iter()
+        //         .any(|column_def| &&column_def.name == column_name)
+        // }) {
+        //     return Err(RowError::WrongColumnName(wrong_column_name.to_owned()).into());
+        // }
 
         let columns = if columns.is_empty() {
             Columns::All(column_defs.iter().map(|ColumnDef { name, .. }| name))
@@ -81,6 +81,33 @@ impl Row {
         };
 
         let column_name_value_list = columns.zip(values.iter()).collect::<Vec<(_, _)>>();
+
+        /*
+        A B C D E
+        x y z N e
+        column_name, column_def.name, value
+        Y =>
+        N => definately Err
+        */
+        // column_name_value_list.iter().map(|(name, value)| {
+        //     if let Some(column_def) = column_defs
+        //         .iter()
+        //         .find(|column_def| name == &&column_def.name)
+        //     {
+        //         let ColumnDef {
+        //             name: def_name,
+        //             data_type,
+        //             nullable,
+        //             ..
+        //         } = column_def;
+
+        //         return match (column_def.get_default(), nullable) {
+        //             (None, true) => Ok(Value::Null),
+        //             (None, false) =>
+        //             (Some(&expr), _) => todo!(),
+        //         };
+        //     }
+        // });
 
         column_defs
             .iter()
@@ -99,9 +126,13 @@ impl Row {
 
                 match (value, column_def.get_default(), nullable) {
                     (Some(&expr), _, _) | (None, Some(expr), _) => {
+                        println!("here");
                         evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
                     }
-                    (None, None, true) => Ok(Value::Null),
+                    (None, None, true) => {
+                        println!("here2");
+                        Ok(Value::Null)
+                    }
                     (None, None, false) => {
                         unreachable!();
                         // Err(RowError::LackOfRequiredColumn(def_name.to_owned()).into())
