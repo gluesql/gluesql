@@ -24,10 +24,12 @@ INSERT INTO TimeLog VALUES
 "#
     );
 
-    let t = NaiveTime::from_hms_milli;
+    let t = |hour: u32, min: u32, sec: u32, milli: u32| {
+        NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()
+    };
     let i = |h, m, s, ms| {
         gluesql_core::data::Interval::milliseconds(
-            (t(h, m, s, ms) - NaiveTime::from_hms(0, 0, 0)).num_milliseconds(),
+            (t(h, m, s, ms) - NaiveTime::from_hms_opt(0, 0, 0).unwrap()).num_milliseconds(),
         )
     };
 
@@ -115,7 +117,7 @@ INSERT INTO TimeLog VALUES
         Ok(select!(
             id  | timestamp
             I64 | Timestamp;
-            1     NaiveDate::from_ymd(2021, 1, 5).and_hms_milli(13, 31, 1, 123)
+            1     NaiveDate::from_ymd_opt(2021, 1, 5).unwrap().and_hms_milli_opt(13, 31, 1, 123).unwrap()
         ))
     );
 

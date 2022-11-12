@@ -36,7 +36,7 @@ test_case!(ifnull, async move {
         (
             r#"SELECT ifnull(dt, "2000-01-01") AS mydate, ifnull(mystring, "blah") AS name 
             FROM SingleItem WHERE id IS NOT NULL"#,
-            select!("mydate" | "name"; Date | Str; NaiveDate::from_ymd(2022,5,23) "this is a string".to_owned()),
+            select!("mydate" | "name"; Date | Str; NaiveDate::from_ymd_opt(2022,5,23).unwrap() "this is a string".to_owned()),
         ),
         (
             r#"SELECT IFNULL(dt, "2000-01-01") AS mydate, IFNULL(mystring, "blah") AS name 
@@ -57,7 +57,7 @@ test_case!(ifnull, async move {
             r#"SELECT IFNULL(mytime, "YES") AS mybool, IFNULL(mytimestamp, "NO") AS myfloat 
             FROM SingleItem WHERE id IS NOT NULL"#,
             select!("mybool" | "myfloat"; Time | Timestamp; 
-                    NaiveTime::from_hms(1, 2, 3) NaiveDateTime::from_timestamp(0, 0)),
+                    NaiveTime::from_hms_opt(1, 2, 3).unwrap() NaiveDateTime::from_timestamp_opt(0, 0).unwrap()),
         ),
         (
             r#"SELECT IFNULL(mytime, "YES") AS mybool, IFNULL(mytimestamp, "NO") AS myfloat 

@@ -82,7 +82,7 @@ test_case!(default, async move {
 
     run!("INSERT INTO TestExpr (id) VALUES (1);");
 
-    let d = NaiveDate::from_ymd;
+    let d = |year: i32, month: u32, day: u32| NaiveDate::from_ymd_opt(year, month, day).unwrap();
 
     test!(
         "SELECT * FROM TestExpr",

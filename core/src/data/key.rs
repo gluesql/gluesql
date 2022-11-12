@@ -497,24 +497,34 @@ mod tests {
         assert_eq!(cmp(&n5, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Date(NaiveDate::from_ymd(2021, 1, 1)).to_cmp_be_bytes();
-        let n2 = Date(NaiveDate::from_ymd(1989, 3, 20)).to_cmp_be_bytes();
+        let n1 = Date(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()).to_cmp_be_bytes();
+        let n2 = Date(NaiveDate::from_ymd_opt(1989, 3, 20).unwrap()).to_cmp_be_bytes();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Time(NaiveTime::from_hms_milli(20, 1, 9, 100)).to_cmp_be_bytes();
-        let n2 = Time(NaiveTime::from_hms_milli(3, 10, 30, 0)).to_cmp_be_bytes();
+        let n1 = Time(NaiveTime::from_hms_milli_opt(20, 1, 9, 100).unwrap()).to_cmp_be_bytes();
+        let n2 = Time(NaiveTime::from_hms_milli_opt(3, 10, 30, 0).unwrap()).to_cmp_be_bytes();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 =
-            Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms_milli(1, 2, 3, 0)).to_cmp_be_bytes();
-        let n2 = Timestamp(NaiveDate::from_ymd(1989, 3, 20).and_hms_milli(10, 0, 0, 1000))
-            .to_cmp_be_bytes();
+        let n1 = Timestamp(
+            NaiveDate::from_ymd_opt(2021, 1, 1)
+                .unwrap()
+                .and_hms_milli_opt(1, 2, 3, 0)
+                .unwrap(),
+        )
+        .to_cmp_be_bytes();
+        let n2 = Timestamp(
+            NaiveDate::from_ymd_opt(1989, 3, 20)
+                .unwrap()
+                .and_hms_milli_opt(10, 0, 0, 1000)
+                .unwrap(),
+        )
+        .to_cmp_be_bytes();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);

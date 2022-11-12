@@ -85,7 +85,12 @@ INSERT INTO DateLog VALUES
     );
 
     let days = gluesql_core::data::Interval::days;
-    let timestamp = |y, m, d| chrono::NaiveDate::from_ymd(y, m, d).and_hms(0, 0, 0);
+    let timestamp = |y, m, d| {
+        chrono::NaiveDate::from_ymd_opt(y, m, d)
+            .unwrap()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+    };
 
     test!(
         r#"SELECT
