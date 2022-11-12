@@ -25,7 +25,13 @@ use {
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     match sql_expr {
         SqlExpr::Identifier(ident) => match ident.quote_style {
-            Some(_) => Ok(Expr::Literal(AstLiteral::QuotedString(ident.value.clone()))),
+            Some(qoute_style) => {
+                match qoute_style {
+                    '"' => Ok(Expr::Identifier(ident.value.clone())),
+                    // Ok(Expr::Literal(AstLiteral::QuotedString(ident.value.clone()))),
+                    _ => unreachable!(),
+                }
+            }
             None => Ok(Expr::Identifier(ident.value.clone())),
         },
         SqlExpr::CompoundIdentifier(idents) => (idents.len() == 2)
