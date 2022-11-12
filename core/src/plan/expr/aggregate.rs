@@ -10,7 +10,8 @@ impl Aggregate {
             | Aggregate::Min(expr)
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => Some(expr),
+            | Aggregate::Stdev(expr)
+            | Aggregate::First(expr) => Some(expr),
         }
     }
 }

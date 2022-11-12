@@ -38,6 +38,7 @@ enum AggrValue {
         sum: Value,
         count: i64,
     },
+    First(Value),
 }
 
 impl AggrValue {
@@ -70,6 +71,7 @@ impl AggrValue {
                 sum: value,
                 count: 1,
             },
+            Aggregate::First(_) => AggrValue::First(value),
         })
     }
 
@@ -118,6 +120,7 @@ impl AggrValue {
                 sum: sum.add(new_value)?,
                 count: count + 1,
             })),
+            Self::First(value) => Ok(None),
         }
     }
 
@@ -132,7 +135,9 @@ impl AggrValue {
 
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
-            Self::Sum(value) | Self::Min(value) | Self::Max(value) => Ok(value),
+            Self::Sum(value) | Self::Min(value) | Self::Max(value) | Self::First(value) => {
+                Ok(value)
+            }
             Self::Avg { sum, count } => sum.divide(&Value::F64(count as f64)),
             Self::Variance {
                 sum_square,
@@ -248,7 +253,8 @@ impl<'a> State<'a> {
             | Aggregate::Max(expr)
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
-            | Aggregate::Stdev(expr) => evaluate(self.storage, filter_context, None, expr)
+            | Aggregate::Stdev(expr)
+            | Aggregate::First(expr) => evaluate(self.storage, filter_context, None, expr)
                 .await?
                 .try_into()?,
         };

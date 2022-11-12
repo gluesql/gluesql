@@ -303,6 +303,7 @@ pub enum Aggregate {
     Avg(Expr),
     Variance(Expr),
     Stdev(Expr),
+    First(Expr),
 }
 
 impl ToSql for Aggregate {
@@ -315,6 +316,7 @@ impl ToSql for Aggregate {
             Aggregate::Avg(e) => format!("AVG({})", e.to_sql()),
             Aggregate::Variance(e) => format!("VARIANCE({})", e.to_sql()),
             Aggregate::Stdev(e) => format!("STDEV({})", e.to_sql()),
+            Aggregate::First(e) => format!("FIRST({})", e.to_sql()),
         }
     }
 }
@@ -908,6 +910,13 @@ mod tests {
             "STDEV(total)",
             &Expr::Aggregate(Box::new(Aggregate::Stdev(Expr::Identifier(
                 "total".to_owned()
+            ))))
+            .to_sql()
+        );
+        assert_eq!(
+            "FIRST(member)",
+            &Expr::Aggregate(Box::new(Aggregate::First(Expr::Identifier(
+                "member".to_owned()
             ))))
             .to_sql()
         );
