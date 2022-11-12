@@ -24,7 +24,7 @@ test_case!(types, async move {
             .into()),
         ),
         (
-            "INSERT INTO TableC (uid) VALUES (\"A\")",
+            "INSERT INTO TableC (uid) VALUES ('A')",
             Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: DataType::Int,
                 literal: format!("{:?}", Literal::Text(Cow::Owned("A".to_owned()))),

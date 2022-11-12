@@ -10,44 +10,44 @@ use {
 
 test_case!(update, async move {
     run!(
-        r#"
+        "
         CREATE TABLE TableA (
             id INTEGER,
             num INTEGER,
             num2 INTEGER,
             name TEXT,
-        )"#
+        )"
     );
 
     run!(
-        r#"
+        "
         INSERT INTO TableA (id, num, num2, name)
         VALUES
-            (1, 2, 4, "Hello"),
-            (1, 9, 5, "World"),
-            (3, 4, 7, "Great"),
-            (4, 7, 10, "Job");
-        "#
+            (1, 2, 4, 'Hello'),
+            (1, 9, 5, 'World'),
+            (3, 4, 7, 'Great'),
+            (4, 7, 10, 'Job');
+        "
     );
 
     run!(
-        r#"
+        "
         CREATE TABLE TableB (
             id INTEGER,
             num INTEGER,
             rank INTEGER,
-        )"#
+        )"
     );
 
     run!(
-        r#"
+        "
         INSERT INTO TableB (id, num, rank)
         VALUES
             (1, 2, 1),
             (1, 9, 2),
             (3, 4, 3),
             (4, 7, 4);
-        "#
+        "
     );
 
     let test_cases = [

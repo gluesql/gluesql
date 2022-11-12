@@ -16,12 +16,12 @@ CREATE TABLE TimeLog (
     );
 
     run!(
-        r#"
+        "
 INSERT INTO TimeLog VALUES
-    (1, "12:30:00", "13:31:01.123"),
-    (2, "9:2:1", "AM 08:02:01.001"),
-    (3, "PM 2:59", "9:00:00 AM");
-"#
+    (1, '12:30:00', '13:31:01.123'),
+    (2, '9:2:1', 'AM 08:02:01.001'),
+    (3, 'PM 2:59', '9:00:00 AM');
+"
     );
 
     let t = |hour: u32, min: u32, sec: u32, milli: u32| {
@@ -64,7 +64,7 @@ INSERT INTO TimeLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM TimeLog WHERE time1 = TIME "14:59:00""#,
+        "SELECT * FROM TimeLog WHERE time1 = TIME '14:59:00'",
         Ok(select!(
             id  | time1           | time2
             I64 | Time            | Time;
@@ -73,7 +73,7 @@ INSERT INTO TimeLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM TimeLog WHERE time1 < "1:00 PM""#,
+        "SELECT * FROM TimeLog WHERE time1 < '1:00 PM'",
         Ok(select!(
             id  | time1           | time2
             I64 | Time            | Time;
@@ -83,7 +83,7 @@ INSERT INTO TimeLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM TimeLog WHERE TIME "23:00:00.123" > "PM 1:00";"#,
+        "SELECT * FROM TimeLog WHERE TIME '23:00:00.123' > 'PM 1:00';",
         Ok(select!(
             id  | time1           | time2
             I64 | Time            | Time;
@@ -94,12 +94,12 @@ INSERT INTO TimeLog VALUES
     );
 
     test!(
-        r#"SELECT
+        "SELECT
         id,
         time1 - time2 AS time_sub,
-        time1 + INTERVAL "1" HOUR AS add,
-        time2 - INTERVAL "250" MINUTE AS sub
-        FROM TimeLog;"#,
+        time1 + INTERVAL '1' HOUR AS add,
+        time2 - INTERVAL '250' MINUTE AS sub
+        FROM TimeLog;",
         Ok(select!(
             id  | time_sub                      | add             | sub
             I64 | Interval                      | Time            | Time;
@@ -110,10 +110,10 @@ INSERT INTO TimeLog VALUES
     );
 
     test!(
-        r#"SELECT
+        "SELECT
             id,
-            DATE "2021-01-05" + time2 AS timestamp
-        FROM TimeLog LIMIT 1;"#,
+            DATE '2021-01-05' + time2 AS timestamp
+        FROM TimeLog LIMIT 1;",
         Ok(select!(
             id  | timestamp
             I64 | Timestamp;
@@ -122,7 +122,7 @@ INSERT INTO TimeLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM TimeLog WHERE time1 > time2 + INTERVAL "1" YEAR"#,
+        "SELECT * FROM TimeLog WHERE time1 > time2 + INTERVAL '1' YEAR",
         Err(IntervalError::AddYearOrMonthToTime {
             time: t(13, 31, 1, 123).to_string(),
             interval: gluesql_core::data::Interval::years(1).into(),
@@ -131,7 +131,7 @@ INSERT INTO TimeLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM TimeLog WHERE time1 > time2 - INTERVAL "1-2" YEAR TO MONTH"#,
+        "SELECT * FROM TimeLog WHERE time1 > time2 - INTERVAL '1-2' YEAR TO MONTH",
         Err(IntervalError::SubtractYearOrMonthToTime {
             time: t(13, 31, 1, 123).to_string(),
             interval: gluesql_core::data::Interval::months(14).into(),
@@ -140,7 +140,7 @@ INSERT INTO TimeLog VALUES
     );
 
     test!(
-        r#"INSERT INTO TimeLog VALUES (1, "12345-678", "20:05:01")"#,
+        "INSERT INTO TimeLog VALUES (1, '12345-678', '20:05:01')",
         Err(ValueError::FailedToParseTime("12345-678".to_owned()).into())
     );
 });

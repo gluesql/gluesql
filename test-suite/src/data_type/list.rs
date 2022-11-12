@@ -8,17 +8,17 @@ use {
 
 test_case!(list, async move {
     run!(
-        r#"
+        "
 CREATE TABLE ListType (
     id INTEGER,
     items LIST
-)"#
+)"
     );
 
     run!(
         r#"
 INSERT INTO ListType VALUES
-    (1, "[1, 2, 3]"),
+    (1, '[1, 2, 3]'),
     (2, '["hello", "world", 30, true, [9,8]]'),
     (3, '[{ "foo": 100, "bar": [true, 0,[10.5, false] ] }, 10, 20]');
 "#
@@ -32,19 +32,19 @@ INSERT INTO ListType VALUES
         Ok(select_with_null!(
             id     | items;
             I64(1)   l("[1,2,3]");
-            I64(2)   l(r#"["hello","world",30,true,[9,8]]"#);
+            I64(2)   l("['hello','world',30,true,[9,8]]");
             I64(3)   l(r#"[{"foo":100, "bar": [true, 0, [10.5, false]]},10,20]"#)
         ))
     );
 
     test!(
-        r#"SELECT
+        "SELECT
             id,
-            UNWRAP(items, "1") AS foo,
-            UNWRAP(items, "0.foo") + 100 AS bar,
-            UNWRAP(items, "4") AS a,
-            UNWRAP(items, "0.bar.2.0") + UNWRAP(items, "2") AS b
-        FROM ListType"#,
+            UNWRAP(items, '1') AS foo,
+            UNWRAP(items, '0.foo') + 100 AS bar,
+            UNWRAP(items, '4') AS a,
+            UNWRAP(items, '0.bar.2.0') + UNWRAP(items, '2') AS b
+        FROM ListType",
         Ok(select_with_null!(
             id     | foo        | bar      | a             | b;
             I64(1)   I64(2)       Null       Null            Null;
@@ -75,29 +75,29 @@ INSERT INTO ListType VALUES
     }
 
     run!(
-        r#"
+        "
 CREATE TABLE ListType2 (
     id INTEGER,
     items LIST
-)"#
+)"
     );
 
     run!(
         r#"
 INSERT INTO ListType2 VALUES
-    (1, '[1, 2, 3, { "hi": "bye" }]'),
-    (2, '["one", "two", "three", [100, 200]]'),
-    (3, '["first", "second", "third", { "foo": true, "bar": false }]');
+    (1, '[1, 2, 3, { "hi": 'bye' }]'),
+    (2, '['one', 'two', 'three', [100, 200]]'),
+    (3, '['first', 'second', 'third', { "foo": true, "bar": false }]');
 "#
     );
 
     test!(
-        r#"SELECT
+        "SELECT
             id,
-            items["0"] AS foo,
-            items["1"] AS bar,
-            items["3"]["0"] AS hundred
-        FROM ListType2"#,
+            items['0'] AS foo,
+            items['1'] AS bar,
+            items['3']['0'] AS hundred
+        FROM ListType2",
         Ok(select_with_null!(
             id     | foo        | bar        | hundred;
             I64(1)   I64(1)       I64(2)       Null;
@@ -107,7 +107,7 @@ INSERT INTO ListType2 VALUES
     );
 
     test!(
-        r#"SELECT id, items["not"]["list"] AS foo FROM ListType2"#,
+        r#"SELECT id, items['not']['list'] AS foo FROM ListType2"#,
         Err(ValueError::SelectorRequiresMapOrListTypes.into())
     );
 
@@ -120,7 +120,7 @@ INSERT INTO ListType2 VALUES
         Err(ValueError::JsonArrayTypeRequired.into())
     );
     test!(
-        r#"INSERT INTO ListType VALUES (1, '{{ ok [1, 2, 3] }');"#,
+        "INSERT INTO ListType VALUES (1, '{{ ok [1, 2, 3] }');",
         Err(ValueError::InvalidJsonString.into())
     );
 });

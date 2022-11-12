@@ -202,8 +202,8 @@ mod tests {
         }
 
         // PlanExpr::None
-        test!(r#"DATE "2011-01-09""#, true);
-        test!(r#""hello world""#, true);
+        test!("DATE '2011-01-09'", true);
+        test!("'hello world'", true);
 
         // PlanExpr::Identifier
         test!("id", true);
@@ -222,12 +222,12 @@ mod tests {
         test!("-10", true);
         test!("rate!", true);
         test!("-wow", false);
-        test!(r#"("hello" || "world")"#, true);
+        test!("('hello' || 'world')", true);
         test!("(name)", true);
         test!("(1 + cat)", false);
         test!("CAST(id AS DECIMAL)", true);
         test!("CAST(Hello.world AS BOOLEAN)", false);
-        test!(r#"EXTRACT(YEAR FROM DATE "2022-03-01")"#, true);
+        test!("EXTRACT(YEAR FROM DATE '2022-03-01')", true);
         test!("EXTRACT(YEAR FROM rate)", true);
         test!("EXTRACT(HOUR FROM virtual_env)", false);
         test!("rate IS NULL", true);
@@ -260,7 +260,7 @@ mod tests {
         test!("id IN (lab, 101)", false);
         test!("tree IN (something, 101)", false);
         test!("ROUND(1.54)", true);
-        test!(r#"TRIM(LEADING "a" FROM name)"#, true);
+        test!("TRIM(LEADING 'a' FROM name)", true);
         test!("LOWER(icecream)", false);
 
         // PlanExpr::Query

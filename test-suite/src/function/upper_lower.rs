@@ -10,18 +10,18 @@ use {
 test_case!(upper_lower, async move {
     let test_cases = [
         (
-            r#"CREATE TABLE Item (
-                name TEXT DEFAULT UPPER("abc"),
-                opt_name TEXT NULL DEFAULT LOWER("ABC")
-            )"#,
+            "CREATE TABLE Item (
+                name TEXT DEFAULT UPPER('abc'),
+                opt_name TEXT NULL DEFAULT LOWER('ABC')
+            )",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Item VALUES ("abcd", "efgi"), ("Abcd", NULL), ("ABCD", "EfGi")"#,
+            "INSERT INTO Item VALUES ('abcd', 'efgi'), ('Abcd', NULL), ('ABCD', 'EfGi')",
             Ok(Payload::Insert(3)),
         ),
         (
-            r#"SELECT name FROM Item WHERE LOWER(name) = "abcd";"#,
+            "SELECT name FROM Item WHERE LOWER(name) = 'abcd';",
             Ok(select!(
                 name Str;
                 "abcd".to_owned();
@@ -40,12 +40,12 @@ test_case!(upper_lower, async move {
             )),
         ),
         (
-            r#"
+            "
             SELECT
-                LOWER("Abcd") as lower,
-                UPPER("abCd") as upper
+                LOWER('Abcd') as lower,
+                UPPER('abCd') as upper
             FROM Item LIMIT 1;
-            "#,
+            ",
             Ok(select!(
                 lower             | upper
                 Str               | Str;

@@ -1268,11 +1268,11 @@ mod tests {
     #[test]
     fn try_into_interval() {
         assert_eq!(
-            (&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())).try_into() as Result<I>,
+            (&Value::Str("'+22-10' YEAR TO MONTH".to_owned())).try_into() as Result<I>,
             Ok(I::Month(274))
         );
         assert_eq!(
-            I::try_from(&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())),
+            I::try_from(&Value::Str("'+22-10' YEAR TO MONTH".to_owned())),
             Ok(I::Month(274))
         );
     }

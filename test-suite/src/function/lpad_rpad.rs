@@ -10,27 +10,21 @@ use {
 test_case!(lpad_rpad, async move {
     let test_cases = [
         (
-            r#"CREATE TABLE Item (name TEXT DEFAULT LPAD("a", 5) || LPAD("b", 3))"#,
+            "CREATE TABLE Item (name TEXT DEFAULT LPAD('a', 5) || LPAD('b', 3))",
             Ok(Payload::Create),
         ),
-        (
-            r#"INSERT INTO Item VALUES ("hello")"#,
-            Ok(Payload::Insert(1)),
-        ),
+        ("INSERT INTO Item VALUES ('hello')", Ok(Payload::Insert(1))),
         (
             "CREATE TABLE NullName (name TEXT NULL)",
             Ok(Payload::Create),
         ),
-        (
-            r#"INSERT INTO NullName VALUES (NULL)"#,
-            Ok(Payload::Insert(1)),
-        ),
+        ("INSERT INTO NullName VALUES (NULL)", Ok(Payload::Insert(1))),
         (
             "CREATE TABLE NullNumber (number INTEGER NULL)",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO NullNumber VALUES (NULL)"#,
+            "INSERT INTO NullNumber VALUES (NULL)",
             Ok(Payload::Insert(1)),
         ),
         (

@@ -1239,11 +1239,11 @@ mod tests {
     #[test]
     fn function_position() {
         let actual = position(expr("cake"), text("ke"));
-        let expected = r#"POSITION("ke" IN cake)"#;
+        let expected = "POSITION('ke' IN cake)";
         test_expr(actual, expected);
 
         let actual = text("rice").position(text("cake"));
-        let expected = r#"POSITION("cake" IN "rice")"#;
+        let expected = "POSITION('cake' IN 'rice')";
         test_expr(actual, expected);
     }
 

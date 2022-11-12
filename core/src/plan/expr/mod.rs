@@ -165,13 +165,13 @@ mod tests {
 
         let actual = expr("name LIKE '_foo%'");
         let target = expr("name");
-        let pattern = expr(r#""_foo%""#);
+        let pattern = expr("'_foo%'");
         let expected = PlanExpr::TwoExprs(&target, &pattern);
         test!(actual, expected);
 
         let actual = expr("name ILIKE '_foo%'");
         let target = expr("name");
-        let pattern = expr(r#""_foo%""#);
+        let pattern = expr("'_foo%'");
         let expected = PlanExpr::TwoExprs(&target, &pattern);
         test!(actual, expected);
 

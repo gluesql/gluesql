@@ -5,7 +5,7 @@ test_case!(format, async move {
 
     let test_cases = vec![
         (
-            r#"VALUES(FORMAT(DATE "2017-06-15", "%Y-%m"))"#,
+            "VALUES(FORMAT(DATE '2017-06-15', '%Y-%m'))",
             Ok(select!(
                 column1
                 Str;
@@ -13,7 +13,7 @@ test_case!(format, async move {
             )),
         ),
         (
-            r#"SELECT FORMAT(DATE "2017-06-15","%Y-%m") AS date"#,
+            "SELECT FORMAT(DATE '2017-06-15','%Y-%m') AS date",
             Ok(select!(
                 date
                 Str;
@@ -21,7 +21,7 @@ test_case!(format, async move {
             )),
         ),
         (
-            r#"SELECT FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y-%m-%d %H:%M:%S") AS timestamp"#,
+            "SELECT FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%S') AS timestamp",
             Ok(select!(
                 timestamp
                 Str;
@@ -29,7 +29,7 @@ test_case!(format, async move {
             )),
         ),
         (
-            r#"SELECT FORMAT(TIME "23:56:04","%H:%M") AS time"#,
+            "SELECT FORMAT(TIME '23:56:04','%H:%M') AS time",
             Ok(select!(
                 time
                 Str;
@@ -37,11 +37,11 @@ test_case!(format, async move {
             )),
         ),
         (
-            r#"SELECT 
-                FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%Y") AS year
-               ,FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%m") AS month
-               ,FORMAT(TIMESTAMP "2015-09-05 23:56:04", "%d") AS day
-            "#,
+            "SELECT 
+                FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%Y') AS year
+               ,FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%m') AS month
+               ,FORMAT(TIMESTAMP '2015-09-05 23:56:04', '%d') AS day
+            ",
             Ok(select!(
             year              | month           | day;
             Str               | Str             | Str;
@@ -49,7 +49,7 @@ test_case!(format, async move {
             )),
         ),
         (
-            r#"SELECT FORMAT("2015-09-05 23:56:04", "%Y-%m-%d %H") AS timestamp"#,
+            "SELECT FORMAT('2015-09-05 23:56:04', '%Y-%m-%d %H') AS timestamp",
             Err(
                 EvaluateError::UnsupportedExprForFormatFunction("2015-09-05 23:56:04".to_owned())
                     .into(),

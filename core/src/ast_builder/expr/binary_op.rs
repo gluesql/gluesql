@@ -96,7 +96,7 @@ mod tests {
         let expected = "amount % 30";
         test_expr(actual, expected);
 
-        let actual = text("hello").concat(r#""world""#);
+        let actual = text("hello").concat("'world'");
         let expected = "'hello' || 'world'";
         test_expr(actual, expected);
 
@@ -121,7 +121,7 @@ mod tests {
         test_expr(actual, expected);
 
         let actual = col("id").neq("'abcde'");
-        let expected = r#"id != "abcde""#;
+        let expected = "id != 'abcde'";
         test_expr(actual, expected);
 
         let actual = (col("id").gt(num(10))).and(col("id").lt(num(20)));
