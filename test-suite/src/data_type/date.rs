@@ -2,21 +2,21 @@ use {crate::*, gluesql_core::prelude::Value::*};
 
 test_case!(date, async move {
     run!(
-        r#"
+        "
 CREATE TABLE DateLog (
     id INTEGER,
     date1 DATE,
     date2 DATE,
-)"#
+)"
     );
 
     run!(
-        r#"
+        "
 INSERT INTO DateLog VALUES
-    (1, "2020-06-11", "2021-03-01"),
-    (2, "2020-09-30", "1989-01-01"),
-    (3, "2021-05-01", "2021-05-01");
-"#
+    (1, '2020-06-11', '2021-03-01'),
+    (2, '2020-09-30', '1989-01-01'),
+    (3, '2021-05-01', '2021-05-01');
+"
     );
 
     macro_rules! date {
@@ -56,7 +56,7 @@ INSERT INTO DateLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM DateLog WHERE date1 = DATE "2020-06-11";"#,
+        "SELECT * FROM DateLog WHERE date1 = DATE '2020-06-11';",
         Ok(select!(
             id  | date1               | date2
             I64 | Date                | Date;
@@ -65,7 +65,7 @@ INSERT INTO DateLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM DateLog WHERE date2 < "2000-01-01";"#,
+        "SELECT * FROM DateLog WHERE date2 < '2000-01-01';",
         Ok(select!(
             id  | date1               | date2
             I64 | Date                | Date;
@@ -74,7 +74,7 @@ INSERT INTO DateLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM DateLog WHERE "1999-01-03" < DATE "2000-01-01";"#,
+        "SELECT * FROM DateLog WHERE '1999-01-03' < DATE '2000-01-01';",
         Ok(select!(
             id  | date1               | date2
             I64 | Date                | Date;
@@ -93,12 +93,12 @@ INSERT INTO DateLog VALUES
     };
 
     test!(
-        r#"SELECT
+        "SELECT
             id,
             date1 - date2 AS date_sub,
-            date1 - INTERVAL "1" DAY AS sub,
-            date2 + INTERVAL "1" MONTH AS add
-        FROM DateLog;"#,
+            date1 - INTERVAL '1' DAY AS sub,
+            date2 + INTERVAL '1' MONTH AS add
+        FROM DateLog;",
         Ok(select!(
             id  | date_sub     | sub                    | add
             I64 | Interval     | Timestamp              | Timestamp;
@@ -109,7 +109,7 @@ INSERT INTO DateLog VALUES
     );
 
     test!(
-        r#"INSERT INTO DateLog VALUES (1, "12345-678", "2021-05-01")"#,
+        "INSERT INTO DateLog VALUES (1, '12345-678', '2021-05-01')",
         Err(gluesql_core::data::ValueError::FailedToParseDate("12345-678".to_owned()).into())
     );
 });

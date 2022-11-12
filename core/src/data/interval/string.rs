@@ -15,6 +15,8 @@ impl TryFrom<&str> for Interval {
 
     fn try_from(s: &str) -> Result<Self> {
         let parsed = parse_interval(s)?;
+        println!("{parsed:?}");
+        // println!("{leading_field:?}:{last_field:?}");
 
         match translate_expr(&parsed)? {
             Expr::Interval {

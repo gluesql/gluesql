@@ -13,7 +13,7 @@ test_case!(reverse, async move {
             Ok(Payload::Create),
         ),
         (
-            "INSERT INTO Item VALUES ('Let's meet')",
+            "INSERT INTO Item VALUES ('Let''s meet')",
             Ok(Payload::Insert(1)),
         ),
         (

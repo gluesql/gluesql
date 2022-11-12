@@ -20,7 +20,7 @@ CREATE TABLE ListType (
 INSERT INTO ListType VALUES
     (1, '[1, 2, 3]'),
     (2, '["hello", "world", 30, true, [9,8]]'),
-    (3, '[{ "foo": 100, "bar": [true, 0,[10.5, false] ] }, 10, 20]');
+    (3, '[{ "foo": 100, "bar": [true, 0, [10.5, false] ] }, 10, 20]');
 "#
     );
 
@@ -32,7 +32,7 @@ INSERT INTO ListType VALUES
         Ok(select_with_null!(
             id     | items;
             I64(1)   l("[1,2,3]");
-            I64(2)   l("['hello','world',30,true,[9,8]]");
+            I64(2)   l(r#"["hello","world",30,true,[9,8]]"#);
             I64(3)   l(r#"[{"foo":100, "bar": [true, 0, [10.5, false]]},10,20]"#)
         ))
     );
@@ -85,9 +85,9 @@ CREATE TABLE ListType2 (
     run!(
         r#"
 INSERT INTO ListType2 VALUES
-    (1, '[1, 2, 3, { "hi": 'bye' }]'),
-    (2, '['one', 'two', 'three', [100, 200]]'),
-    (3, '['first', 'second', 'third', { "foo": true, "bar": false }]');
+    (1, '[1, 2, 3, { "hi": "bye" }]'),
+    (2, '["one", "two", "three", [100, 200]]'),
+    (3, '["first", "second", "third", { "foo": true, "bar": false }]');
 "#
     );
 

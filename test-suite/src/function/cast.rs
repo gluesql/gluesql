@@ -241,20 +241,20 @@ test_case!(cast_literal, async move {
         ),
         (
             "SELECT
-            CAST('\"1-2\" YEAR TO MONTH' as INTERVAL) as stoi_1,
-            CAST('\"12\" DAY' as INTERVAL) as stoi_2,
-            CAST('\"12\" MINUTE' as INTERVAL) as stoi_3,
-            CAST('\"-3 14\" DAY TO HOUR' as INTERVAL) as stoi_4,
-            CAST('\"3 14:00:00\" DAY TO SECOND' as INTERVAL) as stoi_5,
-            CAST('\"12:00\" HOUR TO MINUTE' as INTERVAL) as stoi_6,
-            CAST('\"-1000-11\" YEAR TO MONTH' as INTERVAL) as stoi_7,
-            CAST('\"30' MONTH\" as INTERVAL) as stoi_8,
-            CAST('\"35' HOUR\" as INTERVAL) as stoi_9,
-            CAST('\"300' SECOND\" as INTERVAL) as stoi_10,
-            CAST('\"3 12:30\" DAY TO MINUTE' as INTERVAL) as stoi_11,
-            CAST('\"3 12:30:12.1324\" DAY TO SECOND' as INTERVAL) as stoi_12,
-            CAST('\"-12:30:12\" HOUR TO SECOND' as INTERVAL) as stoi_13,
-            CAST('\"-30:11\" MINUTE TO SECOND' as INTERVAL) as stoi_14
+            CAST('''1-2'' YEAR TO MONTH' as INTERVAL) as stoi_1,
+            CAST('''12'' DAY' as INTERVAL) as stoi_2,
+            CAST('''12'' MINUTE' as INTERVAL) as stoi_3,
+            CAST('''-3 14'' DAY TO HOUR' as INTERVAL) as stoi_4,
+            CAST('''3 14:00:00'' DAY TO SECOND' as INTERVAL) as stoi_5,
+            CAST('''12:00'' HOUR TO MINUTE' as INTERVAL) as stoi_6,
+            CAST('''-1000-11'' YEAR TO MONTH' as INTERVAL) as stoi_7,
+            CAST('''30'' MONTH' as INTERVAL) as stoi_8,
+            CAST('''35'' HOUR' as INTERVAL) as stoi_9,
+            CAST('''300'' SECOND' as INTERVAL) as stoi_10,
+            CAST('''3 12:30'' DAY TO MINUTE' as INTERVAL) as stoi_11,
+            CAST('''3 12:30:12.1324'' DAY TO SECOND' as INTERVAL) as stoi_12,
+            CAST('''-12:30:12'' HOUR TO SECOND' as INTERVAL) as stoi_13,
+            CAST('''-30:11'' MINUTE TO SECOND' as INTERVAL) as stoi_14
             FROM Item",
             Ok(select!(
             stoi_1|stoi_2|stoi_3|stoi_4|stoi_5|stoi_6|stoi_7|stoi_8|stoi_9|stoi_10|stoi_11|stoi_12|stoi_13|stoi_14
@@ -384,13 +384,13 @@ test_case!(cast_value, async move {
         (
             "
         INSERT INTO IntervalLog VALUES
-        (1, '1-2 YEAR TO MONTH',         '30 MONTH'),
-        (2, '12 DAY',                    '35 HOUR'),
-        (3, '12 MINUTE',                 '300 SECOND'),
-        (4, '-3 14 DAY TO HOUR',         '3 12:30 DAY TO MINUTE'),
-        (5, '3 14:00:00 DAY TO SECOND',  '3 12:30:12.1324 DAY TO SECOND'),
-        (6, '12:00 HOUR TO MINUTE',      '-12:30:12 HOUR TO SECOND'),
-        (7, '-1000-11 YEAR TO MONTH',    '-30:11 MINUTE TO SECOND');
+        (1, '''1-2'' YEAR TO MONTH',         '''30'' MONTH'),
+        (2, '''12'' DAY',                    '''35'' HOUR'),
+        (3, '''12'' MINUTE',                 '''300'' SECOND'),
+        (4, '''-3 14'' DAY TO HOUR',         '''3 12:30'' DAY TO MINUTE'),
+        (5, '''3 14:00:00'' DAY TO SECOND',  '''3 12:30:12.1324'' DAY TO SECOND'),
+        (6, '''12:00'' HOUR TO MINUTE',      '''-12:30:12'' HOUR TO SECOND'),
+        (7, '''-1000-11'' YEAR TO MONTH',    '''-30:11'' MINUTE TO SECOND');
     ",
             Ok(Payload::Insert(7)),
         ),
