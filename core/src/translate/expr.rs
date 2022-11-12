@@ -7,7 +7,7 @@ use {
         translate_idents, translate_query, TranslateError,
     },
     crate::{
-        ast::{AstLiteral, Expr, OrderByExpr},
+        ast::{Expr, OrderByExpr},
         result::Result,
         translate::function::translate_trim,
     },
@@ -24,16 +24,7 @@ use {
 /// In `GlueSQL`, if an argument is received wrapped in `( )` in the sql statement, the standard is set to translate in the form of `Expr::Function(Box<Function::Cast>)` rather than `Expr::Cast`.
 pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
     match sql_expr {
-        SqlExpr::Identifier(ident) => match ident.quote_style {
-            Some(qoute_style) => {
-                match qoute_style {
-                    '"' => Ok(Expr::Identifier(ident.value.clone())),
-                    // Ok(Expr::Literal(AstLiteral::QuotedString(ident.value.clone()))),
-                    _ => unreachable!(),
-                }
-            }
-            None => Ok(Expr::Identifier(ident.value.clone())),
-        },
+        SqlExpr::Identifier(ident) => Ok(Expr::Identifier(ident.value.clone())),
         SqlExpr::CompoundIdentifier(idents) => (idents.len() == 2)
             .then(|| Expr::CompoundIdentifier {
                 alias: idents[0].value.clone(),
