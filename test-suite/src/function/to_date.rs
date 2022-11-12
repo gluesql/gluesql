@@ -14,7 +14,7 @@ test_case!(to_date, async move {
             Ok(select!(
                 column1
                 Date;
-                NaiveDate::from_ymd(2017, 6, 15)
+                NaiveDate::from_ymd_opt(2017, 6, 15).unwrap()
             )),
         ),
         (
@@ -22,7 +22,7 @@ test_case!(to_date, async move {
             Ok(select!(
                 column1
                 Timestamp;
-                NaiveDate::from_ymd(2015, 9, 5).and_hms(23, 56, 4)
+                NaiveDate::from_ymd_opt(2015, 9, 5).unwrap().and_hms_opt(23, 56, 4).unwrap()
             )),
         ),
         (
@@ -30,7 +30,7 @@ test_case!(to_date, async move {
             Ok(select!(
                 column1
                 Time;
-                NaiveTime::from_hms(23, 56, 4)
+                NaiveTime::from_hms_opt(23, 56, 4).unwrap()
             )),
         ),
         (
@@ -38,7 +38,7 @@ test_case!(to_date, async move {
             Ok(select!(
                 date
                 Date;
-                NaiveDate::from_ymd(2017, 6, 15)
+                NaiveDate::from_ymd_opt(2017, 6, 15).unwrap()
             )),
         ),
         (
@@ -46,7 +46,7 @@ test_case!(to_date, async move {
             Ok(select!(
                 date
                 Date;
-                NaiveDate::from_ymd(2017, 6, 15)
+                NaiveDate::from_ymd_opt(2017, 6, 15).unwrap()
             )),
         ),
         (
@@ -54,7 +54,7 @@ test_case!(to_date, async move {
             Ok(select!(
                 time
                 Time;
-                NaiveTime::from_hms(23, 56, 4)
+                NaiveTime::from_hms_opt(23, 56, 4).unwrap()
             )),
         ),
         (
@@ -62,7 +62,7 @@ test_case!(to_date, async move {
             Ok(select!(
                 timestamp
                 Timestamp;
-                NaiveDate::from_ymd(2015, 9, 5).and_hms(23, 56, 4)
+                NaiveDate::from_ymd_opt(2015, 9, 5).unwrap().and_hms_opt(23, 56, 4).unwrap()
             )),
         ),
         (

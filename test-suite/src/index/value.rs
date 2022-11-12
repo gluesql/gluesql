@@ -38,7 +38,7 @@ CREATE TABLE IdxValue (
         Ok(Payload::CreateIndex)
     );
 
-    let t = |h, m| NaiveTime::from_hms(h, m, 0);
+    let t = |h, m| NaiveTime::from_hms_opt(h, m, 0).unwrap();
 
     test_idx!(
         Ok(select!(

@@ -61,8 +61,14 @@ impl PartialEq<Value> for Value {
             (Value::Str(l), Value::Str(r)) => l == r,
             (Value::Bytea(l), Value::Bytea(r)) => l == r,
             (Value::Date(l), Value::Date(r)) => l == r,
-            (Value::Date(l), Value::Timestamp(r)) => &l.and_hms(0, 0, 0) == r,
-            (Value::Timestamp(l), Value::Date(r)) => l == &r.and_hms(0, 0, 0),
+            (Value::Date(l), Value::Timestamp(r)) => l
+                .and_hms_opt(0, 0, 0)
+                .map(|date_time| &date_time == r)
+                .unwrap_or(false),
+            (Value::Timestamp(l), Value::Date(r)) => r
+                .and_hms_opt(0, 0, 0)
+                .map(|date_time| l == &date_time)
+                .unwrap_or(false),
             (Value::Timestamp(l), Value::Timestamp(r)) => l == r,
             (Value::Time(l), Value::Time(r)) => l == r,
             (Value::Interval(l), Value::Interval(r)) => l == r,
@@ -90,8 +96,12 @@ impl PartialOrd<Value> for Value {
             (Value::Str(l), Value::Str(r)) => Some(l.cmp(r)),
             (Value::Bytea(l), Value::Bytea(r)) => Some(l.cmp(r)),
             (Value::Date(l), Value::Date(r)) => Some(l.cmp(r)),
-            (Value::Date(l), Value::Timestamp(r)) => Some(l.and_hms(0, 0, 0).cmp(r)),
-            (Value::Timestamp(l), Value::Date(r)) => Some(l.cmp(&r.and_hms(0, 0, 0))),
+            (Value::Date(l), Value::Timestamp(r)) => {
+                l.and_hms_opt(0, 0, 0).map(|date_time| date_time.cmp(r))
+            }
+            (Value::Timestamp(l), Value::Date(r)) => {
+                r.and_hms_opt(0, 0, 0).map(|date_time| l.cmp(&date_time))
+            }
             (Value::Timestamp(l), Value::Timestamp(r)) => Some(l.cmp(r)),
             (Value::Time(l), Value::Time(r)) => Some(l.cmp(r)),
             (Value::Interval(l), Value::Interval(r)) => l.partial_cmp(r),
@@ -630,8 +640,17 @@ mod tests {
     use {
         super::{Interval, Value::*},
         crate::data::{value::uuid::parse_uuid, ValueError},
+        chrono::{NaiveDate, NaiveTime},
         rust_decimal::Decimal,
     };
+
+    fn time(hour: u32, min: u32, sec: u32) -> NaiveTime {
+        NaiveTime::from_hms_opt(hour, min, sec).unwrap()
+    }
+
+    fn date(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
 
     #[allow(clippy::eq_op)]
     #[test]
@@ -657,8 +676,8 @@ mod tests {
         assert_eq!(bytea("1004"), bytea("1004"));
         assert_eq!(Interval::Month(1), Interval::Month(1));
         assert_eq!(
-            Time(NaiveTime::from_hms(12, 30, 11)),
-            Time(NaiveTime::from_hms(12, 30, 11))
+            Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap()),
+            Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap())
         );
         assert_eq!(decimal(1), decimal(1));
 
@@ -687,8 +706,13 @@ mod tests {
         assert_eq!(Bool(false).partial_cmp(&Bool(false)), Some(Ordering::Equal));
         assert_eq!(Bool(false).partial_cmp(&Bool(true)), Some(Ordering::Less));
 
-        let date = Date(NaiveDate::from_ymd(2020, 5, 1));
-        let timestamp = Timestamp(NaiveDate::from_ymd(2020, 3, 1).and_hms(0, 0, 0));
+        let date = Date(NaiveDate::from_ymd_opt(2020, 5, 1).unwrap());
+        let timestamp = Timestamp(
+            NaiveDate::from_ymd_opt(2020, 3, 1)
+                .unwrap()
+                .and_hms_opt(0, 0, 0)
+                .unwrap(),
+        );
 
         let one = rust_decimal::Decimal::ONE;
         let two = rust_decimal::Decimal::TWO;
@@ -697,7 +721,8 @@ mod tests {
         assert_eq!(timestamp.partial_cmp(&date), Some(Ordering::Less));
 
         assert_eq!(
-            Time(NaiveTime::from_hms(23, 0, 1)).partial_cmp(&Time(NaiveTime::from_hms(10, 59, 59))),
+            Time(NaiveTime::from_hms_opt(23, 0, 1).unwrap())
+                .partial_cmp(&Time(NaiveTime::from_hms_opt(10, 59, 59).unwrap())),
             Some(Ordering::Greater)
         );
         assert_eq!(
@@ -789,8 +814,6 @@ mod tests {
             };
         }
 
-        let time = NaiveTime::from_hms;
-        let date = NaiveDate::from_ymd;
         let decimal = |n: i32| Decimal(n.into());
 
         test!(add I8(1),    I8(2)    => I8(3));
@@ -876,19 +899,19 @@ mod tests {
             Date(date(2021, 11, 11)),
             mon!(14)
             =>
-            Timestamp(date(2023, 1, 11).and_hms(0, 0, 0))
+            Timestamp(date(2023, 1, 11).and_hms_opt(0, 0, 0).unwrap())
         );
         test!(add
             Date(date(2021, 5, 7)),
             Time(time(12, 0, 0))
             =>
-            Timestamp(date(2021, 5, 7).and_hms(12, 0, 0))
+            Timestamp(date(2021, 5, 7).and_hms_opt(12, 0, 0).unwrap())
         );
         test!(add
-            Timestamp(date(2021, 11, 11).and_hms(0, 0, 0)),
+            Timestamp(date(2021, 11, 11).and_hms_opt(0, 0, 0).unwrap()),
             mon!(14)
             =>
-            Timestamp(date(2023, 1, 11).and_hms(0, 0, 0))
+            Timestamp(date(2023, 1, 11).and_hms_opt(0, 0, 0).unwrap())
         );
         test!(add
             Time(time(1, 4, 6)),
@@ -976,28 +999,28 @@ mod tests {
         test!(subtract decimal(3), decimal(2) => decimal(1));
 
         test!(subtract
-            Date(NaiveDate::from_ymd(2021, 11, 11)),
-            Date(NaiveDate::from_ymd(2021, 6, 11))
+            Date(NaiveDate::from_ymd_opt(2021, 11, 11).unwrap()),
+            Date(NaiveDate::from_ymd_opt(2021, 6, 11).unwrap())
             =>
             Interval(Interval::days(153))
         );
         test!(subtract
-            Date(NaiveDate::from_ymd(2021, 1, 1)),
+            Date(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()),
             Interval(Interval::days(365))
             =>
-            Timestamp(NaiveDate::from_ymd(2020, 1, 2).and_hms(0, 0, 0))
+            Timestamp(NaiveDate::from_ymd_opt(2020, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap())
         );
         test!(subtract
-            Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms(15, 0, 0)),
-            Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms(12, 0, 0))
+            Timestamp(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap().and_hms_opt(15, 0, 0).unwrap()),
+            Timestamp(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap().and_hms_opt(12, 0, 0).unwrap())
             =>
             Interval(Interval::hours(3))
         );
         test!(subtract
-            Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms(0, 3, 0)),
+            Timestamp(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap().and_hms_opt(0, 3, 0).unwrap()),
             Interval(Interval::days(365))
             =>
-            Timestamp(NaiveDate::from_ymd(2020, 1, 2).and_hms(0, 3, 0))
+            Timestamp(NaiveDate::from_ymd_opt(2020, 1, 2).unwrap().and_hms_opt(0, 3, 0).unwrap())
         );
         test!(subtract
             Time(time(1, 4, 6)),
@@ -1197,9 +1220,16 @@ mod tests {
             };
         }
 
-        let date = || Date(NaiveDate::from_ymd(1989, 3, 1));
-        let time = || Time(NaiveTime::from_hms(6, 1, 1));
-        let ts = || Timestamp(NaiveDate::from_ymd(1989, 1, 1).and_hms(0, 0, 0));
+        let date = || Date(NaiveDate::from_ymd_opt(1989, 3, 1).unwrap());
+        let time = || Time(NaiveTime::from_hms_opt(6, 1, 1).unwrap());
+        let ts = || {
+            Timestamp(
+                NaiveDate::from_ymd_opt(1989, 1, 1)
+                    .unwrap()
+                    .and_hms_opt(0, 0, 0)
+                    .unwrap(),
+            )
+        };
 
         null_test!(add      I8(1),    Null);
         null_test!(add      I16(1),    Null);
@@ -1428,29 +1458,39 @@ mod tests {
         cast!(U16(11)        => Text, Str("11".to_owned()));
         cast!(F64(1.0)      => Text, Str("1".to_owned()));
 
-        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
+        let date = Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
         cast!(date          => Text, Str("2021-05-01".to_owned()));
 
-        let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
+        let timestamp = Value::Timestamp(
+            NaiveDate::from_ymd_opt(2021, 5, 1)
+                .unwrap()
+                .and_hms_opt(12, 34, 50)
+                .unwrap(),
+        );
         cast!(timestamp     => Text, Str("2021-05-01 12:34:50".to_owned()));
         cast!(Null          => Text, Null);
 
         // Date
-        let date = Value::Date(NaiveDate::from_ymd(2021, 5, 1));
-        let timestamp = Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
+        let date = Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
+        let timestamp = Value::Timestamp(
+            NaiveDate::from_ymd_opt(2021, 5, 1)
+                .unwrap()
+                .and_hms_opt(12, 34, 50)
+                .unwrap(),
+        );
 
         cast!(Str("2021-05-01".to_owned()) => Date, date.to_owned());
         cast!(timestamp                    => Date, date);
         cast!(Null                         => Date, Null);
 
         // Time
-        cast!(Str("08:05:30".to_owned()) => Time, Value::Time(NaiveTime::from_hms(8, 5, 30)));
+        cast!(Str("08:05:30".to_owned()) => Time, Value::Time(NaiveTime::from_hms_opt(8, 5, 30).unwrap()));
         cast!(Null                       => Time, Null);
 
         // Timestamp
-        cast!(Value::Date(NaiveDate::from_ymd(2021, 5, 1)) => Timestamp, Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(0, 0, 0)));
-        cast!(Str("2021-05-01 08:05:30".to_owned())        => Timestamp, Value::Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(8, 5, 30)));
-        cast!(Null                                         => Timestamp, Null);
+        cast!(Value::Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap()) => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+        cast!(Str("2021-05-01 08:05:30".to_owned())                     => Timestamp, Value::Timestamp(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap().and_hms_opt(8, 5, 30).unwrap()));
+        cast!(Null                                                      => Timestamp, Null);
     }
 
     #[test]
@@ -1479,9 +1519,14 @@ mod tests {
             chrono::{NaiveDate, NaiveTime},
         };
 
-        let date = Date(NaiveDate::from_ymd(2021, 5, 1));
-        let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
-        let time = Time(NaiveTime::from_hms(12, 30, 11));
+        let date = Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
+        let timestamp = Timestamp(
+            NaiveDate::from_ymd_opt(2021, 5, 1)
+                .unwrap()
+                .and_hms_opt(12, 34, 50)
+                .unwrap(),
+        );
+        let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();
@@ -1634,9 +1679,14 @@ mod tests {
         };
 
         let decimal = Decimal(rust_decimal::Decimal::ONE);
-        let date = Date(NaiveDate::from_ymd(2021, 5, 1));
-        let timestamp = Timestamp(NaiveDate::from_ymd(2021, 5, 1).and_hms(12, 34, 50));
-        let time = Time(NaiveTime::from_hms(12, 30, 11));
+        let date = Date(NaiveDate::from_ymd_opt(2021, 5, 1).unwrap());
+        let timestamp = Timestamp(
+            NaiveDate::from_ymd_opt(2021, 5, 1)
+                .unwrap()
+                .and_hms_opt(12, 34, 50)
+                .unwrap(),
+        );
+        let time = Time(NaiveTime::from_hms_opt(12, 30, 11).unwrap());
         let interval = Interval(I::hours(5));
         let uuid = Uuid(parse_uuid("936DA01F9ABD4d9d80C702AF85C822A8").unwrap());
         let map = Value::parse_json_map(r#"{ "a": 10 }"#).unwrap();

@@ -277,11 +277,11 @@ test_case!(cast_literal, async move {
         ),
         (
             "SELECT CAST('2021-08-25' AS DATE) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Date(NaiveDate::from_ymd(2021, 8, 25)))),
+            Ok(select_with_null!(cast; Value::Date(NaiveDate::from_ymd_opt(2021, 8, 25).unwrap()))),
         ),
         (
             "SELECT CAST('08-25-2021' AS DATE) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Date(NaiveDate::from_ymd(2021, 8, 25)))),
+            Ok(select_with_null!(cast; Value::Date(NaiveDate::from_ymd_opt(2021, 8, 25).unwrap()))),
         ),
         (
             r#"SELECT CAST('2021-08-025' AS DATE) FROM Item"#,
@@ -289,23 +289,23 @@ test_case!(cast_literal, async move {
         ),
         (
             "SELECT CAST('AM 8:05' AS TIME) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 0)))),
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_opt(8, 5, 0).unwrap()))),
         ),
         (
             "SELECT CAST('AM 08:05' AS TIME) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 0)))),
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_opt(8, 5, 0).unwrap()))),
         ),
         (
             "SELECT CAST('AM 8:05:30' AS TIME) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms(8, 5, 30)))),
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_opt(8, 5, 30).unwrap()))),
         ),
         (
             "SELECT CAST('AM 8:05:30.9' AS TIME) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli(8, 5, 30, 900)))),
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli_opt(8, 5, 30, 900).unwrap()))),
         ),
         (
             "SELECT CAST('8:05:30.9 AM' AS TIME) AS cast FROM Item",
-            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli(8, 5, 30, 900)))),
+            Ok(select_with_null!(cast; Value::Time(NaiveTime::from_hms_milli_opt(8, 5, 30, 900).unwrap()))),
         ),
         (
             "SELECT CAST('25:08:05' AS TIME) AS cast FROM Item",
@@ -314,13 +314,13 @@ test_case!(cast_literal, async move {
         (
             "SELECT CAST('2021-08-25 08:05:30' AS TIMESTAMP) AS cast FROM Item",
             Ok(
-                select_with_null!(cast; Value::Timestamp(NaiveDate::from_ymd(2021, 8, 25).and_hms(8, 5, 30))),
+                select_with_null!(cast; Value::Timestamp(NaiveDate::from_ymd_opt(2021, 8, 25).unwrap().and_hms_opt(8, 5, 30).unwrap())),
             ),
         ),
         (
             "SELECT CAST('2021-08-25 08:05:30.9' AS TIMESTAMP) AS cast FROM Item",
             Ok(
-                select_with_null!(cast; Value::Timestamp(NaiveDate::from_ymd(2021, 8, 25).and_hms_milli(8, 5, 30, 900))),
+                select_with_null!(cast; Value::Timestamp(NaiveDate::from_ymd_opt(2021, 8, 25).unwrap().and_hms_milli_opt(8, 5, 30, 900).unwrap())),
             ),
         ),
         (
