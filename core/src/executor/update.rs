@@ -92,6 +92,14 @@ impl<'a> Update<'a> {
                         v.validate_type(data_type)?;
                         v
                     }
+                    Evaluated::StrSlice {
+                        source: s,
+                        range: _,
+                    } => {
+                        let v = Value::from(&s);
+                        v.validate_type(data_type)?;
+                        v
+                    }
                 };
 
                 value.validate_null(*nullable)?;
