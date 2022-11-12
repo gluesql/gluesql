@@ -12,16 +12,16 @@ test_case!(basic, async move {
     "
     );
     run!(
-        r#"
+        "
         INSERT INTO TxTest VALUES
-            (1, "Friday"),
-            (2, "Phone");
-    "#
+            (1, 'Friday'),
+            (2, 'Phone');
+    "
     );
 
     test!("BEGIN;", Ok(Payload::StartTransaction));
     test!(
-        r#"INSERT INTO TxTest VALUES (3, "New one");"#,
+        "INSERT INTO TxTest VALUES (3, 'New one');",
         Ok(Payload::Insert(1))
     );
     test!("ROLLBACK;", Ok(Payload::Rollback));
@@ -37,7 +37,7 @@ test_case!(basic, async move {
 
     test!("BEGIN;", Ok(Payload::StartTransaction));
     test!(
-        r#"INSERT INTO TxTest VALUES (3, "Vienna");"#,
+        "INSERT INTO TxTest VALUES (3, 'Vienna');",
         Ok(Payload::Insert(1))
     );
     test!(
@@ -111,7 +111,7 @@ test_case!(basic, async move {
     // UPDATE
     test!("BEGIN;", Ok(Payload::StartTransaction));
     test!(
-        r#"UPDATE TxTest SET name = "Sunday" WHERE id = 1;"#,
+        "UPDATE TxTest SET name = 'Sunday' WHERE id = 1;",
         Ok(Payload::Update(1))
     );
     test!(
@@ -135,7 +135,7 @@ test_case!(basic, async move {
     );
     test!("BEGIN;", Ok(Payload::StartTransaction));
     test!(
-        r#"UPDATE TxTest SET name = "Sunday" WHERE id = 1;"#,
+        "UPDATE TxTest SET name = 'Sunday' WHERE id = 1;",
         Ok(Payload::Update(1))
     );
     test!(

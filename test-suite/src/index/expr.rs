@@ -9,21 +9,21 @@ use {
 
 test_case!(expr, async move {
     run!(
-        r#"
+        "
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER,
     name TEXT
-)"#
+)"
     );
 
     run!(
-        r#"
+        "
         INSERT INTO Test
             (id, num, name)
         VALUES
-            (1, 2, "Hello");
-    "#
+            (1, 2, 'Hello');
+    "
     );
 
     test!("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex));
@@ -54,7 +54,7 @@ CREATE TABLE Test (
     );
 
     test!(
-        r#"INSERT INTO Test VALUES (4, 7, "Well");"#,
+        "INSERT INTO Test VALUES (4, 7, 'Well');",
         Ok(Payload::Insert(1))
     );
 
@@ -94,8 +94,8 @@ CREATE TABLE Test (
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
-        idx!(idx_binary_op, Eq, r#""2Hello""#),
-        r#"SELECT id, num, name FROM Test WHERE num || name = "2Hello""#
+        idx!(idx_binary_op, Eq, "'2Hello'"),
+        "SELECT id, num, name FROM Test WHERE num || name = '2Hello'"
     );
 
     test_idx!(
@@ -104,8 +104,8 @@ CREATE TABLE Test (
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
-        idx!(idx_binary_op, Eq, r#""2Hello""#),
-        r#"SELECT id, num, name FROM Test WHERE (num || name) = "2Hello""#
+        idx!(idx_binary_op, Eq, "'2Hello'"),
+        "SELECT id, num, name FROM Test WHERE (num || name) = '2Hello'"
     );
 
     test_idx!(
@@ -114,8 +114,8 @@ CREATE TABLE Test (
             I64 | I64 | Str;
             4     7     "Well".to_owned()
         )),
-        idx!(idx_binary_op, Eq, r#""7Well""#),
-        r#"SELECT id, num, name FROM Test WHERE "7Well" = (num || name)"#
+        idx!(idx_binary_op, Eq, "'7Well'"),
+        "SELECT id, num, name FROM Test WHERE '7Well' = (num || name)"
     );
 
     test_idx!(
@@ -134,7 +134,7 @@ CREATE TABLE Test (
             I64 | I64 | Str;
             4     7     "Well".to_owned()
         )),
-        idx!(idx_cast, Eq, r#""4""#),
-        r#"SELECT id, num, name FROM Test WHERE CAST(id AS TEXT) = "4""#
+        idx!(idx_cast, Eq, "'4'"),
+        "SELECT id, num, name FROM Test WHERE CAST(id AS TEXT) = '4'"
     );
 });
