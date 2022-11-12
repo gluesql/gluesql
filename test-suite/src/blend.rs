@@ -36,9 +36,9 @@ test_case!(blend, async move {
     let insert_sqls = [
         "
         INSERT INTO BlendUser (id, name) VALUES
-            (1, \"Taehoon\"),
-            (2,    \"Mike\"),
-            (3,   \"Jorno\");
+            (1, 'Taehoon'),
+            (2,    'Mike'),
+            (3,   'Jorno');
         ",
         "
         INSERT INTO BlendItem (id, player_id, quantity) VALUES

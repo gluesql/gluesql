@@ -5,7 +5,7 @@ use {
 
 test_case!(ascii, async move {
     test!(
-        r#"VALUES(ASCII("A"))"#,
+        "VALUES(ASCII('A'))",
         Ok(select!(
             column1
             I64;
@@ -13,7 +13,7 @@ test_case!(ascii, async move {
         ))
     );
     test!(
-        r#"VALUES(ASCII("AB"))"#,
+        "VALUES(ASCII('AB'))",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into())
     );
     run!(
@@ -24,7 +24,7 @@ test_case!(ascii, async move {
         );
     "
     );
-    run!(r#"INSERT INTO Ascii VALUES (1, "F");"#);
+    run!("INSERT INTO Ascii VALUES (1, 'F');");
     test!(
         r#"select ascii(text) as ascii from Ascii;"#,
         Ok(select!(
@@ -35,7 +35,7 @@ test_case!(ascii, async move {
     );
 
     test!(
-        r#"select ascii("a") as ascii from Ascii;"#,
+        "select ascii('a') as ascii from Ascii;",
         Ok(select!(
            ascii
            I64;
@@ -44,7 +44,7 @@ test_case!(ascii, async move {
     );
 
     test!(
-        r#"select ascii("A") as ascii from Ascii;"#,
+        "select ascii('A') as ascii from Ascii;",
         Ok(select!(
            ascii
            I64;
@@ -53,22 +53,22 @@ test_case!(ascii, async move {
     );
 
     test!(
-        r#"select ascii("ab") as ascii from Ascii;"#,
+        "select ascii('ab') as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into())
     );
 
     test!(
-        r#"select ascii("AB") as ascii from Ascii;"#,
+        "select ascii('AB') as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into())
     );
 
     test!(
-        r#"select ascii("") as ascii from Ascii;"#,
+        "select ascii('') as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into())
     );
 
     test!(
-        r#"select ascii("ukjhg") as ascii from Ascii;"#,
+        "select ascii('ukjhg') as ascii from Ascii;",
         Err(EvaluateError::AsciiFunctionRequiresSingleCharacterValue.into())
     );
 
@@ -78,7 +78,7 @@ test_case!(ascii, async move {
     );
 
     test!(
-        r#"select ascii("ㄱ") as ascii from Ascii;"#,
+        "select ascii('ㄱ') as ascii from Ascii;",
         Err(EvaluateError::NonAsciiCharacterNotAllowed.into())
     );
 
@@ -92,7 +92,7 @@ test_case!(ascii, async move {
         .into())
     );
 
-    run!(r#"INSERT INTO Ascii VALUES (1, "Foo");"#);
+    run!("INSERT INTO Ascii VALUES (1, 'Foo');");
 
     test!(
         r#"select ascii(text) as ascii from Ascii;"#,

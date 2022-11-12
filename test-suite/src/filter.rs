@@ -22,17 +22,17 @@ test_case!(filter, async move {
     let insert_sqls = [
         "
         INSERT INTO Boss (id, name, strength) VALUES
-            (1,    \"Amelia\", 10.10),
-            (2,      \"Doll\", 20.20),
-            (3, \"Gascoigne\", 30.30),
-            (4,   \"Gehrman\", 40.40),
-            (5,     \"Maria\", 50.50);
+            (1,    'Amelia', 10.10),
+            (2,      'Doll', 20.20),
+            (3, 'Gascoigne', 30.30),
+            (4,   'Gehrman', 40.40),
+            (5,     'Maria', 50.50);
         ",
         "
         INSERT INTO Hunter (id, name) VALUES
-            (1, \"Gascoigne\"),
-            (2,   \"Gehrman\"),
-            (3,     \"Maria\");
+            (1, 'Gascoigne'),
+            (2,   'Gehrman'),
+            (3,     'Maria');
         ",
     ];
 

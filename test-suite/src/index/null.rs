@@ -6,25 +6,25 @@ use {
 
 test_case!(null, async move {
     run!(
-        r#"
+        "
 CREATE TABLE NullIdx (
     id INTEGER NULL,
     date DATE NULL,
     flag BOOLEAN NULL
-)"#
+)"
     );
 
     run!(
-        r#"
+        "
         INSERT INTO NullIdx
             (id, date, flag)
         VALUES
             (NULL, NULL,         True),
-            (1,    "2020-03-20", True),
+            (1,    '2020-03-20', True),
             (2,    NULL,         NULL),
-            (3,    "1989-02-01", False),
+            (3,    '1989-02-01', False),
             (4,    NULL,         True);
-    "#
+    "
     );
 
     test!(
@@ -53,8 +53,8 @@ CREATE TABLE NullIdx (
             3     date!("1989-02-01")   false;
             1     date!("2020-03-20")   true
         )),
-        idx!(idx_date, Lt, r#"DATE "2040-12-24""#),
-        r#"SELECT id, date, flag FROM NullIdx WHERE date < DATE "2040-12-24""#
+        idx!(idx_date, Lt, "DATE '2040-12-24'"),
+        "SELECT id, date, flag FROM NullIdx WHERE date < DATE '2040-12-24'"
     );
 
     test_idx!(
@@ -64,8 +64,8 @@ CREATE TABLE NullIdx (
             I64(2)   Null   Null;
             I64(4)   Null   Bool(true)
         )),
-        idx!(idx_date, GtEq, r#"DATE "2040-12-24""#),
-        r#"SELECT id, date, flag FROM NullIdx WHERE date >= DATE "2040-12-24""#
+        idx!(idx_date, GtEq, "DATE '2040-12-24'"),
+        "SELECT id, date, flag FROM NullIdx WHERE date >= DATE '2040-12-24'"
     );
 
     test_idx!(

@@ -19,12 +19,12 @@ test_case!(div_mod, async move {
             Ok(Payload::Create),
         ),
         (
-            r#"
+            "
             INSERT INTO 
                 FloatDiv (dividend, divisor) 
             VALUES 
                 (12.0, 3.0), (12.34, 56.78), (-12.3, 4.0)
-            "#,
+            ",
             Ok(Payload::Insert(3)),
         ),
         (
@@ -47,7 +47,7 @@ test_case!(div_mod, async move {
             Err(EvaluateError::DivisorShouldNotBeZero.into()),
         ),
         (
-            r#"SELECT DIV(1.0, "dividend") AS quotient FROM FloatDiv"#,
+            "SELECT DIV(1.0, 'dividend') AS quotient FROM FloatDiv",
             Err(EvaluateError::FunctionRequiresFloatOrIntegerValue("DIV".to_owned()).into()),
         ),
         (
@@ -73,12 +73,12 @@ test_case!(div_mod, async move {
             Ok(Payload::Create),
         ),
         (
-            r#"
+            "
             INSERT INTO 
                 IntDiv (dividend, divisor) 
             VALUES 
                 (12, 3), (12, 7), (12, 34), (-12, 7)
-            "#,
+            ",
             Ok(Payload::Insert(4)),
         ),
         (
@@ -111,13 +111,13 @@ test_case!(div_mod, async move {
             Ok(Payload::Create),
         ),
         (
-            r#"
+            "
             INSERT INTO 
                 MixDiv (dividend, divisor) 
             VALUES 
                 (12, 3.0), (12, 34.0), (12, -5.2),
                 (12, NULL), (NULL, 34.0), (NULL, NULL)
-            "#,
+            ",
             Ok(Payload::Insert(6)),
         ),
         (

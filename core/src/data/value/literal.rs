@@ -759,7 +759,7 @@ mod tests {
         );
         test!(
             DataType::Interval,
-            text!(r#""+22-10" YEAR TO MONTH"#),
+            text!("'+22-10' YEAR TO MONTH"),
             Value::Interval(I::Month(274))
         );
         test!(

@@ -37,8 +37,8 @@ pub fn bench_insert(c: &mut Criterion) {
     c.bench_function("insert_one", |b| {
         b.iter(|| {
             let query_str = format!(
-                "INSERT INTO Testing \
-            VALUES ({:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");",
+                "INSERT INTO Testing 
+                 VALUES ({:#}, 'Testing 1', 'Testing 2', 'Testing 3');",
                 &id
             );
             id += 1;
@@ -75,8 +75,8 @@ pub fn bench_select(c: &mut Criterion) {
 
         for i in 0..ITEM_SIZE {
             sqls += &*format!(
-                "INSERT INTO Testing \
-            VALUES ({:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");",
+                "INSERT INTO Testing
+                 VALUES ({:#}, 'Testing 1', 'Testing 2', 'Testing 3');",
                 &i
             );
         }
@@ -152,10 +152,10 @@ pub fn bench_select_tainted(c: &mut Criterion) {
 
         for i in 0..ITEM_SIZE {
             sqls += &*format!(
-                "INSERT INTO Testing \
-            VALUES ({0:#}, \"Testing 1\", \"Testing 2\", \"Testing 3\");\
-                INSERT INTO TestingTainted \
-            VALUES ({0:#}, \"Testing_tainted 1\", \"Testing_tainted 2\", \"Testing_tainted 3\");",
+                "INSERT INTO Testing
+                 VALUES ({0:#}, 'Testing 1', 'Testing 2', 'Testing 3');
+                 INSERT INTO TestingTainted
+                 VALUES ({0:#}, 'Testing_tainted 1', 'Testing_tainted 2', 'Testing_tainted 3');",
                 &i
             );
         }
