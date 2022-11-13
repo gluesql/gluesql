@@ -49,7 +49,7 @@ impl TryFrom<&Evaluated<'_>> for Key {
     fn try_from(evaluated: &Evaluated<'_>) -> Result<Self> {
         match evaluated {
             Evaluated::Literal(l) => Value::try_from(l)?.try_into(),
-            Evaluated::StrSlice { source, range: _ } => source.try_into(),
+            Evaluated::StrSlice { source, range: _ } => Ok(Key::from(source)),
             Evaluated::Value(v) => v.try_into(),
         }
     }
