@@ -105,12 +105,6 @@ impl TryFrom<&Value> for Key {
     }
 }
 
-impl From<&String> for Key {
-    fn from(s: &String) -> Self {
-        Key::Str(s.to_owned())
-    }
-}
-
 const VALUE: u8 = 0;
 const NONE: u8 = 1;
 

@@ -1,6 +1,10 @@
-use std::{borrow::Cow, cmp::Ordering};
-
-use crate::data::{Literal, Value};
+use {
+    crate::{
+        data::{Literal, Value},
+        prelude::Key,
+    },
+    std::{borrow::Cow, cmp::Ordering},
+};
 
 impl PartialEq<String> for Value {
     fn eq(&self, other: &String) -> bool {
@@ -44,11 +48,20 @@ impl From<&String> for Value {
     }
 }
 
+impl From<&String> for Key {
+    fn from(s: &String) -> Self {
+        Key::Str(s.to_owned())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::{borrow::Cow, cmp::Ordering};
 
-    use crate::{data::Literal, prelude::Value};
+    use crate::{
+        data::Literal,
+        prelude::{Key, Value},
+    };
 
     #[test]
     fn eq() {
@@ -125,5 +138,10 @@ mod tests {
             Value::Str("meat".to_owned()),
             Value::from(&"meat".to_owned())
         );
+    }
+
+    #[test]
+    fn from_key() {
+        assert_eq!(Key::from(&"apple".to_owned()), Key::Str("apple".to_owned()));
     }
 }
