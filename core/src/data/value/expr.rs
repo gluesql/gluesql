@@ -191,22 +191,27 @@ mod tests {
             Ok(Expr::Literal(AstLiteral::HexString("1234".to_owned())))
         );
         assert_eq!(
-            Value::Date(NaiveDate::from_ymd(2022, 11, 3)).try_into(),
+            Value::Date(NaiveDate::from_ymd_opt(2022, 11, 3).unwrap()).try_into(),
             Ok(Expr::TypedString {
                 data_type: DataType::Date,
                 value: "2022-11-03".to_owned(),
             })
         );
         assert_eq!(
-            Value::Timestamp(NaiveDate::from_ymd(2022, 11, 3).and_hms_milli(8, 5, 30, 900))
-                .try_into(),
+            Value::Timestamp(
+                NaiveDate::from_ymd_opt(2022, 11, 3)
+                    .unwrap()
+                    .and_hms_milli_opt(8, 5, 30, 900)
+                    .unwrap()
+            )
+            .try_into(),
             Ok(Expr::TypedString {
                 data_type: DataType::Timestamp,
                 value: "2022-11-03 08:05:30.900 UTC".to_owned(),
             }),
         );
         assert_eq!(
-            Value::Time(NaiveTime::from_hms(20, 11, 59)).try_into(),
+            Value::Time(NaiveTime::from_hms_opt(20, 11, 59).unwrap()).try_into(),
             Ok(Expr::TypedString {
                 data_type: DataType::Time,
                 value: "20:11:59".to_owned()

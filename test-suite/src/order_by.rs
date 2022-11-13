@@ -5,23 +5,23 @@ use {
 
 test_case!(order_by, async move {
     run!(
-        r#"
+        "
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER,
     name TEXT NULL,
     rate FLOAT NULL
-)"#
+)"
     );
     run!(
-        r#"
+        "
         INSERT INTO Test (id, num, name, rate)
         VALUES
-            (1, 2, "Hello",    3.0),
+            (1, 2, 'Hello',    3.0),
             (1, 9, NULL,       NULL),
-            (3, 4, "World",    1.0),
-            (4, 7, "Thursday", NULL);
-    "#
+            (3, 4, 'World',    1.0),
+            (4, 7, 'Thursday', NULL);
+    "
     );
 
     test!(

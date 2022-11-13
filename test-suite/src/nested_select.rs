@@ -27,11 +27,11 @@ test_case!(nested_select, async move {
     let insert_sqls = [
         "
         INSERT INTO Player (id, name) VALUES
-            (1, \"Taehoon\"),
-            (2,    \"Mike\"),
-            (3,   \"Jorno\"),
-            (4,   \"Berry\"),
-            (5,    \"Hwan\");
+            (1, 'Taehoon'),
+            (2,    'Mike'),
+            (3,   'Jorno'),
+            (4,   'Berry'),
+            (5,    'Hwan');
         ",
         "
         INSERT INTO Request (id, quantity, user_id) VALUES
@@ -74,7 +74,7 @@ test_case!(nested_select, async move {
         ),
         (4, "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE user_id IN (Player.id));"),
         (2, "SELECT * FROM Player WHERE id IN (SELECT user_id FROM Request WHERE quantity IN (6, 7, 8, 9));"),
-        (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM Player WHERE name IN (\"Taehoon\", \"Hwan\"));"),
+        (9, "SELECT * FROM Request WHERE user_id IN (SELECT id FROM Player WHERE name IN ('Taehoon', 'Hwan'));"),
     ];
     for (num, sql) in select_sqls {
         count!(num, sql);

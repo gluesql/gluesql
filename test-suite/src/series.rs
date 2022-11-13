@@ -102,9 +102,9 @@ test_case!(series, async move {
         ),
         (
             // SELECT without Table in Scalar subquery
-            r#"SELECT (SELECT "Hello")"#,
+            "SELECT (SELECT 'Hello')",
             Ok(select!(
-                r#"(SELECT "Hello")"#
+                "(SELECT 'Hello')"
                 Str;
                 "Hello".to_owned()
             )),

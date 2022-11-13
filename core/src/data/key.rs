@@ -304,23 +304,20 @@ mod tests {
         );
 
         assert_eq!(
-            convert(r#""Hello World""#),
+            convert("'Hello World'"),
             Ok(Key::Str("Hello World".to_owned()))
         );
         assert_eq!(
             convert("X'1234'"),
             Ok(Key::Bytea(hex::decode("1234").unwrap())),
         );
-        assert!(matches!(convert(r#"DATE "2022-03-03""#), Ok(Key::Date(_))));
-        assert!(matches!(convert(r#"TIME "12:30:00""#), Ok(Key::Time(_))));
+        assert!(matches!(convert("DATE '2022-03-03'"), Ok(Key::Date(_))));
+        assert!(matches!(convert("TIME '12:30:00'"), Ok(Key::Time(_))));
         assert!(matches!(
-            convert(r#"TIMESTAMP "2022-03-03 12:30:00Z""#),
+            convert("TIMESTAMP '2022-03-03 12:30:00Z'"),
             Ok(Key::Timestamp(_))
         ));
-        assert!(matches!(
-            convert(r#"INTERVAL "1" DAY"#),
-            Ok(Key::Interval(_))
-        ));
+        assert!(matches!(convert("INTERVAL '1' DAY"), Ok(Key::Interval(_))));
         assert!(matches!(convert("GENERATE_UUID()"), Ok(Key::Uuid(_))));
 
         // None
@@ -339,9 +336,9 @@ mod tests {
             Key::try_from(Value::List(Vec::default())),
             Err(KeyError::ListTypeKeyNotSupported.into())
         );
-        assert_eq!(convert(r#"POSITION("PORK" IN "MEAT")"#), Ok(Key::I64(0)));
+        assert_eq!(convert("POSITION('PORK' IN 'MEAT')"), Ok(Key::I64(0)));
         assert_eq!(
-            convert(r#"EXTRACT(SECOND FROM INTERVAL "8" SECOND)"#),
+            convert("EXTRACT(SECOND FROM INTERVAL '8' SECOND)"),
             Ok(Key::I64(8))
         );
     }
@@ -513,24 +510,34 @@ mod tests {
         assert_eq!(cmp(&n5, &n4), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Date(NaiveDate::from_ymd(2021, 1, 1)).to_cmp_be_bytes();
-        let n2 = Date(NaiveDate::from_ymd(1989, 3, 20)).to_cmp_be_bytes();
+        let n1 = Date(NaiveDate::from_ymd_opt(2021, 1, 1).unwrap()).to_cmp_be_bytes();
+        let n2 = Date(NaiveDate::from_ymd_opt(1989, 3, 20).unwrap()).to_cmp_be_bytes();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 = Time(NaiveTime::from_hms_milli(20, 1, 9, 100)).to_cmp_be_bytes();
-        let n2 = Time(NaiveTime::from_hms_milli(3, 10, 30, 0)).to_cmp_be_bytes();
+        let n1 = Time(NaiveTime::from_hms_milli_opt(20, 1, 9, 100).unwrap()).to_cmp_be_bytes();
+        let n2 = Time(NaiveTime::from_hms_milli_opt(3, 10, 30, 0).unwrap()).to_cmp_be_bytes();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);
         assert_eq!(cmp(&n1, &null), Ordering::Less);
 
-        let n1 =
-            Timestamp(NaiveDate::from_ymd(2021, 1, 1).and_hms_milli(1, 2, 3, 0)).to_cmp_be_bytes();
-        let n2 = Timestamp(NaiveDate::from_ymd(1989, 3, 20).and_hms_milli(10, 0, 0, 1000))
-            .to_cmp_be_bytes();
+        let n1 = Timestamp(
+            NaiveDate::from_ymd_opt(2021, 1, 1)
+                .unwrap()
+                .and_hms_milli_opt(1, 2, 3, 0)
+                .unwrap(),
+        )
+        .to_cmp_be_bytes();
+        let n2 = Timestamp(
+            NaiveDate::from_ymd_opt(1989, 3, 20)
+                .unwrap()
+                .and_hms_milli_opt(10, 0, 0, 1000)
+                .unwrap(),
+        )
+        .to_cmp_be_bytes();
 
         assert_eq!(cmp(&n2, &n2), Ordering::Equal);
         assert_eq!(cmp(&n1, &n2), Ordering::Greater);

@@ -5,7 +5,7 @@ use {
 
 test_case!(concat_ws, async move {
     test!(
-        r#"VALUES(CONCAT_WS(",", "AB", "CD", "EF"))"#,
+        "VALUES(CONCAT_WS(',', 'AB', 'CD', 'EF'))",
         Ok(select!(
             column1
             Str;
@@ -23,10 +23,10 @@ test_case!(concat_ws, async move {
         );
     "
     );
-    run!(r#"INSERT INTO Concat VALUES (1, TRUE, "Foo", NULL);"#);
+    run!("INSERT INTO Concat VALUES (1, TRUE, 'Foo', NULL);");
 
     test!(
-        r#"select concat_ws("/", id, flag, null_value, text) as myc from Concat;"#,
+        "select concat_ws('/', id, flag, null_value, text) as myc from Concat;",
         Ok(select!(
            myc
            Str;
@@ -35,7 +35,7 @@ test_case!(concat_ws, async move {
     );
 
     test!(
-        r#"select concat_ws("", "ab", "cd") as myc from Concat;"#,
+        "select concat_ws('', 'ab', 'cd') as myc from Concat;",
         Ok(select!(
            myc
            Str;
@@ -44,7 +44,7 @@ test_case!(concat_ws, async move {
     );
 
     test!(
-        r#"select concat_ws("", "ab", "cd", "ef") as myconcat from Concat;"#,
+        "select concat_ws('', 'ab', 'cd', 'ef') as myconcat from Concat;",
         Ok(select!(
            myconcat
            Str;
@@ -53,7 +53,7 @@ test_case!(concat_ws, async move {
     );
 
     test!(
-        r#"select concat_ws(",", "ab", "cd", "ef") as myconcat from Concat;"#,
+        "select concat_ws(',', 'ab', 'cd', 'ef') as myconcat from Concat;",
         Ok(select!(
            myconcat
            Str;
@@ -62,7 +62,7 @@ test_case!(concat_ws, async move {
     );
 
     test!(
-        r#"select concat_ws("/", "ab", "cd", "ef") as myconcat from Concat;"#,
+        "select concat_ws('/', 'ab', 'cd', 'ef') as myconcat from Concat;",
         Ok(select!(
            myconcat
            Str;
@@ -71,7 +71,7 @@ test_case!(concat_ws, async move {
     );
 
     test!(
-        r#"select concat_ws("", "ab", "cd", NULL, "ef") as myconcat from Concat;"#,
+        "select concat_ws('', 'ab', 'cd', NULL, 'ef') as myconcat from Concat;",
         Ok(select!(
            myconcat
            Str;
@@ -80,7 +80,7 @@ test_case!(concat_ws, async move {
     );
 
     test!(
-        r#"select concat_ws("", 123, 456, 3.14) as myconcat from Concat;"#,
+        "select concat_ws('', 123, 456, 3.14) as myconcat from Concat;",
         Ok(select!(
            myconcat
            Str;
@@ -89,7 +89,7 @@ test_case!(concat_ws, async move {
     );
 
     test!(
-        r#"select concat_ws() as myconcat from Concat;"#,
+        "select concat_ws() as myconcat from Concat;",
         Err(TranslateError::FunctionArgsLengthNotMatchingMin {
             name: "CONCAT_WS".to_owned(),
             expected_minimum: 2,

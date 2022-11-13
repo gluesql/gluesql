@@ -34,11 +34,11 @@ test_case!(join, async move {
     let insert_sqls = [
         "
         INSERT INTO Player (id, name) VALUES
-            (1, \"Taehoon\"),
-            (2,    \"Mike\"),
-            (3,   \"Jorno\"),
-            (4,   \"Berry\"),
-            (5,    \"Hwan\");
+            (1, 'Taehoon'),
+            (2,    'Mike'),
+            (3,   'Jorno'),
+            (4,   'Berry'),
+            (5,    'Hwan');
         ",
         "
         INSERT INTO Item (id, quantity, player_id) VALUES
@@ -129,7 +129,7 @@ test_case!(join, async move {
             WHERE Player.id IN
                 (SELECT i2.player_id FROM Item i2
                  JOIN Item i3 ON i3.id = i2.id
-                 WHERE Player.name = \"Jorno\");"),
+                 WHERE Player.name = 'Jorno');"),
         // cartesian product tests
         (15, "SELECT * FROM Player INNER JOIN Item ON Player.id = Item.player_id;"),
         (25, "SELECT * FROM Player p1 LEFT JOIN Player p2 ON 1 = 1"),
@@ -169,11 +169,11 @@ test_case!(blend, async move {
     let insert_sqls = [
         "
         INSERT INTO Player (id, name) VALUES
-            (1, \"Taehoon\"),
-            (2,    \"Mike\"),
-            (3,   \"Jorno\"),
-            (4,   \"Berry\"),
-            (5,    \"Hwan\");
+            (1, 'Taehoon'),
+            (2,    'Mike'),
+            (3,   'Jorno'),
+            (4,   'Berry'),
+            (5,    'Hwan');
         ",
         "
         INSERT INTO Item (id, quantity, player_id) VALUES
@@ -253,9 +253,9 @@ test_case!(blend, async move {
 
     // To test `PlanError` while using `JOIN`
     run!("CREATE TABLE users (id INTEGER, name TEXT);");
-    run!(r#"INSERT INTO users (id, name) VALUES (1, "Harry");"#);
+    run!("INSERT INTO users (id, name) VALUES (1, 'Harry');");
     run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
-    run!(r#"INSERT INTO testers (id, nickname) VALUES (1, "Ron");"#);
+    run!("INSERT INTO testers (id, nickname) VALUES (1, 'Ron');");
 
     let error_cases = [
         (

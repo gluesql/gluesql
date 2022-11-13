@@ -167,15 +167,21 @@ mod tests {
             Ok(JsonValue::String("a1b2".to_owned()))
         );
         assert_eq!(
-            Value::Date(NaiveDate::from_ymd(2020, 1, 3)).try_into(),
+            Value::Date(NaiveDate::from_ymd_opt(2020, 1, 3).unwrap()).try_into(),
             Ok(JsonValue::String("2020-01-03".to_owned()))
         );
         assert_eq!(
-            Value::Timestamp(NaiveDate::from_ymd(2022, 6, 11).and_hms(13, 30, 1)).try_into(),
+            Value::Timestamp(
+                NaiveDate::from_ymd_opt(2022, 6, 11)
+                    .unwrap()
+                    .and_hms_opt(13, 30, 1)
+                    .unwrap()
+            )
+            .try_into(),
             Ok(JsonValue::String("2022-06-11 13:30:01 UTC".to_owned()))
         );
         assert_eq!(
-            Value::Time(NaiveTime::from_hms(20, 11, 59)).try_into(),
+            Value::Time(NaiveTime::from_hms_opt(20, 11, 59).unwrap()).try_into(),
             Ok(JsonValue::String("20:11:59".to_owned()))
         );
         assert_eq!(

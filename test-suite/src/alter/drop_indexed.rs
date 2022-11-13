@@ -54,21 +54,21 @@ test_case!(drop_indexed_table, async move {
 
 test_case!(drop_indexed_column, async move {
     run!(
-        r#"
+        "
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER,
     name TEXT
-)"#
+)"
     );
 
     run!(
-        r#"
+        "
         INSERT INTO Test
             (id, num, name)
         VALUES
-            (1, 2, "Hello");
-    "#
+            (1, 2, 'Hello');
+    "
     );
 
     // create indexes
@@ -121,8 +121,8 @@ CREATE TABLE Test (
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
-        idx!(idx_binary_op, Eq, r#""1Hello""#),
-        r#"SELECT id, num, name FROM Test WHERE id || name = "1Hello""#
+        idx!(idx_binary_op, Eq, "'1Hello'"),
+        "SELECT id, num, name FROM Test WHERE id || name = '1Hello'"
     );
 
     test_idx!(
@@ -151,8 +151,8 @@ CREATE TABLE Test (
             I64 | I64 | Str;
             1     2     "Hello".to_owned()
         )),
-        idx!(idx_cast, Eq, r#""1""#),
-        r#"SELECT id, num, name FROM Test WHERE CAST(id AS TEXT) = "1""#
+        idx!(idx_cast, Eq, "'1'"),
+        "SELECT id, num, name FROM Test WHERE CAST(id AS TEXT) = '1'"
     );
 
     test!(

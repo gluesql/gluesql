@@ -10,13 +10,10 @@ use {
 test_case!(repeat, async move {
     let test_cases = [
         (
-            r#"CREATE TABLE Item (name TEXT DEFAULT REPEAT("hello", 2))"#,
+            "CREATE TABLE Item (name TEXT DEFAULT REPEAT('hello', 2))",
             Ok(Payload::Create),
         ),
-        (
-            r#"INSERT INTO Item VALUES ("hello")"#,
-            Ok(Payload::Insert(1)),
-        ),
+        ("INSERT INTO Item VALUES ('hello')", Ok(Payload::Insert(1))),
         (
             "SELECT REPEAT(name, 2) AS test FROM Item",
             Ok(select!(
@@ -26,7 +23,7 @@ test_case!(repeat, async move {
             )),
         ),
         (
-            r#"SELECT REPEAT("abcd") AS test FROM Item"#,
+            "SELECT REPEAT('abcd') AS test FROM Item",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "REPEAT".to_owned(),
                 expected: 2,
@@ -35,7 +32,7 @@ test_case!(repeat, async move {
             .into()),
         ),
         (
-            r#"SELECT REPEAT("abcd", 2, 2) AS test FROM Item"#,
+            "SELECT REPEAT('abcd', 2, 2) AS test FROM Item",
             Err(TranslateError::FunctionArgsLengthNotMatching {
                 name: "REPEAT".to_owned(),
                 expected: 2,
@@ -44,23 +41,20 @@ test_case!(repeat, async move {
             .into()),
         ),
         (
-            r#"SELECT REPEAT(1, 1) AS test FROM Item"#,
+            "SELECT REPEAT(1, 1) AS test FROM Item",
             Err(EvaluateError::FunctionRequiresStringValue("REPEAT".to_owned()).into()),
         ),
         (
-            r#"SELECT REPEAT(name, null) AS test FROM Item"#,
+            "SELECT REPEAT(name, null) AS test FROM Item",
             Ok(select_with_null!(test; Value::Null)),
         ),
         (
             "CREATE TABLE NullTest (name TEXT null)",
             Ok(Payload::Create),
         ),
+        ("INSERT INTO NullTest VALUES (null)", Ok(Payload::Insert(1))),
         (
-            r#"INSERT INTO NullTest VALUES (null)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            r#"SELECT REPEAT(name, 2) AS test FROM NullTest"#,
+            "SELECT REPEAT(name, 2) AS test FROM NullTest",
             Ok(select_with_null!(test; Value::Null)),
         ),
     ];

@@ -12,17 +12,17 @@ test_case!(concat, async move {
         );
     "
     );
-    run!(r#"INSERT INTO Concat VALUES (1, 2.3, TRUE, "Foo", NULL);"#);
+    run!("INSERT INTO Concat VALUES (1, 2.3, TRUE, 'Foo', NULL);");
 
     test!(
-        r#"
+        "
         SELECT
             text || text AS value_value,
-            text || "Bar" AS value_literal,
-            "Bar" || text AS literal_value,
-            "Foo" || "Bar" AS literal_literal
+            text || 'Bar' AS value_literal,
+            'Bar' || text AS literal_value,
+            'Foo' || 'Bar' AS literal_literal
         FROM Concat;
-        "#,
+        ",
         Ok(select!(
             value_value         | value_literal       | literal_value       | literal_literal
             Str                 | Str                 | Str                 | Str;
@@ -62,13 +62,13 @@ test_case!(concat, async move {
     );
 
     test!(
-        r#"SELECT
+        "SELECT
             1 || 2.3 AS int_float,
             2.3 || TRUE AS float_bool,
-            FALSE || "Foo" AS bool_text,
-            1 || "Bar" AS int_text
+            FALSE || 'Foo' AS bool_text,
+            1 || 'Bar' AS int_text
         FROM
-            Concat;"#,
+            Concat;",
         Ok(select!(
             int_float         | float_bool           | bool_text             | int_text
             Str               | Str                  | Str                   | Str;
@@ -77,12 +77,12 @@ test_case!(concat, async move {
     );
 
     test!(
-        r#"SELECT
-            1 || id || CAST(rate * 10 AS INT) || "Bar" AS Case1,
+        "SELECT
+            1 || id || CAST(rate * 10 AS INT) || 'Bar' AS Case1,
             id || flag || 3.5 || text AS Case2,
-            flag || "wow" || null_value AS Case3
+            flag || 'wow' || null_value AS Case3
         FROM
-            Concat;"#,
+            Concat;",
         Ok(select_with_null!(
             Case1                     | Case2                         | Case3;
             Str("1123Bar".to_owned())   Str("1TRUE3.5Foo".to_owned())   Null

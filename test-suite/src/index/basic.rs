@@ -11,24 +11,24 @@ use {
 
 test_case!(basic, async move {
     run!(
-        r#"
+        "
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER,
     name TEXT
-)"#
+)"
     );
 
     run!(
-        r#"
+        "
         INSERT INTO Test
             (id, num, name)
         VALUES
-            (1, 2, "Hello"),
-            (1, 17, "World"),
-            (11, 7, "Great"),
-            (4, 7, "Job");
-    "#
+            (1, 2, 'Hello'),
+            (1, 17, 'World'),
+            (11, 7, 'Great'),
+            (4, 7, 'Job');
+    "
     );
 
     test!("CREATE INDEX idx_id ON Test (id)", Ok(Payload::CreateIndex));
@@ -161,7 +161,7 @@ CREATE TABLE Test (
     );
 
     test!(
-        "INSERT INTO Test (id, num, name) VALUES (1, 30, \"New one\")",
+        "INSERT INTO Test (id, num, name) VALUES (1, 30, 'New one')",
         Ok(Payload::Insert(1))
     );
 
@@ -183,8 +183,8 @@ CREATE TABLE Test (
             I64 | I64 | Str;
             1     30    "New one".to_owned()
         )),
-        idx!(idx_name, Eq, r#""New one""#),
-        r#"SELECT id, num, name FROM Test WHERE name = "New one""#
+        idx!(idx_name, Eq, "'New one'"),
+        "SELECT id, num, name FROM Test WHERE name = 'New one'"
     );
 
     test_idx!(

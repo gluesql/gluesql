@@ -9,17 +9,17 @@ use {
 test_case!(trim, async move {
     let test_cases = [
         (
-            r#"CREATE TABLE Item (
-                name TEXT DEFAULT TRIM(LEADING "a" FROM "aabc") || TRIM("   good  ")
-            )"#,
+            "CREATE TABLE Item (
+                name TEXT DEFAULT TRIM(LEADING 'a' FROM 'aabc') || TRIM('   good  ')
+            )",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Item VALUES
-                ("      Left blank"),
-                ("Right blank     "),
-                ("     Blank!     "),
-                ("Not Blank");"#,
+            "INSERT INTO Item VALUES
+                ('      Left blank'),
+                ('Right blank     '),
+                ('     Blank!     '),
+                ('Not Blank');",
             Ok(Payload::Insert(4)),
         ),
         (
@@ -54,14 +54,14 @@ test_case!(trim, async move {
             )),
         ),
         (
-            r#"SELECT TRIM(TRAILING NULL FROM name) FROM NullName;"#,
+            "SELECT TRIM(TRAILING NULL FROM name) FROM NullName;",
             Ok(select_with_null!(
                 "TRIM(TRAILING NULL FROM name)";
                 Value::Null
             )),
         ),
         (
-            r#"SELECT TRIM(LEADING NULL FROM name) FROM NullName;"#,
+            "SELECT TRIM(LEADING NULL FROM name) FROM NullName;",
             Ok(select_with_null!(
                 "TRIM(LEADING NULL FROM name)";
                 Value::Null
@@ -69,17 +69,17 @@ test_case!(trim, async move {
         ),
         ("CREATE TABLE Test (name TEXT)", Ok(Payload::Create)),
         (
-            r#"INSERT INTO Test VALUES 
-                    ("     blank     "), 
-                    ("xxxyzblankxyzxx"), 
-                    ("xxxyzblank     "),
-                    ("     blankxyzxx"),
-                    ("  xyzblankxyzxx"),
-                    ("xxxyzblankxyz  ");"#,
+            "INSERT INTO Test VALUES 
+                    ('     blank     '), 
+                    ('xxxyzblankxyzxx'), 
+                    ('xxxyzblank     '),
+                    ('     blankxyzxx'),
+                    ('  xyzblankxyzxx'),
+                    ('xxxyzblankxyz  ');",
             Ok(Payload::Insert(6)),
         ),
         (
-            r#"SELECT TRIM(BOTH 'xyz' FROM name) FROM Test;"#,
+            "SELECT TRIM(BOTH 'xyz' FROM name) FROM Test;",
             Ok(select!(
                 "TRIM(BOTH 'xyz' FROM name)"
                 Value::Str;
@@ -92,7 +92,7 @@ test_case!(trim, async move {
             )),
         ),
         (
-            r#"SELECT TRIM(LEADING 'xyz' FROM name) FROM Test;"#,
+            "SELECT TRIM(LEADING 'xyz' FROM name) FROM Test;",
             Ok(select!(
                 "TRIM(LEADING 'xyz' FROM name)"
                 Value::Str;
