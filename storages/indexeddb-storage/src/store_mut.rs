@@ -1,5 +1,5 @@
+use serde_wasm_bindgen::Serializer;
 use wasm_bindgen::JsValue;
-use wasm_bindgen_test::console_log;
 
 use crate::{
     key::{convert_key, generate_key},
@@ -8,6 +8,7 @@ use crate::{
     IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
 };
 
+use serde::ser::Serialize;
 use {
     async_trait::async_trait,
     gluesql_core::{
@@ -28,17 +29,11 @@ impl IndexeddbStorage {
             .object_store(SCHEMA_STORE)
             .map_err(StorageError::Idb)?;
 
-        // if store
-        //     .get(JsValue::from_str(&schema.table_name))
-        //     .await
-        //     .map(|e| serde_wasm_bindgen::from_value::<Schema>(e).ok())
-        //     .map_err(StorageError::Idb)?
-        //     .is_some(){
-        //         return Err(gluesql_core::result::Error::Alter(()))
-        //     }
-
-        let schema =
-            serde_wasm_bindgen::to_value(schema).map_err(StorageError::SerdeWasmBindgen)?;
+        const SERIALIZER: Serializer =
+            Serializer::new().serialize_large_number_types_as_bigints(true);
+        let schema = schema
+            .serialize(&SERIALIZER)
+            .map_err(StorageError::SerdeWasmBindgen)?;
 
         store.put(&schema, None).await.map_err(StorageError::Idb)?;
 
@@ -90,11 +85,12 @@ impl IndexeddbStorage {
             self.id_ctr += 1;
             let key = generate_key(table_name, id);
 
-            console_log!("Data: {:?}", row);
-
+            const SERIALIZER: Serializer =
+                Serializer::new().serialize_large_number_types_as_bigints(true);
             store
                 .add(
-                    &serde_wasm_bindgen::to_value(&row).map_err(StorageError::SerdeWasmBindgen)?,
+                    &row.serialize(&SERIALIZER)
+                        .map_err(StorageError::SerdeWasmBindgen)?,
                     Some(&JsValue::from_str(&key)),
                 )
                 .await
@@ -120,9 +116,12 @@ impl IndexeddbStorage {
             self.id_ctr += 1;
             let key = convert_key(table_name, &key);
 
+            const SERIALIZER: Serializer =
+                Serializer::new().serialize_large_number_types_as_bigints(true);
             store
                 .put(
-                    &serde_wasm_bindgen::to_value(&row).map_err(StorageError::SerdeWasmBindgen)?,
+                    &row.serialize(&SERIALIZER)
+                        .map_err(StorageError::SerdeWasmBindgen)?,
                     Some(&JsValue::from_str(&key)),
                 )
                 .await

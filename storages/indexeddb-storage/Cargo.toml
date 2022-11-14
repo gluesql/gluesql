@@ -19,6 +19,7 @@ idb = "0.2.0"
 wasm-bindgen = "0.2"
 thiserror = "1"
 serde-wasm-bindgen = "0.4"
+serde = { version = "1" }
 
 
 # TODO Remove and general check what's needed

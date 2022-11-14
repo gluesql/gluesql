@@ -1,5 +1,3 @@
-use wasm_bindgen_test::console_log;
-
 use {gluesql_core::result::Error, thiserror::Error as ThisError};
 
 #[derive(ThisError, Debug)]
@@ -15,8 +13,6 @@ pub enum StorageError {
 impl From<StorageError> for Error {
     fn from(e: StorageError) -> Self {
         use StorageError::*;
-
-        console_log!("trying to convert: {:?}", e);
 
         match e {
             Idb(e) => Self::StorageMsg(format!("{:?}", e)), // Cannot take whole error as JsValue is not thread-safe
