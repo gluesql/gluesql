@@ -1,8 +1,9 @@
-use idb::{CursorDirection, KeyRange};
+use idb::CursorDirection;
 use wasm_bindgen::JsValue;
 
 use crate::{
     key::{self, retrieve_key},
+    query::table_data_query,
     storage_error::StorageError,
     IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
 };
@@ -94,20 +95,9 @@ impl Store for IndexeddbStorage {
             .object_store(DATA_STORE)
             .map_err(StorageError::Idb)?;
 
-        let lower_bound = format!("{}/", table_name); // TODO inclusive
-        let upper_bound = format!("{}0", table_name); // 0 comes after / in ascii
-
         let mut cursor = store
             .open_cursor(
-                Some(idb::Query::KeyRange(
-                    KeyRange::bound(
-                        &JsValue::from_str(&lower_bound),
-                        &JsValue::from_str(&upper_bound),
-                        None,
-                        None,
-                    )
-                    .map_err(StorageError::Idb)?,
-                )),
+                Some(table_data_query(table_name)?),
                 Some(CursorDirection::Next),
             )
             .await

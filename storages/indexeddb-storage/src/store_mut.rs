@@ -1,8 +1,8 @@
-use idb::KeyRange;
 use wasm_bindgen::JsValue;
 
 use crate::{
     key::{convert_key, generate_key},
+    query::table_data_query,
     storage_error::StorageError,
     IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
 };
@@ -55,19 +55,8 @@ impl IndexeddbStorage {
             .object_store(DATA_STORE)
             .map_err(StorageError::Idb)?;
 
-        let lower_bound = format!("{}/", table_name);
-        let upper_bound = format!("{}0", table_name);
-
         data_store
-            .delete(idb::Query::KeyRange(
-                KeyRange::bound(
-                    &JsValue::from_str(&lower_bound),
-                    &JsValue::from_str(&upper_bound),
-                    None,
-                    None,
-                )
-                .map_err(StorageError::Idb)?,
-            ))
+            .delete(table_data_query(table_name)?)
             .await
             .map_err(StorageError::Idb)?;
 
