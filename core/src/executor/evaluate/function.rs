@@ -220,6 +220,10 @@ pub fn ltrim<'a>(
     };
 
     let value = expr.trim_start_matches(chars.as_slice()).to_owned();
+    // Ok(Evaluated::StrSlice {
+    //     source: value,
+    //     range: _,
+    // })
     Ok(Evaluated::from(Value::Str(value)))
 }
 
@@ -272,8 +276,10 @@ pub fn substr<'a>(
     };
 
     let start = min(max(start, 0) as usize, string.len());
+    let string = string.as_str();
+
     Ok(Evaluated::StrSlice {
-        source: String::from(&string[start..end]),
+        source: string[start..end].to_owned(),
         range: start..end,
     })
 }
