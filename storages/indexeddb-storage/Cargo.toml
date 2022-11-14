@@ -21,10 +21,11 @@ thiserror = "1"
 serde-wasm-bindgen = "0.4"
 
 
-# TODO Remove
+# TODO Remove and general check what's needed
 wasm-bindgen-test = "0.3"
 
 [dev-dependencies]
 test-suite = { package = "gluesql-test-suite", path = "../../test-suite", version = "0.13.0", default-features = false }
 wasm-bindgen-test = "0.3"
 web-sys = { version = "0.3.60", features = ["console"] }
+wasm-bindgen-futures = "0.4"

@@ -4,10 +4,17 @@ use gluesql_core::result::Result;
 use crate::storage_error::StorageError;
 
 pub(crate) fn generate_key(table_name: &str, id: u32) -> String {
-    format!("{}/{}", table_name, id)
+    const VALUE: u8 = 1;
+    let bytes = [VALUE, 1]
+        .iter()
+        .chain(id.to_be_bytes().iter())
+        .copied()
+        .collect();
+
+    convert_key(table_name, &Key::Bytea(bytes))
 }
 
-// Key format: table_name/0,1,2,3,4
+// Key format: table_name/,0,1,2,3,4
 
 pub(crate) fn convert_key(table_name: &str, key: &Key) -> String {
     let key: Vec<_> = key.to_cmp_be_bytes().iter().map(u8::to_string).collect();
@@ -15,7 +22,7 @@ pub(crate) fn convert_key(table_name: &str, key: &Key) -> String {
 }
 
 pub(crate) fn retrieve_key(table_name: &str, key: &str) -> Result<Key> {
-    let key: Vec<u8> = key
+    let key = key
         .strip_prefix(&format!("{}/", table_name))
         .ok_or_else(|| StorageError::KeyParseError(key.to_owned()))?
         .split(',')

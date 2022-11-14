@@ -1,4 +1,5 @@
 use wasm_bindgen::JsValue;
+use wasm_bindgen_test::console_log;
 
 use crate::{
     key::{convert_key, generate_key},
@@ -27,10 +28,19 @@ impl IndexeddbStorage {
             .object_store(SCHEMA_STORE)
             .map_err(StorageError::Idb)?;
 
+        // if store
+        //     .get(JsValue::from_str(&schema.table_name))
+        //     .await
+        //     .map(|e| serde_wasm_bindgen::from_value::<Schema>(e).ok())
+        //     .map_err(StorageError::Idb)?
+        //     .is_some(){
+        //         return Err(gluesql_core::result::Error::Alter(()))
+        //     }
+
         let schema =
             serde_wasm_bindgen::to_value(schema).map_err(StorageError::SerdeWasmBindgen)?;
 
-        store.add(&schema, None).await.map_err(StorageError::Idb)?;
+        store.put(&schema, None).await.map_err(StorageError::Idb)?;
 
         transaction.commit().await.map_err(StorageError::Idb)?;
 
@@ -80,6 +90,8 @@ impl IndexeddbStorage {
             self.id_ctr += 1;
             let key = generate_key(table_name, id);
 
+            console_log!("Data: {:?}", row);
+
             store
                 .add(
                     &serde_wasm_bindgen::to_value(&row).map_err(StorageError::SerdeWasmBindgen)?,
@@ -109,7 +121,7 @@ impl IndexeddbStorage {
             let key = convert_key(table_name, &key);
 
             store
-                .add(
+                .put(
                     &serde_wasm_bindgen::to_value(&row).map_err(StorageError::SerdeWasmBindgen)?,
                     Some(&JsValue::from_str(&key)),
                 )

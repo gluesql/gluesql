@@ -1,5 +1,8 @@
+use std::iter::empty;
+
 use idb::CursorDirection;
 use wasm_bindgen::JsValue;
+use wasm_bindgen_test::console_log;
 
 use crate::{
     key::{self, retrieve_key},
@@ -20,6 +23,7 @@ use {
 #[async_trait(?Send)]
 impl Store for IndexeddbStorage {
     async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {
+        console_log!("fetch_all_schemas");
         let transaction = self
             .database
             .transaction(&[SCHEMA_STORE], idb::TransactionMode::ReadOnly)
@@ -37,12 +41,15 @@ impl Store for IndexeddbStorage {
             .map(|v| serde_wasm_bindgen::from_value(v).map_err(StorageError::SerdeWasmBindgen))
             .collect::<std::result::Result<Vec<Schema>, _>>()?;
 
+        // entries.sort_unstable_by(|a, b| a.table_name.cmp(&b.table_name));
+
         transaction.done().await.map_err(StorageError::Idb)?;
 
         Ok(entries)
     }
 
     async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {
+        console_log!("fetch_schema {}", table_name);
         let transaction = self
             .database
             .transaction(&[SCHEMA_STORE], idb::TransactionMode::ReadOnly)
@@ -64,6 +71,7 @@ impl Store for IndexeddbStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+        console_log!("fetch_data {}, {:?}", table_name, key);
         let transaction = self
             .database
             .transaction(&[DATA_STORE], idb::TransactionMode::ReadOnly)
@@ -86,6 +94,7 @@ impl Store for IndexeddbStorage {
         Ok(entry)
     }
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
+        console_log!("scan_data {}", table_name);
         let transaction = self
             .database
             .transaction(&[DATA_STORE], idb::TransactionMode::ReadOnly)
@@ -95,13 +104,18 @@ impl Store for IndexeddbStorage {
             .object_store(DATA_STORE)
             .map_err(StorageError::Idb)?;
 
-        let mut cursor = store
-            .open_cursor(
-                Some(table_data_query(table_name)?),
-                Some(CursorDirection::Next),
-            )
-            .await
-            .map_err(StorageError::Idb)?;
+        let cursor = store
+            .open_cursor(Some(table_data_query(table_name)?), None)
+            // .open_cursor(None, None)
+            .await;
+
+        let mut cursor = match cursor {
+            Ok(cursor) => cursor,
+            Err(idb::Error::SysError(_)) => return Ok(Box::new(empty())), // TODO: Hack to fix empty cursors
+            Err(err) => Err(StorageError::Idb(err))?,
+        };
+
+        console_log!("Created");
 
         let mut entries: Vec<Result<(Key, Row)>> = vec![];
         while cursor.key().map_or(false, |v| !v.is_null()) {
@@ -121,6 +135,13 @@ impl Store for IndexeddbStorage {
         }
 
         transaction.done().await.map_err(StorageError::Idb)?;
+
+        entries.sort_unstable_by(|a, b| match (a, b) {
+            (Ok((a, _)), Ok((b, _))) => a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal),
+            _ => std::cmp::Ordering::Equal,
+        });
+
+        console_log!("Done scan");
 
         Ok(Box::new(entries.into_iter()))
     }
