@@ -272,8 +272,10 @@ pub fn substr<'a>(
     };
 
     let start = min(max(start, 0) as usize, string.len());
-    let string = String::from(&string[start..end]);
-    Ok(Evaluated::from(Value::Str(string)))
+    Ok(Evaluated::StrSlice {
+        source: String::from(&string[start..end]),
+        range: start..end,
+    })
 }
 
 pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
