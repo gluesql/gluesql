@@ -3,16 +3,14 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
-        data::Value,
-        result::{Error, MutResult, Result, TrySelf},
+        result::{Error, MutResult},
         store::AlterTable,
-        store::AlterTableError,
     },
 };
 
 #[async_trait(?Send)]
 impl AlterTable for IndexeddbStorage {
-    async fn rename_schema(self, table_name: &str, new_table_name: &str) -> MutResult<Self, ()> {
+    async fn rename_schema(self, _table_name: &str, _new_table_name: &str) -> MutResult<Self, ()> {
         Err((
             self,
             Error::StorageMsg("[IndexeddbStorage] AlterTable is not supported".to_owned()),
@@ -21,9 +19,9 @@ impl AlterTable for IndexeddbStorage {
 
     async fn rename_column(
         self,
-        table_name: &str,
-        old_column_name: &str,
-        new_column_name: &str,
+        _table_name: &str,
+        _old_column_name: &str,
+        _new_column_name: &str,
     ) -> MutResult<Self, ()> {
         Err((
             self,
@@ -31,7 +29,7 @@ impl AlterTable for IndexeddbStorage {
         ))
     }
 
-    async fn add_column(self, table_name: &str, column_def: &ColumnDef) -> MutResult<Self, ()> {
+    async fn add_column(self, _table_name: &str, _column_def: &ColumnDef) -> MutResult<Self, ()> {
         Err((
             self,
             Error::StorageMsg("[IndexeddbStorage] AlterTable is not supported".to_owned()),
@@ -40,9 +38,9 @@ impl AlterTable for IndexeddbStorage {
 
     async fn drop_column(
         self,
-        table_name: &str,
-        column_name: &str,
-        if_exists: bool,
+        _table_name: &str,
+        _column_name: &str,
+        _if_exists: bool,
     ) -> MutResult<Self, ()> {
         Err((
             self,

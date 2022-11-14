@@ -1,19 +1,14 @@
+#![allow(clippy::future_not_send)]
+
 mod alter_table;
 mod index;
+mod storage_error;
 mod store;
 mod store_mut;
 mod transaction;
 
-use idb::{Database, Error, Factory, ObjectStoreParams};
-use {
-    async_trait::async_trait,
-    gluesql_core::{
-        ast::ColumnOption,
-        data::{Key, Row, Schema},
-        result::{MutResult, Result},
-        store::{GStore, GStoreMut, RowIter, Store, StoreMut},
-    },
-};
+use gluesql_core::result::Result;
+use idb::{Database, Factory, ObjectStoreParams};
 
 pub struct IndexeddbStorage {
     database: Database,
@@ -24,6 +19,10 @@ const SCHEMA_STORE: &str = "schemas";
 const DATA_STORE: &str = "data";
 
 impl IndexeddbStorage {
+    /// # Errors
+    /// TODO
+    /// # Panics
+    /// TODO
     pub async fn new(name: &str) -> Result<Self> {
         let factory = Factory::new().unwrap();
 
@@ -52,7 +51,7 @@ impl IndexeddbStorage {
 
         let id_ctr = store_count(&database, DATA_STORE).await.unwrap();
 
-        Ok(IndexeddbStorage { database, id_ctr })
+        Ok(Self { database, id_ctr })
     }
 }
 

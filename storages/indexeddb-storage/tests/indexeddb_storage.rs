@@ -1,11 +1,12 @@
-use async_trait::async_trait;
+#![allow(clippy::future_not_send)]
+
 use wasm_bindgen_test::{console_log, wasm_bindgen_test};
 
-use {glueseql_indexeddb_storage::IndexeddbStorage, gluesql_core::prelude::Glue, test_suite::*};
+use glueseql_indexeddb_storage::IndexeddbStorage;
 
-struct IndexeddbTester {
-    glue: Glue<IndexeddbStorage>,
-}
+// struct IndexeddbTester {
+//     glue: Glue<IndexeddbStorage>,
+// }
 
 // impl Tester<IndexeddbStorage> for IndexeddbTester {
 //     fn new(_: &str) -> Self {
@@ -26,11 +27,7 @@ struct IndexeddbTester {
 #[wasm_bindgen_test]
 async fn first_test() {
     // use futures::executor::block_on;
-    use gluesql_core::{
-        prelude::Glue,
-        result::{Error, Result},
-        store::{Index, Store},
-    };
+    use gluesql_core::prelude::Glue;
 
     let storage = IndexeddbStorage::new("test").await.unwrap();
 
@@ -46,7 +43,7 @@ async fn first_test() {
 
     for sql in sqls {
         let output = glue.execute_async(sql).await.unwrap();
-        console_log!("{:?}", output)
+        console_log!("{:?}", output);
     }
 }
 
