@@ -6,6 +6,8 @@ pub enum StorageError {
     Idb(#[from] idb::Error),
     #[error(transparent)]
     SerdeWasmBindgen(#[from] serde_wasm_bindgen::Error),
+    #[error("Couldn't parse key `{0}`")]
+    KeyParseError(String),
 }
 
 impl From<StorageError> for Error {
@@ -15,13 +17,7 @@ impl From<StorageError> for Error {
         match e {
             Idb(e) => Self::StorageMsg(e.to_string()), // Cannot take whole error as JsValue is not thread-safe
             SerdeWasmBindgen(e) => Self::StorageMsg(e.to_string()),
-            // Sled(e) => Error::Storage(Box::new(e)),
-            // Bincode(e) => Error::Storage(e),
-            // Str(e) => Error::Storage(Box::new(e)),
-            // SystemTime(e) => Error::Storage(Box::new(e)),
-            // TryFromSlice(e) => Error::Storage(Box::new(e)),
-            // AlterTable(e) => e.into(),
-            // Index(e) => e.into(),
+            KeyParseError(s) => Self::StorageMsg(KeyParseError(s).to_string()),
         }
     }
 }

@@ -1,7 +1,11 @@
 use idb::KeyRange;
 use wasm_bindgen::JsValue;
 
-use crate::{storage_error::StorageError, IndexeddbStorage, DATA_STORE, SCHEMA_STORE};
+use crate::{
+    key::{convert_key, generate_key},
+    storage_error::StorageError,
+    IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
+};
 
 use {
     async_trait::async_trait,
@@ -85,7 +89,7 @@ impl IndexeddbStorage {
         for row in rows {
             let id = self.id_ctr;
             self.id_ctr += 1;
-            let key = format!("{}/{}", table_name, id); // TODO reusable function
+            let key = generate_key(table_name, id);
 
             store
                 .add(
@@ -113,8 +117,7 @@ impl IndexeddbStorage {
 
         for (key, row) in rows {
             self.id_ctr += 1;
-            let key: Vec<_> = key.to_cmp_be_bytes().iter().map(u8::to_string).collect();
-            let key = format!("{}/{}", table_name, key.join(",")); // TODO reusable function
+            let key = convert_key(table_name, &key);
 
             store
                 .add(
@@ -141,8 +144,7 @@ impl IndexeddbStorage {
             .map_err(StorageError::Idb)?;
 
         for key in keys {
-            let key: Vec<_> = key.to_cmp_be_bytes().iter().map(u8::to_string).collect();
-            let key = format!("{}/{}", table_name, key.join(",")); // TODO reusable function
+            let key = convert_key(table_name, &key);
 
             store
                 .delete(JsValue::from_str(&key))

@@ -1,7 +1,11 @@
 use idb::{CursorDirection, KeyRange};
 use wasm_bindgen::JsValue;
 
-use crate::{storage_error::StorageError, IndexeddbStorage, DATA_STORE, SCHEMA_STORE};
+use crate::{
+    key::{self, retrieve_key},
+    storage_error::StorageError,
+    IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
+};
 use {
     async_trait::async_trait,
     gluesql_core::{
@@ -68,8 +72,7 @@ impl Store for IndexeddbStorage {
             .object_store(DATA_STORE)
             .map_err(StorageError::Idb)?;
 
-        let key: Vec<_> = key.to_cmp_be_bytes().iter().map(u8::to_string).collect();
-        let key = format!("{}/{}", table_name, key.join(",")); // TODO reusable function
+        let key = key::convert_key(table_name, key);
 
         let entry = store
             .get(JsValue::from_str(&key))
@@ -112,20 +115,11 @@ impl Store for IndexeddbStorage {
 
         let mut entries: Vec<Result<(Key, Row)>> = vec![];
         while cursor.key().map_or(false, |v| !v.is_null()) {
-            // TODO proper function
-            let key: Vec<u8> = cursor
-                .key()
-                .unwrap()
+            let key = cursor.key().map_err(StorageError::Idb)?;
+            let key = key
                 .as_string()
-                .unwrap()
-                .chars()
-                .skip_while(|c| *c != '/')
-                .skip(1)
-                .collect::<String>()
-                .split(',')
-                .map(|s| s.parse::<u8>().unwrap())
-                .collect();
-            let key = Key::Bytea(key);
+                .ok_or_else(|| StorageError::KeyParseError(format!("{:?}", key)))?;
+            let key = retrieve_key(table_name, &key)?;
 
             let value = cursor.value().map_err(StorageError::Idb)?;
             let value =

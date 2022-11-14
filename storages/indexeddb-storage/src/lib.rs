@@ -2,6 +2,7 @@
 
 mod alter_table;
 mod index;
+mod key;
 mod storage_error;
 mod store;
 mod store_mut;
