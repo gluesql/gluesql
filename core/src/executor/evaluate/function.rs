@@ -204,8 +204,21 @@ pub fn trim<'a>(
         Some(TrimWhereField::Trailing) => expr_str.trim_end_matches(&filter_chars[..]),
         None => expr_str.trim(),
     };
+    let start = expr_str
+        .as_bytes()
+        .iter()
+        .position(|&x| x == value[0..1].as_bytes()[0])
+        .unwrap();
+    let end = expr_str
+        .as_bytes()
+        .iter()
+        .position(|&x| x == value[0..1].as_bytes()[0])
+        .unwrap();
 
-    Ok(Evaluated::from(Value::Str(value.to_owned())))
+    Ok(Evaluated::StrSlice {
+        source: value.to_owned(),
+        range: start..end,
+    })
 }
 
 pub fn ltrim<'a>(
@@ -213,18 +226,28 @@ pub fn ltrim<'a>(
     expr: Evaluated<'_>,
     chars: Option<Evaluated<'_>>,
 ) -> Result<Evaluated<'a>> {
-    let expr = eval_to_str!(name, expr);
+    let expr_str = eval_to_str!(name, expr);
     let chars = match chars {
         Some(chars) => eval_to_str!(name, chars).chars().collect::<Vec<char>>(),
         None => vec![' '],
     };
 
-    let value = expr.trim_start_matches(chars.as_slice()).to_owned();
-    // Ok(Evaluated::StrSlice {
-    //     source: value,
-    //     range: _,
-    // })
-    Ok(Evaluated::from(Value::Str(value)))
+    let value = expr_str.trim_start_matches(chars.as_slice()).to_owned();
+    let start = expr_str
+        .as_bytes()
+        .iter()
+        .position(|&x| x == value[0..1].as_bytes()[0])
+        .unwrap();
+    let end = expr_str
+        .as_bytes()
+        .iter()
+        .position(|&x| x == value[0..1].as_bytes()[0])
+        .unwrap();
+
+    Ok(Evaluated::StrSlice {
+        source: value.to_owned(),
+        range: start..end,
+    })
 }
 
 pub fn rtrim<'a>(
@@ -232,14 +255,28 @@ pub fn rtrim<'a>(
     expr: Evaluated<'_>,
     chars: Option<Evaluated<'_>>,
 ) -> Result<Evaluated<'a>> {
-    let expr = eval_to_str!(name, expr);
+    let expr_str = eval_to_str!(name, expr);
     let chars = match chars {
         Some(chars) => eval_to_str!(name, chars).chars().collect::<Vec<char>>(),
         None => vec![' '],
     };
 
-    let value = expr.trim_end_matches(chars.as_slice()).to_owned();
-    Ok(Evaluated::from(Value::Str(value)))
+    let value = expr_str.trim_end_matches(chars.as_slice()).to_owned();
+    let start = expr_str
+        .as_bytes()
+        .iter()
+        .position(|&x| x == value[0..1].as_bytes()[0])
+        .unwrap();
+    let end = expr_str
+        .as_bytes()
+        .iter()
+        .position(|&x| x == value[0..1].as_bytes()[0])
+        .unwrap();
+
+    Ok(Evaluated::StrSlice {
+        source: value.to_owned(),
+        range: start..end,
+    })
 }
 
 pub fn reverse(name: String, expr: Evaluated<'_>) -> Result<Evaluated> {
@@ -277,7 +314,6 @@ pub fn substr<'a>(
 
     let start = min(max(start, 0) as usize, string.len());
     let string = string.as_str();
-
     Ok(Evaluated::StrSlice {
         source: string[start..end].to_owned(),
         range: start..end,
