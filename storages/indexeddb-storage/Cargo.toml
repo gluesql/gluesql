@@ -1,5 +1,5 @@
 [package]
-name = "glueseql_indexeddb_storage"
+name = "gluesql_indexeddb_storage"
 version = "0.13.0"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]

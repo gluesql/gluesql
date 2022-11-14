@@ -7,7 +7,7 @@ use test_suite::*;
 use test_suite::{generate_store_tests, Tester};
 use wasm_bindgen_test::{console_log, wasm_bindgen_test, wasm_bindgen_test_configure};
 
-use glueseql_indexeddb_storage::IndexeddbStorage;
+use gluesql_indexeddb_storage::IndexeddbStorage;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
