@@ -66,13 +66,13 @@ impl Row {
             return Err(RowError::TooManyValues.into());
         }
 
-        // if let Some(wrong_column_name) = columns.iter().find(|column_name| {
-        //     !column_defs
-        //         .iter()
-        //         .any(|column_def| &&column_def.name == column_name)
-        // }) {
-        //     return Err(RowError::WrongColumnName(wrong_column_name.to_owned()).into());
-        // }
+        if let Some(wrong_column_name) = columns.iter().find(|column_name| {
+            !column_defs
+                .iter()
+                .any(|column_def| &&column_def.name == column_name)
+        }) {
+            return Err(RowError::WrongColumnName(wrong_column_name.to_owned()).into());
+        }
 
         let columns = if columns.is_empty() {
             Columns::All(column_defs.iter().map(|ColumnDef { name, .. }| name))
@@ -81,10 +81,19 @@ impl Row {
         };
 
         let column_name_value_list = columns.zip(values.iter()).collect::<Vec<(_, _)>>();
+        // let column_name_value_list = columns.zip(values.iter());
+        // let a = column_name_value_list.fold(Vec::new(), |mut acc, cur| {
+        //     acc.push(cur);
+
+        //     acc
+        // });
+
+        // todo!();
 
         /*
-        A B C D E
-        x y z N e
+        A B C
+        \ V \
+
         column_name, column_def.name, value
         Y =>
         N => definately Err
@@ -119,23 +128,47 @@ impl Row {
                     ..
                 } = column_def;
 
+                /*
+                insert into T (B) values(2);
+                insert into T (X) values(2);
+
+                A => 1) is A? => value 2) default? default 3) nullable? null 4) check name exists in table
+                not found, no default, not null
+
+                */
+
                 let value = column_name_value_list
                     .iter()
                     .find(|(name, _)| name == &def_name)
                     .map(|(_, value)| value);
 
+                // match (value, column_def.get_default()) {
+                //     (Some(&expr), _) | (None, Some(expr)) => {
+                //         evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
+                //     }
+                //     (None, None) => {
+                //         let known_column = column_name_value_list.iter().any(|(name, _)| {
+                //             column_defs
+                //                 .iter()
+                //                 .any(|column_def| &&column_def.name == name)
+                //         });
+
+                //         match known_column {
+                //             true => Ok(Value::Null),
+                //             false => {
+                //                 Err(RowError::WrongColumnName(wrong_column_name.to_owned()).into())
+                //             }
+                //         }
+                //     }
+                // }
+
                 match (value, column_def.get_default(), nullable) {
                     (Some(&expr), _, _) | (None, Some(expr), _) => {
-                        println!("here");
                         evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
                     }
-                    (None, None, true) => {
-                        println!("here2");
-                        Ok(Value::Null)
-                    }
+                    (None, None, true) => Ok(Value::Null),
                     (None, None, false) => {
-                        unreachable!();
-                        // Err(RowError::LackOfRequiredColumn(def_name.to_owned()).into())
+                        Err(RowError::LackOfRequiredColumn(def_name.to_owned()).into())
                     }
                 }
             })

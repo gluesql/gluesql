@@ -12,7 +12,7 @@ use {
 
 test_case!(values, async move {
     run!("CREATE TABLE TableA (id INTEGER);");
-    run!("CREATE TABLE TableB (id INTEGER NOT NULL);");
+    run!("CREATE TABLE TableB (id INTEGER NOT NULL, name TEXT NOT NULL);");
     run!("INSERT INTO TableA (id) VALUES (1);");
     run!("INSERT INTO TableA (id) VALUES (9);");
 
@@ -162,13 +162,13 @@ test_case!(values, async move {
             "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS Derived(id, name, dummy)",
             Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
         ),
-        // (
-        //     "INSERT INTO TableA (id2) VALUES (1);",
-        //     Err(RowError::WrongColumnName("id2".to_owned()).into()),
-        // ),
         (
-            "INSERT INTO TableB (id2) VALUES (1);",
+            "INSERT INTO TableA (id2) VALUES (1);",
             Err(RowError::WrongColumnName("id2".to_owned()).into()),
+        ),
+        (
+            "INSERT INTO TableB (id) VALUES (1);",
+            Err(RowError::LackOfRequiredColumn("name".to_owned()).into()),
         ),
         (
             "INSERT INTO TableA (id) VALUES ('test2', 3)",
