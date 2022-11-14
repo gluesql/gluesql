@@ -245,7 +245,7 @@ pub fn ltrim<'a>(
         .unwrap();
 
     Ok(Evaluated::StrSlice {
-        source: value.to_owned(),
+        source: value,
         range: start..end,
     })
 }
@@ -274,7 +274,7 @@ pub fn rtrim<'a>(
         .unwrap();
 
     Ok(Evaluated::StrSlice {
-        source: value.to_owned(),
+        source: value,
         range: start..end,
     })
 }
