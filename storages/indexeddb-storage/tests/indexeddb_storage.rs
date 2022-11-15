@@ -1,13 +1,13 @@
 #![allow(clippy::future_not_send)]
 
+use async_trait::async_trait;
 use gluesql_core::prelude::Glue;
+use gluesql_indexeddb_storage::IndexeddbStorage;
 use serde::ser::Serialize;
 use serde_wasm_bindgen::Serializer;
 use test_suite::*;
 use test_suite::{generate_store_tests, Tester};
 use wasm_bindgen_test::{console_log, wasm_bindgen_test, wasm_bindgen_test_configure};
-
-use gluesql_indexeddb_storage::IndexeddbStorage;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -15,17 +15,8 @@ struct IndexeddbTester {
     glue: Glue<IndexeddbStorage>,
 }
 
+#[async_trait(?Send)]
 impl Tester<IndexeddbStorage> for IndexeddbTester {
-    fn new(_: &str) -> Self {
-        panic!("oh no")
-    }
-
-    fn get_glue(&mut self) -> &mut Glue<IndexeddbStorage> {
-        &mut self.glue
-    }
-}
-
-impl IndexeddbTester {
     async fn new(namespace: &str) -> Self {
         let factory = idb::Factory::new().unwrap();
         factory.delete(namespace).await.ok();
@@ -35,6 +26,10 @@ impl IndexeddbTester {
         let glue = Glue::new(storage);
 
         IndexeddbTester { glue }
+    }
+
+    fn get_glue(&mut self) -> &mut Glue<IndexeddbStorage> {
+        &mut self.glue
     }
 }
 
