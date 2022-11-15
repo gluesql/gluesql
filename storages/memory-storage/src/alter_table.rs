@@ -1,3 +1,5 @@
+#![cfg(feature = "alter-table")]
+
 use {
     super::MemoryStorage,
     async_trait::async_trait,

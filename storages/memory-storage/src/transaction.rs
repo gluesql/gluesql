@@ -1,3 +1,5 @@
+#![cfg(feature = "transaction")]
+
 use {
     super::MemoryStorage,
     async_trait::async_trait,
