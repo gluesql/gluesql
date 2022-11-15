@@ -3,6 +3,7 @@ pub mod count;
 pub mod error;
 pub mod first;
 pub mod group_by;
+pub mod last;
 pub mod max;
 pub mod min;
 pub mod stdev;

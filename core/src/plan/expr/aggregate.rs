@@ -11,7 +11,8 @@ impl Aggregate {
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
             | Aggregate::Stdev(expr)
-            | Aggregate::First(expr) => Some(expr),
+            | Aggregate::First(expr)
+            | Aggregate::Last(expr) => Some(expr),
         }
     }
 }
@@ -59,6 +60,18 @@ mod tests {
         assert_eq!(actual.as_expr(), Some(&expected));
 
         let actual = parse("VARIANCE(id)");
+        let expected = Expr::Identifier("id".to_owned());
+        assert_eq!(actual.as_expr(), Some(&expected));
+
+        let actual = parse("STDEV(id)");
+        let expected = Expr::Identifier("id".to_owned());
+        assert_eq!(actual.as_expr(), Some(&expected));
+
+        let actual = parse("FIRST(id)");
+        let expected = Expr::Identifier("id".to_owned());
+        assert_eq!(actual.as_expr(), Some(&expected));
+
+        let actual = parse("LAST(id)");
         let expected = Expr::Identifier("id".to_owned());
         assert_eq!(actual.as_expr(), Some(&expected));
     }

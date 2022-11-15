@@ -1,6 +1,6 @@
 use {crate::*, gluesql_core::prelude::Value::*};
 
-test_case!(first, async move {
+test_case!(last, async move {
     run!(
         "
         CREATE TABLE Item (
@@ -24,18 +24,18 @@ test_case!(first, async move {
 
     let test_cases = [
         (
-            "SELECT FIRST(age) FROM Item",
+            "SELECT LAST(age) FROM Item",
             select_with_null!(
-                "FIRST(age)";
-                I64(11)
+                "LAST(age)";
+                Null
             ),
         ),
         (
-            "SELECT FIRST(id), FIRST(quantity) FROM Item",
+            "SELECT LAST(id), LAST(quantity) FROM Item",
             select!(
-                "FIRST(id)" | "FIRST(quantity)"
-                I64         | I64;
-                1              10
+                "LAST(id)" | "LAST(quantity)"
+                I64        | I64;
+                5            25
             ),
         ),
     ];

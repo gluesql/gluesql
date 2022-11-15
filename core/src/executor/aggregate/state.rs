@@ -39,6 +39,7 @@ enum AggrValue {
         count: i64,
     },
     First(Value),
+    Last(Value),
 }
 
 impl AggrValue {
@@ -72,6 +73,7 @@ impl AggrValue {
                 count: 1,
             },
             Aggregate::First(_) => AggrValue::First(value),
+            Aggregate::Last(_) => AggrValue::Last(value),
         })
     }
 
@@ -120,7 +122,8 @@ impl AggrValue {
                 sum: sum.add(new_value)?,
                 count: count + 1,
             })),
-            Self::First(value) => Ok(None),
+            Self::First(_) => Ok(None),
+            Self::Last(_) => Ok(Some(Self::Last(new_value.clone()))),
         }
     }
 
@@ -135,9 +138,11 @@ impl AggrValue {
 
         match self {
             Self::Count { count, .. } => Ok(Value::I64(count)),
-            Self::Sum(value) | Self::Min(value) | Self::Max(value) | Self::First(value) => {
-                Ok(value)
-            }
+            Self::Sum(value)
+            | Self::Min(value)
+            | Self::Max(value)
+            | Self::First(value)
+            | Self::Last(value) => Ok(value),
             Self::Avg { sum, count } => sum.divide(&Value::F64(count as f64)),
             Self::Variance {
                 sum_square,
@@ -254,7 +259,8 @@ impl<'a> State<'a> {
             | Aggregate::Avg(expr)
             | Aggregate::Variance(expr)
             | Aggregate::Stdev(expr)
-            | Aggregate::First(expr) => evaluate(self.storage, filter_context, None, expr)
+            | Aggregate::First(expr)
+            | Aggregate::Last(expr) => evaluate(self.storage, filter_context, None, expr)
                 .await?
                 .try_into()?,
         };
