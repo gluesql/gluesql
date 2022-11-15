@@ -9,12 +9,7 @@ license = "Apache-2.0"
 repository = "https://github.com/gluesql/gluesql"
 documentation = "https://docs.rs/gluesql/"
 readme = "../../README.md"
-keywords = [
-	"sql-database",
-	"sql",
-	"websql",
-	"webassembly",
-]
+keywords = ["sql-database", "sql", "websql", "webassembly"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -26,6 +21,7 @@ test-suite = { package = "gluesql-test-suite", path = "../../test-suite", versio
 memory-storage = { package = "gluesql_memory_storage", path = "../../storages/memory-storage", version = "0.13.0", optional = true }
 shared-memory-storage = { package = "gluesql-shared-memory-storage", path = "../../storages/shared-memory-storage", version = "0.13.0", optional = true }
 sled-storage = { package = "gluesql_sled_storage", path = "../../storages/sled-storage", version = "0.13.0", optional = true }
+indexeddb-storage = { package = "gluesql_indexeddb_storage", path = "../../storages/indexeddb-storage", version = "0.13.0", optional = true }
 
 [dev-dependencies]
 futures = "0.3"
@@ -41,6 +37,7 @@ default = [
 	"memory-storage",
 	"shared-memory-storage",
 	"sled-storage",
+	"indexeddb-storage",        # TODO Add example
 ]
 
 # Storage Maker
