@@ -1,3 +1,5 @@
+use super::evaluated::EvaluatedFormatType;
+
 use {
     super::{ChronoFormatError, EvaluateError, Evaluated},
     crate::{
@@ -507,29 +509,34 @@ pub fn generate_uuid<'a>() -> Evaluated<'a> {
 pub fn format<'a>(
     name: String,
     expr: Evaluated<'_>,
-    format: Evaluated<'_>,
+    format: EvaluatedFormatType<'_>,
 ) -> Result<Evaluated<'a>> {
-    match expr.try_into()? {
-        Value::Date(expr) => {
-            let format = eval_to_str!(name, format);
-
-            Ok(Evaluated::from(Value::Str(
-                chrono::NaiveDate::format(&expr, &format).to_string(),
-            )))
+    match format {
+        EvaluatedFormatType::Datetime(e) => {
+            let format = eval_to_str!(name, e);
+            match expr.try_into()? {
+                Value::Date(expr) => Ok(Evaluated::from(Value::Str(
+                    chrono::NaiveDate::format(&expr, &format).to_string(),
+                ))),
+                Value::Timestamp(expr) => Ok(Evaluated::from(Value::Str(
+                    chrono::NaiveDateTime::format(&expr, &format).to_string(),
+                ))),
+                Value::Time(expr) => Ok(Evaluated::from(Value::Str(
+                    chrono::NaiveTime::format(&expr, &format).to_string(),
+                ))),
+                value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
+            }
         }
-        Value::Timestamp(expr) => {
-            let format = eval_to_str!(name, format);
-            Ok(Evaluated::from(Value::Str(
-                chrono::NaiveDateTime::format(&expr, &format).to_string(),
-            )))
+        EvaluatedFormatType::Binary => {
+            let binary = i64::from_str_radix(&eval_to_str!(name, expr), 2).unwrap();
+            let str = format!("{:b}", binary);
+            Ok(Evaluated::from(Value::Str(str)))
         }
-        Value::Time(expr) => {
-            let format = eval_to_str!(name, format);
-            Ok(Evaluated::from(Value::Str(
-                chrono::NaiveTime::format(&expr, &format).to_string(),
-            )))
+        EvaluatedFormatType::Hex => {
+            let hex = i64::from_str_radix(&eval_to_str!(name, expr), 16).unwrap();
+            let str = format!("{:X}", hex);
+            Ok(Evaluated::from(Value::Str(str)))
         }
-        value => Err(EvaluateError::UnsupportedExprForFormatFunction(value.into()).into()),
     }
 }
 

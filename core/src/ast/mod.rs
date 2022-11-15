@@ -10,7 +10,7 @@ pub use ast_literal::{AstLiteral, DateTimeField, TrimWhereField};
 pub use data_type::DataType;
 pub use ddl::*;
 pub use expr::Expr;
-pub use function::{Aggregate, CountArgExpr, Function};
+pub use function::{Aggregate, CountArgExpr, FormatType, Function};
 pub use operator::*;
 pub use query::*;
 

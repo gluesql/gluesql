@@ -119,7 +119,7 @@ pub enum Function {
     GenerateUuid(),
     Format {
         expr: Expr,
-        format: Expr,
+        format: FormatType,
     },
     ToDate {
         expr: Expr,
@@ -334,12 +334,35 @@ impl ToSql for CountArgExpr {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum FormatType {
+    Datetime(Expr),
+    Binary,
+    Hex,
+}
+
+impl ToSql for FormatType {
+    fn to_sql(&self) -> String {
+        match self {
+            FormatType::Datetime(e) => e.to_sql(),
+            FormatType::Binary => "BINARY".to_owned(),
+            FormatType::Hex => "HEX".to_owned(),
+        }
+    }
+}
+
+impl From<Expr> for FormatType {
+    fn from(expr: Expr) -> Self {
+        Self::Datetime(expr)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
         crate::ast::{
-            Aggregate, AstLiteral, CountArgExpr, DataType, DateTimeField, Expr, Function, ToSql,
-            TrimWhereField,
+            Aggregate, AstLiteral, CountArgExpr, DataType, DateTimeField, Expr, FormatType,
+            Function, ToSql, TrimWhereField,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
@@ -801,7 +824,27 @@ mod tests {
                     data_type: DataType::Date,
                     value: "2022-10-12".to_owned()
                 },
-                format: Expr::Literal(AstLiteral::QuotedString("%Y-%m".to_owned()))
+                format: FormatType::Datetime(Expr::Literal(AstLiteral::QuotedString(
+                    "%Y-%m".to_owned()
+                )))
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"FORMAT(1, BINARY)"#,
+            &Expr::Function(Box::new(Function::Format {
+                expr: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                format: FormatType::Binary
+            }))
+            .to_sql()
+        );
+
+        assert_eq!(
+            r#"FORMAT(1, HEX)"#,
+            &Expr::Function(Box::new(Function::Format {
+                expr: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
+                format: FormatType::Hex
             }))
             .to_sql()
         );

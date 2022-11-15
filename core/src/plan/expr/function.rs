@@ -48,7 +48,8 @@ impl Function {
             }
             | Self::Reverse(expr)
             | Self::Cast { expr, .. }
-            | Self::Extract { expr, .. } => Exprs::Single([expr].into_iter()),
+            | Self::Extract { expr, .. }
+            | Self::Format { expr, .. } => Exprs::Single([expr].into_iter()),
             Self::Left { expr, size: expr2 }
             | Self::Right { expr, size: expr2 }
             | Self::Lpad {
@@ -85,10 +86,6 @@ impl Function {
             | Self::Lcm {
                 left: expr,
                 right: expr2,
-            }
-            | Self::Format {
-                expr,
-                format: expr2,
             }
             | Self::ToDate {
                 expr,

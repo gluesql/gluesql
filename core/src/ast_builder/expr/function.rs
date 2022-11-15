@@ -2,7 +2,7 @@ use {
     super::ExprNode,
     crate::{
         ast::{DateTimeField, Function},
-        ast_builder::{DataTypeNode, ExprList},
+        ast_builder::{DataTypeNode, ExprList, FormatTypeNode},
         result::{Error, Result},
     },
 };
@@ -102,7 +102,7 @@ pub enum FunctionNode<'a> {
     },
     Format {
         expr: ExprNode<'a>,
-        format: ExprNode<'a>,
+        format: FormatTypeNode<'a>,
     },
     ToDate {
         expr: ExprNode<'a>,
@@ -399,7 +399,7 @@ impl<'a> ExprNode<'a> {
     pub fn ltrim(self, chars: Option<ExprNode<'a>>) -> ExprNode<'a> {
         ltrim(self, chars)
     }
-    pub fn format<T: Into<ExprNode<'a>>>(self, fmt: T) -> ExprNode<'a> {
+    pub fn format<T: Into<FormatTypeNode<'a>>>(self, fmt: T) -> ExprNode<'a> {
         format(self, fmt)
     }
     pub fn to_date<T: Into<ExprNode<'a>>>(self, format: T) -> ExprNode<'a> {
@@ -636,7 +636,7 @@ pub fn modulo<'a, T: Into<ExprNode<'a>>, U: Into<ExprNode<'a>>>(
     }))
 }
 
-pub fn format<'a, D: Into<ExprNode<'a>>, T: Into<ExprNode<'a>>>(
+pub fn format<'a, D: Into<ExprNode<'a>>, T: Into<FormatTypeNode<'a>>>(
     expr: D,
     format: T,
 ) -> ExprNode<'a> {
@@ -712,7 +712,7 @@ mod tests {
             exp, expr, extract, floor, format, gcd, generate_uuid, ifnull, lcm, left, ln, log,
             log10, log2, lower, lpad, ltrim, modulo, now, num, pi, position, power, radians,
             repeat, reverse, right, round, rpad, rtrim, sign, sin, sqrt, substr, tan, test_expr,
-            text, time, timestamp, to_date, to_time, to_timestamp, upper,
+            text, time, timestamp, to_date, to_time, to_timestamp, upper, FormatTypeNode,
         },
         prelude::DataType,
     };
@@ -1188,6 +1188,14 @@ mod tests {
 
         let actual = time("23:56:04").format(text("%H:%M:%S"));
         let expected = "FORMAT(TIME '23:56:04', '%H:%M:%S')";
+        test_expr(actual, expected);
+
+        let actual = format(num(1), FormatTypeNode::Binary);
+        let expected = "FORMAT(1, BINARY)";
+        test_expr(actual, expected);
+
+        let actual = format(num(1), FormatTypeNode::Hex);
+        let expected = "FORMAT(1, HEX)";
         test_expr(actual, expected);
     }
 

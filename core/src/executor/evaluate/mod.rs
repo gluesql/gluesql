@@ -7,8 +7,9 @@ mod stateless;
 use {
     super::{context::FilterContext, select::select},
     crate::{
-        ast::{Aggregate, Expr, Function},
+        ast::{Aggregate, Expr, FormatType, Function},
         data::{Interval, Literal, Value},
+        executor::evaluate::evaluated::EvaluatedFormatType,
         result::Result,
         store::GStore,
     },
@@ -420,7 +421,11 @@ async fn evaluate_function<'a>(
         Function::Now() => Ok(Evaluated::from(Value::Timestamp(Utc::now().naive_utc()))),
         Function::Format { expr, format } => {
             let expr = eval(expr).await?;
-            let format = eval(format).await?;
+            let format = match format {
+                FormatType::Datetime(expr) => EvaluatedFormatType::Datetime(eval(expr).await?),
+                FormatType::Hex => EvaluatedFormatType::Hex,
+                FormatType::Binary => EvaluatedFormatType::Binary,
+            };
 
             f::format(name, expr, format)
         }
