@@ -77,6 +77,10 @@ jobs:
           cargo test --all-features --lib --bins --tests --examples --verbose -- --skip sled_transaction_timeout
           cargo test sled_transaction_timeout --verbose -- --test-threads=1
           cargo test --benches
+          cd storages/memory-storage
+          cargo test --verbose --no-default-features
+          cargo test --verbose --no-default-features --features alter-table
+          cd ../../
 
   run_examples:
     name: Run examples

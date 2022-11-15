@@ -20,11 +20,12 @@ test_case!(dictionary, async move {
 
     test!("SHOW TABLES", tables(Vec::new()));
 
-    run!("CREATE TABLE Foo (id INTEGER);");
+    run!("CREATE TABLE Foo (id INTEGER, name TEXT NULL, type TEXT NULL);");
     test!("SHOW TABLES", tables(vec!["Foo"]));
 
     run!("CREATE TABLE Zoo (id INTEGER);");
-    run!("CREATE TABLE Bar (id INTEGER);");
+    run!("CREATE TABLE Bar (id INTEGER, name TEXT NULL);");
+
     test!("SHOW TABLES", tables(vec!["Bar", "Foo", "Zoo"]));
 
     test!(
@@ -51,9 +52,6 @@ test_case!(dictionary, async move {
         ))
     );
 
-    run!("ALTER TABLE Bar ADD COLUMN name TEXT NULL");
-    run!("ALTER TABLE Foo ADD COLUMN name TEXT NULL");
-    run!("ALTER TABLE Foo ADD COLUMN type TEXT NULL");
     test!(
         "SELECT * FROM GLUE_TABLE_COLUMNS",
         Ok(select!(
