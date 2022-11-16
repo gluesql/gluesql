@@ -33,6 +33,7 @@ memory-storage = { package = "gluesql_memory_storage", path = "../../../storages
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
+async-trait = "0.1"
 
 [dev-dependencies.test-suite]
 package = "gluesql-test-suite"

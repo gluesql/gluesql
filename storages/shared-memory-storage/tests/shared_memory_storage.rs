@@ -1,13 +1,15 @@
 use {
-    gluesql_core::prelude::Glue, gluesql_shared_memory_storage::SharedMemoryStorage, test_suite::*,
+    async_trait::async_trait, gluesql_core::prelude::Glue,
+    gluesql_shared_memory_storage::SharedMemoryStorage, test_suite::*,
 };
 
 struct SharedMemoryTester {
     glue: Glue<SharedMemoryStorage>,
 }
 
+#[async_trait(?Send)]
 impl Tester<SharedMemoryStorage> for SharedMemoryTester {
-    fn new(_: &str) -> Self {
+    async fn new(_: &str) -> Self {
         let storage = SharedMemoryStorage::new();
         let glue = Glue::new(storage);
 

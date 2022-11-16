@@ -1,11 +1,15 @@
-use {gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*};
+use {
+    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
+    test_suite::*,
+};
 
 struct MemoryTester {
     glue: Glue<MemoryStorage>,
 }
 
+#[async_trait(?Send)]
 impl Tester<MemoryStorage> for MemoryTester {
-    fn new(_: &str) -> Self {
+    async fn new(_: &str) -> Self {
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);
 
