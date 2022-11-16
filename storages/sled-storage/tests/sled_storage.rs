@@ -1,5 +1,7 @@
-use async_trait::async_trait;
-use {gluesql_core::prelude::Glue, gluesql_sled_storage::SledStorage, test_suite::*};
+use {
+    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_sled_storage::SledStorage,
+    test_suite::*,
+};
 
 struct SledTester {
     glue: Glue<SledStorage>,

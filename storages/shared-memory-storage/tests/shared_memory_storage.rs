@@ -1,7 +1,6 @@
-use async_trait::async_trait;
-
 use {
-    gluesql_core::prelude::Glue, gluesql_shared_memory_storage::SharedMemoryStorage, test_suite::*,
+    async_trait::async_trait, gluesql_core::prelude::Glue,
+    gluesql_shared_memory_storage::SharedMemoryStorage, test_suite::*,
 };
 
 struct SharedMemoryTester {
