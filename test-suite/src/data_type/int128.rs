@@ -1,6 +1,9 @@
 use {
     crate::*,
-    gluesql_core::{data::ValueError, prelude::DataType, prelude::Value::*},
+    gluesql_core::{
+        data::ValueError,
+        prelude::{DataType, Value::*},
+    },
 };
 
 test_case!(int128, async move {

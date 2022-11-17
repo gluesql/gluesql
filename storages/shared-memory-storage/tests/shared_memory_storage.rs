@@ -39,11 +39,13 @@ macro_rules! test {
 
 #[test]
 fn shared_memory_storage_index() {
-    use futures::executor::block_on;
-    use gluesql_core::{
-        prelude::Glue,
-        result::{Error, Result},
-        store::{Index, Store},
+    use {
+        futures::executor::block_on,
+        gluesql_core::{
+            prelude::Glue,
+            result::{Error, Result},
+            store::{Index, Store},
+        },
     };
 
     let storage = SharedMemoryStorage::new();

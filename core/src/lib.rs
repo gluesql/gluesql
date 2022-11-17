@@ -1,8 +1,7 @@
 #![deny(clippy::str_to_string)]
 
 // re-export
-pub use chrono;
-pub use sqlparser;
+pub use {chrono, sqlparser};
 
 mod glue;
 

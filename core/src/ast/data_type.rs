@@ -1,5 +1,7 @@
-use serde::{Deserialize, Serialize};
-use strum_macros::Display;
+use {
+    serde::{Deserialize, Serialize},
+    strum_macros::Display,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]

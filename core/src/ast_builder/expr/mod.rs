@@ -11,10 +11,12 @@ pub mod between;
 pub mod function;
 pub mod in_list;
 
-pub use case::case;
-pub use exists::{exists, not_exists};
-pub use nested::nested;
-pub use unary_op::{factorial, minus, not, plus};
+pub use {
+    case::case,
+    exists::{exists, not_exists},
+    nested::nested,
+    unary_op::{factorial, minus, not, plus},
+};
 
 use {
     crate::{

@@ -593,6 +593,4 @@ macro_rules! generate_binary_op_tests {
 
 #[cfg(test)]
 pub(crate) use generate_binary_op_tests;
-pub(crate) use impl_interval_method;
-pub(crate) use impl_method;
-pub(crate) use impl_try_binary_op;
+pub(crate) use {impl_interval_method, impl_method, impl_try_binary_op};

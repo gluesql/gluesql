@@ -1,6 +1,7 @@
-use indexmap::map::{IntoIter, Keys};
-use std::cmp::Eq;
-use std::hash::Hash;
+use {
+    indexmap::map::{IntoIter, Keys},
+    std::{cmp::Eq, hash::Hash},
+};
 
 /// HashMap which provides
 /// 1. Immutable APIs

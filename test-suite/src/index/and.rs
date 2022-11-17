@@ -1,4 +1,8 @@
-use {crate::*, gluesql_core::ast::IndexOperator::*, gluesql_core::prelude::*, Value::*};
+use {
+    crate::*,
+    gluesql_core::{ast::IndexOperator::*, prelude::*},
+    Value::*,
+};
 
 test_case!(and, async move {
     run!(

@@ -2,8 +2,7 @@ use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
     gluesql_core::{
-        data::Interval as I,
-        data::ValueError,
+        data::{Interval as I, ValueError},
         executor::Payload,
         prelude::{
             DataType,
