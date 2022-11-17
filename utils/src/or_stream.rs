@@ -1,9 +1,12 @@
-use core::cmp::max;
-use core::pin::Pin;
-use futures::ready;
-use futures::stream::Stream;
-use futures::task::{Context, Poll};
-use pin_project::pin_project;
+use {
+    core::{cmp::max, pin::Pin},
+    futures::{
+        ready,
+        stream::Stream,
+        task::{Context, Poll},
+    },
+    pin_project::pin_project,
+};
 
 #[derive(Debug)]
 enum State {
@@ -88,9 +91,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::OrStream;
-    use futures::executor::block_on;
-    use futures::stream::{empty, once, StreamExt};
+    use {
+        super::OrStream,
+        futures::{
+            executor::block_on,
+            stream::{empty, once, StreamExt},
+        },
+    };
 
     #[test]
     fn basic() {

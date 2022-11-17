@@ -1,5 +1,4 @@
-use std::convert::From;
-use std::vec::IntoIter;
+use std::{convert::From, vec::IntoIter};
 
 pub struct Vector<T>(Vec<T>);
 
