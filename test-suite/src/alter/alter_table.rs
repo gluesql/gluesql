@@ -3,8 +3,12 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::*, data::Value::*, executor::AlterError, executor::EvaluateError, prelude::Payload,
-        store::AlterTableError, translate::TranslateError,
+        ast::*,
+        data::Value::*,
+        executor::{AlterError, EvaluateError},
+        prelude::Payload,
+        store::AlterTableError,
+        translate::TranslateError,
     },
 };
 
