@@ -9,12 +9,13 @@ mod order_by;
 mod showindexes;
 mod value;
 
-pub use and::and;
-pub use basic::basic;
-pub use expr::expr;
-pub use nested::nested;
-pub use null::null;
-pub use order_by::order_by;
-pub use order_by::order_by_multi;
-pub use showindexes::showindexes;
-pub use value::value;
+pub use {
+    and::and,
+    basic::basic,
+    expr::expr,
+    nested::nested,
+    null::null,
+    order_by::{order_by, order_by_multi},
+    showindexes::showindexes,
+    value::value,
+};
