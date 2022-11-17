@@ -1,5 +1,8 @@
 use {
-    crate::{ast::DataType, ast::DateTimeField, data::Value},
+    crate::{
+        ast::{DataType, DateTimeField},
+        data::Value,
+    },
     serde::Serialize,
     std::fmt::Debug,
     strum_macros::Display,

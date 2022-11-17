@@ -1,6 +1,9 @@
 use {
     super::{Interval, Key, StringExt},
-    crate::{ast::DataType, ast::DateTimeField, result::Result},
+    crate::{
+        ast::{DataType, DateTimeField},
+        result::Result,
+    },
     binary_op::TryBinaryOperator,
     chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, Timelike},
     core::ops::Sub,
@@ -289,8 +292,7 @@ impl Value {
     }
 
     pub fn subtract(&self, other: &Value) -> Result<Value> {
-        use super::Interval as I;
-        use Value::*;
+        use {super::Interval as I, Value::*};
 
         match (self, other) {
             (I8(a), _) => a.try_subtract(other),
@@ -655,8 +657,10 @@ mod tests {
     #[allow(clippy::eq_op)]
     #[test]
     fn eq() {
-        use super::Interval;
-        use chrono::{NaiveDateTime, NaiveTime};
+        use {
+            super::Interval,
+            chrono::{NaiveDateTime, NaiveTime},
+        };
         let decimal = |n: i32| Decimal(n.into());
         let bytea = |v: &str| Bytea(hex::decode(v).unwrap());
 
@@ -695,8 +699,10 @@ mod tests {
 
     #[test]
     fn cmp() {
-        use chrono::{NaiveDate, NaiveTime};
-        use std::cmp::Ordering;
+        use {
+            chrono::{NaiveDate, NaiveTime},
+            std::cmp::Ordering,
+        };
 
         assert_eq!(
             Bool(true).partial_cmp(&Bool(false)),
