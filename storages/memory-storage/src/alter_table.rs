@@ -7,8 +7,7 @@ use {
         ast::ColumnDef,
         data::Value,
         result::{MutResult, Result, TrySelf},
-        store::AlterTable,
-        store::AlterTableError,
+        store::{AlterTable, AlterTableError},
     },
 };
 

@@ -43,11 +43,13 @@ macro_rules! test {
 #[cfg(feature = "index")]
 #[test]
 fn memory_storage_index() {
-    use futures::executor::block_on;
-    use gluesql_core::{
-        prelude::Glue,
-        result::{Error, Result},
-        store::{Index, Store},
+    use {
+        futures::executor::block_on,
+        gluesql_core::{
+            prelude::Glue,
+            result::{Error, Result},
+            store::{Index, Store},
+        },
     };
 
     let storage = MemoryStorage::default();
