@@ -6,13 +6,15 @@ mod function;
 mod operator;
 mod query;
 
-pub use ast_literal::{AstLiteral, DateTimeField, TrimWhereField};
-pub use data_type::DataType;
-pub use ddl::*;
-pub use expr::Expr;
-pub use function::{Aggregate, CountArgExpr, Function};
-pub use operator::*;
-pub use query::*;
+pub use {
+    ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
+    data_type::DataType,
+    ddl::*,
+    expr::Expr,
+    function::{Aggregate, CountArgExpr, Function},
+    operator::*,
+    query::*,
+};
 
 use serde::{Deserialize, Serialize};
 
