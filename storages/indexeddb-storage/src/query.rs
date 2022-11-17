@@ -1,6 +1,8 @@
-use gluesql_core::result::Result;
-use idb::{KeyRange, Query};
-use wasm_bindgen::JsValue;
+use {
+    gluesql_core::result::Result,
+    idb::{KeyRange, Query},
+    wasm_bindgen::JsValue,
+};
 
 use crate::storage_error::StorageError;
 

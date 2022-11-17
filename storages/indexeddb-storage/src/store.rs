@@ -1,22 +1,21 @@
-use std::iter::empty;
-
-use wasm_bindgen::JsValue;
-
-use crate::{
-    key::{self, retrieve_key},
-    query::table_data_query,
-    storage_error::StorageError,
-    IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
-};
-
 use {
-    async_trait::async_trait,
-    gluesql_core::{
-        data::{Key, Row, Schema},
-        result::Result,
-        store::{RowIter, Store},
+    crate::{
+        key::{self, retrieve_key},
+        query::table_data_query,
+        storage_error::StorageError,
+        IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
     },
-    std::str,
+    std::iter::empty,
+    wasm_bindgen::JsValue,
+    {
+        async_trait::async_trait,
+        gluesql_core::{
+            data::{Key, Row, Schema},
+            result::Result,
+            store::{RowIter, Store},
+        },
+        std::str,
+    },
 };
 
 #[async_trait(?Send)]

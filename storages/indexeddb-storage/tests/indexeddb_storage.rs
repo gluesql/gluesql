@@ -1,13 +1,15 @@
 #![allow(clippy::future_not_send)]
 
-use async_trait::async_trait;
-use gluesql_core::prelude::Glue;
-use gluesql_indexeddb_storage::IndexeddbStorage;
-use serde::ser::Serialize;
-use serde_wasm_bindgen::Serializer;
-use test_suite::*;
-use test_suite::{generate_store_tests, Tester};
-use wasm_bindgen_test::{console_log, wasm_bindgen_test};
+use {
+    async_trait::async_trait,
+    gluesql_core::prelude::Glue,
+    gluesql_indexeddb_storage::IndexeddbStorage,
+    serde::ser::Serialize,
+    serde_wasm_bindgen::Serializer,
+    test_suite::*,
+    test_suite::{generate_store_tests, Tester},
+    wasm_bindgen_test::{console_log, wasm_bindgen_test},
+};
 
 struct IndexeddbTester {
     glue: Glue<IndexeddbStorage>,

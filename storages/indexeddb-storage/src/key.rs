@@ -1,7 +1,6 @@
-use gluesql_core::prelude::Key;
-use gluesql_core::result::Result;
-
-use crate::storage_error::StorageError;
+use {
+    crate::storage_error::StorageError, gluesql_core::prelude::Key, gluesql_core::result::Result,
+};
 
 pub(crate) fn generate_key(table_name: &str, id: u32) -> String {
     const VALUE: u8 = 1;

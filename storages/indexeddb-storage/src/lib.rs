@@ -9,8 +9,10 @@ mod store;
 mod store_mut;
 mod transaction;
 
-use gluesql_core::result::Result;
-use idb::{Database, Factory, ObjectStoreParams};
+use {
+    gluesql_core::result::Result,
+    idb::{Database, Factory, ObjectStoreParams},
+};
 
 pub struct IndexeddbStorage {
     database: Database,

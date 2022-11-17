@@ -1,20 +1,20 @@
-use serde_wasm_bindgen::Serializer;
-use wasm_bindgen::JsValue;
-
-use crate::{
-    key::{convert_key, generate_key},
-    query::table_data_query,
-    storage_error::StorageError,
-    IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
-};
-
-use serde::ser::Serialize;
 use {
-    async_trait::async_trait,
-    gluesql_core::{
-        data::{Key, Row, Schema},
-        result::{MutResult, Result},
-        store::StoreMut,
+    crate::{
+        key::{convert_key, generate_key},
+        query::table_data_query,
+        storage_error::StorageError,
+        IndexeddbStorage, DATA_STORE, SCHEMA_STORE,
+    },
+    serde::ser::Serialize,
+    serde_wasm_bindgen::Serializer,
+    wasm_bindgen::JsValue,
+    {
+        async_trait::async_trait,
+        gluesql_core::{
+            data::{Key, Row, Schema},
+            result::{MutResult, Result},
+            store::StoreMut,
+        },
     },
 };
 
