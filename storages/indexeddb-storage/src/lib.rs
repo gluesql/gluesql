@@ -1,3 +1,4 @@
+#![cfg(target_arch = "wasm32")]
 #![allow(clippy::future_not_send)]
 
 mod alter_table;

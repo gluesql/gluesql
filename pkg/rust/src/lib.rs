@@ -85,6 +85,7 @@ pub mod sled_storage {
 }
 
 #[cfg(feature = "indexeddb-storage")]
+#[cfg(target_arch = "wasm32")]
 pub mod indexeddb_storage {
     pub use indexeddb_storage::*;
 }
@@ -97,6 +98,7 @@ pub mod test_suite {
 pub mod prelude {
     pub use gluesql_core::prelude::*;
     #[cfg(feature = "indexeddb-storage")]
+    #[cfg(target_arch = "wasm32")]
     pub use indexeddb_storage::IndexeddbStorage;
     #[cfg(feature = "memory-storage")]
     pub use memory_storage::MemoryStorage;
