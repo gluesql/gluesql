@@ -1,9 +1,11 @@
-use super::ExprNode;
-use crate::{
-    ast::{Assignment, Expr},
-    parse_sql::parse_assignment,
-    result::{Error, Result},
-    translate::translate_assignment,
+use {
+    super::ExprNode,
+    crate::{
+        ast::{Assignment, Expr},
+        parse_sql::parse_assignment,
+        result::{Error, Result},
+        translate::translate_assignment,
+    },
 };
 
 #[derive(Clone)]
