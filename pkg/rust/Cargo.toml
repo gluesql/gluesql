@@ -37,7 +37,7 @@ default = [
 	"memory-storage",
 	"shared-memory-storage",
 	"sled-storage",
-	"indexeddb-storage",        # TODO Add example
+	"indexeddb-storage",
 ]
 
 # Storage Maker

@@ -45,7 +45,7 @@ impl IndexeddbStorage {
                 .unwrap();
 
             let mut data_params = ObjectStoreParams::new();
-            data_params.auto_increment(false); // TODO Check default
+            data_params.auto_increment(false);
 
             database
                 .create_object_store(DATA_STORE, data_params)
