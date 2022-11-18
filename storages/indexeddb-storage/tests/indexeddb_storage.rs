@@ -67,42 +67,6 @@ macro_rules! test {
 
 generate_store_tests!(tokio::test, IndexeddbTester);
 
-#[wasm_bindgen_test]
-async fn first_test() {
-    // use futures::executor::block_on;
-    use gluesql_core::prelude::Glue;
-
-    let serializer = Serializer::new().serialize_large_number_types_as_bigints(true);
-
-    let x = 9223372036854775807_i64;
-    let x = x.serialize(&serializer);
-    console_log!("Result: {:?}", x);
-
-    let storage = IndexeddbStorage::new("test").await.unwrap();
-
-    let mut glue = Glue::new(storage);
-
-    let sqls = vec![
-        "DROP TABLE IF EXISTS Glue;",
-        "CREATE TABLE Glue (id INTEGER);",
-        "INSERT INTO Glue VALUES (100);",
-        "INSERT INTO Glue VALUES (200);",
-        "SELECT * FROM Glue WHERE id > 10;",
-    ];
-
-    // let sqls = vec![
-    //     "DROP TABLE IF EXISTS Glue;",
-    //     "CREATE TABLE Glue (id INTEGER);",
-    //     // "INSERT INTO Glue VALUES (100);",
-    //     "DELETE FROM Glue;",
-    // ];
-
-    for sql in sqls {
-        let output = glue.execute_async(sql).await.unwrap();
-        console_log!("{:?}", output);
-    }
-}
-
 #[cfg(feature = "transaction")]
 #[wasm_bindgen_test]
 async fn indexeddb_storage_transaction() {
