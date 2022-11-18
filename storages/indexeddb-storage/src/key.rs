@@ -2,6 +2,11 @@ use {
     crate::storage_error::StorageError, gluesql_core::prelude::Key, gluesql_core::result::Result,
 };
 
+// Note that we rely on table names containing no '/'.
+// Given that we should only be called from Glue,
+// where those should not be valid table names anyway
+// that shouldn't be a problem.
+
 pub(crate) fn generate_key(table_name: &str, id: u32) -> String {
     const VALUE: u8 = 1;
     let bytes = [VALUE, 1]
