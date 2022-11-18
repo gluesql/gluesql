@@ -222,5 +222,21 @@ mod test {
         let actual = table("GLUE_OBJECTS").select().into();
         let expected = "SELECT * FROM GLUE_OBJECTS";
         test_query(actual, expected);
+
+        let actual = table("GLUE_TABLES").select().into();
+        let expected = "SELECT * FROM GLUE_TABLES";
+        test_query(actual, expected);
+
+        let actual = table("GLUE_INDEXES").select().into();
+        let expected = "SELECT * FROM GLUE_INDEXES";
+        test_query(actual, expected);
+
+        let actual = table("GLUE_TABLE_COLUMNS").select().into();
+        let expected = "SELECT * FROM GLUE_TABLE_COLUMNS";
+        test_query(actual, expected);
+
+        // let actual = table("SERIES(3)").select().into();
+        // let expected = "SELECT * FROM SERIES(3)";
+        // test_query(actual, expected);
     }
 }
