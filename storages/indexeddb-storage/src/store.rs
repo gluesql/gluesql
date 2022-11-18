@@ -38,8 +38,6 @@ impl Store for IndexeddbStorage {
             .map(|v| serde_wasm_bindgen::from_value(v).map_err(StorageError::SerdeWasmBindgen))
             .collect::<std::result::Result<Vec<Schema>, _>>()?;
 
-        // entries.sort_unstable_by(|a, b| a.table_name.cmp(&b.table_name));
-
         transaction.done().await.map_err(StorageError::Idb)?;
 
         Ok(entries)
@@ -100,7 +98,6 @@ impl Store for IndexeddbStorage {
 
         let cursor = store
             .open_cursor(Some(table_data_query(table_name)?), None)
-            // .open_cursor(None, None)
             .await;
 
         let mut cursor = match cursor {

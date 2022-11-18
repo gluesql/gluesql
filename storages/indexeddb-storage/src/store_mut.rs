@@ -18,6 +18,8 @@ use {
     },
 };
 
+const SERIALIZER: Serializer = Serializer::new().serialize_large_number_types_as_bigints(true);
+
 impl IndexeddbStorage {
     async fn insert_schema(&self, schema: &Schema) -> Result<()> {
         let transaction = self
@@ -28,9 +30,6 @@ impl IndexeddbStorage {
         let store = transaction
             .object_store(SCHEMA_STORE)
             .map_err(StorageError::Idb)?;
-
-        const SERIALIZER: Serializer =
-            Serializer::new().serialize_large_number_types_as_bigints(true);
         let schema = schema
             .serialize(&SERIALIZER)
             .map_err(StorageError::SerdeWasmBindgen)?;
@@ -85,8 +84,6 @@ impl IndexeddbStorage {
             self.id_ctr += 1;
             let key = generate_key(table_name, id);
 
-            const SERIALIZER: Serializer =
-                Serializer::new().serialize_large_number_types_as_bigints(true);
             store
                 .add(
                     &row.serialize(&SERIALIZER)
@@ -116,8 +113,6 @@ impl IndexeddbStorage {
             self.id_ctr += 1;
             let key = convert_key(table_name, &key);
 
-            const SERIALIZER: Serializer =
-                Serializer::new().serialize_large_number_types_as_bigints(true);
             store
                 .put(
                     &row.serialize(&SERIALIZER)

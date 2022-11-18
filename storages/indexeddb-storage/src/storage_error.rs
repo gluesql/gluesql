@@ -15,7 +15,7 @@ impl From<StorageError> for Error {
         use StorageError::*;
 
         match e {
-            Idb(e) => Self::StorageMsg(format!("{:?}", e)), // Cannot take whole error as JsValue is not thread-safe
+            Idb(e) => Self::StorageMsg(format!("{:?}", e)), // Cannot take whole error as JsValue is not Send
             SerdeWasmBindgen(e) => Self::StorageMsg(format!("{:?}", e)),
             KeyParseError(s) => Self::StorageMsg(format!("{:?}", KeyParseError(s))),
         }
