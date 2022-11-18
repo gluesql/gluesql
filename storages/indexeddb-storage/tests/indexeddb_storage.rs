@@ -19,8 +19,7 @@ struct IndexeddbTester {
 #[async_trait(?Send)]
 impl Tester<IndexeddbStorage> for IndexeddbTester {
     async fn new(namespace: &str) -> Self {
-        let factory = idb::Factory::new().unwrap();
-        factory.delete(namespace).await.ok();
+        remove_old(namespace).await;
 
         let storage = IndexeddbStorage::new(namespace).await.unwrap();
 
@@ -34,6 +33,11 @@ impl Tester<IndexeddbStorage> for IndexeddbTester {
     }
 }
 
+async fn remove_old(database: &str) {
+    let factory = idb::Factory::new().unwrap();
+    factory.delete(database).await.ok();
+}
+
 #[macro_export]
 macro_rules! declare_test_fn {
     ($test: meta, $storage: ident, $title: ident, $func: path) => {
@@ -44,6 +48,20 @@ macro_rules! declare_test_fn {
 
             $func(storage).await;
         }
+    };
+}
+
+#[cfg(any(feature = "alter-table", feature = "index", feature = "transaction"))]
+macro_rules! exec {
+    ($glue: ident $sql: literal) => {
+        $glue.execute_async($sql).await.unwrap();
+    };
+}
+
+#[cfg(any(feature = "alter-table", feature = "index", feature = "transaction"))]
+macro_rules! test {
+    ($glue: ident $sql: literal, $result: expr) => {
+        assert_eq!($glue.execute_async($sql).await, $result);
     };
 }
 
@@ -85,15 +103,46 @@ async fn first_test() {
     }
 }
 
-// #[wasm_bindgen_test]
-// fn memory_storage_transaction() {
-//     use gluesql_core::{prelude::Glue, result::Error};
+#[cfg(feature = "transaction")]
+#[wasm_bindgen_test]
+async fn indexeddb_storage_transaction() {
+    use gluesql_core::{prelude::Glue, result::Error};
 
-//     let storage = IndexeddbStorage::default();
-//     let mut glue = Glue::new(storage);
+    remove_old("transaction").await;
+    let storage = IndexeddbStorage::new("transaction").await.unwrap();
+    let mut glue = Glue::new(storage);
 
-//     exec!(glue "CREATE TABLE TxTest (id INTEGER);");
-//     test!(glue "BEGIN", Err(Error::StorageMsg("[IndexeddbStorage] transaction is not supported".to_owned())));
-//     test!(glue "COMMIT", Err(Error::StorageMsg("[IndexeddbStorage] transaction is not supported".to_owned())));
-//     test!(glue "ROLLBACK", Err(Error::StorageMsg("[IndexeddbStorage] transaction is not supported".to_owned())));
-// }
+    exec!(glue "CREATE TABLE TxTest (id INTEGER);");
+    test!(glue "BEGIN", Err(Error::StorageMsg("[IndexeddbStorage] transaction is not supported".to_owned())));
+    test!(glue "COMMIT", Err(Error::StorageMsg("[IndexeddbStorage] transaction is not supported".to_owned())));
+    test!(glue "ROLLBACK", Err(Error::StorageMsg("[IndexeddbStorage] transaction is not supported".to_owned())));
+}
+
+#[cfg(feature = "alter-table")]
+#[wasm_bindgen_test]
+async fn indexeddb_storage_alter_table() {
+    use gluesql_core::{prelude::Glue, result::Error};
+
+    remove_old("alter_table").await;
+    let storage = IndexeddbStorage::new("alter_table").await.unwrap();
+    let mut glue = Glue::new(storage);
+
+    exec!(glue "CREATE TABLE ATTest (id INTEGER);");
+    test!(glue "ALTER TABLE ATTest ADD COLUMN c INT", Err(Error::StorageMsg("[IndexeddbStorage] AlterTable is not supported".to_owned())));
+    test!(glue "ALTER TABLE ATTest RENAME COLUMN c TO d", Err(Error::StorageMsg("[IndexeddbStorage] AlterTable is not supported".to_owned())));
+    test!(glue "ALTER TABLE ATTest DROP COLUMN d", Err(Error::StorageMsg("[IndexeddbStorage] AlterTable is not supported".to_owned())));
+}
+
+#[cfg(feature = "index")]
+#[wasm_bindgen_test]
+async fn indexeddb_storage_index() {
+    use gluesql_core::{prelude::Glue, result::Error};
+
+    remove_old("index").await;
+    let storage = IndexeddbStorage::new("index").await.unwrap();
+    let mut glue = Glue::new(storage);
+
+    exec!(glue "CREATE TABLE ITest (id INTEGER);");
+    test!(glue "Create INDEX ITTest_id ON ITest (id)", Err(Error::StorageMsg("[IndexeddbStorage] index is not supported".to_owned())));
+    test!(glue "DROP INDEX ITest.ITTest_id", Err(Error::StorageMsg("[IndexeddbStorage] index is not supported".to_owned())));
+}
