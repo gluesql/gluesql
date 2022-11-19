@@ -96,8 +96,7 @@ fn memory_basic() {
 #[cfg(feature = "memory-storage")]
 #[test]
 fn memory_basic_async() {
-    use futures::executor::block_on;
-    use memory_storage::MemoryStorage;
+    use {futures::executor::block_on, memory_storage::MemoryStorage};
 
     let storage = MemoryStorage::default();
     let glue = Glue::new(storage);

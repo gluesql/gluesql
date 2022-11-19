@@ -16,9 +16,9 @@ test_case!(now, async move {
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Item VALUES
-                ("2021-10-13T06:42:40.364832862"),
-                ("9999-12-31T23:59:40.364832862");"#,
+            "INSERT INTO Item VALUES
+                ('2021-10-13T06:42:40.364832862'),
+                ('9999-12-31T23:59:40.364832862');",
             Ok(Payload::Insert(2)),
         ),
         (

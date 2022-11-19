@@ -5,7 +5,7 @@ use {
 
 test_case!(chr, async move {
     test!(
-        r#"VALUES(CHR(70))"#,
+        "VALUES(CHR(70))",
         Ok(select!(
             column1
             Str;
@@ -13,7 +13,7 @@ test_case!(chr, async move {
         ))
     );
     test!(
-        r#"VALUES(CHR(7070))"#,
+        "VALUES(CHR(7070))",
         Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())
     );
     run!(
@@ -24,10 +24,10 @@ test_case!(chr, async move {
         );
     "
     );
-    run!(r#"INSERT INTO Chr VALUES (1, 70);"#);
+    run!("INSERT INTO Chr VALUES (1, 70);");
 
     test!(
-        r#"select chr(num) as chr from Chr;"#,
+        "select chr(num) as chr from Chr;",
         Ok(select!(
             chr
             Str;
@@ -36,7 +36,7 @@ test_case!(chr, async move {
     );
 
     test!(
-        r#"select chr(65) as chr from Chr;"#,
+        "select chr(65) as chr from Chr;",
         Ok(select!(
            chr
            Str;
@@ -45,18 +45,18 @@ test_case!(chr, async move {
     );
 
     test!(
-        r#"select chr(532) as chr from Chr;"#,
+        "select chr(532) as chr from Chr;",
         Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())
     );
     test!(
-        r#"select chr("ukjhg") as chr from Chr;"#,
+        "select chr('ukjhg') as chr from Chr;",
         Err(EvaluateError::FunctionRequiresIntegerValue("CHR".to_owned()).into())
     );
 
-    run!(r#"INSERT INTO Chr VALUES (1, 4345);"#);
+    run!("INSERT INTO Chr VALUES (1, 4345);");
 
     test!(
-        r#"select chr(num) as chr from Chr;"#,
+        "select chr(num) as chr from Chr;",
         Err(EvaluateError::ChrFunctionRequiresIntegerValueInRange0To255.into())
     );
 });

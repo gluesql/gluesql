@@ -30,7 +30,7 @@ mod hello_world {
         */
         let queries = "
           CREATE TABLE greet (name TEXT);
-          INSERT INTO greet VALUES (\"World\");
+          INSERT INTO greet VALUES ('World');
         ";
 
         glue.execute(queries).expect("Execution failed");

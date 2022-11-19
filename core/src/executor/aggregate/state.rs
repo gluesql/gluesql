@@ -2,7 +2,10 @@ use {
     crate::{
         ast::{Aggregate, CountArgExpr, DataType},
         data::{Key, Value},
-        executor::{context::BlendContext, context::FilterContext, evaluate::evaluate},
+        executor::{
+            context::{BlendContext, FilterContext},
+            evaluate::evaluate,
+        },
         result::Result,
         store::GStore,
     },

@@ -9,11 +9,11 @@ use {
 test_case!(substr, async move {
     let test_cases = [
         (
-            r#"CREATE TABLE Item (name TEXT DEFAULT SUBSTR("abc", 0, 2))"#,
+            "CREATE TABLE Item (name TEXT DEFAULT SUBSTR('abc', 0, 2))",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Item VALUES ("Blop mc blee"), ("B"), ("Steven the &long named$ folken!")"#,
+            "INSERT INTO Item VALUES ('Blop mc blee'), ('B'), ('Steven the &long named$ folken!')",
             Ok(Payload::Insert(3)),
         ),
         ("CREATE TABLE SingleItem (id INTEGER)", Ok(Payload::Create)),
@@ -76,7 +76,7 @@ test_case!(substr, async move {
             )),
         ),
         (
-            r#"SELECT SUBSTR("ABC", 0, 3) AS test FROM SingleItem"#,
+            "SELECT SUBSTR('ABC', 0, 3) AS test FROM SingleItem",
             Ok(select!(
                 "test"
                 Str;
@@ -84,7 +84,7 @@ test_case!(substr, async move {
             )),
         ),
         (
-            r#"SELECT SUBSTR("ABC", 1, 3) AS test FROM SingleItem"#,
+            "SELECT SUBSTR('ABC', 1, 3) AS test FROM SingleItem",
             Ok(select!(
                 "test"
                 Str;
@@ -92,7 +92,7 @@ test_case!(substr, async move {
             )),
         ),
         (
-            r#"SELECT SUBSTR("ABC", 1, 999) AS test FROM SingleItem"#,
+            "SELECT SUBSTR('ABC', 1, 999) AS test FROM SingleItem",
             Ok(select!(
                 "test"
                 Str;
@@ -100,7 +100,7 @@ test_case!(substr, async move {
             )),
         ),
         (
-            r#"SELECT SUBSTR("ABC", -1000, 1003) AS test FROM SingleItem"#,
+            "SELECT SUBSTR('ABC', -1000, 1003) AS test FROM SingleItem",
             Ok(select!(
                 "test"
                 Str;
@@ -108,7 +108,7 @@ test_case!(substr, async move {
             )),
         ),
         (
-            r#"SELECT SUBSTR("ABC", -1, 3) AS test FROM SingleItem"#,
+            "SELECT SUBSTR('ABC', -1, 3) AS test FROM SingleItem",
             Ok(select!(
                 "test"
                 Str;
@@ -116,7 +116,7 @@ test_case!(substr, async move {
             )),
         ),
         (
-            r#"SELECT SUBSTR("ABC", -1, 4) AS test FROM SingleItem"#,
+            "SELECT SUBSTR('ABC', -1, 4) AS test FROM SingleItem",
             Ok(select!(
                 "test"
                 Str;
@@ -124,7 +124,7 @@ test_case!(substr, async move {
             )),
         ),
         (
-            r#"SELECT SUBSTR("ABC", -1, NULL) AS test FROM SingleItem"#,
+            "SELECT SUBSTR('ABC', -1, NULL) AS test FROM SingleItem",
             Ok(select_with_null!(test; Null)),
         ),
         (

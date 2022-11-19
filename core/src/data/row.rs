@@ -15,6 +15,9 @@ pub enum RowError {
     #[error("lack of required column: {0}")]
     LackOfRequiredColumn(String),
 
+    #[error("wrong column name: {0}")]
+    WrongColumnName(String),
+
     #[error("column and values not matched")]
     ColumnAndValuesNotMatched,
 
@@ -63,6 +66,14 @@ impl Row {
             return Err(RowError::TooManyValues.into());
         }
 
+        if let Some(wrong_column_name) = columns.iter().find(|column_name| {
+            !column_defs
+                .iter()
+                .any(|column_def| &&column_def.name == column_name)
+        }) {
+            return Err(RowError::WrongColumnName(wrong_column_name.to_owned()).into());
+        }
+
         let columns = if columns.is_empty() {
             Columns::All(column_defs.iter().map(|ColumnDef { name, .. }| name))
         } else {
@@ -77,6 +88,7 @@ impl Row {
                 let ColumnDef {
                     name: def_name,
                     data_type,
+                    nullable,
                     ..
                 } = column_def;
 
@@ -85,11 +97,9 @@ impl Row {
                     .find(|(name, _)| name == &def_name)
                     .map(|(_, value)| value);
 
-                let nullable = column_def.is_nullable();
-
                 match (value, column_def.get_default(), nullable) {
                     (Some(&expr), _, _) | (None, Some(expr), _) => {
-                        evaluate_stateless(None, expr)?.try_into_value(data_type, nullable)
+                        evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
                     }
                     (None, None, true) => Ok(Value::Null),
                     (None, None, false) => {
@@ -112,11 +122,14 @@ impl Row {
             });
 
         for (value, column_def) in items {
-            let ColumnDef { data_type, .. } = column_def;
-            let nullable = column_def.is_nullable();
+            let ColumnDef {
+                data_type,
+                nullable,
+                ..
+            } = column_def;
 
             value.validate_type(data_type)?;
-            value.validate_null(nullable)?;
+            value.validate_null(*nullable)?;
         }
 
         Ok(())

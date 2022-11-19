@@ -23,7 +23,8 @@ use {
 };
 
 pub use {
-    error::ChronoFormatError, error::EvaluateError, evaluated::Evaluated,
+    error::{ChronoFormatError, EvaluateError},
+    evaluated::Evaluated,
     stateless::evaluate_stateless,
 };
 

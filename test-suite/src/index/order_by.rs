@@ -2,22 +2,22 @@ use {crate::*, gluesql_core::prelude::*, Value::*};
 
 test_case!(order_by, async move {
     run!(
-        r#"
+        "
 CREATE TABLE Test (
     id INTEGER,
     num INTEGER NULL,
     name TEXT,
-)"#
+)"
     );
     run!(
-        r#"
+        "
         INSERT INTO Test (id, num, name)
         VALUES
-            (1, 2,    "Hello"),
-            (1, 9,    "Wild"),
-            (3, NULL, "World"),
-            (4, 7,    "Monday");
-    "#
+            (1, 2,    'Hello'),
+            (1, 9,    'Wild'),
+            (3, NULL, 'World'),
+            (4, 7,    'Monday');
+    "
     );
 
     test!(
@@ -89,11 +89,11 @@ CREATE TABLE Test (
 
 test_case!(order_by_multi, async move {
     run!(
-        r#"
+        "
 CREATE TABLE Multi (
     id INTEGER,
     num INTEGER
-)"#
+)"
     );
 
     run!(

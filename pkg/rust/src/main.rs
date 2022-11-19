@@ -1,4 +1,4 @@
 fn main() {
     #[cfg(feature = "cli")]
-    cli::run();
+    cli::run().unwrap();
 }

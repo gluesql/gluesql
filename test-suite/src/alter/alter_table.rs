@@ -3,16 +3,23 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::*, data::Value::*, executor::AlterError, executor::EvaluateError, prelude::Payload,
-        store::AlterTableError, translate::TranslateError,
+        ast::*,
+        data::Value::*,
+        executor::{AlterError, EvaluateError},
+        prelude::Payload,
+        store::AlterTableError,
+        translate::TranslateError,
     },
 };
 
 test_case!(alter_table_rename, async move {
     let test_cases = [
-        ("CREATE TABLE Foo (id INTEGER);", Ok(Payload::Create)),
         (
-            "INSERT INTO Foo VALUES (1), (2), (3);",
+            "CREATE TABLE Foo (id INTEGER, name TEXT);",
+            Ok(Payload::Create),
+        ),
+        (
+            "INSERT INTO Foo VALUES (1, 'a'), (2, 'b'), (3, 'c');",
             Ok(Payload::Insert(3)),
         ),
         ("SELECT id FROM Foo", Ok(select!(id; I64; 1; 2; 3))),
@@ -31,6 +38,11 @@ test_case!(alter_table_rename, async move {
             "ALTER TABLE Bar RENAME COLUMN hello TO idid",
             Err(AlterTableError::RenamingColumnNotFound.into()),
         ),
+        (
+            // Cannot rename to duplicated column name
+            "ALTER TABLE Bar RENAME COLUMN name TO new_id",
+            Err(AlterTableError::AlreadyExistingColumn("new_id".to_owned()).into()),
+        ),
     ];
 
     for (sql, expected) in test_cases {
@@ -44,17 +56,18 @@ test_case!(alter_table_add_drop, async move {
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),
         ("SELECT * FROM Foo;", Ok(select!(id; I64; 1; 2))),
         (
-            "ALTER TABLE Foo ADD COLUMN amount INTEGER",
+            "ALTER TABLE Foo ADD COLUMN amount INTEGER NOT NULL",
             Err(AlterTableError::DefaultValueRequired(ColumnDef {
                 name: "amount".to_owned(),
                 data_type: DataType::Int,
+                nullable: false,
                 options: vec![],
             })
             .into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN id INTEGER",
-            Err(AlterTableError::AddingColumnAlreadyExists("id".to_owned()).into()),
+            Err(AlterTableError::AlreadyExistingColumn("id".to_owned()).into()),
         ),
         (
             "ALTER TABLE Foo ADD COLUMN amount INTEGER DEFAULT 10",

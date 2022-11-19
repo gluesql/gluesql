@@ -10,8 +10,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{Key, Row, Schema},
-        result::MutResult,
-        result::Result,
+        result::{MutResult, Result},
         store::{IndexError, StoreMut},
     },
     sled::transaction::ConflictableTransactionError,

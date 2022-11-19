@@ -28,4 +28,7 @@ pub enum AlterError {
 
     #[error("identifier not found: {0:#?}")]
     IdentifierNotFound(Expr),
+
+    #[error("duplicate column name: {0}")]
+    DuplicateColumnName(String),
 }

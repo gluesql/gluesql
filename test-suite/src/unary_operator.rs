@@ -13,7 +13,7 @@ test_case!(unary_operator, async move {
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Test VALUES (10, 10.5, "hello", -5, 1000, 20)"#,
+            "INSERT INTO Test VALUES (10, 10.5, 'hello', -5, 1000, 20)",
             Ok(Payload::Insert(1)),
         ),
         (

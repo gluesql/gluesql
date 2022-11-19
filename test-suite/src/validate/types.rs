@@ -10,7 +10,7 @@ use {
 
 test_case!(types, async move {
     run!("CREATE TABLE TableB (id BOOLEAN);");
-    run!("CREATE TABLE TableC (uid INTEGER, null_val INTEGER NULL);");
+    run!("CREATE TABLE TableC (uid INTEGER NOT NULL, null_val INTEGER NULL);");
     run!("INSERT INTO TableB VALUES (FALSE);");
     run!("INSERT INTO TableC VALUES (1, NULL);");
 
@@ -24,7 +24,7 @@ test_case!(types, async move {
             .into()),
         ),
         (
-            "INSERT INTO TableC (uid) VALUES (\"A\")",
+            "INSERT INTO TableC (uid) VALUES ('A')",
             Err(ValueError::IncompatibleLiteralForDataType {
                 data_type: DataType::Int,
                 literal: format!("{:?}", Literal::Text(Cow::Owned("A".to_owned()))),

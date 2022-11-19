@@ -1,11 +1,15 @@
-use {gluesql_core::prelude::Glue, gluesql_sled_storage::SledStorage, test_suite::*};
+use {
+    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_sled_storage::SledStorage,
+    test_suite::*,
+};
 
 struct SledTester {
     glue: Glue<SledStorage>,
 }
 
+#[async_trait(?Send)]
 impl Tester<SledStorage> for SledTester {
-    fn new(namespace: &str) -> Self {
+    async fn new(namespace: &str) -> Self {
         let path = format!("data/{}", namespace);
 
         match std::fs::remove_dir_all(&path) {

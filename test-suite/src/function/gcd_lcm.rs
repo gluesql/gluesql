@@ -9,19 +9,19 @@ use {
 test_case!(gcd_lcm, async move {
     let test_cases = [
         (
-            r#"
-        CREATE TABLE GcdI64 (
+            "
+            CREATE TABLE GcdI64 (
             left INTEGER NULL DEFAULT GCD(3, 4),
             right INTEGER NULL DEFAULT LCM(10, 2)
-         )"#,
+         )",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO GcdI64 VALUES (0, 3), (2,4), (6,8), (3,5), (1, NULL), (NULL, 1);"#,
+            "INSERT INTO GcdI64 VALUES (0, 3), (2,4), (6,8), (3,5), (1, NULL), (NULL, 1);",
             Ok(Payload::Insert(6)),
         ),
         (
-            r#"SELECT GCD(left, right) AS test FROM GcdI64"#,
+            "SELECT GCD(left, right) AS test FROM GcdI64",
             Ok(select_with_null!(
                 test;
                 I64(3);
@@ -33,39 +33,39 @@ test_case!(gcd_lcm, async move {
             )),
         ),
         (
-            r#"
-        CREATE TABLE GcdStr (
+            "
+            CREATE TABLE GcdStr (
             left TEXT,
             right INTEGER
-         )"#,
+         )",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO GcdStr VALUES ("TEXT", 0);"#,
+            "INSERT INTO GcdStr VALUES ('TEXT', 0);",
             Ok(Payload::Insert(1)),
         ),
         (
-            r#"SELECT GCD(left, right) AS test FROM GcdStr"#,
+            "SELECT GCD(left, right) AS test FROM GcdStr",
             Err(EvaluateError::FunctionRequiresIntegerValue("GCD".to_owned()).into()),
         ),
         (
-            r#"SELECT GCD(right, left) AS test FROM GcdStr"#,
+            "SELECT GCD(right, left) AS test FROM GcdStr",
             Err(EvaluateError::FunctionRequiresIntegerValue("GCD".to_owned()).into()),
         ),
         (
-            r#"
-        CREATE TABLE LcmI64 (
+            "
+            CREATE TABLE LcmI64 (
             left INTEGER NULL DEFAULT true,
             right INTEGER NULL DEFAULT true
-         )"#,
+         )",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO LcmI64 VALUES (0, 3), (2,4), (6,8), (3,5), (1, NULL), (NULL, 1);"#,
+            "INSERT INTO LcmI64 VALUES (0, 3), (2,4), (6,8), (3,5), (1, NULL), (NULL, 1);",
             Ok(Payload::Insert(6)),
         ),
         (
-            r#"SELECT LCM(left, right) AS test FROM LcmI64"#,
+            "SELECT LCM(left, right) AS test FROM LcmI64",
             Ok(select_with_null!(
                 test;
                 I64(0);
@@ -77,23 +77,23 @@ test_case!(gcd_lcm, async move {
             )),
         ),
         (
-            r#"
-        CREATE TABLE LcmStr (
+            "
+            CREATE TABLE LcmStr (
             left TEXT,
             right INTEGER
-         )"#,
+         )",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO LcmStr VALUES ("TEXT", 0);"#,
+            "INSERT INTO LcmStr VALUES ('TEXT', 0);",
             Ok(Payload::Insert(1)),
         ),
         (
-            r#"SELECT LCM(left, right) AS test FROM LcmStr"#,
+            "SELECT LCM(left, right) AS test FROM LcmStr",
             Err(EvaluateError::FunctionRequiresIntegerValue("LCM".to_owned()).into()),
         ),
         (
-            r#"SELECT LCM(right, left) AS test FROM LcmStr"#,
+            "SELECT LCM(right, left) AS test FROM LcmStr",
             Err(EvaluateError::FunctionRequiresIntegerValue("LCM".to_owned()).into()),
         ),
     ];

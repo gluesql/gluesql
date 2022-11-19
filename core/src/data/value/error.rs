@@ -1,5 +1,8 @@
 use {
-    crate::{ast::DataType, ast::DateTimeField, data::Value},
+    crate::{
+        ast::{DataType, DateTimeField},
+        data::Value,
+    },
     serde::Serialize,
     std::fmt::Debug,
     strum_macros::Display,
@@ -176,6 +179,9 @@ pub enum ValueError {
 
     #[error("unsupported value by position function: from_str(from_str:?), sub_str(sub_str:?)")]
     UnSupportedValueByPositionFunction { from_str: Value, sub_str: Value },
+
+    #[error("failed to convert Value to Expr")]
+    ValueToExprConversionFailure,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]

@@ -374,8 +374,26 @@ impl Value {
 
 #[cfg(test)]
 mod tests {
-    use crate::{data::Literal, prelude::Value};
-    use bigdecimal::BigDecimal;
+    use {
+        crate::{data::Literal, prelude::Value},
+        bigdecimal::BigDecimal,
+        chrono::{NaiveDate, NaiveDateTime, NaiveTime},
+    };
+
+    fn date(year: i32, month: u32, day: u32) -> NaiveDate {
+        chrono::NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
+
+    fn date_time(y: i32, m: u32, d: u32, hh: u32, mm: u32, ss: u32, ms: u32) -> NaiveDateTime {
+        chrono::NaiveDate::from_ymd_opt(y, m, d)
+            .unwrap()
+            .and_hms_milli_opt(hh, mm, ss, ms)
+            .unwrap()
+    }
+
+    fn time(hour: u32, min: u32, sec: u32, milli: u32) -> NaiveTime {
+        chrono::NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()
+    }
 
     #[test]
     fn eq() {
@@ -383,14 +401,6 @@ mod tests {
             super::parse_uuid,
             std::{borrow::Cow, str::FromStr},
         };
-
-        let date = chrono::NaiveDate::from_ymd;
-
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-
-        let time = chrono::NaiveTime::from_hms_milli;
 
         macro_rules! num {
             ($num: expr) => {
@@ -422,11 +432,11 @@ mod tests {
         assert_eq!(Value::Date(date(2021, 11, 20)), text!("2021-11-20"));
         assert_ne!(Value::Date(date(2021, 11, 20)), text!("202=abcdef"));
         assert_eq!(
-            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0)),
             text!("2021-11-20T10:00:00Z")
         );
         assert_ne!(
-            Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
+            Value::Timestamp(date_time(2021, 11, 20, 10, 0, 0, 0)),
             text!("2021-11-Hello")
         );
         assert_eq!(Value::Time(time(10, 0, 0, 0)), text!("10:00:00"));
@@ -435,40 +445,34 @@ mod tests {
     }
 
     #[test]
-    fn timestamp() {
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-
+    fn timestamp_literal() {
         macro_rules! test (
             ($timestamp: literal, $result: expr) => {
                 assert_eq!(super::parse_timestamp($timestamp), Some($result));
             }
         );
 
-        test!("2022-12-20T10:00:00Z", timestamp(2022, 12, 20, 10, 0, 0, 0));
+        test!("2022-12-20T10:00:00Z", date_time(2022, 12, 20, 10, 0, 0, 0));
         test!(
             "2022-12-20T10:00:00.132Z",
-            timestamp(2022, 12, 20, 10, 0, 0, 132)
+            date_time(2022, 12, 20, 10, 0, 0, 132)
         );
         test!(
             "2022-12-20T10:00:00.132+09:00",
-            timestamp(2022, 12, 20, 1, 0, 0, 132)
+            date_time(2022, 12, 20, 1, 0, 0, 132)
         );
-        test!("2022-11-21", timestamp(2022, 11, 21, 0, 0, 0, 0));
-        test!("2022-12-20T10:00:00", timestamp(2022, 12, 20, 10, 0, 0, 0));
-        test!("2022-12-20 10:00:00Z", timestamp(2022, 12, 20, 10, 0, 0, 0));
-        test!("2022-12-20 10:00:00", timestamp(2022, 12, 20, 10, 0, 0, 0));
+        test!("2022-11-21", date_time(2022, 11, 21, 0, 0, 0, 0));
+        test!("2022-12-20T10:00:00", date_time(2022, 12, 20, 10, 0, 0, 0));
+        test!("2022-12-20 10:00:00Z", date_time(2022, 12, 20, 10, 0, 0, 0));
+        test!("2022-12-20 10:00:00", date_time(2022, 12, 20, 10, 0, 0, 0));
         test!(
             "2022-12-20 10:00:00.987",
-            timestamp(2022, 12, 20, 10, 0, 0, 987)
+            date_time(2022, 12, 20, 10, 0, 0, 987)
         );
     }
 
     #[test]
-    fn time() {
-        let time = chrono::NaiveTime::from_hms_milli;
-
+    fn time_literal() {
         macro_rules! test (
             ($time: literal, $result: expr) => {
                 assert_eq!(super::parse_time($time), Some($result));
@@ -518,10 +522,6 @@ mod tests {
             };
         }
 
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-
         let bytea = |v| hex::decode(v).unwrap();
 
         test!(DataType::Boolean, Literal::Boolean(true), Value::Bool(true));
@@ -553,17 +553,17 @@ mod tests {
         test!(
             DataType::Date,
             text!("2015-09-05"),
-            Value::Date(NaiveDate::from_ymd(2015, 9, 5))
+            Value::Date(NaiveDate::from_ymd_opt(2015, 9, 5).unwrap())
         );
         test!(
             DataType::Timestamp,
             text!("2022-12-20 10:00:00.987"),
-            Value::Timestamp(timestamp(2022, 12, 20, 10, 0, 0, 987))
+            Value::Timestamp(date_time(2022, 12, 20, 10, 0, 0, 987))
         );
         test!(
             DataType::Time,
             text!("12:00:35"),
-            Value::Time(chrono::NaiveTime::from_hms_milli(12, 0, 35, 0))
+            Value::Time(chrono::NaiveTime::from_hms_milli_opt(12, 0, 35, 0).unwrap())
         );
         test!(
             DataType::Uuid,
@@ -687,7 +687,10 @@ mod tests {
         }
 
         let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
+            chrono::NaiveDate::from_ymd_opt(y, m, d)
+                .unwrap()
+                .and_hms_milli_opt(hh, mm, ss, ms)
+                .unwrap()
         };
 
         test!(
@@ -756,7 +759,7 @@ mod tests {
         );
         test!(
             DataType::Interval,
-            text!(r#""+22-10" YEAR TO MONTH"#),
+            text!("'+22-10' YEAR TO MONTH"),
             Value::Interval(I::Month(274))
         );
         test!(
@@ -774,12 +777,12 @@ mod tests {
         test!(
             DataType::Date,
             text!("2015-09-05"),
-            Value::Date(NaiveDate::from_ymd(2015, 9, 5))
+            Value::Date(NaiveDate::from_ymd_opt(2015, 9, 5).unwrap())
         );
         test!(
             DataType::Time,
             text!("12:00:35"),
-            Value::Time(chrono::NaiveTime::from_hms_milli(12, 0, 35, 0))
+            Value::Time(chrono::NaiveTime::from_hms_milli_opt(12, 0, 35, 0).unwrap())
         );
         test!(
             DataType::Timestamp,
