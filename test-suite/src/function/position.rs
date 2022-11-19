@@ -1,8 +1,11 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::EvaluateError,
-        prelude::{Payload, Value::*},
+        data::ValueError,
+        prelude::{
+            Payload,
+            Value::{self, *},
+        },
     },
 };
 
@@ -25,7 +28,11 @@ test_case!(position, async move {
         ),
         (
             "SELECT POSITION(1 IN 'cheese') AS test",
-            Err(EvaluateError::FunctionRequiresStringValue(String::from("POSITION")).into()),
+            Err(ValueError::NonStringParameterInPosition {
+                from: Value::Str("cheese".to_owned()),
+                sub: Value::I64(1),
+            }
+            .into()),
         ),
     ];
     for (sql, expected) in test_cases {

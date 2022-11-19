@@ -607,20 +607,21 @@ impl Value {
     ///
     /// let str1 = Value::Str("ramen".to_owned());
     /// let str2 = Value::Str("men".to_owned());
+    ///
     /// assert_eq!(str1.position(&str2), Ok(Value::I64(3)));
     /// assert_eq!(str2.position(&str1), Ok(Value::I64(0)));
     /// assert!(Value::Null.position(&str2).unwrap().is_null());
     /// assert!(str1.position(&Value::Null).unwrap().is_null());
     /// ```
-
     pub fn position(&self, other: &Value) -> Result<Value> {
         use Value::*;
+
         match (self, other) {
-            (Str(from_str), Str(sub_str)) => Ok(I64(str_position(from_str, sub_str) as i64)),
+            (Str(from), Str(sub)) => Ok(I64(str_position(from, sub) as i64)),
             (Null, _) | (_, Null) => Ok(Null),
-            _ => Err(ValueError::UnSupportedValueByPositionFunction {
-                from_str: self.clone(),
-                sub_str: other.clone(),
+            _ => Err(ValueError::NonStringParameterInPosition {
+                from: self.clone(),
+                sub: other.clone(),
             }
             .into()),
         }
@@ -1660,6 +1661,7 @@ mod tests {
         let str1 = Str("ramen".to_owned());
         let str2 = Str("men".to_owned());
         let empty_str = Str("".to_owned());
+
         assert_eq!(str1.position(&str2), Ok(I64(3)));
         assert_eq!(str2.position(&str1), Ok(I64(0)));
         assert!(Null.position(&str2).unwrap().is_null());
@@ -1668,9 +1670,9 @@ mod tests {
         assert_eq!(str1.position(&empty_str), Ok(I64(0)));
         assert_eq!(
             str1.position(&I64(1)),
-            Err(ValueError::UnSupportedValueByPositionFunction {
-                from_str: str1,
-                sub_str: I64(1)
+            Err(ValueError::NonStringParameterInPosition {
+                from: str1,
+                sub: I64(1)
             }
             .into())
         );

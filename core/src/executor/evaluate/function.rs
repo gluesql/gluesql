@@ -584,14 +584,11 @@ pub fn to_time<'a>(
     }
 }
 
-pub fn position<'a>(
-    name: String,
-    from_expr: Evaluated<'_>,
-    sub_expr: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let from_expr = eval_to_str!(name, from_expr);
-    let sub_expr = eval_to_str!(name, sub_expr);
-    Value::position(&Value::Str(from_expr), &Value::Str(sub_expr)).map(Evaluated::from)
+pub fn position<'a>(from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let from: Value = from_expr.try_into()?;
+    let sub: Value = sub_expr.try_into()?;
+
+    from.position(&sub).map(Evaluated::from)
 }
 
 pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {
