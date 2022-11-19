@@ -1,12 +1,22 @@
 use crate::*;
+
 test_case!(to_date, async move {
     use {
         chrono::{NaiveDate, NaiveTime},
-        gluesql_core::{
-            executor::{ChronoFormatError, EvaluateError},
-            prelude::Value::*,
-        },
+        gluesql_core::{executor::EvaluateError, prelude::Value::*},
     };
+
+    fn assert_chrono_error_kind_eq(
+        error: gluesql_core::result::Error,
+        kind: chrono::format::ParseErrorKind,
+    ) {
+        match error {
+            gluesql_core::result::Error::Evaluate(EvaluateError::FormatParseError(err)) => {
+                assert_eq!(err.kind(), kind)
+            }
+            _ => panic!("invalid error: {error}"),
+        }
+    }
 
     let test_cases = vec![
         (
@@ -66,34 +76,6 @@ test_case!(to_date, async move {
             )),
         ),
         (
-            "SELECT TO_DATE('2015-09-05', '%Y-%m') AS date",
-            Err(EvaluateError::ChronoFormat(ChronoFormatError::TooLong).into()),
-        ),
-        (
-            "SELECT TO_TIME('23:56', '%H:%M:%S') AS time",
-            Err(EvaluateError::ChronoFormat(ChronoFormatError::TooShort).into()),
-        ),
-        (
-            "SELECT TO_TIMESTAMP('2015-05 23', '%Y-%d %H') AS timestamp",
-            Err(EvaluateError::ChronoFormat(ChronoFormatError::NotEnough).into()),
-        ),
-        (
-            "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp;",
-            Err(EvaluateError::ChronoFormat(ChronoFormatError::OutOfRange).into()),
-        ),
-        (
-            "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;",
-            Err(EvaluateError::ChronoFormat(ChronoFormatError::Invalid).into()),
-        ),
-        (
-            "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp",
-            Err(EvaluateError::ChronoFormat(ChronoFormatError::Impossible).into()),
-        ),
-        (
-            "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%') AS timestamp",
-            Err(EvaluateError::ChronoFormat(ChronoFormatError::BadFormat).into()),
-        ),
-        (
             "SELECT TO_DATE(DATE '2017-06-15','%Y-%m-%d') AS date",
             Err(EvaluateError::FunctionRequiresStringValue("TO_DATE".to_owned()).into()),
         ),
@@ -106,7 +88,51 @@ test_case!(to_date, async move {
             Err(EvaluateError::FunctionRequiresStringValue("TO_TIME".to_owned()).into()),
         ),
     ];
+
     for (sql, expected) in test_cases {
         test!(sql, expected);
+    }
+
+    let error_cases = [
+        (
+            run_err!("SELECT TO_DATE('2015-09-05', '%Y-%m') AS date"),
+            chrono::format::ParseErrorKind::TooLong,
+        ),
+        (
+            run_err!("SELECT TO_TIME('23:56', '%H:%M:%S') AS time"),
+            chrono::format::ParseErrorKind::TooShort,
+        ),
+        (
+            run_err!("SELECT TO_TIMESTAMP('2015-05 23', '%Y-%d %H') AS timestamp"),
+            chrono::format::ParseErrorKind::NotEnough,
+        ),
+        (
+            run_err!("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp"),
+            chrono::format::ParseErrorKind::OutOfRange,
+        ),
+        (
+            run_err!("SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%S') AS timestamp"),
+            chrono::format::ParseErrorKind::OutOfRange,
+        ),
+        (
+            run_err!(
+                "SELECT TO_TIMESTAMP('2015-14-05 23:56:12','%Y-%m-%d %H:%M:%%S') AS timestamp;"
+            ),
+            chrono::format::ParseErrorKind::Invalid,
+        ),
+        (
+            run_err!(
+                "SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%M') AS timestamp"
+            ),
+            chrono::format::ParseErrorKind::Impossible,
+        ),
+        (
+            run_err!("SELECT TO_TIMESTAMP('2015-09-05 23:56:04', '%Y-%m-%d %H:%M:%') AS timestamp"),
+            chrono::format::ParseErrorKind::BadFormat,
+        ),
+    ];
+
+    for (error, kind) in error_cases {
+        assert_chrono_error_kind_eq(error, kind);
     }
 });

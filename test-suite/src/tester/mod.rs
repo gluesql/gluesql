@@ -263,6 +263,13 @@ macro_rules! test_case {
             }
 
             #[allow(unused_macros)]
+            macro_rules! run_err {
+                ($sql: expr) => {
+                    $crate::run($sql, glue, None).await.unwrap_err()
+                };
+            }
+
+            #[allow(unused_macros)]
             macro_rules! count {
                 ($count: expr, $sql: expr) => {
                     match $crate::run($sql, glue, None).await.unwrap() {

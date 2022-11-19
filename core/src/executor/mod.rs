@@ -15,7 +15,7 @@ mod validate;
 pub use {
     aggregate::AggregateError,
     alter::AlterError,
-    evaluate::{evaluate_stateless, ChronoFormatError, EvaluateError},
+    evaluate::{evaluate_stateless, EvaluateError},
     execute::{ExecuteError, Payload, PayloadVariable},
     fetch::FetchError,
     select::SelectError,

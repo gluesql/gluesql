@@ -81,7 +81,7 @@ pub enum Error {
     Plan(#[from] PlanError),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub type MutResult<T, U> = std::result::Result<(T, U), (T, Error)>;
 
 impl PartialEq for Error {
