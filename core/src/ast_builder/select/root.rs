@@ -1,11 +1,11 @@
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{SelectItem, Statement, TableAlias, TableFactor},
+        ast::{SelectItem, TableAlias, TableFactor},
         ast_builder::{
-            table::TableType, Build, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
-            TableAliasNode, TableNode,
+            table::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList, TableAliasNode,
+            TableNode,
         },
         result::Result,
     },
@@ -120,15 +120,12 @@ impl<'a> Prebuild for SelectNode<'a> {
                 alias: alias_or_name,
                 size: args.try_into()?,
             },
-            TableType::Derived { subquery, alias } => match subquery.build()? {
-                Statement::Query(subquery) => TableFactor::Derived {
-                    subquery,
-                    alias: TableAlias {
-                        name: alias,
-                        columns: Vec::new(),
-                    },
+            TableType::Derived { subquery, alias } => TableFactor::Derived {
+                subquery: subquery.prebuild()?.build_query(),
+                alias: TableAlias {
+                    name: alias,
+                    columns: Vec::new(),
                 },
-                _ => unreachable!(),
             },
         };
 
