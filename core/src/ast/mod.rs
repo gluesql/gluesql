@@ -235,16 +235,15 @@ impl ToSql for Assignment {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "alter-table")]
-    use crate::ast::AlterTableOperation;
+    use crate::ast::{AlterTableOperation, ColumnOption};
 
     #[cfg(feature = "index")]
     use crate::ast::OrderByExpr;
 
     use {
         crate::ast::{
-            Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, DataType, Expr, Query,
-            Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, Values,
-            Variable,
+            Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr, Query, Select,
+            SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,
