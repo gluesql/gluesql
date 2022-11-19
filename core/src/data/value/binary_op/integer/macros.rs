@@ -165,10 +165,9 @@ macro_rules! impl_try_binary_op {
 #[cfg(test)]
 macro_rules! generate_binary_op_tests {
     ($variant: ident, $primitive: ident) => {
-        mod tests {
+        mod try_binary_op_tests {
             use {
                 rust_decimal::prelude::Decimal,
-                std::cmp::Ordering,
                 $crate::data::{
                     value::{
                         TryBinaryOperator,
@@ -190,69 +189,6 @@ macro_rules! generate_binary_op_tests {
                     operator: op,
                 }
                 .into())
-            }
-
-            #[test]
-            fn eq() {
-                let base: $primitive = 1;
-
-                assert_eq!(base, Decimal(Decimal::ONE));
-                assert_eq!(base, F64(1.0));
-                assert_eq!(base, I8(1));
-                assert_eq!(base, I16(1));
-                assert_eq!(base, I32(1));
-                assert_eq!(base, I64(1));
-                assert_eq!(base, I128(1));
-                assert_eq!(base, U8(1));
-                assert_eq!(base, U16(1));
-
-                assert_ne!(base, Bool(true));
-            }
-
-            #[test]
-            fn partial_cmp() {
-                let base: $primitive = 1;
-
-                assert_eq!(
-                    base.partial_cmp(&Decimal(Decimal::ZERO)),
-                    Some(Ordering::Greater)
-                );
-                assert_eq!(base.partial_cmp(&F64(0.0)), Some(Ordering::Greater));
-                assert_eq!(base.partial_cmp(&I8(0)), Some(Ordering::Greater));
-                assert_eq!(base.partial_cmp(&I16(0)), Some(Ordering::Greater));
-                assert_eq!(base.partial_cmp(&I32(0)), Some(Ordering::Greater));
-                assert_eq!(base.partial_cmp(&I64(0)), Some(Ordering::Greater));
-                assert_eq!(base.partial_cmp(&I128(0)), Some(Ordering::Greater));
-                assert_eq!(base.partial_cmp(&U8(0)), Some(Ordering::Greater));
-                assert_eq!(base.partial_cmp(&U16(0)), Some(Ordering::Greater));
-
-                assert_eq!(
-                    base.partial_cmp(&Decimal(Decimal::ONE)),
-                    Some(Ordering::Equal)
-                );
-                assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
-                assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
-                assert_eq!(base.partial_cmp(&I16(1)), Some(Ordering::Equal));
-                assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
-                assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
-                assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
-                assert_eq!(base.partial_cmp(&U8(1)), Some(Ordering::Equal));
-                assert_eq!(base.partial_cmp(&U16(1)), Some(Ordering::Equal));
-
-                assert_eq!(
-                    base.partial_cmp(&Decimal(Decimal::TWO)),
-                    Some(Ordering::Less)
-                );
-                assert_eq!(base.partial_cmp(&F64(2.0)), Some(Ordering::Less));
-                assert_eq!(base.partial_cmp(&I8(2)), Some(Ordering::Less));
-                assert_eq!(base.partial_cmp(&I16(2)), Some(Ordering::Less));
-                assert_eq!(base.partial_cmp(&I32(2)), Some(Ordering::Less));
-                assert_eq!(base.partial_cmp(&I64(2)), Some(Ordering::Less));
-                assert_eq!(base.partial_cmp(&I128(2)), Some(Ordering::Less));
-                assert_eq!(base.partial_cmp(&U8(2)), Some(Ordering::Less));
-                assert_eq!(base.partial_cmp(&U16(2)), Some(Ordering::Less));
-
-                assert_eq!(base.partial_cmp(&Bool(true)), None);
             }
 
             #[test]
@@ -591,6 +527,118 @@ macro_rules! generate_binary_op_tests {
     };
 }
 
+macro_rules! impl_partial_cmp_ord_method {
+    ($primitive: ident) => {
+        impl PartialEq<Value> for $primitive {
+            fn eq(&self, other: &Value) -> bool {
+                if matches!(other, Value::Bool(_)) {
+                    return false;
+                }
+
+                let lhs = *self;
+                let rhs = match $primitive::try_from(other) {
+                    Ok(rhs) => rhs,
+                    Err(_) => return false,
+                };
+
+                lhs == rhs
+            }
+        }
+
+        impl PartialOrd<Value> for $primitive {
+            fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+                if matches!(other, Value::Bool(_)) {
+                    return None;
+                }
+
+                let lhs = self;
+                let rhs = match $primitive::try_from(other) {
+                    Ok(rhs) => rhs,
+                    Err(_) => return None,
+                };
+
+                lhs.partial_cmp(&rhs)
+            }
+        }
+    };
+}
+
 #[cfg(test)]
-pub(crate) use generate_binary_op_tests;
-pub(crate) use {impl_interval_method, impl_method, impl_try_binary_op};
+macro_rules! generate_cmp_ord_tests {
+    ($primitive: ident) => {
+        mod cmp_ord_tests {
+            use {
+                rust_decimal::prelude::Decimal, std::cmp::Ordering, $crate::data::value::Value::*,
+            };
+
+            #[test]
+            fn eq() {
+                let base: $primitive = 1;
+
+                assert_eq!(base, Decimal(Decimal::ONE));
+                assert_eq!(base, F64(1.0));
+                assert_eq!(base, I8(1));
+                assert_eq!(base, I16(1));
+                assert_eq!(base, I32(1));
+                assert_eq!(base, I64(1));
+                assert_eq!(base, I128(1));
+                assert_eq!(base, U8(1));
+                assert_eq!(base, U16(1));
+
+                assert_ne!(base, Bool(true));
+            }
+
+            #[test]
+            fn partial_cmp() {
+                let base: $primitive = 1;
+
+                assert_eq!(
+                    base.partial_cmp(&Decimal(Decimal::ZERO)),
+                    Some(Ordering::Greater)
+                );
+                assert_eq!(base.partial_cmp(&F64(0.0)), Some(Ordering::Greater));
+                assert_eq!(base.partial_cmp(&I8(0)), Some(Ordering::Greater));
+                assert_eq!(base.partial_cmp(&I16(0)), Some(Ordering::Greater));
+                assert_eq!(base.partial_cmp(&I32(0)), Some(Ordering::Greater));
+                assert_eq!(base.partial_cmp(&I64(0)), Some(Ordering::Greater));
+                assert_eq!(base.partial_cmp(&I128(0)), Some(Ordering::Greater));
+                assert_eq!(base.partial_cmp(&U8(0)), Some(Ordering::Greater));
+                assert_eq!(base.partial_cmp(&U16(0)), Some(Ordering::Greater));
+
+                assert_eq!(
+                    base.partial_cmp(&Decimal(Decimal::ONE)),
+                    Some(Ordering::Equal)
+                );
+                assert_eq!(base.partial_cmp(&F64(1.0)), Some(Ordering::Equal));
+                assert_eq!(base.partial_cmp(&I8(1)), Some(Ordering::Equal));
+                assert_eq!(base.partial_cmp(&I16(1)), Some(Ordering::Equal));
+                assert_eq!(base.partial_cmp(&I32(1)), Some(Ordering::Equal));
+                assert_eq!(base.partial_cmp(&I64(1)), Some(Ordering::Equal));
+                assert_eq!(base.partial_cmp(&I128(1)), Some(Ordering::Equal));
+                assert_eq!(base.partial_cmp(&U8(1)), Some(Ordering::Equal));
+                assert_eq!(base.partial_cmp(&U16(1)), Some(Ordering::Equal));
+
+                assert_eq!(
+                    base.partial_cmp(&Decimal(Decimal::TWO)),
+                    Some(Ordering::Less)
+                );
+                assert_eq!(base.partial_cmp(&F64(2.0)), Some(Ordering::Less));
+                assert_eq!(base.partial_cmp(&I8(2)), Some(Ordering::Less));
+                assert_eq!(base.partial_cmp(&I16(2)), Some(Ordering::Less));
+                assert_eq!(base.partial_cmp(&I32(2)), Some(Ordering::Less));
+                assert_eq!(base.partial_cmp(&I64(2)), Some(Ordering::Less));
+                assert_eq!(base.partial_cmp(&I128(2)), Some(Ordering::Less));
+                assert_eq!(base.partial_cmp(&U8(2)), Some(Ordering::Less));
+                assert_eq!(base.partial_cmp(&U16(2)), Some(Ordering::Less));
+
+                assert_eq!(base.partial_cmp(&Bool(true)), None);
+            }
+        }
+    };
+}
+
+#[cfg(test)]
+pub(crate) use {generate_binary_op_tests, generate_cmp_ord_tests};
+pub(crate) use {
+    impl_interval_method, impl_method, impl_partial_cmp_ord_method, impl_try_binary_op,
+};
