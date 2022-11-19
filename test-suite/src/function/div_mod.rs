@@ -115,10 +115,10 @@ test_case!(div_mod, async move {
             INSERT INTO 
                 MixDiv (dividend, divisor) 
             VALUES 
-                (12, 3.0), (12, 34.0), (12, -5.2),
+                (12, 3.0), (12, 34.0),
                 (12, NULL), (NULL, 34.0), (NULL, NULL)
             ",
-            Ok(Payload::Insert(6)),
+            Ok(Payload::Insert(5)),
         ),
         (
             "
@@ -131,7 +131,6 @@ test_case!(div_mod, async move {
                 "DIV(dividend, divisor)"    | "MOD(dividend, divisor)";
                 I64(eval_div(12_f64, 3.0))    F64(eval_mod(12_f64, 3.0));
                 I64(eval_div(12_f64, 34.0))   F64(eval_mod(12_f64, 34.0));
-                I64(eval_div(12_f64, -5.2))   F64(eval_mod(12_f64, -5.2));
                 Null                          Null;
                 Null                          Null;
                 Null                          Null
