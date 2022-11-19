@@ -98,13 +98,10 @@ impl<'a> Prebuild for SelectNode<'a> {
             columns: Vec::new(),
         });
 
-        let alias_or_name = match alias.clone() {
-            Some(alias) => alias,
-            None => TableAlias {
-                name: self.table_node.table_name.clone(),
-                columns: Vec::new(),
-            },
-        };
+        let alias_or_name = alias.clone().unwrap_or_else(|| TableAlias {
+            name: self.table_node.table_name.clone(),
+            columns: Vec::new(),
+        });
 
         let relation = match self.table_node.table_type {
             TableType::Table => TableFactor::Table {
