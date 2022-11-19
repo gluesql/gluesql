@@ -446,7 +446,7 @@ async fn evaluate_function<'a>(
         } => {
             let from_expr = eval(from_expr).await?;
             let sub_expr = eval(sub_expr).await?;
-            f::position(name, from_expr, sub_expr)
+            f::position(from_expr, sub_expr)
         }
         Function::Cast { expr, data_type } => {
             let expr = eval(expr).await?;
