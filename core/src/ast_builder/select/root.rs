@@ -107,21 +107,22 @@ impl<'a> Prebuild for SelectNode<'a> {
             },
         };
 
-        let relation = match self.table_node.table_type {
-            TableType::Table => TableFactor::Table {
+        let relation = match (self.table_node.table_type, self.table_node.args) {
+            (TableType::Table, _) => TableFactor::Table {
                 name: self.table_node.table_name,
                 alias,
                 index: None,
             },
-            TableType::Dictionary(dict) => TableFactor::Dictionary {
+            (TableType::Dictionary(dict), _) => TableFactor::Dictionary {
                 dict,
                 alias: alias_or_name,
             },
-            TableType::Series if self.table_node.args.is_some() => TableFactor::Series {
+            (TableType::Series, Some(args)) => TableFactor::Series {
                 alias: alias_or_name,
-                size: self.table_node.args.unwrap().try_into()?,
+                size: args.try_into()?,
             },
-            TableType::Derived { subquery, alias } => match subquery.build()? {
+            (TableType::Series, None) => unreachable!(),
+            (TableType::Derived { subquery, alias }, _) => match subquery.build()? {
                 Statement::Query(subquery) => TableFactor::Derived {
                     subquery,
                     alias: TableAlias {
@@ -129,9 +130,8 @@ impl<'a> Prebuild for SelectNode<'a> {
                         columns: Vec::new(),
                     },
                 },
-                _ => todo!(),
+                _ => unreachable!(),
             },
-            _ => unreachable!(),
         };
 
         Ok(NodeData {
