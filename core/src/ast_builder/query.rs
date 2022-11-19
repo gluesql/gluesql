@@ -241,5 +241,9 @@ mod test {
         let actual = series("1 + 2").select().into();
         let expected = "SELECT * FROM SERIES(1 + 2)";
         test_query(actual, expected);
+
+        let actual = table("Items").select().alias_as("Sub").select().into();
+        let expected = "SELECT * FROM (SELECT * FROM Items) AS Sub";
+        test_query(actual, expected);
     }
 }

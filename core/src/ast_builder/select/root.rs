@@ -1,10 +1,11 @@
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{SelectItem, TableAlias, TableFactor},
+        ast::{SelectItem, Statement, TableAlias, TableFactor},
         ast_builder::{
-            table::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList, TableNode,
+            table::TableType, Build, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            TableAliasNode, TableNode,
         },
         result::Result,
     },
@@ -73,6 +74,22 @@ impl<'a> SelectNode<'a> {
             JoinOperatorType::Left,
         )
     }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+        let table_node = TableNode {
+            table_name: table_alias.to_owned(),
+            table_type: TableType::Derived {
+                subquery: Box::new(self.clone()),
+                alias: table_alias.to_owned(),
+            },
+            args: self.table_node.args,
+        };
+
+        TableAliasNode {
+            table_node,
+            table_alias: table_alias.to_owned(),
+        }
+    }
 }
 
 impl<'a> Prebuild for SelectNode<'a> {
@@ -104,8 +121,17 @@ impl<'a> Prebuild for SelectNode<'a> {
                 alias: alias_or_name,
                 size: self.table_node.args.unwrap().try_into()?,
             },
-            TableType::Derived => todo!(),
-            _ => todo!(),
+            TableType::Derived { subquery, alias } => match subquery.build()? {
+                Statement::Query(subquery) => TableFactor::Derived {
+                    subquery,
+                    alias: TableAlias {
+                        name: alias,
+                        columns: Vec::new(),
+                    },
+                },
+                _ => todo!(),
+            },
+            _ => unreachable!(),
         };
 
         Ok(NodeData {

@@ -13,17 +13,20 @@ use super::AlterTableNode;
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
 
 #[derive(Clone)]
-pub enum TableType {
+pub enum TableType<'a> {
     Table,
     Series,
     Dictionary(Dictionary),
-    Derived,
+    Derived {
+        subquery: Box<SelectNode<'a>>,
+        alias: String,
+    },
 }
 
 #[derive(Clone)]
 pub struct TableNode<'a> {
     pub table_name: String,
-    pub table_type: TableType,
+    pub table_type: TableType<'a>,
     pub args: Option<ExprNode<'a>>,
 }
 
