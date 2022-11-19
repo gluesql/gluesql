@@ -117,7 +117,7 @@ test_case!(div_mod, async move {
             VALUES 
                 (12, 3.0), (12, 34.0),
                 (12, NULL), (NULL, 34.0), (NULL, NULL)
-            "#,
+            ",
             Ok(Payload::Insert(5)),
         ),
         (
