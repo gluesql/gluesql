@@ -87,7 +87,6 @@ pub fn table(table_name: &str) -> TableNode {
     TableNode {
         table_name,
         table_type: TableType::Table,
-        args: None,
     }
 }
 
@@ -95,7 +94,6 @@ pub fn glue_objects<'a>() -> TableNode<'a> {
     TableNode {
         table_name: "GLUE_OBJECTS".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueObjects),
-        args: None,
     }
 }
 
@@ -103,7 +101,6 @@ pub fn glue_tables<'a>() -> TableNode<'a> {
     TableNode {
         table_name: "GLUE_TABLES".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueTables),
-        args: None,
     }
 }
 
@@ -111,7 +108,6 @@ pub fn glue_indexes<'a>() -> TableNode<'a> {
     TableNode {
         table_name: "GLUE_INDEXES".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueIndexes),
-        args: None,
     }
 }
 
@@ -119,15 +115,13 @@ pub fn glue_table_columns<'a>() -> TableNode<'a> {
     TableNode {
         table_name: "GLUE_TABLE_COLUMNS".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueTableColumns),
-        args: None,
     }
 }
 
 pub fn series<'a, T: Into<ExprNode<'a>>>(args: T) -> TableNode<'a> {
     TableNode {
         table_name: "SERIES".to_owned(),
-        table_type: TableType::Series,
-        args: Some(args.into()),
+        table_type: TableType::Series(args.into()),
     }
 }
 /// Functions for building transaction statements

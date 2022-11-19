@@ -82,7 +82,6 @@ impl<'a> SelectNode<'a> {
                 subquery: Box::new(self.clone()),
                 alias: table_alias.to_owned(),
             },
-            args: self.table_node.args,
         };
 
         TableAliasNode {
@@ -107,22 +106,21 @@ impl<'a> Prebuild for SelectNode<'a> {
             },
         };
 
-        let relation = match (self.table_node.table_type, self.table_node.args) {
-            (TableType::Table, _) => TableFactor::Table {
+        let relation = match self.table_node.table_type {
+            TableType::Table => TableFactor::Table {
                 name: self.table_node.table_name,
                 alias,
                 index: None,
             },
-            (TableType::Dictionary(dict), _) => TableFactor::Dictionary {
+            TableType::Dictionary(dict) => TableFactor::Dictionary {
                 dict,
                 alias: alias_or_name,
             },
-            (TableType::Series, Some(args)) => TableFactor::Series {
+            TableType::Series(args) => TableFactor::Series {
                 alias: alias_or_name,
                 size: args.try_into()?,
             },
-            (TableType::Series, None) => unreachable!(),
-            (TableType::Derived { subquery, alias }, _) => match subquery.build()? {
+            TableType::Derived { subquery, alias } => match subquery.build()? {
                 Statement::Query(subquery) => TableFactor::Derived {
                     subquery,
                     alias: TableAlias {

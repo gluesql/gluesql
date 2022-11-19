@@ -15,7 +15,7 @@ use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
 #[derive(Clone)]
 pub enum TableType<'a> {
     Table,
-    Series,
+    Series(ExprNode<'a>),
     Dictionary(Dictionary),
     Derived {
         subquery: Box<SelectNode<'a>>,
@@ -27,7 +27,6 @@ pub enum TableType<'a> {
 pub struct TableNode<'a> {
     pub table_name: String,
     pub table_type: TableType<'a>,
-    pub args: Option<ExprNode<'a>>,
 }
 
 impl<'a> TableNode<'a> {
