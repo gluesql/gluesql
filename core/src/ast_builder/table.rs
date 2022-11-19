@@ -1,5 +1,9 @@
-use super::{
-    CreateTableNode, DeleteNode, DropTableNode, InsertNode, SelectNode, ShowColumnsNode, UpdateNode,
+use {
+    super::{
+        CreateTableNode, DeleteNode, DropTableNode, ExprNode, InsertNode, SelectNode,
+        ShowColumnsNode, UpdateNode,
+    },
+    crate::ast::Dictionary,
 };
 
 #[cfg(feature = "alter-table")]
@@ -9,20 +13,30 @@ use super::AlterTableNode;
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
 
 #[derive(Clone)]
-pub struct TableNode {
-    pub table_name: String,
+pub enum TableType {
+    Table,
+    Series,
+    Dictionary(Dictionary),
+    Derived,
 }
 
-impl TableNode {
-    pub fn alias_as(self, table_alias: &str) -> TableAliasNode {
+#[derive(Clone)]
+pub struct TableNode<'a> {
+    pub table_name: String,
+    pub table_type: TableType,
+    pub args: Option<ExprNode<'a>>,
+}
+
+impl<'a> TableNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
         TableAliasNode {
             table_node: self,
             table_alias: table_alias.to_owned(),
         }
     }
 
-    pub fn select(self) -> SelectNode {
-        SelectNode::new(self.table_name, None)
+    pub fn select(self) -> SelectNode<'a> {
+        SelectNode::new(self, None)
     }
 
     pub fn delete(self) -> DeleteNode<'static> {
@@ -35,7 +49,7 @@ impl TableNode {
     }
 
     #[cfg(feature = "index")]
-    pub fn create_index<'a, T: Into<OrderByExprNode<'a>>>(
+    pub fn create_index<T: Into<OrderByExprNode<'a>>>(
         self,
         name: &str,
         column: T,
@@ -78,13 +92,13 @@ impl TableNode {
 }
 
 #[derive(Clone)]
-pub struct TableAliasNode {
-    pub table_node: TableNode,
+pub struct TableAliasNode<'a> {
+    pub table_node: TableNode<'a>,
     pub table_alias: String,
 }
 
-impl TableAliasNode {
-    pub fn select(self) -> SelectNode {
-        SelectNode::new(self.table_node.table_name, Some(self.table_alias))
+impl<'a> TableAliasNode<'a> {
+    pub fn select(self) -> SelectNode<'a> {
+        SelectNode::new(self.table_node, Some(self.table_alias))
     }
 }

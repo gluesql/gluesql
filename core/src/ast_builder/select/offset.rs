@@ -11,7 +11,7 @@ use {
 
 #[derive(Clone)]
 pub enum PrevNode<'a> {
-    Select(SelectNode),
+    Select(SelectNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
     Join(Box<JoinNode<'a>>),
@@ -36,8 +36,8 @@ impl<'a> Prebuild for PrevNode<'a> {
     }
 }
 
-impl<'a> From<SelectNode> for PrevNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
     }
 }

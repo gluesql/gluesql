@@ -16,7 +16,7 @@ use {
 pub enum QueryNode<'a> {
     Text(String),
     Values(Vec<ExprList<'a>>),
-    SelectNode(SelectNode),
+    SelectNode(SelectNode<'a>),
     JoinNode(JoinNode<'a>),
     JoinConstraintNode(JoinConstraintNode<'a>),
     HashJoinNode(HashJoinNode<'a>),
@@ -36,8 +36,8 @@ impl<'a> From<&str> for QueryNode<'a> {
     }
 }
 
-impl<'a> From<SelectNode> for QueryNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for QueryNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         QueryNode::SelectNode(node)
     }
 }
@@ -111,7 +111,10 @@ mod test {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 TableFactor, TableWithJoins,
             },
-            ast_builder::{col, table, test_query, SelectItemList},
+            ast_builder::{
+                col, glue_indexes, glue_objects, glue_table_columns, glue_tables, series, table,
+                test_query, SelectItemList,
+            },
         },
     };
 
@@ -219,24 +222,24 @@ mod test {
         let expected = "SELECT * FROM Foo ORDER BY score DESC";
         test_query(actual, expected);
 
-        let actual = table("GLUE_OBJECTS").select().into();
+        let actual = glue_objects().select().into();
         let expected = "SELECT * FROM GLUE_OBJECTS";
         test_query(actual, expected);
 
-        let actual = table("GLUE_TABLES").select().into();
+        let actual = glue_tables().select().into();
         let expected = "SELECT * FROM GLUE_TABLES";
         test_query(actual, expected);
 
-        let actual = table("GLUE_INDEXES").select().into();
+        let actual = glue_indexes().select().into();
         let expected = "SELECT * FROM GLUE_INDEXES";
         test_query(actual, expected);
 
-        let actual = table("GLUE_TABLE_COLUMNS").select().into();
+        let actual = glue_table_columns().select().into();
         let expected = "SELECT * FROM GLUE_TABLE_COLUMNS";
         test_query(actual, expected);
 
-        // let actual = table("SERIES(3)").select().into();
-        // let expected = "SELECT * FROM SERIES(3)";
-        // test_query(actual, expected);
+        let actual = series("1 + 2").select().into();
+        let expected = "SELECT * FROM SERIES(1 + 2)";
+        test_query(actual, expected);
     }
 }
