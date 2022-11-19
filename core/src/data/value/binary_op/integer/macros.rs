@@ -531,9 +531,8 @@ macro_rules! impl_partial_cmp_ord_method {
     ($primitive: ident) => {
         impl PartialEq<Value> for $primitive {
             fn eq(&self, other: &Value) -> bool {
-                match other {
-                    Value::Bool(_) => return false,
-                    _ => {}
+                if matches!(other, Value::Bool(_)) {
+                    return false;
                 }
 
                 let lhs = *self;
@@ -548,9 +547,8 @@ macro_rules! impl_partial_cmp_ord_method {
 
         impl PartialOrd<Value> for $primitive {
             fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
-                match other {
-                    Value::Bool(_) => return None,
-                    _ => {}
+                if matches!(other, Value::Bool(_)) {
+                    return None;
                 }
 
                 let lhs = self;
