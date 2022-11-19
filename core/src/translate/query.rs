@@ -181,34 +181,27 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         } => {
             let object_name = translate_object_name(name)?.to_uppercase();
             let alias = translate_table_alias(alias);
-            let alias_or_name = match &alias {
-                Some(alias) => alias.to_owned(),
-                None => TableAlias {
-                    name: object_name.to_owned(),
-                    columns: Vec::new(),
-                },
-            };
 
             match object_name.as_str() {
                 "SERIES" if args.is_some() => Ok(TableFactor::Series {
-                    alias: alias_or_name,
+                    alias: alias_or_name(alias, object_name),
                     size: translate_table_args(args)?,
                 }),
                 "GLUE_OBJECTS" => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueObjects,
-                    alias: alias_or_name,
+                    alias: alias_or_name(alias, object_name),
                 }),
                 "GLUE_TABLES" => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTables,
-                    alias: alias_or_name,
+                    alias: alias_or_name(alias, object_name),
                 }),
                 "GLUE_INDEXES" => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueIndexes,
-                    alias: alias_or_name,
+                    alias: alias_or_name(alias, object_name),
                 }),
                 "GLUE_TABLE_COLUMNS" => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueTableColumns,
-                    alias: alias_or_name,
+                    alias: alias_or_name(alias, object_name),
                 }),
                 _ => {
                     Ok(TableFactor::Table {
@@ -236,6 +229,13 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
         }
         _ => Err(TranslateError::UnsupportedQueryTableFactor(sql_table_factor.to_string()).into()),
     }
+}
+
+pub fn alias_or_name(alias: Option<TableAlias>, name: String) -> TableAlias {
+    alias.unwrap_or_else(|| TableAlias {
+        name,
+        columns: Vec::new(),
+    })
 }
 
 fn translate_join(sql_join: &SqlJoin) -> Result<Join> {

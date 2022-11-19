@@ -8,6 +8,7 @@ use {
             TableNode,
         },
         result::Result,
+        translate::alias_or_name,
     },
 };
 
@@ -98,11 +99,6 @@ impl<'a> Prebuild for SelectNode<'a> {
             columns: Vec::new(),
         });
 
-        let alias_or_name = alias.clone().unwrap_or_else(|| TableAlias {
-            name: self.table_node.table_name.clone(),
-            columns: Vec::new(),
-        });
-
         let relation = match self.table_node.table_type {
             TableType::Table => TableFactor::Table {
                 name: self.table_node.table_name,
@@ -111,10 +107,10 @@ impl<'a> Prebuild for SelectNode<'a> {
             },
             TableType::Dictionary(dict) => TableFactor::Dictionary {
                 dict,
-                alias: alias_or_name,
+                alias: alias_or_name(alias, self.table_node.table_name),
             },
             TableType::Series(args) => TableFactor::Series {
-                alias: alias_or_name,
+                alias: alias_or_name(alias, self.table_node.table_name),
                 size: args.try_into()?,
             },
             TableType::Derived { subquery, alias } => TableFactor::Derived {
