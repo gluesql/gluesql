@@ -79,7 +79,7 @@ impl<'a> SelectNode<'a> {
         let table_node = TableNode {
             table_name: table_alias.to_owned(),
             table_type: TableType::Derived {
-                subquery: Box::new(self.clone()),
+                subquery: Box::new(self),
                 alias: table_alias.to_owned(),
             },
         };
