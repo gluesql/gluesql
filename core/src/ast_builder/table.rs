@@ -30,7 +30,7 @@ pub struct TableNode<'a> {
 }
 
 impl<'a> TableNode<'a> {
-    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+    pub fn alias_as(self, table_alias: &str) -> TableAliasNode<'a> {
         TableAliasNode {
             table_node: self,
             table_alias: table_alias.to_owned(),
