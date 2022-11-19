@@ -75,10 +75,7 @@ pub enum EvaluateError {
     ChrFunctionRequiresIntegerValueInRange0To255,
 }
 
-pub fn error_serialize<S>(
-    error: &chrono::format::ParseError,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
+fn error_serialize<S>(error: &chrono::format::ParseError, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
