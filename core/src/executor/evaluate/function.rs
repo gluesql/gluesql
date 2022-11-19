@@ -204,16 +204,8 @@ pub fn trim<'a>(
         Some(TrimWhereField::Trailing) => expr_str.trim_end_matches(&filter_chars[..]),
         None => expr_str.trim(),
     };
-    let start = expr_str
-        .as_bytes()
-        .iter()
-        .position(|&x| x == value[0..1].as_bytes()[0])
-        .unwrap();
-    let end = expr_str
-        .as_bytes()
-        .iter()
-        .position(|&x| x == value[0..1].as_bytes()[0])
-        .unwrap();
+    let start = expr_str.find(value.chars().next().unwrap()).unwrap_or(0);
+    let end = expr_str.rfind(value.chars().last().unwrap()).unwrap_or(0);
 
     Ok(Evaluated::StrSlice {
         source: value.to_owned(),
@@ -233,16 +225,8 @@ pub fn ltrim<'a>(
     };
 
     let value = expr_str.trim_start_matches(chars.as_slice()).to_owned();
-    let start = expr_str
-        .as_bytes()
-        .iter()
-        .position(|&x| x == value[0..1].as_bytes()[0])
-        .unwrap();
-    let end = expr_str
-        .as_bytes()
-        .iter()
-        .position(|&x| x == value[0..1].as_bytes()[0])
-        .unwrap();
+    let start = expr_str.find(value.chars().next().unwrap()).unwrap_or(0);
+    let end = expr_str.rfind(value.chars().last().unwrap()).unwrap_or(0);
 
     Ok(Evaluated::StrSlice {
         source: value,
@@ -262,16 +246,8 @@ pub fn rtrim<'a>(
     };
 
     let value = expr_str.trim_end_matches(chars.as_slice()).to_owned();
-    let start = expr_str
-        .as_bytes()
-        .iter()
-        .position(|&x| x == value[0..1].as_bytes()[0])
-        .unwrap();
-    let end = expr_str
-        .as_bytes()
-        .iter()
-        .position(|&x| x == value[0..1].as_bytes()[0])
-        .unwrap();
+    let start = expr_str.find(value.chars().next().unwrap()).unwrap_or(0);
+    let end = expr_str.rfind(value.chars().last().unwrap()).unwrap_or(0);
 
     Ok(Evaluated::StrSlice {
         source: value,
