@@ -38,15 +38,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: |
           cd core
-          cargo clippy --no-default-features -- -D warnings
-          cargo clippy --no-default-features --features alter-table -- -D warnings
-          cargo clippy --no-default-features --features index -- -D warnings
-          cargo clippy --no-default-features --features transaction -- -D warnings
-          cargo clippy --no-default-features --features "alter-table index" -- -D warnings
-          cargo clippy --no-default-features --features "alter-table transaction" -- -D warnings
-          cargo clippy --no-default-features --features "index transaction" -- -D warnings
-          cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
-          cargo clippy --all-features --all-targets -- -D warnings
+          cargo clippy --all-targets --no-default-features -- -D warnings
+          cargo clippy --all-targets --no-default-features --features alter-table -- -D warnings
+          cargo clippy --all-targets --no-default-features --features index -- -D warnings
+          cargo clippy --all-targets --no-default-features --features transaction -- -D warnings
+          cargo clippy --all-targets --no-default-features --features "alter-table index" -- -D warnings
+          cargo clippy --all-targets --no-default-features --features "alter-table transaction" -- -D warnings
+          cargo clippy --all-targets --no-default-features --features "index transaction" -- -D warnings
+          cargo clippy --all-targets --no-default-features --features "alter-table index transaction" -- -D warnings
+          cargo clippy --all-targets --all-features -- -D warnings
           cd ../
 
   rust_fmt:
