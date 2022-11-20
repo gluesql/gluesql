@@ -184,7 +184,6 @@ fn translate_table_factor(sql_table_factor: &SqlTableFactor) -> Result<TableFact
                     alias: alias_or_name(alias, object_name),
                     size: translate_table_args(args)?,
                 }),
-                // "SERIES" if args.is_none() => todo!(),
                 ("GLUE_OBJECTS", _) => Ok(TableFactor::Dictionary {
                     dict: Dictionary::GlueObjects,
                     alias: alias_or_name(alias, object_name),
