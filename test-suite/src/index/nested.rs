@@ -8,25 +8,25 @@ use {
 
 test_case!(nested, async move {
     run!(
-        r#"
+        "
 CREATE TABLE User (
     id INTEGER,
     num INTEGER,
     name TEXT
-)"#
+)"
     );
 
     run!(
-        r#"
+        "
         INSERT INTO User
             (id, num, name)
         VALUES
-            (1, 2, "Hello"),
-            (2, 4, "World"),
-            (3, 9, "Office"),
-            (4, 1, "Origin"),
-            (5, 2, "Builder");
-    "#
+            (1, 2, 'Hello'),
+            (2, 4, 'World'),
+            (3, 9, 'Office'),
+            (4, 1, 'Origin'),
+            (5, 2, 'Builder');
+    "
     );
 
     test!("CREATE INDEX idx_id ON User (id)", Ok(Payload::CreateIndex));

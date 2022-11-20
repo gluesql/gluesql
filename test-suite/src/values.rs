@@ -11,9 +11,7 @@ use {
 };
 
 test_case!(values, async move {
-    run!("CREATE TABLE TableA (id INTEGER);");
-    run!("INSERT INTO TableA (id) VALUES (1);");
-    run!("INSERT INTO TableA (id) VALUES (9);");
+    run!("CREATE TABLE Items (id INTEGER NOT NULL, name TEXT, status TEXT DEFAULT 'ACTIVE' NOT NULL);");
 
     let test_cases = [
         (
@@ -162,15 +160,23 @@ test_case!(values, async move {
             Err(FetchError::TooManyColumnAliases("Derived".into(), 2, 3).into()),
         ),
         (
-            "INSERT INTO TableA (id2) VALUES (1);",
+            "INSERT INTO Items (id) VALUES (1);",
+            Ok(Payload::Insert(1))
+        ),
+        (
+            "INSERT INTO Items (id2) VALUES (1);",
+            Err(RowError::WrongColumnName("id2".to_owned()).into()),
+        ),
+        (
+            "INSERT INTO Items (name) VALUES ('glue');",
             Err(RowError::LackOfRequiredColumn("id".to_owned()).into()),
         ),
         (
-            "INSERT INTO TableA (id) VALUES ('test2', 3)",
+            "INSERT INTO Items (id) VALUES (3, 'sql')",
             Err(RowError::ColumnAndValuesNotMatched.into()),
         ),
         (
-            "INSERT INTO TableA VALUES (100), (100, 200);",
+            "INSERT INTO Items VALUES (100, 'a', 'b', 1);",
             Err(RowError::TooManyValues.into()),
         ),
         (

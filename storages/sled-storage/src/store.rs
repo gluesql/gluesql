@@ -18,11 +18,7 @@ impl Store for SledStorage {
             State::Transaction {
                 txid, created_at, ..
             } => (txid, created_at),
-            State::Idle => {
-                return Err(Error::StorageMsg(
-                    "conflict - fetch_all_schemas failed, lock does not exist".to_owned(),
-                ));
-            }
+            State::Idle => lock::register(&self.tree, self.id_offset)?,
         };
         let lock_txid = lock::fetch(&self.tree, txid, created_at, self.tx_timeout)?;
 

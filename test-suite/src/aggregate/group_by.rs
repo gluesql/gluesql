@@ -14,12 +14,12 @@ test_case!(group_by, async move {
     run!(
         "
         INSERT INTO Item (id, quantity, city, ratio) VALUES
-            (1,   10,   \"Seoul\",  0.2),
-            (2,    0,   \"Dhaka\",  0.9),
-            (3, NULL, \"Beijing\",  1.1),
-            (3,   30, \"Daejeon\",  3.2),
-            (4,   11,   \"Seoul\",   11),
-            (5,   24, \"Seattle\", 6.11);
+            (1,   10,   'Seoul',  0.2),
+            (2,    0,   'Dhaka',  0.9),
+            (3, NULL, 'Beijing',  1.1),
+            (3,   30, 'Daejeon',  3.2),
+            (4,   11,   'Seoul',   11),
+            (5,   24, 'Seattle', 6.11);
     "
     );
 

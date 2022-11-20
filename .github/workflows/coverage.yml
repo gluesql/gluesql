@@ -2,9 +2,9 @@ name: Coverage
 
 on:
   push:
-    branches: [main]
+    branches: [main, release-*]
   pull_request:
-    branches: [main]
+    branches: [main, release-*]
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,6 +17,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - uses: Swatinem/rust-cache@v2
       - run: rustup component add llvm-tools-preview
       - name: Install grcov
         uses: actions-rs/install@v0.1

@@ -286,7 +286,7 @@ impl ToSql for Function {
                 sub_expr,
             } => format!("POSITION({} IN {})", sub_expr.to_sql(), from_expr.to_sql()),
             Function::Extract { field, expr } => {
-                format!(r#"EXTRACT({field} FROM "{}")"#, expr.to_sql())
+                format!("EXTRACT({field} FROM '{}')", expr.to_sql())
             }
             Function::Ascii(e) => format!("ASCII({})", e.to_sql()),
             Function::Chr(e) => format!("CHR({})", e.to_sql()),
@@ -353,7 +353,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"LOWER("Bye")"#,
+            "LOWER('Bye')",
             &Expr::Function(Box::new(Function::Lower(Expr::Literal(
                 AstLiteral::QuotedString("Bye".to_owned())
             ))))
@@ -361,7 +361,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"UPPER("Hi")"#,
+            "UPPER('Hi')",
             &Expr::Function(Box::new(Function::Upper(Expr::Literal(
                 AstLiteral::QuotedString("Hi".to_owned())
             ))))
@@ -369,7 +369,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"LEFT("GlueSQL", 2)"#,
+            "LEFT('GlueSQL', 2)",
             &Expr::Function(Box::new(Function::Left {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap()))
@@ -378,7 +378,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"RIGHT("GlueSQL", 3)"#,
+            "RIGHT('GlueSQL', 3)",
             &Expr::Function(Box::new(Function::Right {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("3").unwrap()))
@@ -411,7 +411,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"LPAD("GlueSQL", 2)"#,
+            "LPAD('GlueSQL', 2)",
             &Expr::Function(Box::new(Function::Lpad {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
@@ -421,7 +421,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"LPAD("GlueSQL", 10, "Go")"#,
+            "LPAD('GlueSQL', 10, 'Go')",
             &Expr::Function(Box::new(Function::Lpad {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("10").unwrap())),
@@ -431,7 +431,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"RPAD("GlueSQL", 10)"#,
+            "RPAD('GlueSQL', 10)",
             &Expr::Function(Box::new(Function::Rpad {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("10").unwrap())),
@@ -441,7 +441,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"RPAD("GlueSQL", 10, "Go")"#,
+            "RPAD('GlueSQL', 10, 'Go')",
             &Expr::Function(Box::new(Function::Rpad {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 size: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("10").unwrap())),
@@ -523,7 +523,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"TRIM("*" FROM name)"#,
+            "TRIM('*' FROM name)",
             &Expr::Function(Box::new(Function::Trim {
                 expr: Expr::Identifier("name".to_owned()),
                 filter_chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
@@ -533,7 +533,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"TRIM(BOTH "*" FROM name)"#,
+            "TRIM(BOTH '*' FROM name)",
             &Expr::Function(Box::new(Function::Trim {
                 expr: Expr::Identifier("name".to_owned()),
                 filter_chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
@@ -543,7 +543,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"TRIM(LEADING "*" FROM name)"#,
+            "TRIM(LEADING '*' FROM name)",
             &Expr::Function(Box::new(Function::Trim {
                 expr: Expr::Identifier("name".to_owned()),
                 filter_chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
@@ -698,7 +698,7 @@ mod tests {
         assert_eq!("PI()", &Expr::Function(Box::new(Function::Pi())).to_sql());
 
         assert_eq!(
-            r#"LTRIM("   HI ")"#,
+            "LTRIM('   HI ')",
             &Expr::Function(Box::new(Function::Ltrim {
                 expr: Expr::Literal(AstLiteral::QuotedString("   HI ".to_owned())),
                 chars: None
@@ -707,7 +707,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"LTRIM("*IMPORTANT", "*")"#,
+            "LTRIM('*IMPORTANT', '*')",
             &Expr::Function(Box::new(Function::Ltrim {
                 expr: Expr::Literal(AstLiteral::QuotedString("*IMPORTANT".to_owned())),
                 chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
@@ -716,7 +716,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"RTRIM("   HI ")"#,
+            "RTRIM('   HI ')",
             &Expr::Function(Box::new(Function::Rtrim {
                 expr: Expr::Literal(AstLiteral::QuotedString("   HI ".to_owned())),
                 chars: None
@@ -725,7 +725,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"RTRIM("IMPORTANT*", "*")"#,
+            "RTRIM('IMPORTANT*', '*')",
             &Expr::Function(Box::new(Function::Rtrim {
                 expr: Expr::Literal(AstLiteral::QuotedString("IMPORTANT*".to_owned())),
                 chars: Some(Expr::Literal(AstLiteral::QuotedString("*".to_owned()))),
@@ -742,7 +742,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"REPEAT("Ha", 8)"#,
+            "REPEAT('Ha', 8)",
             &Expr::Function(Box::new(Function::Repeat {
                 expr: Expr::Literal(AstLiteral::QuotedString("Ha".to_owned())),
                 num: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("8").unwrap()))
@@ -759,7 +759,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"SUBSTR("GlueSQL", 2)"#,
+            "SUBSTR('GlueSQL', 2)",
             &Expr::Function(Box::new(Function::Substr {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 start: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("2").unwrap())),
@@ -769,7 +769,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"SUBSTR("GlueSQL", 1, 3)"#,
+            "SUBSTR('GlueSQL', 1, 3)",
             &Expr::Function(Box::new(Function::Substr {
                 expr: Expr::Literal(AstLiteral::QuotedString("GlueSQL".to_owned())),
                 start: Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
@@ -781,7 +781,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"UNWRAP(nested, "a.foo")"#,
+            "UNWRAP(nested, 'a.foo')",
             &Expr::Function(Box::new(Function::Unwrap {
                 expr: Expr::Identifier("nested".to_owned()),
                 selector: Expr::Literal(AstLiteral::QuotedString("a.foo".to_owned()))
@@ -795,7 +795,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"FORMAT(DATE "2022-10-12", "%Y-%m")"#,
+            "FORMAT(DATE '2022-10-12', '%Y-%m')",
             &Expr::Function(Box::new(Function::Format {
                 expr: Expr::TypedString {
                     data_type: DataType::Date,
@@ -807,7 +807,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"TO_DATE("2022-10-12", "%Y-%m-%d")"#,
+            "TO_DATE('2022-10-12', '%Y-%m-%d')",
             &Expr::Function(Box::new(Function::ToDate {
                 expr: Expr::Literal(AstLiteral::QuotedString("2022-10-12".to_owned())),
                 format: Expr::Literal(AstLiteral::QuotedString("%Y-%m-%d".to_owned()))
@@ -816,7 +816,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"TO_TIMESTAMP("2022-10-12 00:34:23", "%Y-%m-%d %H:%M:%S")"#,
+            "TO_TIMESTAMP('2022-10-12 00:34:23', '%Y-%m-%d %H:%M:%S')",
             &Expr::Function(Box::new(Function::ToTimestamp {
                 expr: Expr::Literal(AstLiteral::QuotedString("2022-10-12 00:34:23".to_owned())),
                 format: Expr::Literal(AstLiteral::QuotedString("%Y-%m-%d %H:%M:%S".to_owned()))
@@ -825,7 +825,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"TO_TIME("00:34:23", "%H:%M:%S")"#,
+            "TO_TIME('00:34:23', '%H:%M:%S')",
             &Expr::Function(Box::new(Function::ToTime {
                 expr: Expr::Literal(AstLiteral::QuotedString("00:34:23".to_owned())),
                 format: Expr::Literal(AstLiteral::QuotedString("%H:%M:%S".to_owned()))
@@ -834,7 +834,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"POSITION("cup" IN "cupcake")"#,
+            "POSITION('cup' IN 'cupcake')",
             &Expr::Function(Box::new(Function::Position {
                 from_expr: Expr::Literal(AstLiteral::QuotedString("cupcake".to_owned())),
                 sub_expr: Expr::Literal(AstLiteral::QuotedString("cup".to_owned())),
@@ -843,7 +843,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"ASCII("H")"#,
+            "ASCII('H')",
             &Expr::Function(Box::new(Function::Ascii(Expr::Literal(
                 AstLiteral::QuotedString("H".to_owned())
             ))))
@@ -859,7 +859,7 @@ mod tests {
         );
 
         assert_eq!(
-            r#"EXTRACT(MINUTE FROM "2022-05-05 01:02:03")"#,
+            "EXTRACT(MINUTE FROM '2022-05-05 01:02:03')",
             &Expr::Function(Box::new(Function::Extract {
                 field: DateTimeField::Minute,
                 expr: Expr::Identifier("2022-05-05 01:02:03".to_owned())

@@ -6,7 +6,7 @@ mod api_usage {
         let storage = MemoryStorage::default();
         let mut glue = Glue::new(storage);
 
-        glue.execute("DROP TABLE IF EXISTS api_test");
+        glue.execute("DROP TABLE IF EXISTS api_test").unwrap();
 
         glue.execute(
             "CREATE TABLE api_test (
@@ -15,7 +15,8 @@ mod api_usage {
                 nullable TEXT NULL,
                 is BOOLEAN
             )",
-        );
+        )
+        .unwrap();
 
         glue.execute(
             "INSERT INTO api_test (
@@ -26,7 +27,8 @@ mod api_usage {
             ) VALUES
                 (1, 'test1', 'not null', TRUE),
                 (2, 'test2', NULL, FALSE)",
-        );
+        )
+        .unwrap();
     }
 
     fn memory_basic_async() {
@@ -36,7 +38,9 @@ mod api_usage {
         let mut glue = Glue::new(storage);
 
         block_on(async {
-            glue.execute_async("DROP TABLE IF EXISTS api_test").await;
+            glue.execute_async("DROP TABLE IF EXISTS api_test")
+                .await
+                .unwrap();
 
             glue.execute_async(
                 "CREATE TABLE api_test (
@@ -46,7 +50,8 @@ mod api_usage {
                     is BOOLEAN
                 )",
             )
-            .await;
+            .await
+            .unwrap();
         });
     }
 

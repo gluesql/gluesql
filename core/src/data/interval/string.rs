@@ -44,9 +44,9 @@ impl From<&Interval> for String {
                 let month = v % 12;
 
                 match (year, month) {
-                    (_, 0) if year != 0 => format!(r#""{}{}" YEAR"#, sign, year),
-                    (0, _) => format!(r#""{}{}" MONTH"#, sign, month),
-                    _ => format!(r#""{}{}-{}" YEAR TO MONTH"#, sign, year, month),
+                    (_, 0) if year != 0 => format!("'{}{}' YEAR", sign, year),
+                    (0, _) => format!("'{}{}' MONTH", sign, month),
+                    _ => format!("'{}{}-{}' YEAR TO MONTH", sign, year, month),
                 }
             }
             Interval::Microsecond(v) => {
@@ -67,7 +67,7 @@ impl From<&Interval> for String {
 
                 macro_rules! f {
                     ($template: literal; $( $value: expr )*; $from_to: literal) => {
-                        format!(r#""{}{}" {}"#, sign, format!($template, $( $value ),*), $from_to)
+                        format!("'{}{}' {}", sign, format!($template, $( $value ),*), $from_to)
                     };
 
                     (DAY $template: literal) => {
@@ -162,7 +162,7 @@ mod tests {
         macro_rules! test {
             ($( $value: literal $duration: ident ),* => $result: literal $from_to: tt) => {
                 let interval = interval!($( $value $duration ),*);
-                let interval_str = format!(r#""{}" {}"#, $result, stringify!($from_to));
+                let interval_str = format!("'{}' {}", $result, stringify!($from_to));
 
                 assert_eq!(Ok(interval), Interval::try_from(interval_str.as_str()));
                 assert_eq!(String::from(interval), interval_str);
@@ -170,7 +170,7 @@ mod tests {
             ($( $value: literal $duration: ident ),* => $result: literal $from: tt TO $to: tt) => {
                 let interval = interval!($( $value $duration ),*);
                 let interval_str = format!(
-                    r#""{}" {} TO {}"#,
+                    "'{}' {} TO {}",
                     $result,
                     stringify!($from),
                     stringify!($to),

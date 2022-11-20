@@ -7,22 +7,22 @@ use {
 
 test_case!(value, async move {
     run!(
-        r#"
+        "
 CREATE TABLE IdxValue (
     id INTEGER NULL,
     time TIME NULL,
     flag BOOLEAN
-)"#
+)"
     );
 
     run!(
-        r#"
+        "
         INSERT INTO IdxValue
         VALUES
-            (NULL, "01:30 PM", True),
-            (1,    "12:10 AM", False),
+            (NULL, '01:30 PM', True),
+            (1,    '12:10 AM', False),
             (2,    NULL,       True);
-    "#
+    "
     );
 
     test!(
@@ -38,7 +38,7 @@ CREATE TABLE IdxValue (
         Ok(Payload::CreateIndex)
     );
 
-    let t = |h, m| NaiveTime::from_hms(h, m, 0);
+    let t = |h, m| NaiveTime::from_hms_opt(h, m, 0).unwrap();
 
     test_idx!(
         Ok(select!(
@@ -56,8 +56,8 @@ CREATE TABLE IdxValue (
             I64(1)   Time(t(0, 10))    Bool(false);
             Null     Time(t(13, 30))   Bool(true)
         )),
-        idx!(idx_time, LtEq, r#"TIME "13:30:00""#),
-        r#"SELECT * FROM IdxValue WHERE time <= TIME "13:30:00""#
+        idx!(idx_time, LtEq, "TIME '13:30:00'"),
+        "SELECT * FROM IdxValue WHERE time <= TIME '13:30:00'"
     );
 
     test_idx!(
@@ -65,8 +65,8 @@ CREATE TABLE IdxValue (
             id     | time           | flag;
             I64(1)   Time(t(0, 10))   Bool(false)
         )),
-        idx!(idx_flag, Eq, r#"("ABC" IS NULL)"#),
-        r#"SELECT * FROM IdxValue WHERE flag = ("ABC" IS NULL)"#
+        idx!(idx_flag, Eq, "('ABC' IS NULL)"),
+        "SELECT * FROM IdxValue WHERE flag = ('ABC' IS NULL)"
     );
 
     test_idx!(
@@ -95,8 +95,8 @@ CREATE TABLE IdxValue (
             I64 | Time      | Bool;
             1     t(0, 10)    false
         )),
-        idx!(idx_id, Eq, r#"CAST("1" AS INTEGER)"#),
-        r#"SELECT * FROM IdxValue WHERE id = CAST("1" AS INTEGER)"#
+        idx!(idx_id, Eq, "CAST('1' AS INTEGER)"),
+        "SELECT * FROM IdxValue WHERE id = CAST('1' AS INTEGER)"
     );
 
     test_idx!(

@@ -64,11 +64,19 @@ impl Interval {
     }
 
     pub fn add_date(&self, date: &NaiveDate) -> Result<NaiveDateTime> {
-        self.add_timestamp(&date.and_hms(0, 0, 0))
+        self.add_timestamp(
+            &date
+                .and_hms_opt(0, 0, 0)
+                .ok_or_else(|| IntervalError::FailedToParseTime(date.to_string()))?,
+        )
     }
 
     pub fn subtract_from_date(&self, date: &NaiveDate) -> Result<NaiveDateTime> {
-        self.subtract_from_timestamp(&date.and_hms(0, 0, 0))
+        self.subtract_from_timestamp(
+            &date
+                .and_hms_opt(0, 0, 0)
+                .ok_or_else(|| IntervalError::FailedToParseTime(date.to_string()))?,
+        )
     }
 
     pub fn add_timestamp(&self, timestamp: &NaiveDateTime) -> Result<NaiveDateTime> {
@@ -294,12 +302,22 @@ impl Interval {
 
 #[cfg(test)]
 mod tests {
-    use super::{Interval, IntervalError};
-    use crate::ast::DateTimeField;
+    use {
+        super::{Interval, IntervalError},
+        crate::ast::DateTimeField,
+        chrono::{NaiveDate, NaiveTime},
+    };
+
+    fn date(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
+
+    fn time(hour: u32, min: u32, sec: u32) -> NaiveTime {
+        NaiveTime::from_hms_opt(hour, min, sec).unwrap()
+    }
 
     #[test]
     fn arithmetic() {
-        use chrono::{NaiveDate, NaiveTime};
         use Interval::*;
 
         macro_rules! test {
@@ -308,20 +326,17 @@ mod tests {
             };
         }
 
-        let date = NaiveDate::from_ymd;
-        let time = NaiveTime::from_hms;
-
         assert_eq!(Month(1).unary_minus(), Month(-1));
         assert_eq!(Microsecond(1).unary_minus(), Microsecond(-1));
 
         // date
         assert_eq!(
             Month(2).add_date(&date(2021, 11, 11)),
-            Ok(date(2022, 1, 11).and_hms(0, 0, 0))
+            Ok(date(2022, 1, 11).and_hms_opt(0, 0, 0).unwrap())
         );
         assert_eq!(
             Interval::hours(30).add_date(&date(2021, 11, 11)),
-            Ok(date(2021, 11, 12).and_hms(6, 0, 0))
+            Ok(date(2021, 11, 12).and_hms_opt(6, 0, 0).unwrap())
         );
         assert_eq!(
             Interval::years(999_999).add_date(&date(2021, 11, 11)),
@@ -333,15 +348,15 @@ mod tests {
         );
         assert_eq!(
             Month(2).subtract_from_date(&date(2021, 11, 11)),
-            Ok(date(2021, 9, 11).and_hms(0, 0, 0))
+            Ok(date(2021, 9, 11).and_hms_opt(0, 0, 0).unwrap())
         );
         assert_eq!(
             Month(14).subtract_from_date(&date(2021, 11, 11)),
-            Ok(date(2020, 9, 11).and_hms(0, 0, 0))
+            Ok(date(2020, 9, 11).and_hms_opt(0, 0, 0).unwrap())
         );
         assert_eq!(
             Interval::hours(30).subtract_from_date(&date(2021, 11, 11)),
-            Ok(date(2021, 11, 9).and_hms(18, 0, 0))
+            Ok(date(2021, 11, 9).and_hms_opt(18, 0, 0).unwrap())
         );
         assert_eq!(
             Interval::years(999_999).subtract_from_date(&date(2021, 11, 11)),
@@ -354,15 +369,16 @@ mod tests {
 
         // timestamp
         assert_eq!(
-            Interval::minutes(2).add_timestamp(&date(2021, 11, 11).and_hms(12, 3, 1)),
-            Ok(date(2021, 11, 11).and_hms(12, 5, 1))
+            Interval::minutes(2).add_timestamp(&date(2021, 11, 11).and_hms_opt(12, 3, 1).unwrap()),
+            Ok(date(2021, 11, 11).and_hms_opt(12, 5, 1).unwrap())
         );
         assert_eq!(
-            Interval::hours(30).add_timestamp(&date(2021, 11, 11).and_hms(0, 30, 0)),
-            Ok(date(2021, 11, 12).and_hms(6, 30, 0))
+            Interval::hours(30).add_timestamp(&date(2021, 11, 11).and_hms_opt(0, 30, 0).unwrap()),
+            Ok(date(2021, 11, 12).and_hms_opt(6, 30, 0).unwrap())
         );
         assert_eq!(
-            Interval::years(999_999).add_timestamp(&date(2021, 11, 11).and_hms(1, 1, 1)),
+            Interval::years(999_999)
+                .add_timestamp(&date(2021, 11, 11).and_hms_opt(1, 1, 1).unwrap()),
             Err(IntervalError::DateOverflow {
                 year: 1_002_020,
                 month: 11,
@@ -370,19 +386,21 @@ mod tests {
             .into())
         );
         assert_eq!(
-            Month(2).subtract_from_timestamp(&date(2021, 11, 11).and_hms(1, 3, 59)),
-            Ok(date(2021, 9, 11).and_hms(1, 3, 59))
+            Month(2).subtract_from_timestamp(&date(2021, 11, 11).and_hms_opt(1, 3, 59).unwrap()),
+            Ok(date(2021, 9, 11).and_hms_opt(1, 3, 59).unwrap())
         );
         assert_eq!(
-            Month(14).subtract_from_timestamp(&date(2021, 11, 11).and_hms(23, 1, 1)),
-            Ok(date(2020, 9, 11).and_hms(23, 1, 1))
+            Month(14).subtract_from_timestamp(&date(2021, 11, 11).and_hms_opt(23, 1, 1).unwrap()),
+            Ok(date(2020, 9, 11).and_hms_opt(23, 1, 1).unwrap())
         );
         assert_eq!(
-            Interval::seconds(30).subtract_from_timestamp(&date(2021, 11, 11).and_hms(0, 0, 0)),
-            Ok(date(2021, 11, 10).and_hms(23, 59, 30))
+            Interval::seconds(30)
+                .subtract_from_timestamp(&date(2021, 11, 11).and_hms_opt(0, 0, 0).unwrap()),
+            Ok(date(2021, 11, 10).and_hms_opt(23, 59, 30).unwrap())
         );
         assert_eq!(
-            Interval::years(999_999).subtract_from_timestamp(&date(2021, 11, 11).and_hms(0, 0, 0)),
+            Interval::years(999_999)
+                .subtract_from_timestamp(&date(2021, 11, 11).and_hms_opt(0, 0, 0).unwrap()),
             Err(IntervalError::DateOverflow {
                 year: -997977,
                 month: -1,

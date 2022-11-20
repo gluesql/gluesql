@@ -1,11 +1,15 @@
-use {gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage, test_suite::*};
+use {
+    async_trait::async_trait, gluesql_core::prelude::Glue, gluesql_memory_storage::MemoryStorage,
+    test_suite::*,
+};
 
 struct MemoryTester {
     glue: Glue<MemoryStorage>,
 }
 
+#[async_trait(?Send)]
 impl Tester<MemoryStorage> for MemoryTester {
-    fn new(_: &str) -> Self {
+    async fn new(_: &str) -> Self {
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);
 
@@ -19,27 +23,33 @@ impl Tester<MemoryStorage> for MemoryTester {
 
 generate_store_tests!(tokio::test, MemoryTester);
 
+#[cfg(feature = "alter-table")]
 generate_alter_table_tests!(tokio::test, MemoryTester);
 
+#[cfg(any(feature = "alter-table", feature = "index"))]
 macro_rules! exec {
     ($glue: ident $sql: literal) => {
         $glue.execute($sql).unwrap();
     };
 }
 
+#[cfg(any(feature = "alter-table", feature = "index"))]
 macro_rules! test {
     ($glue: ident $sql: literal, $result: expr) => {
         assert_eq!($glue.execute($sql), $result);
     };
 }
 
+#[cfg(feature = "index")]
 #[test]
 fn memory_storage_index() {
-    use futures::executor::block_on;
-    use gluesql_core::{
-        prelude::Glue,
-        result::{Error, Result},
-        store::{Index, Store},
+    use {
+        futures::executor::block_on,
+        gluesql_core::{
+            prelude::Glue,
+            result::{Error, Result},
+            store::{Index, Store},
+        },
     };
 
     let storage = MemoryStorage::default();
@@ -73,6 +83,7 @@ fn memory_storage_index() {
     );
 }
 
+#[cfg(feature = "transaction")]
 #[test]
 fn memory_storage_transaction() {
     use gluesql_core::{prelude::Glue, result::Error};

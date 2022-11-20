@@ -1,3 +1,5 @@
+#![cfg(feature = "alter-table")]
+
 use {
     super::MemoryStorage,
     async_trait::async_trait,
@@ -5,8 +7,7 @@ use {
         ast::ColumnDef,
         data::Value,
         result::{MutResult, Result, TrySelf},
-        store::AlterTable,
-        store::AlterTableError,
+        store::{AlterTable, AlterTableError},
     },
 };
 
@@ -34,6 +35,15 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
+        if item
+            .schema
+            .column_defs
+            .iter()
+            .any(|ColumnDef { name, .. }| name == new_column_name)
+        {
+            return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
+        }
+
         let mut column_def = item
             .schema
             .column_defs
@@ -60,17 +70,21 @@ impl MemoryStorage {
         {
             let adding_column = column_def.name.to_owned();
 
-            return Err(AlterTableError::AddingColumnAlreadyExists(adding_column).into());
+            return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
         }
 
-        let ColumnDef { data_type, .. } = column_def;
-        let nullable = column_def.is_nullable();
+        let ColumnDef {
+            data_type,
+            nullable,
+            ..
+        } = column_def;
+
         let default = column_def.get_default();
         let value = match (default, nullable) {
             (Some(expr), _) => {
                 let evaluated = gluesql_core::executor::evaluate_stateless(None, expr)?;
 
-                evaluated.try_into_value(data_type, nullable)?
+                evaluated.try_into_value(data_type, *nullable)?
             }
             (None, true) => Value::Null,
             (None, false) => {

@@ -14,11 +14,11 @@ test_case!(on_where, async move {
     run!(
         "
         INSERT INTO Arith (id, num, name) VALUES
-            (1, 6, \"A\"),
-            (2, 8, \"B\"),
-            (3, 4, \"C\"),
-            (4, 2, \"D\"),
-            (5, 3, \"E\");
+            (1, 6, 'A'),
+            (2, 8, 'B'),
+            (3, 4, 'C'),
+            (4, 2, 'D'),
+            (5, 3, 'E');
     "
     );
 

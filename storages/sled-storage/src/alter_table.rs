@@ -164,6 +164,16 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
+            if column_defs
+                .iter()
+                .any(|ColumnDef { name, .. }| name == new_column_name)
+            {
+                return Err(
+                    AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into(),
+                )
+                .map_err(ConflictableTransactionError::Abort);
+            }
+
             let i = column_defs
                 .iter()
                 .position(|column_def| column_def.name == old_column_name)
@@ -171,12 +181,16 @@ impl AlterTable for SledStorage {
                 .map_err(ConflictableTransactionError::Abort)?;
 
             let ColumnDef {
-                data_type, options, ..
+                data_type,
+                nullable,
+                options,
+                ..
             } = column_defs[i].clone();
 
             let column_def = ColumnDef {
                 name: new_column_name.to_owned(),
                 data_type,
+                nullable,
                 options,
             };
             let column_defs = Vector::from(column_defs).update(i, column_def).into();
@@ -249,12 +263,16 @@ impl AlterTable for SledStorage {
             {
                 let adding_column = column_def.name.to_owned();
 
-                return Err(AlterTableError::AddingColumnAlreadyExists(adding_column).into())
+                return Err(AlterTableError::AlreadyExistingColumn(adding_column).into())
                     .map_err(ConflictableTransactionError::Abort);
             }
 
-            let ColumnDef { data_type, .. } = column_def;
-            let nullable = column_def.is_nullable();
+            let ColumnDef {
+                data_type,
+                nullable,
+                ..
+            } = column_def;
+
             let default = column_def.get_default();
             let value = match (default, nullable) {
                 (Some(expr), _) => {
@@ -262,7 +280,7 @@ impl AlterTable for SledStorage {
                         .map_err(ConflictableTransactionError::Abort)?;
 
                     evaluated
-                        .try_into_value(data_type, nullable)
+                        .try_into_value(data_type, *nullable)
                         .map_err(ConflictableTransactionError::Abort)?
                 }
                 (None, true) => Value::Null,

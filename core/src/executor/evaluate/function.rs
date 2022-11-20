@@ -1,5 +1,5 @@
 use {
-    super::{ChronoFormatError, EvaluateError, Evaluated},
+    super::{EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField, TrimWhereField},
         data::Value,
@@ -541,10 +541,14 @@ pub fn to_date<'a>(
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
+
             chrono::NaiveDate::parse_from_str(&expr, &format)
-                .map_err(ChronoFormatError::err_into)
                 .map(Value::Date)
                 .map(Evaluated::from)
+                .map_err(|err| {
+                    let err: EvaluateError = err.into();
+                    err.into()
+                })
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
@@ -558,10 +562,14 @@ pub fn to_timestamp<'a>(
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
+
             chrono::NaiveDateTime::parse_from_str(&expr, &format)
-                .map_err(ChronoFormatError::err_into)
                 .map(Value::Timestamp)
                 .map(Evaluated::from)
+                .map_err(|err| {
+                    let err: EvaluateError = err.into();
+                    err.into()
+                })
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
@@ -575,23 +583,24 @@ pub fn to_time<'a>(
     match expr.try_into()? {
         Value::Str(expr) => {
             let format = eval_to_str!(name, format);
+
             chrono::NaiveTime::parse_from_str(&expr, &format)
                 .map(Value::Time)
-                .map_err(ChronoFormatError::err_into)
                 .map(Evaluated::from)
+                .map_err(|err| {
+                    let err: EvaluateError = err.into();
+                    err.into()
+                })
         }
         _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
 
-pub fn position<'a>(
-    name: String,
-    from_expr: Evaluated<'_>,
-    sub_expr: Evaluated<'_>,
-) -> Result<Evaluated<'a>> {
-    let from_expr = eval_to_str!(name, from_expr);
-    let sub_expr = eval_to_str!(name, sub_expr);
-    Value::position(&Value::Str(from_expr), &Value::Str(sub_expr)).map(Evaluated::from)
+pub fn position<'a>(from_expr: Evaluated<'_>, sub_expr: Evaluated<'_>) -> Result<Evaluated<'a>> {
+    let from: Value = from_expr.try_into()?;
+    let sub: Value = sub_expr.try_into()?;
+
+    from.position(&sub).map(Evaluated::from)
 }
 
 pub fn cast<'a>(expr: Evaluated<'a>, data_type: &DataType) -> Result<Evaluated<'a>> {

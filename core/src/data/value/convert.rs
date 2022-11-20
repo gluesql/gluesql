@@ -4,7 +4,7 @@ use {
         Value, ValueError,
     },
     crate::{
-        data::Interval,
+        data::{Interval, IntervalError},
         result::{Error, Result},
     },
     chrono::{NaiveDate, NaiveDateTime, NaiveTime},
@@ -539,7 +539,9 @@ impl TryFrom<&Value> for NaiveDateTime {
 
     fn try_from(v: &Value) -> Result<NaiveDateTime> {
         Ok(match v {
-            Value::Date(value) => value.and_hms(0, 0, 0),
+            Value::Date(value) => value
+                .and_hms_opt(0, 0, 0)
+                .ok_or_else(|| IntervalError::FailedToParseTime(value.to_string()))?,
             Value::Str(value) => parse_timestamp(value).ok_or(ValueError::ImpossibleCast)?,
             Value::Timestamp(value) => *value,
             _ => return Err(ValueError::ImpossibleCast.into()),
@@ -574,10 +576,25 @@ mod tests {
     use {
         super::{Value, ValueError},
         crate::{data::Interval as I, result::Result},
-        chrono,
+        chrono::{self, NaiveDate, NaiveDateTime, NaiveTime},
         rust_decimal::Decimal,
         std::collections::HashMap,
     };
+
+    fn timestamp(y: i32, m: u32, d: u32, hh: u32, mm: u32, ss: u32, ms: u32) -> NaiveDateTime {
+        NaiveDate::from_ymd_opt(y, m, d)
+            .unwrap()
+            .and_hms_milli_opt(hh, mm, ss, ms)
+            .unwrap()
+    }
+
+    fn time(hour: u32, min: u32, sec: u32, milli: u32) -> NaiveTime {
+        NaiveTime::from_hms_milli_opt(hour, min, sec, milli).unwrap()
+    }
+
+    fn date(year: i32, month: u32, day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(year, month, day).unwrap()
+    }
 
     #[test]
     fn from() {
@@ -586,11 +603,7 @@ mod tests {
                 assert_eq!(String::from($from), $to.to_owned())
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Str("text".to_owned()), "text");
         test!(Value::Bytea(hex::decode("1234").unwrap()), "1234");
         test!(Value::Bool(true), "TRUE");
@@ -627,11 +640,7 @@ mod tests {
                 assert_eq!(bool::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(true));
         test!(Value::I8(1), Ok(true));
         test!(Value::I8(0), Ok(false));
@@ -705,11 +714,7 @@ mod tests {
                 assert_eq!(i8::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
@@ -771,11 +776,7 @@ mod tests {
                 assert_eq!(i16::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
@@ -828,11 +829,7 @@ mod tests {
                 assert_eq!(i32::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
@@ -886,11 +883,7 @@ mod tests {
                 assert_eq!(i64::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
@@ -944,11 +937,7 @@ mod tests {
                 assert_eq!(i128::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
@@ -1002,11 +991,7 @@ mod tests {
                 assert_eq!(u8::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
@@ -1071,11 +1056,7 @@ mod tests {
                 assert_eq!(u16::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
@@ -1128,11 +1109,7 @@ mod tests {
                 assert_eq!(f64::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1.0));
         test!(Value::Bool(false), Ok(0.0));
         test!(Value::I8(122), Ok(122.0));
@@ -1188,11 +1165,7 @@ mod tests {
                 assert_eq!(usize::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let time = chrono::NaiveTime::from_hms_milli;
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(Value::Bool(true), Ok(1usize));
         test!(Value::Bool(false), Ok(0));
         test!(Value::I8(122), Ok(122));
@@ -1246,10 +1219,7 @@ mod tests {
                 assert_eq!(chrono::NaiveDate::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let date = chrono::NaiveDate::from_ymd;
+
         test!(&Value::Date(date(2021, 11, 20)), Ok(date(2021, 11, 20)));
         test!(
             &Value::Timestamp(timestamp(2021, 11, 20, 10, 0, 0, 0)),
@@ -1266,7 +1236,7 @@ mod tests {
                 assert_eq!(chrono::NaiveTime::try_from($from), $to);
             };
         }
-        let time = chrono::NaiveTime::from_hms_milli;
+
         test!(&Value::Time(time(10, 0, 0, 0)), Ok(time(10, 0, 0, 0)));
         test!(&Value::Str("10:00:00".to_owned()), Ok(time(10, 0, 0, 0)));
     }
@@ -1279,12 +1249,8 @@ mod tests {
                 assert_eq!(chrono::NaiveDateTime::try_from($from), $to);
             };
         }
-        let timestamp = |y, m, d, hh, mm, ss, ms| {
-            chrono::NaiveDate::from_ymd(y, m, d).and_hms_milli(hh, mm, ss, ms)
-        };
-        let date = chrono::NaiveDate::from_ymd;
+
         let datetime = chrono::NaiveDateTime::new;
-        let time = chrono::NaiveTime::from_hms_milli;
         test!(
             &Value::Date(date(2021, 11, 20)),
             Ok(datetime(date(2021, 11, 20), time(0, 0, 0, 0)))
@@ -1302,11 +1268,11 @@ mod tests {
     #[test]
     fn try_into_interval() {
         assert_eq!(
-            (&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())).try_into() as Result<I>,
+            (&Value::Str("'+22-10' YEAR TO MONTH".to_owned())).try_into() as Result<I>,
             Ok(I::Month(274))
         );
         assert_eq!(
-            I::try_from(&Value::Str("\"+22-10\" YEAR TO MONTH".to_owned())),
+            I::try_from(&Value::Str("'+22-10' YEAR TO MONTH".to_owned())),
             Ok(I::Month(274))
         );
     }

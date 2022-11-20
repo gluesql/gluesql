@@ -11,45 +11,45 @@ use {
 test_case!(create_table, async move {
     let test_cases = [
         (
-            r#"
+            "
         CREATE TABLE CreateTable1 (
             id INTEGER NULL,
             num INTEGER,
             name TEXT
-        )"#,
+        )",
             Ok(Payload::Create),
         ),
         (
-            r#"
+            "
         CREATE TABLE CreateTable1 (
             id INTEGER NULL,
             num INTEGER,
             name TEXT
-        )"#,
+        )",
             Err(AlterError::TableAlreadyExists("CreateTable1".to_owned()).into()),
         ),
         (
-            r#"
+            "
         CREATE TABLE IF NOT EXISTS CreateTable2 (
             id INTEGER NULL,
             num INTEGER,
             name TEXT
-        )"#,
+        )",
             Ok(Payload::Create),
         ),
         (
-            r#"
+            "
         CREATE TABLE IF NOT EXISTS CreateTable2 (
             id2 INTEGER NULL,
-        )"#,
+        )",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO CreateTable2 VALUES (NULL, 1, "1");"#,
+            "INSERT INTO CreateTable2 VALUES (NULL, 1, '1');",
             Ok(Payload::Insert(1)),
         ),
         (
-            r#"INSERT INTO CreateTable2 VALUES (2, 2, "2");"#,
+            "INSERT INTO CreateTable2 VALUES (2, 2, '2');",
             Ok(Payload::Insert(1)),
         ),
         (
@@ -65,11 +65,11 @@ test_case!(create_table, async move {
             Err(TranslateError::UnsupportedColumnOption("CHECK (true)".to_owned()).into()),
         ),
         (
-            r#"
+            "
         CREATE TABLE CreateTable3 (
             id INTEGER,
             ratio FLOAT UNIQUE
-        )"#,
+        )",
             Err(AlterError::UnsupportedDataTypeForUniqueColumn(
                 "ratio".to_owned(),
                 gluesql_core::ast::DataType::Float,
@@ -128,6 +128,11 @@ test_case!(create_table, async move {
             // Source table does not exists
             "CREATE TABLE TargetTableWithData2 AS SELECT * FROM NonExistentTable",
             Err(AlterError::CtasSourceTableNotFound("NonExistentTable".to_owned()).into()),
+        ),
+        (
+            // Cannot create table with duplicate column name
+            "CREATE TABLE DuplicateColumns (id INT, id INT)",
+            Err(AlterError::DuplicateColumnName("id".to_owned()).into()),
         ),
     ];
 

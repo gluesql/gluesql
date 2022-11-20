@@ -67,22 +67,22 @@ test_case!(default, async move {
     }
 
     test!(
-        r#"
+        "
         CREATE TABLE TestExpr (
             id INTEGER,
-            date DATE DEFAULT DATE "2020-01-01",
+            date DATE DEFAULT DATE '2020-01-01',
             num INTEGER DEFAULT -(-1 * +2),
-            flag BOOLEAN DEFAULT CAST("TRUE" AS BOOLEAN),
+            flag BOOLEAN DEFAULT CAST('TRUE' AS BOOLEAN),
             flag2 BOOLEAN DEFAULT 1 IN (1, 2, 3),
             flag3 BOOLEAN DEFAULT 10 BETWEEN 1 AND 2,
             flag4 BOOLEAN DEFAULT (1 IS NULL OR NULL IS NOT NULL)
-        )"#,
+        )",
         Ok(Payload::Create)
     );
 
     run!("INSERT INTO TestExpr (id) VALUES (1);");
 
-    let d = NaiveDate::from_ymd;
+    let d = |year: i32, month: u32, day: u32| NaiveDate::from_ymd_opt(year, month, day).unwrap();
 
     test!(
         "SELECT * FROM TestExpr",
