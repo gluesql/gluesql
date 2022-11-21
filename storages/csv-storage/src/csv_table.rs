@@ -8,6 +8,7 @@ use {
     },
 };
 
+#[derive(Debug, PartialEq)]
 pub struct CsvTable {
     pub file_path: PathBuf,
     pub schema: Schema,
@@ -30,6 +31,7 @@ impl CsvTable {
             .map(|col| ColumnDef {
                 name: col.to_owned(),
                 data_type: DataType::Text,
+                nullable: true,
                 options: vec![],
             })
             .collect();
@@ -118,16 +120,19 @@ mod test {
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Text,
+                    nullable: true,
                     options: vec![]
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
+                    nullable: true,
                     options: vec![]
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Text,
+                    nullable: true,
                     options: vec![]
                 },
             ],
@@ -159,16 +164,19 @@ mod test {
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Text,
+                    nullable: true,
                     options: vec![]
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
+                    nullable: true,
                     options: vec![]
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Text,
+                    nullable: true,
                     options: vec![]
                 },
             ],
@@ -192,16 +200,19 @@ mod test {
                     ColumnDef {
                         name: "id".to_owned(),
                         data_type: DataType::Text,
+                        nullable: true,
                         options: vec![],
                     },
                     ColumnDef {
                         name: "name".to_owned(),
                         data_type: DataType::Text,
+                        nullable: true,
                         options: vec![],
                     },
                     ColumnDef {
                         name: "age".to_owned(),
                         data_type: DataType::Text,
+                        nullable: true,
                         options: vec![],
                     },
                 ],
@@ -221,16 +232,19 @@ mod test {
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Int128,
+                    nullable: true,
                     options: vec![],
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
+                    nullable: true,
                     options: vec![],
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Uint8,
+                    nullable: true,
                     options: vec![],
                 },
             ],
@@ -250,16 +264,19 @@ mod test {
                 ColumnDef {
                     name: "id".to_owned(),
                     data_type: DataType::Int128,
+                    nullable: true,
                     options: vec![],
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
+                    nullable: true,
                     options: vec![],
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Uint8,
+                    nullable: true,
                     options: vec![],
                 },
             ],
@@ -284,14 +301,13 @@ mod test {
         // Act
         let result = csv_table.adapt_schema(schema);
         // Assert
-        // TODO: Test
-        // assert_eq!(
-        //     Err(StorageError::SchemaMismatch(
-        //         "Csv table name: users".to_string(),
-        //         "Schema table name: animals".to_string()
-        //     )),
-        //     result
-        // );
+        assert_eq!(
+            Err(StorageError::SchemaMismatch(
+                "Csv table name: users".to_string(),
+                "Schema table name: animals".to_string()
+            )),
+            result
+        );
     }
 
     #[test]
@@ -303,6 +319,7 @@ mod test {
             column_defs: vec![ColumnDef {
                 name: "identifier".to_owned(),
                 data_type: DataType::Int128,
+                nullable: true,
                 options: vec![],
             }],
             indexes: vec![],
@@ -311,13 +328,12 @@ mod test {
         // Act
         let result = csv_table.adapt_schema(schema);
         // Assert
-        // TODO: Test
-        // assert_eq!(
-        //     Err(StorageError::SchemaMismatch(
-        //         "Csv column name: id".to_string(),
-        //         "Schema column name: identifier".to_string()
-        //     )),
-        //     result
-        // );
+        assert_eq!(
+            Err(StorageError::SchemaMismatch(
+                "Csv column name: id".to_string(),
+                "Schema column name: identifier".to_string()
+            )),
+            result
+        );
     }
 }

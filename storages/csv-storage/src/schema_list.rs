@@ -16,7 +16,6 @@ use {
 /// Column option parsed from TOML file.
 #[derive(PartialEq, Debug, Deserialize)]
 pub enum TomlColumnOption {
-    NotNull,
     Unique,
     PrimaryKey,
 }
@@ -26,12 +25,14 @@ pub enum TomlColumnOption {
 /// ### Fields
 /// - `name`     : Column name, __mandatory__.   
 /// - `data_type`: Data type, _optional_. Default is `Text` type when not specified.  
+/// - `nullable` : Flag to consider the column to be nullable. Default is true.  
 /// - `default`  : Default value, _optional_.  
 /// - `options`  : Column options like `NOT NULL` or `UNIQUE`, _optional_.
 #[derive(PartialEq, Debug, Deserialize)]
 pub struct TomlColumn {
     pub name: String,
     pub data_type: Option<DataType>,
+    pub nullable: Option<bool>,
     pub default: Option<String>,
     pub options: Option<Vec<TomlColumnOption>>,
 }
@@ -42,28 +43,22 @@ impl From<TomlColumn> for ColumnDef {
             Some(dt) => dt,
             None => DataType::Text,
         };
+        let nullable = match column.nullable {
+            Some(nullable) => nullable,
+            None => match column.options {
+                Some(ref opt) => !opt.contains(&TomlColumnOption::PrimaryKey),
+                None => true,
+            },
+        };
         let options: Vec<ColumnOption> = match column.options {
-            Some(opt) => {
-                let options_toml = opt.iter().map(|co| match co {
-                    TomlColumnOption::NotNull => ColumnOption::NotNull,
+            Some(opt) => opt
+                .iter()
+                .map(|co| match co {
                     TomlColumnOption::PrimaryKey => ColumnOption::Unique { is_primary: true },
                     TomlColumnOption::Unique => ColumnOption::Unique { is_primary: false },
-                });
-
-                let is_nullable = opt
-                    .iter()
-                    .find(|o| matches!(o, TomlColumnOption::NotNull | TomlColumnOption::PrimaryKey))
-                    .is_none();
-
-                if is_nullable {
-                    options_toml
-                        .chain([ColumnOption::Null].into_iter())
-                        .collect()
-                } else {
-                    options_toml.collect()
-                }
-            }
-            None => vec![ColumnOption::Null],
+                })
+                .collect(),
+            None => vec![],
         };
         let default_option = match column.default {
             Some(value) => vec![ColumnOption::Default(Expr::TypedString {
@@ -76,6 +71,7 @@ impl From<TomlColumn> for ColumnDef {
         ColumnDef {
             name: column.name,
             data_type,
+            nullable,
             options: [options, default_option].concat(),
         }
     }
@@ -163,26 +159,30 @@ mod test {
                         TomlColumn {
                             name: "id".to_string(),
                             data_type: Some(DataType::Int128),
+                            nullable: None,
                             default: None,
                             options: Some(vec![TomlColumnOption::PrimaryKey]),
                         },
                         TomlColumn {
                             name: "name".to_string(),
                             data_type: Some(DataType::Text),
+                            nullable: Some(true),
                             default: None,
                             options: Some(vec![TomlColumnOption::Unique]),
                         },
                         TomlColumn {
                             name: "age".to_string(),
                             data_type: Some(DataType::Uint8),
+                            nullable: Some(false),
                             default: None,
                             options: None,
                         },
                         TomlColumn {
                             name: "role".to_string(),
                             data_type: None,
+                            nullable: None,
                             default: Some("GUEST".to_string()),
-                            options: Some(vec![TomlColumnOption::NotNull]),
+                            options: Some(vec![]),
                         },
                     ]
                 }]
@@ -207,31 +207,29 @@ mod test {
                 ColumnDef {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
+                    nullable: false,
                     options: vec![ColumnOption::Unique { is_primary: true }],
                 },
                 ColumnDef {
                     name: "name".to_string(),
                     data_type: DataType::Text,
-                    options: vec![
-                        ColumnOption::Unique { is_primary: false },
-                        ColumnOption::Null
-                    ],
+                    nullable: true,
+                    options: vec![ColumnOption::Unique { is_primary: false },],
                 },
                 ColumnDef {
                     name: "age".to_string(),
                     data_type: DataType::Uint8,
-                    options: vec![ColumnOption::Null],
+                    nullable: false,
+                    options: vec![],
                 },
                 ColumnDef {
                     name: "role".to_string(),
                     data_type: DataType::Text,
-                    options: vec![
-                        ColumnOption::NotNull,
-                        ColumnOption::Default(Expr::TypedString {
-                            data_type: DataType::Text,
-                            value: "GUEST".to_string()
-                        })
-                    ],
+                    nullable: true,
+                    options: vec![ColumnOption::Default(Expr::TypedString {
+                        data_type: DataType::Text,
+                        value: "GUEST".to_string()
+                    })],
                 },
             ],
             schema.column_defs
@@ -256,31 +254,29 @@ mod test {
                 ColumnDef {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
+                    nullable: false,
                     options: vec![ColumnOption::Unique { is_primary: true }],
                 },
                 ColumnDef {
                     name: "name".to_string(),
                     data_type: DataType::Text,
-                    options: vec![
-                        ColumnOption::Unique { is_primary: false },
-                        ColumnOption::Null
-                    ],
+                    nullable: true,
+                    options: vec![ColumnOption::Unique { is_primary: false },],
                 },
                 ColumnDef {
                     name: "age".to_string(),
                     data_type: DataType::Uint8,
-                    options: vec![ColumnOption::Null],
+                    nullable: false,
+                    options: vec![],
                 },
                 ColumnDef {
                     name: "role".to_string(),
                     data_type: DataType::Text,
-                    options: vec![
-                        ColumnOption::NotNull,
-                        ColumnOption::Default(Expr::TypedString {
-                            data_type: DataType::Text,
-                            value: "GUEST".to_string()
-                        })
-                    ],
+                    nullable: true,
+                    options: vec![ColumnOption::Default(Expr::TypedString {
+                        data_type: DataType::Text,
+                        value: "GUEST".to_string()
+                    })],
                 },
             ],
             schema.column_defs
@@ -295,28 +291,29 @@ mod test {
                 ColumnDef {
                     name: "id".to_string(),
                     data_type: DataType::Int128,
+                    nullable: false,
                     options: vec![ColumnOption::Unique { is_primary: true }],
                 },
                 ColumnDef {
                     name: "orderer_id".to_string(),
                     data_type: DataType::Int128,
-                    options: vec![ColumnOption::NotNull],
+                    nullable: true,
+                    options: vec![],
                 },
                 ColumnDef {
                     name: "food_id".to_string(),
                     data_type: DataType::Int128,
-                    options: vec![ColumnOption::NotNull],
+                    nullable: true,
+                    options: vec![],
                 },
                 ColumnDef {
                     name: "cost".to_string(),
                     data_type: DataType::Uint16,
-                    options: vec![
-                        ColumnOption::Null,
-                        ColumnOption::Default(Expr::TypedString {
-                            data_type: DataType::Uint16,
-                            value: "0".to_string()
-                        }),
-                    ],
+                    nullable: true,
+                    options: vec![ColumnOption::Default(Expr::TypedString {
+                        data_type: DataType::Uint16,
+                        value: "0".to_string()
+                    }),],
                 },
             ],
             schema.column_defs

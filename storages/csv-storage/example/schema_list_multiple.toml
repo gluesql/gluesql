@@ -2,10 +2,10 @@
 name = "users"
 path = "example/data/users.csv"
 columns = [
-	{ name = "id",   data_type = "Int128", options = ["PrimaryKey"] },
-	{ name = "name", data_type = "Text",   options = ["Unique"]     },
-	{ name = "age",  data_type = "Uint8"                            },
-	{ name = "role", default   = "GUEST",  options = ["NotNull"]    },
+	{ name = "id",   data_type = "Int128", options = ["PrimaryKey"]              },
+	{ name = "name", data_type = "Text",   nullable = true, options = ["Unique"] },
+	{ name = "age",  data_type = "Uint8",  nullable = false                      },
+	{ name = "role", default   = "GUEST",  options = []                          },
 ]
 
 [[tables]]
@@ -13,8 +13,8 @@ name = "orders"
 path = "example/data/orders.csv"
 columns = [
 	{ name = "id",         data_type = "Int128", options = ["PrimaryKey"] },
-	{ name = "orderer_id", data_type = "Int128", options = ["NotNull"]    },
-	{ name = "food_id",    data_type = "Int128", options = ["NotNull"]    },
+	{ name = "orderer_id", data_type = "Int128", options = []             },
+	{ name = "food_id",    data_type = "Int128", options = []             },
 	{ name = "cost",       data_type = "Uint16", default = "0"            },
 ]
 

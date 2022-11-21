@@ -2,8 +2,8 @@
 name = "users"
 path = "example/data/users.csv"
 columns = [
-	{ name = "id",   data_type = "Int128", options = ["PrimaryKey"] },
-	{ name = "name", data_type = "Text",   options = ["Unique"]     },
-	{ name = "age",  data_type = "Uint8"                            },
-	{ name = "role", default   = "GUEST",  options = ["NotNull"]    },
+	{ name = "id",   data_type = "Int128",                  options = ["PrimaryKey"] },
+	{ name = "name", data_type = "Text",   nullable = true, options = ["Unique"]     },
+	{ name = "age",  data_type = "Uint8",  nullable = false                          },
+	{ name = "role", default   = "GUEST",                   options = []             },
 ]
