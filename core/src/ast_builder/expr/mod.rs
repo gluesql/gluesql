@@ -361,6 +361,10 @@ pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
     ExprNode::Subquery(Box::new(query_node.into()))
 }
 
+pub fn null() -> ExprNode<'static> {
+    ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Null)))
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -368,7 +372,8 @@ mod tests {
         crate::{
             ast::Expr,
             ast_builder::{
-                col, date, expr, num, subquery, table, test_expr, text, time, timestamp, QueryNode,
+                col, date, expr, null, num, subquery, table, test_expr, text, time, timestamp,
+                QueryNode,
             },
         },
     };
@@ -440,6 +445,10 @@ mod tests {
 
         let actual = subquery(table("Foo").select().filter("id IS NOT NULL"));
         let expected = "(SELECT * FROM Foo WHERE id IS NOT NULL)";
+        test_expr(actual, expected);
+
+        let actual = null();
+        let expected = "NULL";
         test_expr(actual, expected);
     }
 }
