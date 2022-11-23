@@ -1,5 +1,6 @@
 use {
     crate::{
+        ast_builder::AstBuilderError,
         data::{
             IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
         },
@@ -36,6 +37,9 @@ pub enum Error {
 
     #[error(transparent)]
     Translate(#[from] TranslateError),
+
+    #[error(transparent)]
+    AstBuilder(#[from] AstBuilderError),
 
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
@@ -92,6 +96,7 @@ impl PartialEq for Error {
             (Parser(e), Parser(e2)) => e == e2,
             (StorageMsg(e), StorageMsg(e2)) => e == e2,
             (Translate(e), Translate(e2)) => e == e2,
+            (AstBuilder(e), AstBuilder(e2)) => e == e2,
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
             #[cfg(feature = "index")]

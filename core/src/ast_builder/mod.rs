@@ -8,6 +8,7 @@ mod create_table;
 mod data_type;
 mod delete;
 mod drop_table;
+mod error;
 mod execute;
 mod expr;
 mod expr_list;
@@ -35,6 +36,7 @@ pub use {
     data_type::DataTypeNode,
     delete::DeleteNode,
     drop_table::DropTableNode,
+    error::AstBuilderError,
     execute::Execute,
     expr_list::ExprList,
     insert::InsertNode,
@@ -54,8 +56,8 @@ pub use {
 
 /// Available expression builder functions
 pub use expr::{
-    case, col, date, exists, expr, factorial, minus, nested, not, not_exists, null, num, plus,
-    subquery, text, time, timestamp, ExprNode,
+    case, col, date, exists, expr, factorial, minus, nested, not, not_exists, null, num,
+    numeric::NumericNode, plus, subquery, text, time, timestamp, ExprNode,
 };
 
 #[cfg(feature = "alter-table")]
