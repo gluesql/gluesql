@@ -133,7 +133,7 @@ INSERT INTO MapType2 VALUES
     );
     test!(
         "INSERT INTO MapType VALUES (1, '{{ ok [1, 2, 3] }');",
-        Err(ValueError::InvalidJsonString.into())
+        Err(ValueError::InvalidJsonString("{{ ok [1, 2, 3] }".to_owned()).into())
     );
     test!(
         "INSERT INTO MapType VALUES (1, '[1, 2, 3]');",

@@ -121,6 +121,6 @@ INSERT INTO ListType2 VALUES
     );
     test!(
         "INSERT INTO ListType VALUES (1, '{{ ok [1, 2, 3] }');",
-        Err(ValueError::InvalidJsonString.into())
+        Err(ValueError::InvalidJsonString("{{ ok [1, 2, 3] }".to_owned()).into())
     );
 });
