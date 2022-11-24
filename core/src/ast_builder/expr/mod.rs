@@ -10,6 +10,7 @@ pub mod aggregate;
 pub mod between;
 pub mod function;
 pub mod in_list;
+pub mod numeric;
 
 pub use {
     case::case,
@@ -31,6 +32,7 @@ use {
     bigdecimal::BigDecimal,
     function::FunctionNode,
     in_list::InListNode,
+    numeric::NumericNode,
     std::borrow::Cow,
 };
 
@@ -39,6 +41,7 @@ pub enum ExprNode<'a> {
     Expr(Cow<'a, Expr>),
     SqlExpr(Cow<'a, str>),
     Identifier(Cow<'a, str>),
+    Numeric(NumericNode<'a>),
     QuotedString(Cow<'a, str>),
     TypedString {
         data_type: DataType,
@@ -113,6 +116,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                     _ => Expr::Identifier(value.into_owned()),
                 })
             }
+            ExprNode::Numeric(node) => node.try_into().map(Expr::Literal),
             ExprNode::QuotedString(value) => {
                 let value = value.into_owned();
 
@@ -328,8 +332,8 @@ pub fn col<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
     ExprNode::Identifier(value.into())
 }
 
-pub fn num<'a>(value: i64) -> ExprNode<'a> {
-    ExprNode::from(value)
+pub fn num<'a, T: Into<NumericNode<'a>>>(value: T) -> ExprNode<'a> {
+    ExprNode::Numeric(value.into())
 }
 
 pub fn text<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
@@ -425,6 +429,14 @@ mod tests {
 
         let actual = num(2048);
         let expected = "2048";
+        test_expr(actual, expected);
+
+        let actual = num(6.11);
+        let expected = "6.11";
+        test_expr(actual, expected);
+
+        let actual = num("123.456");
+        let expected = "123.456";
         test_expr(actual, expected);
 
         let actual = text("hello world");
