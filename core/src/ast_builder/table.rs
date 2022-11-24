@@ -104,3 +104,48 @@ impl<'a> TableAliasNode<'a> {
         SelectNode::new(self.table_node, Some(self.table_alias))
     }
 }
+
+/// Entry point function to build statement
+pub fn table(table_name: &str) -> TableNode {
+    let table_name = table_name.to_owned();
+
+    TableNode {
+        table_name,
+        table_type: TableType::Table,
+    }
+}
+
+pub fn glue_objects() -> TableNode<'static> {
+    TableNode {
+        table_name: "GLUE_OBJECTS".to_owned(),
+        table_type: TableType::Dictionary(Dictionary::GlueObjects),
+    }
+}
+
+pub fn glue_tables() -> TableNode<'static> {
+    TableNode {
+        table_name: "GLUE_TABLES".to_owned(),
+        table_type: TableType::Dictionary(Dictionary::GlueTables),
+    }
+}
+
+pub fn glue_indexes() -> TableNode<'static> {
+    TableNode {
+        table_name: "GLUE_INDEXES".to_owned(),
+        table_type: TableType::Dictionary(Dictionary::GlueIndexes),
+    }
+}
+
+pub fn glue_table_columns() -> TableNode<'static> {
+    TableNode {
+        table_name: "GLUE_TABLE_COLUMNS".to_owned(),
+        table_type: TableType::Dictionary(Dictionary::GlueTableColumns),
+    }
+}
+
+pub fn series<'a, T: Into<ExprNode<'a>>>(args: T) -> TableNode<'a> {
+    TableNode {
+        table_name: "SERIES".to_owned(),
+        table_type: TableType::Series(args.into()),
+    }
+}

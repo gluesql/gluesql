@@ -50,7 +50,10 @@ pub use {
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
-    table::{TableAliasNode, TableNode},
+    table::{
+        glue_indexes, glue_objects, glue_table_columns, glue_tables, series, table, TableAliasNode,
+        TableNode,
+    },
     update::UpdateNode,
 };
 
@@ -79,51 +82,6 @@ pub use expr::{
     },
 };
 
-use {self::table::TableType, crate::ast::Dictionary};
-/// Entry point function to build statement
-pub fn table(table_name: &str) -> TableNode {
-    let table_name = table_name.to_owned();
-
-    TableNode {
-        table_name,
-        table_type: TableType::Table,
-    }
-}
-
-pub fn glue_objects() -> TableNode<'static> {
-    TableNode {
-        table_name: "GLUE_OBJECTS".to_owned(),
-        table_type: TableType::Dictionary(Dictionary::GlueObjects),
-    }
-}
-
-pub fn glue_tables() -> TableNode<'static> {
-    TableNode {
-        table_name: "GLUE_TABLES".to_owned(),
-        table_type: TableType::Dictionary(Dictionary::GlueTables),
-    }
-}
-
-pub fn glue_indexes() -> TableNode<'static> {
-    TableNode {
-        table_name: "GLUE_INDEXES".to_owned(),
-        table_type: TableType::Dictionary(Dictionary::GlueIndexes),
-    }
-}
-
-pub fn glue_table_columns() -> TableNode<'static> {
-    TableNode {
-        table_name: "GLUE_TABLE_COLUMNS".to_owned(),
-        table_type: TableType::Dictionary(Dictionary::GlueTableColumns),
-    }
-}
-
-pub fn series<'a, T: Into<ExprNode<'a>>>(args: T) -> TableNode<'a> {
-    TableNode {
-        table_name: "SERIES".to_owned(),
-        table_type: TableType::Series(args.into()),
-    }
-}
 /// Functions for building transaction statements
 #[cfg(feature = "transaction")]
 pub use transaction::{begin, commit, rollback};
