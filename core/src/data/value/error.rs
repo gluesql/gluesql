@@ -152,8 +152,8 @@ pub enum ValueError {
     #[error("big endian export not supported for {0} type")]
     BigEndianExportNotSupported(String),
 
-    #[error("invalid json string")]
-    InvalidJsonString,
+    #[error("invalid json string: {0}")]
+    InvalidJsonString(String),
 
     #[error("json object type is required")]
     JsonObjectTypeRequired,
