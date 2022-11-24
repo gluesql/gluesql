@@ -90,28 +90,28 @@ pub fn table(table_name: &str) -> TableNode {
     }
 }
 
-pub fn glue_objects<'a>() -> TableNode<'a> {
+pub fn glue_objects() -> TableNode<'static> {
     TableNode {
         table_name: "GLUE_OBJECTS".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueObjects),
     }
 }
 
-pub fn glue_tables<'a>() -> TableNode<'a> {
+pub fn glue_tables() -> TableNode<'static> {
     TableNode {
         table_name: "GLUE_TABLES".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueTables),
     }
 }
 
-pub fn glue_indexes<'a>() -> TableNode<'a> {
+pub fn glue_indexes() -> TableNode<'static> {
     TableNode {
         table_name: "GLUE_INDEXES".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueIndexes),
     }
 }
 
-pub fn glue_table_columns<'a>() -> TableNode<'a> {
+pub fn glue_table_columns() -> TableNode<'static> {
     TableNode {
         table_name: "GLUE_TABLE_COLUMNS".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueTableColumns),
