@@ -1,7 +1,8 @@
 #![cfg(target_arch = "wasm32")]
 
 use {
-    gluesql_core::prelude::Glue, memory_storage::MemoryStorage, test_suite::*, wasm_bindgen_test::*,
+    async_trait::async_trait, gluesql_core::prelude::Glue, memory_storage::MemoryStorage,
+    test_suite::*, wasm_bindgen_test::*,
 };
 
 wasm_bindgen_test_configure!(run_in_browser);
@@ -10,8 +11,9 @@ struct MemoryTester {
     glue: Glue<MemoryStorage>,
 }
 
+#[async_trait(?Send)]
 impl Tester<MemoryStorage> for MemoryTester {
-    fn new(_: &str) -> Self {
+    async fn new(_: &str) -> Self {
         let storage = MemoryStorage::default();
         let glue = Glue::new(storage);
 

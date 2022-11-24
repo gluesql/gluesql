@@ -3,8 +3,12 @@
 use {
     crate::*,
     gluesql_core::{
-        ast::*, data::Value::*, executor::AlterError, executor::EvaluateError, prelude::Payload,
-        store::AlterTableError, translate::TranslateError,
+        ast::*,
+        data::Value::*,
+        executor::{AlterError, EvaluateError},
+        prelude::Payload,
+        store::AlterTableError,
+        translate::TranslateError,
     },
 };
 
@@ -52,7 +56,7 @@ test_case!(alter_table_add_drop, async move {
         ("INSERT INTO Foo VALUES (1), (2);", Ok(Payload::Insert(2))),
         ("SELECT * FROM Foo;", Ok(select!(id; I64; 1; 2))),
         (
-            "ALTER TABLE Foo ADD COLUMN amount INTEGER",
+            "ALTER TABLE Foo ADD COLUMN amount INTEGER NOT NULL",
             Err(AlterTableError::DefaultValueRequired(ColumnDef {
                 name: "amount".to_owned(),
                 data_type: DataType::Int,

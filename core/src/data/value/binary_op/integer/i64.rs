@@ -1,0 +1,9 @@
+use {crate::prelude::Value, std::cmp::Ordering};
+
+super::macros::impl_try_binary_op!(I64, i64);
+#[cfg(test)]
+super::macros::generate_binary_op_tests!(I64, i64);
+
+super::macros::impl_partial_cmp_ord_method!(i64);
+#[cfg(test)]
+super::macros::generate_cmp_ord_tests!(i64);

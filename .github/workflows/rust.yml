@@ -21,6 +21,7 @@ jobs:
           profile: minimal
           default: true
           components: clippy
+      - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --all-targets -- -D warnings
 
   clippy_core:
@@ -34,17 +35,18 @@ jobs:
           profile: minimal
           default: true
           components: clippy
+      - uses: Swatinem/rust-cache@v2
       - run: |
           cd core
-          cargo clippy --no-default-features -- -D warnings
-          cargo clippy --no-default-features --features alter-table -- -D warnings
-          cargo clippy --no-default-features --features index -- -D warnings
-          cargo clippy --no-default-features --features transaction -- -D warnings
-          cargo clippy --no-default-features --features "alter-table index" -- -D warnings
-          cargo clippy --no-default-features --features "alter-table transaction" -- -D warnings
-          cargo clippy --no-default-features --features "index transaction" -- -D warnings
-          cargo clippy --no-default-features --features "alter-table index transaction" -- -D warnings
-          cargo clippy --all-features --all-targets -- -D warnings
+          cargo clippy --all-targets --no-default-features -- -D warnings
+          cargo clippy --all-targets --no-default-features --features alter-table -- -D warnings
+          cargo clippy --all-targets --no-default-features --features index -- -D warnings
+          cargo clippy --all-targets --no-default-features --features transaction -- -D warnings
+          cargo clippy --all-targets --no-default-features --features "alter-table index" -- -D warnings
+          cargo clippy --all-targets --no-default-features --features "alter-table transaction" -- -D warnings
+          cargo clippy --all-targets --no-default-features --features "index transaction" -- -D warnings
+          cargo clippy --all-targets --no-default-features --features "alter-table index transaction" -- -D warnings
+          cargo clippy --all-targets --all-features -- -D warnings
           cd ../
 
   rust_fmt:
@@ -58,6 +60,7 @@ jobs:
           profile: minimal
           default: true
           components: rustfmt
+      - uses: Swatinem/rust-cache@v2
       - run: |
           cargo fmt -- --check
 
@@ -66,6 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
       - run: cargo build --all-features --verbose
 
   run_tests:
@@ -73,16 +77,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
       - run: |
           cargo test --all-features --lib --bins --tests --examples --verbose -- --skip sled_transaction_timeout
           cargo test sled_transaction_timeout --verbose -- --test-threads=1
           cargo test --benches
+          cd storages/memory-storage
+          cargo test --verbose --no-default-features
+          cargo test --verbose --no-default-features --features alter-table
+          cd ../../
 
   run_examples:
     name: Run examples
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
       - run: |
           cargo run --package gluesql --example hello_world
           cargo run --package gluesql --example api_usage

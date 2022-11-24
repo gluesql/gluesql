@@ -17,6 +17,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - uses: Swatinem/rust-cache@v2
       - run: rustup component add llvm-tools-preview
       - name: Install grcov
         uses: actions-rs/install@v0.1

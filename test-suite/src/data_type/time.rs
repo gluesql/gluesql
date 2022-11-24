@@ -1,8 +1,10 @@
 use {
     crate::*,
     chrono::{NaiveDate, NaiveTime},
-    gluesql_core::data::{IntervalError, ValueError},
-    gluesql_core::prelude::Value::*,
+    gluesql_core::{
+        data::{IntervalError, ValueError},
+        prelude::Value::*,
+    },
 };
 
 test_case!(time, async move {

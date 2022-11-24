@@ -13,8 +13,7 @@ use {
     gluesql_core::{
         ast::{Expr, SetExpr, Statement, ToSql, Values},
         prelude::Row,
-        store::Transaction,
-        store::{GStore, GStoreMut, Store},
+        store::{GStore, GStoreMut, Store, Transaction},
     },
     gluesql_memory_storage::MemoryStorage,
     gluesql_sled_storage::SledStorage,

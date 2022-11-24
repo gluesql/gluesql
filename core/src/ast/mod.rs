@@ -6,13 +6,15 @@ mod function;
 mod operator;
 mod query;
 
-pub use ast_literal::{AstLiteral, DateTimeField, TrimWhereField};
-pub use data_type::DataType;
-pub use ddl::*;
-pub use expr::Expr;
-pub use function::{Aggregate, CountArgExpr, Function};
-pub use operator::*;
-pub use query::*;
+pub use {
+    ast_literal::{AstLiteral, DateTimeField, TrimWhereField},
+    data_type::DataType,
+    ddl::*,
+    expr::Expr,
+    function::{Aggregate, CountArgExpr, Function},
+    operator::*,
+    query::*,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -233,16 +235,15 @@ impl ToSql for Assignment {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "alter-table")]
-    use crate::ast::AlterTableOperation;
+    use crate::ast::{AlterTableOperation, ColumnOption};
 
     #[cfg(feature = "index")]
     use crate::ast::OrderByExpr;
 
     use {
         crate::ast::{
-            Assignment, AstLiteral, BinaryOperator, ColumnDef, ColumnOption, DataType, Expr, Query,
-            Select, SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, Values,
-            Variable,
+            Assignment, AstLiteral, BinaryOperator, ColumnDef, DataType, Expr, Query, Select,
+            SelectItem, SetExpr, Statement, TableFactor, TableWithJoins, ToSql, Values, Variable,
         },
         bigdecimal::BigDecimal,
         std::str::FromStr,

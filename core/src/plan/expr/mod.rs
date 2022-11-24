@@ -82,11 +82,13 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::PlanExpr;
-    use crate::{
-        ast::{Expr, Query},
-        parse_sql::{parse_expr, parse_query},
-        translate::{translate_expr, translate_query},
+    use {
+        super::PlanExpr,
+        crate::{
+            ast::{Expr, Query},
+            parse_sql::{parse_expr, parse_query},
+            translate::{translate_expr, translate_query},
+        },
     };
 
     fn expr(sql: &str) -> Expr {

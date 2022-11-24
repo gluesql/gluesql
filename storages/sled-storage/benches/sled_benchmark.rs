@@ -1,6 +1,8 @@
-use criterion::{criterion_group, criterion_main, Criterion};
-use gluesql_core::prelude::Glue;
-use gluesql_sled_storage::SledStorage;
+use {
+    criterion::{criterion_group, criterion_main, Criterion},
+    gluesql_core::prelude::Glue,
+    gluesql_sled_storage::SledStorage,
+};
 
 const ITEM_SIZE: u32 = 5000;
 

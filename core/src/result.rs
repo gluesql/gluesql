@@ -81,7 +81,7 @@ pub enum Error {
     Plan(#[from] PlanError),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub type MutResult<T, U> = std::result::Result<(T, U), (T, Error)>;
 
 impl PartialEq for Error {
@@ -135,8 +135,7 @@ impl<V> TrySelf<V> for Result<V> {
 }
 
 mod stringify {
-    use serde::Serializer;
-    use std::fmt::Display;
+    use {serde::Serializer, std::fmt::Display};
 
     pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
