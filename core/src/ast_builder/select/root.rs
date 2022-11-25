@@ -1,3 +1,5 @@
+use crate::{ast::Query, ast_builder::QueryNode};
+
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
@@ -80,7 +82,7 @@ impl<'a> SelectNode<'a> {
         let table_node = TableNode {
             table_name: table_alias.to_owned(),
             table_type: TableType::Derived {
-                subquery: Box::new(self),
+                subquery: Box::new(QueryNode::SelectNode(self)),
                 alias: table_alias.to_owned(),
             },
         };
@@ -114,7 +116,7 @@ impl<'a> Prebuild for SelectNode<'a> {
                 size: args.try_into()?,
             },
             TableType::Derived { subquery, alias } => TableFactor::Derived {
-                subquery: subquery.prebuild()?.build_query(),
+                subquery: Query::try_from(*subquery)?,
                 alias: TableAlias {
                     name: alias,
                     columns: Vec::new(),

@@ -171,4 +171,23 @@ test_case!(select, async move {
         "Pineapple".to_owned()      40
     ));
     test(actual, expected);
+
+    // derived subquery
+    let actual = table("Item")
+        .select()
+        .order_by("price DESC")
+        .alias_as("Sub")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        id  | category_id | name                      | price;
+        I64 | I64         | Str                       | I64;
+        200   2             "Pork belly".to_owned()     90;
+        500   3             "Orange juice".to_owned()   60;
+        100   1             "Pineapple".to_owned()      40;
+        300   1             "Strawberry".to_owned()     30;
+        400   3             "Coffee".to_owned()         25
+    ));
+    test(actual, expected);
 });

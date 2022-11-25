@@ -12,13 +12,14 @@ use super::AlterTableNode;
 #[cfg(feature = "index")]
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
 
+use super::QueryNode;
 #[derive(Clone)]
 pub enum TableType<'a> {
     Table,
     Series(ExprNode<'a>),
     Dictionary(Dictionary),
     Derived {
-        subquery: Box<SelectNode<'a>>,
+        subquery: Box<QueryNode<'a>>,
         alias: String,
     },
 }
