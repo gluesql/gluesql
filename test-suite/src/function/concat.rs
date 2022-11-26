@@ -44,7 +44,7 @@ test_case!(concat, async move {
     );
 
     test!(
-        r#"select concat(DATE "2020-06-11", DATE "2020-16-3") as myconcat from Concat;"#,
+        "select concat(DATE '2020-06-11', DATE '2020-16-3') as myconcat from Concat;",
         Err(ValueError::FailedToParseDate("2020-16-3".to_owned()).into())
     );
 
