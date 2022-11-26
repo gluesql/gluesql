@@ -158,7 +158,7 @@ mod tests {
     use crate::{
         ast::{
             Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr, Statement,
-            TableFactor, TableWithJoins,
+            TableAlias, TableFactor, TableWithJoins,
         },
         ast_builder::{col, expr, table, Build, SelectItemList},
     };
@@ -256,5 +256,75 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected, "with filter");
+
+        // join -> hash -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .hash_executor("Foo.id", "Bar.id")
+            .alias_as("Sub")
+            .select()
+            .build();
+
+        let expected = {
+            let join = Join {
+                relation: TableFactor::Table {
+                    name: "Bar".to_owned(),
+                    alias: None,
+                    index: None,
+                },
+                join_operator: JoinOperator::Inner(JoinConstraint::None),
+                join_executor: JoinExecutor::Hash {
+                    key_expr: col("Foo.id").try_into().unwrap(),
+                    value_expr: col("Bar.id").try_into().unwrap(),
+                    where_clause: None,
+                },
+            };
+
+            let subquery = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Table {
+                        name: "Foo".to_owned(),
+                        alias: None,
+                        index: None,
+                    },
+                    joins: vec![join],
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            let select = Select {
+                projection: SelectItemList::from("*").try_into().unwrap(),
+                from: TableWithJoins {
+                    relation: TableFactor::Derived {
+                        subquery: Query {
+                            body: SetExpr::Select(Box::new(subquery)),
+                            order_by: Vec::new(),
+                            limit: None,
+                            offset: None,
+                        },
+                        alias: TableAlias {
+                            name: "Sub".to_owned(),
+                            columns: Vec::new(),
+                        },
+                    },
+                    joins: Vec::new(),
+                },
+                selection: None,
+                group_by: Vec::new(),
+                having: None,
+            };
+
+            Ok(Statement::Query(Query {
+                body: SetExpr::Select(Box::new(select)),
+                order_by: Vec::new(),
+                limit: None,
+                offset: None,
+            }))
+        };
+        assert_eq!(actual, expected);
     }
 }

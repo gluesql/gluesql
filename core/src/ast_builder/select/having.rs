@@ -154,5 +154,16 @@ mod tests {
                 HAVING COUNT(id) > 10
             ";
         test(actual, expected);
+
+        // select -> group by -> having -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .group_by("a")
+            .having("a > 1")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a HAVING a > 1) Sub";
+        test(actual, expected);
     }
 }

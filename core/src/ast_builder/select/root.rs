@@ -150,5 +150,10 @@ mod tests {
         let actual = table("Item").alias_as("i").select().build();
         let expected = "SELECT * FROM Item i";
         test(actual, expected);
+
+        // select -> derived subquery
+        let actual = table("App").select().alias_as("Sub").select().build();
+        let expected = "SELECT * FROM (SELECT * FROM App) Sub";
+        test(actual, expected);
     }
 }

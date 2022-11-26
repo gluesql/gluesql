@@ -253,5 +253,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select -> offset -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .offset(10)
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Foo OFFSET 10) Sub";
+        test(actual, expected);
     }
 }

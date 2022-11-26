@@ -111,5 +111,26 @@ mod tests {
             LIMIT 3;
         ";
         test(actual, expected);
+
+        // select -> offset -> limit -> derived subquery
+        let actual = table("Bar")
+            .select()
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .offset(1)
+            .limit(3)
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "
+            SELECT * FROM (
+                SELECT * FROM Bar
+                GROUP BY city
+                HAVING COUNT(name) < 100
+                OFFSET 1
+                LIMIT 3
+            ) Sub
+        ";
+        test(actual, expected);
     }
 }

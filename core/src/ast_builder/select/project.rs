@@ -328,5 +328,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select -> project -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .project("id")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT id FROM Foo) Sub";
+        test(actual, expected);
     }
 }

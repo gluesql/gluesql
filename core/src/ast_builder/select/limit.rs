@@ -267,5 +267,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select node -> limit node -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .limit(10)
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Foo LIMIT 10) Sub";
+        test(actual, expected);
     }
 }

@@ -282,8 +282,4 @@ test_case!(alias_as, async move {
          400        3             "Coffee".to_owned()         25
     ));
     test(actual, expected);
-
-    // let actual = table("Player")
-    //     .select()
-    //     .join("PlayerItem")
 });

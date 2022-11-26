@@ -245,5 +245,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select node -> filter node -> derived subquery
+        let actual = table("Bar")
+            .select()
+            .filter("id IS NULL")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Bar WHERE id IS NULL) Sub";
+        test(actual, expected);
     }
 }

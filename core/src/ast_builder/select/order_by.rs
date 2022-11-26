@@ -282,5 +282,20 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select -> order by node -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .order_by(vec!["name desc"])
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "
+            SELECT * FROM (
+                SELECT * FROM Foo
+                ORDER BY name DESC
+            ) Sub
+        ";
+        test(actual, expected);
     }
 }

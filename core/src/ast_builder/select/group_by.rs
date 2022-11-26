@@ -232,5 +232,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select -> group by -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .group_by("a")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a) Sub";
+        test(actual, expected);
     }
 }

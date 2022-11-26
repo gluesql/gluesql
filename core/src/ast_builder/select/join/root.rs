@@ -709,5 +709,24 @@ mod tests {
             gen_expected(other_join)
         };
         assert_eq!(actual, expected, "left join with alias");
+
+        let actual = table("App").select().alias_as("Sub").select().build();
+        let expected = "SELECT * FROM (SELECT * FROM App) Sub";
+        test(actual, expected);
+
+        // join -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "
+            SELECT * FROM (
+                SELECT * FROM Foo
+                INNER JOIN Bar
+            ) Sub
+            ";
+        test(actual, expected);
     }
 }

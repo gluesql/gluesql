@@ -240,5 +240,21 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected, "hash join -> join constraint");
+
+        // join -> on -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .on("Foo.id = Bar.id")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "
+            SELECT * FROM (
+                SELECT * FROM Foo
+                INNER JOIN Bar ON Foo.id = Bar.id
+            ) Sub
+            ";
+        test(actual, expected);
     }
 }
