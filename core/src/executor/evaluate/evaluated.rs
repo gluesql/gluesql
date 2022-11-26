@@ -169,12 +169,12 @@ impl<'a> Evaluated<'a> {
         let evaluated = match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.concat(r)),
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((&Value::try_from(l)?).concat(&r))
+                Evaluated::from((Value::try_from(l)?).concat(r))
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::from(l.concat(&Value::try_from(r)?))
+                Evaluated::from(l.concat(Value::try_from(r)?))
             }
-            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(&r)),
+            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(r)),
         };
 
         Ok(evaluated)

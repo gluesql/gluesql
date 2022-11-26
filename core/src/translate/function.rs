@@ -206,7 +206,6 @@ pub fn translate_function(sql_function: &SqlFunction) -> Result<Expr> {
         "VARIANCE" => translate_aggregate_one_arg(Aggregate::Variance, args, name),
         "STDEV" => translate_aggregate_one_arg(Aggregate::Stdev, args, name),
         "CONCAT" => {
-            check_len_min(name, args.len(), 1)?;
             let exprs = args
                 .into_iter()
                 .map(translate_expr)
