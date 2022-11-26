@@ -155,6 +155,18 @@ mod tests {
             Value::U16(100).try_into(),
             Ok(JsonValue::Number(100.into()))
         );
+        assert_eq!(
+            Value::U32(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+        assert_eq!(
+            Value::U64(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
+        assert_eq!(
+            Value::U128(100).try_into(),
+            Ok(JsonValue::Number(100.into()))
+        );
         assert!(JsonValue::try_from(Value::I128(i128::MAX)).is_ok());
 
         assert_eq!(
