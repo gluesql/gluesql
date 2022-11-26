@@ -4,8 +4,10 @@ use {
         ast::{Join, JoinConstraint, JoinOperator},
         ast_builder::{
             select::{NodeData, Prebuild},
+            table::TableType,
             ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableAliasNode, TableNode,
         },
         result::Result,
     },
@@ -100,6 +102,21 @@ impl<'a> JoinConstraintNode<'a> {
 
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+        let table_node = TableNode {
+            table_name: table_alias.to_owned(),
+            table_type: TableType::Derived {
+                subquery: Box::new(QueryNode::JoinConstraintNode(self)),
+                alias: table_alias.to_owned(),
+            },
+        };
+
+        TableAliasNode {
+            table_node,
+            table_alias: table_alias.to_owned(),
+        }
     }
 }
 

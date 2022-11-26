@@ -276,4 +276,31 @@ test_case!(select, async move {
         500       "Orange juice".to_owned()   3     "Drink".to_owned()
     ));
     test(actual, expected);
+
+    // select -> join -> on -> derived subquery
+    let actual = table("Item")
+        .alias_as("i")
+        .select()
+        .project("i.name AS item_name")
+        .project("category_id")
+        .alias_as("Sub1")
+        .select()
+        .join_as("Category", "c")
+        .on("c.id = Sub1.category_id")
+        .alias_as("Sub2")
+        .select()
+        .project("item_name")
+        .project("name as category_name")
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        item_name                 | category_name;
+        Str                       | Str;
+        "Pineapple".to_owned()      "Fruit".to_owned();
+        "Pork belly".to_owned()     "Meat".to_owned();
+        "Strawberry".to_owned()     "Fruit".to_owned();
+        "Coffee".to_owned()         "Drink".to_owned();
+        "Orange juice".to_owned()   "Drink".to_owned()
+    ));
+    test(actual, expected);
 });
