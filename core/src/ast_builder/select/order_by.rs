@@ -168,16 +168,16 @@ mod tests {
             .group_by("city")
             .having("COUNT(name) < 100")
             .order_by(ExprNode::Identifier("name".into()))
-            .limit(3)
             .offset(2)
+            .limit(3)
             .build();
         let expected = "
             SELECT * FROM Foo
             GROUP BY city
             HAVING COUNT(name) < 100
             ORDER BY name
-            LIMIT 3
             OFFSET 2
+            LIMIT 3
         ";
         test(actual, expected);
 

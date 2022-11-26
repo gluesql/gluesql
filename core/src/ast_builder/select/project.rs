@@ -3,8 +3,7 @@ use {
     crate::{
         ast_builder::{
             FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-            LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, SelectItemList,
-            SelectNode,
+            LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -16,7 +15,6 @@ pub enum PrevNode<'a> {
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
     Limit(LimitNode<'a>),
-    LimitOffset(LimitOffsetNode<'a>),
     Offset(OffsetNode<'a>),
     OffsetLimit(OffsetLimitNode<'a>),
     Join(Box<JoinNode<'a>>),
@@ -33,7 +31,6 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
             Self::Limit(node) => node.prebuild(),
-            Self::LimitOffset(node) => node.prebuild(),
             Self::Offset(node) => node.prebuild(),
             Self::OffsetLimit(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
@@ -66,12 +63,6 @@ impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
 impl<'a> From<LimitNode<'a>> for PrevNode<'a> {
     fn from(node: LimitNode<'a>) -> Self {
         PrevNode::Limit(node)
-    }
-}
-
-impl<'a> From<LimitOffsetNode<'a>> for PrevNode<'a> {
-    fn from(node: LimitOffsetNode<'a>) -> Self {
-        PrevNode::LimitOffset(node)
     }
 }
 
@@ -249,16 +240,6 @@ mod tests {
         // limit node -> project node -> build
         let actual = table("Item").select().limit(10).project("*").build();
         let expected = "SELECT * FROM Item LIMIT 10";
-        test(actual, expected);
-
-        // limit offset node -> project node -> build
-        let actual = table("Operator")
-            .select()
-            .limit(100)
-            .offset(50)
-            .project("name")
-            .build();
-        let expected = "SELECT name FROM Operator LIMIT 100 OFFSET 50";
         test(actual, expected);
 
         // offset node -> project node -> build

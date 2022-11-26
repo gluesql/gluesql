@@ -2,8 +2,7 @@ use {
     super::ExprNode,
     crate::ast_builder::{
         FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-        LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, QueryNode,
-        SelectNode,
+        OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
     },
 };
 
@@ -50,7 +49,6 @@ impl_from_select_nodes!(GroupByNode<'a>);
 impl_from_select_nodes!(HavingNode<'a>);
 impl_from_select_nodes!(FilterNode<'a>);
 impl_from_select_nodes!(LimitNode<'a>);
-impl_from_select_nodes!(LimitOffsetNode<'a>);
 impl_from_select_nodes!(OffsetNode<'a>);
 impl_from_select_nodes!(OffsetLimitNode<'a>);
 impl_from_select_nodes!(ProjectNode<'a>);
@@ -219,17 +217,6 @@ mod test {
         // from LimitNode
         let actual = col("id").in_list(table("FOO").select().filter("id IS NULL").limit(10));
         let expected = "id IN (SELECT * FROM FOO WHERE id IS NULL LIMIT 10)";
-        test_expr(actual, expected);
-
-        // from LimitOffsetNode
-        let actual = col("id").in_list(
-            table("World")
-                .select()
-                .filter("id > 2")
-                .limit(100)
-                .offset(3),
-        );
-        let expected = "id IN (SELECT * FROM World WHERE id > 2 OFFSET 3 LIMIT 100)";
         test_expr(actual, expected);
 
         // from OffsetNode

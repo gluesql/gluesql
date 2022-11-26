@@ -3,7 +3,7 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, LimitOffsetNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
+            JoinNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
         },
         result::Result,
     },
@@ -96,10 +96,6 @@ impl<'a> LimitNode<'a> {
             prev_node: prev_node.into(),
             expr: expr.into(),
         }
-    }
-
-    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitOffsetNode<'a> {
-        LimitOffsetNode::new(self, expr)
     }
 
     pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
@@ -204,6 +200,11 @@ mod tests {
             .limit(100)
             .build();
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
+        test(actual, expected);
+
+        // order by node -> limit node -> build
+        let actual = table("Hello").select().order_by("score").limit(3).build();
+        let expected = "SELECT * FROM Hello ORDER BY score LIMIT 3";
         test(actual, expected);
 
         // hash join node -> limit node -> build

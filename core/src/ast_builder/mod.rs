@@ -45,7 +45,7 @@ pub use {
     query::QueryNode,
     select::{
         FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode, LimitNode,
-        LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
     },
     select_item::SelectItemNode,
     select_item_list::SelectItemList,

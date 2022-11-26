@@ -3,7 +3,6 @@ mod group_by;
 mod having;
 mod join;
 mod limit;
-mod limit_offset;
 mod offset;
 mod offset_limit;
 mod order_by;
@@ -16,7 +15,6 @@ pub use {
     having::HavingNode,
     join::{HashJoinNode, JoinConstraintNode, JoinNode},
     limit::LimitNode,
-    limit_offset::LimitOffsetNode,
     offset::OffsetNode,
     offset_limit::OffsetLimitNode,
     order_by::OrderByNode,
