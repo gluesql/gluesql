@@ -22,6 +22,9 @@ impl PartialEq<Value> for f64 {
             I128(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             U8(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             U16(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
+            U32(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
+            U64(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
+            U128(rhs) => (lhs - (rhs as f64)).abs() < f64::EPSILON,
             F64(rhs) => (lhs - rhs).abs() < f64::EPSILON,
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| rhs == x)
@@ -41,6 +44,9 @@ impl PartialOrd<Value> for f64 {
             I128(rhs) => self.partial_cmp(&(rhs as f64)),
             U8(rhs) => self.partial_cmp(&(rhs as f64)),
             U16(rhs) => self.partial_cmp(&(rhs as f64)),
+            U32(rhs) => self.partial_cmp(&(rhs as f64)),
+            U64(rhs) => self.partial_cmp(&(rhs as f64)),
+            U128(rhs) => self.partial_cmp(&(rhs as f64)),
             F64(rhs) => self.partial_cmp(&rhs),
             Decimal(rhs) => Decimal::from_f64_retain(*self)
                 .map(|x| x.partial_cmp(&rhs))
@@ -64,6 +70,9 @@ impl TryBinaryOperator for f64 {
             I128(rhs) => Ok(F64(lhs + rhs as f64)),
             U8(rhs) => Ok(F64(lhs + rhs as f64)),
             U16(rhs) => Ok(F64(lhs + rhs as f64)),
+            U32(rhs) => Ok(F64(lhs + rhs as f64)),
+            U64(rhs) => Ok(F64(lhs + rhs as f64)),
+            U128(rhs) => Ok(F64(lhs + rhs as f64)),
             F64(rhs) => Ok(F64(lhs + rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| Ok(Decimal(x + rhs)))
@@ -89,6 +98,9 @@ impl TryBinaryOperator for f64 {
             I128(rhs) => Ok(F64(lhs - rhs as f64)),
             U8(rhs) => Ok(F64(lhs - rhs as f64)),
             U16(rhs) => Ok(F64(lhs - rhs as f64)),
+            U32(rhs) => Ok(F64(lhs - rhs as f64)),
+            U64(rhs) => Ok(F64(lhs - rhs as f64)),
+            U128(rhs) => Ok(F64(lhs - rhs as f64)),
             F64(rhs) => Ok(F64(lhs - rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| Ok(Decimal(x - rhs)))
@@ -114,6 +126,9 @@ impl TryBinaryOperator for f64 {
             I128(rhs) => Ok(F64(lhs * rhs as f64)),
             U8(rhs) => Ok(F64(lhs * rhs as f64)),
             U16(rhs) => Ok(F64(lhs * rhs as f64)),
+            U32(rhs) => Ok(F64(lhs * rhs as f64)),
+            U64(rhs) => Ok(F64(lhs * rhs as f64)),
+            U128(rhs) => Ok(F64(lhs * rhs as f64)),
             F64(rhs) => Ok(F64(lhs * rhs)),
             Interval(rhs) => Ok(Interval(lhs * rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
@@ -140,6 +155,9 @@ impl TryBinaryOperator for f64 {
             I128(rhs) => Ok(F64(lhs / rhs as f64)),
             U8(rhs) => Ok(F64(lhs / rhs as f64)),
             U16(rhs) => Ok(F64(lhs / rhs as f64)),
+            U32(rhs) => Ok(F64(lhs / rhs as f64)),
+            U64(rhs) => Ok(F64(lhs / rhs as f64)),
+            U128(rhs) => Ok(F64(lhs / rhs as f64)),
             F64(rhs) => Ok(F64(lhs / rhs)),
             Decimal(rhs) => Decimal::from_f64_retain(lhs)
                 .map(|x| Ok(Decimal(x * rhs)))
@@ -165,6 +183,9 @@ impl TryBinaryOperator for f64 {
             I128(rhs) => Ok(F64(lhs % rhs as f64)),
             U8(rhs) => Ok(F64(lhs % rhs as f64)),
             U16(rhs) => Ok(F64(lhs % rhs as f64)),
+            U32(rhs) => Ok(F64(lhs % rhs as f64)),
+            U64(rhs) => Ok(F64(lhs % rhs as f64)),
+            U128(rhs) => Ok(F64(lhs % rhs as f64)),
             F64(rhs) => Ok(F64(lhs % rhs)),
             Decimal(rhs) => match Decimal::from_f64_retain(lhs) {
                 Some(x) => x
