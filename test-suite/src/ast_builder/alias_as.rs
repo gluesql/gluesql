@@ -179,7 +179,7 @@ test_case!(alias_as, async move {
     ));
     test(actual, expected);
 
-    // select -> group_by -> derived subquery
+    // select -> project -> derived subquery -> select -> group_by -> derived subquery
     let actual = table("Category")
         .select()
         .project("category_name")
@@ -196,6 +196,25 @@ test_case!(alias_as, async move {
         "Fruit".to_owned();
         "Meat".to_owned();
         "Drink".to_owned()
+    ));
+    test(actual, expected);
+
+    // select -> project -> derived subquery -> select -> group_by -> having -> derived subquery
+    let actual = table("Category")
+        .select()
+        .project("category_name")
+        .alias_as("Sub1")
+        .select()
+        .group_by("category_name")
+        .having("category_name = 'Meat'")
+        .alias_as("Sub2")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        category_name;
+        Str;
+        "Meat".to_owned()
     ));
     test(actual, expected);
 
