@@ -1,3 +1,5 @@
+use crate::ast_builder::{table::TableType, QueryNode, TableAliasNode, TableNode};
+
 use {
     super::{NodeData, Prebuild},
     crate::{
@@ -100,6 +102,21 @@ impl<'a> LimitNode<'a> {
 
     pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+        let table_node = TableNode {
+            table_name: table_alias.to_owned(),
+            table_type: TableType::Derived {
+                subquery: Box::new(QueryNode::LimitNode(self)),
+                alias: table_alias.to_owned(),
+            },
+        };
+
+        TableAliasNode {
+            table_node,
+            table_alias: table_alias.to_owned(),
+        }
     }
 }
 

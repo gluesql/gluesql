@@ -210,4 +210,19 @@ test_case!(alias_as, async move {
         500        3             "Orange juice".to_owned()   60
     ));
     test(actual, expected);
+
+    // select -> limit -> derived subquery
+    let actual = table("Item")
+        .select()
+        .limit(1)
+        .alias_as("Sub")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        item_id  | category_id | item_name                 | price;
+        I64      | I64         | Str                       | I64;
+        100        1             "Pineapple".to_owned()      40
+    ));
+    test(actual, expected);
 });
