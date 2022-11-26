@@ -1,9 +1,6 @@
 use {
     crate::*,
-    gluesql_core::{
-        data::ValueError,
-        prelude::Value::{self, *},
-    },
+    gluesql_core::{data::ValueError, prelude::Value::*},
 };
 
 test_case!(concat, async move {
@@ -84,7 +81,7 @@ test_case!(concat, async move {
         Ok(select!(
            myconcat
            List;
-           vec![I64(1), I64(2), I64(3), Value::Str("one".into()), Value::Str("two".into()), Value::Str("three".into())]
+           vec![I64(1), I64(2), I64(3), Str("one".to_owned()), Str("two".to_owned()), Str("three".to_owned())]
         ))
     );
 });
