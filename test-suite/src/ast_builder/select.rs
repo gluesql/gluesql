@@ -172,10 +172,63 @@ test_case!(select, async move {
     ));
     test(actual, expected);
 
-    // derived subquery
+    // select -> derived subquery
+    let actual = table("Item")
+        .select()
+        .alias_as("Sub")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        id  | category_id | name                      | price;
+        I64 | I64         | Str                       | I64;
+        100   1             "Pineapple".to_owned()      40;
+        200   2             "Pork belly".to_owned()     90;
+        300   1             "Strawberry".to_owned()     30;
+        400   3             "Coffee".to_owned()         25;
+        500   3             "Orange juice".to_owned()   60
+    ));
+    test(actual, expected);
+
+    // select -> filter -> derived subquery
+    let actual = table("Item")
+        .select()
+        .filter("id = 300")
+        .alias_as("Sub")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        id  | category_id | name                      | price;
+        I64 | I64         | Str                       | I64;
+        300   1             "Strawberry".to_owned()     30
+    ));
+    test(actual, expected);
+
+    // select -> order_by -> derived subquery
     let actual = table("Item")
         .select()
         .order_by("price DESC")
+        .alias_as("Sub")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        id  | category_id | name                      | price;
+        I64 | I64         | Str                       | I64;
+        200   2             "Pork belly".to_owned()     90;
+        500   3             "Orange juice".to_owned()   60;
+        100   1             "Pineapple".to_owned()      40;
+        300   1             "Strawberry".to_owned()     30;
+        400   3             "Coffee".to_owned()         25
+    ));
+    test(actual, expected);
+
+    let actual = table("Item")
+        .alias_as("i")
+        .select()
+        .join_as("Category", "c")
+        .on("c.id = i.category_id")
         .alias_as("Sub")
         .select()
         .execute(glue)
