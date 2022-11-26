@@ -41,7 +41,15 @@ impl TryFrom<Value> for Expr {
             Value::U16(v) => Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_u16(v).ok_or(ValueToExprConversionFailure)?,
             )),
-
+            Value::U32(v) => Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u32(v).ok_or(ValueToExprConversionFailure)?,
+            )),
+            Value::U64(v) => Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u64(v).ok_or(ValueToExprConversionFailure)?,
+            )),
+            Value::U128(v) => Expr::Literal(AstLiteral::Number(
+                BigDecimal::from_u128(v).ok_or(ValueToExprConversionFailure)?,
+            )),
             Value::F64(v) => Expr::Literal(AstLiteral::Number(
                 BigDecimal::from_f64(v).ok_or(ValueToExprConversionFailure)?,
             )),

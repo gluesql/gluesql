@@ -19,6 +19,7 @@ impl PartialEq<Value> for Decimal {
             I128(other) => *self == Decimal::from(*other),
             U8(other) => *self == Decimal::from(*other),
             U16(other) => *self == Decimal::from(*other),
+            U32(other) => *self == Decimal::from(*other),
             F64(other) => Decimal::from_f64_retain(*other)
                 .map(|x| *self == x)
                 .unwrap_or(false),
@@ -37,6 +38,7 @@ impl PartialOrd<Value> for Decimal {
             I128(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             U8(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             U16(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
+            U32(rhs) => self.partial_cmp(&(Decimal::from(rhs))),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| self.partial_cmp(&x))
                 .unwrap_or(None),
@@ -114,6 +116,17 @@ impl TryBinaryOperator for Decimal {
                     ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         rhs: U16(rhs),
+                        operator: NumericBinaryOperator::Add,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            U32(rhs) => lhs
+                .checked_add(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: U32(rhs),
                         operator: NumericBinaryOperator::Add,
                     }
                     .into()
@@ -213,6 +226,17 @@ impl TryBinaryOperator for Decimal {
                     .into()
                 })
                 .map(Decimal),
+            U32(rhs) => lhs
+                .checked_sub(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: U32(rhs),
+                        operator: NumericBinaryOperator::Subtract,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs - x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
@@ -302,6 +326,17 @@ impl TryBinaryOperator for Decimal {
                     ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         rhs: U16(rhs),
+                        operator: NumericBinaryOperator::Multiply,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            U32(rhs) => lhs
+                .checked_mul(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: U32(rhs),
                         operator: NumericBinaryOperator::Multiply,
                     }
                     .into()
@@ -401,6 +436,17 @@ impl TryBinaryOperator for Decimal {
                     .into()
                 })
                 .map(Decimal),
+            U32(rhs) => lhs
+                .checked_div(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: U32(rhs),
+                        operator: NumericBinaryOperator::Divide,
+                    }
+                    .into()
+                })
+                .map(Decimal),
             F64(rhs) => Decimal::from_f64_retain(rhs)
                 .map(|x| Ok(Decimal(lhs / x)))
                 .unwrap_or_else(|| Err(ValueError::FloatToDecimalConversionFailure(rhs).into())),
@@ -490,6 +536,17 @@ impl TryBinaryOperator for Decimal {
                     ValueError::BinaryOperationOverflow {
                         lhs: Decimal(lhs),
                         rhs: U16(rhs),
+                        operator: NumericBinaryOperator::Modulo,
+                    }
+                    .into()
+                })
+                .map(Decimal),
+            U32(rhs) => lhs
+                .checked_rem(Decimal::from(rhs))
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: Decimal(lhs),
+                        rhs: U32(rhs),
                         operator: NumericBinaryOperator::Modulo,
                     }
                     .into()
