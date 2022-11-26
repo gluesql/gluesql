@@ -467,14 +467,6 @@ impl<'a> Evaluated<'a> {
         count: Option<Evaluated<'a>>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Value(v) => match v {
-                Value::Str(st) => {
-                    let len = st.len();
-                    (st, 0..len)
-                }
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
-            },
             Evaluated::Literal(l) => {
                 let v = Value::try_from(l)?;
                 match v {
@@ -490,6 +482,14 @@ impl<'a> Evaluated<'a> {
                 source: s,
                 range: r,
             } => (s, r),
+            Evaluated::Value(v) => match v {
+                Value::Str(st) => {
+                    let len = st.len();
+                    (st, 0..len)
+                }
+                Value::Null => return Ok(Evaluated::from(Value::Null)),
+                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+            },
         };
         let start = eval_to_int!(name, start) - 1;
         let count = match count {
