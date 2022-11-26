@@ -1,5 +1,6 @@
 use {
     crate::{
+        ast_builder::AstBuilderError,
         data::{
             IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
         },
@@ -36,6 +37,9 @@ pub enum Error {
 
     #[error(transparent)]
     Translate(#[from] TranslateError),
+
+    #[error(transparent)]
+    AstBuilder(#[from] AstBuilderError),
 
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
@@ -81,7 +85,7 @@ pub enum Error {
     Plan(#[from] PlanError),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub type MutResult<T, U> = std::result::Result<(T, U), (T, Error)>;
 
 impl PartialEq for Error {
@@ -92,6 +96,7 @@ impl PartialEq for Error {
             (Parser(e), Parser(e2)) => e == e2,
             (StorageMsg(e), StorageMsg(e2)) => e == e2,
             (Translate(e), Translate(e2)) => e == e2,
+            (AstBuilder(e), AstBuilder(e2)) => e == e2,
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
             #[cfg(feature = "index")]
@@ -135,8 +140,7 @@ impl<V> TrySelf<V> for Result<V> {
 }
 
 mod stringify {
-    use serde::Serializer;
-    use std::fmt::Display;
+    use {serde::Serializer, std::fmt::Display};
 
     pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where

@@ -9,11 +9,11 @@ use {
 
 test_case!(map, async move {
     run!(
-        r#"
+        "
 CREATE TABLE MapType (
-    id INTEGER NULL DEFAULT UNWRAP(NULL, "a"),
+    id INTEGER NULL DEFAULT UNWRAP(NULL, 'a'),
     nested MAP
-)"#
+)"
     );
 
     run!(
@@ -37,13 +37,13 @@ INSERT INTO MapType VALUES
     );
 
     test!(
-        r#"SELECT
+        "SELECT
             id,
-            UNWRAP(nested, "a.foo") || ".yeah" AS foo,
+            UNWRAP(nested, 'a.foo') || '.yeah' AS foo,
             UNWRAP(nested, 'a.b.c.d') as good,
             UNWRAP(nested, 'a.b.c.d') * 2 as good2,
-            UNWRAP(nested, "a.b") as b
-        FROM MapType"#,
+            UNWRAP(nested, 'a.b') as b
+        FROM MapType",
         Ok(select_with_null!(
             id     | foo          | good    | good2   | b;
             I64(1)   Null           Null      Null      Null;
@@ -53,20 +53,20 @@ INSERT INTO MapType VALUES
     );
 
     test!(
-        r#"SELECT
+        "SELECT
             id,
-            UNWRAP(NULL, "a.b") as foo,
+            UNWRAP(NULL, 'a.b') as foo,
             UNWRAP(nested, NULL) as bar
-        FROM MapType LIMIT 1"#,
+        FROM MapType LIMIT 1",
         Ok(select_with_null!(id | foo | bar; I64(1) Null Null))
     );
 
     run!(
-        r#"
+        "
 CREATE TABLE MapType2 (
     id INTEGER,
     nested MAP
-)"#
+)"
     );
 
     run!(
@@ -79,7 +79,7 @@ INSERT INTO MapType2 VALUES
     );
 
     test!(
-        r#"SELECT id, nested["b"] as b FROM MapType2"#,
+        "SELECT id, nested['b'] as b FROM MapType2",
         Ok(select_with_null!(
             id     | b;
             I64(1)   I64(10);
@@ -90,9 +90,9 @@ INSERT INTO MapType2 VALUES
 
     test! {
         name: "select index expr without alias",
-        sql: r#"SELECT id, nested["b"] FROM MapType2"#,
+        sql: "SELECT id, nested['b'] FROM MapType2",
         expected: Ok(select_with_null!(
-            id     | r#"nested["b"]"#;
+            id     | "nested['b']";
             I64(1)   I64(10);
             I64(2)   I64(20);
             I64(3)   I64(30)
@@ -101,12 +101,12 @@ INSERT INTO MapType2 VALUES
 
     test! {
         name: "index expr with non-existent key from MapType Value returns Null",
-        sql: r#"SELECT
+        sql: "SELECT
             id,
-            nested["a"]["red"] AS fruit,
-            nested["a"]["blue"] + nested["b"] as sum,
-            nested["c"] AS c
-        FROM MapType2"#,
+            nested['a']['red'] AS fruit,
+            nested['a']['blue'] + nested['b'] as sum,
+            nested['c'] AS c
+        FROM MapType2",
         expected: Ok(select_with_null!(
                 id     | fruit        | sum      | c;
                 I64(1)   s("apple")     I64(11)    Null;
@@ -116,27 +116,27 @@ INSERT INTO MapType2 VALUES
     }
 
     test!(
-        r#"SELECT UNWRAP("abc", "a.b.c") FROM MapType"#,
+        "SELECT UNWRAP('abc', 'a.b.c') FROM MapType",
         Err(EvaluateError::FunctionRequiresMapValue("UNWRAP".to_owned()).into())
     );
     test!(
-        r#"SELECT UNWRAP(id, "a.b.c") FROM MapType"#,
+        "SELECT UNWRAP(id, 'a.b.c') FROM MapType",
         Err(ValueError::SelectorRequiresMapOrListTypes.into())
     );
     test!(
-        r#"SELECT id, nested["a"]["blue"]["first"] FROM MapType2"#,
+        "SELECT id, nested['a']['blue']['first'] FROM MapType2",
         Err(ValueError::SelectorRequiresMapOrListTypes.into())
     );
     test!(
-        r#"SELECT id FROM MapType GROUP BY nested"#,
+        "SELECT id FROM MapType GROUP BY nested",
         Err(KeyError::MapTypeKeyNotSupported.into())
     );
     test!(
-        r#"INSERT INTO MapType VALUES (1, '{{ ok [1, 2, 3] }');"#,
-        Err(ValueError::InvalidJsonString.into())
+        "INSERT INTO MapType VALUES (1, '{{ ok [1, 2, 3] }');",
+        Err(ValueError::InvalidJsonString("{{ ok [1, 2, 3] }".to_owned()).into())
     );
     test!(
-        r#"INSERT INTO MapType VALUES (1, '[1, 2, 3]');"#,
+        "INSERT INTO MapType VALUES (1, '[1, 2, 3]');",
         Err(ValueError::JsonObjectTypeRequired.into())
     );
 });

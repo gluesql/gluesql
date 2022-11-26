@@ -25,7 +25,7 @@ mod sled_multi_threaded {
         let insert_storage = storage.clone();
         let insert_thread = thread::spawn(move || {
             let mut glue = Glue::new(insert_storage);
-            let query = "INSERT INTO greet (name) VALUES (\"Foo\")";
+            let query = "INSERT INTO greet (name) VALUES ('Foo')";
 
             glue.execute(query).unwrap();
         });

@@ -1,5 +1,8 @@
 use {
-    crate::{ast::DataType, ast::DateTimeField, data::Value},
+    crate::{
+        ast::{DataType, DateTimeField},
+        data::Value,
+    },
     serde::Serialize,
     std::fmt::Debug,
     strum_macros::Display,
@@ -152,8 +155,8 @@ pub enum ValueError {
     #[error("big endian export not supported for {0} type")]
     BigEndianExportNotSupported(String),
 
-    #[error("invalid json string")]
-    InvalidJsonString,
+    #[error("invalid json string: {0}")]
+    InvalidJsonString(String),
 
     #[error("json object type is required")]
     JsonObjectTypeRequired,
@@ -177,8 +180,11 @@ pub enum ValueError {
     #[error("non numeric value in sqrt {0:?}")]
     SqrtOnNonNumeric(Value),
 
-    #[error("unsupported value by position function: from_str(from_str:?), sub_str(sub_str:?)")]
-    UnSupportedValueByPositionFunction { from_str: Value, sub_str: Value },
+    #[error("non-string parameter in position: {} IN {}", String::from(.from), String::from(.sub))]
+    NonStringParameterInPosition { from: Value, sub: Value },
+
+    #[error("failed to convert Value to Expr")]
+    ValueToExprConversionFailure,
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Display)]

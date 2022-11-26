@@ -82,11 +82,13 @@ impl<'a> From<&'a Expr> for PlanExpr<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::PlanExpr;
-    use crate::{
-        ast::{Expr, Query},
-        parse_sql::{parse_expr, parse_query},
-        translate::{translate_expr, translate_query},
+    use {
+        super::PlanExpr,
+        crate::{
+            ast::{Expr, Query},
+            parse_sql::{parse_expr, parse_query},
+            translate::{translate_expr, translate_query},
+        },
     };
 
     fn expr(sql: &str) -> Expr {
@@ -165,13 +167,13 @@ mod tests {
 
         let actual = expr("name LIKE '_foo%'");
         let target = expr("name");
-        let pattern = expr(r#""_foo%""#);
+        let pattern = expr("'_foo%'");
         let expected = PlanExpr::TwoExprs(&target, &pattern);
         test!(actual, expected);
 
         let actual = expr("name ILIKE '_foo%'");
         let target = expr("name");
-        let pattern = expr(r#""_foo%""#);
+        let pattern = expr("'_foo%'");
         let expected = PlanExpr::TwoExprs(&target, &pattern);
         test!(actual, expected);
 

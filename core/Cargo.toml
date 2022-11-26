@@ -1,6 +1,6 @@
 [package]
 name = "gluesql-core"
-version = "0.13.0"
+version = "0.13.1"
 edition = "2021"
 authors = ["Taehoon Moon <taehoon.moon@outlook.com>"]
 description = "GlueSQL - Open source SQL database engine fully written in Rust with pure functional execution layer, easily swappable storage and web assembly support!"
@@ -17,7 +17,7 @@ async-recursion = "1"
 cfg-if = "1"
 futures-enum = "0.1.17"
 futures = "0.3"
-chrono = { version = "0.4.22", features = ["serde", "wasmbind"] }
+chrono = { version = "=0.4.23", features = ["serde", "wasmbind"] }
 rust_decimal = { version = "1", features = ["serde-str"] }
 im-rc = "15"
 iter-enum = "1"

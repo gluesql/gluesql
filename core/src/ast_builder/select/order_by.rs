@@ -182,7 +182,7 @@ mod tests {
         test(actual, expected);
 
         // filter node -> order by node -> build
-        let actaul = table("Foo")
+        let actual = table("Foo")
             .select()
             .filter("id > 10")
             .filter("id < 20")
@@ -192,7 +192,7 @@ mod tests {
             SELECT * FROM Foo
             WHERE id > 10 AND id < 20
             ORDER BY id ASC";
-        test(actaul, expected);
+        test(actual, expected);
 
         // join node -> order by node -> build
         let actual = table("Foo")

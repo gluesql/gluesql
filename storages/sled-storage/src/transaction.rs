@@ -9,8 +9,7 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         data::{Row, Schema},
-        result::MutResult,
-        result::{Error, Result},
+        result::{Error, MutResult, Result},
         store::Transaction,
     },
     serde::{de::DeserializeOwned, Serialize},

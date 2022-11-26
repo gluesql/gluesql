@@ -244,7 +244,7 @@ mod tests {
         test(actual, expected);
 
         // select node -> join node -> project node
-        let acutal = table("Orders")
+        let actual = table("Orders")
             .select()
             .join("Customers")
             .project(vec![
@@ -257,7 +257,7 @@ mod tests {
             SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate 
             FROM Orders INNER JOIN Customers
         ";
-        test(acutal, expected);
+        test(actual, expected);
     }
 
     #[test]

@@ -72,13 +72,13 @@ mod tests {
             .when_then(num(1), text("a"))
             .when_then(2, text("b"))
             .or_else(text("c"));
-        let expected = r#"
+        let expected = "
             CASE id
-              WHEN 1 THEN "a"
-              WHEN 2 THEN "b"
-              ELSE "c"
+              WHEN 1 THEN 'a'
+              WHEN 2 THEN 'b'
+              ELSE 'c'
             END
-            "#;
+            ";
         test_expr(actual, expected);
 
         let actual = col("id")
@@ -87,12 +87,12 @@ mod tests {
             .when_then(true, text("a"))
             .when_then(false, text("b"))
             .end();
-        let expected = r#"
+        let expected = "
             CASE id > 10
-              WHEN True THEN "a"
-              WHEN False THEN "b"
+              WHEN True THEN 'a'
+              WHEN False THEN 'b'
             END
-            "#;
+            ";
         test_expr(actual, expected);
     }
 

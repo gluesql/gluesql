@@ -5,21 +5,21 @@ use {
 
 test_case!(timestamp, async move {
     run!(
-        r#"
+        "
 CREATE TABLE TimestampLog (
     id INTEGER,
     t1 TIMESTAMP,
     t2 TIMESTAMP,
-)"#
+)"
     );
 
     run!(
-        r#"
+        "
 INSERT INTO TimestampLog VALUES
-    (1, "2020-06-11 11:23:11Z",           "2021-03-01"),
-    (2, "2020-09-30 12:00:00 -07:00",     "1989-01-01T00:01:00+09:00"),
-    (3, "2021-04-30T07:00:00.1234-17:00", "2021-05-01T09:00:00.1234+09:00");
-"#
+    (1, '2020-06-11 11:23:11Z',           '2021-03-01'),
+    (2, '2020-09-30 12:00:00 -07:00',     '1989-01-01T00:01:00+09:00'),
+    (3, '2021-04-30T07:00:00.1234-17:00', '2021-05-01T09:00:00.1234+09:00');
+"
     );
 
     macro_rules! t {
@@ -58,7 +58,7 @@ INSERT INTO TimestampLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM TimestampLog WHERE t1 = "2020-06-11T14:23:11+0300";"#,
+        "SELECT * FROM TimestampLog WHERE t1 = '2020-06-11T14:23:11+0300';",
         Ok(select!(
             id  | t1                        | t2
             I64 | Timestamp                 | Timestamp;
@@ -67,7 +67,7 @@ INSERT INTO TimestampLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM TimestampLog WHERE t2 < TIMESTAMP "2000-01-01";"#,
+        "SELECT * FROM TimestampLog WHERE t2 < TIMESTAMP '2000-01-01';",
         Ok(select!(
             id  | t1                        | t2
             I64 | Timestamp                 | Timestamp;
@@ -76,7 +76,7 @@ INSERT INTO TimestampLog VALUES
     );
 
     test!(
-        r#"SELECT * FROM TimestampLog WHERE TIMESTAMP "1999-01-03" < "2000-01-01";"#,
+        "SELECT * FROM TimestampLog WHERE TIMESTAMP '1999-01-03' < '2000-01-01';",
         Ok(select!(
             id  | t1                             | t2
             I64 | Timestamp                      | Timestamp;
@@ -98,11 +98,11 @@ INSERT INTO TimestampLog VALUES
     );
 
     test!(
-        r#"SELECT
+        "SELECT
             id,
-            t1 - INTERVAL "1" DAY AS sub,
-            t2 + INTERVAL "1" MONTH AS add
-        FROM TimestampLog;"#,
+            t1 - INTERVAL '1' DAY AS sub,
+            t2 + INTERVAL '1' MONTH AS add
+        FROM TimestampLog;",
         Ok(select!(
             id  | sub                            | add
             I64 | Timestamp                      | Timestamp;
@@ -113,7 +113,7 @@ INSERT INTO TimestampLog VALUES
     );
 
     test!(
-        r#"INSERT INTO TimestampLog VALUES (1, "12345-678", "2021-05-01")"#,
+        "INSERT INTO TimestampLog VALUES (1, '12345-678', '2021-05-01')",
         Err(ValueError::FailedToParseTimestamp("12345-678".to_owned()).into())
     );
 });

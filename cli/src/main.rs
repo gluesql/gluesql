@@ -1,3 +1,3 @@
 fn main() {
-    gluesql_cli::run();
+    gluesql_cli::run().unwrap();
 }

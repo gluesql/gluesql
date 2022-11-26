@@ -461,7 +461,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = r#"VALUES (1, "glue", 3), (2, "sql", 2)"#.to_owned();
+        let actual = "VALUES (1, 'glue', 3), (2, 'sql', 2)".to_owned();
         let expected = SetExpr::Values(Values(vec![
             vec![
                 Expr::Literal(AstLiteral::Number(BigDecimal::from_str("1").unwrap())),
@@ -480,7 +480,7 @@ mod tests {
 
     #[test]
     fn to_sql_select() {
-        let actual = r#"SELECT * FROM FOO AS F GROUP BY name HAVING name = "glue""#.to_owned();
+        let actual = "SELECT * FROM FOO AS F GROUP BY name HAVING name = 'glue'".to_owned();
         let expected = Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {
@@ -505,7 +505,7 @@ mod tests {
         .to_sql();
         assert_eq!(actual, expected);
 
-        let actual = r#"SELECT * FROM FOO WHERE name = "glue""#.to_owned();
+        let actual = "SELECT * FROM FOO WHERE name = 'glue'".to_owned();
         let expected = Select {
             projection: vec![SelectItem::Wildcard],
             from: TableWithJoins {

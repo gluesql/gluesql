@@ -5,19 +5,19 @@ use {
 
 test_case!(nullable, async move {
     run!(
-        r#"
+        "
 CREATE TABLE Test (
     id INTEGER NULL,
-    num INTEGER,
+    num INTEGER NOT NULL,
     name TEXT
-)"#
+)"
     );
     run!(
         "
         INSERT INTO Test (id, num, name) VALUES
-            (NULL, 2, \"Hello\"),
-            (   1, 9, \"World\"),
-            (   3, 4, \"Great\");
+            (NULL, 2, 'Hello'),
+            (   1, 9, 'World'),
+            (   3, 4, 'Great');
     "
     );
 
@@ -32,7 +32,7 @@ CREATE TABLE Test (
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE id IS NULL AND name = \'Hello\'",
+            "SELECT id, num FROM Test WHERE id IS NULL AND name = 'Hello'",
             select_with_null!(
                 id   | num;
                 Null   I64(2)
@@ -126,11 +126,11 @@ CREATE TABLE Test (
             ),
         ),
         (
-            "SELECT id, num FROM Test WHERE \"NULL\" IS NULL",
+            "SELECT id, num FROM Test WHERE 'NULL' IS NULL",
             select!(id | num),
         ),
         (
-            "SELECT id, num FROM Test WHERE \"NULL\" IS NOT NULL",
+            "SELECT id, num FROM Test WHERE 'NULL' IS NOT NULL",
             select_with_null!(
                 id     | num;
                 Null     I64(2);
@@ -231,7 +231,7 @@ CREATE TABLE Test (
             )),
         ),
         (
-            r#"INSERT INTO Test VALUES (1, NULL, "ok")"#,
+            "INSERT INTO Test VALUES (1, NULL, 'ok')",
             Err(ValueError::NullValueOnNotNullField.into()),
         ),
     ];
@@ -251,7 +251,7 @@ test_case!(nullable_text, async move {
     "
     );
 
-    run!("INSERT INTO Foo (id, name) VALUES (1, \"Hello\"), (2, Null);");
+    run!("INSERT INTO Foo (id, name) VALUES (1, 'Hello'), (2, Null);");
 });
 
 test_case!(nullable_implicit_insert, async move {

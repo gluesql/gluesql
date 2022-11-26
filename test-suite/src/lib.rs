@@ -46,7 +46,7 @@ macro_rules! declare_test_fn {
         #[$test]
         async fn $title() {
             let path = stringify!($title);
-            let storage = $storage::new(path);
+            let storage = $storage::new(path).await;
 
             $func(storage).await;
         }

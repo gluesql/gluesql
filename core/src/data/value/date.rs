@@ -55,7 +55,7 @@ pub fn parse_timestamp(v: &str) -> Option<NaiveDateTime> {
     } else if let Ok(v) = v.parse::<NaiveDateTime>() {
         return Some(v);
     } else if let Ok(v) = v.parse::<NaiveDate>() {
-        return Some(v.and_hms(0, 0, 0));
+        return v.and_hms_opt(0, 0, 0);
     }
 
     let forms = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S%.f"];

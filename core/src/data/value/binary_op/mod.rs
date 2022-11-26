@@ -2,9 +2,7 @@ use crate::{prelude::Value, result::Result};
 
 mod decimal;
 mod f64;
-mod i128;
-mod i32;
-mod i64;
+
 mod integer;
 
 pub trait TryBinaryOperator {

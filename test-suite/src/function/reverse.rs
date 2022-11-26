@@ -9,11 +9,11 @@ use {
 test_case!(reverse, async move {
     let test_cases = [
         (
-            r#"CREATE TABLE Item (name TEXT DEFAULT REVERSE("world"))"#,
+            "CREATE TABLE Item (name TEXT DEFAULT REVERSE('world'))",
             Ok(Payload::Create),
         ),
         (
-            r#"INSERT INTO Item VALUES ("Let's meet")"#,
+            "INSERT INTO Item VALUES ('Let''s meet')",
             Ok(Payload::Insert(1)),
         ),
         (
@@ -25,19 +25,16 @@ test_case!(reverse, async move {
             )),
         ),
         (
-            r#"SELECT REVERSE(1) AS test FROM Item"#,
+            "SELECT REVERSE(1) AS test FROM Item",
             Err(EvaluateError::FunctionRequiresStringValue("REVERSE".to_owned()).into()),
         ),
         (
             "CREATE TABLE NullTest (name TEXT null)",
             Ok(Payload::Create),
         ),
+        ("INSERT INTO NullTest VALUES (null)", Ok(Payload::Insert(1))),
         (
-            r#"INSERT INTO NullTest VALUES (null)"#,
-            Ok(Payload::Insert(1)),
-        ),
-        (
-            r#"SELECT REVERSE(name) AS test FROM NullTest"#,
+            "SELECT REVERSE(name) AS test FROM NullTest",
             Ok(select_with_null!(test; Value::Null)),
         ),
     ];

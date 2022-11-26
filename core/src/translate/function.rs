@@ -34,7 +34,7 @@ pub fn translate_trim(
     })))
 }
 
-pub fn translate_positon(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr> {
+pub fn translate_position(sub_expr: &SqlExpr, from_expr: &SqlExpr) -> Result<Expr> {
     let from_expr = translate_expr(from_expr)?;
     let sub_expr = translate_expr(sub_expr)?;
     Ok(Expr::Function(Box::new(Function::Position {

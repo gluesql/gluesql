@@ -31,14 +31,14 @@ test_case!(like_ilike, async move {
     "
     );
     run!(
-        r#"
+        "
         INSERT INTO Item (id, name) VALUES
-            (1,    "Amelia"),
-            (2,      "Doll"),
-            (3, "Gascoigne"),
-            (4,   "Gehrman"),
-            (5,     "Maria");
-    "#
+            (1,    'Amelia'),
+            (2,      'Doll'),
+            (3, 'Gascoigne'),
+            (4,   'Gehrman'),
+            (5,     'Maria');
+    "
     );
 
     let test_cases = [
