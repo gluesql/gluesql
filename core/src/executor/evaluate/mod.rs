@@ -341,8 +341,7 @@ async fn evaluate_function<'a>(
                 Some(v) => Some(eval(v).await?),
                 None => None,
             };
-
-            f::substr(name, expr, start, count)
+            expr.substr(name, start, count)
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr).await?),
         Function::Chr(expr) => f::chr(name, eval(expr).await?),

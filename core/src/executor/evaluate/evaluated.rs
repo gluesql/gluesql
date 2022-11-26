@@ -1,5 +1,3 @@
-use std::ops::Range;
-
 use {
     super::error::EvaluateError,
     crate::{
@@ -7,10 +5,13 @@ use {
         data::{Key, Literal, Value},
         result::{Error, Result},
     },
-    std::cmp::Ordering,
+    std::{
+        cmp::{max, min, Ordering},
+        ops::Range,
+    },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Evaluated<'a> {
     Literal(Literal<'a>),
     StrSlice { source: String, range: Range<usize> },
@@ -29,7 +30,19 @@ impl TryFrom<Evaluated<'_>> for Value {
     fn try_from(e: Evaluated<'_>) -> Result<Value> {
         match e {
             Evaluated::Literal(v) => Value::try_from(v),
-            Evaluated::StrSlice { source, range: _ } => Ok(Value::Str(source)),
+            Evaluated::StrSlice {
+                source: s,
+                range: r,
+            } => {
+                println!(
+                    "try from Evaluated to Value: {:?}",
+                    Value::Str(s[r.clone()].to_owned())
+                );
+                match s.as_str() {
+                    "NULL" => Ok(Value::Null),
+                    _ => Ok(Value::Str(s[r].to_owned())),
+                }
+            }
             Evaluated::Value(v) => Ok(v),
         }
     }
@@ -233,6 +246,27 @@ where
     }
 }
 
+macro_rules! eval_to_int {
+    ($name: expr, $evaluated: expr) => {
+        match $evaluated.try_into()? {
+            Value::I64(num) => num,
+            Value::Null => {
+                return Ok(Evaluated::from(Value::Null));
+            }
+            _ => {
+                return Err(EvaluateError::FunctionRequiresIntegerValue($name).into());
+            }
+        }
+    };
+}
+
+pub fn val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
+    match v {
+        Value::Null | Value::Str(_) => return Ok(Evaluated::from(Value::Null)),
+        _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+    }
+}
+
 impl<'a> Evaluated<'a> {
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
@@ -426,14 +460,74 @@ impl<'a> Evaluated<'a> {
         }
     }
 
+    pub fn substr(
+        self,
+        name: String,
+        start: Evaluated<'a>,
+        count: Option<Evaluated<'a>>,
+    ) -> Result<Evaluated<'a>> {
+        let (source, range) = match self {
+            Evaluated::Value(v) => match v {
+                Value::Str(st) => {
+                    let len = st.len();
+                    (st, 0..len)
+                }
+                Value::Null => return Ok(Evaluated::from(Value::Null)),
+                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+            },
+            Evaluated::Literal(l) => {
+                let v = Value::try_from(l)?;
+                match v {
+                    Value::Str(st) => {
+                        let len = st.len();
+                        (st, 0..len)
+                    }
+                    Value::Null => return Ok(Evaluated::from(Value::Null)),
+                    _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                }
+            }
+            Evaluated::StrSlice {
+                source: s,
+                range: r,
+            } => (s, r),
+        };
+        let start = eval_to_int!(name, start) - 1;
+        let count = match count {
+            Some(v) => eval_to_int!(name, v),
+            None => source.len() as i64,
+        };
+
+        let end = if count < 0 {
+            return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
+        } else {
+            min(
+                max(range.start as i64 + start + count, 0),
+                source.len() as i64,
+            ) as usize
+        };
+
+        let start = min(max(start + range.start as i64, 0), source.len() as i64) as usize;
+
+        Ok(Evaluated::StrSlice {
+            source,
+            range: start..end,
+        })
+    }
+
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
         let value = match self {
             Evaluated::Literal(v) => Value::try_from_literal(data_type, &v)?,
             Evaluated::Value(v) => v,
             Evaluated::StrSlice {
                 source: s,
-                range: _,
-            } => Value::Str(s),
+                range: r,
+            } => {
+                println!(
+                    "try into value function : {:?}",
+                    Value::Str(s[r.clone()].to_owned())
+                );
+                Value::Str(s[r].to_owned())
+            }
         };
 
         value.validate_null(nullable)?;

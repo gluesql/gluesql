@@ -5,10 +5,7 @@ use {
         data::Value,
         result::Result,
     },
-    std::{
-        cmp::{max, min},
-        ops::ControlFlow,
-    },
+    std::ops::ControlFlow,
     uuid::Uuid,
 };
 
@@ -267,33 +264,6 @@ pub fn repeat<'a>(name: String, expr: Evaluated<'_>, num: Evaluated<'_>) -> Resu
     let value = expr.repeat(num);
 
     Ok(Evaluated::from(Value::Str(value)))
-}
-
-pub fn substr<'a>(
-    name: String,
-    expr: Evaluated<'_>,
-    start: Evaluated<'_>,
-    count: Option<Evaluated<'_>>,
-) -> Result<Evaluated<'a>> {
-    let string = eval_to_str!(name, expr);
-    let start = eval_to_int!(name, start) - 1;
-    let count = match count {
-        Some(v) => eval_to_int!(name, v),
-        None => string.len() as i64,
-    };
-
-    let end = if count < 0 {
-        return Err(EvaluateError::NegativeSubstrLenNotAllowed.into());
-    } else {
-        min(max(start + count, 0) as usize, string.len())
-    };
-
-    let start = min(max(start, 0) as usize, string.len());
-    let string = string.as_str();
-    Ok(Evaluated::StrSlice {
-        source: string[start..end].to_owned(),
-        range: start..end,
-    })
 }
 
 pub fn ascii<'a>(name: String, expr: Evaluated<'_>) -> Result<Evaluated<'a>> {

@@ -42,12 +42,6 @@ impl PartialOrd<String> for Literal<'_> {
     }
 }
 
-impl From<&String> for Value {
-    fn from(s: &String) -> Self {
-        Value::Str(s.to_owned())
-    }
-}
-
 impl From<&String> for Key {
     fn from(s: &String) -> Self {
         Key::Str(s.to_owned())
@@ -130,14 +124,6 @@ mod tests {
             Some(Ordering::Greater)
         );
         assert_eq!(Value::I64(0).partial_cmp(&"0".to_owned()), None);
-    }
-
-    #[test]
-    fn from_str() {
-        assert_eq!(
-            Value::Str("meat".to_owned()),
-            Value::from(&"meat".to_owned())
-        );
     }
 
     #[test]

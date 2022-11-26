@@ -224,7 +224,7 @@ fn evaluate_function<'a>(
             let start = eval(start)?;
             let count = eval_opt(count.as_ref())?;
 
-            f::substr(name, expr, start, count)
+            expr.substr(name, start, count)
         }
         Function::Ascii(expr) => f::ascii(name, eval(expr)?),
         Function::Chr(expr) => f::chr(name, eval(expr)?),
