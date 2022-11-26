@@ -1,13 +1,11 @@
-use crate::{ast::Query, ast_builder::QueryNode};
-
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
-        ast::{SelectItem, TableAlias, TableFactor},
+        ast::{Query, SelectItem, TableAlias, TableFactor},
         ast_builder::{
             table::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList, TableAliasNode,
-            TableNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableAliasNode, TableNode,
         },
         result::Result,
         translate::alias_or_name,

@@ -1,11 +1,10 @@
-use crate::ast_builder::{table::TableType, QueryNode, TableAliasNode, TableNode};
-
 use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
+            table::TableType, ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode,
+            JoinConstraintNode, JoinNode, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            SelectNode, TableAliasNode, TableNode,
         },
         result::Result,
     },

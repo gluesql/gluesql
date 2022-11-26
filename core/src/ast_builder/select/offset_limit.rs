@@ -1,9 +1,10 @@
-use crate::ast_builder::{table::TableType, QueryNode, TableAliasNode, TableNode};
-
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast_builder::{ExprNode, OffsetNode, ProjectNode, SelectItemList},
+        ast_builder::{
+            table::TableType, ExprNode, OffsetNode, ProjectNode, QueryNode, SelectItemList,
+            TableAliasNode, TableNode,
+        },
         result::Result,
     },
 };
