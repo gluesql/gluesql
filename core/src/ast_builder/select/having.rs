@@ -2,8 +2,8 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            table::TableType, ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList,
-            OrderByNode, ProjectNode, QueryNode, SelectItemList, TableAliasNode, TableNode,
+            ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
+            ProjectNode, QueryNode, SelectItemList, TableAliasNode,
         },
         result::Result,
     },
@@ -59,18 +59,7 @@ impl<'a> HavingNode<'a> {
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
-        let table_node = TableNode {
-            table_name: table_alias.to_owned(),
-            table_type: TableType::Derived {
-                subquery: Box::new(QueryNode::HavingNode(self)),
-                alias: table_alias.to_owned(),
-            },
-        };
-
-        TableAliasNode {
-            table_node,
-            table_alias: table_alias.to_owned(),
-        }
+        QueryNode::HavingNode(self).alias_as(table_alias)
     }
 }
 

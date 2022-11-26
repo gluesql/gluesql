@@ -2,8 +2,7 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            table::TableType, ExprNode, OffsetNode, ProjectNode, QueryNode, SelectItemList,
-            TableAliasNode, TableNode,
+            ExprNode, OffsetNode, ProjectNode, QueryNode, SelectItemList, TableAliasNode,
         },
         result::Result,
     },
@@ -47,18 +46,7 @@ impl<'a> OffsetLimitNode<'a> {
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
-        let table_node = TableNode {
-            table_name: table_alias.to_owned(),
-            table_type: TableType::Derived {
-                subquery: Box::new(QueryNode::OffsetLimitNode(self)),
-                alias: table_alias.to_owned(),
-            },
-        };
-
-        TableAliasNode {
-            table_node,
-            table_alias: table_alias.to_owned(),
-        }
+        QueryNode::OffsetLimitNode(self).alias_as(table_alias)
     }
 }
 

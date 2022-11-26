@@ -2,9 +2,9 @@ use {
     super::{NodeData, Prebuild, SelectNode},
     crate::{
         ast_builder::{
-            table::TableType, ExprList, ExprNode, GroupByNode, HashJoinNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, TableAliasNode, TableNode,
+            ExprList, ExprNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableAliasNode,
         },
         result::Result,
     },
@@ -93,18 +93,7 @@ impl<'a> FilterNode<'a> {
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
-        let table_node = TableNode {
-            table_name: table_alias.to_owned(),
-            table_type: TableType::Derived {
-                subquery: Box::new(QueryNode::FilterNode(self)),
-                alias: table_alias.to_owned(),
-            },
-        };
-
-        TableAliasNode {
-            table_node,
-            table_alias: table_alias.to_owned(),
-        }
+        QueryNode::FilterNode(self).alias_as(table_alias)
     }
 }
 

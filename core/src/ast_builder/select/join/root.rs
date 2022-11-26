@@ -4,10 +4,9 @@ use {
         ast::{Join, JoinExecutor, JoinOperator, TableAlias, TableFactor},
         ast_builder::{
             select::{NodeData, Prebuild},
-            table::TableType,
             ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
             LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableAliasNode, TableNode,
+            SelectItemList, SelectNode, TableAliasNode,
         },
         result::Result,
     },
@@ -154,18 +153,7 @@ impl<'a> JoinNode<'a> {
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
-        let table_node = TableNode {
-            table_name: table_alias.to_owned(),
-            table_type: TableType::Derived {
-                subquery: Box::new(QueryNode::JoinNode(self)),
-                alias: table_alias.to_owned(),
-            },
-        };
-
-        TableAliasNode {
-            table_node,
-            table_alias: table_alias.to_owned(),
-        }
+        QueryNode::JoinNode(self).alias_as(table_alias)
     }
 
     pub fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {

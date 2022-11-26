@@ -1,3 +1,5 @@
+use super::{table::TableType, TableAliasNode, TableNode};
+
 use {
     super::{
         select::{NodeData, Prebuild},
@@ -28,6 +30,23 @@ pub enum QueryNode<'a> {
     FilterNode(FilterNode<'a>),
     ProjectNode(ProjectNode<'a>),
     OrderByNode(OrderByNode<'a>),
+}
+
+impl<'a> QueryNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode<'a> {
+        let table_node = TableNode {
+            table_name: table_alias.to_owned(),
+            table_type: TableType::Derived {
+                subquery: Box::new(self),
+                alias: table_alias.to_owned(),
+            },
+        };
+
+        TableAliasNode {
+            table_node,
+            table_alias: table_alias.to_owned(),
+        }
+    }
 }
 
 impl<'a> From<&str> for QueryNode<'a> {
