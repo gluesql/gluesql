@@ -180,17 +180,19 @@ test_case!(alias_as, async move {
     let actual = table("Category")
         .select()
         .project("category_name")
-        .alias_as("Sub")
+        .alias_as("Sub1")
         .select()
         .group_by("category_name")
-        .alias_as()
+        .alias_as("Sub2")
+        .select()
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        category_name           | sum_price
-        Str                     | I64;
-        "Meat".to_owned()         90;
-        "Drink".to_owned()        85
+        category_name;
+        Str;
+        "Fruit".to_owned();
+        "Meat".to_owned();
+        "Drink".to_owned()
     ));
     test(actual, expected);
 });

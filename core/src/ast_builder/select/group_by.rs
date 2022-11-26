@@ -2,9 +2,9 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            ExprList, ExprNode, FilterNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
-            SelectNode,
+            table::TableType, ExprList, ExprNode, FilterNode, HashJoinNode, HavingNode,
+            JoinConstraintNode, JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
+            ProjectNode, QueryNode, SelectItemList, SelectNode, TableAliasNode, TableNode,
         },
         result::Result,
     },
@@ -93,6 +93,21 @@ impl<'a> GroupByNode<'a> {
 
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, expr_list: T) -> OrderByNode<'a> {
         OrderByNode::new(self, expr_list)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+        let table_node = TableNode {
+            table_name: table_alias.to_owned(),
+            table_type: TableType::Derived {
+                subquery: Box::new(QueryNode::GroupByNode(self)),
+                alias: table_alias.to_owned(),
+            },
+        };
+
+        TableAliasNode {
+            table_node,
+            table_alias: table_alias.to_owned(),
+        }
     }
 }
 
