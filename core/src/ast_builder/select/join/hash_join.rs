@@ -4,8 +4,10 @@ use {
         ast::{Join, JoinExecutor},
         ast_builder::{
             select::{NodeData, Prebuild},
+            table::TableType,
             ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableAliasNode, TableNode,
         },
         result::Result,
     },
@@ -105,6 +107,21 @@ impl<'a> HashJoinNode<'a> {
             build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
 
         Ok(join_constraint_data)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+        let table_node = TableNode {
+            table_name: table_alias.to_owned(),
+            table_type: TableType::Derived {
+                subquery: Box::new(QueryNode::HashJoinNode(self)),
+                alias: table_alias.to_owned(),
+            },
+        };
+
+        TableAliasNode {
+            table_node,
+            table_alias: table_alias.to_owned(),
+        }
     }
 }
 

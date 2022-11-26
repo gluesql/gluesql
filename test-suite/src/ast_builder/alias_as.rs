@@ -157,6 +157,28 @@ test_case!(alias_as, async move {
     ));
     test(actual, expected);
 
+    // select -> join -> hash -> derived subquery
+    let actual = table("Item")
+        .select()
+        .join("Category")
+        .hash_executor("Category.category_id", "Item.category_id")
+        .alias_as("Sub")
+        .select()
+        .project("item_name")
+        .project("category_name")
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        item_name                 | category_name;
+        Str                       | Str;
+        "Pineapple".to_owned()      "Fruit".to_owned();
+        "Pork belly".to_owned()     "Meat".to_owned();
+        "Strawberry".to_owned()     "Fruit".to_owned();
+        "Coffee".to_owned()         "Drink".to_owned();
+        "Orange juice".to_owned()   "Drink".to_owned()
+    ));
+    test(actual, expected);
+
     // select -> group_by -> derived subquery
     let actual = table("Category")
         .select()
@@ -241,4 +263,8 @@ test_case!(alias_as, async move {
          400        3             "Coffee".to_owned()         25
     ));
     test(actual, expected);
+
+    // let actual = table("Player")
+    //     .select()
+    //     .join("PlayerItem")
 });
