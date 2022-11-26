@@ -242,26 +242,38 @@ test_case!(select, async move {
         500
     ));
     test(actual, expected);
-    // // select -> join(cartesian) -> derived subquery
-    // let actual = table("Item")
-    //     .alias_as("i")
-    //     .select()
-    //     .join_as("Category", "c")
-    //     .alias_as("Sub")
-    //     .select()
-    //     .project("c.name AS category")
-    //     .project("i.id AS item_id")
-    //     .project("i.name AS item")
-    //     .execute(glue)
-    //     .await;
-    // let expected = Ok(select!(
-    //     id  | category_id | category                      | price | item_id   | item;
-    //     I64 | I64         | Str                       | I64   | I64  | Str;
-    //     200   2             "Pork belly".to_owned()     90      1      "a".to_owned();
-    //     500   3             "Orange juice".to_owned()   60      1      "a".to_owned();
-    //     100   1             "Pineapple".to_owned()      40      1      "a".to_owned();
-    //     300   1             "Strawberry".to_owned()     30      1      "a".to_owned();
-    //     400   3             "Coffee".to_owned()         25      1      "a".to_owned()
-    // ));
-    // test(actual, expected);
+
+    // select -> join(cartesian) -> derived subquery
+    let actual = table("Item")
+        .alias_as("i")
+        .select()
+        .project("i.id AS item_id")
+        .project("i.name AS item_name")
+        .alias_as("Sub1")
+        .select()
+        .join_as("Category", "c")
+        .alias_as("Sub2")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        item_id | item_name                 | id  | name;
+        I64     | Str                       | I64 | Str;
+        100       "Pineapple".to_owned()      1     "Fruit".to_owned();
+        100       "Pineapple".to_owned()      2     "Meat".to_owned();
+        100       "Pineapple".to_owned()      3     "Drink".to_owned();
+        200       "Pork belly".to_owned()     1     "Fruit".to_owned();
+        200       "Pork belly".to_owned()     2     "Meat".to_owned();
+        200       "Pork belly".to_owned()     3     "Drink".to_owned();
+        300       "Strawberry".to_owned()     1     "Fruit".to_owned();
+        300       "Strawberry".to_owned()     2     "Meat".to_owned();
+        300       "Strawberry".to_owned()     3     "Drink".to_owned();
+        400       "Coffee".to_owned()         1     "Fruit".to_owned();
+        400       "Coffee".to_owned()         2     "Meat".to_owned();
+        400       "Coffee".to_owned()         3     "Drink".to_owned();
+        500       "Orange juice".to_owned()   1     "Fruit".to_owned();
+        500       "Orange juice".to_owned()   2     "Meat".to_owned();
+        500       "Orange juice".to_owned()   3     "Drink".to_owned()
+    ));
+    test(actual, expected);
 });
