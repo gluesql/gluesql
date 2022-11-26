@@ -1,6 +1,10 @@
 use {
     crate::*,
-    gluesql_core::{data::ValueError, prelude::Value::*, translate::TranslateError},
+    gluesql_core::{
+        data::ValueError,
+        prelude::Value::{self, *},
+        translate::TranslateError,
+    },
 };
 
 test_case!(concat, async move {
@@ -73,5 +77,16 @@ test_case!(concat, async move {
             found: 0
         }
         .into())
+    );
+
+    let l = |s: &str| Value::parse_json_list(s).unwrap();
+
+    test!(
+        r#"select concat(["ab","cd"], ["de","fg"]) as myconcat from Concat;"#,
+        Ok(select!(
+           myconcat
+           List;
+           vec!["ab", "cd", "de", "fg"].into_iter().map(l).collect::<Vec<_>>()
+        ))
     );
 });
