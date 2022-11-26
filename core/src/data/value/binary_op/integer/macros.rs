@@ -85,6 +85,36 @@ macro_rules! impl_method {
                     }
                     .into()
                 }),
+            U32(rhs) => $lhs
+                .$method($lhs_primitive::try_from($rhs)?)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: $lhs_variant($lhs),
+                        rhs: U32(rhs),
+                        operator: $op,
+                    }
+                    .into()
+                }),
+            U64(rhs) => $lhs
+                .$method($lhs_primitive::try_from($rhs)?)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: $lhs_variant($lhs),
+                        rhs: U64(rhs),
+                        operator: $op,
+                    }
+                    .into()
+                }),
+            U128(rhs) => $lhs
+                .$method($lhs_primitive::try_from($rhs)?)
+                .ok_or_else(|| {
+                    ValueError::BinaryOperationOverflow {
+                        lhs: $lhs_variant($lhs),
+                        rhs: U128(rhs),
+                        operator: $op,
+                    }
+                    .into()
+                }),
             F64(rhs) => $lhs
                 .$method($lhs_primitive::try_from($rhs)?)
                 .ok_or_else(|| {
