@@ -534,7 +534,6 @@ impl TryFrom<&Value> for u128 {
             | Value::Timestamp(_)
             | Value::Time(_)
             | Value::Interval(_)
-            | Value::Uuid(_)
             | Value::Map(_)
             | Value::List(_)
             | Value::Bytea(_)
