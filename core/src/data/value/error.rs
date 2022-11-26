@@ -85,8 +85,8 @@ pub enum ValueError {
     #[error("unimplemented cast")]
     UnimplementedCast,
 
-    #[error("imposible concat function in empty list or empty string")]
-    ImpossibleConcatFunctionInEmpty,
+    #[error("function CONCAT requires at least 1 argument")]
+    EmptyArgNotAllowedInConcat,
 
     // Cast errors from literal to value
     #[error("literal cast failed from text to integer: {0}")]

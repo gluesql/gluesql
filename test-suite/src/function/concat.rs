@@ -60,7 +60,7 @@ test_case!(concat, async move {
     // test with zero arguments
     test!(
         r#"select concat() as myconcat from Concat;"#,
-        Err(ValueError::ImpossibleConcatFunctionInEmpty.into())
+        Err(ValueError::EmptyArgNotAllowedInConcat.into())
     );
 
     run!(
