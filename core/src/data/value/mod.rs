@@ -1519,6 +1519,10 @@ mod tests {
         assert_eq!(Str("A".to_owned()).concat(U8(1)), Str("A1".to_owned()));
         assert_eq!(Str("A".to_owned()).concat(U16(1)), Str("A1".to_owned()));
         assert_eq!(Str("A".to_owned()).concat(F64(1.0)), Str("A1".to_owned()));
+        assert_eq!(
+            List(vec![I64(1)]).concat(List(vec![I64(2)])),
+            List(vec![I64(1), I64(2)])
+        );
         assert_eq!(I64(2).concat(I64(1)), Str("21".to_owned()));
         assert!(Str("A".to_owned()).concat(Null).is_null());
     }

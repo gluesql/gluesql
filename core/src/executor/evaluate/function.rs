@@ -58,32 +58,24 @@ macro_rules! eval_to_float {
 // --- text ---
 
 pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {
-    let expr_type: Value = match exprs.first() {
-        Some(t) => t.clone().try_into()?,
-        None => return Err(ValueError::EmptyArgNotAllowedInConcat.into()),
-    };
-
-    let type_default_value = match expr_type {
-        Value::List(_) => Value::List(vec![]),
-        _ => Value::Str(String::new()),
-    };
-
     enum BreakCase {
         Null,
         Err(crate::result::Error),
     }
 
     let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_fold(
-        type_default_value,
-        |left, right: Result<Value>| match right {
-            Ok(value) if value.is_null() => ControlFlow::Break(BreakCase::Null),
-            Err(err) => ControlFlow::Break(BreakCase::Err(err)),
-            Ok(value) => ControlFlow::Continue(left.concat(value)),
+        None,
+        |left: Option<Value>, right: Result<Value>| match (left, right) {
+            (_, Ok(value)) if value.is_null() => ControlFlow::Break(BreakCase::Null),
+            (_, Err(err)) => ControlFlow::Break(BreakCase::Err(err)),
+            (Some(left), Ok(value)) => ControlFlow::Continue(Some(left.concat(value))),
+            (None, Ok(value)) => ControlFlow::Continue(Some(value)),
         },
     );
 
     match control_flow {
-        ControlFlow::Continue(value) => Ok(Evaluated::from(value)),
+        ControlFlow::Continue(Some(value)) => Ok(Evaluated::from(value)),
+        ControlFlow::Continue(None) => Err(ValueError::EmptyArgNotAllowedInConcat.into()),
         ControlFlow::Break(BreakCase::Null) => Ok(Evaluated::from(Value::Null)),
         ControlFlow::Break(BreakCase::Err(err)) => Err(err),
     }
