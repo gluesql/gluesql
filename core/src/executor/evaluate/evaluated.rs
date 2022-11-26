@@ -246,24 +246,19 @@ where
     }
 }
 
-macro_rules! eval_to_int {
-    ($name: expr, $evaluated: expr) => {
-        match $evaluated.try_into()? {
-            Value::I64(num) => num,
-            Value::Null => {
-                return Ok(Evaluated::from(Value::Null));
-            }
-            _ => {
-                return Err(EvaluateError::FunctionRequiresIntegerValue($name).into());
-            }
-        }
-    };
+pub fn exceptional_int_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
+    match v {
+        Value::Null => Ok(Evaluated::from(Value::Null)),
+        Value::I64(num) => Ok(Evaluated::from(Value::I64(num))),
+        _ => Err(EvaluateError::FunctionRequiresIntegerValue(name).into()),
+    }
 }
 
-pub fn val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
+pub fn exceptional_str_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluated<'a>> {
     match v {
-        Value::Null | Value::Str(_) => return Ok(Evaluated::from(Value::Null)),
-        _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+        Value::Null => Ok(Evaluated::from(Value::Null)),
+        Value::Str(s) => Ok(Evaluated::from(Value::Str(s))),
+        _ => Err(EvaluateError::FunctionRequiresStringValue(name).into()),
     }
 }
 
@@ -467,33 +462,42 @@ impl<'a> Evaluated<'a> {
         count: Option<Evaluated<'a>>,
     ) -> Result<Evaluated<'a>> {
         let (source, range) = match self {
-            Evaluated::Literal(l) => {
-                let v = Value::try_from(l)?;
-                match v {
-                    Value::Str(st) => {
-                        let len = st.len();
-                        (st, 0..len)
+            Evaluated::Literal(literal) => {
+                let value = Value::try_from(literal)?;
+                match value {
+                    Value::Str(string) => {
+                        let end = string.len();
+                        (string, 0..end)
                     }
-                    Value::Null => return Ok(Evaluated::from(Value::Null)),
-                    _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                    _ => return exceptional_str_val_to_eval(name, value),
                 }
             }
-            Evaluated::StrSlice {
-                source: s,
-                range: r,
-            } => (s, r),
-            Evaluated::Value(v) => match v {
-                Value::Str(st) => {
-                    let len = st.len();
-                    (st, 0..len)
+            Evaluated::StrSlice { source, range } => (source, range),
+            Evaluated::Value(value) => match value {
+                Value::Str(string) => {
+                    let end = string.len();
+                    (string, 0..end)
                 }
-                Value::Null => return Ok(Evaluated::from(Value::Null)),
-                _ => return Err(EvaluateError::FunctionRequiresStringValue(name).into()),
+                _ => return exceptional_str_val_to_eval(name, value),
             },
         };
-        let start = eval_to_int!(name, start) - 1;
+
+        let start = {
+            let value = start.try_into()?;
+            match value {
+                Value::I64(num) => num,
+                _ => return exceptional_int_val_to_eval(name, value),
+            }
+        } - 1;
+
         let count = match count {
-            Some(v) => eval_to_int!(name, v),
+            Some(eval) => {
+                let value = eval.try_into()?;
+                match value {
+                    Value::I64(num) => num,
+                    _ => return exceptional_int_val_to_eval(name, value),
+                }
+            }
             None => source.len() as i64,
         };
 
