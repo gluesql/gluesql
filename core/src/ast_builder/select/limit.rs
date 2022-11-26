@@ -202,6 +202,11 @@ mod tests {
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
         test(actual, expected);
 
+        // order by node -> limit node -> build
+        let actual = table("Hello").select().order_by("score").limit(3).build();
+        let expected = "SELECT * FROM Hello ORDER BY score LIMIT 3";
+        test(actual, expected);
+
         // hash join node -> limit node -> build
         let actual = table("Player")
             .select()
