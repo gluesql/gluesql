@@ -224,23 +224,44 @@ test_case!(select, async move {
     ));
     test(actual, expected);
 
+    // select -> project -> derived subquery
     let actual = table("Item")
-        .alias_as("i")
         .select()
-        .join_as("Category", "c")
-        .on("c.id = i.category_id")
+        .project("id")
         .alias_as("Sub")
         .select()
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | category_id | name                      | price;
-        I64 | I64         | Str                       | I64;
-        200   2             "Pork belly".to_owned()     90;
-        500   3             "Orange juice".to_owned()   60;
-        100   1             "Pineapple".to_owned()      40;
-        300   1             "Strawberry".to_owned()     30;
-        400   3             "Coffee".to_owned()         25
+        id;
+        I64;
+        100;
+        200;
+        300;
+        400;
+        500
     ));
     test(actual, expected);
+    // // select -> join(cartesian) -> derived subquery
+    // let actual = table("Item")
+    //     .alias_as("i")
+    //     .select()
+    //     .join_as("Category", "c")
+    //     .alias_as("Sub")
+    //     .select()
+    //     .project("c.name AS category")
+    //     .project("i.id AS item_id")
+    //     .project("i.name AS item")
+    //     .execute(glue)
+    //     .await;
+    // let expected = Ok(select!(
+    //     id  | category_id | category                      | price | item_id   | item;
+    //     I64 | I64         | Str                       | I64   | I64  | Str;
+    //     200   2             "Pork belly".to_owned()     90      1      "a".to_owned();
+    //     500   3             "Orange juice".to_owned()   60      1      "a".to_owned();
+    //     100   1             "Pineapple".to_owned()      40      1      "a".to_owned();
+    //     300   1             "Strawberry".to_owned()     30      1      "a".to_owned();
+    //     400   3             "Coffee".to_owned()         25      1      "a".to_owned()
+    // ));
+    // test(actual, expected);
 });
