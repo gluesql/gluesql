@@ -9,8 +9,8 @@ test_case!(alias_as, async move {
     // create table - Category
     let actual = table("Category")
         .create_table()
-        .add_column("id INTEGER PRIMARY KEY")
-        .add_column("name TEXT")
+        .add_column("category_id INTEGER PRIMARY KEY")
+        .add_column("category_name TEXT")
         .execute(glue)
         .await;
     let expected = Ok(Payload::Create);
@@ -19,9 +19,9 @@ test_case!(alias_as, async move {
     // create table - Item
     let actual = table("Item")
         .create_table()
-        .add_column("id INTEGER")
+        .add_column("item_id INTEGER")
         .add_column("category_id INTEGER")
-        .add_column("name TEXT")
+        .add_column("item_name TEXT")
         .add_column("price INTEGER")
         .execute(glue)
         .await;
@@ -60,28 +60,28 @@ test_case!(alias_as, async move {
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | category_id | name                      | price;
-        I64 | I64         | Str                       | I64;
-        100   1             "Pineapple".to_owned()      40;
-        200   2             "Pork belly".to_owned()     90;
-        300   1             "Strawberry".to_owned()     30;
-        400   3             "Coffee".to_owned()         25;
-        500   3             "Orange juice".to_owned()   60
+        item_id  | category_id | item_name                 | price;
+        I64      | I64         | Str                       | I64;
+        100        1             "Pineapple".to_owned()      40;
+        200        2             "Pork belly".to_owned()     90;
+        300        1             "Strawberry".to_owned()     30;
+        400        3             "Coffee".to_owned()         25;
+        500        3             "Orange juice".to_owned()   60
     ));
     test(actual, expected);
 
     // select -> filter -> derived subquery
     let actual = table("Item")
         .select()
-        .filter("id = 300")
+        .filter("item_id = 300")
         .alias_as("Sub")
         .select()
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | category_id | name                      | price;
-        I64 | I64         | Str                       | I64;
-        300   1             "Strawberry".to_owned()     30
+        item_id  | category_id | item_name               | price;
+        I64      | I64         | Str                     | I64;
+        300        1             "Strawberry".to_owned()   30
     ));
     test(actual, expected);
 
@@ -94,26 +94,26 @@ test_case!(alias_as, async move {
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id  | category_id | name                      | price;
-        I64 | I64         | Str                       | I64;
-        200   2             "Pork belly".to_owned()     90;
-        500   3             "Orange juice".to_owned()   60;
-        100   1             "Pineapple".to_owned()      40;
-        300   1             "Strawberry".to_owned()     30;
-        400   3             "Coffee".to_owned()         25
+        item_id  | category_id | item_name                 | price;
+        I64      | I64         | Str                       | I64;
+        200        2             "Pork belly".to_owned()     90;
+        500        3             "Orange juice".to_owned()   60;
+        100        1             "Pineapple".to_owned()      40;
+        300        1             "Strawberry".to_owned()     30;
+        400        3             "Coffee".to_owned()         25
     ));
     test(actual, expected);
 
     // select -> project -> derived subquery
     let actual = table("Item")
         .select()
-        .project("id")
+        .project("item_id")
         .alias_as("Sub")
         .select()
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        id;
+        item_id;
         I64;
         100;
         200;
@@ -127,33 +127,29 @@ test_case!(alias_as, async move {
     let actual = table("Item")
         .alias_as("i")
         .select()
-        .project("i.id AS item_id")
-        .project("i.name AS item_name")
-        .alias_as("Sub1")
-        .select()
         .join_as("Category", "c")
-        .alias_as("Sub2")
+        .alias_as("Sub")
         .select()
         .execute(glue)
         .await;
     let expected = Ok(select!(
-        item_id | item_name                 | id  | name;
-        I64     | Str                       | I64 | Str;
-        100       "Pineapple".to_owned()      1     "Fruit".to_owned();
-        100       "Pineapple".to_owned()      2     "Meat".to_owned();
-        100       "Pineapple".to_owned()      3     "Drink".to_owned();
-        200       "Pork belly".to_owned()     1     "Fruit".to_owned();
-        200       "Pork belly".to_owned()     2     "Meat".to_owned();
-        200       "Pork belly".to_owned()     3     "Drink".to_owned();
-        300       "Strawberry".to_owned()     1     "Fruit".to_owned();
-        300       "Strawberry".to_owned()     2     "Meat".to_owned();
-        300       "Strawberry".to_owned()     3     "Drink".to_owned();
-        400       "Coffee".to_owned()         1     "Fruit".to_owned();
-        400       "Coffee".to_owned()         2     "Meat".to_owned();
-        400       "Coffee".to_owned()         3     "Drink".to_owned();
-        500       "Orange juice".to_owned()   1     "Fruit".to_owned();
-        500       "Orange juice".to_owned()   2     "Meat".to_owned();
-        500       "Orange juice".to_owned()   3     "Drink".to_owned()
+        item_id | category_id | item_name                 | price | category_id | category_name;
+        I64     | I64         | Str                       | I64   | I64         | Str;
+        100       1             "Pineapple".to_owned()      40      1             "Fruit".to_owned();
+        100       1             "Pineapple".to_owned()      40      2             "Meat".to_owned();
+        100       1             "Pineapple".to_owned()      40      3             "Drink".to_owned();
+        200       2             "Pork belly".to_owned()     90      1             "Fruit".to_owned();
+        200       2             "Pork belly".to_owned()     90      2             "Meat".to_owned();
+        200       2             "Pork belly".to_owned()     90      3             "Drink".to_owned();
+        300       1             "Strawberry".to_owned()     30      1             "Fruit".to_owned();
+        300       1             "Strawberry".to_owned()     30      2             "Meat".to_owned();
+        300       1             "Strawberry".to_owned()     30      3             "Drink".to_owned();
+        400       3             "Coffee".to_owned()         25      1             "Fruit".to_owned();
+        400       3             "Coffee".to_owned()         25      2             "Meat".to_owned();
+        400       3             "Coffee".to_owned()         25      3             "Drink".to_owned();
+        500       3             "Orange juice".to_owned()   60      1             "Fruit".to_owned();
+        500       3             "Orange juice".to_owned()   60      2             "Meat".to_owned();
+        500       3             "Orange juice".to_owned()   60      3             "Drink".to_owned()
     ));
     test(actual, expected);
 
@@ -161,16 +157,12 @@ test_case!(alias_as, async move {
     let actual = table("Item")
         .alias_as("i")
         .select()
-        .project("i.name AS item_name")
-        .project("category_id")
-        .alias_as("Sub1")
-        .select()
         .join_as("Category", "c")
-        .on("c.id = Sub1.category_id")
-        .alias_as("Sub2")
+        .on("c.category_id = i.category_id")
+        .alias_as("Sub")
         .select()
         .project("item_name")
-        .project("name as category_name")
+        .project("category_name")
         .execute(glue)
         .await;
     let expected = Ok(select!(
@@ -181,6 +173,24 @@ test_case!(alias_as, async move {
         "Strawberry".to_owned()     "Fruit".to_owned();
         "Coffee".to_owned()         "Drink".to_owned();
         "Orange juice".to_owned()   "Drink".to_owned()
+    ));
+    test(actual, expected);
+
+    // group by - having
+    let actual = table("Category")
+        .select()
+        .project("category_name")
+        .alias_as("Sub")
+        .select()
+        .group_by("category_name")
+        .alias_as()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        category_name           | sum_price
+        Str                     | I64;
+        "Meat".to_owned()         90;
+        "Drink".to_owned()        85
     ));
     test(actual, expected);
 });
