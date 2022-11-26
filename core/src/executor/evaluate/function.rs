@@ -58,9 +58,9 @@ macro_rules! eval_to_float {
 // --- text ---
 
 pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {
-    let expr_type: Value = match exprs.first().to_owned() {
+    let expr_type: Value = match exprs.first() {
         Some(t) => t.clone().try_into()?,
-        None => return Err(ValueError::ImpossibleConcat.into()),
+        None => return Err(ValueError::ImpossibleConcatFunctionInEmpty.into()),
     };
 
     let type_default_value = match expr_type {

@@ -3,7 +3,6 @@ use {
     gluesql_core::{
         data::ValueError,
         prelude::Value::{self, *},
-        translate::TranslateError,
     },
 };
 
@@ -45,16 +44,6 @@ test_case!(concat, async move {
     );
 
     test!(
-        r#"select concat() as myconcat from Concat;"#,
-        Err(TranslateError::FunctionArgsLengthNotMatchingMin {
-            name: "CONCAT".to_owned(),
-            expected_minimum: 1,
-            found: 0
-        }
-        .into())
-    );
-
-    test!(
         r#"select concat(DATE "2020-06-11", DATE "2020-16-3") as myconcat from Concat;"#,
         Err(ValueError::FailedToParseDate("2020-16-3".to_owned()).into())
     );
@@ -71,22 +60,31 @@ test_case!(concat, async move {
     // test with zero arguments
     test!(
         r#"select concat() as myconcat from Concat;"#,
-        Err(TranslateError::FunctionArgsLengthNotMatchingMin {
-            name: "CONCAT".to_owned(),
-            expected_minimum: 1,
-            found: 0
-        }
-        .into())
+        Err(ValueError::ImpossibleConcatFunctionInEmpty.into())
     );
 
-    let l = |s: &str| Value::parse_json_list(s).unwrap();
+    run!(
+        r#"
+        CREATE TABLE ListTypeConcat (
+            id INTEGER,
+            items LIST,
+            items2 LIST
+        )"#
+    );
+
+    run!(
+        r#"
+        INSERT INTO ListTypeConcat VALUES
+            (1, '[1, 2, 3]', '["one", "two", "three"]');
+        "#
+    );
 
     test!(
-        r#"select concat(["ab","cd"], ["de","fg"]) as myconcat from Concat;"#,
+        r#"select concat(items, items2) as myconcat from ListTypeConcat;"#,
         Ok(select!(
            myconcat
            List;
-           vec!["ab", "cd", "de", "fg"].into_iter().map(l).collect::<Vec<_>>()
+           vec![I64(1), I64(2), I64(3), Value::Str("one".into()), Value::Str("two".into()), Value::Str("three".into())]
         ))
     );
 });
