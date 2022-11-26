@@ -85,25 +85,6 @@ test_case!(alias_as, async move {
     ));
     test(actual, expected);
 
-    // select -> order_by -> derived subquery
-    let actual = table("Item")
-        .select()
-        .order_by("price DESC")
-        .alias_as("Sub")
-        .select()
-        .execute(glue)
-        .await;
-    let expected = Ok(select!(
-        item_id  | category_id | item_name                 | price;
-        I64      | I64         | Str                       | I64;
-        200        2             "Pork belly".to_owned()     90;
-        500        3             "Orange juice".to_owned()   60;
-        100        1             "Pineapple".to_owned()      40;
-        300        1             "Strawberry".to_owned()     30;
-        400        3             "Coffee".to_owned()         25
-    ));
-    test(actual, expected);
-
     // select -> project -> derived subquery
     let actual = table("Item")
         .select()
@@ -176,7 +157,7 @@ test_case!(alias_as, async move {
     ));
     test(actual, expected);
 
-    // group by - having
+    // select -> group_by -> derived subquery
     let actual = table("Category")
         .select()
         .project("category_name")
@@ -193,6 +174,40 @@ test_case!(alias_as, async move {
         "Fruit".to_owned();
         "Meat".to_owned();
         "Drink".to_owned()
+    ));
+    test(actual, expected);
+
+    // select -> order_by -> derived subquery
+    let actual = table("Item")
+        .select()
+        .order_by("price DESC")
+        .alias_as("Sub")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        item_id  | category_id | item_name                 | price;
+        I64      | I64         | Str                       | I64;
+        200        2             "Pork belly".to_owned()     90;
+        500        3             "Orange juice".to_owned()   60;
+        100        1             "Pineapple".to_owned()      40;
+        300        1             "Strawberry".to_owned()     30;
+        400        3             "Coffee".to_owned()         25
+    ));
+    test(actual, expected);
+
+    // select -> offset -> derived subquery
+    let actual = table("Item")
+        .select()
+        .offset(4)
+        .alias_as("Sub")
+        .select()
+        .execute(glue)
+        .await;
+    let expected = Ok(select!(
+        item_id  | category_id | item_name                 | price;
+        I64      | I64         | Str                       | I64;
+        500        3             "Orange juice".to_owned()   60
     ));
     test(actual, expected);
 });
