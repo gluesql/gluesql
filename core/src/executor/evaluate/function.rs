@@ -2,7 +2,7 @@ use {
     super::{ChronoFormatError, EvaluateError, Evaluated},
     crate::{
         ast::{DataType, DateTimeField, TrimWhereField},
-        data::Value,
+        data::{Value, ValueError},
         result::Result,
     },
     std::{
@@ -58,17 +58,27 @@ macro_rules! eval_to_float {
 // --- text ---
 
 pub fn concat(exprs: Vec<Evaluated<'_>>) -> Result<Evaluated> {
+    let expr_type: Value = match exprs.first().to_owned() {
+        Some(t) => t.clone().try_into()?,
+        None => return Err(ValueError::ImpossibleConcat.into()),
+    };
+
+    let type_default_value = match expr_type {
+        Value::List(_) => Value::List(vec![]),
+        _ => Value::Str(String::new()),
+    };
+
     enum BreakCase {
         Null,
         Err(crate::result::Error),
     }
 
     let control_flow = exprs.into_iter().map(|expr| expr.try_into()).try_fold(
-        Value::Str(String::new()),
+        type_default_value,
         |left, right: Result<Value>| match right {
             Ok(value) if value.is_null() => ControlFlow::Break(BreakCase::Null),
             Err(err) => ControlFlow::Break(BreakCase::Err(err)),
-            Ok(value) => ControlFlow::Continue(left.concat(&value)),
+            Ok(value) => ControlFlow::Continue(left.concat(value)),
         },
     );
 

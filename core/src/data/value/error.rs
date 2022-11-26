@@ -82,6 +82,9 @@ pub enum ValueError {
     #[error("unimplemented cast")]
     UnimplementedCast,
 
+    #[error("imposible concat")]
+    ImpossibleConcat,
+
     // Cast errors from literal to value
     #[error("literal cast failed from text to integer: {0}")]
     LiteralCastFromTextToIntegerFailed(String),
