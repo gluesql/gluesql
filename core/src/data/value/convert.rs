@@ -675,7 +675,7 @@ macro_rules! try_from_owned_value {
     )*}
 }
 
-try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u8, u16,u32,u64, u128, usize, Decimal);
+try_from_owned_value!(bool, i8, i16, i32, i64, i128, f64, u8, u16, u32, u64, u128, usize, Decimal);
 
 impl TryFrom<&Value> for NaiveDate {
     type Error = Error;
@@ -1651,5 +1651,4 @@ mod tests {
             Ok(I::Month(274))
         );
     }
-
 }
