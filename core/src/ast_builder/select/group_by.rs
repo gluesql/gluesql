@@ -118,9 +118,9 @@ mod tests {
     #[test]
     fn group_by() {
         // select node -> group by node -> build
-        let acutal = table("Foo").select().group_by("a").build();
+        let actual = table("Foo").select().group_by("a").build();
         let expected = "SELECT * FROM Foo GROUP BY a";
-        test(acutal, expected);
+        test(actual, expected);
 
         // join node -> group by node -> build
         let actual = table("Foo").select().join("Bar").group_by("b").build();

@@ -86,7 +86,7 @@ fn translate_select(sql_select: &SqlSelect) -> Result<Select> {
         None => TableWithJoins {
             relation: TableFactor::Series {
                 alias: TableAlias {
-                    name: "Seires".to_owned(),
+                    name: "Series".to_owned(),
                     columns: Vec::new(),
                 },
                 size: Expr::Literal(AstLiteral::Number(1.into())),
