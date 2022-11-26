@@ -2,8 +2,7 @@ use {
     super::{
         select::{NodeData, Prebuild},
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-        LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode,
-        SelectNode,
+        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -24,7 +23,6 @@ pub enum QueryNode<'a> {
     GroupByNode(GroupByNode<'a>),
     HavingNode(HavingNode<'a>),
     LimitNode(LimitNode<'a>),
-    LimitOffsetNode(LimitOffsetNode<'a>),
     OffsetNode(OffsetNode<'a>),
     OffsetLimitNode(OffsetLimitNode<'a>),
     FilterNode(FilterNode<'a>),
@@ -61,7 +59,6 @@ impl_from_select_nodes!(GroupByNode);
 impl_from_select_nodes!(HavingNode);
 impl_from_select_nodes!(FilterNode);
 impl_from_select_nodes!(LimitNode);
-impl_from_select_nodes!(LimitOffsetNode);
 impl_from_select_nodes!(OffsetNode);
 impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
@@ -96,7 +93,6 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
             QueryNode::HavingNode(node) => node.prebuild(),
             QueryNode::FilterNode(node) => node.prebuild(),
             QueryNode::LimitNode(node) => node.prebuild(),
-            QueryNode::LimitOffsetNode(node) => node.prebuild(),
             QueryNode::OffsetNode(node) => node.prebuild(),
             QueryNode::OffsetLimitNode(node) => node.prebuild(),
             QueryNode::ProjectNode(node) => node.prebuild(),
@@ -199,15 +195,6 @@ mod test {
             .limit(3)
             .into();
         let expected = "SELECT * FROM FOO GROUP BY city HAVING COUNT(name) < 100 LIMIT 3";
-        test_query(actual, expected);
-
-        let actual = table("FOO")
-            .select()
-            .filter("id > 2")
-            .limit(100)
-            .offset(3)
-            .into();
-        let expected = "SELECT * FROM FOO WHERE id > 2 OFFSET 3 LIMIT 100";
         test_query(actual, expected);
 
         let actual = table("FOO").select().offset(10).into();
