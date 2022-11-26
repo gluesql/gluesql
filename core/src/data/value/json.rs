@@ -49,9 +49,9 @@ impl TryFrom<Value> for JsonValue {
             Value::U16(v) => Ok(v.into()),
             Value::U32(v) => Ok(v.into()),
             Value::U64(v) => Ok(v.into()),
-            Value::U128(v)=> JsonNumber::from_str(&v.to_string())
-            .map(JsonValue::Number)
-            .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
+            Value::U128(v) => JsonNumber::from_str(&v.to_string())
+                .map(JsonValue::Number)
+                .map_err(|_| ValueError::UnreachableJsonNumberParseFailure(v.to_string()).into()),
             Value::F64(v) => Ok(v.into()),
             Value::Decimal(v) => JsonNumber::from_str(&v.to_string())
                 .map(JsonValue::Number)

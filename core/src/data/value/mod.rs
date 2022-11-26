@@ -536,8 +536,8 @@ impl Value {
         use Value::*;
 
         match self {
-            I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_)|U64(_)|U128(_)|F64(_) | Interval(_)
-            | Decimal(_) => Ok(self.clone()),
+            I8(_) | I16(_) | I32(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_)
+            | U128(_) | F64(_) | Interval(_) | Decimal(_) => Ok(self.clone()),
             Null => Ok(Null),
             _ => Err(ValueError::UnaryPlusOnNonNumeric.into()),
         }
@@ -635,7 +635,8 @@ impl Value {
     pub fn sqrt(&self) -> Result<Value> {
         use Value::*;
         match self {
-            I8(_) | I16(_) | I64(_) | I128(_) | U8(_) | U16(_) |U32(_)|U64(_)|U128(_)|F64(_) => {
+            I8(_) | I16(_) | I64(_) | I128(_) | U8(_) | U16(_) | U32(_) | U64(_) | U128(_)
+            | F64(_) => {
                 let a: f64 = self.try_into()?;
                 Ok(Value::F64(a.sqrt()))
             }

@@ -483,7 +483,7 @@ impl TryFrom<&Value> for u64 {
             Value::U16(value) => value.to_u64().ok_or(ValueError::ImpossibleCast)?,
             Value::U32(value) => value.to_u64().ok_or(ValueError::ImpossibleCast)?,
             Value::U64(value) => *value,
-            Value::U128(value) =>value.to_u64().ok_or(ValueError::ImpossibleCast)?,
+            Value::U128(value) => value.to_u64().ok_or(ValueError::ImpossibleCast)?,
             Value::F64(value) => value.to_u64().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<u64>()
@@ -523,7 +523,7 @@ impl TryFrom<&Value> for u128 {
             Value::U16(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::U32(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::U64(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
-            Value::U128(value) =>*value,
+            Value::U128(value) => *value,
             Value::F64(value) => value.to_u128().ok_or(ValueError::ImpossibleCast)?,
             Value::Str(value) => value
                 .parse::<u128>()
