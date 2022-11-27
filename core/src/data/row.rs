@@ -5,7 +5,7 @@ use {
         executor::evaluate_stateless,
         result::Result,
     },
-    serde::{Deserialize, Serialize},
+    serde::Serialize,
     std::{fmt::Debug, slice::Iter, vec::IntoIter},
     thiserror::Error,
 };
@@ -37,7 +37,7 @@ enum Columns<I1, I2> {
     Specified(I2),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Row(pub Vec<Value>);
 
 impl Row {

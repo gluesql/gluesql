@@ -176,8 +176,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             ..
         } => {
             enum RowsData {
-                Append(Vec<Row>),
-                Insert(Vec<(Key, Row)>),
+                Append(Vec<Vec<Value>>),
+                Insert(Vec<(Key, Vec<Value>)>),
             }
 
             let (rows, num_rows, table_name) = try_block!(storage, {
@@ -202,6 +202,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                             .map(|values| Row::new(&column_defs, columns, values));
                         let rows = stream::iter(rows);
                         let rows = limit.apply(rows);
+                        let rows = rows.map_ok(Into::into);
 
                         Rows::Values(rows)
                     }
@@ -211,17 +212,23 @@ pub async fn execute<T: GStore + GStoreMut>(
 
                             async move {
                                 row.validate(&column_defs)?;
-                                Ok(row)
+                                Ok(row.into())
                             }
                         });
 
                         Rows::Select(rows)
                     }
                 }
-                .try_collect::<Vec<_>>()
+                .try_collect::<Vec<Vec<Value>>>()
                 .await?;
 
-                validate_unique(&storage, table_name, column_validation, rows.iter()).await?;
+                validate_unique(
+                    &storage,
+                    table_name,
+                    column_validation,
+                    rows.iter().map(|values| values.as_slice()),
+                )
+                .await?;
 
                 let num_rows = rows.len();
                 let primary_key = column_defs
@@ -237,11 +244,11 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = match primary_key {
                     Some(i) => rows
                         .into_iter()
-                        .filter_map(|row| {
-                            row.0
+                        .filter_map(|values| {
+                            values
                                 .get(i)
                                 .map(Key::try_from)
-                                .map(|result| result.map(|key| (key, row)))
+                                .map(|result| result.map(|key| (key, values)))
                         })
                         .collect::<Result<Vec<_>>>()
                         .map(RowsData::Insert)?,
@@ -279,10 +286,10 @@ pub async fn execute<T: GStore + GStoreMut>(
 
                         async move {
                             let row = update.apply(row).await?;
-                            Ok((key, row))
+                            Ok((key, row.into()))
                         }
                     })
-                    .try_collect::<Vec<_>>()
+                    .try_collect::<Vec<(Key, Vec<Value>)>>()
                     .await?;
 
                 let column_validation =
@@ -291,7 +298,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                     &storage,
                     table_name,
                     column_validation,
-                    rows.iter().map(|r| &r.1),
+                    rows.iter().map(|(_, values)| values.as_slice()),
                 )
                 .await?;
 

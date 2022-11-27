@@ -43,6 +43,7 @@ pub async fn fetch<'a>(
         .await
         .map(stream::iter)?
         .try_filter_map(move |(key, row)| {
+            let row = Row::from(row);
             let columns = Rc::clone(&columns);
 
             async move {
@@ -119,7 +120,7 @@ pub async fn fetch_relation_rows<'a>(
                         let rows = storage
                             .scan_indexed_data(name, index_name, *asc, cmp_value)
                             .await?
-                            .map_ok(|(_, row)| row);
+                            .map_ok(|(_, row)| row.into());
 
                         Rows::Indexed(rows)
                     }
@@ -137,10 +138,10 @@ pub async fn fetch_relation_rows<'a>(
                             .map(|row| vec![row])
                             .unwrap_or_else(Vec::new);
 
-                        Rows::PrimaryKey(rows.into_iter())
+                        Rows::PrimaryKey(rows.into_iter().map_ok(Row::from))
                     }
                     _ => {
-                        let rows = storage.scan_data(name).await?.map_ok(|(_, row)| row);
+                        let rows = storage.scan_data(name).await?.map_ok(|(_, row)| row.into());
 
                         Rows::FullScan(rows)
                     }

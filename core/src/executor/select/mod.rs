@@ -165,7 +165,8 @@ fn sort_stateless(
                 .iter()
                 .map(|OrderByExpr { expr, asc }| -> Result<_> {
                     let row = row.as_ref().ok();
-                    let context = row.map(|row| (labels.as_slice(), row));
+                    let context = row.map(|row| (labels.as_slice(), row.0.as_slice()));
+
                     let value: Value = evaluate_stateless(context, expr)?.try_into()?;
 
                     Ok((value, *asc))

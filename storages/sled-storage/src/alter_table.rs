@@ -9,10 +9,10 @@ use {
     async_trait::async_trait,
     gluesql_core::{
         ast::ColumnDef,
-        data::{schema::Schema, Row, Value},
+        data::{schema::Schema, Value},
         executor::evaluate_stateless,
         result::{MutResult, Result, TrySelf},
-        store::{AlterTable, AlterTableError},
+        store::{AlterTable, AlterTableError, Row},
     },
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
@@ -301,7 +301,7 @@ impl AlterTable for SledStorage {
                         continue;
                     }
                 };
-                let row = Row(row.0.into_iter().chain(once(value.clone())).collect());
+                let row = row.into_iter().chain(once(value.clone())).collect();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)
@@ -418,12 +418,11 @@ impl AlterTable for SledStorage {
                         continue;
                     }
                 };
-                let row = Row(row
-                    .0
+                let row = row
                     .into_iter()
                     .enumerate()
                     .filter_map(|(i, v)| (i != column_index).then_some(v))
-                    .collect());
+                    .collect();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)

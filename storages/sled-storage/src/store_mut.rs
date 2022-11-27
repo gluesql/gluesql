@@ -9,9 +9,9 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Row, Schema},
+        data::{Key, Schema},
         result::{MutResult, Result},
-        store::{IndexError, StoreMut},
+        store::{IndexError, Row, StoreMut},
     },
     sled::transaction::ConflictableTransactionError,
 };
