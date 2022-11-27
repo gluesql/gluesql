@@ -113,6 +113,8 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
         .into_iter()
         .map(|i| format!("column{}", i))
         .collect::<Vec<_>>();
+
+    let columns = Rc::from(labels.clone());
     let rows = exprs_list
         .iter()
         .scan(
@@ -143,7 +145,10 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
                         Ok(value)
                     })
                     .collect::<Result<Vec<_>>>()
-                    .map(Row);
+                    .map(|values| Row {
+                        columns: Rc::clone(&columns),
+                        values,
+                    });
 
                 Some(values)
             },
@@ -155,7 +160,7 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
 
 fn sort_stateless(
     rows: Vec<Result<Row>>,
-    labels: &Vec<String>,
+    labels: &[String],
     order_by: &[OrderByExpr],
 ) -> Result<Vec<Result<Row>>> {
     let sorted = rows
@@ -165,7 +170,7 @@ fn sort_stateless(
                 .iter()
                 .map(|OrderByExpr { expr, asc }| -> Result<_> {
                     let row = row.as_ref().ok();
-                    let context = row.map(|row| (labels.as_slice(), row.0.as_slice()));
+                    let context = row.map(|row| (labels, row.values.as_slice()));
 
                     let value: Value = evaluate_stateless(context, expr)?.try_into()?;
 
@@ -218,7 +223,7 @@ pub async fn select_with_labels<'a>(
     let columns = Rc::from(columns);
     let rows = {
         let columns = Rc::clone(&columns);
-        fetch_relation_rows(storage, relation, &None)
+        fetch_relation_rows(storage, relation, Rc::clone(&columns), &None)
             .await?
             .map(move |row| {
                 let row = Some(row?);
@@ -287,28 +292,35 @@ pub async fn select_with_labels<'a>(
 
     let rows = aggregate.apply(rows).await?;
 
+    let labels = Rc::from(labels);
+    let blend_labels = Rc::clone(&labels);
     let rows = rows.and_then(move |aggregate_context| {
+        let labels = Rc::clone(&blend_labels);
         let blend = Rc::clone(&blend);
         let AggregateContext { aggregated, next } = aggregate_context;
         let aggregated = aggregated.map(Rc::new);
 
         async move {
             let row = blend
-                .apply(aggregated.as_ref().map(Rc::clone), Rc::clone(&next))
+                .apply(
+                    aggregated.as_ref().map(Rc::clone),
+                    Rc::clone(&labels),
+                    Rc::clone(&next),
+                )
                 .await?;
 
             Ok((aggregated, next, row))
         }
     });
 
-    let labels = Rc::new(labels);
     let rows = sort
         .apply(rows, Rc::clone(&labels), get_alias(relation))
         .await?;
 
     let rows = limit.apply(rows);
 
-    let labels = Rc::try_unwrap(labels).map_err(|_| SelectError::Unreachable)?;
+    // let labels = Rc::try_unwrap(labels).map_err(|_| SelectError::Unreachable)?;
+    let labels = labels.iter().map(Clone::clone).collect();
 
     Ok((labels, rows))
 }

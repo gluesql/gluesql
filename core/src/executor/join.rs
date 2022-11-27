@@ -138,7 +138,13 @@ async fn join<'a>(
             }
             let rows = match join_executor.as_ref() {
                 JoinExecutor::NestedLoop => {
-                    let rows = fetch_relation_rows(storage, relation, &filter_context).await?;
+                    let rows = fetch_relation_rows(
+                        storage,
+                        relation,
+                        Rc::clone(&columns),
+                        &filter_context,
+                    )
+                    .await?;
                     let rows = rows
                         .and_then(|row| future::ok(Cow::Owned(row)))
                         .try_filter_map(move |row| {
@@ -238,7 +244,8 @@ impl<'a> JoinExecutor<'a> {
             } => (key_expr, value_expr, where_clause),
         };
 
-        let rows_map = fetch_relation_rows(storage, relation, &filter_context).await?;
+        let rows_map =
+            fetch_relation_rows(storage, relation, Rc::clone(&columns), &filter_context).await?;
         let rows_map = rows_map
             .try_filter_map(|row| {
                 let columns = Rc::clone(&columns);

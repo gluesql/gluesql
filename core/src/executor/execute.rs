@@ -436,7 +436,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = try_block!(storage, {
                     let rows = select(&storage, &query, None).await?;
                     let rows = rows
-                        .map_ok(|Row(values)| values)
+                        .map_ok(|row| row.values)
                         .try_collect::<Vec<_>>()
                         .await?;
                     Ok(rows)

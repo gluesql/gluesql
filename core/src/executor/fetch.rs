@@ -42,9 +42,12 @@ pub async fn fetch<'a>(
         .scan_data(table_name)
         .await
         .map(stream::iter)?
-        .try_filter_map(move |(key, row)| {
-            let row = Row::from(row);
+        .try_filter_map(move |(key, values)| {
             let columns = Rc::clone(&columns);
+            let row = Row {
+                columns: Rc::clone(&columns),
+                values,
+            };
 
             async move {
                 let expr = match where_clause {
@@ -76,6 +79,7 @@ pub enum Rows<I1, I2, I3, I4> {
 pub async fn fetch_relation_rows<'a>(
     storage: &'a dyn GStore,
     table_factor: &'a TableFactor,
+    columns: Rc<[String]>,
     filter_context: &Option<Rc<FilterContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
     match table_factor {
@@ -120,7 +124,10 @@ pub async fn fetch_relation_rows<'a>(
                         let rows = storage
                             .scan_indexed_data(name, index_name, *asc, cmp_value)
                             .await?
-                            .map_ok(|(_, row)| row.into());
+                            .map_ok(move |(_, values)| Row {
+                                columns: Rc::clone(&columns),
+                                values,
+                            });
 
                         Rows::Indexed(rows)
                     }
@@ -138,10 +145,19 @@ pub async fn fetch_relation_rows<'a>(
                             .map(|row| vec![row])
                             .unwrap_or_else(Vec::new);
 
-                        Rows::PrimaryKey(rows.into_iter().map_ok(Row::from))
+                        Rows::PrimaryKey(rows.into_iter().map_ok(move |values| Row {
+                            columns: Rc::clone(&columns),
+                            values,
+                        }))
                     }
                     _ => {
-                        let rows = storage.scan_data(name).await?.map_ok(|(_, row)| row.into());
+                        let rows = storage
+                            .scan_data(name)
+                            .await?
+                            .map_ok(move |(_, values)| Row {
+                                columns: Rc::clone(&columns),
+                                values,
+                            });
 
                         Rows::FullScan(rows)
                     }
@@ -157,7 +173,14 @@ pub async fn fetch_relation_rows<'a>(
                 n if n >= 0 => size,
                 n => return Err(FetchError::SeriesSizeWrong(n).into()),
             };
-            let rows = (1..=size).map(|v| Ok(Row(vec![Value::I64(v)])));
+
+            let columns = Rc::from(vec!["N".to_owned()]);
+            let rows = (1..=size).map(move |v| {
+                Ok(Row {
+                    columns: Rc::clone(&columns),
+                    values: vec![Value::I64(v)],
+                })
+            });
 
             Ok(Rows::Series(stream::iter(rows)))
         }
@@ -172,19 +195,34 @@ pub async fn fetch_relation_rows<'a>(
                 }
                 match dict {
                     Dictionary::GlueObjects => {
+                        let columns = Rc::from(vec![
+                            "OBJECT_NAME".to_owned(),
+                            "OBJECT_TYPE".to_owned(),
+                            "CREATED".to_owned(),
+                        ]);
                         let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().flat_map(|schema| {
-                            let table_rows = vec![Ok(Row(vec![
-                                Value::Str(schema.table_name),
-                                Value::Str("TABLE".to_owned()),
-                                Value::Timestamp(schema.created),
-                            ]))];
-                            let index_rows = schema.indexes.into_iter().map(|index| {
-                                Ok(Row(vec![
+                        let rows = schemas.into_iter().flat_map(move |schema| {
+                            let table_rows = vec![Ok(Row {
+                                columns: Rc::clone(&columns),
+                                values: vec![
+                                    Value::Str(schema.table_name),
+                                    Value::Str("TABLE".to_owned()),
+                                    Value::Timestamp(schema.created),
+                                ],
+                            })];
+
+                            let columns = Rc::clone(&columns);
+                            let index_rows = schema.indexes.into_iter().map(move |index| {
+                                let values = vec![
                                     Value::Str(index.name.clone()),
                                     Value::Str("INDEX".to_owned()),
                                     Value::Timestamp(index.created),
-                                ]))
+                                ];
+
+                                Ok(Row {
+                                    columns: Rc::clone(&columns),
+                                    values,
+                                })
                             });
 
                             table_rows.into_iter().chain(index_rows)
@@ -193,24 +231,40 @@ pub async fn fetch_relation_rows<'a>(
                         Rows::Objects(rows)
                     }
                     Dictionary::GlueTables => {
+                        let columns = Rc::from(vec!["TABLE_NAME".to_owned()]);
                         let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas
-                            .into_iter()
-                            .map(|schema| Ok(Row(vec![Value::Str(schema.table_name)])));
+                        let rows = schemas.into_iter().map(move |schema| {
+                            Ok(Row {
+                                columns: Rc::clone(&columns),
+                                values: vec![Value::Str(schema.table_name)],
+                            })
+                        });
 
                         Rows::Tables(rows)
                     }
                     Dictionary::GlueTableColumns => {
+                        let columns = Rc::from(vec![
+                            "TABLE_NAME".to_owned(),
+                            "COLUMN_NAME".to_owned(),
+                            "COLUMN_ID".to_owned(),
+                        ]);
                         let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().flat_map(|schema| {
+                        let rows = schemas.into_iter().flat_map(move |schema| {
+                            let columns = Rc::clone(&columns);
                             let table_name = schema.table_name;
+
                             schema.column_defs.into_iter().enumerate().map(
-                                move |(index, ColumnDef { name, .. })| -> Result<_> {
-                                    Ok(Row(vec![
+                                move |(index, column_def)| {
+                                    let values = vec![
                                         Value::Str(table_name.clone()),
-                                        Value::Str(name),
+                                        Value::Str(column_def.name),
                                         Value::I64(index as i64 + 1),
-                                    ]))
+                                    ];
+
+                                    Ok(Row {
+                                        columns: Rc::clone(&columns),
+                                        values,
+                                    })
                                 },
                             )
                         });
@@ -218,8 +272,16 @@ pub async fn fetch_relation_rows<'a>(
                         Rows::TableColumns(rows)
                     }
                     Dictionary::GlueIndexes => {
+                        let columns = Rc::from(vec![
+                            "TABLE_NAME".to_owned(),
+                            "INDEX_NAME".to_owned(),
+                            "ORDER".to_owned(),
+                            "EXPRESSION".to_owned(),
+                            "UNIQUENESS".to_owned(),
+                        ]);
+
                         let schemas = storage.fetch_all_schemas().await?;
-                        let rows = schemas.into_iter().flat_map(|schema| {
+                        let rows = schemas.into_iter().flat_map(move |schema| {
                             let primary_column = schema.column_defs.iter().find_map(
                                 |ColumnDef { name, options, .. }| {
                                     options
@@ -232,24 +294,39 @@ pub async fn fetch_relation_rows<'a>(
                             );
 
                             let clustered = match primary_column {
-                                Some(column_name) => vec![Ok(Row(vec![
-                                    Value::Str(schema.table_name.clone()),
-                                    Value::Str("PRIMARY".to_owned()),
-                                    Value::Str("BOTH".to_owned()),
-                                    Value::Str(column_name.to_owned()),
-                                    Value::Bool(true),
-                                ]))],
+                                Some(column_name) => {
+                                    let values = vec![
+                                        Value::Str(schema.table_name.clone()),
+                                        Value::Str("PRIMARY".to_owned()),
+                                        Value::Str("BOTH".to_owned()),
+                                        Value::Str(column_name.to_owned()),
+                                        Value::Bool(true),
+                                    ];
+
+                                    let row = Row {
+                                        columns: Rc::clone(&columns),
+                                        values,
+                                    };
+
+                                    vec![Ok(row)]
+                                }
                                 None => Vec::new(),
                             };
 
+                            let columns = Rc::clone(&columns);
                             let non_clustered = schema.indexes.into_iter().map(move |index| {
-                                Ok(Row(vec![
+                                let values = vec![
                                     Value::Str(schema.table_name.clone()),
                                     Value::Str(index.name),
                                     Value::Str(index.order.to_string()),
                                     Value::Str(index.expr.to_sql()),
                                     Value::Bool(false),
-                                ]))
+                                ];
+
+                                Ok(Row {
+                                    columns: Rc::clone(&columns),
+                                    values,
+                                })
                             });
 
                             clustered.into_iter().chain(non_clustered)

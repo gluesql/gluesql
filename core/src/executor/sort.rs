@@ -52,7 +52,7 @@ impl<'a> Sort<'a> {
                     Row,
                 )>,
             > + 'a,
-        labels: Rc<Vec<String>>,
+        labels: Rc<[String]>,
         table_alias: &'a str,
     ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
         #[derive(futures_enum::Stream)]
@@ -109,7 +109,7 @@ impl<'a> Sort<'a> {
                     })
                     .collect::<Result<Vec<_>>>();
 
-                let labels = Rc::from(labels.as_slice());
+                let labels = Rc::clone(&labels);
                 let filter_context = Rc::new(FilterContext::concat(
                     self.context.as_ref().map(Rc::clone),
                     Some(Rc::clone(&next)),

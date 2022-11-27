@@ -37,6 +37,7 @@ impl<'a> Blend<'a> {
     pub async fn apply(
         &self,
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
+        labels: Rc<[String]>,
         context: Rc<BlendContext<'a>>,
     ) -> Result<Row> {
         let filter_context = FilterContext::concat(
@@ -76,6 +77,10 @@ impl<'a> Blend<'a> {
             .try_collect::<Vec<Vec<_>>>()
             .await?
             .concat();
-        Ok(Row(values))
+
+        Ok(Row {
+            columns: Rc::clone(&labels),
+            values,
+        })
     }
 }
