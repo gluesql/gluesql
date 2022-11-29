@@ -133,7 +133,7 @@ impl<'a> Aggregator<'a> {
                         Some(having) => {
                             let filter_context = match filter_context {
                                 Some(filter_context) => {
-                                    Rc::new(RowContext::concat(filter_context, Rc::clone(&next)))
+                                    Rc::new(RowContext::concat(Rc::clone(&next), filter_context))
                                 }
                                 None => Rc::clone(&next),
                             };
