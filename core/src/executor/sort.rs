@@ -52,7 +52,6 @@ impl<'a> Sort<'a> {
                     Row,
                 )>,
             > + 'a,
-        labels: Rc<[String]>,
         table_alias: &'a str,
     ) -> Result<impl Stream<Item = Result<Row>> + 'a> {
         #[derive(futures_enum::Stream)]
@@ -109,7 +108,6 @@ impl<'a> Sort<'a> {
                     })
                     .collect::<Result<Vec<_>>>();
 
-                let labels = Rc::clone(&labels);
                 let filter_context = Rc::new(FilterContext::concat(
                     self.context.as_ref().map(Rc::clone),
                     Some(Rc::clone(&next)),
@@ -118,7 +116,7 @@ impl<'a> Sort<'a> {
                 async move {
                     let row = Rc::new(row);
                     let label_context =
-                        BlendContext::new(table_alias, labels, Shared(Rc::clone(&row)), None);
+                        BlendContext::new(table_alias, Shared(Rc::clone(&row)), None);
                     let label_context = Rc::from(label_context);
                     let filter_context = Rc::new(FilterContext::concat(
                         Some(filter_context),

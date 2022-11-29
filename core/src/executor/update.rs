@@ -68,8 +68,7 @@ impl<'a> Update<'a> {
     }
 
     async fn find(&self, row: &Row, column_def: &ColumnDef) -> Result<Option<Value>> {
-        let all_columns = Rc::from(self.all_columns());
-        let context = FilterContext::new(self.table_name, Rc::clone(&all_columns), row, None);
+        let context = FilterContext::new(self.table_name, row, None);
         let context = Some(Rc::new(context));
 
         match self
