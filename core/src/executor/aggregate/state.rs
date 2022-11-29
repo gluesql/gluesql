@@ -2,10 +2,7 @@ use {
     crate::{
         ast::{Aggregate, CountArgExpr, DataType},
         data::{Key, Value},
-        executor::{
-            context::{BlendContext, FilterContext},
-            evaluate::evaluate,
-        },
+        executor::{context::RowContext, evaluate::evaluate},
         result::Result,
         store::GStore,
     },
@@ -17,7 +14,7 @@ use {
 
 type Group = Rc<Vec<Key>>;
 type ValuesMap<'a> = HashMap<&'a Aggregate, Value>;
-type Context<'a> = Rc<BlendContext<'a>>;
+type Context<'a> = Rc<RowContext<'a>>;
 
 enum AggrValue {
     Count {
@@ -159,7 +156,7 @@ pub struct State<'a> {
     group: Group,
     values: IndexMap<(Group, &'a Aggregate), (usize, AggrValue)>,
     groups: HashSet<Group>,
-    contexts: Vector<Rc<BlendContext<'a>>>,
+    contexts: Vector<Rc<RowContext<'a>>>,
     storage: &'a dyn GStore,
 }
 
@@ -175,7 +172,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn apply(self, index: usize, group: Vec<Key>, context: Rc<BlendContext<'a>>) -> Self {
+    pub fn apply(self, index: usize, group: Vec<Key>, context: Rc<RowContext<'a>>) -> Self {
         let group = Rc::new(group);
         let (groups, contexts) = if self.groups.contains(&group) {
             (self.groups, self.contexts)
@@ -238,12 +235,12 @@ impl<'a> State<'a> {
 
                 Ok((Some(aggregated), next))
             })
-            .collect::<Result<Vec<(Option<ValuesMap<'a>>, Option<Rc<BlendContext<'a>>>)>>>()
+            .collect::<Result<Vec<(Option<ValuesMap<'a>>, Option<Rc<RowContext<'a>>>)>>>()
     }
 
     pub async fn accumulate(
         self,
-        filter_context: Option<Rc<FilterContext<'a>>>,
+        filter_context: Option<Rc<RowContext<'a>>>,
         aggr: &'a Aggregate,
     ) -> Result<State<'a>> {
         let value = match aggr {

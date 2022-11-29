@@ -1,5 +1,5 @@
 use {
-    super::{context::FilterContext, evaluate_stateless, filter::check_expr},
+    super::{context::RowContext, evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
             ColumnDef, ColumnOption, Dictionary, Expr, IndexItem, Join, Query, Select, SelectItem,
@@ -58,7 +58,7 @@ pub async fn fetch<'a>(
                     Some(expr) => expr,
                 };
 
-                let context = FilterContext::new(table_name, &row, None);
+                let context = RowContext::new(table_name, &row, None);
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await
@@ -80,7 +80,7 @@ pub enum Rows<I1, I2, I3, I4> {
 pub async fn fetch_relation_rows<'a>(
     storage: &'a dyn GStore,
     table_factor: &'a TableFactor,
-    filter_context: &Option<Rc<FilterContext<'a>>>,
+    filter_context: &Option<Rc<RowContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
     let columns = fetch_relation_columns(storage, table_factor)
         .await

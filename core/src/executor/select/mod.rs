@@ -4,7 +4,7 @@ use {
     self::blend::Blend,
     super::{
         aggregate::Aggregator,
-        context::{AggregateContext, BlendContext, BlendContextRow::Single, FilterContext},
+        context::{AggregateContext, RowContext},
         evaluate_stateless,
         fetch::{fetch_labels, fetch_relation_rows},
         filter::Filter,
@@ -112,7 +112,7 @@ fn sort_stateless(
 pub async fn select_with_labels<'a>(
     storage: &'a dyn GStore,
     query: &'a Query,
-    filter_context: Option<Rc<FilterContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<(
     Vec<String>,
     impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a,
@@ -142,7 +142,8 @@ pub async fn select_with_labels<'a>(
         .map(move |row| {
             let row = row?;
             let alias = get_alias(relation);
-            Ok(BlendContext::new(alias, Single(row), None))
+
+            Ok(RowContext::new(alias, row, None))
         });
 
     let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));
@@ -215,7 +216,7 @@ pub async fn select_with_labels<'a>(
 pub async fn select<'a>(
     storage: &'a dyn GStore,
     query: &'a Query,
-    filter_context: Option<Rc<FilterContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
 ) -> Result<impl TryStream<Ok = Row, Error = Error, Item = Result<Row>> + 'a> {
     select_with_labels(storage, query, filter_context)
         .await
