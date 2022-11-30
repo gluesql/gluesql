@@ -5,6 +5,7 @@ mod evaluate;
 mod execute;
 mod fetch;
 mod filter;
+mod insert;
 mod join;
 mod limit;
 mod select;
@@ -18,6 +19,7 @@ pub use {
     evaluate::{evaluate_stateless, EvaluateError},
     execute::{ExecuteError, Payload, PayloadVariable},
     fetch::FetchError,
+    insert::InsertError,
     sort::SortError,
     update::UpdateError,
     validate::ValidateError,
