@@ -22,7 +22,6 @@ test_case!(group_by, async move {
             (5,   24, 'Seattle', 6.11);
     "
     );
-
     let test_cases = [
         (
             "SELECT id, COUNT(*) FROM Item GROUP BY id",
@@ -84,4 +83,20 @@ test_case!(group_by, async move {
     for (sql, expected) in test_cases {
         test!(sql, Ok(expected));
     }
+
+    run!("CREATE TABLE Sub (id INTEGER);");
+    run!("INSERT INTO Sub VALUES (101), (102), (103), (104), (105);");
+    test! {
+        name: "HAVING - nested select context handling edge case",
+        sql: "
+            SELECT id
+            FROM Sub
+            WHERE (id - 100) IN (
+                SELECT id
+                FROM Item
+                GROUP BY id
+                HAVING id <= 3
+            )",
+        expected: Ok(select!(id I64; 101; 102; 103))
+    };
 });

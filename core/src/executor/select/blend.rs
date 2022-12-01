@@ -2,10 +2,7 @@ use {
     crate::{
         ast::{Aggregate, SelectItem},
         data::{Row, Value},
-        executor::{
-            context::{BlendContext, FilterContext},
-            evaluate::evaluate,
-        },
+        executor::{context::RowContext, evaluate::evaluate},
         result::{Error, Result},
         store::GStore,
     },
@@ -16,19 +13,19 @@ use {
 
 pub struct Blend<'a> {
     storage: &'a dyn GStore,
-    filter_context: Option<Rc<FilterContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
 impl<'a> Blend<'a> {
     pub fn new(
         storage: &'a dyn GStore,
-        filter_context: Option<Rc<FilterContext<'a>>>,
+        context: Option<Rc<RowContext<'a>>>,
         fields: &'a [SelectItem],
     ) -> Self {
         Self {
             storage,
-            filter_context,
+            context,
             fields,
         }
     }
@@ -37,13 +34,16 @@ impl<'a> Blend<'a> {
         &self,
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
         labels: Rc<[String]>,
-        context: Rc<BlendContext<'a>>,
+        context: Rc<RowContext<'a>>,
     ) -> Result<Row> {
-        let filter_context = FilterContext::concat(
-            self.filter_context.as_ref().map(Rc::clone),
-            Some(Rc::clone(&context)),
-        );
-        let filter_context = Some(filter_context).map(Rc::new);
+        let filter_context = match &self.context {
+            Some(filter_context) => Rc::new(RowContext::concat(
+                Rc::clone(&context),
+                Rc::clone(filter_context),
+            )),
+            None => Rc::clone(&context),
+        };
+        let filter_context = Some(filter_context);
 
         let values = stream::iter(self.fields.iter())
             .map(Ok::<&'a SelectItem, Error>)
