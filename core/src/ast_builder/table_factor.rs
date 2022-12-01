@@ -3,7 +3,7 @@ use {
     crate::ast::Dictionary,
 };
 
-use super::{table::TableNameNode, QueryNode};
+use super::{table_name::TableNameNode, QueryNode};
 #[derive(Clone)]
 pub enum TableType<'a> {
     Table,

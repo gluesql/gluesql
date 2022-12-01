@@ -22,8 +22,8 @@ mod select;
 mod select_item;
 mod select_item_list;
 mod show_columns;
-mod table;
 mod table_factor;
+mod table_name;
 #[cfg(feature = "transaction")]
 mod transaction;
 mod update;
