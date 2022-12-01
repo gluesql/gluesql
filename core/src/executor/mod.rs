@@ -18,7 +18,6 @@ pub use {
     evaluate::{evaluate_stateless, EvaluateError},
     execute::{ExecuteError, Payload, PayloadVariable},
     fetch::FetchError,
-    select::SelectError,
     sort::SortError,
     update::UpdateError,
     validate::ValidateError,

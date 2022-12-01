@@ -5,8 +5,8 @@ use {
         executor::evaluate_stateless,
         result::Result,
     },
-    serde::{Deserialize, Serialize},
-    std::{fmt::Debug, slice::Iter, vec::IntoIter},
+    serde::Serialize,
+    std::{fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
@@ -37,29 +37,37 @@ enum Columns<I1, I2> {
     Specified(I2),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Row(pub Vec<Value>);
+#[derive(Clone, Debug, PartialEq)]
+pub struct Row {
+    pub columns: Rc<[String]>,
+    pub values: Vec<Value>,
+}
 
 impl Row {
     pub fn get_value_by_index(&self, index: usize) -> Option<&Value> {
-        self.0.get(index)
+        self.values.get(index)
     }
 
-    pub fn get_value(&self, columns: &[String], ident: &str) -> Option<&Value> {
-        columns
+    pub fn get_value(&self, ident: &str) -> Option<&Value> {
+        self.columns
             .iter()
             .position(|column| column == ident)
-            .and_then(|index| self.0.get(index))
+            .and_then(|index| self.values.get(index))
     }
 
     pub fn take_first_value(self) -> Result<Value> {
-        self.0
+        self.values
             .into_iter()
             .next()
             .ok_or_else(|| RowError::ConflictOnEmptyRow.into())
     }
 
-    pub fn new(column_defs: &[ColumnDef], columns: &[String], values: &[Expr]) -> Result<Self> {
+    pub fn new(
+        column_defs: &[ColumnDef],
+        labels: Rc<[String]>,
+        columns: &[String],
+        values: &[Expr],
+    ) -> Result<Self> {
         if !columns.is_empty() && values.len() != columns.len() {
             return Err(RowError::ColumnAndValuesNotMatched.into());
         } else if values.len() > column_defs.len() {
@@ -82,7 +90,7 @@ impl Row {
 
         let column_name_value_list = columns.zip(values.iter()).collect::<Vec<(_, _)>>();
 
-        column_defs
+        let values = column_defs
             .iter()
             .map(|column_def| {
                 let ColumnDef {
@@ -107,8 +115,12 @@ impl Row {
                     }
                 }
             })
-            .collect::<Result<_>>()
-            .map(Self)
+            .collect::<Result<Vec<Value>>>()?;
+
+        Ok(Row {
+            columns: labels,
+            values,
+        })
     }
 
     pub fn validate(&self, column_defs: &[ColumnDef]) -> Result<()> {
@@ -135,47 +147,31 @@ impl Row {
         Ok(())
     }
 
-    pub fn iter(&self) -> Iter<'_, Value> {
-        self.0.iter()
-    }
-
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.values.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-impl IntoIterator for Row {
-    type Item = Value;
-    type IntoIter = IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
+        self.values.is_empty()
     }
 }
 
 impl From<Row> for Vec<Value> {
     fn from(row: Row) -> Self {
-        row.0
-    }
-}
-
-impl From<Vec<Value>> for Row {
-    fn from(values: Vec<Value>) -> Self {
-        Row(values)
+        row.values
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use {super::Row, crate::data::Value};
+    use {super::Row, crate::data::Value, std::rc::Rc};
 
     #[test]
     fn len() {
-        let row: Row = vec![Value::Bool(true), Value::I64(100)].into();
+        let row = Row {
+            columns: Rc::from(vec!["T".to_owned()]),
+            values: vec![Value::Bool(true), Value::I64(100)],
+        };
 
         assert_eq!(row.len(), 2);
         assert!(!row.is_empty());

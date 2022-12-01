@@ -8,11 +8,11 @@ use crate::store::Transaction;
 use crate::store::{Index, IndexMut};
 use {
     crate::{
-        data::{Key, Row, Schema},
+        data::{Key, Schema},
         executor::execute,
         parse_sql::parse,
         result::{Error, MutResult, Result},
-        store::{RowIter, Store, StoreMut},
+        store::{Row, RowIter, Store, StoreMut},
         translate::translate,
     },
     async_trait::async_trait,

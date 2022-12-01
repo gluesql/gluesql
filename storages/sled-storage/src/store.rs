@@ -2,9 +2,9 @@ use {
     super::{err_into, key, lock, SledStorage, Snapshot, State},
     async_trait::async_trait,
     gluesql_core::{
-        data::{Key, Row, Schema},
+        data::{Key, Schema},
         result::{Error, Result},
-        store::{RowIter, Store},
+        store::{Row, RowIter, Store},
     },
     std::str,
 };

@@ -12,7 +12,6 @@ use {
     futures::executor::block_on,
     gluesql_core::{
         ast::{Expr, SetExpr, Statement, ToSql, Values},
-        prelude::Row,
         store::{GStore, GStoreMut, Store, Transaction},
     },
     gluesql_memory_storage::MemoryStorage,
@@ -96,7 +95,7 @@ pub fn dump_database(storage: SledStorage, dump_path: PathBuf) -> Result<SledSto
             for rows in &rows_list {
                 let exprs_list = rows
                     .map(|result| {
-                        result.map(|Row(values)| {
+                        result.map(|values| {
                             values
                                 .into_iter()
                                 .map(|value| Ok(Expr::try_from(value)?))

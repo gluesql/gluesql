@@ -11,7 +11,7 @@ use {
             ColumnDef, ColumnOption, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
             Statement, TableAlias, TableFactor, TableWithJoins, Values, Variable,
         },
-        data::{Key, Row, Schema},
+        data::{Key, Row, Schema, Value},
         executor::limit::Limit,
         result::{MutResult, Result},
         store::{GStore, GStoreMut},
@@ -44,7 +44,7 @@ pub enum Payload {
     Insert(usize),
     Select {
         labels: Vec<String>,
-        rows: Vec<Row>,
+        rows: Vec<Vec<Value>>,
     },
     Delete(usize),
     Update(usize),
@@ -176,8 +176,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             ..
         } => {
             enum RowsData {
-                Append(Vec<Row>),
-                Insert(Vec<(Key, Row)>),
+                Append(Vec<Vec<Value>>),
+                Insert(Vec<(Key, Vec<Value>)>),
             }
 
             let (rows, num_rows, table_name) = try_block!(storage, {
@@ -185,6 +185,12 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .fetch_schema(table_name)
                     .await?
                     .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
+                let labels = Rc::from(
+                    column_defs
+                        .iter()
+                        .map(|column_def| column_def.name.to_owned())
+                        .collect::<Vec<_>>(),
+                );
                 let column_defs = Rc::from(column_defs);
                 let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
 
@@ -197,11 +203,12 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = match &source.body {
                     SetExpr::Values(Values(values_list)) => {
                         let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
-                        let rows = values_list
-                            .iter()
-                            .map(|values| Row::new(&column_defs, columns, values));
+                        let rows = values_list.iter().map(|values| {
+                            Row::new(&column_defs, Rc::clone(&labels), columns, values)
+                        });
                         let rows = stream::iter(rows);
                         let rows = limit.apply(rows);
+                        let rows = rows.map_ok(Into::into);
 
                         Rows::Values(rows)
                     }
@@ -211,17 +218,23 @@ pub async fn execute<T: GStore + GStoreMut>(
 
                             async move {
                                 row.validate(&column_defs)?;
-                                Ok(row)
+                                Ok(row.into())
                             }
                         });
 
                         Rows::Select(rows)
                     }
                 }
-                .try_collect::<Vec<_>>()
+                .try_collect::<Vec<Vec<Value>>>()
                 .await?;
 
-                validate_unique(&storage, table_name, column_validation, rows.iter()).await?;
+                validate_unique(
+                    &storage,
+                    table_name,
+                    column_validation,
+                    rows.iter().map(|values| values.as_slice()),
+                )
+                .await?;
 
                 let num_rows = rows.len();
                 let primary_key = column_defs
@@ -237,11 +250,11 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = match primary_key {
                     Some(i) => rows
                         .into_iter()
-                        .filter_map(|row| {
-                            row.0
+                        .filter_map(|values| {
+                            values
                                 .get(i)
                                 .map(Key::try_from)
-                                .map(|result| result.map(|key| (key, row)))
+                                .map(|result| result.map(|key| (key, values)))
                         })
                         .collect::<Result<Vec<_>>>()
                         .map(RowsData::Insert)?,
@@ -275,14 +288,14 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .await?
                     .and_then(|item| {
                         let update = &update;
-                        let (_, key, row) = item;
+                        let (key, row) = item;
 
                         async move {
                             let row = update.apply(row).await?;
-                            Ok((key, row))
+                            Ok((key, row.into()))
                         }
                     })
-                    .try_collect::<Vec<_>>()
+                    .try_collect::<Vec<(Key, Vec<Value>)>>()
                     .await?;
 
                 let column_validation =
@@ -291,7 +304,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                     &storage,
                     table_name,
                     column_validation,
-                    rows.iter().map(|r| &r.1),
+                    rows.iter().map(|(_, values)| values.as_slice()),
                 )
                 .await?;
 
@@ -310,11 +323,10 @@ pub async fn execute<T: GStore + GStoreMut>(
             selection,
         } => {
             let (table_name, keys) = try_block!(storage, {
-                let columns = Rc::from(fetch_columns(&storage, table_name).await?);
-
+                let columns = fetch_columns(&storage, table_name).await.map(Rc::from)?;
                 let keys = fetch(&storage, table_name, columns, selection.as_ref())
                     .await?
-                    .map_ok(|(_, key, _)| key)
+                    .map_ok(|(key, _)| key)
                     .try_collect::<Vec<_>>()
                     .await?;
 
@@ -332,8 +344,8 @@ pub async fn execute<T: GStore + GStoreMut>(
         //- Selection
         Statement::Query(query) => {
             let (labels, rows) = try_block!(storage, {
-                let (labels, rows) = select_with_labels(&storage, query, None, true).await?;
-                let rows = rows.try_collect::<Vec<_>>().await?;
+                let (labels, rows) = select_with_labels(&storage, query, None).await?;
+                let rows = rows.map_ok(Into::into).try_collect::<Vec<_>>().await?;
                 Ok((labels, rows))
             });
             Ok((storage, Payload::Select { labels, rows }))
@@ -386,8 +398,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             };
 
             let (labels, rows) = try_block!(storage, {
-                let (labels, rows) = select_with_labels(&storage, &query, None, true).await?;
-                let rows = rows.try_collect::<Vec<_>>().await?;
+                let (labels, rows) = select_with_labels(&storage, &query, None).await?;
+                let rows = rows.map_ok(Into::into).try_collect::<Vec<_>>().await?;
                 Ok((labels, rows))
             });
 
@@ -429,7 +441,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = try_block!(storage, {
                     let rows = select(&storage, &query, None).await?;
                     let rows = rows
-                        .map_ok(|Row(values)| values)
+                        .map_ok(|row| row.values)
                         .try_collect::<Vec<_>>()
                         .await?;
                     Ok(rows)

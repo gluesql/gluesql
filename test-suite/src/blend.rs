@@ -1,7 +1,7 @@
 use {
     crate::*,
     gluesql_core::{
-        executor::{EvaluateError, SelectError},
+        executor::{EvaluateError, FetchError},
         prelude::Value::*,
     },
 };
@@ -149,11 +149,7 @@ test_case!(blend, async move {
     let error_cases = [
         (
             "SELECT Whatever.* FROM BlendUser",
-            SelectError::TableAliasNotFound("Whatever".to_owned()).into(),
-        ),
-        (
-            "SELECT * FROM BlendUser WHERE id IN (SELECT Whatever.* FROM BlendUser)",
-            SelectError::BlendTableAliasNotFound("Whatever".to_owned()).into(),
+            FetchError::TableAliasNotFound("Whatever".to_owned()).into(),
         ),
         (
             "SELECT noname FROM BlendUser",

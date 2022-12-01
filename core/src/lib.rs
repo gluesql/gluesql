@@ -18,7 +18,7 @@ pub mod translate;
 pub mod prelude {
     pub use crate::{
         ast::DataType,
-        data::{Key, Row, Value},
+        data::{Key, Value},
         executor::{execute, Payload, PayloadVariable},
         glue::Glue,
         parse_sql::parse,

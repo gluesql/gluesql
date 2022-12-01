@@ -1,5 +1,4 @@
 use {
-    super::SelectError,
     crate::{
         ast::{Aggregate, SelectItem},
         data::{Row, Value},
@@ -37,6 +36,7 @@ impl<'a> Blend<'a> {
     pub async fn apply(
         &self,
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
+        labels: Rc<[String]>,
         context: Rc<BlendContext<'a>>,
     ) -> Result<Row> {
         let filter_context = FilterContext::concat(
@@ -56,13 +56,7 @@ impl<'a> Blend<'a> {
                     match item {
                         SelectItem::Wildcard => Ok(context.get_all_values()),
                         SelectItem::QualifiedWildcard(table_alias) => {
-                            match context.get_alias_values(table_alias) {
-                                Some(values) => Ok(values),
-                                None => Err(SelectError::BlendTableAliasNotFound(
-                                    table_alias.to_owned(),
-                                )
-                                .into()),
-                            }
+                            Ok(context.get_alias_values(table_alias).unwrap_or_default())
                         }
                         SelectItem::Expr { expr, .. } => {
                             evaluate(self.storage, filter_context, aggregated, expr)
@@ -76,6 +70,10 @@ impl<'a> Blend<'a> {
             .try_collect::<Vec<Vec<_>>>()
             .await?
             .concat();
-        Ok(Row(values))
+
+        Ok(Row {
+            columns: Rc::clone(&labels),
+            values,
+        })
     }
 }

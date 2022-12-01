@@ -5,14 +5,13 @@ use {
 
 #[derive(Debug)]
 pub enum BlendContextRow {
-    Single(Option<Row>),
+    Single(Row),
     Shared(Rc<Row>),
 }
 
 #[derive(Debug)]
 pub struct BlendContext<'a> {
     table_alias: &'a str,
-    columns: Rc<[String]>,
     row: BlendContextRow,
     next: Option<Rc<BlendContext<'a>>>,
 }
@@ -20,13 +19,11 @@ pub struct BlendContext<'a> {
 impl<'a> BlendContext<'a> {
     pub fn new(
         table_alias: &'a str,
-        columns: Rc<[String]>,
         row: BlendContextRow,
         next: Option<Rc<BlendContext<'a>>>,
     ) -> Self {
         Self {
             table_alias,
-            columns,
             row,
             next,
         }
@@ -34,9 +31,8 @@ impl<'a> BlendContext<'a> {
 
     pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
         let value = match &self.row {
-            BlendContextRow::Shared(row) => row.get_value(&self.columns, target),
-            BlendContextRow::Single(Some(row)) => row.get_value(&self.columns, target),
-            BlendContextRow::Single(None) => Some(&Value::Null),
+            BlendContextRow::Shared(row) => row.get_value(target),
+            BlendContextRow::Single(row) => row.get_value(target),
         };
 
         if value.is_some() {
@@ -55,9 +51,8 @@ impl<'a> BlendContext<'a> {
             }
 
             match &self.row {
-                BlendContextRow::Shared(row) => row.get_value(&self.columns, target),
-                BlendContextRow::Single(Some(row)) => row.get_value(&self.columns, target),
-                BlendContextRow::Single(None) => Some(&Value::Null),
+                BlendContextRow::Shared(row) => row.get_value(target),
+                BlendContextRow::Single(row) => row.get_value(target),
             }
         })();
 
@@ -73,9 +68,8 @@ impl<'a> BlendContext<'a> {
     pub fn get_alias_values(&self, alias: &str) -> Option<Vec<Value>> {
         if self.table_alias == alias {
             let values = match &self.row {
-                BlendContextRow::Shared(row) => row.0.clone(),
-                BlendContextRow::Single(Some(row)) => row.0.clone(),
-                BlendContextRow::Single(None) => self.columns.iter().map(|_| Value::Null).collect(),
+                BlendContextRow::Shared(row) => row.values.clone(),
+                BlendContextRow::Single(row) => row.values.clone(),
             };
 
             Some(values)
@@ -88,9 +82,8 @@ impl<'a> BlendContext<'a> {
 
     pub fn get_all_values(&'a self) -> Vec<Value> {
         let values: Vec<Value> = match &self.row {
-            BlendContextRow::Shared(row) => row.0.clone(),
-            BlendContextRow::Single(Some(row)) => row.0.clone(),
-            BlendContextRow::Single(None) => self.columns.iter().map(|_| Value::Null).collect(),
+            BlendContextRow::Shared(row) => row.values.clone(),
+            BlendContextRow::Single(row) => row.values.clone(),
         };
 
         match &self.next {
