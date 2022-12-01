@@ -6,11 +6,7 @@ use {
 
 #[derive(Debug)]
 enum Content<'a> {
-    Some {
-        table_alias: &'a str,
-        columns: Rc<[String]>,
-        row: &'a Row,
-    },
+    Some { table_alias: &'a str, row: &'a Row },
     None,
 }
 
@@ -22,18 +18,9 @@ pub struct FilterContext<'a> {
 }
 
 impl<'a> FilterContext<'a> {
-    pub fn new(
-        table_alias: &'a str,
-        columns: Rc<[String]>,
-        row: &'a Row,
-        next: Option<Rc<FilterContext<'a>>>,
-    ) -> Self {
+    pub fn new(table_alias: &'a str, row: &'a Row, next: Option<Rc<FilterContext<'a>>>) -> Self {
         Self {
-            content: Content::Some {
-                table_alias,
-                columns,
-                row,
-            },
+            content: Content::Some { table_alias, row },
             next,
             next2: None,
         }
@@ -51,8 +38,8 @@ impl<'a> FilterContext<'a> {
     }
 
     pub fn get_value(&'a self, target: &str) -> Option<&'a Value> {
-        if let Content::Some { columns, row, .. } = &self.content {
-            let value = row.get_value(columns, target);
+        if let Content::Some { row, .. } = &self.content {
+            let value = row.get_value(target);
 
             if value.is_some() {
                 return value;
@@ -72,12 +59,8 @@ impl<'a> FilterContext<'a> {
 
     pub fn get_alias_value(&'a self, target_alias: &str, target: &str) -> Option<&'a Value> {
         match &self.content {
-            Content::Some {
-                table_alias,
-                columns,
-                row,
-            } if table_alias == &target_alias => {
-                let value = row.get_value(columns, target);
+            Content::Some { table_alias, row } if table_alias == &target_alias => {
+                let value = row.get_value(target);
 
                 if value.is_some() {
                     return value;

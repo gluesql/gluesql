@@ -6,7 +6,7 @@ use {
         result::Result,
     },
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc, slice::Iter, vec::IntoIter},
+    std::{fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
@@ -48,8 +48,8 @@ impl Row {
         self.values.get(index)
     }
 
-    pub fn get_value(&self, columns: &[String], ident: &str) -> Option<&Value> {
-        columns
+    pub fn get_value(&self, ident: &str) -> Option<&Value> {
+        self.columns
             .iter()
             .position(|column| column == ident)
             .and_then(|index| self.values.get(index))
@@ -62,7 +62,12 @@ impl Row {
             .ok_or_else(|| RowError::ConflictOnEmptyRow.into())
     }
 
-    pub fn new(column_defs: &[ColumnDef], columns: &[String], values: &[Expr]) -> Result<Self> {
+    pub fn new(
+        column_defs: &[ColumnDef],
+        labels: Rc<[String]>,
+        columns: &[String],
+        values: &[Expr],
+    ) -> Result<Self> {
         if !columns.is_empty() && values.len() != columns.len() {
             return Err(RowError::ColumnAndValuesNotMatched.into());
         } else if values.len() > column_defs.len() {
@@ -102,10 +107,7 @@ impl Row {
 
                 match (value, column_def.get_default(), nullable) {
                     (Some(&expr), _, _) | (None, Some(expr), _) => {
-                        let value =
-                            evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)?;
-
-                        Ok(value)
+                        evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
                     }
                     (None, None, true) => Ok(Value::Null),
                     (None, None, false) => {
@@ -115,13 +117,10 @@ impl Row {
             })
             .collect::<Result<Vec<Value>>>()?;
 
-        // TEMP
-        let columns = column_defs
-            .iter()
-            .map(|column_def| column_def.name.to_owned())
-            .collect();
-
-        Ok(Row { columns, values })
+        Ok(Row {
+            columns: labels,
+            values,
+        })
     }
 
     pub fn validate(&self, column_defs: &[ColumnDef]) -> Result<()> {
@@ -148,25 +147,12 @@ impl Row {
         Ok(())
     }
 
-    pub fn iter(&self) -> Iter<'_, Value> {
-        self.values.iter()
-    }
-
     pub fn len(&self) -> usize {
         self.values.len()
     }
 
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
-    }
-}
-
-impl IntoIterator for Row {
-    type Item = Value;
-    type IntoIter = IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.values.into_iter()
     }
 }
 
