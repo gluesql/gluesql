@@ -5,8 +5,8 @@ use {
         ast_builder::{
             select::{NodeData, Prebuild},
             ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
-            SelectNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -14,7 +14,7 @@ use {
 
 #[derive(Clone)]
 pub enum PrevNode<'a> {
-    Select(SelectNode),
+    Select(SelectNode<'a>),
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
@@ -31,8 +31,8 @@ impl<'a> Prebuild for PrevNode<'a> {
     }
 }
 
-impl<'a> From<SelectNode> for PrevNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
     }
 }
@@ -150,6 +150,10 @@ impl<'a> JoinNode<'a> {
 
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::JoinNode(self).alias_as(table_alias)
     }
 
     pub fn prebuild_for_constraint(self) -> Result<JoinConstraintData> {
@@ -693,5 +697,24 @@ mod tests {
             gen_expected(other_join)
         };
         assert_eq!(actual, expected, "left join with alias");
+
+        let actual = table("App").select().alias_as("Sub").select().build();
+        let expected = "SELECT * FROM (SELECT * FROM App) Sub";
+        test(actual, expected);
+
+        // join -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .join("Bar")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "
+            SELECT * FROM (
+                SELECT * FROM Foo
+                INNER JOIN Bar
+            ) Sub
+            ";
+        test(actual, expected);
     }
 }

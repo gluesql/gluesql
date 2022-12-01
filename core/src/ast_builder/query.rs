@@ -1,8 +1,10 @@
 use {
     super::{
         select::{NodeData, Prebuild},
+        table_factor::TableType,
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        TableFactorNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -16,7 +18,7 @@ use {
 pub enum QueryNode<'a> {
     Text(String),
     Values(Vec<ExprList<'a>>),
-    SelectNode(SelectNode),
+    SelectNode(SelectNode<'a>),
     JoinNode(JoinNode<'a>),
     JoinConstraintNode(JoinConstraintNode<'a>),
     HashJoinNode(HashJoinNode<'a>),
@@ -30,14 +32,27 @@ pub enum QueryNode<'a> {
     OrderByNode(OrderByNode<'a>),
 }
 
+impl<'a> QueryNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+        TableFactorNode {
+            table_name: table_alias.to_owned(),
+            table_type: TableType::Derived {
+                subquery: Box::new(self),
+                alias: table_alias.to_owned(),
+            },
+            table_alias: None,
+        }
+    }
+}
+
 impl<'a> From<&str> for QueryNode<'a> {
     fn from(query: &str) -> Self {
         Self::Text(query.to_owned())
     }
 }
 
-impl<'a> From<SelectNode> for QueryNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for QueryNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         QueryNode::SelectNode(node)
     }
 }
@@ -111,7 +126,10 @@ mod test {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 TableFactor, TableWithJoins,
             },
-            ast_builder::{col, table, test_query, SelectItemList},
+            ast_builder::{
+                col, glue_indexes, glue_objects, glue_table_columns, glue_tables, series, table,
+                test_query, SelectItemList,
+            },
         },
     };
 
@@ -217,6 +235,30 @@ mod test {
 
         let actual = table("Foo").select().order_by("score DESC").into();
         let expected = "SELECT * FROM Foo ORDER BY score DESC";
+        test_query(actual, expected);
+
+        let actual = glue_objects().select().into();
+        let expected = "SELECT * FROM GLUE_OBJECTS";
+        test_query(actual, expected);
+
+        let actual = glue_tables().select().into();
+        let expected = "SELECT * FROM GLUE_TABLES";
+        test_query(actual, expected);
+
+        let actual = glue_indexes().select().into();
+        let expected = "SELECT * FROM GLUE_INDEXES";
+        test_query(actual, expected);
+
+        let actual = glue_table_columns().select().into();
+        let expected = "SELECT * FROM GLUE_TABLE_COLUMNS";
+        test_query(actual, expected);
+
+        let actual = series("1 + 2").select().into();
+        let expected = "SELECT * FROM SERIES(1 + 2)";
+        test_query(actual, expected);
+
+        let actual = table("Items").select().alias_as("Sub").select().into();
+        let expected = "SELECT * FROM (SELECT * FROM Items) AS Sub";
         test_query(actual, expected);
     }
 }

@@ -177,6 +177,7 @@ macro_rules! generate_store_tests {
         glue!(ast_builder_insert, ast_builder::insert::insert);
         glue!(ast_builder_update, ast_builder::update::update);
         glue!(ast_builder_delete, ast_builder::delete::delete);
+        glue!(ast_builder_alias_as, ast_builder::alias_as::alias_as);
     };
 }
 

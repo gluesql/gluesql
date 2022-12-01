@@ -3,7 +3,8 @@ use {
     crate::{
         ast_builder::{
             ExprList, ExprNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, SelectItemList,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -11,7 +12,7 @@ use {
 
 #[derive(Clone)]
 pub enum PrevNode<'a> {
-    Select(SelectNode),
+    Select(SelectNode<'a>),
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
@@ -46,8 +47,8 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<SelectNode> for PrevNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
     }
 }
@@ -89,6 +90,10 @@ impl<'a> FilterNode<'a> {
 
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::FilterNode(self).alias_as(table_alias)
     }
 }
 
@@ -229,5 +234,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select node -> filter node -> derived subquery
+        let actual = table("Bar")
+            .select()
+            .filter("id IS NULL")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Bar WHERE id IS NULL) Sub";
+        test(actual, expected);
     }
 }

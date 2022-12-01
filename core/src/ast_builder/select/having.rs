@@ -3,7 +3,7 @@ use {
     crate::{
         ast_builder::{
             ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
-            ProjectNode, SelectItemList,
+            ProjectNode, QueryNode, SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -56,6 +56,10 @@ impl<'a> HavingNode<'a> {
 
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, expr_list: T) -> OrderByNode<'a> {
         OrderByNode::new(self, expr_list)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::HavingNode(self).alias_as(table_alias)
     }
 }
 
@@ -138,6 +142,17 @@ mod tests {
                 GROUP BY id, (a + name)
                 HAVING COUNT(id) > 10
             ";
+        test(actual, expected);
+
+        // select -> group by -> having -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .group_by("a")
+            .having("a > 1")
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Foo GROUP BY a HAVING a > 1) Sub";
         test(actual, expected);
     }
 }

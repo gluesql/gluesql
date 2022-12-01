@@ -3,7 +3,8 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
+            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectItemList, SelectNode,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -11,7 +12,7 @@ use {
 
 #[derive(Clone)]
 pub enum PrevNode<'a> {
-    Select(SelectNode),
+    Select(SelectNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
     Join(Box<JoinNode<'a>>),
@@ -36,8 +37,8 @@ impl<'a> Prebuild for PrevNode<'a> {
     }
 }
 
-impl<'a> From<SelectNode> for PrevNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
     }
 }
@@ -100,6 +101,10 @@ impl<'a> LimitNode<'a> {
 
     pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::LimitNode(self).alias_as(table_alias)
     }
 }
 
@@ -251,5 +256,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select node -> limit node -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .limit(10)
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Foo LIMIT 10) Sub";
+        test(actual, expected);
     }
 }
