@@ -1,5 +1,5 @@
 use {
-    super::{DeleteNode, ExprNode, InsertNode, QueryNode, SelectNode, UpdateNode},
+    super::{ExprNode, QueryNode, SelectNode},
     crate::ast::Dictionary,
 };
 
@@ -24,18 +24,6 @@ pub struct TableFactorNode<'a> {
 impl<'a> TableFactorNode<'a> {
     pub fn select(self) -> SelectNode<'a> {
         SelectNode::new(self)
-    }
-
-    pub fn delete(self) -> DeleteNode<'static> {
-        DeleteNode::new(self.table_name)
-    }
-
-    pub fn update(self) -> UpdateNode<'static> {
-        UpdateNode::new(self.table_name)
-    }
-
-    pub fn insert(self) -> InsertNode {
-        InsertNode::new(self.table_name)
     }
 }
 
