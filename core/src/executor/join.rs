@@ -211,7 +211,6 @@ impl<'a> JoinExecutor<'a> {
     async fn new(
         storage: &'a dyn GStore,
         relation: &TableFactor,
-        // filter_context: Option<Rc<FilterContext<'a>>>,
         filter_context: Option<Rc<RowContext<'a>>>,
         ast_join_executor: &'a AstJoinExecutor,
     ) -> Result<JoinExecutor<'a>> {
@@ -230,7 +229,6 @@ impl<'a> JoinExecutor<'a> {
                 let filter_context = filter_context.as_ref().map(Rc::clone);
 
                 async move {
-                    // let filter_context = Rc::new(FilterContext::new(
                     let filter_context =
                         Rc::new(RowContext::new(get_alias(relation), &row, filter_context));
 
@@ -269,17 +267,11 @@ impl<'a> JoinExecutor<'a> {
 async fn check_where_clause<'a, 'b>(
     storage: &'a dyn GStore,
     table_alias: &'a str,
-    /*
-    filter_context: Option<Rc<FilterContext<'a>>>,
-    blend_context: Option<Rc<BlendContext<'a>>>,
-    */
     filter_context: Option<Rc<RowContext<'a>>>,
     blend_context: Option<Rc<RowContext<'a>>>,
     where_clause: Option<&'a Expr>,
     row: Cow<'b, Row>,
-    // ) -> Result<Option<Rc<BlendContext<'a>>>> {
 ) -> Result<Option<Rc<RowContext<'a>>>> {
-    // let filter_context = FilterContext::new(table_alias, &row, filter_context);
     let filter_context = RowContext::new(table_alias, row.as_ref(), filter_context);
     let filter_context = Some(Rc::new(filter_context));
 
@@ -288,7 +280,6 @@ async fn check_where_clause<'a, 'b>(
         None => true,
     }
     .then(|| RowContext::new(table_alias, row.into_owned(), blend_context))
-    // .then(|| BlendContext::new(table_alias, Single(row.into_owned()), blend_context))
     .map(Rc::new)
     .map(Ok)
     .transpose()
