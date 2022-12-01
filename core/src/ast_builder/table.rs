@@ -27,7 +27,6 @@ impl<'a> TableNameNode {
         SelectNode::new(self.next())
     }
 
-    // todo: is it okay to get just string?
     pub fn delete(self) -> DeleteNode<'static> {
         DeleteNode::new(self.table_name)
     }
