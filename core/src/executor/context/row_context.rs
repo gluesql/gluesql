@@ -20,7 +20,7 @@ impl<'a> RowContext<'a> {
     pub fn new(table_alias: &'a str, row: Cow<'a, Row>, next: Option<Rc<RowContext<'a>>>) -> Self {
         Self::Data {
             table_alias,
-            row: row.into(),
+            row,
             next,
         }
     }
