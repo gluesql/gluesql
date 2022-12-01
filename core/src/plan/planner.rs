@@ -209,7 +209,7 @@ pub trait Planner<'a> {
                 options
                     .iter()
                     .any(|option| matches!(option, ColumnOption::Unique { is_primary: true }))
-                    .then(|| name.as_str())
+                    .then_some(name.as_str())
             });
 
         let context = Context::new(
