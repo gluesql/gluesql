@@ -11,7 +11,7 @@ use {
     },
     futures::stream::{self, TryStreamExt},
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::{borrow::Cow, fmt::Debug, rc::Rc},
     thiserror::Error,
 };
 
@@ -68,7 +68,7 @@ impl<'a> Update<'a> {
     }
 
     async fn find(&self, row: &Row, column_def: &ColumnDef) -> Result<Option<Value>> {
-        let context = RowContext::new(self.table_name, row, None);
+        let context = RowContext::new(self.table_name, Cow::Borrowed(row), None);
         let context = Some(Rc::new(context));
 
         match self
