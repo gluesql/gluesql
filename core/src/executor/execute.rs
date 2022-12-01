@@ -2,21 +2,21 @@ use {
     super::{
         alter::{create_table, drop_table},
         fetch::{fetch, fetch_columns},
+        insert::insert,
         select::{select, select_with_labels},
         update::Update,
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
         ast::{
-            ColumnDef, ColumnOption, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
-            Statement, TableAlias, TableFactor, TableWithJoins, Values, Variable,
+            DataType, Dictionary, Expr, Query, SelectItem, SetExpr, Statement, TableAlias,
+            TableFactor, TableWithJoins, Variable,
         },
-        data::{Key, Row, Schema, Value},
-        executor::limit::Limit,
-        result::{MutResult, Result},
+        data::{Key, Schema, Value},
+        result::MutResult,
         store::{GStore, GStoreMut},
     },
-    futures::stream::{self, TryStreamExt},
+    futures::stream::TryStreamExt,
     serde::{Deserialize, Serialize},
     std::{env::var, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -173,103 +173,9 @@ pub async fn execute<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-            ..
-        } => {
-            enum RowsData {
-                Append(Vec<Vec<Value>>),
-                Insert(Vec<(Key, Vec<Value>)>),
-            }
-
-            let (rows, num_rows, table_name) = try_block!(storage, {
-                let Schema { column_defs, .. } = storage
-                    .fetch_schema(table_name)
-                    .await?
-                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
-                let labels = Rc::from(
-                    column_defs
-                        .iter()
-                        .map(|column_def| column_def.name.to_owned())
-                        .collect::<Vec<_>>(),
-                );
-                let column_defs = Rc::from(column_defs);
-                let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
-
-                #[derive(futures_enum::Stream)]
-                enum Rows<I1, I2> {
-                    Values(I1),
-                    Select(I2),
-                }
-
-                let rows = match &source.body {
-                    SetExpr::Values(Values(values_list)) => {
-                        let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
-                        let rows = values_list.iter().map(|values| {
-                            Row::new(&column_defs, Rc::clone(&labels), columns, values)
-                        });
-                        let rows = stream::iter(rows);
-                        let rows = limit.apply(rows);
-                        let rows = rows.map_ok(Into::into);
-
-                        Rows::Values(rows)
-                    }
-                    SetExpr::Select(_) => {
-                        let rows = select(&storage, source, None).await?.and_then(|row| {
-                            let column_defs = Rc::clone(&column_defs);
-
-                            async move {
-                                row.validate(&column_defs)?;
-                                Ok(row.into())
-                            }
-                        });
-
-                        Rows::Select(rows)
-                    }
-                }
-                .try_collect::<Vec<Vec<Value>>>()
-                .await?;
-
-                validate_unique(
-                    &storage,
-                    table_name,
-                    column_validation,
-                    rows.iter().map(|values| values.as_slice()),
-                )
-                .await?;
-
-                let num_rows = rows.len();
-                let primary_key = column_defs
-                    .iter()
-                    .enumerate()
-                    .find(|(_, ColumnDef { options, .. })| {
-                        options
-                            .iter()
-                            .any(|option| option == &ColumnOption::Unique { is_primary: true })
-                    })
-                    .map(|(i, _)| i);
-
-                let rows = match primary_key {
-                    Some(i) => rows
-                        .into_iter()
-                        .filter_map(|values| {
-                            values
-                                .get(i)
-                                .map(Key::try_from)
-                                .map(|result| result.map(|key| (key, values)))
-                        })
-                        .collect::<Result<Vec<_>>>()
-                        .map(RowsData::Insert)?,
-                    None => RowsData::Append(rows),
-                };
-
-                Ok((rows, num_rows, table_name))
-            });
-
-            match rows {
-                RowsData::Append(rows) => storage.append_data(table_name, rows).await,
-                RowsData::Insert(rows) => storage.insert_data(table_name, rows).await,
-            }
-            .map(|(storage, _)| (storage, Payload::Insert(num_rows)))
-        }
+        } => insert(storage, table_name, columns, source)
+            .await
+            .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows))),
         Statement::Update {
             table_name,
             selection,
