@@ -10,7 +10,7 @@ use {
     futures::stream::{self, Stream, StreamExt, TryStreamExt},
     im_rc::HashMap,
     serde::Serialize,
-    std::{cmp::Ordering, fmt::Debug, rc::Rc},
+    std::{borrow::Cow, cmp::Ordering, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
     utils::Vector,
 };
@@ -72,8 +72,8 @@ impl<'a> Sort<'a> {
                     Expr(&'a Expr),
                 }
 
-                let order_by = self
-                    .order_by
+                let order_by = self.order_by;
+                let order_by = order_by
                     .iter()
                     .map(|OrderByExpr { expr, asc }| -> Result<_> {
                         let big_decimal = match expr {
@@ -115,9 +115,8 @@ impl<'a> Sort<'a> {
                 };
 
                 async move {
-                    let row = Rc::new(row);
-                    let label_context =
-                        Rc::new(RowContext::new(table_alias, Rc::clone(&row), None));
+                    let context = RowContext::new(table_alias, Cow::Borrowed(&row), None);
+                    let label_context = Rc::new(context);
                     let filter_context = Rc::new(RowContext::concat(
                         filter_context,
                         Rc::clone(&label_context),
@@ -125,10 +124,12 @@ impl<'a> Sort<'a> {
 
                     let order_by = order_by?;
 
-                    let values = stream::iter(order_by.into_iter())
+                    let values = stream::iter(order_by.into_iter());
+                    let values = values
                         .then(|(sort_type, asc)| {
                             let context = Some(Rc::clone(&filter_context));
                             let aggregated = aggregated.as_ref().map(Rc::clone);
+
                             async move {
                                 let value: Value = match sort_type {
                                     SortType::Value(value) => value,
@@ -147,8 +148,6 @@ impl<'a> Sort<'a> {
 
                     drop(label_context);
                     drop(filter_context);
-
-                    let row = Rc::try_unwrap(row).map_err(|_| SortError::Unreachable)?;
 
                     Ok((values, row))
                 }

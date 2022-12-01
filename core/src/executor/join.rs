@@ -100,10 +100,10 @@ async fn join<'a>(
         let columns = Rc::clone(&columns);
         let init_context = Rc::new(RowContext::new(
             table_alias,
-            Row {
+            Cow::Owned(Row {
                 columns: Rc::clone(&columns),
                 values: columns.iter().map(|_| Value::Null).collect(),
-            },
+            }),
             Some(Rc::clone(&blend_context)),
         ));
         let join_executor = Rc::clone(&join_executor);
@@ -229,8 +229,11 @@ impl<'a> JoinExecutor<'a> {
                 let filter_context = filter_context.as_ref().map(Rc::clone);
 
                 async move {
-                    let filter_context =
-                        Rc::new(RowContext::new(get_alias(relation), &row, filter_context));
+                    let filter_context = Rc::new(RowContext::new(
+                        get_alias(relation),
+                        Cow::Borrowed(&row),
+                        filter_context,
+                    ));
 
                     let hash_key: Key = evaluate(
                         storage,
@@ -272,14 +275,14 @@ async fn check_where_clause<'a, 'b>(
     where_clause: Option<&'a Expr>,
     row: Cow<'b, Row>,
 ) -> Result<Option<Rc<RowContext<'a>>>> {
-    let filter_context = RowContext::new(table_alias, row.as_ref(), filter_context);
+    let filter_context = RowContext::new(table_alias, Cow::Borrowed(&row), filter_context);
     let filter_context = Some(Rc::new(filter_context));
 
     match where_clause {
         Some(expr) => check_expr(storage, filter_context, None, expr).await?,
         None => true,
     }
-    .then(|| RowContext::new(table_alias, row.into_owned(), blend_context))
+    .then(|| RowContext::new(table_alias, Cow::Owned(row.into_owned()), blend_context))
     .map(Rc::new)
     .map(Ok)
     .transpose()

@@ -15,7 +15,7 @@ use {
     iter_enum::Iterator,
     itertools::Itertools,
     serde::Serialize,
-    std::{fmt::Debug, rc::Rc},
+    std::{borrow::Cow, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
 };
 
@@ -58,7 +58,7 @@ pub async fn fetch<'a>(
                     Some(expr) => expr,
                 };
 
-                let context = RowContext::new(table_name, &row, None);
+                let context = RowContext::new(table_name, Cow::Borrowed(&row), None);
 
                 check_expr(storage, Some(Rc::new(context)), None, expr)
                     .await

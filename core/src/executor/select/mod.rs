@@ -21,7 +21,7 @@ use {
     },
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
-    std::{iter, rc::Rc},
+    std::{borrow::Cow, iter, rc::Rc},
     utils::Vector,
 };
 
@@ -143,7 +143,7 @@ pub async fn select_with_labels<'a>(
             let row = row?;
             let alias = get_alias(relation);
 
-            Ok(RowContext::new(alias, row, None))
+            Ok(RowContext::new(alias, Cow::Owned(row), None))
         });
 
     let join = Join::new(storage, joins, filter_context.as_ref().map(Rc::clone));

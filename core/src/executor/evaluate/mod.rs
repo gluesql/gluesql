@@ -25,10 +25,10 @@ use {
 pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_stateless};
 
 #[async_recursion(?Send)]
-pub async fn evaluate<'a>(
+pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
     storage: &'a dyn GStore,
-    context: Option<Rc<RowContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
+    context: Option<Rc<RowContext<'b>>>,
+    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| {
@@ -245,11 +245,11 @@ pub async fn evaluate<'a>(
     }
 }
 
-async fn evaluate_function<'a>(
+async fn evaluate_function<'a, 'b: 'a, 'c: 'a>(
     storage: &'a dyn GStore,
-    context: Option<Rc<RowContext<'a>>>,
-    aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
-    func: &'a Function,
+    context: Option<Rc<RowContext<'b>>>,
+    aggregated: Option<Rc<HashMap<&'c Aggregate, Value>>>,
+    func: &'b Function,
 ) -> Result<Evaluated<'a>> {
     use function as f;
 
