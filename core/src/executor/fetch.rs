@@ -19,7 +19,7 @@ use {
     thiserror::Error as ThisError,
 };
 
-#[derive(ThisError, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),

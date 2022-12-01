@@ -14,7 +14,7 @@ pub enum Command {
     Run,
 }
 
-#[derive(ThisError, Debug, PartialEq)]
+#[derive(ThisError, Debug, PartialEq, Eq)]
 pub enum CommandError {
     #[error("should specify table")]
     LackOfTable,

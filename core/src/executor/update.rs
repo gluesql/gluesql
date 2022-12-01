@@ -15,7 +15,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum UpdateError {
     #[error("column not found {0}")]
     ColumnNotFound(String),

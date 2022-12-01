@@ -15,7 +15,7 @@ use {
     utils::Vector,
 };
 
-#[derive(ThisError, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum SortError {
     #[error("ORDER BY COLUMN_INDEX must be within SELECT-list but: {0}")]
     ColumnIndexOutOfRange(usize),

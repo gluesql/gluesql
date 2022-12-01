@@ -31,7 +31,7 @@ use {
     crate::ast::{AstLiteral, BinaryOperator},
 };
 
-#[derive(ThisError, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum ExecuteError {
     #[error("table not found: {0}")]
     TableNotFound(String),
@@ -67,7 +67,7 @@ pub enum Payload {
     ShowVariable(PayloadVariable),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PayloadVariable {
     Tables(Vec<String>),
     Version(String),

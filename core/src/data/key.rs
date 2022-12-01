@@ -10,7 +10,7 @@ use {
     thiserror::Error as ThisError,
 };
 
-#[derive(ThisError, Debug, PartialEq, Serialize)]
+#[derive(ThisError, Debug, PartialEq, Eq, Serialize)]
 pub enum KeyError {
     #[error("FLOAT data type cannot be used as Key")]
     FloatTypeKeyNotSupported,
