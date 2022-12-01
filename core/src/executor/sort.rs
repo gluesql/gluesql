@@ -1,9 +1,8 @@
 use {
-    super::{context::FilterContext, evaluate::evaluate},
+    super::{context::RowContext, evaluate::evaluate},
     crate::{
         ast::{Aggregate, AstLiteral, Expr, OrderByExpr, UnaryOperator},
         data::{Row, Value},
-        executor::context::{BlendContext, BlendContextRow::Shared},
         result::{Error, Result},
         store::GStore,
     },
@@ -26,14 +25,14 @@ pub enum SortError {
 
 pub struct Sort<'a> {
     storage: &'a dyn GStore,
-    context: Option<Rc<FilterContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
     order_by: &'a [OrderByExpr],
 }
 
 impl<'a> Sort<'a> {
     pub fn new(
         storage: &'a dyn GStore,
-        context: Option<Rc<FilterContext<'a>>>,
+        context: Option<Rc<RowContext<'a>>>,
         order_by: &'a [OrderByExpr],
     ) -> Self {
         Self {
@@ -48,7 +47,7 @@ impl<'a> Sort<'a> {
         rows: impl Stream<
                 Item = Result<(
                     Option<Rc<HashMap<&'a Aggregate, Value>>>,
-                    Rc<BlendContext<'a>>,
+                    Rc<RowContext<'a>>,
                     Row,
                 )>,
             > + 'a,
@@ -108,20 +107,22 @@ impl<'a> Sort<'a> {
                     })
                     .collect::<Result<Vec<_>>>();
 
-                let filter_context = Rc::new(FilterContext::concat(
-                    self.context.as_ref().map(Rc::clone),
-                    Some(Rc::clone(&next)),
-                ));
+                let filter_context = match &self.context {
+                    Some(context) => {
+                        Rc::new(RowContext::concat(Rc::clone(&next), Rc::clone(context)))
+                    }
+                    None => Rc::clone(&next),
+                };
 
                 async move {
                     let row = Rc::new(row);
                     let label_context =
-                        BlendContext::new(table_alias, Shared(Rc::clone(&row)), None);
-                    let label_context = Rc::from(label_context);
-                    let filter_context = Rc::new(FilterContext::concat(
-                        Some(filter_context),
-                        Some(Rc::clone(&label_context)),
+                        Rc::new(RowContext::new(table_alias, Rc::clone(&row), None));
+                    let filter_context = Rc::new(RowContext::concat(
+                        filter_context,
+                        Rc::clone(&label_context),
                     ));
+
                     let order_by = order_by?;
 
                     let values = stream::iter(order_by.into_iter())

@@ -5,7 +5,7 @@ mod function;
 mod stateless;
 
 use {
-    super::{context::FilterContext, select::select},
+    super::{context::RowContext, select::select},
     crate::{
         ast::{Aggregate, Expr, Function},
         data::{Interval, Literal, Value},
@@ -27,7 +27,7 @@ pub use {error::EvaluateError, evaluated::Evaluated, stateless::evaluate_statele
 #[async_recursion(?Send)]
 pub async fn evaluate<'a>(
     storage: &'a dyn GStore,
-    context: Option<Rc<FilterContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
@@ -247,7 +247,7 @@ pub async fn evaluate<'a>(
 
 async fn evaluate_function<'a>(
     storage: &'a dyn GStore,
-    context: Option<Rc<FilterContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
     aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
     func: &'a Function,
 ) -> Result<Evaluated<'a>> {

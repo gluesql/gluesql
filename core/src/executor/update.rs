@@ -1,6 +1,6 @@
 use {
     super::{
-        context::FilterContext,
+        context::RowContext,
         evaluate::{evaluate, Evaluated},
     },
     crate::{
@@ -68,7 +68,7 @@ impl<'a> Update<'a> {
     }
 
     async fn find(&self, row: &Row, column_def: &ColumnDef) -> Result<Option<Value>> {
-        let context = FilterContext::new(self.table_name, row, None);
+        let context = RowContext::new(self.table_name, row, None);
         let context = Some(Rc::new(context));
 
         match self
