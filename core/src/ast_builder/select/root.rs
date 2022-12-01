@@ -5,7 +5,7 @@ use {
         ast_builder::{
             table_factor::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode,
             LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, TableAliasNode, TableFactorNode,
+            SelectItemList, TableFactorNode,
         },
         result::Result,
         translate::alias_or_name,
@@ -15,15 +15,12 @@ use {
 #[derive(Clone)]
 pub struct SelectNode<'a> {
     table_node: TableFactorNode<'a>,
-    table_alias: Option<String>,
+    // table_alias: Option<String>,
 }
 
 impl<'a> SelectNode<'a> {
-    pub fn new(table_node: TableFactorNode<'a>, table_alias: Option<String>) -> Self {
-        Self {
-            table_node,
-            table_alias,
-        }
+    pub fn new(table_node: TableFactorNode<'a>) -> Self {
+        Self { table_node }
     }
 
     pub fn filter<T: Into<ExprNode<'a>>>(self, expr: T) -> FilterNode<'a> {
@@ -83,7 +80,7 @@ impl<'a> SelectNode<'a> {
 
 impl<'a> Prebuild for SelectNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
-        let alias = self.table_alias.map(|name| TableAlias {
+        let alias = self.table_node.table_alias.map(|name| TableAlias {
             name,
             columns: Vec::new(),
         });

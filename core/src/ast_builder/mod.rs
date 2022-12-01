@@ -52,8 +52,7 @@ pub use {
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
     table_factor::{
-        glue_indexes, glue_objects, glue_table_columns, glue_tables, series, table, TableAliasNode,
-        TableFactorNode,
+        glue_indexes, glue_objects, glue_table_columns, glue_tables, series, table, TableFactorNode,
     },
     update::UpdateNode,
 };

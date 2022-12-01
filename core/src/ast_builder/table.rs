@@ -1,6 +1,6 @@
 use super::{
     table_factor::TableType, CreateTableNode, DeleteNode, DropTableNode, InsertNode, SelectNode,
-    ShowColumnsNode, TableAliasNode, TableFactorNode, UpdateNode,
+    ShowColumnsNode, TableFactorNode, UpdateNode,
 };
 
 #[cfg(feature = "alter-table")]
@@ -19,12 +19,12 @@ impl<'a> TableNameNode {
         TableFactorNode {
             table_name: self.table_name.clone(),
             table_type: TableType::Table,
-            table_alias: self.table_name,
+            table_alias: None,
         }
     }
 
     pub fn select(self) -> SelectNode<'a> {
-        SelectNode::new(self.next(), None)
+        SelectNode::new(self.next())
     }
 
     // todo: is it okay to get just string?
@@ -44,12 +44,11 @@ impl<'a> TableNameNode {
         ShowColumnsNode::new(self.table_name)
     }
 
-    // should return TableFactorNode
     pub fn alias_as(self, table_alias: &str) -> TableFactorNode<'a> {
         TableFactorNode {
             table_name: self.table_name,
             table_type: TableType::Table,
-            table_alias: table_alias.to_owned(),
+            table_alias: Some(table_alias.to_owned()),
         }
     }
 

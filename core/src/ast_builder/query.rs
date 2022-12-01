@@ -1,10 +1,10 @@
-use super::{table_factor::TableType, TableAliasNode, TableFactorNode};
-
 use {
     super::{
         select::{NodeData, Prebuild},
+        table_factor::TableType,
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        TableFactorNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -40,7 +40,7 @@ impl<'a> QueryNode<'a> {
                 subquery: Box::new(self),
                 alias: table_alias.to_owned(),
             },
-            table_alias: table_alias.to_owned(),
+            table_alias: None,
         }
     }
 }
