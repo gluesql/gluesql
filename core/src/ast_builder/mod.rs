@@ -23,6 +23,7 @@ mod select_item;
 mod select_item_list;
 mod show_columns;
 mod table;
+mod table_factor;
 #[cfg(feature = "transaction")]
 mod transaction;
 mod update;
@@ -50,9 +51,9 @@ pub use {
     select_item::SelectItemNode,
     select_item_list::SelectItemList,
     show_columns::ShowColumnsNode,
-    table::{
+    table_factor::{
         glue_indexes, glue_objects, glue_table_columns, glue_tables, series, table, TableAliasNode,
-        TableNode,
+        TableFactorNode,
     },
     update::UpdateNode,
 };

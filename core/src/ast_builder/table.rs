@@ -1,9 +1,6 @@
-use {
-    super::{
-        CreateTableNode, DeleteNode, DropTableNode, ExprNode, InsertNode, SelectNode,
-        ShowColumnsNode, UpdateNode,
-    },
-    crate::ast::Dictionary,
+use super::{
+    table_factor::TableType, CreateTableNode, DeleteNode, DropTableNode, InsertNode, SelectNode,
+    ShowColumnsNode, TableAliasNode, TableFactorNode, UpdateNode,
 };
 
 #[cfg(feature = "alter-table")]
@@ -12,61 +9,46 @@ use super::AlterTableNode;
 #[cfg(feature = "index")]
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
 
-use super::QueryNode;
 #[derive(Clone)]
-pub enum TableType<'a> {
-    Table,
-    Series(ExprNode<'a>),
-    Dictionary(Dictionary),
-    Derived {
-        subquery: Box<QueryNode<'a>>,
-        alias: String,
-    },
-}
-
-#[derive(Clone)]
-pub struct TableNode<'a> {
+pub struct TableNameNode {
     pub table_name: String,
-    pub table_type: TableType<'a>,
 }
 
-impl<'a> TableNode<'a> {
-    pub fn alias_as(self, table_alias: &str) -> TableAliasNode<'a> {
-        TableAliasNode {
-            table_node: self,
-            table_alias: table_alias.to_owned(),
+impl<'a> TableNameNode {
+    fn next(self) -> TableFactorNode<'a> {
+        TableFactorNode {
+            table_name: self.table_name,
+            table_type: TableType::Table,
         }
     }
 
     pub fn select(self) -> SelectNode<'a> {
-        SelectNode::new(self, None)
+        SelectNode::new(self.next(), None)
     }
 
+    // todo: is it okay to get just string?
     pub fn delete(self) -> DeleteNode<'static> {
         DeleteNode::new(self.table_name)
     }
 
-    #[cfg(feature = "index")]
-    pub fn drop_index(self, name: &str) -> DropIndexNode {
-        DropIndexNode::new(self.table_name, name.to_owned())
+    pub fn update(self) -> UpdateNode<'static> {
+        UpdateNode::new(self.table_name)
     }
 
-    #[cfg(feature = "index")]
-    pub fn create_index<T: Into<OrderByExprNode<'a>>>(
-        self,
-        name: &str,
-        column: T,
-    ) -> CreateIndexNode<'a> {
-        CreateIndexNode::new(self.table_name, name.to_owned(), column.into())
+    pub fn insert(self) -> InsertNode {
+        InsertNode::new(self.table_name)
     }
 
     pub fn show_columns(self) -> ShowColumnsNode {
         ShowColumnsNode::new(self.table_name)
     }
 
-    #[cfg(feature = "alter-table")]
-    pub fn alter_table(self) -> AlterTableNode {
-        AlterTableNode::new(self.table_name)
+    // should return TableFactorNode
+    pub fn alias_as(self, table_alias: &str) -> TableAliasNode<'a> {
+        TableAliasNode {
+            table_node: self.next(),
+            table_alias: table_alias.to_owned(),
+        }
     }
 
     pub fn create_table(self) -> CreateTableNode {
@@ -85,68 +67,22 @@ impl<'a> TableNode<'a> {
         DropTableNode::new(self.table_name, true)
     }
 
-    pub fn update(self) -> UpdateNode<'static> {
-        UpdateNode::new(self.table_name)
+    #[cfg(feature = "index")]
+    pub fn drop_index(self, name: &str) -> DropIndexNode {
+        DropIndexNode::new(self.table_name, name.to_owned())
     }
 
-    pub fn insert(self) -> InsertNode {
-        InsertNode::new(self.table_name)
+    #[cfg(feature = "index")]
+    pub fn create_index<T: Into<OrderByExprNode<'a>>>(
+        self,
+        name: &str,
+        column: T,
+    ) -> CreateIndexNode<'a> {
+        CreateIndexNode::new(self.table_name, name.to_owned(), column.into())
     }
-}
 
-#[derive(Clone)]
-pub struct TableAliasNode<'a> {
-    pub table_node: TableNode<'a>,
-    pub table_alias: String,
-}
-
-impl<'a> TableAliasNode<'a> {
-    pub fn select(self) -> SelectNode<'a> {
-        SelectNode::new(self.table_node, Some(self.table_alias))
-    }
-}
-
-/// Entry point function to build statement
-pub fn table(table_name: &str) -> TableNode {
-    let table_name = table_name.to_owned();
-
-    TableNode {
-        table_name,
-        table_type: TableType::Table,
-    }
-}
-
-pub fn glue_objects() -> TableNode<'static> {
-    TableNode {
-        table_name: "GLUE_OBJECTS".to_owned(),
-        table_type: TableType::Dictionary(Dictionary::GlueObjects),
-    }
-}
-
-pub fn glue_tables() -> TableNode<'static> {
-    TableNode {
-        table_name: "GLUE_TABLES".to_owned(),
-        table_type: TableType::Dictionary(Dictionary::GlueTables),
-    }
-}
-
-pub fn glue_indexes() -> TableNode<'static> {
-    TableNode {
-        table_name: "GLUE_INDEXES".to_owned(),
-        table_type: TableType::Dictionary(Dictionary::GlueIndexes),
-    }
-}
-
-pub fn glue_table_columns() -> TableNode<'static> {
-    TableNode {
-        table_name: "GLUE_TABLE_COLUMNS".to_owned(),
-        table_type: TableType::Dictionary(Dictionary::GlueTableColumns),
-    }
-}
-
-pub fn series<'a, T: Into<ExprNode<'a>>>(args: T) -> TableNode<'a> {
-    TableNode {
-        table_name: "SERIES".to_owned(),
-        table_type: TableType::Series(args.into()),
+    #[cfg(feature = "alter-table")]
+    pub fn alter_table(self) -> AlterTableNode {
+        AlterTableNode::new(self.table_name)
     }
 }

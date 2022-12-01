@@ -3,9 +3,9 @@ use {
     crate::{
         ast::{Query, SelectItem, TableAlias, TableFactor},
         ast_builder::{
-            table::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            TableAliasNode, TableNode,
+            table_factor::TableType, ExprList, ExprNode, FilterNode, GroupByNode, JoinNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, TableAliasNode, TableFactorNode,
         },
         result::Result,
         translate::alias_or_name,
@@ -14,12 +14,12 @@ use {
 
 #[derive(Clone)]
 pub struct SelectNode<'a> {
-    table_node: TableNode<'a>,
+    table_node: TableFactorNode<'a>,
     table_alias: Option<String>,
 }
 
 impl<'a> SelectNode<'a> {
-    pub fn new(table_node: TableNode<'a>, table_alias: Option<String>) -> Self {
+    pub fn new(table_node: TableFactorNode<'a>, table_alias: Option<String>) -> Self {
         Self {
             table_node,
             table_alias,

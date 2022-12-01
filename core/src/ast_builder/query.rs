@@ -1,4 +1,4 @@
-use super::{table::TableType, TableAliasNode, TableNode};
+use super::{table_factor::TableType, TableAliasNode, TableFactorNode};
 
 use {
     super::{
@@ -34,7 +34,7 @@ pub enum QueryNode<'a> {
 
 impl<'a> QueryNode<'a> {
     pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode<'a> {
-        let table_node = TableNode {
+        let table_node = TableFactorNode {
             table_name: table_alias.to_owned(),
             table_type: TableType::Derived {
                 subquery: Box::new(self),
