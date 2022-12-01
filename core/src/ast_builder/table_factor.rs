@@ -1,9 +1,8 @@
 use {
-    super::{DeleteNode, ExprNode, InsertNode, SelectNode, UpdateNode},
+    super::{DeleteNode, ExprNode, InsertNode, QueryNode, SelectNode, UpdateNode},
     crate::ast::Dictionary,
 };
 
-use super::{table_name::TableNameNode, QueryNode};
 #[derive(Clone)]
 pub enum TableType<'a> {
     Table,
@@ -38,13 +37,6 @@ impl<'a> TableFactorNode<'a> {
     pub fn insert(self) -> InsertNode {
         InsertNode::new(self.table_name)
     }
-}
-
-/// Entry point function to build statement
-pub fn table(table_name: &str) -> TableNameNode {
-    let table_name = table_name.to_owned();
-
-    TableNameNode { table_name }
 }
 
 pub fn glue_objects() -> TableFactorNode<'static> {

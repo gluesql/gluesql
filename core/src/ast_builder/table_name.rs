@@ -84,3 +84,10 @@ impl<'a> TableNameNode {
         AlterTableNode::new(self.table_name)
     }
 }
+
+/// Entry point function to build statement
+pub fn table(table_name: &str) -> TableNameNode {
+    let table_name = table_name.to_owned();
+
+    TableNameNode { table_name }
+}
