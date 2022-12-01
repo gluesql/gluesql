@@ -90,7 +90,7 @@ impl<'a> RowContext<'a> {
         }
     }
 
-    pub fn get_all_values(&self) -> Vec<Value> {
+    pub fn get_all_values(&'a self) -> Vec<Value> {
         match self {
             Self::Data {
                 row, next: None, ..
@@ -114,23 +114,21 @@ pub enum Content<'a> {
     Shared(Rc<Row>),
 }
 
-impl AsRef<Row> for Content<'_> {
-    fn as_ref(&self) -> &Row {
-        match self {
-            Content::Borrowed(row) => row,
-            Content::Owned(row) => row,
-            Content::Shared(row) => row,
-        }
-    }
-}
-
 impl<'a> Content<'a> {
     fn get_value(&'a self, target: &str) -> Option<&'a Value> {
-        self.as_ref().get_value(target)
+        match self {
+            Content::Borrowed(row) => row.get_value(target),
+            Content::Shared(row) => row.get_value(target),
+            Content::Owned(row) => row.get_value(target),
+        }
     }
 
     fn values(&self) -> Vec<Value> {
-        self.as_ref().values.clone()
+        match self {
+            Content::Borrowed(row) => row.values.clone(),
+            Content::Shared(row) => row.values.clone(),
+            Content::Owned(row) => row.values.clone(),
+        }
     }
 }
 
@@ -140,13 +138,13 @@ impl<'a> From<&'a Row> for Content<'a> {
     }
 }
 
-impl From<Row> for Content<'_> {
+impl<'a> From<Row> for Content<'a> {
     fn from(row: Row) -> Self {
         Self::Owned(row)
     }
 }
 
-impl From<Rc<Row>> for Content<'_> {
+impl<'a> From<Rc<Row>> for Content<'a> {
     fn from(row: Rc<Row>) -> Self {
         Self::Shared(row)
     }
