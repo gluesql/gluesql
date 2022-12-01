@@ -136,9 +136,15 @@ pub async fn create_table<T: GStore + GStoreMut>(
 
     match source {
         Some(q) => {
-            let (storage, rows) = async { select(&storage, q, None).await?.try_collect().await }
-                .await
-                .try_self(storage)?;
+            let (storage, rows) = async {
+                select(&storage, q, None)
+                    .await?
+                    .map_ok(Into::into)
+                    .try_collect()
+                    .await
+            }
+            .await
+            .try_self(storage)?;
 
             storage.append_data(target_table_name, rows).await
         }

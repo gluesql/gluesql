@@ -2,21 +2,21 @@ use {
     super::{
         alter::{create_table, drop_table},
         fetch::{fetch, fetch_columns},
+        insert::insert,
         select::{select, select_with_labels},
         update::Update,
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
         ast::{
-            ColumnDef, ColumnOption, DataType, Dictionary, Expr, Query, SelectItem, SetExpr,
-            Statement, TableAlias, TableFactor, TableWithJoins, Values, Variable,
+            DataType, Dictionary, Expr, Query, SelectItem, SetExpr, Statement, TableAlias,
+            TableFactor, TableWithJoins, Variable,
         },
-        data::{Key, Row, Schema},
-        executor::limit::Limit,
-        result::{MutResult, Result},
+        data::{Key, Schema, Value},
+        result::MutResult,
         store::{GStore, GStoreMut},
     },
-    futures::stream::{self, TryStreamExt},
+    futures::stream::TryStreamExt,
     serde::{Deserialize, Serialize},
     std::{env::var, fmt::Debug, rc::Rc},
     thiserror::Error as ThisError,
@@ -44,7 +44,7 @@ pub enum Payload {
     Insert(usize),
     Select {
         labels: Vec<String>,
-        rows: Vec<Row>,
+        rows: Vec<Vec<Value>>,
     },
     Delete(usize),
     Update(usize),
@@ -173,90 +173,9 @@ pub async fn execute<T: GStore + GStoreMut>(
             table_name,
             columns,
             source,
-            ..
-        } => {
-            enum RowsData {
-                Append(Vec<Row>),
-                Insert(Vec<(Key, Row)>),
-            }
-
-            let (rows, num_rows, table_name) = try_block!(storage, {
-                let Schema { column_defs, .. } = storage
-                    .fetch_schema(table_name)
-                    .await?
-                    .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
-                let column_defs = Rc::from(column_defs);
-                let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
-
-                #[derive(futures_enum::Stream)]
-                enum Rows<I1, I2> {
-                    Values(I1),
-                    Select(I2),
-                }
-
-                let rows = match &source.body {
-                    SetExpr::Values(Values(values_list)) => {
-                        let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
-                        let rows = values_list
-                            .iter()
-                            .map(|values| Row::new(&column_defs, columns, values));
-                        let rows = stream::iter(rows);
-                        let rows = limit.apply(rows);
-
-                        Rows::Values(rows)
-                    }
-                    SetExpr::Select(_) => {
-                        let rows = select(&storage, source, None).await?.and_then(|row| {
-                            let column_defs = Rc::clone(&column_defs);
-
-                            async move {
-                                row.validate(&column_defs)?;
-                                Ok(row)
-                            }
-                        });
-
-                        Rows::Select(rows)
-                    }
-                }
-                .try_collect::<Vec<_>>()
-                .await?;
-
-                validate_unique(&storage, table_name, column_validation, rows.iter()).await?;
-
-                let num_rows = rows.len();
-                let primary_key = column_defs
-                    .iter()
-                    .enumerate()
-                    .find(|(_, ColumnDef { options, .. })| {
-                        options
-                            .iter()
-                            .any(|option| option == &ColumnOption::Unique { is_primary: true })
-                    })
-                    .map(|(i, _)| i);
-
-                let rows = match primary_key {
-                    Some(i) => rows
-                        .into_iter()
-                        .filter_map(|row| {
-                            row.0
-                                .get(i)
-                                .map(Key::try_from)
-                                .map(|result| result.map(|key| (key, row)))
-                        })
-                        .collect::<Result<Vec<_>>>()
-                        .map(RowsData::Insert)?,
-                    None => RowsData::Append(rows),
-                };
-
-                Ok((rows, num_rows, table_name))
-            });
-
-            match rows {
-                RowsData::Append(rows) => storage.append_data(table_name, rows).await,
-                RowsData::Insert(rows) => storage.insert_data(table_name, rows).await,
-            }
-            .map(|(storage, _)| (storage, Payload::Insert(num_rows)))
-        }
+        } => insert(storage, table_name, columns, source)
+            .await
+            .map(|(storage, num_rows)| (storage, Payload::Insert(num_rows))),
         Statement::Update {
             table_name,
             selection,
@@ -275,14 +194,14 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .await?
                     .and_then(|item| {
                         let update = &update;
-                        let (_, key, row) = item;
+                        let (key, row) = item;
 
                         async move {
                             let row = update.apply(row).await?;
-                            Ok((key, row))
+                            Ok((key, row.into()))
                         }
                     })
-                    .try_collect::<Vec<_>>()
+                    .try_collect::<Vec<(Key, Vec<Value>)>>()
                     .await?;
 
                 let column_validation =
@@ -291,7 +210,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                     &storage,
                     table_name,
                     column_validation,
-                    rows.iter().map(|r| &r.1),
+                    rows.iter().map(|(_, values)| values.as_slice()),
                 )
                 .await?;
 
@@ -310,11 +229,10 @@ pub async fn execute<T: GStore + GStoreMut>(
             selection,
         } => {
             let (table_name, keys) = try_block!(storage, {
-                let columns = Rc::from(fetch_columns(&storage, table_name).await?);
-
+                let columns = fetch_columns(&storage, table_name).await.map(Rc::from)?;
                 let keys = fetch(&storage, table_name, columns, selection.as_ref())
                     .await?
-                    .map_ok(|(_, key, _)| key)
+                    .map_ok(|(key, _)| key)
                     .try_collect::<Vec<_>>()
                     .await?;
 
@@ -332,8 +250,8 @@ pub async fn execute<T: GStore + GStoreMut>(
         //- Selection
         Statement::Query(query) => {
             let (labels, rows) = try_block!(storage, {
-                let (labels, rows) = select_with_labels(&storage, query, None, true).await?;
-                let rows = rows.try_collect::<Vec<_>>().await?;
+                let (labels, rows) = select_with_labels(&storage, query, None).await?;
+                let rows = rows.map_ok(Into::into).try_collect::<Vec<_>>().await?;
                 Ok((labels, rows))
             });
             Ok((storage, Payload::Select { labels, rows }))
@@ -386,8 +304,8 @@ pub async fn execute<T: GStore + GStoreMut>(
             };
 
             let (labels, rows) = try_block!(storage, {
-                let (labels, rows) = select_with_labels(&storage, &query, None, true).await?;
-                let rows = rows.try_collect::<Vec<_>>().await?;
+                let (labels, rows) = select_with_labels(&storage, &query, None).await?;
+                let rows = rows.map_ok(Into::into).try_collect::<Vec<_>>().await?;
                 Ok((labels, rows))
             });
 
@@ -429,7 +347,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                 let rows = try_block!(storage, {
                     let rows = select(&storage, &query, None).await?;
                     let rows = rows
-                        .map_ok(|Row(values)| values)
+                        .map_ok(|row| row.values)
                         .try_collect::<Vec<_>>()
                         .await?;
                     Ok(rows)

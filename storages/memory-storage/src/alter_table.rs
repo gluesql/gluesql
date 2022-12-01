@@ -98,7 +98,7 @@ impl MemoryStorage {
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
         item.rows.iter_mut().for_each(|(_, row)| {
-            row.0.push(value.clone());
+            row.push(value.clone());
         });
         item.schema.column_defs.push(column_def.clone());
 
@@ -127,8 +127,8 @@ impl MemoryStorage {
                 item.schema.column_defs.remove(column_index);
 
                 item.rows.iter_mut().for_each(|(_, row)| {
-                    if row.0.len() > column_index {
-                        row.0.remove(column_index);
+                    if row.len() > column_index {
+                        row.remove(column_index);
                     }
                 });
             }

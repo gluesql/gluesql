@@ -1,12 +1,8 @@
 use {
-    super::SelectError,
     crate::{
         ast::{Aggregate, SelectItem},
         data::{Row, Value},
-        executor::{
-            context::{BlendContext, FilterContext},
-            evaluate::evaluate,
-        },
+        executor::{context::RowContext, evaluate::evaluate},
         result::{Error, Result},
         store::GStore,
     },
@@ -17,19 +13,19 @@ use {
 
 pub struct Blend<'a> {
     storage: &'a dyn GStore,
-    filter_context: Option<Rc<FilterContext<'a>>>,
+    context: Option<Rc<RowContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
 impl<'a> Blend<'a> {
     pub fn new(
         storage: &'a dyn GStore,
-        filter_context: Option<Rc<FilterContext<'a>>>,
+        context: Option<Rc<RowContext<'a>>>,
         fields: &'a [SelectItem],
     ) -> Self {
         Self {
             storage,
-            filter_context,
+            context,
             fields,
         }
     }
@@ -37,13 +33,17 @@ impl<'a> Blend<'a> {
     pub async fn apply(
         &self,
         aggregated: Option<Rc<HashMap<&'a Aggregate, Value>>>,
-        context: Rc<BlendContext<'a>>,
+        labels: Rc<[String]>,
+        context: Rc<RowContext<'a>>,
     ) -> Result<Row> {
-        let filter_context = FilterContext::concat(
-            self.filter_context.as_ref().map(Rc::clone),
-            Some(Rc::clone(&context)),
-        );
-        let filter_context = Some(filter_context).map(Rc::new);
+        let filter_context = match &self.context {
+            Some(filter_context) => Rc::new(RowContext::concat(
+                Rc::clone(&context),
+                Rc::clone(filter_context),
+            )),
+            None => Rc::clone(&context),
+        };
+        let filter_context = Some(filter_context);
 
         let values = stream::iter(self.fields.iter())
             .map(Ok::<&'a SelectItem, Error>)
@@ -56,13 +56,7 @@ impl<'a> Blend<'a> {
                     match item {
                         SelectItem::Wildcard => Ok(context.get_all_values()),
                         SelectItem::QualifiedWildcard(table_alias) => {
-                            match context.get_alias_values(table_alias) {
-                                Some(values) => Ok(values),
-                                None => Err(SelectError::BlendTableAliasNotFound(
-                                    table_alias.to_owned(),
-                                )
-                                .into()),
-                            }
+                            Ok(context.get_alias_values(table_alias).unwrap_or_default())
                         }
                         SelectItem::Expr { expr, .. } => {
                             evaluate(self.storage, filter_context, aggregated, expr)
@@ -76,6 +70,10 @@ impl<'a> Blend<'a> {
             .try_collect::<Vec<Vec<_>>>()
             .await?
             .concat();
-        Ok(Row(values))
+
+        Ok(Row {
+            columns: Rc::clone(&labels),
+            values,
+        })
     }
 }

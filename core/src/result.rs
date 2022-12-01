@@ -5,7 +5,7 @@ use {
             IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
         },
         executor::{
-            AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
+            AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
             SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
@@ -58,11 +58,11 @@ pub enum Error {
     #[error(transparent)]
     Evaluate(#[from] EvaluateError),
     #[error(transparent)]
-    Select(#[from] SelectError),
-    #[error(transparent)]
     Aggregate(#[from] AggregateError),
     #[error(transparent)]
     Sort(#[from] SortError),
+    #[error(transparent)]
+    Insert(#[from] InsertError),
     #[error(transparent)]
     Update(#[from] UpdateError),
     #[error(transparent)]
@@ -105,9 +105,9 @@ impl PartialEq for Error {
             (Alter(e), Alter(e2)) => e == e2,
             (Fetch(e), Fetch(e2)) => e == e2,
             (Evaluate(e), Evaluate(e2)) => e == e2,
-            (Select(e), Select(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Sort(e), Sort(e2)) => e == e2,
+            (Insert(e), Insert(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,

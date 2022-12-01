@@ -1,7 +1,7 @@
 use {
     crate::{
         ast::{ColumnDef, ColumnOption},
-        data::{Key, Row, Value},
+        data::{Key, Value},
         result::Result,
         store::Store,
     },
@@ -82,7 +82,7 @@ pub async fn validate_unique(
     storage: &dyn Store,
     table_name: &str,
     column_validation: ColumnValidation,
-    row_iter: impl Iterator<Item = &Row> + Clone,
+    row_iter: impl Iterator<Item = &[Value]> + Clone,
 ) -> Result<()> {
     enum Columns {
         /// key index
@@ -125,7 +125,7 @@ pub async fn validate_unique(
     match columns {
         Columns::PrimaryKeyOnly(primary_key_index) => {
             for primary_key in
-                row_iter.filter_map(|row| row.0.get(primary_key_index).map(Key::try_from))
+                row_iter.filter_map(|row| row.get(primary_key_index).map(Key::try_from))
             {
                 let key = primary_key?;
 
@@ -150,7 +150,7 @@ pub async fn validate_unique(
                     .try_for_each(|constraint| {
                         let col_idx = constraint.column_index;
                         let val = row
-                            .get_value_by_index(col_idx)
+                            .get(col_idx)
                             .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
                         constraint.check(val)?;
@@ -164,7 +164,7 @@ pub async fn validate_unique(
 
 fn create_unique_constraints<'a>(
     unique_columns: Vec<(usize, String)>,
-    row_iter: impl Iterator<Item = &'a Row> + Clone,
+    row_iter: impl Iterator<Item = &'a [Value]> + Clone,
 ) -> Result<Vector<UniqueConstraint>> {
     unique_columns
         .into_iter()
@@ -175,7 +175,7 @@ fn create_unique_constraints<'a>(
                 .clone()
                 .try_fold(new_constraint, |constraint, row| {
                     let val = row
-                        .get_value_by_index(col_idx)
+                        .get(col_idx)
                         .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 
                     constraint.add(val)
