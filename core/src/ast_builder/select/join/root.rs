@@ -6,7 +6,7 @@ use {
             select::{NodeData, Prebuild},
             ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
             LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableAliasNode,
+            SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -152,7 +152,7 @@ impl<'a> JoinNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::JoinNode(self).alias_as(table_alias)
     }
 

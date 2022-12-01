@@ -4,7 +4,7 @@ use {
         ast_builder::{
             FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
             LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, QueryNode, SelectItemList,
-            SelectNode, TableAliasNode,
+            SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -132,7 +132,7 @@ impl<'a> ProjectNode<'a> {
         self
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::ProjectNode(self).alias_as(table_alias)
     }
 }

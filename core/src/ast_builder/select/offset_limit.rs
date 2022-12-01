@@ -2,7 +2,7 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            ExprNode, OffsetNode, ProjectNode, QueryNode, SelectItemList, TableAliasNode,
+            ExprNode, OffsetNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -45,7 +45,7 @@ impl<'a> OffsetLimitNode<'a> {
         ProjectNode::new(self, select_items)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::OffsetLimitNode(self).alias_as(table_alias)
     }
 }

@@ -4,7 +4,7 @@ use {
         ast_builder::{
             ExprList, ExprNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode, LimitNode,
             OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            TableAliasNode,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -92,7 +92,7 @@ impl<'a> FilterNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::FilterNode(self).alias_as(table_alias)
     }
 }

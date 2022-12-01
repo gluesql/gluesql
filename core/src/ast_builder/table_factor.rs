@@ -19,7 +19,7 @@ pub enum TableType<'a> {
 pub struct TableFactorNode<'a> {
     pub table_name: String,
     pub table_type: TableType<'a>,
-    // pub table_alias: Option<String>,
+    pub table_alias: String,
 }
 
 impl<'a> TableFactorNode<'a> {
@@ -70,6 +70,7 @@ pub fn glue_objects() -> TableFactorNode<'static> {
     TableFactorNode {
         table_name: "GLUE_OBJECTS".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueObjects),
+        table_alias: "GLUE_OBJECTS".to_owned(),
     }
 }
 
@@ -77,6 +78,7 @@ pub fn glue_tables() -> TableFactorNode<'static> {
     TableFactorNode {
         table_name: "GLUE_TABLES".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueTables),
+        table_alias: "GLUE_TABLES".to_owned(),
     }
 }
 
@@ -84,6 +86,7 @@ pub fn glue_indexes() -> TableFactorNode<'static> {
     TableFactorNode {
         table_name: "GLUE_INDEXES".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueIndexes),
+        table_alias: "GLUE_INDEXES".to_owned(),
     }
 }
 
@@ -91,6 +94,7 @@ pub fn glue_table_columns() -> TableFactorNode<'static> {
     TableFactorNode {
         table_name: "GLUE_TABLE_COLUMNS".to_owned(),
         table_type: TableType::Dictionary(Dictionary::GlueTableColumns),
+        table_alias: "GLUE_TABLE_COLUMNS".to_owned(),
     }
 }
 
@@ -98,5 +102,6 @@ pub fn series<'a, T: Into<ExprNode<'a>>>(args: T) -> TableFactorNode<'a> {
     TableFactorNode {
         table_name: "SERIES".to_owned(),
         table_type: TableType::Series(args.into()),
+        table_alias: "SERIES".to_owned(),
     }
 }

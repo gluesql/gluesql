@@ -17,8 +17,9 @@ pub struct TableNameNode {
 impl<'a> TableNameNode {
     fn next(self) -> TableFactorNode<'a> {
         TableFactorNode {
-            table_name: self.table_name,
+            table_name: self.table_name.clone(),
             table_type: TableType::Table,
+            table_alias: self.table_name,
         }
     }
 
@@ -44,9 +45,10 @@ impl<'a> TableNameNode {
     }
 
     // should return TableFactorNode
-    pub fn alias_as(self, table_alias: &str) -> TableAliasNode<'a> {
-        TableAliasNode {
-            table_node: self.next(),
+    pub fn alias_as(self, table_alias: &str) -> TableFactorNode<'a> {
+        TableFactorNode {
+            table_name: self.table_name,
+            table_type: TableType::Table,
             table_alias: table_alias.to_owned(),
         }
     }

@@ -76,7 +76,7 @@ impl<'a> SelectNode<'a> {
         )
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::SelectNode(self).alias_as(table_alias)
     }
 }

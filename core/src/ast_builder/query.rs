@@ -33,17 +33,13 @@ pub enum QueryNode<'a> {
 }
 
 impl<'a> QueryNode<'a> {
-    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode<'a> {
-        let table_node = TableFactorNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+        TableFactorNode {
             table_name: table_alias.to_owned(),
             table_type: TableType::Derived {
                 subquery: Box::new(self),
                 alias: table_alias.to_owned(),
             },
-        };
-
-        TableAliasNode {
-            table_node,
             table_alias: table_alias.to_owned(),
         }
     }

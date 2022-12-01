@@ -3,7 +3,7 @@ use {
     crate::{
         ast_builder::{
             ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
-            ProjectNode, QueryNode, SelectItemList, TableAliasNode,
+            ProjectNode, QueryNode, SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -58,7 +58,7 @@ impl<'a> HavingNode<'a> {
         OrderByNode::new(self, expr_list)
     }
 
-    pub fn alias_as(self, table_alias: &'a str) -> TableAliasNode {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::HavingNode(self).alias_as(table_alias)
     }
 }
