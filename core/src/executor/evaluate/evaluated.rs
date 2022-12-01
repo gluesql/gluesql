@@ -186,7 +186,7 @@ impl<'a> Evaluated<'a> {
                 Evaluated::Literal(l.like(&r, case_sensitive)?)
             }
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((&Value::try_from(l)?).like(&r, case_sensitive)?)
+                Evaluated::from((Value::try_from(l)?).like(&r, case_sensitive)?)
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
                 Evaluated::from(l.like(&Value::try_from(r)?, case_sensitive)?)
