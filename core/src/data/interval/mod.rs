@@ -235,7 +235,7 @@ impl Interval {
                     .map(parse_integer)
                     .collect::<Result<Vec<_>>>()?;
 
-                match (nums.get(0), nums.get(1)) {
+                match (nums.first(), nums.get(1)) {
                     (Some(years), Some(months)) => {
                         Ok(Interval::months(sign() * (12 * years + months)))
                     }
@@ -249,7 +249,7 @@ impl Interval {
                     .map(parse_integer)
                     .collect::<Result<Vec<_>>>()?;
 
-                match (nums.get(0), nums.get(1)) {
+                match (nums.first(), nums.get(1)) {
                     (Some(days), Some(hours)) => Ok(Interval::hours(sign() * (24 * days + hours))),
                     _ => Err(IntervalError::FailedToParseDayToHour(value.to_owned()).into()),
                 }
@@ -257,7 +257,7 @@ impl Interval {
             (Some(Day), Some(Minute)) => {
                 let nums = value.trim_start_matches('-').split(' ').collect::<Vec<_>>();
 
-                match (nums.get(0), nums.get(1)) {
+                match (nums.first(), nums.get(1)) {
                     (Some(days), Some(time)) => {
                         let days = parse_integer(days)?;
                         let time = format!("{}:00", time);
@@ -272,7 +272,7 @@ impl Interval {
             (Some(Day), Some(Second)) => {
                 let nums = value.trim_start_matches('-').split(' ').collect::<Vec<_>>();
 
-                match (nums.get(0), nums.get(1)) {
+                match (nums.first(), nums.get(1)) {
                     (Some(days), Some(time)) => {
                         let days = parse_integer(days)?;
 
