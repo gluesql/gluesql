@@ -10,7 +10,7 @@ use {
     thiserror::Error as ThisError,
 };
 
-#[derive(ThisError, Debug, PartialEq, Serialize)]
+#[derive(ThisError, Debug, PartialEq, Eq, Serialize)]
 pub enum KeyError {
     #[error("FLOAT data type cannot be used as Key")]
     FloatTypeKeyNotSupported,
@@ -120,7 +120,7 @@ impl Key {
                 }
             }
             Key::I8(v) => {
-                let sign = if *v >= 0 { 1 } else { 0 };
+                let sign = u8::from(*v >= 0);
 
                 [VALUE, sign]
                     .iter()
@@ -129,7 +129,7 @@ impl Key {
                     .collect::<Vec<_>>()
             }
             Key::I16(v) => {
-                let sign = if *v >= 0 { 1 } else { 0 };
+                let sign = u8::from(*v >= 0);
 
                 [VALUE, sign]
                     .iter()
@@ -138,7 +138,7 @@ impl Key {
                     .collect::<Vec<_>>()
             }
             Key::I32(v) => {
-                let sign = if *v >= 0 { 1 } else { 0 };
+                let sign = u8::from(*v >= 0);
 
                 [VALUE, sign]
                     .iter()
@@ -147,7 +147,7 @@ impl Key {
                     .collect::<Vec<_>>()
             }
             Key::I64(v) => {
-                let sign = if *v >= 0 { 1 } else { 0 };
+                let sign = u8::from(*v >= 0);
 
                 [VALUE, sign]
                     .iter()
@@ -156,7 +156,7 @@ impl Key {
                     .collect::<Vec<_>>()
             }
             Key::I128(v) => {
-                let sign = if *v >= 0 { 1 } else { 0 };
+                let sign = u8::from(*v >= 0);
 
                 [VALUE, sign]
                     .iter()
@@ -175,7 +175,7 @@ impl Key {
                 .copied()
                 .collect::<Vec<_>>(),
             Key::Decimal(v) => {
-                let sign = if v.is_sign_positive() { 1 } else { 0 };
+                let sign = u8::from(v.is_sign_positive());
                 let convert = |v: Decimal| {
                     let v = v.unpack();
                     let v = v.lo as i128 + ((v.mid as i128) << 32) + ((v.hi as i128) << 64);

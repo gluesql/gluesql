@@ -6,7 +6,7 @@ use {
     std::iter::once,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PlanExpr<'a> {
     None,
     Identifier(&'a str),

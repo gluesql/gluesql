@@ -19,7 +19,7 @@ use {
     thiserror::Error as ThisError,
 };
 
-#[derive(ThisError, Serialize, Debug, PartialEq)]
+#[derive(ThisError, Serialize, Debug, PartialEq, Eq)]
 pub enum FetchError {
     #[error("table not found: {0}")]
     TableNotFound(String),
@@ -458,9 +458,10 @@ pub async fn fetch_labels(
                     match labels {
                         Some(columns) => columns.into_iter().map(Ok).collect(),
                         None => {
-                            let e = FetchError::TableAliasNotFound(target_table_alias.to_owned());
-
-                            return vec![Err(e.into())];
+                            vec![Err(FetchError::TableAliasNotFound(
+                                target_table_alias.to_owned(),
+                            )
+                            .into())]
                         }
                     }
                 }

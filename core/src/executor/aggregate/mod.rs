@@ -246,14 +246,14 @@ fn check(expr: &Expr) -> bool {
             when_then,
             else_result,
         } => {
-            operand.as_ref().map(|expr| check(&*expr)).unwrap_or(false)
+            operand.as_ref().map(|expr| check(expr)).unwrap_or(false)
                 || when_then
                     .iter()
                     .map(|(when, then)| check(when) || check(then))
                     .any(identity)
                 || else_result
                     .as_ref()
-                    .map(|expr| check(&*expr))
+                    .map(|expr| check(expr))
                     .unwrap_or(false)
         }
         Expr::Aggregate(_) => true,
