@@ -15,7 +15,6 @@ use {
 #[derive(Clone)]
 pub struct SelectNode<'a> {
     table_node: TableFactorNode<'a>,
-    // table_alias: Option<String>,
 }
 
 impl<'a> SelectNode<'a> {
