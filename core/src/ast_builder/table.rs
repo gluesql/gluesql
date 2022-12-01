@@ -15,16 +15,14 @@ pub struct TableNameNode {
 }
 
 impl<'a> TableNameNode {
-    fn next(self) -> TableFactorNode<'a> {
-        TableFactorNode {
-            table_name: self.table_name.clone(),
+    pub fn select(self) -> SelectNode<'a> {
+        let table_factor = TableFactorNode {
+            table_name: self.table_name,
             table_type: TableType::Table,
             table_alias: None,
-        }
-    }
+        };
 
-    pub fn select(self) -> SelectNode<'a> {
-        SelectNode::new(self.next())
+        SelectNode::new(table_factor)
     }
 
     pub fn delete(self) -> DeleteNode<'static> {
