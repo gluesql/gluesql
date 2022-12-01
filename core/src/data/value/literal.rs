@@ -214,7 +214,7 @@ impl Value {
                 None => Err(ValueError::LiteralCastToInt8Failed(v.to_string()).into()),
             },
             (DataType::Int8, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
+                let v = i8::from(*v);
 
                 Ok(Value::I8(v))
             }
@@ -227,7 +227,7 @@ impl Value {
                 None => Err(ValueError::LiteralCastToInt8Failed(v.to_string()).into()),
             },
             (DataType::Int16, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
+                let v = i16::from(*v);
 
                 Ok(Value::I16(v))
             }
@@ -244,7 +244,7 @@ impl Value {
                 .into()),
             },
             (DataType::Int32, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
+                let v = i32::from(*v);
 
                 Ok(Value::I32(v))
             }
@@ -259,7 +259,7 @@ impl Value {
                 ),
             },
             (DataType::Int, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
+                let v = i64::from(*v);
 
                 Ok(Value::I64(v))
             }
@@ -276,7 +276,7 @@ impl Value {
                 .into()),
             },
             (DataType::Int128, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
+                let v = i128::from(*v);
 
                 Ok(Value::I128(v))
             }
@@ -288,7 +288,7 @@ impl Value {
                 None => Err(ValueError::LiteralCastToUnsignedInt8Failed(v.to_string()).into()),
             },
             (DataType::Uint8, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
+                let v = u8::from(*v);
 
                 Ok(Value::U8(v))
             }
@@ -301,7 +301,7 @@ impl Value {
                 None => Err(ValueError::LiteralCastToUint16Failed(v.to_string()).into()),
             },
             (DataType::Uint16, Literal::Boolean(v)) => {
-                let v = if *v { 1 } else { 0 };
+                let v = u16::from(*v);
 
                 Ok(Value::U16(v))
             }
