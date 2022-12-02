@@ -7,7 +7,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FunctionNode<'a> {
     Abs(ExprNode<'a>),
     Upper(ExprNode<'a>),

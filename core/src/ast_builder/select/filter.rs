@@ -10,7 +10,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Select(SelectNode<'a>),
     Join(Box<JoinNode<'a>>),
@@ -52,7 +52,7 @@ impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
         PrevNode::Select(node)
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FilterNode<'a> {
     prev_node: PrevNode<'a>,
     filter_expr: ExprNode<'a>,

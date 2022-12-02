@@ -37,7 +37,7 @@ pub trait Prebuild {
     fn prebuild(self) -> Result<NodeData>;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct NodeData {
     pub projection: Vec<SelectItem>,
     pub relation: TableFactor,

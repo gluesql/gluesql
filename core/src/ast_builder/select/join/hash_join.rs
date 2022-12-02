@@ -12,7 +12,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct HashJoinNode<'a> {
     join_node: JoinNode<'a>,
     key_expr: ExprNode<'a>,

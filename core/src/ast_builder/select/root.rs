@@ -12,7 +12,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SelectNode<'a> {
     table_node: TableFactorNode<'a>,
 }

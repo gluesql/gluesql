@@ -12,7 +12,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Join(Box<JoinNode<'a>>),
     HashJoin(Box<HashJoinNode<'a>>),
@@ -39,7 +39,7 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct JoinConstraintNode<'a> {
     prev_node: PrevNode<'a>,
     expr: ExprNode<'a>,

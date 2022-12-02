@@ -6,7 +6,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum InListNode<'a> {
     InList(Vec<ExprNode<'a>>),
     Query(Box<QueryNode<'a>>),

@@ -4,7 +4,7 @@ use crate::{
     translate::translate_idents,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ColumnList {
     Text(String),
     Columns(Vec<String>),

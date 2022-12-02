@@ -10,7 +10,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Select(SelectNode<'a>),
     GroupBy(GroupByNode<'a>),
@@ -109,7 +109,7 @@ impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProjectNode<'a> {
     prev_node: PrevNode<'a>,
     select_items_list: Vec<SelectItemList<'a>>,

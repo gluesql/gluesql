@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum SelectItemNode<'a> {
     SelectItem(SelectItem),
     Expr(ExprNode<'a>),

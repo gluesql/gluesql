@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Offset(OffsetNode<'a>),
 }
@@ -27,7 +27,7 @@ impl<'a> From<OffsetNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OffsetLimitNode<'a> {
     prev_node: PrevNode<'a>,
     expr: ExprNode<'a>,

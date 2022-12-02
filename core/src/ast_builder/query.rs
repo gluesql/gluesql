@@ -14,7 +14,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum QueryNode<'a> {
     Text(String),
     Values(Vec<ExprList<'a>>),

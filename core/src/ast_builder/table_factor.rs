@@ -3,7 +3,7 @@ use {
     crate::ast::Dictionary,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum TableType<'a> {
     Table,
     Series(ExprNode<'a>),
@@ -14,7 +14,7 @@ pub enum TableType<'a> {
     },
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TableFactorNode<'a> {
     pub table_name: String,
     pub table_type: TableType<'a>,

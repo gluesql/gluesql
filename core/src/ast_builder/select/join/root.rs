@@ -12,7 +12,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Select(SelectNode<'a>),
     Join(Box<JoinNode<'a>>),
@@ -55,7 +55,7 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct JoinNode<'a> {
     prev_node: PrevNode<'a>,
     relation: TableFactor,
