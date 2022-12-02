@@ -36,7 +36,9 @@ impl<'a> Filter<'a> {
         match self.where_clause {
             Some(expr) => {
                 let context = match &self.context {
-                    Some(context) => Rc::new(RowContext::concat(project_context, Rc::clone(context))),
+                    Some(context) => {
+                        Rc::new(RowContext::concat(project_context, Rc::clone(context)))
+                    }
                     None => project_context,
                 };
                 let context = Some(context);
