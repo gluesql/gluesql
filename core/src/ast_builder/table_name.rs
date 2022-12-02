@@ -9,7 +9,7 @@ use super::AlterTableNode;
 #[cfg(feature = "index")]
 use super::{CreateIndexNode, DropIndexNode, OrderByExprNode};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TableNameNode {
     pub table_name: String,
 }

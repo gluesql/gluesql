@@ -10,7 +10,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Select(SelectNode<'a>),
     Having(HavingNode<'a>),
@@ -77,7 +77,7 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OrderByNode<'a> {
     prev_node: PrevNode<'a>,
     expr_list: OrderByExprList<'a>,

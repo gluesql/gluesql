@@ -9,7 +9,7 @@ use crate::{
     ast_builder::select::NodeData,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum JoinOperatorType {
     Inner,
     Left,

@@ -3,7 +3,7 @@ use {
     crate::{ast::Statement, result::Result},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ShowColumnsNode {
     table_name: String,
 }

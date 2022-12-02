@@ -8,7 +8,7 @@ use {
     std::{borrow::Cow, str::FromStr},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum NumericNode<'a> {
     I8(i8),
     I16(i16),

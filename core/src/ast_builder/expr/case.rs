@@ -12,6 +12,7 @@ pub fn case() -> CaseNode<'static> {
     CaseNode { operand: None }
 }
 
+#[derive(Clone, Debug)]
 pub struct CaseNode<'a> {
     operand: Option<Box<ExprNode<'a>>>,
 }
@@ -29,6 +30,7 @@ impl<'a> CaseNode<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct WhenThenNode<'a> {
     prev_node: CaseNode<'a>,
     when_then: Vec<(ExprNode<'a>, ExprNode<'a>)>,

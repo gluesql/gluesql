@@ -9,7 +9,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     GroupBy(GroupByNode<'a>),
 }
@@ -28,7 +28,7 @@ impl<'a> From<GroupByNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct HavingNode<'a> {
     prev_node: PrevNode<'a>,
     expr: ExprNode<'a>,
