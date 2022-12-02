@@ -11,13 +11,13 @@ use {
     std::rc::Rc,
 };
 
-pub struct Blend<'a> {
+pub struct Project<'a> {
     storage: &'a dyn GStore,
     context: Option<Rc<RowContext<'a>>>,
     fields: &'a [SelectItem],
 }
 
-impl<'a> Blend<'a> {
+impl<'a> Project<'a> {
     pub fn new(
         storage: &'a dyn GStore,
         context: Option<Rc<RowContext<'a>>>,

@@ -145,7 +145,7 @@ test_case!(join, async move {
     }
 });
 
-test_case!(blend, async move {
+test_case!(project, async move {
     let create_sqls: [&str; 2] = [
         "
         CREATE TABLE Player (
@@ -271,7 +271,7 @@ test_case!(blend, async move {
             PlanError::ColumnReferenceAmbiguous("id".to_owned()).into(),
         ),
         (
-            "SELECT * FROM BlendUser, BlendItem",
+            "SELECT * FROM ProjectUser, ProjectItem",
             TranslateError::TooManyTables.into(),
         ),
     ];

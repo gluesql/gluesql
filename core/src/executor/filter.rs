@@ -32,12 +32,12 @@ impl<'a> Filter<'a> {
         }
     }
 
-    pub async fn check(&self, blend_context: Rc<RowContext<'a>>) -> Result<bool> {
+    pub async fn check(&self, project_context: Rc<RowContext<'a>>) -> Result<bool> {
         match self.where_clause {
             Some(expr) => {
                 let context = match &self.context {
-                    Some(context) => Rc::new(RowContext::concat(blend_context, Rc::clone(context))),
-                    None => blend_context,
+                    Some(context) => Rc::new(RowContext::concat(project_context, Rc::clone(context))),
+                    None => project_context,
                 };
                 let context = Some(context);
                 let aggregated = self.aggregated.as_ref().map(Rc::clone);

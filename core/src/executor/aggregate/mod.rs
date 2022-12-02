@@ -54,9 +54,9 @@ impl<'a> Aggregator<'a> {
         rows: impl TryStream<Ok = Rc<RowContext<'a>>, Error = Error> + 'a,
     ) -> Result<Pin<Box<Applied<'a>>>> {
         if !self.check_aggregate() {
-            let rows = rows.map_ok(|blend_context| AggregateContext {
+            let rows = rows.map_ok(|project_context| AggregateContext {
                 aggregated: None,
-                next: blend_context,
+                next: project_context,
             });
             return Ok(Box::pin(rows));
         }
@@ -67,13 +67,13 @@ impl<'a> Aggregator<'a> {
             .map(|(i, row)| row.map(|row| (i, row)))
             .try_fold(
                 State::new(self.storage),
-                |state, (index, blend_context)| async move {
+                |state, (index, project_context)| async move {
                     let filter_context = match &self.filter_context {
                         Some(filter_context) => Rc::new(RowContext::concat(
-                            Rc::clone(&blend_context),
+                            Rc::clone(&project_context),
                             Rc::clone(filter_context),
                         )),
-                        None => Rc::clone(&blend_context),
+                        None => Rc::clone(&project_context),
                     };
                     let filter_context = Some(filter_context);
 
@@ -90,7 +90,7 @@ impl<'a> Aggregator<'a> {
                         .map(Key::try_from)
                         .collect::<Result<Vec<Key>>>()?;
 
-                    let state = state.apply(index, group, Rc::clone(&blend_context));
+                    let state = state.apply(index, group, Rc::clone(&project_context));
                     let state = stream::iter(self.fields)
                         .fold(Ok(state), |state, field| {
                             let filter_clone = filter_context.as_ref().map(Rc::clone);

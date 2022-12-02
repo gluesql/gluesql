@@ -6,16 +6,16 @@ use {
     },
 };
 
-test_case!(blend, async move {
+test_case!(project, async move {
     let create_sqls: [&str; 2] = [
         "
-        CREATE TABLE BlendUser (
+        CREATE TABLE ProjectUser (
             id INTEGER,
             name TEXT
         );
     ",
         "
-        CREATE TABLE BlendItem (
+        CREATE TABLE ProjectItem (
             id INTEGER,
             player_id INTEGER,
             quantity INTEGER,
@@ -27,7 +27,7 @@ test_case!(blend, async move {
         run!(sql);
     }
 
-    let delete_sqls = ["DELETE FROM BlendUser", "DELETE FROM BlendItem"];
+    let delete_sqls = ["DELETE FROM ProjectUser", "DELETE FROM ProjectItem"];
 
     for sql in delete_sqls {
         run!(sql);
@@ -35,13 +35,13 @@ test_case!(blend, async move {
 
     let insert_sqls = [
         "
-        INSERT INTO BlendUser (id, name) VALUES
+        INSERT INTO ProjectUser (id, name) VALUES
             (1, 'Taehoon'),
             (2,    'Mike'),
             (3,   'Jorno');
         ",
         "
-        INSERT INTO BlendItem (id, player_id, quantity) VALUES
+        INSERT INTO ProjectItem (id, player_id, quantity) VALUES
             (101, 1, 1),
             (102, 2, 4),
             (103, 2, 9),
@@ -55,9 +55,9 @@ test_case!(blend, async move {
     }
 
     let test_cases = [
-        ("SELECT 1 FROM BlendUser", select!("1"; I64; 1; 1; 1)),
+        ("SELECT 1 FROM ProjectUser", select!("1"; I64; 1; 1; 1)),
         (
-            "SELECT id, name FROM BlendUser",
+            "SELECT id, name FROM ProjectUser",
             select!(
                 id  | name
                 I64 | Str;
@@ -67,26 +67,26 @@ test_case!(blend, async move {
             ),
         ),
         (
-            "SELECT player_id, quantity FROM BlendItem",
+            "SELECT player_id, quantity FROM ProjectItem",
             select!(player_id | quantity; I64 | I64; 1 1; 2 4; 2 9; 3 2; 3 1),
         ),
         (
-            "SELECT player_id, player_id FROM BlendItem",
+            "SELECT player_id, player_id FROM ProjectItem",
             select!(player_id | player_id; I64 | I64; 1 1; 2 2; 2 2; 3 3; 3 3),
         ),
         (
             "
             SELECT u.id, i.id, player_id
-            FROM BlendUser u
-            JOIN BlendItem i ON u.id = 1 AND u.id = i.player_id
+            FROM ProjectUser u
+            JOIN ProjectItem i ON u.id = 1 AND u.id = i.player_id
             ",
             select!(id | id | player_id; I64 | I64 | I64; 1 101 1),
         ),
         (
             "
             SELECT i.*, u.name
-            FROM BlendUser u
-            JOIN BlendItem i ON u.id = 2 AND u.id = i.player_id
+            FROM ProjectUser u
+            JOIN ProjectItem i ON u.id = 2 AND u.id = i.player_id
             ",
             select!(
                 id  | player_id | quantity | name
@@ -98,8 +98,8 @@ test_case!(blend, async move {
         (
             "
             SELECT u.*, i.*
-            FROM BlendUser u
-            JOIN BlendItem i ON u.id = i.player_id
+            FROM ProjectUser u
+            JOIN ProjectItem i ON u.id = i.player_id
             ",
             select!(
                 id  | name                 | id  | player_id | quantity
@@ -112,7 +112,7 @@ test_case!(blend, async move {
             ),
         ),
         (
-            "SELECT id as Ident, name FROM BlendUser",
+            "SELECT id as Ident, name FROM ProjectUser",
             select!(
                 Ident | name
                 I64   | Str;
@@ -122,7 +122,7 @@ test_case!(blend, async move {
             ),
         ),
         (
-            "SELECT (1 + 2) as foo, 2+id+2*100-1 as Ident, name FROM BlendUser",
+            "SELECT (1 + 2) as foo, 2+id+2*100-1 as Ident, name FROM ProjectUser",
             select!(
                 foo | Ident | name
                 I64 | I64   | Str;
@@ -133,10 +133,10 @@ test_case!(blend, async move {
         ),
         (
             "
-            SELECT id FROM BlendUser
+            SELECT id FROM ProjectUser
             WHERE id IN (
-                SELECT BlendUser.id FROM BlendItem
-                WHERE quantity > 5 AND BlendUser.id = player_id
+                SELECT ProjectUser.id FROM ProjectItem
+                WHERE quantity > 5 AND ProjectUser.id = player_id
             );",
             select!(id; I64; 2),
         ),
@@ -148,15 +148,15 @@ test_case!(blend, async move {
 
     let error_cases = [
         (
-            "SELECT Whatever.* FROM BlendUser",
+            "SELECT Whatever.* FROM ProjectUser",
             FetchError::TableAliasNotFound("Whatever".to_owned()).into(),
         ),
         (
-            "SELECT noname FROM BlendUser",
+            "SELECT noname FROM ProjectUser",
             EvaluateError::ValueNotFound("noname".to_owned()).into(),
         ),
         (
-            "SELECT (SELECT id FROM BlendItem) as id FROM BlendItem",
+            "SELECT (SELECT id FROM ProjectItem) as id FROM ProjectItem",
             EvaluateError::MoreThanOneRowReturned.into(),
         ),
     ];
