@@ -95,7 +95,7 @@ async fn join<'a>(
     let columns = fetch_relation_columns(storage, relation)
         .await
         .map(Rc::from)?;
-    let rows = left_rows.and_then(move |blend_context| {
+    let rows = left_rows.and_then(move |project_context| {
         let filter_context = filter_context.as_ref().map(Rc::clone);
         let columns = Rc::clone(&columns);
         let init_context = Rc::new(RowContext::new(
@@ -104,17 +104,17 @@ async fn join<'a>(
                 columns: Rc::clone(&columns),
                 values: columns.iter().map(|_| Value::Null).collect(),
             }),
-            Some(Rc::clone(&blend_context)),
+            Some(Rc::clone(&project_context)),
         ));
         let join_executor = Rc::clone(&join_executor);
 
         async move {
             let filter_context = match filter_context {
                 Some(filter_context) => Rc::new(RowContext::concat(
-                    Rc::clone(&blend_context),
+                    Rc::clone(&project_context),
                     Rc::clone(&filter_context),
                 )),
-                None => Rc::clone(&blend_context),
+                None => Rc::clone(&project_context),
             };
             let filter_context = Some(filter_context);
 
@@ -134,7 +134,7 @@ async fn join<'a>(
                                 storage,
                                 table_alias,
                                 filter_context.as_ref().map(Rc::clone),
-                                Some(&blend_context).map(Rc::clone),
+                                Some(&project_context).map(Rc::clone),
                                 where_clause,
                                 row,
                             )
@@ -164,7 +164,7 @@ async fn join<'a>(
                                     storage,
                                     table_alias,
                                     filter_context.as_ref().map(Rc::clone),
-                                    Some(&blend_context).map(Rc::clone),
+                                    Some(&project_context).map(Rc::clone),
                                     where_clause,
                                     row,
                                 )
@@ -271,7 +271,7 @@ async fn check_where_clause<'a, 'b>(
     storage: &'a dyn GStore,
     table_alias: &'a str,
     filter_context: Option<Rc<RowContext<'a>>>,
-    blend_context: Option<Rc<RowContext<'a>>>,
+    project_context: Option<Rc<RowContext<'a>>>,
     where_clause: Option<&'a Expr>,
     row: Cow<'b, Row>,
 ) -> Result<Option<Rc<RowContext<'a>>>> {
@@ -282,7 +282,7 @@ async fn check_where_clause<'a, 'b>(
         Some(expr) => check_expr(storage, filter_context, None, expr).await?,
         None => true,
     }
-    .then(|| RowContext::new(table_alias, Cow::Owned(row.into_owned()), blend_context))
+    .then(|| RowContext::new(table_alias, Cow::Owned(row.into_owned()), project_context))
     .map(Rc::new)
     .map(Ok)
     .transpose()

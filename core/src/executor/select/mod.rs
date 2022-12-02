@@ -1,7 +1,7 @@
-mod blend;
+mod project;
 
 use {
-    self::blend::Blend,
+    self::project::Project,
     super::{
         aggregate::Aggregator,
         context::{AggregateContext, RowContext},
@@ -168,14 +168,14 @@ pub async fn select_with_labels<'a>(
     );
 
     let rows = join.apply(rows).await?;
-    let rows = rows.try_filter_map(move |blend_context| {
+    let rows = rows.try_filter_map(move |project_context| {
         let filter = Rc::clone(&filter);
 
         async move {
             filter
-                .check(Rc::clone(&blend_context))
+                .check(Rc::clone(&project_context))
                 .await
-                .map(|pass| pass.then_some(blend_context))
+                .map(|pass| pass.then_some(project_context))
         }
     });
 
@@ -185,16 +185,16 @@ pub async fn select_with_labels<'a>(
         .await
         .map(Rc::from)?;
 
-    let blend = Rc::new(Blend::new(storage, filter_context, projection));
-    let blend_labels = Rc::clone(&labels);
+    let project = Rc::new(Project::new(storage, filter_context, projection));
+    let project_labels = Rc::clone(&labels);
     let rows = rows.and_then(move |aggregate_context| {
-        let labels = Rc::clone(&blend_labels);
-        let blend = Rc::clone(&blend);
+        let labels = Rc::clone(&project_labels);
+        let project = Rc::clone(&project);
         let AggregateContext { aggregated, next } = aggregate_context;
         let aggregated = aggregated.map(Rc::new);
 
         async move {
-            let row = blend
+            let row = project
                 .apply(
                     aggregated.as_ref().map(Rc::clone),
                     Rc::clone(&labels),
