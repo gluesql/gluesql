@@ -19,6 +19,7 @@ pub enum PrevNode<'a> {
     JoinNode(JoinNode<'a>),
     JoinConstraint(JoinConstraintNode<'a>),
     HashJoin(Box<HashJoinNode<'a>>),
+    ProjectNode(Box<ProjectNode<'a>>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -31,6 +32,7 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::JoinNode(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
+            Self::ProjectNode(node) => node.prebuild(),
         }
     }
 }
@@ -74,6 +76,12 @@ impl<'a> From<JoinConstraintNode<'a>> for PrevNode<'a> {
 impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
     fn from(node: HashJoinNode<'a>) -> Self {
         PrevNode::HashJoin(Box::new(node))
+    }
+}
+
+impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
+    fn from(node: ProjectNode<'a>) -> Self {
+        PrevNode::ProjectNode(Box::new(node))
     }
 }
 

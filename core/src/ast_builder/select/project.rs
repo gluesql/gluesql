@@ -1,3 +1,5 @@
+use crate::ast_builder::OrderByExprList;
+
 use {
     super::{NodeData, Prebuild},
     crate::{
@@ -135,6 +137,10 @@ impl<'a> ProjectNode<'a> {
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::ProjectNode(self).alias_as(table_alias)
     }
+
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
+        OrderByNode::new(self, order_by_exprs)
+    }
 }
 
 impl<'a> Prebuild for ProjectNode<'a> {
@@ -265,8 +271,8 @@ mod tests {
         // order by node -> project node -> build
         let actual = table("Foo")
             .select()
-            .order_by("id asc")
             .project("id")
+            .order_by("id asc")
             .build();
         let expected = "SELECT id FROM Foo ORDER BY id asc";
         test(actual, expected);
