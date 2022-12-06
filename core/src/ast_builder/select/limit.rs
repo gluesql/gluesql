@@ -3,15 +3,16 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, LimitOffsetNode, OrderByNode, ProjectNode, SelectItemList, SelectNode,
+            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectItemList, SelectNode,
+            TableFactorNode,
         },
         result::Result,
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
-    Select(SelectNode),
+    Select(SelectNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
     Join(Box<JoinNode<'a>>),
@@ -36,8 +37,8 @@ impl<'a> Prebuild for PrevNode<'a> {
     }
 }
 
-impl<'a> From<SelectNode> for PrevNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
     }
 }
@@ -84,7 +85,7 @@ impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LimitNode<'a> {
     prev_node: PrevNode<'a>,
     expr: ExprNode<'a>,
@@ -98,12 +99,12 @@ impl<'a> LimitNode<'a> {
         }
     }
 
-    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitOffsetNode<'a> {
-        LimitOffsetNode::new(self, expr)
-    }
-
     pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
         ProjectNode::new(self, select_items)
+    }
+
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::LimitNode(self).alias_as(table_alias)
     }
 }
 
@@ -206,6 +207,11 @@ mod tests {
         let expected = "SELECT * FROM World WHERE id > 2 LIMIT 100";
         test(actual, expected);
 
+        // order by node -> limit node -> build
+        let actual = table("Hello").select().order_by("score").limit(3).build();
+        let expected = "SELECT * FROM Hello ORDER BY score LIMIT 3";
+        test(actual, expected);
+
         // hash join node -> limit node -> build
         let actual = table("Player")
             .select()
@@ -250,5 +256,15 @@ mod tests {
             }))
         };
         assert_eq!(actual, expected);
+
+        // select node -> limit node -> derived subquery
+        let actual = table("Foo")
+            .select()
+            .limit(10)
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "SELECT * FROM (SELECT * FROM Foo LIMIT 10) Sub";
+        test(actual, expected);
     }
 }

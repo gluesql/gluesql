@@ -1,9 +1,10 @@
 use {
     super::{
         select::{NodeData, Prebuild},
+        table_factor::TableType,
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-        LimitNode, LimitOffsetNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode,
-        SelectNode,
+        LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
+        TableFactorNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -13,23 +14,35 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum QueryNode<'a> {
     Text(String),
     Values(Vec<ExprList<'a>>),
-    SelectNode(SelectNode),
+    SelectNode(SelectNode<'a>),
     JoinNode(JoinNode<'a>),
     JoinConstraintNode(JoinConstraintNode<'a>),
     HashJoinNode(HashJoinNode<'a>),
     GroupByNode(GroupByNode<'a>),
     HavingNode(HavingNode<'a>),
     LimitNode(LimitNode<'a>),
-    LimitOffsetNode(LimitOffsetNode<'a>),
     OffsetNode(OffsetNode<'a>),
     OffsetLimitNode(OffsetLimitNode<'a>),
     FilterNode(FilterNode<'a>),
     ProjectNode(ProjectNode<'a>),
     OrderByNode(OrderByNode<'a>),
+}
+
+impl<'a> QueryNode<'a> {
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode<'a> {
+        TableFactorNode {
+            table_name: table_alias.to_owned(),
+            table_type: TableType::Derived {
+                subquery: Box::new(self),
+                alias: table_alias.to_owned(),
+            },
+            table_alias: None,
+        }
+    }
 }
 
 impl<'a> From<&str> for QueryNode<'a> {
@@ -38,8 +51,8 @@ impl<'a> From<&str> for QueryNode<'a> {
     }
 }
 
-impl<'a> From<SelectNode> for QueryNode<'a> {
-    fn from(node: SelectNode) -> Self {
+impl<'a> From<SelectNode<'a>> for QueryNode<'a> {
+    fn from(node: SelectNode<'a>) -> Self {
         QueryNode::SelectNode(node)
     }
 }
@@ -61,7 +74,6 @@ impl_from_select_nodes!(GroupByNode);
 impl_from_select_nodes!(HavingNode);
 impl_from_select_nodes!(FilterNode);
 impl_from_select_nodes!(LimitNode);
-impl_from_select_nodes!(LimitOffsetNode);
 impl_from_select_nodes!(OffsetNode);
 impl_from_select_nodes!(OffsetLimitNode);
 impl_from_select_nodes!(ProjectNode);
@@ -96,7 +108,6 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
             QueryNode::HavingNode(node) => node.prebuild(),
             QueryNode::FilterNode(node) => node.prebuild(),
             QueryNode::LimitNode(node) => node.prebuild(),
-            QueryNode::LimitOffsetNode(node) => node.prebuild(),
             QueryNode::OffsetNode(node) => node.prebuild(),
             QueryNode::OffsetLimitNode(node) => node.prebuild(),
             QueryNode::ProjectNode(node) => node.prebuild(),
@@ -115,7 +126,10 @@ mod test {
                 Join, JoinConstraint, JoinExecutor, JoinOperator, Query, Select, SetExpr,
                 TableFactor, TableWithJoins,
             },
-            ast_builder::{col, table, test_query, SelectItemList},
+            ast_builder::{
+                col, glue_indexes, glue_objects, glue_table_columns, glue_tables, series, table,
+                test_query, SelectItemList,
+            },
         },
     };
 
@@ -201,15 +215,6 @@ mod test {
         let expected = "SELECT * FROM FOO GROUP BY city HAVING COUNT(name) < 100 LIMIT 3";
         test_query(actual, expected);
 
-        let actual = table("FOO")
-            .select()
-            .filter("id > 2")
-            .limit(100)
-            .offset(3)
-            .into();
-        let expected = "SELECT * FROM FOO WHERE id > 2 OFFSET 3 LIMIT 100";
-        test_query(actual, expected);
-
         let actual = table("FOO").select().offset(10).into();
         let expected = "SELECT * FROM FOO OFFSET 10";
         test_query(actual, expected);
@@ -230,6 +235,30 @@ mod test {
 
         let actual = table("Foo").select().order_by("score DESC").into();
         let expected = "SELECT * FROM Foo ORDER BY score DESC";
+        test_query(actual, expected);
+
+        let actual = glue_objects().select().into();
+        let expected = "SELECT * FROM GLUE_OBJECTS";
+        test_query(actual, expected);
+
+        let actual = glue_tables().select().into();
+        let expected = "SELECT * FROM GLUE_TABLES";
+        test_query(actual, expected);
+
+        let actual = glue_indexes().select().into();
+        let expected = "SELECT * FROM GLUE_INDEXES";
+        test_query(actual, expected);
+
+        let actual = glue_table_columns().select().into();
+        let expected = "SELECT * FROM GLUE_TABLE_COLUMNS";
+        test_query(actual, expected);
+
+        let actual = series("1 + 2").select().into();
+        let expected = "SELECT * FROM SERIES(1 + 2)";
+        test_query(actual, expected);
+
+        let actual = table("Items").select().alias_as("Sub").select().into();
+        let expected = "SELECT * FROM (SELECT * FROM Items) AS Sub";
         test_query(actual, expected);
     }
 }

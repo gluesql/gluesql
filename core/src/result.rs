@@ -1,10 +1,11 @@
 use {
     crate::{
+        ast_builder::AstBuilderError,
         data::{
             IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
         },
         executor::{
-            AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, SelectError,
+            AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
             SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
@@ -37,6 +38,9 @@ pub enum Error {
     #[error(transparent)]
     Translate(#[from] TranslateError),
 
+    #[error(transparent)]
+    AstBuilder(#[from] AstBuilderError),
+
     #[cfg(feature = "alter-table")]
     #[error(transparent)]
     AlterTable(#[from] AlterTableError),
@@ -54,11 +58,11 @@ pub enum Error {
     #[error(transparent)]
     Evaluate(#[from] EvaluateError),
     #[error(transparent)]
-    Select(#[from] SelectError),
-    #[error(transparent)]
     Aggregate(#[from] AggregateError),
     #[error(transparent)]
     Sort(#[from] SortError),
+    #[error(transparent)]
+    Insert(#[from] InsertError),
     #[error(transparent)]
     Update(#[from] UpdateError),
     #[error(transparent)]
@@ -92,6 +96,7 @@ impl PartialEq for Error {
             (Parser(e), Parser(e2)) => e == e2,
             (StorageMsg(e), StorageMsg(e2)) => e == e2,
             (Translate(e), Translate(e2)) => e == e2,
+            (AstBuilder(e), AstBuilder(e2)) => e == e2,
             #[cfg(feature = "alter-table")]
             (AlterTable(e), AlterTable(e2)) => e == e2,
             #[cfg(feature = "index")]
@@ -100,9 +105,9 @@ impl PartialEq for Error {
             (Alter(e), Alter(e2)) => e == e2,
             (Fetch(e), Fetch(e2)) => e == e2,
             (Evaluate(e), Evaluate(e2)) => e == e2,
-            (Select(e), Select(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Sort(e), Sort(e2)) => e == e2,
+            (Insert(e), Insert(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
             (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,

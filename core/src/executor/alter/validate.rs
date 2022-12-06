@@ -41,7 +41,7 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
 }
 
 pub fn validate_column_names(column_defs: &[ColumnDef]) -> Result<()> {
-    let duplicate_colum_name = column_defs
+    let duplicate_column_name = column_defs
         .iter()
         .enumerate()
         .find(|(i, base_column)| {
@@ -52,7 +52,7 @@ pub fn validate_column_names(column_defs: &[ColumnDef]) -> Result<()> {
         })
         .map(|(_, column)| &column.name);
 
-    match duplicate_colum_name {
+    match duplicate_column_name {
         Some(v) => Err(AlterError::DuplicateColumnName(v.to_owned()).into()),
         None => Ok(()),
     }

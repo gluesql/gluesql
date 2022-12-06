@@ -6,7 +6,7 @@ pub use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InsertNode {
     table_name: String,
     columns: Option<ColumnList>,
@@ -42,7 +42,7 @@ impl InsertNode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InsertSourceNode<'a> {
     insert_node: InsertNode,
     source: QueryNode<'a>,

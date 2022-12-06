@@ -9,7 +9,7 @@ use {
     thiserror::Error,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum AlterTableError {
     #[error("Table not found: {0}")]
     TableNotFound(String),

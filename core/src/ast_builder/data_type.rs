@@ -5,7 +5,7 @@ use crate::{
     translate::translate_data_type,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum DataTypeNode {
     DataType(DataType),
     Text(String),

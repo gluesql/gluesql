@@ -2,7 +2,7 @@ use {
     super::{expr, function, EvaluateError, Evaluated},
     crate::{
         ast::{Expr, Function},
-        data::{Interval, Literal, Row, Value},
+        data::{Interval, Literal, Value},
         result::Result,
     },
     chrono::prelude::Utc,
@@ -12,7 +12,7 @@ use {
 type Columns<'a> = &'a [String];
 
 pub fn evaluate_stateless<'a>(
-    context: Option<(Columns, &'a Row)>,
+    context: Option<(Columns, &'a [Value])>,
     expr: &'a Expr,
 ) -> Result<Evaluated<'a>> {
     let eval = |expr| evaluate_stateless(context, expr);
@@ -30,7 +30,12 @@ pub fn evaluate_stateless<'a>(
                 }
             };
 
-            match row.get_value(columns, ident) {
+            let value = columns
+                .iter()
+                .position(|column| column == ident)
+                .and_then(|index| row.get(index));
+
+            match value {
                 Some(value) => Ok(value.clone()),
                 None => Err(EvaluateError::ValueNotFound(ident.to_owned()).into()),
             }
@@ -150,7 +155,7 @@ pub fn evaluate_stateless<'a>(
 }
 
 fn evaluate_function<'a>(
-    context: Option<(Columns, &'a Row)>,
+    context: Option<(Columns, &'a [Value])>,
     func: &'a Function,
 ) -> Result<Evaluated<'a>> {
     use function as f;

@@ -85,6 +85,9 @@ pub enum ValueError {
     #[error("unimplemented cast")]
     UnimplementedCast,
 
+    #[error("function CONCAT requires at least 1 argument")]
+    EmptyArgNotAllowedInConcat,
+
     // Cast errors from literal to value
     #[error("literal cast failed from text to integer: {0}")]
     LiteralCastFromTextToIntegerFailed(String),
@@ -152,8 +155,8 @@ pub enum ValueError {
     #[error("big endian export not supported for {0} type")]
     BigEndianExportNotSupported(String),
 
-    #[error("invalid json string")]
-    InvalidJsonString,
+    #[error("invalid json string: {0}")]
+    InvalidJsonString(String),
 
     #[error("json object type is required")]
     JsonObjectTypeRequired,

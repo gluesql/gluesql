@@ -290,7 +290,7 @@ mod tests {
     fn print_payload() {
         use gluesql_core::{
             ast::DataType,
-            prelude::{Payload, PayloadVariable, Row, Value},
+            prelude::{Payload, PayloadVariable, Value},
         };
 
         let mut print = Print::new(Vec::new(), None, Default::default());
@@ -361,8 +361,8 @@ mod tests {
                 rows: [101, 202, 301, 505, 1001]
                     .into_iter()
                     .map(Value::I64)
-                    .map(|v| vec![v].into())
-                    .collect::<Vec<Row>>(),
+                    .map(|v| vec![v])
+                    .collect::<Vec<Vec<Value>>>(),
             },
             "
 | id   |
@@ -384,32 +384,27 @@ mod tests {
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(3),
                         Value::Str("bas".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(4),
                         Value::Str("lim".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(5),
                         Value::Str("kim".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                 ],
             },
             "
@@ -477,14 +472,12 @@ mod tests {
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                 ]
             },
             "
@@ -508,14 +501,12 @@ id|title|valid
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                 ],
             },
             "
@@ -538,14 +529,12 @@ id,title,valid
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                 ],
             },
             "
@@ -567,14 +556,12 @@ id,title,valid
                         Value::I64(1),
                         Value::Str("foo".to_owned()),
                         Value::Bool(true)
-                    ]
-                    .into(),
+                    ],
                     vec![
                         Value::I64(2),
                         Value::Str("bar".to_owned()),
                         Value::Bool(false)
-                    ]
-                    .into(),
+                    ],
                 ],
             },
             "

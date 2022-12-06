@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! row {
     ( $( $p:path )* ; $( $v:expr )* ) => (
-        gluesql_core::data::Row(vec![$( $p($v) ),*])
+        vec![$( $p($v) ),*]
     )
 }
 
@@ -101,13 +101,11 @@ macro_rules! select_with_null {
     ( $( $c: tt )|* ; $( $v: expr )* ) => (
         gluesql_core::executor::Payload::Select {
             labels: vec![$( stringify_label!($c).to_owned()),+],
-            rows: vec![gluesql_core::data::Row(vec![$( $v ),*])],
+            rows: vec![vec![$( $v ),*]],
         }
     );
     ( $( $c: tt )|* ; $( $v: expr )* ; $( $( $v2: expr )* );*) => ({
-        let mut rows = vec![
-            gluesql_core::data::Row(vec![$( $v ),*])
-        ];
+        let mut rows = vec![vec![$( $v ),*]];
 
         gluesql_core::executor::Payload::Select {
             labels: vec![$( stringify_label!($c).to_owned()),+],
@@ -119,12 +117,12 @@ macro_rules! select_with_null {
 #[macro_export]
 macro_rules! concat_with_null {
     ( $rows: ident ; $( $v: expr )* ) => ({
-        $rows.push(gluesql_core::data::Row(vec![$( $v ),*]));
+        $rows.push(vec![$( $v ),*]);
 
         $rows
     });
     ( $rows: ident ; $( $v: expr )* ; $( $( $v2: expr )* );* ) => ({
-        $rows.push(gluesql_core::data::Row(vec![$( $v ),*]));
+        $rows.push(vec![$( $v ),*]);
 
         concat_with_null!($rows ; $( $( $v2 )* );* )
     });

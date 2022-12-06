@@ -9,7 +9,7 @@ use {
     std::borrow::Cow,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ExprList<'a> {
     Text(Cow<'a, str>),
     Exprs(Cow<'a, [ExprNode<'a>]>),

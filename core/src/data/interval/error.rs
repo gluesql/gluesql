@@ -1,6 +1,6 @@
 use {serde::Serialize, std::fmt::Debug, thiserror::Error};
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum IntervalError {
     #[error("unsupported interval range: {0} to {1}")]
     UnsupportedRange(String, String),

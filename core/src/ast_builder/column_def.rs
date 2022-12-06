@@ -5,7 +5,7 @@ use crate::{
     translate::translate_column_def,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ColumnDefNode {
     Text(String),
 }

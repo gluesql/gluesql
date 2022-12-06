@@ -2,7 +2,7 @@ use {
     super::{
         ast_literal::{translate_ast_literal, translate_datetime_field},
         data_type::translate_data_type,
-        function::{translate_cast, translate_extract, translate_function, translate_positon},
+        function::{translate_cast, translate_extract, translate_function, translate_position},
         operator::{translate_binary_operator, translate_unary_operator},
         translate_idents, translate_query, TranslateError,
     },
@@ -140,7 +140,7 @@ pub fn translate_expr(sql_expr: &SqlExpr) -> Result<Expr> {
             obj: translate_expr(obj).map(Box::new)?,
             indexes: indexes.iter().map(translate_expr).collect::<Result<_>>()?,
         }),
-        SqlExpr::Position { expr, r#in } => translate_positon(expr, r#in),
+        SqlExpr::Position { expr, r#in } => translate_position(expr, r#in),
         SqlExpr::Interval {
             value,
             leading_field,
