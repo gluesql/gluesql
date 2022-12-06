@@ -1,4 +1,4 @@
-use crate::ast_builder::OrderByExprList;
+use crate::ast_builder::{ExprNode, OrderByExprList};
 
 use {
     super::{NodeData, Prebuild},
@@ -133,6 +133,14 @@ impl<'a> ProjectNode<'a> {
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
     }
+
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
+        OffsetNode::new(self, expr)
+    }
+
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
+        LimitNode::new(self, expr)
+    }
 }
 
 impl<'a> Prebuild for ProjectNode<'a> {
@@ -253,9 +261,9 @@ mod tests {
         // offset limit node -> project node -> build
         let actual = table("Operator")
             .select()
+            .project("name")
             .offset(3)
             .limit(10)
-            .project("name")
             .build();
         let expected = "SELECT name FROM Operator LIMIT 10 OFFSET 3";
         test(actual, expected);

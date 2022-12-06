@@ -20,6 +20,7 @@ pub enum PrevNode<'a> {
     HashJoin(HashJoinNode<'a>),
     Filter(FilterNode<'a>),
     OrderBy(OrderByNode<'a>),
+    ProjectNode(Box<ProjectNode<'a>>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -33,6 +34,7 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::HashJoin(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
             Self::OrderBy(node) => node.prebuild(),
+            Self::ProjectNode(node) => node.prebuild(),
         }
     }
 }
@@ -82,6 +84,12 @@ impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
 impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
     fn from(node: OrderByNode<'a>) -> Self {
         PrevNode::OrderBy(node)
+    }
+}
+
+impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
+    fn from(node: ProjectNode<'a>) -> Self {
+        PrevNode::ProjectNode(Box::new(node))
     }
 }
 
