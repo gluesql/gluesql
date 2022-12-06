@@ -3,8 +3,8 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            SelectNode, TableFactorNode,
+            JoinNode, OffsetLimitNode, OrderByNode, ProjectNode, QueryNode, SelectNode,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -109,10 +109,6 @@ impl<'a> OffsetNode<'a> {
 
     pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetLimitNode<'a> {
         OffsetLimitNode::new(self, expr)
-    }
-
-    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
-        ProjectNode::new(self, select_items)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {

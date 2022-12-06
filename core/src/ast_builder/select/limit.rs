@@ -3,8 +3,7 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectItemList, SelectNode,
-            TableFactorNode,
+            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -105,10 +104,6 @@ impl<'a> LimitNode<'a> {
             prev_node: prev_node.into(),
             expr: expr.into(),
         }
-    }
-
-    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
-        ProjectNode::new(self, select_items)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {

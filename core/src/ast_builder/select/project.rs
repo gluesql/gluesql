@@ -249,12 +249,12 @@ mod tests {
         test(actual, expected);
 
         // limit node -> project node -> build
-        let actual = table("Item").select().limit(10).project("*").build();
+        let actual = table("Item").select().project("*").limit(10).build();
         let expected = "SELECT * FROM Item LIMIT 10";
         test(actual, expected);
 
         // offset node -> project node -> build
-        let actual = table("Item").select().offset(10).project("*").build();
+        let actual = table("Item").select().project("*").offset(10).build();
         let expected = "SELECT * FROM Item OFFSET 10";
         test(actual, expected);
 
