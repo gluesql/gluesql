@@ -140,8 +140,8 @@ test_case!(select, async move {
     // order by
     let actual = table("Item")
         .select()
-        .order_by("price DESC")
         .project("name, price")
+        .order_by("price DESC")
         .execute(glue)
         .await;
     let expected = Ok(select!(
