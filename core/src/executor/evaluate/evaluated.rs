@@ -1,7 +1,7 @@
 use {
     super::error::EvaluateError,
     crate::{
-        ast::DataType,
+        ast::{DataType, TrimWhereField},
         data::{Key, Literal, Value},
         result::{Error, Result},
     },
@@ -262,6 +262,23 @@ pub fn exceptional_str_val_to_eval<'a>(name: String, v: Value) -> Result<Evaluat
     }
 }
 
+// pub fn trim_matches<'b, P>(&'a self, pat: P) -> &'b (usize, usize)
+//     where
+//         P: Pattern<'b, Searcher: DoubleEndedSearcher<'b>>,
+//     {
+//         let mut i = 0;
+//         let mut j = 0;
+//         let mut matcher = pat.into_searcher(self);
+//         if let Some((a, b)) = matcher.next_reject() {
+//             i = a;
+//             j = b; // Remember earliest known match, correct it below if
+//             // last match is different
+//         }
+//         if let Some((_, b)) = matcher.next_reject_back() {
+//             j = b;
+//         }
+//         (i, j)
+//     }
 impl<'a> Evaluated<'a> {
     pub fn add<'b>(&'a self, other: &Evaluated<'b>) -> Result<Evaluated<'b>> {
         binary_op(self, other, |l, r| l.add(r), |l, r| l.add(r))
@@ -336,40 +353,40 @@ impl<'a> Evaluated<'a> {
         let evaluated = match (self, other) {
             (Evaluated::Literal(l), Evaluated::Literal(r)) => Evaluated::Literal(l.concat(r)),
             (Evaluated::Literal(l), Evaluated::Value(r)) => {
-                Evaluated::from((Value::try_from(l)?).concat(&r))
+                Evaluated::from((Value::try_from(l)?).concat(r))
             }
             (Evaluated::Value(l), Evaluated::Literal(r)) => {
-                Evaluated::from(l.concat(&Value::try_from(r)?))
+                Evaluated::from(l.concat(Value::try_from(r)?))
             }
-            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(&r)),
+            (Evaluated::Value(l), Evaluated::Value(r)) => Evaluated::from(l.concat(r)),
             (
                 Evaluated::Literal(l),
                 Evaluated::StrSlice {
                     source: r,
                     range: _,
                 },
-            ) => Evaluated::from((&Value::try_from(l)?).concat(&Value::Str(r))),
+            ) => Evaluated::from((Value::try_from(l)?).concat(Value::Str(r))),
             (
                 Evaluated::Value(l),
                 Evaluated::StrSlice {
                     source: r,
                     range: _,
                 },
-            ) => Evaluated::from(l.concat(&Value::Str(r))),
+            ) => Evaluated::from(l.concat(Value::Str(r))),
             (
                 Evaluated::StrSlice {
                     source: l,
                     range: _,
                 },
                 Evaluated::Literal(r),
-            ) => Evaluated::from(Value::Str(l).concat(&Value::try_from(r)?)),
+            ) => Evaluated::from(Value::Str(l).concat(Value::try_from(r)?)),
             (
                 Evaluated::StrSlice {
                     source: l,
                     range: _,
                 },
                 Evaluated::Value(r),
-            ) => Evaluated::from(Value::Str(l).concat(&r)),
+            ) => Evaluated::from(Value::Str(l).concat(r)),
             (
                 Evaluated::StrSlice {
                     source: l,
@@ -379,7 +396,7 @@ impl<'a> Evaluated<'a> {
                     source: r,
                     range: _,
                 },
-            ) => Evaluated::from(Value::Str(l).concat(&Value::Str(r))),
+            ) => Evaluated::from(Value::Str(l).concat(Value::Str(r))),
         };
 
         Ok(evaluated)
@@ -516,6 +533,101 @@ impl<'a> Evaluated<'a> {
             source,
             range: start..end,
         })
+    }
+
+    pub fn trim(
+        self,
+        name: String,
+        filter_chars: Option<Evaluated<'_>>,
+        trim_where_field: &'a Option<TrimWhereField>,
+    ) -> Result<Evaluated<'a>> {
+        let (source, range) = match self {
+            Evaluated::Literal(literal) => {
+                let value = Value::try_from(literal)?;
+                match value {
+                    Value::Str(string) => {
+                        let end = string.len();
+                        (string, 0..end)
+                    }
+                    _ => return exceptional_str_val_to_eval(name, value),
+                }
+            }
+            Evaluated::StrSlice { source, range } => (source, range),
+            Evaluated::Value(value) => match value {
+                Value::Str(string) => {
+                    let end = string.len();
+                    (string, 0..end)
+                }
+                _ => return exceptional_str_val_to_eval(name, value),
+            },
+        };
+
+        let expr_str = source.as_str();
+        let filter_chars = match filter_chars {
+            Some(expr) => match expr.try_into()? {
+                Value::Str(value) => value,
+                Value::Null => {
+                    return Ok(Evaluated::from(Value::Null));
+                }
+                _ => {
+                    return Err(EvaluateError::FunctionRequiresStringValue(name).into());
+                }
+            }
+            .chars()
+            .collect::<Vec<_>>(),
+            None => vec![' '],
+        };
+        println!("expr_str !{:?}, filter_chars {:?}", expr_str, filter_chars);
+
+        match trim_where_field {
+            Some(TrimWhereField::Both) => {
+                let start = expr_str.find(filter_chars[0]).unwrap_or(0);
+                let end = expr_str.rfind(filter_chars[0]).unwrap_or(0);
+
+                // let start = match start {
+                //     Some(x) => {
+
+                //     },
+                //     None => {
+                //         Ok(Evaluated::StrSlice {
+                //             source: expr_str.to_owned(),
+                //             range: start..end,
+                //         })
+                //     }
+                // }
+                Ok(Evaluated::StrSlice {
+                    source: expr_str.to_owned(),
+                    range: start..end,
+                })
+            }
+            Some(TrimWhereField::Leading) => {
+                let start = expr_str.find(filter_chars[0]).unwrap_or(0);
+                Ok(Evaluated::StrSlice {
+                    source: expr_str.to_owned(),
+                    range: start..range.end,
+                })
+            }
+            Some(TrimWhereField::Trailing) => {
+                let end = expr_str.rfind(filter_chars[0]).unwrap_or(0);
+                Ok(Evaluated::StrSlice {
+                    source: expr_str.to_owned(),
+                    range: range.start..end,
+                })
+            }
+            None => {
+                //whitespace 양쪽에서 찾은 후 start..end없뎃해서반영
+                let start = expr_str.find(char::is_whitespace).unwrap_or(0);
+                let end = expr_str.rfind(char::is_whitespace).unwrap_or(0);
+                println!(
+                    "trim!!!!!!!!!!!!!!!!!!!!!! expr_str: {:?}, start: {:?}, end: {:?}",
+                    expr_str, start, end
+                );
+                Ok(Evaluated::StrSlice {
+                    source: expr_str.to_owned(),
+                    range: range.start..end,
+                })
+            }
+        }
     }
 
     pub fn try_into_value(self, data_type: &DataType, nullable: bool) -> Result<Value> {
