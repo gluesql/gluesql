@@ -158,10 +158,10 @@ test_case!(select, async move {
     // offset, limit
     let actual = table("Item")
         .select()
+        .project("name, price")
         .order_by("price DESC")
         .offset(1)
         .limit(2)
-        .project("name, price")
         .execute(glue)
         .await;
     let expected = Ok(select!(
