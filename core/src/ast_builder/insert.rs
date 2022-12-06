@@ -91,7 +91,7 @@ mod tests {
 
         let actual = table("Foo")
             .insert()
-            .as_select(table("Bar").select().limit(10).project("id, name"))
+            .as_select(table("Bar").select().project("id, name").limit(10))
             .build();
         let expected = r#"INSERT INTO Foo SELECT id, name FROM Bar LIMIT 10"#;
         test(actual, expected);

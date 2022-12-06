@@ -2,9 +2,9 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-            LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, QueryNode, SelectItemList,
-            SelectNode, TableFactorNode,
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetLimitNode, OffsetNode, OrderByExprList, OrderByNode,
+            QueryNode, SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -22,7 +22,6 @@ pub enum PrevNode<'a> {
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(HashJoinNode<'a>),
     Filter(FilterNode<'a>),
-    OrderBy(OrderByNode<'a>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -38,7 +37,6 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
-            Self::OrderBy(node) => node.prebuild(),
         }
     }
 }
@@ -103,12 +101,6 @@ impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
     }
 }
 
-impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
-    fn from(node: OrderByNode<'a>) -> Self {
-        PrevNode::OrderBy(node)
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ProjectNode<'a> {
     prev_node: PrevNode<'a>,
@@ -134,6 +126,18 @@ impl<'a> ProjectNode<'a> {
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
         QueryNode::ProjectNode(self).alias_as(table_alias)
+    }
+
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
+        OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
+        OffsetNode::new(self, expr)
+    }
+
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
+        LimitNode::new(self, expr)
     }
 }
 
@@ -243,21 +247,21 @@ mod tests {
         test(actual, expected);
 
         // limit node -> project node -> build
-        let actual = table("Item").select().limit(10).project("*").build();
+        let actual = table("Item").select().project("*").limit(10).build();
         let expected = "SELECT * FROM Item LIMIT 10";
         test(actual, expected);
 
         // offset node -> project node -> build
-        let actual = table("Item").select().offset(10).project("*").build();
+        let actual = table("Item").select().project("*").offset(10).build();
         let expected = "SELECT * FROM Item OFFSET 10";
         test(actual, expected);
 
         // offset limit node -> project node -> build
         let actual = table("Operator")
             .select()
+            .project("name")
             .offset(3)
             .limit(10)
-            .project("name")
             .build();
         let expected = "SELECT name FROM Operator LIMIT 10 OFFSET 3";
         test(actual, expected);
@@ -265,8 +269,8 @@ mod tests {
         // order by node -> project node -> build
         let actual = table("Foo")
             .select()
-            .order_by("id asc")
             .project("id")
+            .order_by("id asc")
             .build();
         let expected = "SELECT id FROM Foo ORDER BY id asc";
         test(actual, expected);

@@ -3,8 +3,7 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectItemList, SelectNode,
-            TableFactorNode,
+            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -20,6 +19,7 @@ pub enum PrevNode<'a> {
     HashJoin(HashJoinNode<'a>),
     Filter(FilterNode<'a>),
     OrderBy(OrderByNode<'a>),
+    ProjectNode(Box<ProjectNode<'a>>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -33,6 +33,7 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::HashJoin(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
             Self::OrderBy(node) => node.prebuild(),
+            Self::ProjectNode(node) => node.prebuild(),
         }
     }
 }
@@ -85,6 +86,12 @@ impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
     }
 }
 
+impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
+    fn from(node: ProjectNode<'a>) -> Self {
+        PrevNode::ProjectNode(Box::new(node))
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct LimitNode<'a> {
     prev_node: PrevNode<'a>,
@@ -97,10 +104,6 @@ impl<'a> LimitNode<'a> {
             prev_node: prev_node.into(),
             expr: expr.into(),
         }
-    }
-
-    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
-        ProjectNode::new(self, select_items)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {

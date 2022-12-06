@@ -229,7 +229,7 @@ mod test {
         let expected = "SELECT * FROM FOO GROUP BY city HAVING COUNT(name) < 100 OFFSET 1 LIMIT 3";
         test_query(actual, expected);
 
-        let actual = table("FOO").select().limit(10).project("id, name").into();
+        let actual = table("FOO").select().project("id, name").limit(10).into();
         let expected = r#"SELECT id, name FROM FOO LIMIT 10"#;
         test_query(actual, expected);
 

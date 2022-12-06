@@ -1,9 +1,7 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast_builder::{
-            ExprNode, OffsetNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
-        },
+        ast_builder::{ExprNode, OffsetNode, QueryNode, TableFactorNode},
         result::Result,
     },
 };
@@ -39,10 +37,6 @@ impl<'a> OffsetLimitNode<'a> {
             prev_node: prev_node.into(),
             expr: expr.into(),
         }
-    }
-
-    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
-        ProjectNode::new(self, select_items)
     }
 
     pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
@@ -87,9 +81,9 @@ mod tests {
             .select()
             .group_by("city")
             .having("COUNT(name) < 100")
+            .project("city")
             .offset(1)
             .limit(3)
-            .project("city")
             .build();
         let expected = "
             SELECT city FROM Bar
