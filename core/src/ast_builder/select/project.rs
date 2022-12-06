@@ -24,7 +24,6 @@ pub enum PrevNode<'a> {
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(HashJoinNode<'a>),
     Filter(FilterNode<'a>),
-    OrderBy(OrderByNode<'a>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -40,7 +39,6 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
             Self::Filter(node) => node.prebuild(),
-            Self::OrderBy(node) => node.prebuild(),
         }
     }
 }
@@ -102,12 +100,6 @@ impl<'a> From<HashJoinNode<'a>> for PrevNode<'a> {
 impl<'a> From<FilterNode<'a>> for PrevNode<'a> {
     fn from(node: FilterNode<'a>) -> Self {
         PrevNode::Filter(node)
-    }
-}
-
-impl<'a> From<OrderByNode<'a>> for PrevNode<'a> {
-    fn from(node: OrderByNode<'a>) -> Self {
-        PrevNode::OrderBy(node)
     }
 }
 
