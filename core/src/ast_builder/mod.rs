@@ -27,6 +27,7 @@ mod table_name;
 #[cfg(feature = "transaction")]
 mod transaction;
 mod update;
+mod values;
 
 pub use {
     assignment::AssignmentNode,
