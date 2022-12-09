@@ -159,5 +159,17 @@ mod tests {
             }
             .to_sql()
         );
+
+        assert_eq!(
+            "accepted BOOLEAN NOT NULL DEFAULT FALSE UNIQUE",
+            ColumnDef {
+                name: "accepted".to_owned(),
+                data_type: DataType::Boolean,
+                nullable: false,
+                default: Some(Expr::Literal(AstLiteral::Boolean(false))),
+                options: vec![ColumnOption::Unique { is_primary: false }],
+            }
+            .to_sql()
+        );
     }
 }
