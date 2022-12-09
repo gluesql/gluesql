@@ -10,6 +10,7 @@ use {
 pub fn validate(column_def: &ColumnDef) -> Result<()> {
     let ColumnDef {
         data_type,
+        default,
         options,
         name,
         ..
@@ -27,11 +28,6 @@ pub fn validate(column_def: &ColumnDef) -> Result<()> {
         )
         .into());
     }
-
-    let default = options.iter().find_map(|option| match option {
-        ColumnOption::Default(expr) => Some(expr),
-        _ => None,
-    });
 
     if let Some(expr) = default {
         evaluate_stateless(None, expr)?;
