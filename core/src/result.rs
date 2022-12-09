@@ -1,12 +1,10 @@
 use {
     crate::{
         ast_builder::AstBuilderError,
-        data::{
-            IntervalError, KeyError, LiteralError, RowError, StringExtError, TableError, ValueError,
-        },
+        data::{IntervalError, KeyError, LiteralError, StringExtError, TableError, ValueError},
         executor::{
             AggregateError, AlterError, EvaluateError, ExecuteError, FetchError, InsertError,
-            SortError, UpdateError, ValidateError,
+            SelectError, SortError, UpdateError, ValidateError,
         },
         plan::PlanError,
         store::{GStore, GStoreMut},
@@ -56,6 +54,8 @@ pub enum Error {
     #[error(transparent)]
     Fetch(#[from] FetchError),
     #[error(transparent)]
+    Select(#[from] SelectError),
+    #[error(transparent)]
     Evaluate(#[from] EvaluateError),
     #[error(transparent)]
     Aggregate(#[from] AggregateError),
@@ -65,8 +65,6 @@ pub enum Error {
     Insert(#[from] InsertError),
     #[error(transparent)]
     Update(#[from] UpdateError),
-    #[error(transparent)]
-    Row(#[from] RowError),
     #[error(transparent)]
     Table(#[from] TableError),
     #[error(transparent)]
@@ -104,12 +102,12 @@ impl PartialEq for Error {
             (Execute(e), Execute(e2)) => e == e2,
             (Alter(e), Alter(e2)) => e == e2,
             (Fetch(e), Fetch(e2)) => e == e2,
+            (Select(e), Select(e2)) => e == e2,
             (Evaluate(e), Evaluate(e2)) => e == e2,
             (Aggregate(e), Aggregate(e2)) => e == e2,
             (Sort(e), Sort(e2)) => e == e2,
             (Insert(e), Insert(e2)) => e == e2,
             (Update(e), Update(e2)) => e == e2,
-            (Row(e), Row(e2)) => e == e2,
             (Table(e), Table(e2)) => e == e2,
             (Validate(e), Validate(e2)) => e == e2,
             (Key(e), Key(e2)) => e == e2,
