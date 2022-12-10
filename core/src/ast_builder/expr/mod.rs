@@ -10,6 +10,7 @@ pub mod aggregate;
 pub mod between;
 pub mod function;
 pub mod in_list;
+pub mod numeric;
 
 pub use {
     case::case,
@@ -31,14 +32,16 @@ use {
     bigdecimal::BigDecimal,
     function::FunctionNode,
     in_list::InListNode,
+    numeric::NumericNode,
     std::borrow::Cow,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ExprNode<'a> {
     Expr(Cow<'a, Expr>),
     SqlExpr(Cow<'a, str>),
     Identifier(Cow<'a, str>),
+    Numeric(NumericNode<'a>),
     QuotedString(Cow<'a, str>),
     TypedString {
         data_type: DataType,
@@ -113,6 +116,7 @@ impl<'a> TryFrom<ExprNode<'a>> for Expr {
                     _ => Expr::Identifier(value.into_owned()),
                 })
             }
+            ExprNode::Numeric(node) => node.try_into().map(Expr::Literal),
             ExprNode::QuotedString(value) => {
                 let value = value.into_owned();
 
@@ -328,8 +332,8 @@ pub fn col<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
     ExprNode::Identifier(value.into())
 }
 
-pub fn num<'a>(value: i64) -> ExprNode<'a> {
-    ExprNode::from(value)
+pub fn num<'a, T: Into<NumericNode<'a>>>(value: T) -> ExprNode<'a> {
+    ExprNode::Numeric(value.into())
 }
 
 pub fn text<'a, T: Into<Cow<'a, str>>>(value: T) -> ExprNode<'a> {
@@ -361,6 +365,10 @@ pub fn subquery<'a, T: Into<QueryNode<'a>>>(query_node: T) -> ExprNode<'a> {
     ExprNode::Subquery(Box::new(query_node.into()))
 }
 
+pub fn null() -> ExprNode<'static> {
+    ExprNode::Expr(Cow::Owned(Expr::Literal(AstLiteral::Null)))
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -368,7 +376,8 @@ mod tests {
         crate::{
             ast::Expr,
             ast_builder::{
-                col, date, expr, num, subquery, table, test_expr, text, time, timestamp, QueryNode,
+                col, date, expr, null, num, subquery, table, test_expr, text, time, timestamp,
+                QueryNode,
             },
         },
     };
@@ -422,6 +431,14 @@ mod tests {
         let expected = "2048";
         test_expr(actual, expected);
 
+        let actual = num(6.11);
+        let expected = "6.11";
+        test_expr(actual, expected);
+
+        let actual = num("123.456");
+        let expected = "123.456";
+        test_expr(actual, expected);
+
         let actual = text("hello world");
         let expected = "'hello world'";
         test_expr(actual, expected);
@@ -440,6 +457,10 @@ mod tests {
 
         let actual = subquery(table("Foo").select().filter("id IS NOT NULL"));
         let expected = "(SELECT * FROM Foo WHERE id IS NOT NULL)";
+        test_expr(actual, expected);
+
+        let actual = null();
+        let expected = "NULL";
         test_expr(actual, expected);
     }
 }

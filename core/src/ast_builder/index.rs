@@ -7,7 +7,7 @@ use {
 
 use super::OrderByExprNode;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CreateIndexNode<'a> {
     name: String,
     table_name: String,

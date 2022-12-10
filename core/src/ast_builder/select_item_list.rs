@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum SelectItemList<'a> {
     Text(String),
     SelectItems(Vec<SelectItemNode<'a>>),

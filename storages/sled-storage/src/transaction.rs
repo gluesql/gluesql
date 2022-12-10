@@ -8,9 +8,9 @@ use {
     },
     async_trait::async_trait,
     gluesql_core::{
-        data::{Row, Schema},
+        data::Schema,
         result::{Error, MutResult, Result},
-        store::Transaction,
+        store::{Row, Transaction},
     },
     serde::{de::DeserializeOwned, Serialize},
     sled::{

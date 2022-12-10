@@ -12,7 +12,7 @@ pub use self::{
     ddl::translate_column_def,
     error::TranslateError,
     expr::{translate_expr, translate_order_by_expr},
-    query::{translate_query, translate_select_item},
+    query::{alias_or_name, translate_query, translate_select_item},
 };
 
 #[cfg(feature = "alter-table")]

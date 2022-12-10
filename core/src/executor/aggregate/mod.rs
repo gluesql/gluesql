@@ -4,7 +4,7 @@ mod state;
 use {
     self::state::State,
     super::{
-        context::{AggregateContext, BlendContext, FilterContext},
+        context::{AggregateContext, RowContext},
         evaluate::{evaluate, Evaluated},
         filter::check_expr,
     },
@@ -26,7 +26,7 @@ pub struct Aggregator<'a> {
     fields: &'a [SelectItem],
     group_by: &'a [Expr],
     having: Option<&'a Expr>,
-    filter_context: Option<Rc<FilterContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
 }
 
 type Applied<'a> = dyn TryStream<Ok = AggregateContext<'a>, Error = Error, Item = Result<AggregateContext<'a>>>
@@ -38,7 +38,7 @@ impl<'a> Aggregator<'a> {
         fields: &'a [SelectItem],
         group_by: &'a [Expr],
         having: Option<&'a Expr>,
-        filter_context: Option<Rc<FilterContext<'a>>>,
+        filter_context: Option<Rc<RowContext<'a>>>,
     ) -> Self {
         Self {
             storage,
@@ -51,12 +51,12 @@ impl<'a> Aggregator<'a> {
 
     pub async fn apply(
         &self,
-        rows: impl TryStream<Ok = Rc<BlendContext<'a>>, Error = Error> + 'a,
+        rows: impl TryStream<Ok = Rc<RowContext<'a>>, Error = Error> + 'a,
     ) -> Result<Pin<Box<Applied<'a>>>> {
         if !self.check_aggregate() {
-            let rows = rows.map_ok(|blend_context| AggregateContext {
+            let rows = rows.map_ok(|project_context| AggregateContext {
                 aggregated: None,
-                next: blend_context,
+                next: project_context,
             });
             return Ok(Box::pin(rows));
         }
@@ -67,12 +67,15 @@ impl<'a> Aggregator<'a> {
             .map(|(i, row)| row.map(|row| (i, row)))
             .try_fold(
                 State::new(self.storage),
-                |state, (index, blend_context)| async move {
-                    let filter_context = FilterContext::concat(
-                        self.filter_context.as_ref().map(Rc::clone),
-                        Some(&blend_context).map(Rc::clone),
-                    );
-                    let filter_context = Some(filter_context).map(Rc::new);
+                |state, (index, project_context)| async move {
+                    let filter_context = match &self.filter_context {
+                        Some(filter_context) => Rc::new(RowContext::concat(
+                            Rc::clone(&project_context),
+                            Rc::clone(filter_context),
+                        )),
+                        None => Rc::clone(&project_context),
+                    };
+                    let filter_context = Some(filter_context);
 
                     let evaluated: Vec<Evaluated<'_>> = stream::iter(self.group_by.iter())
                         .then(|expr| {
@@ -87,7 +90,7 @@ impl<'a> Aggregator<'a> {
                         .map(Key::try_from)
                         .collect::<Result<Vec<Key>>>()?;
 
-                    let state = state.apply(index, group, Rc::clone(&blend_context));
+                    let state = state.apply(index, group, Rc::clone(&project_context));
                     let state = stream::iter(self.fields)
                         .fold(Ok(state), |state, field| {
                             let filter_clone = filter_context.as_ref().map(Rc::clone);
@@ -128,9 +131,13 @@ impl<'a> Aggregator<'a> {
                     match having {
                         None => Some(Ok((aggregated.as_ref().map(Rc::clone), next))),
                         Some(having) => {
-                            let filter_context =
-                                FilterContext::concat(filter_context, Some(Rc::clone(&next)));
-                            let filter_context = Some(filter_context).map(Rc::new);
+                            let filter_context = match filter_context {
+                                Some(filter_context) => {
+                                    Rc::new(RowContext::concat(Rc::clone(&next), filter_context))
+                                }
+                                None => Rc::clone(&next),
+                            };
+                            let filter_context = Some(filter_context);
                             let aggregated = aggregated.as_ref().map(Rc::clone);
 
                             check_expr(
@@ -175,7 +182,7 @@ impl<'a> Aggregator<'a> {
 #[async_recursion(?Send)]
 async fn aggregate<'a>(
     state: State<'a>,
-    filter_context: Option<Rc<FilterContext<'a>>>,
+    filter_context: Option<Rc<RowContext<'a>>>,
     expr: &'a Expr,
 ) -> Result<State<'a>> {
     let aggr = |state, expr| aggregate(state, filter_context.as_ref().map(Rc::clone), expr);
@@ -239,14 +246,14 @@ fn check(expr: &Expr) -> bool {
             when_then,
             else_result,
         } => {
-            operand.as_ref().map(|expr| check(&*expr)).unwrap_or(false)
+            operand.as_ref().map(|expr| check(expr)).unwrap_or(false)
                 || when_then
                     .iter()
                     .map(|(when, then)| check(when) || check(then))
                     .any(identity)
                 || else_result
                     .as_ref()
-                    .map(|expr| check(&*expr))
+                    .map(|expr| check(expr))
                     .unwrap_or(false)
         }
         Expr::Aggregate(_) => true,

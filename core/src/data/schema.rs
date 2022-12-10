@@ -6,7 +6,7 @@ use {
     strum_macros::Display,
 };
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Display)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Display)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum SchemaIndexOrd {
     Asc,
@@ -14,7 +14,7 @@ pub enum SchemaIndexOrd {
     Both,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SchemaIndex {
     pub name: String,
     pub expr: Expr,
@@ -22,7 +22,7 @@ pub struct SchemaIndex {
     pub created: NaiveDateTime,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Schema {
     pub table_name: String,
     pub column_defs: Vec<ColumnDef>,

@@ -83,4 +83,12 @@ test_case!(basic, async move {
     let actual = table("Foo").drop_table().execute(glue).await;
     let expected = Ok(Payload::DropTable);
     assert_eq!(actual, expected, "drop table");
+
+    let actual = table("Foo")
+        .select()
+        .filter(num("NAN").gt(300))
+        .execute(glue)
+        .await;
+    let expected = Err(AstBuilderError::FailedToParseNumeric("NAN".to_owned()).into());
+    assert_eq!(actual, expected, "error");
 });

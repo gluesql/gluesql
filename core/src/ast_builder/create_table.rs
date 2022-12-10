@@ -3,7 +3,7 @@ use {
     crate::{ast::Statement, ast_builder::ColumnDefNode, result::Result},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CreateTableNode {
     table_name: String,
     if_not_exists: bool,

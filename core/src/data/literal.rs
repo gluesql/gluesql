@@ -11,7 +11,7 @@ use {
     Literal::*,
 };
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum LiteralError {
     #[error("unsupported literal binary arithmetic between {0} and {1}")]
     UnsupportedBinaryArithmetic(String, String),

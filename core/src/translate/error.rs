@@ -1,6 +1,6 @@
 use {serde::Serialize, std::fmt::Debug, thiserror::Error};
 
-#[derive(Error, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum TranslateError {
     #[error("unimplemented - select on two or more than tables are not supported")]
     TooManyTables,

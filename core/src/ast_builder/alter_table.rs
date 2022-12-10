@@ -8,6 +8,7 @@ use {
     },
 };
 
+#[derive(Clone, Debug)]
 pub struct AlterTableNode {
     table_name: String,
 }

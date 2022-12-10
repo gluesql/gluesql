@@ -1,13 +1,7 @@
-use {serde::Serialize, std::fmt::Debug, thiserror::Error as ThisError};
+use {serde::Serialize, std::fmt::Debug, thiserror::Error};
 
-#[derive(ThisError, Serialize, Debug, PartialEq)]
+#[derive(Error, Serialize, Debug, PartialEq, Eq)]
 pub enum SelectError {
-    #[error("table alias not found: {0}")]
-    TableAliasNotFound(String),
-
-    #[error("table alias for blend not found: {0}")]
-    BlendTableAliasNotFound(String),
-
-    #[error("unreachable!")]
-    Unreachable,
+    #[error("VALUES lists must all be the same length")]
+    NumberOfValuesDifferent,
 }

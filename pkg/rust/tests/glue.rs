@@ -39,14 +39,12 @@ fn basic<T: GStore + GStoreMut>(mut glue: Glue<T>) {
                     Value::I64(1),
                     Value::Str(String::from("test1")),
                     Value::Bool(true)
-                ]
-                .into(),
+                ],
                 vec![
                     Value::I64(2),
                     Value::Str(String::from("test2")),
                     Value::Bool(false)
-                ]
-                .into()
+                ],
             ]
         }])
     );

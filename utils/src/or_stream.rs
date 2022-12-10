@@ -76,7 +76,7 @@ where
                 (_, Some(0)) => self.stream2.size_hint(),
                 (0, i1_high) => {
                     let (i2_low, i2_high) = self.stream2.size_hint();
-                    let low = if i2_low > 0 { 1 } else { 0 };
+                    let low = usize::from(i2_low > 0);
 
                     let high = i1_high.and_then(|h1| i2_high.map(|h2| max(h1, h2)));
                     (low, high)

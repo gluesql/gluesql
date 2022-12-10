@@ -8,7 +8,7 @@ use {
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AggregateNode<'a> {
     Count(CountArgExprNode<'a>),
     Sum(ExprNode<'a>),
@@ -19,7 +19,7 @@ pub enum AggregateNode<'a> {
     Stdev(ExprNode<'a>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum CountArgExprNode<'a> {
     Text(String),
     Expr(ExprNode<'a>),

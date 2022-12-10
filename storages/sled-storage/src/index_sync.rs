@@ -2,14 +2,11 @@ use {
     super::{err_into, fetch_schema, key, Snapshot},
     gluesql_core::{
         ast::Expr,
-        data::{
-            schema::{Schema, SchemaIndex},
-            Row,
-        },
+        data::schema::{Schema, SchemaIndex},
         executor::evaluate_stateless,
         prelude::Value,
         result::{Error, Result},
-        store::IndexError,
+        store::{IndexError, Row},
     },
     sled::{
         transaction::{

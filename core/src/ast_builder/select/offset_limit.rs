@@ -1,12 +1,12 @@
 use {
     super::{NodeData, Prebuild},
     crate::{
-        ast_builder::{ExprNode, OffsetNode, ProjectNode, SelectItemList},
+        ast_builder::{ExprNode, OffsetNode, QueryNode, TableFactorNode},
         result::Result,
     },
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Offset(OffsetNode<'a>),
 }
@@ -25,7 +25,7 @@ impl<'a> From<OffsetNode<'a>> for PrevNode<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OffsetLimitNode<'a> {
     prev_node: PrevNode<'a>,
     expr: ExprNode<'a>,
@@ -39,8 +39,8 @@ impl<'a> OffsetLimitNode<'a> {
         }
     }
 
-    pub fn project<T: Into<SelectItemList<'a>>>(self, select_items: T) -> ProjectNode<'a> {
-        ProjectNode::new(self, select_items)
+    pub fn alias_as(self, table_alias: &'a str) -> TableFactorNode {
+        QueryNode::OffsetLimitNode(self).alias_as(table_alias)
     }
 }
 
@@ -81,9 +81,9 @@ mod tests {
             .select()
             .group_by("city")
             .having("COUNT(name) < 100")
+            .project("city")
             .offset(1)
             .limit(3)
-            .project("city")
             .build();
         let expected = "
             SELECT city FROM Bar
@@ -91,6 +91,27 @@ mod tests {
             HAVING COUNT(name) < 100
             OFFSET 1
             LIMIT 3;
+        ";
+        test(actual, expected);
+
+        // select -> offset -> limit -> derived subquery
+        let actual = table("Bar")
+            .select()
+            .group_by("city")
+            .having("COUNT(name) < 100")
+            .offset(1)
+            .limit(3)
+            .alias_as("Sub")
+            .select()
+            .build();
+        let expected = "
+            SELECT * FROM (
+                SELECT * FROM Bar
+                GROUP BY city
+                HAVING COUNT(name) < 100
+                OFFSET 1
+                LIMIT 3
+            ) Sub
         ";
         test(actual, expected);
     }
