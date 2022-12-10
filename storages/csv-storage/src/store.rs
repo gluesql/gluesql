@@ -31,7 +31,15 @@ impl Store for CsvStorage {
     }
 
     async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
-        todo!()
+        for row_result in self.scan_data(table_name).await? {
+            match row_result {
+                Ok((data_key, row)) if &data_key == key => return Ok(Some(row)),
+                Err(e) => return Err(e),
+                _ => continue,
+            }
+        }
+
+        Ok(None)
     }
 
     async fn scan_data(&self, table_name: &str) -> Result<RowIter> {
@@ -49,20 +57,19 @@ impl Store for CsvStorage {
         let rows = ReaderBuilder::new()
             .from_path(file_path)
             .map_err(StorageError::from_csv_error)?
-            .into_records();
-
-        let rows = rows.map(move |row| -> Result<Row> {
-            row.map_err(StorageError::from_csv_error)?
-                .iter()
-                .zip(data_types.clone())
-                .map(|(value, data_type)| {
-                    Value::try_from_literal(
-                        &data_type,
-                        &Literal::Text(Cow::Borrowed(&value.to_owned())),
-                    )
-                })
-                .collect()
-        });
+            .into_records()
+            .map(move |row| -> Result<Row> {
+                row.map_err(StorageError::from_csv_error)?
+                    .iter()
+                    .zip(data_types.clone())
+                    .map(|(value, data_type)| {
+                        Value::try_from_literal(
+                            &data_type,
+                            &Literal::Text(Cow::Borrowed(&value.to_owned())),
+                        )
+                    })
+                    .collect()
+            });
 
         let row_counts = (0..).map(|i| Key::I128(i));
         Ok(Box::new(row_counts.zip(rows).map(
