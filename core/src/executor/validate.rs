@@ -213,7 +213,6 @@ fn fetch_specified_unique_columns(
                     ColumnOption::Unique { .. } => specified_columns
                         .iter()
                         .any(|specified_col| specified_col == &table_col.name),
-                    _ => false,
                 })
                 .then_some((i, table_col.name.to_owned()))
         })

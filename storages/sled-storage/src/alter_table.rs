@@ -183,6 +183,7 @@ impl AlterTable for SledStorage {
             let ColumnDef {
                 data_type,
                 nullable,
+                default,
                 options,
                 ..
             } = column_defs[i].clone();
@@ -191,6 +192,7 @@ impl AlterTable for SledStorage {
                 name: new_column_name.to_owned(),
                 data_type,
                 nullable,
+                default,
                 options,
             };
             let column_defs = Vector::from(column_defs).update(i, column_def).into();
@@ -270,10 +272,10 @@ impl AlterTable for SledStorage {
             let ColumnDef {
                 data_type,
                 nullable,
+                default,
                 ..
             } = column_def;
 
-            let default = column_def.get_default();
             let value = match (default, nullable) {
                 (Some(expr), _) => {
                     let evaluated = evaluate_stateless(None, expr)

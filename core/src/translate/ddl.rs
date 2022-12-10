@@ -64,17 +64,28 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
             || option == &SqlColumnOption::Unique { is_primary: true }
     });
 
+    let default = options
+        .iter()
+        .find_map(|option| match option {
+            SqlColumnOptionDef {
+                option: SqlColumnOption::Default(default),
+                ..
+            } => Some(translate_expr(default)),
+            _ => None,
+        })
+        .transpose()?;
+
     Ok(ColumnDef {
         name: name.value.to_owned(),
         data_type: translate_data_type(data_type)?,
         nullable,
+        default,
         options: options
             .iter()
-            .map(translate_column_option_def)
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect(),
+            .filter_map(|column_option_def| {
+                translate_column_option_def(column_option_def).transpose()
+            })
+            .collect::<Result<Vec<ColumnOption>>>()?,
     })
 }
 
@@ -84,20 +95,14 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
 /// but in here we only need `option`.
 fn translate_column_option_def(
     sql_column_option_def: &SqlColumnOptionDef,
-) -> Result<Vec<ColumnOption>> {
+) -> Result<Option<ColumnOption>> {
     let SqlColumnOptionDef { option, .. } = sql_column_option_def;
 
-    let option = match option {
-        SqlColumnOption::Null | SqlColumnOption::NotNull => return Ok(Vec::new()),
-        SqlColumnOption::Default(expr) => translate_expr(expr).map(ColumnOption::Default),
-        SqlColumnOption::Unique { is_primary } if !is_primary => {
-            Ok(ColumnOption::Unique { is_primary: false })
-        }
-        SqlColumnOption::Unique { .. } => {
-            return Ok(vec![ColumnOption::Unique { is_primary: true }]);
-        }
+    match option {
+        SqlColumnOption::Null | SqlColumnOption::NotNull | SqlColumnOption::Default(_) => Ok(None),
+        SqlColumnOption::Unique { is_primary } => Ok(Some(ColumnOption::Unique {
+            is_primary: *is_primary,
+        })),
         _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
-    }?;
-
-    Ok(vec![option])
+    }
 }
