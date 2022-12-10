@@ -201,7 +201,7 @@ fn fill_values(
                 .find(|(name, _)| name == &def_name)
                 .map(|(_, value)| value);
 
-            match (value, column_def.get_default(), nullable) {
+            match (value, &column_def.default, nullable) {
                 (Some(&expr), _, _) | (None, Some(expr), _) => {
                     evaluate_stateless(None, expr)?.try_into_value(data_type, *nullable)
                 }

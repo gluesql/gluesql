@@ -76,10 +76,10 @@ impl MemoryStorage {
         let ColumnDef {
             data_type,
             nullable,
+            default,
             ..
         } = column_def;
 
-        let default = column_def.get_default();
         let value = match (default, nullable) {
             (Some(expr), _) => {
                 let evaluated = gluesql_core::executor::evaluate_stateless(None, expr)?;

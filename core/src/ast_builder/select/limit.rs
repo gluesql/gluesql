@@ -215,6 +215,11 @@ mod tests {
         let expected = "SELECT * FROM Hello ORDER BY score LIMIT 3";
         test(actual, expected);
 
+        // project node -> limit node -> build
+        let actual = table("Item").select().project("*").limit(10).build();
+        let expected = "SELECT * FROM Item LIMIT 10";
+        test(actual, expected);
+
         // hash join node -> limit node -> build
         let actual = table("Player")
             .select()

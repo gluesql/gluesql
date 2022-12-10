@@ -1,5 +1,5 @@
 use {
-    crate::ast::{ColumnDef, ColumnOption, Expr, Statement, ToSql},
+    crate::ast::{ColumnDef, Expr, Statement, ToSql},
     chrono::NaiveDateTime,
     serde::{Deserialize, Serialize},
     std::{fmt::Debug, iter},
@@ -61,18 +61,8 @@ impl Schema {
     }
 }
 
-impl ColumnDef {
-    pub fn get_default(&self) -> Option<&Expr> {
-        self.options.iter().find_map(|option| match option {
-            ColumnOption::Default(expr) => Some(expr),
-            _ => None,
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
-
     use crate::{
         ast::{AstLiteral, ColumnDef, ColumnOption, Expr},
         chrono::Utc,
@@ -89,15 +79,15 @@ mod tests {
                     name: "id".to_owned(),
                     data_type: DataType::Int,
                     nullable: false,
+                    default: None,
                     options: Vec::new(),
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![ColumnOption::Default(Expr::Literal(
-                        AstLiteral::QuotedString("glue".to_owned()),
-                    ))],
+                    default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
+                    options: Vec::new(),
                 },
             ],
             indexes: Vec::new(),
@@ -118,6 +108,7 @@ mod tests {
                 name: "id".to_owned(),
                 data_type: DataType::Int,
                 nullable: false,
+                default: None,
                 options: vec![ColumnOption::Unique { is_primary: true }],
             }],
             indexes: Vec::new(),
@@ -139,12 +130,14 @@ mod tests {
                     name: "id".to_owned(),
                     data_type: DataType::Int,
                     nullable: false,
+                    default: None,
                     options: Vec::new(),
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: false,
+                    default: None,
                     options: Vec::new(),
                 },
             ],

@@ -3,8 +3,8 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetLimitNode, OffsetNode, OrderByExprList, OrderByNode,
-            QueryNode, SelectItemList, SelectNode, TableFactorNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
+            SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -15,9 +15,6 @@ pub enum PrevNode<'a> {
     Select(SelectNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
-    Limit(LimitNode<'a>),
-    Offset(OffsetNode<'a>),
-    OffsetLimit(OffsetLimitNode<'a>),
     Join(Box<JoinNode<'a>>),
     JoinConstraint(Box<JoinConstraintNode<'a>>),
     HashJoin(HashJoinNode<'a>),
@@ -30,9 +27,6 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::Select(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
-            Self::Limit(node) => node.prebuild(),
-            Self::Offset(node) => node.prebuild(),
-            Self::OffsetLimit(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
@@ -56,24 +50,6 @@ impl<'a> From<GroupByNode<'a>> for PrevNode<'a> {
 impl<'a> From<HavingNode<'a>> for PrevNode<'a> {
     fn from(node: HavingNode<'a>) -> Self {
         PrevNode::Having(node)
-    }
-}
-
-impl<'a> From<LimitNode<'a>> for PrevNode<'a> {
-    fn from(node: LimitNode<'a>) -> Self {
-        PrevNode::Limit(node)
-    }
-}
-
-impl<'a> From<OffsetNode<'a>> for PrevNode<'a> {
-    fn from(node: OffsetNode<'a>) -> Self {
-        PrevNode::Offset(node)
-    }
-}
-
-impl<'a> From<OffsetLimitNode<'a>> for PrevNode<'a> {
-    fn from(node: OffsetLimitNode<'a>) -> Self {
-        PrevNode::OffsetLimit(node)
     }
 }
 
@@ -244,35 +220,6 @@ mod tests {
             GROUP BY age
             HAVING SUM(length) < 1000;
         "#;
-        test(actual, expected);
-
-        // limit node -> project node -> build
-        let actual = table("Item").select().project("*").limit(10).build();
-        let expected = "SELECT * FROM Item LIMIT 10";
-        test(actual, expected);
-
-        // offset node -> project node -> build
-        let actual = table("Item").select().project("*").offset(10).build();
-        let expected = "SELECT * FROM Item OFFSET 10";
-        test(actual, expected);
-
-        // offset limit node -> project node -> build
-        let actual = table("Operator")
-            .select()
-            .project("name")
-            .offset(3)
-            .limit(10)
-            .build();
-        let expected = "SELECT name FROM Operator LIMIT 10 OFFSET 3";
-        test(actual, expected);
-
-        // order by node -> project node -> build
-        let actual = table("Foo")
-            .select()
-            .project("id")
-            .order_by("id asc")
-            .build();
-        let expected = "SELECT id FROM Foo ORDER BY id asc";
         test(actual, expected);
 
         // hash join node -> project node -> build
