@@ -3,8 +3,8 @@ use {
     bigdecimal::BigDecimal,
     gluesql_core::{
         ast::DataType::{Boolean, Int, Text},
-        data::{Literal, RowError, ValueError},
-        executor::{FetchError, InsertError},
+        data::{Literal, ValueError},
+        executor::{FetchError, InsertError, SelectError},
         prelude::{DataType, Payload, Value::*},
     },
     std::borrow::Cow,
@@ -68,11 +68,11 @@ test_case!(values, async move {
         ),
         (
             "VALUES (1), (2, 'b')",
-            Err(RowError::NumberOfValuesDifferent.into()),
+            Err(SelectError::NumberOfValuesDifferent.into()),
         ),
         (
             "VALUES (1, 'a'), (2)",
-            Err(RowError::NumberOfValuesDifferent.into()),
+            Err(SelectError::NumberOfValuesDifferent.into()),
         ),
         (
             "VALUES (1, 'a'), (2, 3)",

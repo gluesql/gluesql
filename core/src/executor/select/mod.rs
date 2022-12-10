@@ -1,4 +1,7 @@
+mod error;
 mod project;
+
+pub use error::SelectError;
 
 use {
     self::project::Project,
@@ -14,7 +17,7 @@ use {
     },
     crate::{
         ast::{Expr, OrderByExpr, Query, Select, SetExpr, TableWithJoins, Values},
-        data::{get_alias, Row, RowError},
+        data::{get_alias, Row},
         prelude::{DataType, Value},
         result::{Error, Result},
         store::GStore,
@@ -41,7 +44,7 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
                 .collect::<Vec<Option<DataType>>>(),
             move |column_types, exprs| {
                 if exprs.len() != first_len {
-                    return Some(Err(RowError::NumberOfValuesDifferent.into()));
+                    return Some(Err(SelectError::NumberOfValuesDifferent.into()));
                 }
 
                 let values = column_types
