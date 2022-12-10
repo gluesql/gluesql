@@ -252,10 +252,10 @@ test_case!(project, async move {
     test!(sql, Ok(expected));
 
     // To test `PlanError` while using `JOIN`
-    run!("CREATE TABLE users (id INTEGER, name TEXT);");
-    run!("INSERT INTO users (id, name) VALUES (1, 'Harry');");
-    run!("CREATE TABLE testers (id INTEGER, nickname TEXT);");
-    run!("INSERT INTO testers (id, nickname) VALUES (1, 'Ron');");
+    run!("CREATE TABLE Users (id INTEGER, name TEXT);");
+    run!("INSERT INTO Users (id, name) VALUES (1, 'Harry');");
+    run!("CREATE TABLE Testers (id INTEGER, nickname TEXT);");
+    run!("INSERT INTO Testers (id, nickname) VALUES (1, 'Ron');");
 
     let error_cases = [
         (
