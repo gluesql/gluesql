@@ -202,6 +202,11 @@ mod tests {
         let expected = "SELECT * FROM Bar WHERE id > 2 OFFSET 100";
         test(actual, expected);
 
+        // project node -> offset node -> build
+        let actual = table("Item").select().project("*").offset(10).build();
+        let expected = "SELECT * FROM Item OFFSET 10";
+        test(actual, expected);
+
         // hash join node -> offset node -> build
         let actual = table("Player")
             .select()

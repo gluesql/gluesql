@@ -76,7 +76,7 @@ mod tests {
         ";
         test(actual, expected);
 
-        // offset node -> limit node -> project node
+        // project node -> offset node -> limit node
         let actual = table("Bar")
             .select()
             .group_by("city")
