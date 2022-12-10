@@ -1,13 +1,14 @@
-use std::collections::HashMap;
-
-use csv_table::CsvTable;
-
 mod csv_table;
 mod error;
 mod schema_list;
 mod store;
+mod store_mut;
 
-use {error::StorageError, std::path::Path};
+use {
+    csv_table::CsvTable,
+    error::StorageError,
+    std::{collections::HashMap, path::Path},
+};
 
 pub(crate) type TableName = String;
 
