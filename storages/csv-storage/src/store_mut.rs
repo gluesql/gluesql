@@ -1,5 +1,5 @@
 use {
-    crate::CsvStorage,
+    crate::{csv_table::CsvTable, error::StorageError, CsvStorage},
     async_trait::async_trait,
     gluesql_core::{
         data::{schema::Schema, Key},
@@ -7,12 +7,27 @@ use {
         store::Row,
         store::StoreMut,
     },
+    std::{fs, path::PathBuf},
 };
 
 #[async_trait(?Send)]
 impl StoreMut for CsvStorage {
     async fn insert_schema(self, schema: &Schema) -> MutResult<Self, ()> {
-        todo!()
+        let file_path = PathBuf::from(format!("{}.csv", schema.table_name));
+
+        match fs::File::create(&file_path) {
+            Ok(_) => {
+                let csv_table = CsvTable {
+                    file_path,
+                    schema: schema.to_owned(),
+                };
+                let mut tables = self.tables;
+                tables.insert(schema.table_name.to_owned(), csv_table);
+
+                Ok((CsvStorage { tables }, ()))
+            }
+            Err(_) => Err((self, StorageError::FailedToCreateTableFile.into())),
+        }
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {

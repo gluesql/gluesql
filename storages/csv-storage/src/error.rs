@@ -2,6 +2,9 @@ use {gluesql_core::result::Error, thiserror::Error as ThisError};
 
 #[derive(ThisError, Debug, PartialEq, Eq)]
 pub enum StorageError {
+    #[error("failed to create table file")]
+    FailedToCreateTableFile,
+
     #[error("cannot import file as table: {0}")]
     InvalidFileImport(String),
 
