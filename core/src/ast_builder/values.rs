@@ -1,16 +1,13 @@
-use crate::{
-    ast::{Expr, Query, SetExpr, Statement, Values},
-    result::Result,
-};
-
-use super::{
-    select::{NodeData, Prebuild},
-    ExprList, QueryNode,
+use {
+    super::ExprList,
+    crate::{
+        ast::{Expr, Query, SetExpr, Statement, Values},
+        result::Result,
+    },
 };
 
 #[derive(Clone, Debug)]
 pub struct ValuesNode<'a> {
-    // pub values: QueryNode<'a>,
     pub values: Vec<ExprList<'a>>,
 }
 
@@ -37,17 +34,9 @@ pub fn values<'a, T: Into<ExprList<'a>>>(values: Vec<T>) -> ValuesNode<'a> {
     ValuesNode { values }
 }
 
-// impl<'a> Prebuild for ValuesNode<'a> {
-//     fn prebuild(self) -> Result<NodeData> {
-
-//             source: QueryNode::Values(values),
-//         self.values
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{num, table, test, Build};
+    use crate::ast_builder::{num, test};
 
     use super::values;
 
@@ -55,6 +44,10 @@ mod tests {
     fn values_test() {
         let actual = values(vec![vec![num(7)]]).build();
         let expected = "VALUES(7)";
+        test(actual, expected);
+
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).build();
+        let expected = "VALUES(1, 'a'), (2, 'b')";
         test(actual, expected);
     }
 }
