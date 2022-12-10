@@ -18,13 +18,9 @@ impl CsvTable {
     /// Create csv table from given path.
     /// Columns are defaulted as string type.
     pub fn from_path(path: impl AsRef<Path>) -> Result<Self, StorageError> {
-        let file_path = path.as_ref().to_path_buf();
-
-        let mut builder = ReaderBuilder::new()
+        let column_defs: Vec<ColumnDef> = ReaderBuilder::new()
             .from_path(&path)
-            .map_err(StorageError::from_csv_error)?;
-
-        let column_defs: Vec<ColumnDef> = builder
+            .map_err(StorageError::from_csv_error)?
             .headers()
             .map_err(StorageError::from_csv_error)?
             .into_iter()
@@ -33,6 +29,7 @@ impl CsvTable {
                 data_type: DataType::Text,
                 nullable: true,
                 options: vec![],
+                default: None,
             })
             .collect();
 
@@ -50,14 +47,15 @@ impl CsvTable {
             })
             .to_string();
 
-        let schema = Schema {
-            table_name,
-            column_defs,
-            indexes: vec![],
-            created: NaiveDateTime::default(),
-        };
-
-        Ok(CsvTable { file_path, schema })
+        Ok(CsvTable {
+            file_path: path.as_ref().to_path_buf(),
+            schema: Schema {
+                table_name,
+                column_defs,
+                indexes: vec![],
+                created: NaiveDateTime::default(),
+            },
+        })
     }
 
     /// Adapts schema and create new `CsvTable`.    
@@ -121,19 +119,22 @@ mod test {
                     name: "id".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![]
+                    options: vec![],
+                    default: None
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![]
+                    options: vec![],
+                    default: None
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
-                    options: vec![]
+                    options: vec![],
+                    default: None
                 },
             ],
             schema.column_defs
@@ -157,36 +158,8 @@ mod test {
         // Assert
         assert!(matches!(result, Ok(CsvTable { .. })));
         let CsvTable { file_path, schema } = result.unwrap();
-        assert_eq!(PathBuf::from_str("new_table_0.csv").unwrap(), file_path);
-        assert_eq!("users".to_string(), schema.table_name);
-        assert_eq!(
-            vec![
-                ColumnDef {
-                    name: "id".to_owned(),
-                    data_type: DataType::Text,
-                    nullable: true,
-                    options: vec![]
-                },
-                ColumnDef {
-                    name: "name".to_owned(),
-                    data_type: DataType::Text,
-                    nullable: true,
-                    options: vec![]
-                },
-                ColumnDef {
-                    name: "age".to_owned(),
-                    data_type: DataType::Text,
-                    nullable: true,
-                    options: vec![]
-                },
-            ],
-            schema.column_defs
-        );
-        assert_eq!(
-            (vec![], NaiveDateTime::default()),
-            (schema.indexes, schema.created)
-        );
-
+        assert_eq!(PathBuf::from_str(".csv").unwrap(), file_path);
+        assert_eq!("new_table_0".to_string(), schema.table_name);
         // Should cleanup created csv file
         fs::remove_file(csv_path).unwrap();
     }
@@ -202,18 +175,21 @@ mod test {
                         data_type: DataType::Text,
                         nullable: true,
                         options: vec![],
+                        default: None,
                     },
                     ColumnDef {
                         name: "name".to_owned(),
                         data_type: DataType::Text,
                         nullable: true,
                         options: vec![],
+                        default: None,
                     },
                     ColumnDef {
                         name: "age".to_owned(),
                         data_type: DataType::Text,
                         nullable: true,
                         options: vec![],
+                        default: None,
                     },
                 ],
                 indexes: vec![],
@@ -234,18 +210,21 @@ mod test {
                     data_type: DataType::Int128,
                     nullable: true,
                     options: vec![],
+                    default: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
                     options: vec![],
+                    default: None,
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Uint8,
                     nullable: true,
                     options: vec![],
+                    default: None,
                 },
             ],
             indexes: vec![],
@@ -266,18 +245,21 @@ mod test {
                     data_type: DataType::Int128,
                     nullable: true,
                     options: vec![],
+                    default: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
                     options: vec![],
+                    default: None,
                 },
                 ColumnDef {
                     name: "age".to_owned(),
                     data_type: DataType::Uint8,
                     nullable: true,
                     options: vec![],
+                    default: None,
                 },
             ],
             schema.column_defs
@@ -321,6 +303,7 @@ mod test {
                 data_type: DataType::Int128,
                 nullable: true,
                 options: vec![],
+                default: None,
             }],
             indexes: vec![],
             created: NaiveDateTime::default(),

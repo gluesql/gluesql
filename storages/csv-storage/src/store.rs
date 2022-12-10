@@ -3,8 +3,12 @@ use {
     async_trait::async_trait,
     csv::ReaderBuilder,
     gluesql_core::{
-        ast::Expr, data::Schema, prelude::*, result::Result, store::RowIter, store::Store,
+        data::{Literal, Schema},
+        prelude::*,
+        result::Result,
+        store::{Row, RowIter, Store},
     },
+    std::borrow::Cow,
 };
 
 #[async_trait(?Send)]
@@ -37,7 +41,6 @@ impl Store for CsvStorage {
             .ok_or(StorageError::TableNotFound(table_name.to_string()))?;
 
         let column_defs = schema.column_defs.to_owned();
-        let columns: Vec<String> = column_defs.iter().map(|cd| cd.name.to_owned()).collect();
         let data_types: Vec<DataType> = column_defs
             .iter()
             .map(|cd| cd.data_type.to_owned())
@@ -49,16 +52,16 @@ impl Store for CsvStorage {
             .into_records();
 
         let rows = rows.map(move |row| -> Result<Row> {
-            let values = row
-                .map_err(StorageError::from_csv_error)?
+            row.map_err(StorageError::from_csv_error)?
                 .iter()
                 .zip(data_types.clone())
-                .map(|(value, data_type)| Expr::TypedString {
-                    data_type,
-                    value: value.to_string(),
+                .map(|(value, data_type)| {
+                    Value::try_from_literal(
+                        &data_type,
+                        &Literal::Text(Cow::Borrowed(&value.to_owned())),
+                    )
                 })
-                .collect::<Vec<_>>();
-            Row::new(&column_defs, &columns, &values)
+                .collect()
         });
 
         let row_counts = (0..).map(|i| Key::I128(i));
