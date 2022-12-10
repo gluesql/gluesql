@@ -100,10 +100,9 @@ fn translate_column_option_def(
 
     match option {
         SqlColumnOption::Null | SqlColumnOption::NotNull | SqlColumnOption::Default(_) => Ok(None),
-        SqlColumnOption::Unique { is_primary } if !is_primary => {
-            Ok(Some(ColumnOption::Unique { is_primary: false }))
-        }
-        SqlColumnOption::Unique { .. } => Ok(Some(ColumnOption::Unique { is_primary: true })),
+        SqlColumnOption::Unique { is_primary } => Ok(Some(ColumnOption::Unique {
+            is_primary: *is_primary,
+        })),
         _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
     }
 }
