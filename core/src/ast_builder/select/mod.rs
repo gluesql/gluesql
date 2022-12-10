@@ -38,7 +38,7 @@ pub trait Prebuild {
 }
 
 #[derive(Clone, Debug)]
-pub struct NodeData {
+pub struct SelectData {
     pub projection: Vec<SelectItem>,
     pub relation: TableFactor,
     pub joins: Vec<Join>,
@@ -51,36 +51,53 @@ pub struct NodeData {
     pub offset: Option<Expr>,
 }
 
+#[derive(Clone, Debug)]
+pub struct ValuesData {
+    pub values: Vec<Vec<Expr>>,
+    pub order_by: Vec<Expr>,
+    pub limit: Vec<Expr>,
+    pub offset: Vec<Expr>,
+}
+
+#[derive(Clone, Debug)]
+pub enum NodeData {
+    Select(SelectData),
+    Values(ValuesData),
+}
+
 impl NodeData {
     pub fn build_query(self) -> Query {
-        let NodeData {
-            projection,
-            relation,
-            group_by,
-            having,
-            order_by,
-            offset,
-            limit,
-            joins,
-            filter,
-        } = self;
+        match self {
+            NodeData::Select(SelectData {
+                projection,
+                relation,
+                group_by,
+                having,
+                order_by,
+                offset,
+                limit,
+                joins,
+                filter,
+            }) => {
+                let selection = filter.map(Expr::try_from).and_then(|expr| expr.ok());
+                let from = TableWithJoins { relation, joins };
 
-        let selection = filter.map(Expr::try_from).and_then(|expr| expr.ok());
-        let from = TableWithJoins { relation, joins };
+                let select = Select {
+                    projection,
+                    from,
+                    selection,
+                    group_by,
+                    having,
+                };
 
-        let select = Select {
-            projection,
-            from,
-            selection,
-            group_by,
-            having,
-        };
-
-        Query {
-            body: SetExpr::Select(Box::new(select)),
-            order_by,
-            offset,
-            limit,
+                Query {
+                    body: SetExpr::Select(Box::new(select)),
+                    order_by,
+                    offset,
+                    limit,
+                }
+            }
+            NodeData::Values(values_data) => todo!(),
         }
     }
     fn build_stmt(self) -> Statement {

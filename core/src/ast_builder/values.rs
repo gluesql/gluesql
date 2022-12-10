@@ -1,3 +1,5 @@
+use super::OrderByNode;
+
 use {
     super::ExprList,
     crate::{
@@ -12,6 +14,8 @@ pub struct ValuesNode<'a> {
 }
 
 impl<'a> ValuesNode<'a> {
+    // pub fn ordery_by(self) -> OrderByNode<'a> {}
+
     pub fn build(self) -> Result<Statement> {
         let values = self
             .values
@@ -49,5 +53,11 @@ mod tests {
         let actual = values(vec!["1, 'a'", "2, 'b'"]).build();
         let expected = "VALUES(1, 'a'), (2, 'b')";
         test(actual, expected);
+
+        // let actual = values(vec!["1, 'a'", "2, 'b'"])
+        //     .order_by(vec!["column1 desc"])
+        //     .build();
+        // let expected = "VALUES(1, 'a'), (2, 'b')";
+        // test(actual, expected);
     }
 }

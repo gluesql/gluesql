@@ -124,7 +124,11 @@ impl<'a> Prebuild for HashJoinNode<'a> {
             join_executor,
         };
 
-        select_data.joins.push(join);
+        match select_data {
+            NodeData::Select(ref mut select_data) => select_data.joins.push(join),
+            NodeData::Values(_) => todo!(),
+        };
+
         Ok(select_data)
     }
 }

@@ -1,3 +1,5 @@
+use crate::ast_builder::values::ValuesNode;
+
 use {
     super::{NodeData, Prebuild},
     crate::{
@@ -118,7 +120,12 @@ impl<'a> OrderByNode<'a> {
 impl<'a> Prebuild for OrderByNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.order_by = self.expr_list.try_into()?;
+        match select_data {
+            NodeData::Select(ref mut select_data) => {
+                select_data.order_by = self.expr_list.try_into()?
+            }
+            NodeData::Values(_) => todo!(),
+        }
 
         Ok(select_data)
     }

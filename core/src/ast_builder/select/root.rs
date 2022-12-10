@@ -1,3 +1,5 @@
+use super::SelectData;
+
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild},
     crate::{
@@ -107,7 +109,7 @@ impl<'a> Prebuild for SelectNode<'a> {
             },
         };
 
-        Ok(NodeData {
+        Ok(NodeData::Select(SelectData {
             projection: vec![SelectItem::Wildcard],
             relation,
             filter: None,
@@ -117,7 +119,7 @@ impl<'a> Prebuild for SelectNode<'a> {
             offset: None,
             limit: None,
             joins: vec![],
-        })
+        }))
     }
 }
 

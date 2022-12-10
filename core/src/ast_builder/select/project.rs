@@ -120,14 +120,19 @@ impl<'a> ProjectNode<'a> {
 impl<'a> Prebuild for ProjectNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.projection = self
-            .select_items_list
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<Vec<Vec<_>>>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+        match select_data {
+            NodeData::Select(ref mut select_data) => {
+                select_data.projection = self
+                    .select_items_list
+                    .into_iter()
+                    .map(TryInto::try_into)
+                    .collect::<Result<Vec<Vec<_>>>>()?
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+            }
+            NodeData::Values(_) => todo!(),
+        }
 
         Ok(select_data)
     }

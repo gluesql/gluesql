@@ -114,7 +114,12 @@ impl<'a> LimitNode<'a> {
 impl<'a> Prebuild for LimitNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.limit = Some(self.expr.try_into()?);
+        match select_data {
+            NodeData::Select(ref mut select_data) => {
+                select_data.limit = Some(self.expr.try_into()?)
+            }
+            NodeData::Values(_) => todo!(),
+        }
 
         Ok(select_data)
     }

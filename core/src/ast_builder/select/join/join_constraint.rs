@@ -117,18 +117,21 @@ impl<'a> Prebuild for JoinConstraintNode<'a> {
             executor: join_executor,
         } = self.prev_node.prebuild_for_constraint()?;
 
-        node_data.joins.push(Join {
-            relation,
-            join_operator: match operator_type {
-                JoinOperatorType::Inner => {
-                    JoinOperator::Inner(JoinConstraint::On(self.expr.try_into()?))
-                }
-                JoinOperatorType::Left => {
-                    JoinOperator::LeftOuter(JoinConstraint::On(self.expr.try_into()?))
-                }
-            },
-            join_executor,
-        });
+        match node_data {
+            NodeData::Select(ref mut select_data) => select_data.joins.push(Join {
+                relation,
+                join_operator: match operator_type {
+                    JoinOperatorType::Inner => {
+                        JoinOperator::Inner(JoinConstraint::On(self.expr.try_into()?))
+                    }
+                    JoinOperatorType::Left => {
+                        JoinOperator::LeftOuter(JoinConstraint::On(self.expr.try_into()?))
+                    }
+                },
+                join_executor,
+            }),
+            NodeData::Values(_) => todo!(),
+        }
 
         Ok(node_data)
     }

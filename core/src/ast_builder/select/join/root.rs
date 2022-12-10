@@ -176,11 +176,15 @@ impl<'a> JoinNode<'a> {
 impl<'a> Prebuild for JoinNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut select_data = self.prev_node.prebuild()?;
-        select_data.joins.push(Join {
-            relation: self.relation,
-            join_operator: JoinOperator::from(self.join_operator_type),
-            join_executor: JoinExecutor::NestedLoop,
-        });
+        match select_data {
+            NodeData::Select(ref mut select_data) => select_data.joins.push(Join {
+                relation: self.relation,
+                join_operator: JoinOperator::from(self.join_operator_type),
+                join_executor: JoinExecutor::NestedLoop,
+            }),
+            NodeData::Values(_) => todo!(),
+        }
+
         Ok(select_data)
     }
 }
