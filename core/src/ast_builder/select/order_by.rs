@@ -202,6 +202,15 @@ mod tests {
             ORDER BY id ASC";
         test(actual, expected);
 
+        // project node -> order by node -> build
+        let actual = table("Foo")
+            .select()
+            .project("id")
+            .order_by("id asc")
+            .build();
+        let expected = "SELECT id FROM Foo ORDER BY id asc";
+        test(actual, expected);
+
         // join node -> order by node -> build
         let actual = table("Foo")
             .select()
