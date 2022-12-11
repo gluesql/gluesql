@@ -214,7 +214,6 @@ pub trait Planner<'a> {
             columns,
             primary_key,
             next,
-            None,
         );
         Some(Rc::new(context))
     }
