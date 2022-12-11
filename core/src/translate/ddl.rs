@@ -2,7 +2,6 @@ use {
     super::{data_type::translate_data_type, expr::translate_expr, TranslateError},
     crate::{
         ast::{ColumnDef, ColumnUniqueOption},
-        // ast::{ColumnDef, ColumnOption},
         result::Result,
     },
     sqlparser::ast::{
