@@ -183,7 +183,7 @@ mod tests {
                     data_type: DataType::Boolean,
                     nullable: false,
                     default: None,
-                    options: Vec::new(),
+                    unique: None,
                 },
             ));
             let storage = test(storage.drop_column("Foo", "col", false));

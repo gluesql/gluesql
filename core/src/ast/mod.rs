@@ -372,21 +372,21 @@ mod tests {
                         data_type: DataType::Int,
                         nullable: false,
                         default: None,
-                        options: vec![]
+                        unique: None,
                     },
                     ColumnDef {
                         name: "num".to_owned(),
                         data_type: DataType::Int,
                         nullable: true,
                         default: None,
-                        options: Vec::new()
+                        unique: None,
                     },
                     ColumnDef {
                         name: "name".to_owned(),
                         data_type: DataType::Text,
                         nullable: false,
                         default: None,
-                        options: vec![]
+                        unique: None,
                     }
                 ],
                 source: None
@@ -469,7 +469,7 @@ mod tests {
                         default: Some(Expr::Literal(AstLiteral::Number(
                             BigDecimal::from_str("10").unwrap()
                         ))),
-                        options: Vec::new(),
+                        unique: None,
                     }
                 }
             }

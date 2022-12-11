@@ -2,8 +2,8 @@ use {
     super::{context::RowContext, evaluate_stateless, filter::check_expr},
     crate::{
         ast::{
-            ColumnDef, ColumnOption, Dictionary, Expr, IndexItem, Join, Query, Select, SelectItem,
-            SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, Values,
+            ColumnDef, ColumnUniqueOption, Dictionary, Expr, IndexItem, Join, Query, Select,
+            SelectItem, SetExpr, TableAlias, TableFactor, TableWithJoins, ToSql, Values,
         },
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
@@ -267,16 +267,12 @@ pub async fn fetch_relation_rows<'a>(
                     Dictionary::GlueIndexes => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().flat_map(move |schema| {
-                            let primary_column = schema.column_defs.iter().find_map(
-                                |ColumnDef { name, options, .. }| {
-                                    options
-                                        .iter()
-                                        .any(|option| {
-                                            option == &ColumnOption::Unique { is_primary: true }
-                                        })
-                                        .then_some(name)
-                                },
-                            );
+                            let primary_column = schema.column_defs.iter().find_map(|column_def| {
+                                let ColumnDef { name, unique, .. } = column_def;
+
+                                (unique == &Some(ColumnUniqueOption { is_primary: true }))
+                                    .then_some(name)
+                            });
 
                             let clustered = match primary_column {
                                 Some(column_name) => {

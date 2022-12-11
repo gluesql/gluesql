@@ -44,7 +44,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                             data_type: DataType::Int,
                             nullable: false,
                             default: None,
-                            options: Vec::new(),
+                            unique: None,
                         };
 
                         vec![column_def]
@@ -95,7 +95,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
                             data_type,
                             nullable: true,
                             default: None,
-                            options: Vec::new(),
+                            unique: None,
                         })
                         .collect::<Vec<_>>();
 

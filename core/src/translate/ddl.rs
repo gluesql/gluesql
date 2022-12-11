@@ -1,7 +1,8 @@
 use {
     super::{data_type::translate_data_type, expr::translate_expr, TranslateError},
     crate::{
-        ast::{ColumnDef, ColumnOption},
+        ast::{ColumnDef, ColumnUniqueOption},
+        // ast::{ColumnDef, ColumnOption},
         result::Result,
     },
     sqlparser::ast::{
@@ -59,50 +60,35 @@ pub fn translate_column_def(sql_column_def: &SqlColumnDef) -> Result<ColumnDef> 
         ..
     } = sql_column_def;
 
-    let nullable = !options.iter().any(|SqlColumnOptionDef { option, .. }| {
-        option == &SqlColumnOption::NotNull
-            || option == &SqlColumnOption::Unique { is_primary: true }
-    });
+    let (nullable, default, unique) = options.iter().try_fold(
+        (true, None, None),
+        |(nullable, default, unique), SqlColumnOptionDef { option, .. }| -> Result<_> {
+            match option {
+                SqlColumnOption::Null => Ok((nullable, default, unique)),
+                SqlColumnOption::NotNull => Ok((false, default, unique)),
+                SqlColumnOption::Default(default) => {
+                    let default = translate_expr(default).map(Some)?;
 
-    let default = options
-        .iter()
-        .find_map(|option| match option {
-            SqlColumnOptionDef {
-                option: SqlColumnOption::Default(default),
-                ..
-            } => Some(translate_expr(default)),
-            _ => None,
-        })
-        .transpose()?;
+                    Ok((nullable, default, unique))
+                }
+                SqlColumnOption::Unique { is_primary } => {
+                    let nullable = if *is_primary { false } else { nullable };
+                    let unique = Some(ColumnUniqueOption {
+                        is_primary: *is_primary,
+                    });
+
+                    Ok((nullable, default, unique))
+                }
+                _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
+            }
+        },
+    )?;
 
     Ok(ColumnDef {
         name: name.value.to_owned(),
         data_type: translate_data_type(data_type)?,
         nullable,
         default,
-        options: options
-            .iter()
-            .filter_map(|column_option_def| {
-                translate_column_option_def(column_option_def).transpose()
-            })
-            .collect::<Result<Vec<ColumnOption>>>()?,
+        unique,
     })
-}
-
-/// Translate [`SqlColumnOptionDef`] to [`ColumnOption`].
-///
-/// `sql-parser` parses column option as `{ name, option }` type,
-/// but in here we only need `option`.
-fn translate_column_option_def(
-    sql_column_option_def: &SqlColumnOptionDef,
-) -> Result<Option<ColumnOption>> {
-    let SqlColumnOptionDef { option, .. } = sql_column_option_def;
-
-    match option {
-        SqlColumnOption::Null | SqlColumnOption::NotNull | SqlColumnOption::Default(_) => Ok(None),
-        SqlColumnOption::Unique { is_primary } => Ok(Some(ColumnOption::Unique {
-            is_primary: *is_primary,
-        })),
-        _ => Err(TranslateError::UnsupportedColumnOption(option.to_string()).into()),
-    }
 }

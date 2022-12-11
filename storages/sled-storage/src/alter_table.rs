@@ -184,7 +184,7 @@ impl AlterTable for SledStorage {
                 data_type,
                 nullable,
                 default,
-                options,
+                unique,
                 ..
             } = column_defs[i].clone();
 
@@ -193,7 +193,7 @@ impl AlterTable for SledStorage {
                 data_type,
                 nullable,
                 default,
-                options,
+                unique,
             };
             let column_defs = Vector::from(column_defs).update(i, column_def).into();
 
