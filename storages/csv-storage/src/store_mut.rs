@@ -31,7 +31,14 @@ impl StoreMut for CsvStorage {
     }
 
     async fn delete_schema(self, table_name: &str) -> MutResult<Self, ()> {
-        todo!()
+        let mut tables = self.tables;
+        match tables.remove(table_name) {
+            Some(_) => Ok((CsvStorage { tables }, ())),
+            None => Err((
+                CsvStorage { tables },
+                StorageError::TableNotFound(table_name.to_string()).into(),
+            )),
+        }
     }
 
     async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
