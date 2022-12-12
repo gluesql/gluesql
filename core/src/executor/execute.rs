@@ -201,6 +201,7 @@ pub async fn execute<T: GStore + GStoreMut>(
                             Ok((key, row.into()))
                         }
                     })
+                    // .try_collect::<Vec<(Key, DataRow)>>()
                     .try_collect::<Vec<(Key, Vec<Value>)>>()
                     .await?;
 
@@ -223,6 +224,9 @@ pub async fn execute<T: GStore + GStoreMut>(
             });
 
             let num_rows = rows.len();
+
+            // temp
+            let rows = rows.into_iter().map(|(key, values)| (key, values.into())).collect();
 
             storage
                 .insert_data(table_name, rows)

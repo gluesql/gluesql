@@ -12,7 +12,7 @@ use {
         data::{schema::Schema, Value},
         executor::evaluate_stateless,
         result::{MutResult, Result, TrySelf},
-        store::{AlterTable, AlterTableError, Row},
+        store::{AlterTable, AlterTableError, DataRow},
     },
     sled::transaction::ConflictableTransactionError,
     std::{iter::once, str},
@@ -83,7 +83,7 @@ impl AlterTable for SledStorage {
                     .map_err(ConflictableTransactionError::Abort)?;
                 let new_key = new_key.replace(table_name, new_table_name);
 
-                let old_row_snapshot: Snapshot<Row> = bincode::deserialize(value)
+                let old_row_snapshot: Snapshot<DataRow> = bincode::deserialize(value)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
@@ -99,7 +99,7 @@ impl AlterTable for SledStorage {
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
 
-                let new_row_snapshot = Snapshot::<Row>::new(txid, row);
+                let new_row_snapshot = Snapshot::<DataRow>::new(txid, row);
                 let new_row_snapshot = bincode::serialize(&new_row_snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
@@ -304,7 +304,7 @@ impl AlterTable for SledStorage {
 
             // migrate data
             for (key, snapshot) in items.iter() {
-                let snapshot: Snapshot<Row> = bincode::deserialize(snapshot)
+                let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
                 let row = match snapshot.clone().extract(txid, None) {
@@ -313,7 +313,13 @@ impl AlterTable for SledStorage {
                         continue;
                     }
                 };
-                let row = row.into_iter().chain(once(value.clone())).collect();
+
+                let values = match row {
+                    DataRow::Vec(values) => values,
+                    DataRow::Map(_) => todo!(),
+                };
+                let row = values.into_iter().chain(once(value.clone())).collect::<Vec<Value>>().into();
+                // let row = row.into_iter().chain(once(value.clone())).collect();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)
@@ -426,7 +432,7 @@ impl AlterTable for SledStorage {
 
             // migrate data
             for (key, snapshot) in items.iter() {
-                let snapshot: Snapshot<Row> = bincode::deserialize(snapshot)
+                let snapshot: Snapshot<DataRow> = bincode::deserialize(snapshot)
                     .map_err(err_into)
                     .map_err(ConflictableTransactionError::Abort)?;
                 let row = match snapshot.clone().extract(txid, None) {
@@ -435,11 +441,18 @@ impl AlterTable for SledStorage {
                         continue;
                     }
                 };
-                let row = row
+
+                let values = match row {
+                    DataRow::Vec(values) => values,
+                    DataRow::Map(_) => todo!(),
+                };
+
+                let row = values
                     .into_iter()
                     .enumerate()
                     .filter_map(|(i, v)| (i != column_index).then_some(v))
-                    .collect();
+                    .collect::<Vec<_>>()
+                    .into();
 
                 let (snapshot, _) = snapshot.update(txid, row);
                 let snapshot = bincode::serialize(&snapshot)

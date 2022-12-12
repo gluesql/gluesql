@@ -9,7 +9,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::{MutResult, Result},
-        store::{Row, RowIter, Store, StoreMut},
+        store::{RowIter, Store, StoreMut, DataRow},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,
@@ -58,7 +58,7 @@ impl Store for SharedMemoryStorage {
         database.fetch_schema(table_name).await
     }
 
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<Row>> {
+    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {
         let database = Arc::clone(&self.database);
         let database = database.read().await;
 
@@ -93,7 +93,7 @@ impl StoreMut for SharedMemoryStorage {
         Ok((self, ()))
     }
 
-    async fn append_data(self, table_name: &str, rows: Vec<Row>) -> MutResult<Self, ()> {
+    async fn append_data(self, table_name: &str, rows: Vec<DataRow>) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 
@@ -102,7 +102,7 @@ impl StoreMut for SharedMemoryStorage {
         Ok((self, ()))
     }
 
-    async fn insert_data(self, table_name: &str, rows: Vec<(Key, Row)>) -> MutResult<Self, ()> {
+    async fn insert_data(self, table_name: &str, rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
         let database = Arc::clone(&self.database);
         let mut database = database.write().await;
 

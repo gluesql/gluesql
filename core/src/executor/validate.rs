@@ -3,7 +3,7 @@ use {
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
         result::Result,
-        store::Store,
+        store::{Store, DataRow},
     },
     im_rc::HashSet,
     serde::Serialize,
@@ -139,12 +139,17 @@ pub async fn validate_unique(
 
             let unique_constraints = Rc::new(unique_constraints);
             storage.scan_data(table_name).await?.try_for_each(|result| {
-                let (_, row) = result?;
+                let (_, data_row) = result?;
+                let values = match data_row {
+                    DataRow::Vec(values) => values,
+                    DataRow::Map(_) => todo!(),
+                };
+
                 Rc::clone(&unique_constraints)
                     .iter()
                     .try_for_each(|constraint| {
                         let col_idx = constraint.column_index;
-                        let val = row
+                        let val = values
                             .get(col_idx)
                             .ok_or(ValidateError::ConflictOnStorageColumnIndex(col_idx))?;
 

@@ -7,7 +7,7 @@ use {
         ast::ColumnDef,
         data::Value,
         result::{MutResult, Result, TrySelf},
-        store::{AlterTable, AlterTableError},
+        store::{AlterTable, AlterTableError, DataRow},
     },
 };
 
@@ -121,7 +121,14 @@ impl MemoryStorage {
             */
 
         item.rows.iter_mut().for_each(|(_, row)| {
-            row.push(value.clone());
+            match row {
+                DataRow::Vec(values) => {
+                    values.push(value.clone());
+                }
+                DataRow::Map(_) => todo!(),
+            };
+
+            // row.push(value.clone());
         });
         column_defs.push(column_def.clone());
 
@@ -196,7 +203,13 @@ impl MemoryStorage {
 
                 item.rows.iter_mut().for_each(|(_, row)| {
                     if row.len() > column_index {
-                        row.remove(column_index);
+                        match row {
+                            DataRow::Vec(values) => {
+                                values.remove(column_index);
+                            }
+                            DataRow::Map(_) => todo!(),
+                        };
+                        // row.remove(column_index);
                     }
                 });
             }

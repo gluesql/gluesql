@@ -8,7 +8,7 @@ use {
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::{MutResult, Result, TrySelf},
-        store::{GStore, GStoreMut},
+        store::{GStore, GStoreMut, DataRow},
     },
     futures::stream::{self, TryStreamExt},
     serde::Serialize,
@@ -41,8 +41,8 @@ pub async fn insert<T: GStore + GStoreMut>(
     source: &Query,
 ) -> MutResult<T, usize> {
     enum RowsData {
-        Append(Vec<Vec<Value>>),
-        Insert(Vec<(Key, Vec<Value>)>),
+        Append(Vec<DataRow>),
+        Insert(Vec<(Key, DataRow)>),
     }
 
     let rows = (|| async {
@@ -126,11 +126,11 @@ pub async fn insert<T: GStore + GStoreMut>(
                     values
                         .get(i)
                         .map(Key::try_from)
-                        .map(|result| result.map(|key| (key, values)))
+                        .map(|result| result.map(|key| (key, values.into())))
                 })
                 .collect::<Result<Vec<_>>>()
                 .map(RowsData::Insert)?,
-            None => RowsData::Append(rows),
+            None => RowsData::Append(rows.into_iter().map(Into::into).collect()),
         };
 
         Ok(rows)

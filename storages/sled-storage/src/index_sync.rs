@@ -6,7 +6,7 @@ use {
         executor::evaluate_stateless,
         prelude::Value,
         result::{Error, Result},
-        store::{IndexError, Row},
+        store::{IndexError, DataRow},
     },
     sled::{
         transaction::{
@@ -91,7 +91,7 @@ impl<'a> IndexSync<'a> {
         })
     }
 
-    pub fn insert(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
+    pub fn insert(&self, data_key: &IVec, row: &DataRow) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             self.insert_index(index, data_key, row)?;
         }
@@ -103,7 +103,7 @@ impl<'a> IndexSync<'a> {
         &self,
         index: &SchemaIndex,
         data_key: &IVec,
-        row: &Row,
+        row: &DataRow,
     ) -> ConflictableTransactionResult<(), Error> {
         let SchemaIndex {
             name: index_name,
@@ -122,8 +122,8 @@ impl<'a> IndexSync<'a> {
     pub fn update(
         &self,
         data_key: &IVec,
-        old_row: &Row,
-        new_row: &Row,
+        old_row: &DataRow,
+        new_row: &DataRow,
     ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             let SchemaIndex {
@@ -155,7 +155,7 @@ impl<'a> IndexSync<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, data_key: &IVec, row: &Row) -> ConflictableTransactionResult<(), Error> {
+    pub fn delete(&self, data_key: &IVec, row: &DataRow) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             self.delete_index(index, data_key, row)?;
         }
@@ -167,7 +167,7 @@ impl<'a> IndexSync<'a> {
         &self,
         index: &SchemaIndex,
         data_key: &IVec,
-        row: &Row,
+        row: &DataRow,
     ) -> ConflictableTransactionResult<(), Error> {
         let SchemaIndex {
             name: index_name,
@@ -256,9 +256,13 @@ fn evaluate_index_key(
     index_name: &str,
     index_expr: &Expr,
     columns: &[String],
-    row: &Row,
+    row: &DataRow,
 ) -> ConflictableTransactionResult<Vec<u8>, Error> {
-    let evaluated = evaluate_stateless(Some((columns, row)), index_expr)
+    let values = match row {
+        DataRow::Vec(values) => values,
+        DataRow::Map(_) => todo!(),
+    };
+    let evaluated = evaluate_stateless(Some((columns, values)), index_expr)
         .map_err(ConflictableTransactionError::Abort)?;
     let value: Value = evaluated
         .try_into()
