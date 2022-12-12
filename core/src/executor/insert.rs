@@ -4,7 +4,7 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values},
+        ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values, DataType},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::{MutResult, Result, TrySelf},
@@ -34,106 +34,27 @@ pub enum InsertError {
     TooManyValues,
 }
 
+enum RowsData {
+    Append(Vec<DataRow>),
+    Insert(Vec<(Key, DataRow)>),
+}
+
 pub async fn insert<T: GStore + GStoreMut>(
     storage: T,
     table_name: &str,
     columns: &[String],
     source: &Query,
 ) -> MutResult<T, usize> {
-    enum RowsData {
-        Append(Vec<DataRow>),
-        Insert(Vec<(Key, DataRow)>),
-    }
-
     let rows = (|| async {
         let Schema { column_defs, .. } = storage
             .fetch_schema(table_name)
             .await?
             .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
-        let column_defs = match column_defs {
-            Some(column_defs) => column_defs,
-            None => todo!(),
-        };
-
-        let labels = Rc::from(
-            column_defs
-                .iter()
-                .map(|column_def| column_def.name.to_owned())
-                .collect::<Vec<_>>(),
-        );
-        let column_defs = Rc::from(column_defs);
-        let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
-
-        #[derive(futures_enum::Stream)]
-        enum Rows<I1, I2> {
-            Values(I1),
-            Select(I2),
+        match column_defs {
+            Some(column_defs) => fetch_vec_rows(&storage, table_name, column_defs, columns, source).await,
+            None => fetch_map_rows(&storage, source).await.map(RowsData::Append),
         }
-
-        let rows = match &source.body {
-            SetExpr::Values(Values(values_list)) => {
-                let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
-                let rows = values_list.iter().map(|values| {
-                    Ok(Row::Vec {
-                        columns: Rc::clone(&labels),
-                        values: fill_values(&column_defs, columns, values)?,
-                    })
-                });
-                let rows = stream::iter(rows);
-                let rows = limit.apply(rows);
-                let rows = rows.map_ok(Into::into);
-
-                Rows::Values(rows)
-            }
-            SetExpr::Select(_) => {
-                let rows = select(&storage, source, None).await?.and_then(|row| {
-                    let column_defs = Rc::clone(&column_defs);
-
-                    async move {
-                        validate_row(&row, &column_defs)?;
-
-                        Ok(row.into())
-                    }
-                });
-
-                Rows::Select(rows)
-            }
-        }
-        .try_collect::<Vec<Vec<Value>>>()
-        .await?;
-
-        validate_unique(
-            &storage,
-            table_name,
-            column_validation,
-            rows.iter().map(|values| values.as_slice()),
-        )
-        .await?;
-
-        let primary_key = column_defs
-            .iter()
-            .enumerate()
-            .find(|(_, ColumnDef { unique, .. })| {
-                unique == &Some(ColumnUniqueOption { is_primary: true })
-            })
-            .map(|(i, _)| i);
-
-        let rows = match primary_key {
-            Some(i) => rows
-                .into_iter()
-                .filter_map(|values| {
-                    values
-                        .get(i)
-                        .map(Key::try_from)
-                        .map(|result| result.map(|key| (key, values.into())))
-                })
-                .collect::<Result<Vec<_>>>()
-                .map(RowsData::Insert)?,
-            None => RowsData::Append(rows.into_iter().map(Into::into).collect()),
-        };
-
-        Ok(rows)
     })()
     .await;
 
@@ -155,6 +76,149 @@ pub async fn insert<T: GStore + GStoreMut>(
                 .map(|(storage, _)| (storage, num_rows))
         }
     }
+}
+
+async fn fetch_vec_rows<T: GStore + GStoreMut>(
+    storage: &T,
+    table_name: &str,
+    column_defs: Vec<ColumnDef>,
+    columns: &[String],
+    source: &Query,
+) -> Result<RowsData> {
+    let labels = Rc::from(
+        column_defs
+            .iter()
+            .map(|column_def| column_def.name.to_owned())
+            .collect::<Vec<_>>(),
+    );
+    let column_defs = Rc::from(column_defs);
+    let column_validation = ColumnValidation::All(Rc::clone(&column_defs));
+
+    #[derive(futures_enum::Stream)]
+    enum Rows<I1, I2> {
+        Values(I1),
+        Select(I2),
+    }
+
+    let rows = match &source.body {
+        SetExpr::Values(Values(values_list)) => {
+            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
+            let rows = values_list.iter().map(|values| {
+                Ok(Row::Vec {
+                    columns: Rc::clone(&labels),
+                    values: fill_values(&column_defs, columns, values)?,
+                })
+            });
+            let rows = stream::iter(rows);
+            let rows = limit.apply(rows);
+            let rows = rows.map_ok(Into::into);
+
+            Rows::Values(rows)
+        }
+        SetExpr::Select(_) => {
+            let rows = select(storage, source, None).await?.and_then(|row| {
+                let column_defs = Rc::clone(&column_defs);
+
+                async move {
+                    validate_row(&row, &column_defs)?;
+
+                    Ok(row.into())
+                }
+            });
+
+            Rows::Select(rows)
+        }
+    }
+    .try_collect::<Vec<Vec<Value>>>()
+    .await?;
+
+    validate_unique(
+        storage,
+        table_name,
+        column_validation,
+        rows.iter().map(|values| values.as_slice()),
+    )
+    .await?;
+
+    let primary_key = column_defs
+        .iter()
+        .enumerate()
+        .find(|(_, ColumnDef { unique, .. })| {
+            unique == &Some(ColumnUniqueOption { is_primary: true })
+        })
+        .map(|(i, _)| i);
+
+    match primary_key {
+        Some(i) => rows
+            .into_iter()
+            .filter_map(|values| {
+                values
+                    .get(i)
+                    .map(Key::try_from)
+                    .map(|result| result.map(|key| (key, values.into())))
+            })
+            .collect::<Result<Vec<_>>>()
+            .map(RowsData::Insert),
+        None => Ok(RowsData::Append(rows.into_iter().map(Into::into).collect())),
+    }
+}
+
+async fn fetch_map_rows<T: GStore + GStoreMut>(
+    storage: &T,
+    source: &Query,
+) -> Result<Vec<DataRow>> {
+    #[derive(futures_enum::Stream)]
+    enum Rows<I1, I2> {
+        Values(I1),
+        Select(I2),
+    }
+ 
+    let rows = match &source.body {
+        SetExpr::Values(Values(values_list)) => {
+            let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
+            let rows = values_list.iter().map(|values| {
+                if values.len() > 1 {
+                    todo!();
+                }
+
+                let value = evaluate_stateless(None, &values[0])?
+                    .try_into_value(&DataType::Map, true)?;
+
+                Ok(match value {
+                    Value::Map(values) => Row::Map(values),
+                    _ => unreachable!(), // todo!
+                })
+            });
+            let rows = stream::iter(rows);
+            let rows = limit.apply(rows);
+            let rows = rows.map_ok(Into::into);
+
+            Rows::Values(rows)
+        }
+        SetExpr::Select(_) => {
+            let rows = select(storage, source, None).await?.and_then(|row| {
+                /*
+                let column_defs = Rc::clone(&column_defs);
+
+                async move {
+                    validate_row(&row, &column_defs)?;
+
+                    Ok(row.into())
+                }
+                */
+                //todo
+                async move {
+                    Ok(row.into())
+                }
+            });
+
+            Rows::Select(rows)
+        }
+    }
+    .try_collect::<Vec<DataRow>>()
+    .await?;
+
+    Ok(rows)
 }
 
 fn fill_values(

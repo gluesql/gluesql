@@ -102,7 +102,8 @@ pub async fn create_table<T: GStore + GStoreMut>(
                     Some(column_defs)
                 }
             },
-            None => Some(column_defs.to_vec()),
+            None if !column_defs.is_empty() => Some(column_defs.to_vec()),
+            None => None,
         };
 
         let schema = Schema {

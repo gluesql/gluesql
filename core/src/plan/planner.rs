@@ -200,7 +200,7 @@ pub trait Planner<'a> {
 
         let column_defs = match column_defs {
             Some(column_defs) => column_defs,
-            None => todo!(),
+            None => return next, // todo!(),
         };
 
         let columns = column_defs

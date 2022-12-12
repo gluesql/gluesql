@@ -38,7 +38,7 @@ impl Row {
                     .position(|column| column == ident)
                     .and_then(|index| values.get(index))
             }
-            Self::Map(_) => todo!(),
+            Self::Map(values) => values.get(ident),
         }
         /*
         self.columns
