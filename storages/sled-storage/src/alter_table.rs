@@ -164,6 +164,11 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
+            let column_defs = match column_defs {
+                Some(column_defs) => column_defs,
+                None => todo!(),
+            };
+
             if column_defs
                 .iter()
                 .any(|ColumnDef { name, .. }| name == new_column_name)
@@ -199,7 +204,7 @@ impl AlterTable for SledStorage {
 
             let schema = Schema {
                 table_name: table_name.to_owned(),
-                column_defs,
+                column_defs: Some(column_defs),
                 indexes,
                 created,
             };
@@ -258,6 +263,11 @@ impl AlterTable for SledStorage {
                 .get(txid, None)
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
+
+            let column_defs = match column_defs {
+                Some(column_defs) => column_defs,
+                None => todo!(),
+            };
 
             if column_defs
                 .iter()
@@ -329,7 +339,7 @@ impl AlterTable for SledStorage {
 
             let schema = Schema {
                 table_name,
-                column_defs,
+                column_defs: Some(column_defs),
                 indexes,
                 created,
             };
@@ -393,6 +403,11 @@ impl AlterTable for SledStorage {
                 .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()).into())
                 .map_err(ConflictableTransactionError::Abort)?;
 
+            let column_defs = match column_defs {
+                Some(column_defs) => column_defs,
+                None => todo!(),
+            };
+
             let column_index = column_defs
                 .iter()
                 .position(|ColumnDef { name, .. }| name == column_name);
@@ -451,7 +466,7 @@ impl AlterTable for SledStorage {
 
             let schema = Schema {
                 table_name,
-                column_defs,
+                column_defs: Some(column_defs),
                 indexes,
                 created,
             };

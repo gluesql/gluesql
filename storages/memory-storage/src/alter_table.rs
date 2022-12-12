@@ -35,6 +35,23 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
+        let column_defs = match &mut item.schema.column_defs {
+            Some(column_defs) => column_defs,
+            None => todo!(),
+        };
+
+        if column_defs.iter().any(|ColumnDef { name, .. }| name == new_column_name) {
+            return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
+        }
+
+        let mut column_def = column_defs
+            .iter_mut()
+            .find(|column_def| column_def.name == old_column_name)
+            .ok_or(AlterTableError::RenamingColumnNotFound)?;
+
+        column_def.name = new_column_name.to_owned();
+
+        /*
         if item
             .schema
             .column_defs
@@ -52,6 +69,7 @@ impl MemoryStorage {
             .ok_or(AlterTableError::RenamingColumnNotFound)?;
 
         column_def.name = new_column_name.to_owned();
+        */
 
         Ok(())
     }
@@ -59,9 +77,55 @@ impl MemoryStorage {
     pub fn add_column(&mut self, table_name: &str, column_def: &ColumnDef) -> Result<()> {
         let item = self
             .items
-            .get(table_name)
+            .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
+        let column_defs = match &mut item.schema.column_defs {
+            Some(column_defs) => column_defs,
+            None => todo!(),
+        };
+
+        if column_defs
+            .iter()
+            .any(|ColumnDef { name, .. }| name == &column_def.name)
+        {
+            let adding_column = column_def.name.to_owned();
+
+            return Err(AlterTableError::AlreadyExistingColumn(adding_column).into());
+        }
+
+        let ColumnDef {
+            data_type,
+            nullable,
+            default,
+            ..
+        } = column_def;
+
+        let value = match (default, nullable) {
+            (Some(expr), _) => {
+                let evaluated = gluesql_core::executor::evaluate_stateless(None, expr)?;
+
+                evaluated.try_into_value(data_type, *nullable)?
+            }
+            (None, true) => Value::Null,
+            (None, false) => {
+                return Err(AlterTableError::DefaultValueRequired(column_def.clone()).into())
+            }
+        };
+
+        /*
+        let item = self
+            .items
+            .get_mut(table_name)
+            .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
+            */
+
+        item.rows.iter_mut().for_each(|(_, row)| {
+            row.push(value.clone());
+        });
+        column_defs.push(column_def.clone());
+
+        /*
         if item
             .schema
             .column_defs
@@ -101,6 +165,7 @@ impl MemoryStorage {
             row.push(value.clone());
         });
         item.schema.column_defs.push(column_def.clone());
+        */
 
         Ok(())
     }
@@ -116,15 +181,18 @@ impl MemoryStorage {
             .get_mut(table_name)
             .ok_or_else(|| AlterTableError::TableNotFound(table_name.to_owned()))?;
 
-        let column_index = item
-            .schema
-            .column_defs
+        let column_defs = match &mut item.schema.column_defs {
+            Some(column_defs) => column_defs,
+            None => todo!(),
+        };
+
+        let column_index = column_defs
             .iter()
             .position(|column_def| column_def.name == column_name);
 
         match column_index {
             Some(column_index) => {
-                item.schema.column_defs.remove(column_index);
+                column_defs.remove(column_index);
 
                 item.rows.iter_mut().for_each(|(_, row)| {
                     if row.len() > column_index {

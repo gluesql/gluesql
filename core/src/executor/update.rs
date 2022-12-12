@@ -31,6 +31,7 @@ pub struct Update<'a> {
     storage: &'a dyn GStore,
     table_name: &'a str,
     fields: &'a [Assignment],
+    // column_defs: Option<&'a [ColumnDef]>,
     column_defs: &'a [ColumnDef],
 }
 
@@ -39,8 +40,13 @@ impl<'a> Update<'a> {
         storage: &'a dyn GStore,
         table_name: &'a str,
         fields: &'a [Assignment],
-        column_defs: &'a [ColumnDef],
+        column_defs: Option<&'a [ColumnDef]>,
     ) -> Result<Self> {
+        let column_defs = match column_defs {
+            Some(column_defs) => column_defs,
+            None => todo!(),
+        };
+
         for assignment in fields.iter() {
             let Assignment { id, .. } = assignment;
 
@@ -95,9 +101,10 @@ impl<'a> Update<'a> {
     }
 
     pub async fn apply(&self, row: Row) -> Result<Row> {
+        // let columns = row.get_columns();
         let values = row
-            .values
             .clone()
+            .into_values()
             .into_iter()
             .enumerate()
             .map(|(i, value)| {
@@ -120,8 +127,8 @@ impl<'a> Update<'a> {
             })
             .try_collect::<Vec<_>>()
             .await
-            .map(|values| Row {
-                columns: Rc::clone(&row.columns),
+            .map(|values| Row::Vec {
+                columns: row.get_columns(),
                 values,
             })
     }

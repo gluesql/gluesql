@@ -71,7 +71,7 @@ impl<'a> Project<'a> {
             .await?
             .concat();
 
-        Ok(Row {
+        Ok(Row::Vec {
             columns: Rc::clone(&labels),
             values,
         })

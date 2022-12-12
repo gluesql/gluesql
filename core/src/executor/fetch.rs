@@ -45,7 +45,7 @@ pub async fn fetch<'a>(
         .await
         .map(stream::iter)?
         .try_filter_map(move |(key, values)| {
-            let row = Row {
+            let row = Row::Vec {
                 columns: Rc::clone(&columns),
                 values,
             };
@@ -128,7 +128,7 @@ pub async fn fetch_relation_rows<'a>(
                         let rows = storage
                             .scan_indexed_data(name, index_name, *asc, cmp_value)
                             .await?
-                            .map_ok(move |(_, values)| Row {
+                            .map_ok(move |(_, values)| Row::Vec {
                                 columns: Rc::clone(&columns),
                                 values,
                             });
@@ -149,7 +149,7 @@ pub async fn fetch_relation_rows<'a>(
                             .map(|row| vec![row])
                             .unwrap_or_else(Vec::new);
 
-                        Rows::PrimaryKey(rows.into_iter().map_ok(move |values| Row {
+                        Rows::PrimaryKey(rows.into_iter().map_ok(move |values| Row::Vec {
                             columns: Rc::clone(&columns),
                             values,
                         }))
@@ -158,7 +158,7 @@ pub async fn fetch_relation_rows<'a>(
                         let rows = storage
                             .scan_data(name)
                             .await?
-                            .map_ok(move |(_, values)| Row {
+                            .map_ok(move |(_, values)| Row::Vec {
                                 columns: Rc::clone(&columns),
                                 values,
                             });
@@ -180,7 +180,7 @@ pub async fn fetch_relation_rows<'a>(
 
             let columns = Rc::from(vec!["N".to_owned()]);
             let rows = (1..=size).map(move |v| {
-                Ok(Row {
+                Ok(Row::Vec {
                     columns: Rc::clone(&columns),
                     values: vec![Value::I64(v)],
                 })
@@ -201,7 +201,7 @@ pub async fn fetch_relation_rows<'a>(
                     Dictionary::GlueObjects => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().flat_map(move |schema| {
-                            let table_rows = vec![Ok(Row {
+                            let table_rows = vec![Ok(Row::Vec {
                                 columns: Rc::clone(&columns),
                                 values: vec![
                                     Value::Str(schema.table_name),
@@ -218,7 +218,7 @@ pub async fn fetch_relation_rows<'a>(
                                     Value::Timestamp(index.created),
                                 ];
 
-                                Ok(Row {
+                                Ok(Row::Vec {
                                     columns: Rc::clone(&columns),
                                     values,
                                 })
@@ -232,7 +232,7 @@ pub async fn fetch_relation_rows<'a>(
                     Dictionary::GlueTables => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().map(move |schema| {
-                            Ok(Row {
+                            Ok(Row::Vec {
                                 columns: Rc::clone(&columns),
                                 values: vec![Value::Str(schema.table_name)],
                             })
@@ -246,7 +246,7 @@ pub async fn fetch_relation_rows<'a>(
                             let columns = Rc::clone(&columns);
                             let table_name = schema.table_name;
 
-                            schema.column_defs.into_iter().enumerate().map(
+                            schema.column_defs.unwrap_or_else(Vec::new).into_iter().enumerate().map(
                                 move |(index, column_def)| {
                                     let values = vec![
                                         Value::Str(table_name.clone()),
@@ -254,7 +254,7 @@ pub async fn fetch_relation_rows<'a>(
                                         Value::I64(index as i64 + 1),
                                     ];
 
-                                    Ok(Row {
+                                    Ok(Row::Vec {
                                         columns: Rc::clone(&columns),
                                         values,
                                     })
@@ -267,7 +267,12 @@ pub async fn fetch_relation_rows<'a>(
                     Dictionary::GlueIndexes => {
                         let schemas = storage.fetch_all_schemas().await?;
                         let rows = schemas.into_iter().flat_map(move |schema| {
-                            let primary_column = schema.column_defs.iter().find_map(|column_def| {
+                            let column_defs = match schema.column_defs {
+                                Some(column_defs) => column_defs,
+                                None => vec![],
+                            };
+
+                            let primary_column = column_defs.iter().find_map(|column_def| {
                                 let ColumnDef { name, unique, .. } = column_def;
 
                                 (unique == &Some(ColumnUniqueOption { is_primary: true }))
@@ -284,7 +289,7 @@ pub async fn fetch_relation_rows<'a>(
                                         Value::Bool(true),
                                     ];
 
-                                    let row = Row {
+                                    let row = Row::Vec {
                                         columns: Rc::clone(&columns),
                                         values,
                                     };
@@ -304,7 +309,7 @@ pub async fn fetch_relation_rows<'a>(
                                     Value::Bool(false),
                                 ];
 
-                                Ok(Row {
+                                Ok(Row::Vec {
                                     columns: Rc::clone(&columns),
                                     values,
                                 })
@@ -329,6 +334,7 @@ pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec
         .await?
         .ok_or_else(|| FetchError::TableNotFound(table_name.to_owned()))?
         .column_defs
+        .unwrap_or_else(Vec::new)
         .into_iter()
         .map(|ColumnDef { name, .. }| name)
         .collect::<Vec<String>>())

@@ -67,7 +67,7 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
         Expr::Subquery(query) => {
             let evaluations = select(storage, query, context.as_ref().map(Rc::clone))
                 .await?
-                .map_ok(|row| row.values.into_iter().next())
+                .map_ok(|row| row.into_values().into_iter().next())
                 .take(2)
                 .try_collect::<Vec<_>>()
                 .await?;
@@ -135,7 +135,7 @@ pub async fn evaluate<'a, 'b: 'a, 'c: 'a>(
             select(storage, subquery, context)
                 .await?
                 .map_ok(|row| {
-                    let value = row.values.into_iter().next().unwrap_or(Value::Null);
+                    let value = row.into_values().into_iter().next().unwrap_or(Value::Null);
 
                     Evaluated::from(value)
                 })

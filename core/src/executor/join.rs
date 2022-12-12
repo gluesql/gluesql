@@ -100,7 +100,7 @@ async fn join<'a>(
         let columns = Rc::clone(&columns);
         let init_context = Rc::new(RowContext::new(
             table_alias,
-            Cow::Owned(Row {
+            Cow::Owned(Row::Vec {
                 columns: Rc::clone(&columns),
                 values: columns.iter().map(|_| Value::Null).collect(),
             }),

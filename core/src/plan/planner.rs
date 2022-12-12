@@ -198,6 +198,11 @@ pub trait Planner<'a> {
             None => return next,
         };
 
+        let column_defs = match column_defs {
+            Some(column_defs) => column_defs,
+            None => todo!(),
+        };
+
         let columns = column_defs
             .iter()
             .map(|ColumnDef { name, .. }| name.as_str())

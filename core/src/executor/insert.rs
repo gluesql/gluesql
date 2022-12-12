@@ -50,6 +50,12 @@ pub async fn insert<T: GStore + GStoreMut>(
             .fetch_schema(table_name)
             .await?
             .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
+
+        let column_defs = match column_defs {
+            Some(column_defs) => column_defs,
+            None => todo!(),
+        };
+
         let labels = Rc::from(
             column_defs
                 .iter()
@@ -69,7 +75,7 @@ pub async fn insert<T: GStore + GStoreMut>(
             SetExpr::Values(Values(values_list)) => {
                 let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
                 let rows = values_list.iter().map(|values| {
-                    Ok(Row {
+                    Ok(Row::Vec {
                         columns: Rc::clone(&labels),
                         values: fill_values(&column_defs, columns, values)?,
                     })

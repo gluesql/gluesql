@@ -35,6 +35,11 @@ impl<'a> IndexSync<'a> {
             ..
         } = schema;
 
+        let column_defs = match column_defs {
+            Some(column_defs) => column_defs,
+            None => todo!(),
+        };
+
         let columns = column_defs
             .iter()
             .map(|column_def| column_def.name.to_owned())
@@ -66,6 +71,11 @@ impl<'a> IndexSync<'a> {
             .ok_or_else(|| IndexError::ConflictTableNotFound(table_name.to_owned()))
             .map_err(err_into)
             .map_err(ConflictableTransactionError::Abort)?;
+
+        let column_defs = match column_defs {
+            Some(column_defs) => column_defs,
+            None => todo!(),
+        };
 
         let columns = column_defs
             .into_iter()

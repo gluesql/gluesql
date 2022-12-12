@@ -75,7 +75,7 @@ impl<'a> RowContext<'a> {
         match self {
             Self::Data {
                 table_alias, row, ..
-            } if *table_alias == alias => Some(row.as_ref().values.clone()),
+            } if *table_alias == alias => Some(row.as_ref().clone().into_values()),
             Self::Data { next: None, .. } => None,
             Self::Data {
                 next: Some(next), ..
@@ -90,12 +90,12 @@ impl<'a> RowContext<'a> {
         match self {
             Self::Data {
                 row, next: None, ..
-            } => row.as_ref().values.clone(),
+            } => row.as_ref().clone().into_values(),
             Self::Data {
                 row,
                 next: Some(next),
                 ..
-            } => [next.get_all_values(), row.as_ref().values.clone()].concat(),
+            } => [next.get_all_values(), row.as_ref().clone().into_values()].concat(),
             Self::Bridge { left, right } => {
                 [left.get_all_values(), right.get_all_values()].concat()
             }

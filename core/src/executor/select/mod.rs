@@ -66,7 +66,7 @@ fn rows_with_labels(exprs_list: &[Vec<Expr>]) -> (Vec<Result<Row>>, Vec<String>)
                         Ok(value)
                     })
                     .collect::<Result<Vec<_>>>()
-                    .map(|values| Row {
+                    .map(|values| Row::Vec {
                         columns: Rc::clone(&columns),
                         values,
                     });
@@ -91,7 +91,7 @@ fn sort_stateless(
                 .iter()
                 .map(|OrderByExpr { expr, asc }| -> Result<_> {
                     let row = row.as_ref().ok();
-                    let context = row.map(|row| (labels, row.values.as_slice()));
+                    let context = row.map(|row| (labels, row.get_values()));
 
                     let value: Value = evaluate_stateless(context, expr)?.try_into()?;
 

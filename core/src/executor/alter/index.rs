@@ -23,6 +23,7 @@ pub async fn create_index<T: GStore + GStoreMut>(
             .await?
             .ok_or_else(|| AlterError::TableNotFound(table_name.to_owned()))?;
         let columns = column_defs
+            .unwrap_or_else(Vec::new)
             .into_iter()
             .map(|ColumnDef { name, .. }| name)
             .collect::<Vec<_>>();
