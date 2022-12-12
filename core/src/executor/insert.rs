@@ -4,7 +4,7 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnOption, Expr, Query, SetExpr, Values},
+        ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::{MutResult, Result, TrySelf},
@@ -108,10 +108,8 @@ pub async fn insert<T: GStore + GStoreMut>(
         let primary_key = column_defs
             .iter()
             .enumerate()
-            .find(|(_, ColumnDef { options, .. })| {
-                options
-                    .iter()
-                    .any(|option| option == &ColumnOption::Unique { is_primary: true })
+            .find(|(_, ColumnDef { unique, .. })| {
+                unique == &Some(ColumnUniqueOption { is_primary: true })
             })
             .map(|(i, _)| i);
 

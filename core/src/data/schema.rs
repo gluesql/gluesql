@@ -64,7 +64,7 @@ impl Schema {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ast::{AstLiteral, ColumnDef, ColumnOption, Expr},
+        ast::{AstLiteral, ColumnDef, ColumnUniqueOption, Expr},
         chrono::Utc,
         data::{Schema, SchemaIndex, SchemaIndexOrd},
         prelude::DataType,
@@ -80,14 +80,14 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    options: Vec::new(),
+                    unique: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: true,
                     default: Some(Expr::Literal(AstLiteral::QuotedString("glue".to_owned()))),
-                    options: Vec::new(),
+                    unique: None,
                 },
             ],
             indexes: Vec::new(),
@@ -109,7 +109,7 @@ mod tests {
                 data_type: DataType::Int,
                 nullable: false,
                 default: None,
-                options: vec![ColumnOption::Unique { is_primary: true }],
+                unique: Some(ColumnUniqueOption { is_primary: true }),
             }],
             indexes: Vec::new(),
             created: Utc::now().naive_utc(),
@@ -131,14 +131,14 @@ mod tests {
                     data_type: DataType::Int,
                     nullable: false,
                     default: None,
-                    options: Vec::new(),
+                    unique: None,
                 },
                 ColumnDef {
                     name: "name".to_owned(),
                     data_type: DataType::Text,
                     nullable: false,
                     default: None,
-                    options: Vec::new(),
+                    unique: None,
                 },
             ],
             indexes: vec![
