@@ -1,10 +1,10 @@
 use {
-    super::{NodeData, Prebuild},
+    super::{NodeData, Prebuild, QueryData},
     crate::{
         ast_builder::{
-            AstBuilderError, ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode,
-            JoinConstraintNode, JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
-            QueryNode, SelectItemList, SelectNode, TableFactorNode,
+            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
+            SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -120,24 +120,16 @@ impl<'a> ProjectNode<'a> {
 impl<'a> Prebuild for ProjectNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut node_data = self.prev_node.prebuild()?;
-        match node_data {
-            NodeData::Select(ref mut select_data) => {
-                select_data.projection = self
-                    .select_items_list
-                    .into_iter()
-                    .map(TryInto::try_into)
-                    .collect::<Result<Vec<Vec<_>>>>()?
-                    .into_iter()
-                    .flatten()
-                    .collect::<Vec<_>>()
-            }
-            NodeData::Values(_) => {
-                return Err(AstBuilderError::UnreachableNode(
-                    "ValuesData -> ProjectNode".to_owned(),
-                )
-                .into())
-            }
-        }
+        if let QueryData::Select(ref mut select_data) = node_data.body {
+            select_data.projection = self
+                .select_items_list
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<Vec<Vec<_>>>>()?
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+        };
 
         Ok(node_data)
     }

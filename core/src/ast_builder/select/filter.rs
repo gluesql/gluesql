@@ -1,10 +1,10 @@
 use {
-    super::{NodeData, Prebuild, SelectNode},
+    super::{NodeData, Prebuild, QueryData},
     crate::{
         ast_builder::{
-            AstBuilderError, ExprList, ExprNode, GroupByNode, HashJoinNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, TableFactorNode,
+            ExprList, ExprNode, GroupByNode, HashJoinNode, JoinConstraintNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -100,15 +100,9 @@ impl<'a> FilterNode<'a> {
 impl<'a> Prebuild for FilterNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut node_data = self.prev_node.prebuild()?;
-        match node_data {
-            NodeData::Select(ref mut select_data) => {
-                select_data.filter = Some(self.filter_expr.try_into()?)
-            }
-            NodeData::Values(_) => {
-                return Err(
-                    AstBuilderError::UnreachableNode("ValuesData -> FilterNode".to_owned()).into(),
-                )
-            }
+
+        if let QueryData::Select(ref mut select_data) = node_data.body {
+            select_data.filter = Some(self.filter_expr.try_into()?)
         }
 
         Ok(node_data)

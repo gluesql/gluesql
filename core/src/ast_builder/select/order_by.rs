@@ -126,14 +126,7 @@ impl<'a> OrderByNode<'a> {
 impl<'a> Prebuild for OrderByNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut node_data = self.prev_node.prebuild()?;
-        match node_data {
-            NodeData::Select(ref mut select_data) => {
-                select_data.order_by = self.expr_list.try_into()?
-            }
-            NodeData::Values(ref mut values_data) => {
-                values_data.order_by = self.expr_list.try_into()?
-            }
-        }
+        node_data.order_by = self.expr_list.try_into()?;
 
         Ok(node_data)
     }

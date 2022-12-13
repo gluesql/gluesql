@@ -1,3 +1,5 @@
+use super::QueryData;
+
 use {
     super::{join::JoinOperatorType, NodeData, Prebuild, SelectData},
     crate::{
@@ -107,17 +109,21 @@ impl<'a> Prebuild for SelectNode<'a> {
             },
         };
 
-        Ok(NodeData::Select(SelectData {
+        let body = QueryData::Select(SelectData {
             projection: vec![SelectItem::Wildcard],
             relation,
             filter: None,
             group_by: vec![],
             having: None,
-            order_by: vec![],
-            offset: None,
-            limit: None,
             joins: vec![],
-        }))
+        });
+
+        Ok(NodeData {
+            body,
+            order_by: vec![],
+            limit: None,
+            offset: None,
+        })
     }
 }
 

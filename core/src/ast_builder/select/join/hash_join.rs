@@ -3,10 +3,10 @@ use {
     crate::{
         ast::{Join, JoinExecutor},
         ast_builder::{
-            select::{NodeData, Prebuild},
-            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, TableFactorNode,
+            select::{NodeData, Prebuild, QueryData},
+            ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode,
+            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
+            TableFactorNode,
         },
         result::Result,
     },
@@ -124,15 +124,9 @@ impl<'a> Prebuild for HashJoinNode<'a> {
             join_executor,
         };
 
-        match node_data {
-            NodeData::Select(ref mut select_data) => select_data.joins.push(join),
-            NodeData::Values(_) => {
-                return Err(AstBuilderError::UnreachableNode(
-                    "ValuesData -> HashJoinNode".to_owned(),
-                )
-                .into())
-            }
-        };
+        if let QueryData::Select(ref mut select_data) = node_data.body {
+            select_data.joins.push(join)
+        }
 
         Ok(node_data)
     }

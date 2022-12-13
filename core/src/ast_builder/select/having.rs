@@ -1,9 +1,9 @@
 use {
-    super::{NodeData, Prebuild},
+    super::{NodeData, Prebuild, QueryData},
     crate::{
         ast_builder::{
-            AstBuilderError, ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList,
-            OrderByNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
+            ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
+            ProjectNode, QueryNode, SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -66,16 +66,9 @@ impl<'a> HavingNode<'a> {
 impl<'a> Prebuild for HavingNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut node_data = self.prev_node.prebuild()?;
-        match node_data {
-            NodeData::Select(ref mut select_data) => {
-                select_data.having = Some(self.expr.try_into()?)
-            }
-            NodeData::Values(_) => {
-                return Err(
-                    AstBuilderError::UnreachableNode("ValuesData -> HavingNode".to_owned()).into(),
-                )
-            }
-        };
+        if let QueryData::Select(ref mut select_data) = node_data.body {
+            select_data.having = Some(self.expr.try_into()?)
+        }
 
         Ok(node_data)
     }

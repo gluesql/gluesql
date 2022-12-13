@@ -3,10 +3,10 @@ use {
     crate::{
         ast::{Join, JoinExecutor, JoinOperator, TableAlias, TableFactor},
         ast_builder::{
-            select::{NodeData, Prebuild},
-            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode,
-            JoinConstraintNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode,
-            QueryNode, SelectItemList, SelectNode, TableFactorNode,
+            select::{NodeData, Prebuild, QueryData},
+            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -176,17 +176,12 @@ impl<'a> JoinNode<'a> {
 impl<'a> Prebuild for JoinNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         let mut node_data = self.prev_node.prebuild()?;
-        match node_data {
-            NodeData::Select(ref mut select_data) => select_data.joins.push(Join {
+        if let QueryData::Select(ref mut select_data) = node_data.body {
+            select_data.joins.push(Join {
                 relation: self.relation,
                 join_operator: JoinOperator::from(self.join_operator_type),
                 join_executor: JoinExecutor::NestedLoop,
-            }),
-            NodeData::Values(_) => {
-                return Err(
-                    AstBuilderError::UnreachableNode("ValuesData -> JoinNode".to_owned()).into(),
-                )
-            }
+            })
         }
 
         Ok(node_data)

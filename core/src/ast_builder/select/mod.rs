@@ -48,36 +48,36 @@ pub struct SelectData {
     /// WHERE
     pub group_by: Vec<Expr>,
     pub having: Option<Expr>,
-    pub order_by: Vec<OrderByExpr>,
-    pub limit: Option<Expr>,
-    pub offset: Option<Expr>,
 }
 
 #[derive(Clone, Debug)]
-pub struct ValuesData {
-    pub values: Vec<Vec<Expr>>,
-    pub order_by: Vec<OrderByExpr>,
-    pub limit: Option<Expr>,
-    pub offset: Option<Expr>,
-}
-
-#[derive(Clone, Debug)]
-pub enum NodeData {
+pub enum QueryData {
     Select(SelectData),
-    Values(ValuesData),
+    Values(Vec<Vec<Expr>>),
+}
+
+#[derive(Clone, Debug)]
+pub struct NodeData {
+    pub body: QueryData,
+    pub order_by: Vec<OrderByExpr>,
+    pub limit: Option<Expr>,
+    pub offset: Option<Expr>,
 }
 
 impl NodeData {
     pub fn build_query(self) -> Query {
-        match self {
-            NodeData::Select(SelectData {
+        let NodeData {
+            body,
+            order_by,
+            limit,
+            offset,
+        } = self;
+        let body = match body {
+            QueryData::Select(SelectData {
                 projection,
                 relation,
                 group_by,
                 having,
-                order_by,
-                offset,
-                limit,
                 joins,
                 filter,
             }) => {
@@ -92,24 +92,16 @@ impl NodeData {
                     having,
                 };
 
-                Query {
-                    body: SetExpr::Select(Box::new(select)),
-                    order_by,
-                    offset,
-                    limit,
-                }
+                SetExpr::Select(Box::new(select))
             }
-            NodeData::Values(ValuesData {
-                values,
-                order_by,
-                limit,
-                offset,
-            }) => Query {
-                body: SetExpr::Values(Values(values)),
-                order_by,
-                offset,
-                limit,
-            },
+            QueryData::Values(values) => SetExpr::Values(Values(values)),
+        };
+
+        Query {
+            body,
+            order_by,
+            limit,
+            offset,
         }
     }
     fn build_stmt(self) -> Statement {

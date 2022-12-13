@@ -1,6 +1,6 @@
 use {
     super::{
-        select::{NodeData, Prebuild, ValuesData},
+        select::{NodeData, Prebuild, QueryData},
         ExprList, ExprNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
         TableFactorNode,
     },
@@ -38,12 +38,14 @@ impl<'a> Prebuild for ValuesNode<'a> {
             .map(TryInto::try_into)
             .collect::<Result<Vec<Vec<Expr>>>>()?;
 
-        Ok(NodeData::Values(ValuesData {
-            values,
+        let body = QueryData::Values(values);
+
+        Ok(NodeData {
+            body,
             order_by: Vec::new(),
             limit: None,
             offset: None,
-        }))
+        })
     }
 }
 
