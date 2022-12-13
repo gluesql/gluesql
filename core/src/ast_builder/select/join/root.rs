@@ -4,9 +4,9 @@ use {
         ast::{Join, JoinExecutor, JoinOperator, TableAlias, TableFactor},
         ast_builder::{
             select::{NodeData, Prebuild},
-            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinConstraintNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode,
+            JoinConstraintNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode,
+            QueryNode, SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -182,7 +182,11 @@ impl<'a> Prebuild for JoinNode<'a> {
                 join_operator: JoinOperator::from(self.join_operator_type),
                 join_executor: JoinExecutor::NestedLoop,
             }),
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(_) => {
+                return Err(
+                    AstBuilderError::UnreachableNode("ValuesData -> JoinNode".to_owned()).into(),
+                )
+            }
         }
 
         Ok(select_data)

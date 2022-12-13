@@ -2,8 +2,8 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
-            ProjectNode, QueryNode, SelectItemList, TableFactorNode,
+            AstBuilderError, ExprNode, GroupByNode, LimitNode, OffsetNode, OrderByExprList,
+            OrderByNode, ProjectNode, QueryNode, SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -70,7 +70,11 @@ impl<'a> Prebuild for HavingNode<'a> {
             NodeData::Select(ref mut select_data) => {
                 select_data.having = Some(self.expr.try_into()?)
             }
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(_) => {
+                return Err(
+                    AstBuilderError::UnreachableNode("ValuesData -> HavingNode".to_owned()).into(),
+                )
+            }
         };
 
         Ok(select_data)

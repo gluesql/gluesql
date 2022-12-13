@@ -4,9 +4,9 @@ use {
         ast::{Join, JoinConstraint, JoinOperator},
         ast_builder::{
             select::{NodeData, Prebuild},
-            ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            TableFactorNode,
+            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, HashJoinNode, JoinNode,
+            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -130,7 +130,12 @@ impl<'a> Prebuild for JoinConstraintNode<'a> {
                 },
                 join_executor,
             }),
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(_) => {
+                return Err(AstBuilderError::UnreachableNode(
+                    "ValuesData -> JoinConstraintNode".to_owned(),
+                )
+                .into())
+            }
         }
 
         Ok(node_data)

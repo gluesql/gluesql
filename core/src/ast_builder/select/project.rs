@@ -2,9 +2,9 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            AstBuilderError, ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode,
+            JoinConstraintNode, JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
+            QueryNode, SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -131,7 +131,12 @@ impl<'a> Prebuild for ProjectNode<'a> {
                     .flatten()
                     .collect::<Vec<_>>()
             }
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(_) => {
+                return Err(AstBuilderError::UnreachableNode(
+                    "ValuesData -> ProjectNode".to_owned(),
+                )
+                .into())
+            }
         }
 
         Ok(select_data)

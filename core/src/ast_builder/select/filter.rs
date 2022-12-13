@@ -1,3 +1,5 @@
+use crate::ast_builder::AstBuilderError;
+
 use {
     super::{NodeData, Prebuild, SelectNode},
     crate::{
@@ -104,7 +106,11 @@ impl<'a> Prebuild for FilterNode<'a> {
             NodeData::Select(ref mut select_data) => {
                 select_data.filter = Some(self.filter_expr.try_into()?)
             }
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(_) => {
+                return Err(
+                    AstBuilderError::UnreachableNode("ValuesData -> FilterNode".to_owned()).into(),
+                )
+            }
         }
 
         Ok(select_data)

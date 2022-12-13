@@ -2,9 +2,9 @@ use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
-            ExprList, ExprNode, FilterNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
-            LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
-            SelectItemList, SelectNode, TableFactorNode,
+            AstBuilderError, ExprList, ExprNode, FilterNode, HashJoinNode, HavingNode,
+            JoinConstraintNode, JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode,
+            ProjectNode, QueryNode, SelectItemList, SelectNode, TableFactorNode,
         },
         result::Result,
     },
@@ -107,7 +107,12 @@ impl<'a> Prebuild for GroupByNode<'a> {
             NodeData::Select(ref mut select_data) => {
                 select_data.group_by = self.expr_list.try_into()?
             }
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(_) => {
+                return Err(AstBuilderError::UnreachableNode(
+                    "ValuesData -> GroupByNode".to_owned(),
+                )
+                .into())
+            }
         }
 
         Ok(select_data)

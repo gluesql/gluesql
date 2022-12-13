@@ -4,9 +4,9 @@ use {
         ast::{Join, JoinExecutor},
         ast_builder::{
             select::{NodeData, Prebuild},
-            ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode, JoinNode, LimitNode,
-            OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode, SelectItemList,
-            TableFactorNode,
+            AstBuilderError, ExprList, ExprNode, FilterNode, GroupByNode, JoinConstraintNode,
+            JoinNode, LimitNode, OffsetNode, OrderByExprList, OrderByNode, ProjectNode, QueryNode,
+            SelectItemList, TableFactorNode,
         },
         result::Result,
     },
@@ -126,7 +126,12 @@ impl<'a> Prebuild for HashJoinNode<'a> {
 
         match select_data {
             NodeData::Select(ref mut select_data) => select_data.joins.push(join),
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(_) => {
+                return Err(AstBuilderError::UnreachableNode(
+                    "ValuesData -> HashJoinNode".to_owned(),
+                )
+                .into())
+            }
         };
 
         Ok(select_data)
