@@ -105,10 +105,7 @@ mod tests {
             indexes: Vec::new(),
             created: Utc::now().naive_utc(),
         };
-        assert_eq!(
-            schema.to_ddl(),
-            "CREATE TABLE Test;"
-        );
+        assert_eq!(schema.to_ddl(), "CREATE TABLE Test;");
     }
 
     #[test]

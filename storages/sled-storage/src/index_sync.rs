@@ -6,7 +6,7 @@ use {
         executor::evaluate_stateless,
         prelude::Value,
         result::{Error, Result},
-        store::{IndexError, DataRow},
+        store::{DataRow, IndexError},
     },
     sled::{
         transaction::{
@@ -91,7 +91,11 @@ impl<'a> IndexSync<'a> {
         })
     }
 
-    pub fn insert(&self, data_key: &IVec, row: &DataRow) -> ConflictableTransactionResult<(), Error> {
+    pub fn insert(
+        &self,
+        data_key: &IVec,
+        row: &DataRow,
+    ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             self.insert_index(index, data_key, row)?;
         }
@@ -155,7 +159,11 @@ impl<'a> IndexSync<'a> {
         Ok(())
     }
 
-    pub fn delete(&self, data_key: &IVec, row: &DataRow) -> ConflictableTransactionResult<(), Error> {
+    pub fn delete(
+        &self,
+        data_key: &IVec,
+        row: &DataRow,
+    ) -> ConflictableTransactionResult<(), Error> {
         for index in self.indexes.iter() {
             self.delete_index(index, data_key, row)?;
         }

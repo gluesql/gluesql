@@ -8,7 +8,7 @@ use {
         data::{get_alias, get_index, Key, Row, Value},
         executor::{evaluate::evaluate, select::select},
         result::{Error, Result},
-        store::{GStore, DataRow},
+        store::{DataRow, GStore},
     },
     async_recursion::async_recursion,
     futures::stream::{self, StreamExt, TryStream, TryStreamExt},
@@ -131,21 +131,19 @@ pub async fn fetch_relation_rows<'a>(
                         let rows = storage
                             .scan_indexed_data(name, index_name, *asc, cmp_value)
                             .await?
-                            .map_ok(move |(_, data_row)| {
-                                match data_row {
-                                    DataRow::Vec(values) => Row::Vec {
-                                        columns: Rc::clone(&columns),
-                                        values,
-                                    },
-                                    DataRow::Map(values) => Row::Map(values),
-                                }
+                            .map_ok(move |(_, data_row)| match data_row {
+                                DataRow::Vec(values) => Row::Vec {
+                                    columns: Rc::clone(&columns),
+                                    values,
+                                },
+                                DataRow::Map(values) => Row::Map(values),
                             });
-                            /*
-                            .map_ok(move |(_, values)| Row::Vec {
-                                columns: Rc::clone(&columns),
-                                values,
-                            });
-                            */
+                        /*
+                        .map_ok(move |(_, values)| Row::Vec {
+                            columns: Rc::clone(&columns),
+                            values,
+                        });
+                        */
 
                         Rows::Indexed(rows)
                     }
@@ -163,14 +161,12 @@ pub async fn fetch_relation_rows<'a>(
                             .map(|row| vec![row])
                             .unwrap_or_else(Vec::new);
 
-                        Rows::PrimaryKey(rows.into_iter().map_ok(move |data_row| {
-                            match data_row {
-                                DataRow::Vec(values) => Row::Vec {
-                                    columns: Rc::clone(&columns),
-                                    values,
-                                },
-                                DataRow::Map(values) => Row::Map(values),
-                            }
+                        Rows::PrimaryKey(rows.into_iter().map_ok(move |data_row| match data_row {
+                            DataRow::Vec(values) => Row::Vec {
+                                columns: Rc::clone(&columns),
+                                values,
+                            },
+                            DataRow::Map(values) => Row::Map(values),
                         }))
                         /*
                         Rows::PrimaryKey(rows.into_iter().map_ok(move |values| Row::Vec {
@@ -180,18 +176,15 @@ pub async fn fetch_relation_rows<'a>(
                         */
                     }
                     _ => {
-                        let rows = storage
-                            .scan_data(name)
-                            .await?
-                            .map_ok(move |(_, data_row)| {
-                                match data_row {
-                                    DataRow::Vec(values) => Row::Vec {
-                                        columns: Rc::clone(&columns),
-                                        values,
-                                    },
-                                    DataRow::Map(values) => Row::Map(values),
-                                }
-                            });
+                        let rows = storage.scan_data(name).await?.map_ok(move |(_, data_row)| {
+                            match data_row {
+                                DataRow::Vec(values) => Row::Vec {
+                                    columns: Rc::clone(&columns),
+                                    values,
+                                },
+                                DataRow::Map(values) => Row::Map(values),
+                            }
+                        });
 
                         Rows::FullScan(rows)
                     }
@@ -276,8 +269,12 @@ pub async fn fetch_relation_rows<'a>(
                             let columns = Rc::clone(&columns);
                             let table_name = schema.table_name;
 
-                            schema.column_defs.unwrap_or_else(Vec::new).into_iter().enumerate().map(
-                                move |(index, column_def)| {
+                            schema
+                                .column_defs
+                                .unwrap_or_else(Vec::new)
+                                .into_iter()
+                                .enumerate()
+                                .map(move |(index, column_def)| {
                                     let values = vec![
                                         Value::Str(table_name.clone()),
                                         Value::Str(column_def.name),
@@ -288,8 +285,7 @@ pub async fn fetch_relation_rows<'a>(
                                         columns: Rc::clone(&columns),
                                         values,
                                     })
-                                },
-                            )
+                                })
                         });
 
                         Rows::TableColumns(rows)

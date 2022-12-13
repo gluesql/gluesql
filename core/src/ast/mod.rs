@@ -381,15 +381,13 @@ mod tests {
             Statement::CreateTable {
                 if_not_exists: true,
                 name: "Foo".into(),
-                columns: vec![
-                    ColumnDef {
-                        name: "id".to_owned(),
-                        data_type: DataType::Boolean,
-                        nullable: false,
-                        default: None,
-                        unique: None,
-                    },
-                ],
+                columns: vec![ColumnDef {
+                    name: "id".to_owned(),
+                    data_type: DataType::Boolean,
+                    nullable: false,
+                    default: None,
+                    unique: None,
+                },],
                 source: None,
             }
             .to_sql()

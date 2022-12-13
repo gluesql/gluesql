@@ -40,7 +40,10 @@ impl MemoryStorage {
             None => todo!(),
         };
 
-        if column_defs.iter().any(|ColumnDef { name, .. }| name == new_column_name) {
+        if column_defs
+            .iter()
+            .any(|ColumnDef { name, .. }| name == new_column_name)
+        {
             return Err(AlterTableError::AlreadyExistingColumn(new_column_name.to_owned()).into());
         }
 

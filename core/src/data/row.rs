@@ -1,6 +1,6 @@
 use {
     crate::data::Value,
-    std::{fmt::Debug, rc::Rc, collections::HashMap},
+    std::{collections::HashMap, fmt::Debug, rc::Rc},
 };
 
 /*
@@ -32,12 +32,10 @@ impl Row {
 
     pub fn get_value(&self, ident: &str) -> Option<&Value> {
         match self {
-            Self::Vec { columns, values } => {
-                columns
-                    .iter()
-                    .position(|column| column == ident)
-                    .and_then(|index| values.get(index))
-            }
+            Self::Vec { columns, values } => columns
+                .iter()
+                .position(|column| column == ident)
+                .and_then(|index| values.get(index)),
             Self::Map(values) => values.get(ident),
         }
         /*

@@ -318,7 +318,11 @@ impl AlterTable for SledStorage {
                     DataRow::Vec(values) => values,
                     DataRow::Map(_) => todo!(),
                 };
-                let row = values.into_iter().chain(once(value.clone())).collect::<Vec<Value>>().into();
+                let row = values
+                    .into_iter()
+                    .chain(once(value.clone()))
+                    .collect::<Vec<Value>>()
+                    .into();
                 // let row = row.into_iter().chain(once(value.clone())).collect();
 
                 let (snapshot, _) = snapshot.update(txid, row);

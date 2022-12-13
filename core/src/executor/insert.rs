@@ -4,11 +4,11 @@ use {
         validate::{validate_unique, ColumnValidation},
     },
     crate::{
-        ast::{ColumnDef, ColumnUniqueOption, Expr, Query, SetExpr, Values, DataType},
+        ast::{ColumnDef, ColumnUniqueOption, DataType, Expr, Query, SetExpr, Values},
         data::{Key, Row, Schema, Value},
         executor::{evaluate::evaluate_stateless, limit::Limit},
         result::{MutResult, Result, TrySelf},
-        store::{GStore, GStoreMut, DataRow},
+        store::{DataRow, GStore, GStoreMut},
     },
     futures::stream::{self, TryStreamExt},
     serde::Serialize,
@@ -52,7 +52,9 @@ pub async fn insert<T: GStore + GStoreMut>(
             .ok_or_else(|| InsertError::TableNotFound(table_name.to_owned()))?;
 
         match column_defs {
-            Some(column_defs) => fetch_vec_rows(&storage, table_name, column_defs, columns, source).await,
+            Some(column_defs) => {
+                fetch_vec_rows(&storage, table_name, column_defs, columns, source).await
+            }
             None => fetch_map_rows(&storage, source).await.map(RowsData::Append),
         }
     })()
@@ -172,7 +174,7 @@ async fn fetch_map_rows<T: GStore + GStoreMut>(
         Values(I1),
         Select(I2),
     }
- 
+
     let rows = match &source.body {
         SetExpr::Values(Values(values_list)) => {
             let limit = Limit::new(source.limit.as_ref(), source.offset.as_ref())?;
@@ -181,8 +183,8 @@ async fn fetch_map_rows<T: GStore + GStoreMut>(
                     todo!();
                 }
 
-                let value = evaluate_stateless(None, &values[0])?
-                    .try_into_value(&DataType::Map, true)?;
+                let value =
+                    evaluate_stateless(None, &values[0])?.try_into_value(&DataType::Map, true)?;
 
                 Ok(match value {
                     Value::Map(values) => Row::Map(values),
@@ -207,9 +209,7 @@ async fn fetch_map_rows<T: GStore + GStoreMut>(
                 }
                 */
                 //todo
-                async move {
-                    Ok(row.into())
-                }
+                async move { Ok(row.into()) }
             });
 
             Rows::Select(rows)

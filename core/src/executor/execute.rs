@@ -186,7 +186,12 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .fetch_schema(table_name)
                     .await?
                     .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
-                let update = Update::new(&storage, table_name, assignments, column_defs.as_ref().map(Vec::as_slice))?;
+                let update = Update::new(
+                    &storage,
+                    table_name,
+                    assignments,
+                    column_defs.as_ref().map(Vec::as_slice),
+                )?;
 
                 let all_columns = Rc::from(update.all_columns());
                 let columns_to_update = update.columns_to_update();
@@ -226,7 +231,10 @@ pub async fn execute<T: GStore + GStoreMut>(
             let num_rows = rows.len();
 
             // temp
-            let rows = rows.into_iter().map(|(key, values)| (key, values.into())).collect();
+            let rows = rows
+                .into_iter()
+                .map(|(key, values)| (key, values.into()))
+                .collect();
 
             storage
                 .insert_data(table_name, rows)

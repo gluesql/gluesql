@@ -11,7 +11,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::{MutResult, Result},
-        store::{IndexError, DataRow, StoreMut},
+        store::{DataRow, IndexError, StoreMut},
     },
     sled::transaction::ConflictableTransactionError,
 };

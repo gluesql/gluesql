@@ -3,7 +3,7 @@ use {
         ast::{ColumnDef, ColumnUniqueOption},
         data::{Key, Value},
         result::Result,
-        store::{Store, DataRow},
+        store::{DataRow, Store},
     },
     im_rc::HashSet,
     serde::Serialize,

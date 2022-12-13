@@ -1,14 +1,14 @@
 use {
+    crate::data::{Row, Value},
     serde::{Deserialize, Serialize},
     std::collections::HashMap,
-    crate::data::{Row, Value},
 };
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum DataRow {
     Vec(Vec<Value>),
     Map(HashMap<String, Value>),
-} 
+}
 
 impl From<Row> for DataRow {
     fn from(row: Row) -> Self {

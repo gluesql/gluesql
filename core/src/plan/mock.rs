@@ -12,7 +12,7 @@ use {
         executor::execute,
         parse_sql::parse,
         result::{Error, MutResult, Result},
-        store::{RowIter, Store, StoreMut, DataRow},
+        store::{DataRow, RowIter, Store, StoreMut},
         translate::translate,
     },
     async_trait::async_trait,
@@ -101,7 +101,11 @@ impl StoreMut for MockStorage {
         Err((self, Error::StorageMsg(msg)))
     }
 
-    async fn insert_data(self, _table_name: &str, _rows: Vec<(Key, DataRow)>) -> MutResult<Self, ()> {
+    async fn insert_data(
+        self,
+        _table_name: &str,
+        _rows: Vec<(Key, DataRow)>,
+    ) -> MutResult<Self, ()> {
         let msg = "[MockStorage] insert_data is not supported".to_owned();
 
         Err((self, Error::StorageMsg(msg)))

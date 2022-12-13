@@ -9,7 +9,7 @@ use {
     gluesql_core::{
         data::{Key, Schema},
         result::{MutResult, Result},
-        store::{RowIter, Store, StoreMut, DataRow},
+        store::{DataRow, RowIter, Store, StoreMut},
     },
     memory_storage::MemoryStorage,
     std::sync::Arc,
