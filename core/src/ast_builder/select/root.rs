@@ -1,7 +1,5 @@
-use super::SelectData;
-
 use {
-    super::{join::JoinOperatorType, NodeData, Prebuild},
+    super::{join::JoinOperatorType, NodeData, Prebuild, SelectData},
     crate::{
         ast::{Query, SelectItem, TableAlias, TableFactor},
         ast_builder::{
