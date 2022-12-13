@@ -4,7 +4,7 @@ use {
         table_factor::TableType,
         ExprList, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode, JoinNode,
         LimitNode, OffsetLimitNode, OffsetNode, OrderByNode, ProjectNode, SelectNode,
-        TableFactorNode,
+        TableFactorNode, ValuesNode,
     },
     crate::{
         ast::{Expr, Query, SetExpr, Values},
@@ -19,6 +19,7 @@ pub enum QueryNode<'a> {
     Text(String),
     Values(Vec<ExprList<'a>>),
     SelectNode(SelectNode<'a>),
+    ValuesNode(ValuesNode<'a>),
     JoinNode(JoinNode<'a>),
     JoinConstraintNode(JoinConstraintNode<'a>),
     HashJoinNode(HashJoinNode<'a>),
@@ -101,6 +102,7 @@ impl<'a> TryFrom<QueryNode<'a>> for Query {
                 });
             }
             QueryNode::SelectNode(node) => node.prebuild(),
+            QueryNode::ValuesNode(node) => node.prebuild(),
             QueryNode::JoinNode(node) => node.prebuild(),
             QueryNode::JoinConstraintNode(node) => node.prebuild(),
             QueryNode::HashJoinNode(node) => node.prebuild(),
