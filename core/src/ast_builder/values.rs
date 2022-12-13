@@ -1,4 +1,4 @@
-use super::{ExprNode, OffsetNode, OrderByExprList};
+use super::{ExprNode, LimitNode, OffsetNode, OrderByExprList};
 
 use {
     super::{
@@ -23,6 +23,10 @@ impl<'a> ValuesNode<'a> {
 
     pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
         OffsetNode::new(self, expr)
+    }
+
+    pub fn limit<T: Into<ExprNode<'a>>>(self, expr: T) -> LimitNode<'a> {
+        LimitNode::new(self, expr)
     }
 }
 
@@ -73,6 +77,10 @@ mod tests {
 
         let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).build();
         let expected = "VALUES(1, 'a'), (2, 'b') offset 1";
+        test(actual, expected);
+
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).limit(1).build();
+        let expected = "VALUES(1, 'a'), (2, 'b') limit 1";
         test(actual, expected);
     }
 }

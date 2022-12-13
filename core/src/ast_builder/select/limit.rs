@@ -3,7 +3,7 @@ use {
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
-            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode,
+            JoinNode, OrderByNode, ProjectNode, QueryNode, SelectNode, TableFactorNode, ValuesNode,
         },
         result::Result,
     },
@@ -12,6 +12,7 @@ use {
 #[derive(Clone, Debug)]
 pub enum PrevNode<'a> {
     Select(SelectNode<'a>),
+    Values(ValuesNode<'a>),
     GroupBy(GroupByNode<'a>),
     Having(HavingNode<'a>),
     Join(Box<JoinNode<'a>>),
@@ -26,6 +27,7 @@ impl<'a> Prebuild for PrevNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
         match self {
             Self::Select(node) => node.prebuild(),
+            Self::Values(node) => node.prebuild(),
             Self::GroupBy(node) => node.prebuild(),
             Self::Having(node) => node.prebuild(),
             Self::Join(node) => node.prebuild(),
@@ -41,6 +43,12 @@ impl<'a> Prebuild for PrevNode<'a> {
 impl<'a> From<SelectNode<'a>> for PrevNode<'a> {
     fn from(node: SelectNode<'a>) -> Self {
         PrevNode::Select(node)
+    }
+}
+
+impl<'a> From<ValuesNode<'a>> for PrevNode<'a> {
+    fn from(node: ValuesNode<'a>) -> Self {
+        PrevNode::Values(node)
     }
 }
 
@@ -118,7 +126,9 @@ impl<'a> Prebuild for LimitNode<'a> {
             NodeData::Select(ref mut select_data) => {
                 select_data.limit = Some(self.expr.try_into()?)
             }
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(ref mut values_data) => {
+                values_data.limit = Some(self.expr.try_into()?)
+            }
         }
 
         Ok(select_data)
