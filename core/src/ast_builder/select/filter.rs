@@ -99,8 +99,8 @@ impl<'a> FilterNode<'a> {
 
 impl<'a> Prebuild for FilterNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        match select_data {
+        let mut node_data = self.prev_node.prebuild()?;
+        match node_data {
             NodeData::Select(ref mut select_data) => {
                 select_data.filter = Some(self.filter_expr.try_into()?)
             }
@@ -111,7 +111,7 @@ impl<'a> Prebuild for FilterNode<'a> {
             }
         }
 
-        Ok(select_data)
+        Ok(node_data)
     }
 }
 

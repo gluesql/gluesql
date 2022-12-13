@@ -115,7 +115,7 @@ impl<'a> HashJoinNode<'a> {
 
 impl<'a> Prebuild for HashJoinNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
-        let (mut select_data, relation, join_operator) = self.join_node.prebuild_for_hash_join()?;
+        let (mut node_data, relation, join_operator) = self.join_node.prebuild_for_hash_join()?;
         let join_executor = build_join_executor(self.key_expr, self.value_expr, self.filter_expr)?;
 
         let join = Join {
@@ -124,7 +124,7 @@ impl<'a> Prebuild for HashJoinNode<'a> {
             join_executor,
         };
 
-        match select_data {
+        match node_data {
             NodeData::Select(ref mut select_data) => select_data.joins.push(join),
             NodeData::Values(_) => {
                 return Err(AstBuilderError::UnreachableNode(
@@ -134,7 +134,7 @@ impl<'a> Prebuild for HashJoinNode<'a> {
             }
         };
 
-        Ok(select_data)
+        Ok(node_data)
     }
 }
 

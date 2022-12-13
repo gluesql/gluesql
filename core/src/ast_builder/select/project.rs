@@ -119,8 +119,8 @@ impl<'a> ProjectNode<'a> {
 
 impl<'a> Prebuild for ProjectNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        match select_data {
+        let mut node_data = self.prev_node.prebuild()?;
+        match node_data {
             NodeData::Select(ref mut select_data) => {
                 select_data.projection = self
                     .select_items_list
@@ -139,7 +139,7 @@ impl<'a> Prebuild for ProjectNode<'a> {
             }
         }
 
-        Ok(select_data)
+        Ok(node_data)
     }
 }
 

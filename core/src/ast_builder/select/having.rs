@@ -65,8 +65,8 @@ impl<'a> HavingNode<'a> {
 
 impl<'a> Prebuild for HavingNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        match select_data {
+        let mut node_data = self.prev_node.prebuild()?;
+        match node_data {
             NodeData::Select(ref mut select_data) => {
                 select_data.having = Some(self.expr.try_into()?)
             }
@@ -77,7 +77,7 @@ impl<'a> Prebuild for HavingNode<'a> {
             }
         };
 
-        Ok(select_data)
+        Ok(node_data)
     }
 }
 
