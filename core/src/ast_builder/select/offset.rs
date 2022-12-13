@@ -126,8 +126,8 @@ impl<'a> OffsetNode<'a> {
 
 impl<'a> Prebuild for OffsetNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
-        let mut select_data = self.prev_node.prebuild()?;
-        match select_data {
+        let mut node_data = self.prev_node.prebuild()?;
+        match node_data {
             NodeData::Select(ref mut select_data) => {
                 select_data.offset = Some(self.expr.try_into()?)
             }
@@ -136,7 +136,7 @@ impl<'a> Prebuild for OffsetNode<'a> {
             }
         }
 
-        Ok(select_data)
+        Ok(node_data)
     }
 }
 
