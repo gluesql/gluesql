@@ -22,6 +22,7 @@ pub enum PrevNode<'a> {
     JoinConstraint(JoinConstraintNode<'a>),
     HashJoin(Box<HashJoinNode<'a>>),
     ProjectNode(Box<ProjectNode<'a>>),
+    Values(ValuesNode<'a>),
 }
 
 impl<'a> Prebuild for PrevNode<'a> {
@@ -35,6 +36,7 @@ impl<'a> Prebuild for PrevNode<'a> {
             Self::JoinConstraint(node) => node.prebuild(),
             Self::HashJoin(node) => node.prebuild(),
             Self::ProjectNode(node) => node.prebuild(),
+            Self::Values(node) => node.prebuild(),
         }
     }
 }
@@ -87,6 +89,12 @@ impl<'a> From<ProjectNode<'a>> for PrevNode<'a> {
     }
 }
 
+impl<'a> From<ValuesNode<'a>> for PrevNode<'a> {
+    fn from(node: ValuesNode<'a>) -> Self {
+        PrevNode::Values(node)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct OrderByNode<'a> {
     prev_node: PrevNode<'a>,
@@ -124,7 +132,9 @@ impl<'a> Prebuild for OrderByNode<'a> {
             NodeData::Select(ref mut select_data) => {
                 select_data.order_by = self.expr_list.try_into()?
             }
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(ref mut values_data) => {
+                values_data.order_by = self.expr_list.try_into()?
+            }
         }
 
         Ok(select_data)

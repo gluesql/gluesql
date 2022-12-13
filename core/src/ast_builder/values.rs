@@ -1,10 +1,10 @@
-use super::{
-    select::{NodeData, Prebuild, ValuesData},
-    OrderByNode,
-};
+use super::OrderByExprList;
 
 use {
-    super::ExprList,
+    super::{
+        select::{NodeData, Prebuild, ValuesData},
+        ExprList, OrderByNode,
+    },
     crate::{
         ast::{Expr, Query, SetExpr, Statement, Values},
         result::Result,
@@ -16,24 +16,11 @@ pub struct ValuesNode<'a> {
     pub values: Vec<ExprList<'a>>,
 }
 
-// impl<'a> ValuesNode<'a> {
-//     // pub fn ordery_by(self) -> OrderByNode<'a> {}
-
-//     pub fn build(self) -> Result<Statement> {
-//         let values = self
-//             .values
-//             .into_iter()
-//             .map(|a| a.try_into())
-//             .collect::<Result<Vec<Vec<Expr>>>>()?;
-
-//         Ok(Statement::Query(Query {
-//             body: SetExpr::Values(Values(values)),
-//             order_by: Vec::new(),
-//             limit: None,
-//             offset: None,
-//         }))
-//     }
-// }
+impl<'a> ValuesNode<'a> {
+    pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
+        OrderByNode::new(self, order_by_exprs)
+    }
+}
 
 impl<'a> Prebuild for ValuesNode<'a> {
     fn prebuild(self) -> Result<NodeData> {
@@ -74,10 +61,10 @@ mod tests {
         let expected = "VALUES(1, 'a'), (2, 'b')";
         test(actual, expected);
 
-        // let actual = values(vec!["1, 'a'", "2, 'b'"])
-        //     .order_by(vec!["column1 desc"])
-        //     .build();
-        // let expected = "VALUES(1, 'a'), (2, 'b')";
-        // test(actual, expected);
+        let actual = values(vec!["1, 'a'", "2, 'b'"])
+            .order_by(vec!["column1 desc"])
+            .build();
+        let expected = "VALUES(1, 'a'), (2, 'b') ORDER BY column1 desc";
+        test(actual, expected);
     }
 }
