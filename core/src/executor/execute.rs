@@ -186,12 +186,8 @@ pub async fn execute<T: GStore + GStoreMut>(
                     .fetch_schema(table_name)
                     .await?
                     .ok_or_else(|| ExecuteError::TableNotFound(table_name.to_owned()))?;
-                let update = Update::new(
-                    &storage,
-                    table_name,
-                    assignments,
-                    column_defs.as_ref().map(Vec::as_slice),
-                )?;
+                let update =
+                    Update::new(&storage, table_name, assignments, column_defs.as_deref())?;
 
                 let all_columns = Rc::from(update.all_columns());
                 let columns_to_update = update.columns_to_update();
@@ -284,7 +280,7 @@ pub async fn execute<T: GStore + GStoreMut>(
             });
 
             let output: Vec<(String, DataType)> = keys
-                .unwrap_or_else(Vec::new)
+                .unwrap_or_default()
                 .into_iter()
                 .map(|key| (key.name, key.data_type))
                 .collect();

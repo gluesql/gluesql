@@ -113,7 +113,7 @@ pub async fn create_table<T: GStore + GStoreMut>(
             created: Utc::now().naive_utc(),
         };
 
-        if let Some(column_defs) = schema.column_defs.as_ref().map(Vec::as_slice) {
+        if let Some(column_defs) = schema.column_defs.as_deref() {
             // validate_column_names(&schema.column_defs)?;
             validate_column_names(column_defs)?;
 

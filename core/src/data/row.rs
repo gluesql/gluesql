@@ -75,7 +75,7 @@ impl Row {
     // temp
     pub fn get_columns(&self) -> Rc<[String]> {
         match self {
-            Self::Vec { columns, .. } => Rc::clone(&columns),
+            Self::Vec { columns, .. } => Rc::clone(columns),
             Self::Map(_) => todo!(),
         }
     }

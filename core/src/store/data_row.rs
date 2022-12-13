@@ -32,4 +32,11 @@ impl DataRow {
             Self::Map(values) => values.len(),
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Vec(values) => values.is_empty(),
+            Self::Map(values) => values.is_empty(),
+        }
+    }
 }

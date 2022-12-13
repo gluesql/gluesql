@@ -271,7 +271,7 @@ pub async fn fetch_relation_rows<'a>(
 
                             schema
                                 .column_defs
-                                .unwrap_or_else(Vec::new)
+                                .unwrap_or_default()
                                 .into_iter()
                                 .enumerate()
                                 .map(move |(index, column_def)| {
@@ -360,7 +360,7 @@ pub async fn fetch_columns(storage: &dyn GStore, table_name: &str) -> Result<Vec
         .await?
         .ok_or_else(|| FetchError::TableNotFound(table_name.to_owned()))?
         .column_defs
-        .unwrap_or_else(Vec::new)
+        .unwrap_or_default()
         .into_iter()
         .map(|ColumnDef { name, .. }| name)
         .collect::<Vec<String>>())
