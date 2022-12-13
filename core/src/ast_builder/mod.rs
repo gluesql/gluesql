@@ -57,7 +57,7 @@ pub use {
     },
     table_name::table,
     update::UpdateNode,
-    values::ValuesNode,
+    values::{values, ValuesNode},
 };
 
 /// Available expression builder functions
