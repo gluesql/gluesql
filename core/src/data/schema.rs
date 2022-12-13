@@ -39,15 +39,10 @@ impl Schema {
             ..
         } = self;
 
-        let columns = match columns {
-            Some(columns) => columns,
-            None => todo!(),
-        };
-
         let create_table = Statement::CreateTable {
             if_not_exists: false,
             name: table_name.clone(),
-            columns,
+            columns: columns.unwrap_or_default(),
             source: None,
         }
         .to_sql();
@@ -102,7 +97,18 @@ mod tests {
         assert_eq!(
             schema.to_ddl(),
             "CREATE TABLE User (id INT NOT NULL, name TEXT NULL DEFAULT 'glue');"
-        )
+        );
+
+        let schema = Schema {
+            table_name: "Test".to_owned(),
+            column_defs: None,
+            indexes: Vec::new(),
+            created: Utc::now().naive_utc(),
+        };
+        assert_eq!(
+            schema.to_ddl(),
+            "CREATE TABLE Test;"
+        );
     }
 
     #[test]
