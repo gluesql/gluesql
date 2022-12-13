@@ -1,3 +1,5 @@
+use crate::ast::Values;
+
 mod filter;
 mod group_by;
 mod having;
@@ -54,9 +56,9 @@ pub struct SelectData {
 #[derive(Clone, Debug)]
 pub struct ValuesData {
     pub values: Vec<Vec<Expr>>,
-    pub order_by: Vec<Expr>,
-    pub limit: Vec<Expr>,
-    pub offset: Vec<Expr>,
+    pub order_by: Vec<OrderByExpr>,
+    pub limit: Option<Expr>,
+    pub offset: Option<Expr>,
 }
 
 #[derive(Clone, Debug)]
@@ -97,7 +99,17 @@ impl NodeData {
                     limit,
                 }
             }
-            NodeData::Values(values_data) => todo!(),
+            NodeData::Values(ValuesData {
+                values,
+                order_by,
+                limit,
+                offset,
+            }) => Query {
+                body: SetExpr::Values(Values(values)),
+                order_by,
+                offset,
+                limit,
+            },
         }
     }
     fn build_stmt(self) -> Statement {

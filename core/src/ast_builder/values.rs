@@ -1,4 +1,7 @@
-use super::OrderByNode;
+use super::{
+    select::{NodeData, Prebuild, ValuesData},
+    OrderByNode,
+};
 
 use {
     super::ExprList,
@@ -13,18 +16,35 @@ pub struct ValuesNode<'a> {
     pub values: Vec<ExprList<'a>>,
 }
 
-impl<'a> ValuesNode<'a> {
-    // pub fn ordery_by(self) -> OrderByNode<'a> {}
+// impl<'a> ValuesNode<'a> {
+//     // pub fn ordery_by(self) -> OrderByNode<'a> {}
 
-    pub fn build(self) -> Result<Statement> {
+//     pub fn build(self) -> Result<Statement> {
+//         let values = self
+//             .values
+//             .into_iter()
+//             .map(|a| a.try_into())
+//             .collect::<Result<Vec<Vec<Expr>>>>()?;
+
+//         Ok(Statement::Query(Query {
+//             body: SetExpr::Values(Values(values)),
+//             order_by: Vec::new(),
+//             limit: None,
+//             offset: None,
+//         }))
+//     }
+// }
+
+impl<'a> Prebuild for ValuesNode<'a> {
+    fn prebuild(self) -> Result<NodeData> {
         let values = self
             .values
             .into_iter()
             .map(|a| a.try_into())
             .collect::<Result<Vec<Vec<Expr>>>>()?;
 
-        Ok(Statement::Query(Query {
-            body: SetExpr::Values(Values(values)),
+        Ok(NodeData::Values(ValuesData {
+            values,
             order_by: Vec::new(),
             limit: None,
             offset: None,
@@ -40,7 +60,7 @@ pub fn values<'a, T: Into<ExprList<'a>>>(values: Vec<T>) -> ValuesNode<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast_builder::{num, test};
+    use crate::ast_builder::{num, test, Build};
 
     use super::values;
 
