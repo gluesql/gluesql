@@ -35,7 +35,7 @@ impl<'a> Prebuild for ValuesNode<'a> {
         let values = self
             .values
             .into_iter()
-            .map(|a| a.try_into())
+            .map(TryInto::try_into)
             .collect::<Result<Vec<Vec<Expr>>>>()?;
 
         Ok(NodeData::Values(ValuesData {
