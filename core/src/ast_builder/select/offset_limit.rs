@@ -51,7 +51,9 @@ impl<'a> Prebuild for OffsetLimitNode<'a> {
             NodeData::Select(ref mut select_data) => {
                 select_data.limit = Some(self.expr.try_into()?)
             }
-            NodeData::Values(_) => todo!(),
+            NodeData::Values(ref mut values_data) => {
+                values_data.limit = Some(self.expr.try_into()?)
+            }
         }
 
         Ok(select_data)

@@ -84,6 +84,10 @@ mod tests {
         let expected = "VALUES(1, 'a'), (2, 'b') limit 1";
         test(actual, expected);
 
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).limit(1).build();
+        let expected = "VALUES(1, 'a'), (2, 'b') offset 1 limit 1";
+        test(actual, expected);
+
         let actual = values(vec!["1, 'a'", "2, 'b'"])
             .alias_as("Sub")
             .select()
