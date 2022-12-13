@@ -1,12 +1,10 @@
-use crate::ast_builder::values::ValuesNode;
-
 use {
     super::{NodeData, Prebuild},
     crate::{
         ast_builder::{
             ExprNode, FilterNode, GroupByNode, HashJoinNode, HavingNode, JoinConstraintNode,
             JoinNode, LimitNode, OffsetNode, OrderByExprList, ProjectNode, QueryNode, SelectNode,
-            TableFactorNode,
+            TableFactorNode, ValuesNode,
         },
         result::Result,
     },

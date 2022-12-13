@@ -1,4 +1,4 @@
-use super::OrderByExprList;
+use super::{ExprNode, OffsetNode, OrderByExprList};
 
 use {
     super::{
@@ -19,6 +19,10 @@ pub struct ValuesNode<'a> {
 impl<'a> ValuesNode<'a> {
     pub fn order_by<T: Into<OrderByExprList<'a>>>(self, order_by_exprs: T) -> OrderByNode<'a> {
         OrderByNode::new(self, order_by_exprs)
+    }
+
+    pub fn offset<T: Into<ExprNode<'a>>>(self, expr: T) -> OffsetNode<'a> {
+        OffsetNode::new(self, expr)
     }
 }
 
@@ -65,6 +69,10 @@ mod tests {
             .order_by(vec!["column1 desc"])
             .build();
         let expected = "VALUES(1, 'a'), (2, 'b') ORDER BY column1 desc";
+        test(actual, expected);
+
+        let actual = values(vec!["1, 'a'", "2, 'b'"]).offset(1).build();
+        let expected = "VALUES(1, 'a'), (2, 'b') offset 1";
         test(actual, expected);
     }
 }
